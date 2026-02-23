@@ -519,11 +519,10 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
       }
 
       // Sortiraj zahteve po redosledu dana u sedmici (od danas na dalje)
-      // Vikend (sub=6, ned=7): sledeća sedmica počinje od ponedeljka → todayWd = 0
-      final rawWd = now.weekday; // 1=pon...7=ned
-      final todayWd = (rawWd >= 6) ? 0 : rawWd; // sub/ned → 0 (sve radne dane prikaži od pon)
+      // Vikend (sub=6, ned=7) → počni od ponedeljka (sve radne dane prikaži)
+      // todayWd=0 vikendom jer 0 < 1 (pon), pa orderedDani = [pon, uto, sre, cet, pet]
+      final todayWd = now.weekday >= 6 ? 0 : now.weekday; // 1=pon...5=pet, 0=vikend
       final daniOrder = ['pon', 'uto', 'sre', 'cet', 'pet'];
-      // Redosled počevajući od danas (ili od ponedeljka ako je vikend)
       final orderedDani = [
         ...daniOrder.where((d) => daniOrder.indexOf(d) + 1 >= todayWd),
         ...daniOrder.where((d) => daniOrder.indexOf(d) + 1 < todayWd),
@@ -544,9 +543,9 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
         final polazak = '$polazakH:${polazakM.toString().padLeft(2, '0')}';
         if (polazak.isEmpty) continue;
 
-        // Ako je danas (ne vikend), proveri da li je polazak prošao
+        // Ako je danas radni dan, proveri da li je polazak prošao
         final danWd = daniOrder.indexOf(danKratica) + 1;
-        if (danWd == rawWd) {
+        if (danWd == todayWd) {
           if (polazakH * 60 + polazakM < now.hour * 60 + now.minute - 30) continue;
         }
 
