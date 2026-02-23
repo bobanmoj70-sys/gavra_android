@@ -157,6 +157,10 @@ class PutnikService {
     map['pokupljen_iz_loga'] = row['je_pokupljen'] == true;
     map['otkazano_iz_loga'] = row['je_otkazan_iz_loga'] == true;
     map['placeno_iz_loga'] = row['je_placen'] == true;
+    // Mapiramo naziv_adrese iz RPC u format koji fromSeatRequest očekuje (adrese:custom_adresa_id join)
+    if (row['naziv_adrese'] != null) {
+      map['adrese'] = {'naziv': row['naziv_adrese']};
+    }
     if (row['iznos_placanja'] != null) {
       final raw = row['iznos_placanja'];
       map['cena'] = raw is num ? raw.toDouble() : double.tryParse(raw.toString()) ?? 0.0;
@@ -203,20 +207,6 @@ class PutnikService {
       }).toList();
 
       final allMapped = enriched.map((r) => Putnik.fromSeatRequest(r)).toList();
-
-      // 🐛 DEBUG: Prikaži placeno/je_placen za sve putnike
-      for (final r in enriched) {
-        final p = allMapped.firstWhere(
-          (p) => p.requestId == r['id']?.toString(),
-          orElse: () => allMapped.isNotEmpty ? allMapped.first : Putnik(ime: '?', grad: '?', polazak: '?', dan: '?'),
-        );
-        debugPrint(
-          '💰 [DEBUG] ime=${r['registrovani_putnici']?['putnik_ime'] ?? '?'} '
-          'status=${r['status']} je_placen=${r['je_placen']} '
-          'iznos=${r['iznos_placanja']} cena=${r['cena']} '
-          'placeno=${p.placeno} dan=${p.dan}',
-        );
-      }
 
       final results =
           allMapped.where((p) => p.status != 'bez_polaska' && p.status != 'hidden' && p.status != 'cancelled').toList();
