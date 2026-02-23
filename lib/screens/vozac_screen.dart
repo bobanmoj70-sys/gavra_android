@@ -562,6 +562,8 @@ class _VozacScreenState extends State<VozacScreen> {
       if (pTime != normFilterTime) return false;
       if (p.jeOtkazan || p.jeBezPolaska || p.jePokupljen || p.jeOdsustvo) return false;
       if (!TextUtils.isStatusActive(p.status)) return false;
+      // 🛡️ Isključi pending putnike (još nisu obrađeni)
+      if (p.status?.toLowerCase() == 'pending') return false;
       return true;
     }).toList();
 
