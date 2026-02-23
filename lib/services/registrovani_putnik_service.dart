@@ -543,8 +543,8 @@ class RegistrovaniPutnikService {
 
       if (danData == null || danData is! Map) continue;
 
-      final targetDate = _getNextDateForDay(DateTime.now(), danKratica);
-      final targetDateStr = targetDate.toIso8601String().split('T')[0];
+      // targetDateStr je ISO datum za voznje_log (koji i dalje koristi datum kolonu)
+      final targetDateStr = _getNextDateForDay(DateTime.now(), danKratica).toIso8601String().split('T')[0];
 
       // Proveri BC i VS vremena (bc2/vs2 su legacy, preskačemo)
       for (final gradCode in ['bc', 'vs']) {
@@ -557,13 +557,13 @@ class RegistrovaniPutnikService {
           if (vremeStr != null && vremeStr.isNotEmpty && vremeStr != 'null') {
             // IMA VREME → kreiraj ili ažuriraj seat_request
             // ⚠️ VAŽNO: Koristimo .limit(1) sa .order() da izbegnemo PostgrestException
-            // kada postoji više zapisa za isti putnik/datum/grad (duplikati zbog prethodnih grešaka).
+            // kada postoji više zapisa za isti putnik/dan/grad (duplikati zbog prethodnih grešaka).
             // .maybeSingle() bez limit(1) baca exception ako vrati >1 red!
             final existingList = await _supabase
                 .from('seat_requests')
                 .select('id, zeljeno_vreme, status')
                 .eq('putnik_id', putnikId)
-                .eq('datum', targetDateStr)
+                .eq('dan', danKratica)
                 .eq('grad', normalizedGrad)
                 .inFilter('status', ['pending', 'manual', 'approved', 'confirmed', 'otkazano', 'pokupljen'])
                 .order('created_at', ascending: false)
@@ -575,12 +575,12 @@ class RegistrovaniPutnikService {
               await _supabase.from('seat_requests').insert({
                 'putnik_id': putnikId,
                 'grad': normalizedGrad,
-                'datum': targetDateStr,
+                'dan': danKratica,
                 'zeljeno_vreme': '$vremeStr:00',
                 'status': 'confirmed',
                 'broj_mesta': brojMesta,
               });
-              debugPrint('✅ Kreiran seat_request: $targetDateStr, $normalizedGrad, $vremeStr');
+              debugPrint('✅ Kreiran seat_request: $danKratica, $normalizedGrad, $vremeStr');
               // 📝 Logiraj zakazani termin u voznje_log
               try {
                 await VoznjeLogService.logGeneric(
@@ -606,7 +606,7 @@ class RegistrovaniPutnikService {
                   'updated_at': DateTime.now().toUtc().toIso8601String(),
                 }).eq('id', existing['id']);
                 debugPrint(
-                    '✅ Ažuriran seat_request: $targetDateStr, $normalizedGrad, $vremeStr (bio: $existingStatus)');
+                    '✅ Ažuriran seat_request: $danKratica, $normalizedGrad, $vremeStr (bio: $existingStatus)');
               }
             }
           } else {
@@ -615,11 +615,11 @@ class RegistrovaniPutnikService {
             // Ako admin nije uneo vreme, ne sme se postavljati bez_polaska na
             // termine koje putnik već ima. Samo eksplicitna izmena vremena sme
             // da promeni status seat_requesta.
-            debugPrint('⏭️ Prazno vreme za $targetDateStr $normalizedGrad — preskačem, ne diram postojeće termine');
+            debugPrint('⏭️ Prazno vreme za $danKratica $normalizedGrad — preskačem, ne diram postojeće termine');
           }
         } catch (e) {
           // Greška za jedan termin ne sme blokirati ostatak sync-a
-          debugPrint('❌ [_syncSeatRequestsWithTemplate] Greška za $targetDateStr $normalizedGrad: $e');
+          debugPrint('❌ [_syncSeatRequestsWithTemplate] Greška za $danKratica $normalizedGrad: $e');
         }
       }
     }

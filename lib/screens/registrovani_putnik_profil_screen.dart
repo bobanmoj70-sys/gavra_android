@@ -187,23 +187,14 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
       final putnikId = _putnikData['id']?.toString();
       if (putnikId == null) return;
 
-      // Nađi ponedeljak aktivne nedelje (sub>=02:00 ili ned → sledeća nedelja)
-      final now = DateTime.now();
-      final jeNovaNedelja = (now.weekday == 6 && now.hour >= 2) || now.weekday == 7;
-      late DateTime monday;
-      if (jeNovaNedelja) {
-        final daysToMonday = 8 - now.weekday;
-        monday = DateTime(now.year, now.month, now.day).add(Duration(days: daysToMonday));
-      } else {
-        monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-      }
-      final mondayStr = monday.toIso8601String().split('T')[0];
+      // seat_requests.datum je DROPOVAN — filtrira po dan kraticama (radni dani)
+      const radniDani = ['pon', 'uto', 'sre', 'cet', 'pet'];
 
       final res = await supabase
           .from('seat_requests')
           .select()
           .eq('putnik_id', putnikId)
-          .gte('datum', mondayStr)
+          .inFilter('dan', radniDani)
           .inFilter('status', ['pending', 'manual', 'approved', 'confirmed', 'otkazano', 'cancelled']);
 
       if (mounted) {
@@ -522,46 +513,48 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
       if (_activeSeatRequests.isEmpty) return null;
 
       final now = DateTime.now();
-      final daniNedelje = ['pon', 'uto', 'sre', 'cet', 'pet'];
       final daniPuniNaziv = <String, String>{};
       for (int i = 0; i < DayConstants.dayAbbreviations.length; i++) {
         daniPuniNaziv[DayConstants.dayAbbreviations[i]] = DayConstants.dayNamesInternal[i];
       }
 
-      // Sortiraj zahteve po datumu
-      final sortedRequests = List<Map<String, dynamic>>.from(_activeSeatRequests)
-        ..sort((a, b) => (a['datum'] as String).compareTo(b['datum'] as String));
+      // Sortiraj zahteve po redosledu dana u sedmici (od danas na dalje)
+      final todayWd = now.weekday; // 1=pon...7=ned
+      final daniOrder = ['pon', 'uto', 'sre', 'cet', 'pet'];
+      // Redosled počevajući od dana koji sledi nakon danas
+      final orderedDani = [
+        ...daniOrder.where((d) => daniOrder.indexOf(d) + 1 >= todayWd),
+        ...daniOrder.where((d) => daniOrder.indexOf(d) + 1 < todayWd),
+      ];
 
-      for (final req in sortedRequests) {
-        final datumStr = req['datum'] as String?;
-        if (datumStr == null) continue;
+      for (final danKratica in orderedDani) {
+        final req = _activeSeatRequests
+            .where((r) => (r['dan'] as String?)?.toLowerCase() == danKratica)
+            .where((r) {
+              final status = r['status'] as String?;
+              return status != 'otkazano' && status != 'cancelled';
+            })
+            .firstOrNull;
 
-        final datum = DateTime.tryParse(datumStr);
-        if (datum == null) continue;
+        if (req == null) continue;
 
-        // Ako je datum u budućnosti ili danas
-        if (datum.year >= now.year && datum.month >= now.month && datum.day >= now.day) {
-          final polazakRaw = (req['zeljeno_vreme'] ?? '').toString().trim();
-          // Osiguraj format H:MM (ukloni sekunde ako postoje, dodaj :00 ako nema minuta)
-          final polazakParts = polazakRaw.split(':');
-          final polazakH = polazakParts.isNotEmpty ? (int.tryParse(polazakParts[0]) ?? 0) : 0;
-          final polazakM = polazakParts.length > 1 ? (int.tryParse(polazakParts[1]) ?? 0) : 0;
-          final polazak = '$polazakH:${polazakM.toString().padLeft(2, '0')}';
-          final gradRaw = (req['grad'] ?? '').toString();
-          final grad = GradAdresaValidator.isVrsac(gradRaw) ? 'Vrsac' : 'Bela Crkva';
-          final status = req['status'] as String?;
+        final polazakRaw = (req['zeljeno_vreme'] ?? '').toString().trim();
+        final polazakParts = polazakRaw.split(':');
+        final polazakH = polazakParts.isNotEmpty ? (int.tryParse(polazakParts[0]) ?? 0) : 0;
+        final polazakM = polazakParts.length > 1 ? (int.tryParse(polazakParts[1]) ?? 0) : 0;
+        final polazak = '$polazakH:${polazakM.toString().padLeft(2, '0')}';
+        if (polazak.isEmpty) continue;
 
-          if (polazak.isEmpty || status == 'otkazano') continue;
-
-          // Ako je danas, proveri da li je polazak prošao
-          if (datum.year == now.year && datum.month == now.month && datum.day == now.day) {
-            if (polazakH * 60 + polazakM < now.hour * 60 + now.minute - 30) continue;
-          }
-
-          final danKratica = daniNedelje[datum.weekday - 1];
-          final danNaziv = daniPuniNaziv[danKratica] ?? danKratica;
-          return '$danNaziv $grad - $polazak';
+        // Ako je danas, proveri da li je polazak prošao
+        final danWd = daniOrder.indexOf(danKratica) + 1;
+        if (danWd == todayWd) {
+          if (polazakH * 60 + polazakM < now.hour * 60 + now.minute - 30) continue;
         }
+
+        final gradRaw = (req['grad'] ?? '').toString();
+        final grad = GradAdresaValidator.isVrsac(gradRaw) ? 'Vrsac' : 'Bela Crkva';
+        final danNaziv = daniPuniNaziv[danKratica] ?? danKratica;
+        return '$danNaziv $grad - $polazak';
       }
       return null;
     } catch (e) {
@@ -1625,7 +1618,7 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
             .from('seat_requests')
             .select('id, zeljeno_vreme')
             .eq('putnik_id', putnikId)
-            .eq('datum', datum)
+            .eq('dan', dan)
             .eq('grad', gradKey)
             .inFilter('status', ['pending', 'manual', 'approved', 'confirmed']).maybeSingle();
 

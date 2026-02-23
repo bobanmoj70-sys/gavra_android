@@ -106,9 +106,8 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
       final response = await supabase
           .from('seat_requests')
           .select(
-              'id, grad, datum, zeljeno_vreme, dodeljeno_vreme, status, created_at, broj_mesta, priority, cancelled_by')
+              'id, grad, dan, zeljeno_vreme, dodeljeno_vreme, status, created_at, broj_mesta, priority, cancelled_by')
           .eq('putnik_id', _selectedPutnikId!)
-          .order('datum', ascending: false)
           .order('created_at', ascending: false);
       setState(() {
         _seatRequests = List<Map<String, dynamic>>.from(response as List);
