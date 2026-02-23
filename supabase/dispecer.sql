@@ -2,6 +2,152 @@
 -- DIGITALNI DISPEČER - SQL LOGIKA (V1.0)
 -- ==========================================
 
+-- 0. GLAVNA QUERY FUNKCIJA: Dohvata putnike sa statusom za dati datum
+--    seat_requests.datum je DROPOVAN, koristi sr.dan (kratica: pon, uto, sre, cet, pet, sub, ned)
+CREATE OR REPLACE FUNCTION public.get_putnoci_sa_statusom(
+  p_datum date,
+  p_grad text DEFAULT NULL::text,
+  p_vreme time without time zone DEFAULT NULL::time without time zone
+)
+RETURNS TABLE(
+  id uuid, putnik_id uuid, grad text, datum date,
+  zeljeno_vreme time without time zone, dodeljeno_vreme time without time zone,
+  status text, created_at timestamp with time zone, updated_at timestamp with time zone,
+  processed_at timestamp with time zone, priority integer, broj_mesta integer,
+  custom_adresa_id uuid, naziv_adrese text,
+  alternative_vreme_1 time without time zone, alternative_vreme_2 time without time zone,
+  je_pokupljen boolean, je_otkazan_iz_loga boolean, je_placen boolean,
+  iznos_placanja numeric, vozac_id uuid, vozac_ime text, log_created_at timestamp with time zone,
+  "pokupioVozac" text, "naplatioVozac" text, "otkazaoVozac" text,
+  "pokupioVozacId" uuid, "naplatioVozacId" uuid, "otkazaoVozacId" uuid
+)
+LANGUAGE plpgsql
+STABLE
+AS $function$
+DECLARE
+  v_dan_kratica text;
+BEGIN
+  -- Pretvori p_datum u kraticu dana (pon, uto, sre, cet, pet, sub, ned)
+  v_dan_kratica := CASE EXTRACT(DOW FROM p_datum)
+    WHEN 1 THEN 'pon'
+    WHEN 2 THEN 'uto'
+    WHEN 3 THEN 'sre'
+    WHEN 4 THEN 'cet'
+    WHEN 5 THEN 'pet'
+    WHEN 6 THEN 'sub'
+    WHEN 0 THEN 'ned'
+  END;
+
+  RETURN QUERY
+  SELECT
+    sr.id,
+    sr.putnik_id,
+    sr.grad,
+    p_datum AS datum,
+    sr.zeljeno_vreme,
+    sr.dodeljeno_vreme,
+    sr.status,
+    sr.created_at,
+    sr.updated_at,
+    sr.processed_at,
+    sr.priority,
+    sr.broj_mesta,
+    sr.custom_adresa_id,
+    a.naziv AS naziv_adrese,
+    sr.alternative_vreme_1,
+    sr.alternative_vreme_2,
+    (sr.status = 'pokupljen') AS je_pokupljen,
+    (sr.status IN ('otkazano', 'cancelled')) AS je_otkazan_iz_loga,
+    EXISTS (
+      SELECT 1 FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip IN ('uplata', 'uplata_dnevna')
+        AND (vl.grad IS NULL OR UPPER(vl.grad) = UPPER(sr.grad))
+        AND (vl.vreme_polaska IS NULL OR vl.vreme_polaska = COALESCE(sr.dodeljeno_vreme, sr.zeljeno_vreme))
+    ) AS je_placen,
+    (
+      SELECT vl.iznos FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip IN ('uplata', 'uplata_dnevna')
+        AND (vl.grad IS NULL OR UPPER(vl.grad) = UPPER(sr.grad))
+        AND (vl.vreme_polaska IS NULL OR vl.vreme_polaska = COALESCE(sr.dodeljeno_vreme, sr.zeljeno_vreme))
+      LIMIT 1
+    ) AS iznos_placanja,
+    (
+      SELECT vl.vozac_id FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip IN ('voznja', 'uplata', 'uplata_dnevna')
+      ORDER BY CASE vl.tip WHEN 'uplata' THEN 1 WHEN 'uplata_dnevna' THEN 2 ELSE 3 END
+      LIMIT 1
+    ) AS vozac_id,
+    (
+      SELECT vl.vozac_ime FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip IN ('voznja', 'uplata', 'uplata_dnevna')
+      ORDER BY CASE vl.tip WHEN 'uplata' THEN 1 WHEN 'uplata_dnevna' THEN 2 ELSE 3 END
+      LIMIT 1
+    ) AS vozac_ime,
+    (
+      SELECT vl.created_at FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip IN ('voznja', 'otkazivanje', 'uplata', 'uplata_dnevna')
+      ORDER BY vl.created_at DESC
+      LIMIT 1
+    ) AS log_created_at,
+    sr.pokupljeno_by AS "pokupioVozac",
+    (
+      SELECT vl.vozac_ime FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip IN ('uplata', 'uplata_dnevna')
+        AND (vl.grad IS NULL OR UPPER(vl.grad) = UPPER(sr.grad))
+        AND (vl.vreme_polaska IS NULL OR vl.vreme_polaska = COALESCE(sr.dodeljeno_vreme, sr.zeljeno_vreme))
+      LIMIT 1
+    ) AS "naplatioVozac",
+    (
+      SELECT vl.vozac_ime FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip = 'otkazivanje'
+        AND (vl.grad IS NULL OR UPPER(vl.grad) = UPPER(sr.grad))
+      LIMIT 1
+    ) AS "otkazaoVozac",
+    (
+      SELECT v.id FROM vozaci v
+      WHERE v.ime = sr.pokupljeno_by
+      LIMIT 1
+    ) AS "pokupioVozacId",
+    (
+      SELECT vl.vozac_id FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip IN ('uplata', 'uplata_dnevna')
+        AND (vl.grad IS NULL OR UPPER(vl.grad) = UPPER(sr.grad))
+        AND (vl.vreme_polaska IS NULL OR vl.vreme_polaska = COALESCE(sr.dodeljeno_vreme, sr.zeljeno_vreme))
+      LIMIT 1
+    ) AS "naplatioVozacId",
+    (
+      SELECT vl.vozac_id FROM voznje_log vl
+      WHERE vl.putnik_id = sr.putnik_id
+        AND vl.datum = p_datum
+        AND vl.tip = 'otkazivanje'
+        AND (vl.grad IS NULL OR UPPER(vl.grad) = UPPER(sr.grad))
+      LIMIT 1
+    ) AS "otkazaoVozacId"
+  FROM seat_requests sr
+  LEFT JOIN adrese a ON a.id = sr.custom_adresa_id
+  WHERE sr.dan = v_dan_kratica
+    AND sr.status IN ('pending', 'manual', 'approved', 'confirmed', 'otkazano', 'cancelled', 'bez_polaska', 'hidden', 'pokupljen')
+    AND (p_grad IS NULL OR sr.grad ILIKE p_grad)
+    AND (p_vreme IS NULL OR sr.zeljeno_vreme = p_vreme OR sr.dodeljeno_vreme = p_vreme);
+END;
+$function$;
+
 -- 1. POMOĆNA FUNKCIJA: Dobavljanje imena dana (pon, uto...) iz datuma
 CREATE OR REPLACE FUNCTION get_dan_kratica(target_date date)
 RETURNS text AS $$
