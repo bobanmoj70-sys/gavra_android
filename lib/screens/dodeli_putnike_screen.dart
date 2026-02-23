@@ -144,8 +144,9 @@ class _DodeliPutnikeScreenState extends State<DodeliPutnikeScreen> {
     // • Učitaj cache samo pri prvoj inicijalizaciji ili promjeni dana/grada
     // • skipCacheReload=true kad se poziva zbog individualne dodele - cache je već ažuriran
     if (!skipCacheReload) {
+      final danKratica = app_date_utils.DateUtils.getDayAbbreviation(_selectedDay);
       await Future.wait([
-        VremeVozacService().loadPutnikDodele(isoDate),
+        VremeVozacService().loadPutnikDodele(danKratica),
         VremeVozacService().loadAllVremeVozac(),
       ]);
     }
@@ -446,15 +447,14 @@ class _DodeliPutnikeScreenState extends State<DodeliPutnikeScreen> {
         // • Ako je izabrano "Bez vozača", ukloni individualnu dodelu
         final noviVozac = selected == '_NONE_' ? null : selected;
         final pravac = _currentPlaceKratica; // 'bc' ili 'vs'
-        final targetDatum = app_date_utils.DateUtils.getIsoDateForDay(_selectedDay);
 
         // • Sačuvaj per-putnik individualnu dodelu u vreme_vozac (putnik_id IS NOT NULL)
         // Uvek upsertujemo zapis (čak i za "Nedodeljen") da override-ujemo globalnu vreme_vozac dodelu
         debugPrint(
-            '🔧 [DodelPutnik] selected=$selected noviVozac=$noviVozac putnik=${putnik.ime} datum=$targetDatum vreme=$_selectedVreme');
+            '🔧 [DodelPutnik] selected=$selected noviVozac=$noviVozac putnik=${putnik.ime} dan=$_currentDayKratica vreme=$_selectedVreme');
         await VremeVozacService().dodelVozacaPutniku(
           putnikId: putnik.id!.toString(),
-          datum: targetDatum,
+          dan: _currentDayKratica,
           grad: _currentPlaceKratica,
           vreme: _selectedVreme,
           vozacIme: noviVozac ?? 'Nedodeljen',
@@ -1090,10 +1090,9 @@ class _DodeliPutnikeScreenState extends State<DodeliPutnikeScreen> {
         }
 
         // • Koristi per-putnik individualnu dodelu u vreme_vozac
-        final targetDatum = app_date_utils.DateUtils.getIsoDateForDay(_selectedDay);
         await VremeVozacService().dodelVozacaPutniku(
           putnikId: p.id!.toString(),
-          datum: targetDatum,
+          dan: dan,
           grad: pravac,
           vreme: _selectedVreme,
           vozacIme: noviVozac,

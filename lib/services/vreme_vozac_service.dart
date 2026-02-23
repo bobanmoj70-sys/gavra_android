@@ -9,7 +9,7 @@ import '../utils/vozac_cache.dart';
 /// 🚐 VREME VOZAC SERVICE
 /// Servis za dodeljivanje vozača:
 ///   1. Ceo termin: grad + vreme + dan → vozac (putnik_id IS NULL)
-///   2. Individualni putnik: putnik_id + datum → vozac (putnik_id IS NOT NULL)
+///   2. Individualni putnik: putnik_id + dan → vozac (putnik_id IS NOT NULL)
 class VremeVozacService {
   // Singleton pattern
   static final VremeVozacService _instance = VremeVozacService._internal();
@@ -25,7 +25,7 @@ class VremeVozacService {
   // Cache za vozac_id (grad|vreme|dan -> uuid)
   final Map<String, String> _uuidCache = {};
 
-  // Cache za INDIVIDUALNE dodele: 'putnikId|datum' -> vozac_ime
+  // Cache za INDIVIDUALNE dodele: 'putnikId|dan|grad|vreme' -> vozac_ime
   // Specijalna vrednost 'Nedodeljen' znači da je eksplicitno uklonjen sa svih vozača
   final Map<String, String> _putnikCache = {};
 
@@ -214,11 +214,11 @@ class VremeVozacService {
   // INDIVIDUALNE DODELE PO PUTNIKU
   // ─────────────────────────────────────────────────────────────
 
-  /// 👤 Dodeli vozača konkretnom putniku za određeni datum
+  /// 👤 Dodeli vozača konkretnom putniku za određeni dan
   /// [grad] i [vreme] čuvamo za referencu (isti termin)
   Future<void> dodelVozacaPutniku({
     required String putnikId,
-    required String datum, // ISO 'yyyy-MM-dd'
+    required String dan, // kratica: 'pon', 'uto', 'sre', 'cet', 'pet'
     required String grad,
     required String vreme,
     required String vozacIme, // 'Nedodeljen' = eksplicitno ukloni
@@ -227,6 +227,7 @@ class VremeVozacService {
     final normalizedVreme = _normalizeTime(vreme) ?? vreme;
     // Uvek normalizuj grad u 'BC'/'VS' — konzistentno sa DB i loadPutnikDodele cache ključem
     final normalizedGrad = GradAdresaValidator.normalizeGrad(grad);
+    final normalizedDan = dan.toLowerCase();
     final vozacIdFinal = vozacIme == 'Nedodeljen' ? null : (vozacId ?? VozacCache.getUuidByIme(vozacIme));
 
     try {
@@ -234,7 +235,7 @@ class VremeVozacService {
           .from('vreme_vozac')
           .select('id')
           .eq('putnik_id', putnikId)
-          .eq('datum', datum)
+          .eq('dan', normalizedDan)
           .eq('grad', normalizedGrad)
           .eq('vreme', normalizedVreme)
           .maybeSingle();
@@ -248,10 +249,9 @@ class VremeVozacService {
       } else {
         await _supabase.from('vreme_vozac').insert({
           'putnik_id': putnikId,
-          'datum': datum,
+          'dan': normalizedDan,
           'grad': normalizedGrad,
           'vreme': normalizedVreme,
-          'dan': '_',
           'vozac_ime': vozacIme,
           'vozac_id': vozacIdFinal,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -259,7 +259,7 @@ class VremeVozacService {
       }
 
       // Ažuriraj cache odmah — ključ uključuje grad i vreme da bi BC i VS bili odvojeni
-      final key = '$putnikId|$datum|$normalizedGrad|$normalizedVreme';
+      final key = '$putnikId|$normalizedDan|$normalizedGrad|$normalizedVreme';
       _putnikCache[key] = vozacIme;
 
       _changesController.add(null);
@@ -271,13 +271,14 @@ class VremeVozacService {
   /// 👤 Ukloni individualnu dodelu vozača za putnika (briše red iz tabele)
   Future<void> ukloniDodelaPutnika({
     required String putnikId,
-    required String datum,
+    required String dan,
     String? grad,
     String? vreme,
   }) async {
     final normalizedGrad = grad != null ? GradAdresaValidator.normalizeGrad(grad) : null;
+    final normalizedDan = dan.toLowerCase();
     try {
-      var query = _supabase.from('vreme_vozac').delete().eq('putnik_id', putnikId).eq('datum', datum);
+      var query = _supabase.from('vreme_vozac').delete().eq('putnik_id', putnikId).eq('dan', normalizedDan);
       if (normalizedGrad != null) query = query.eq('grad', normalizedGrad);
       if (vreme != null) {
         final normalizedVreme = _normalizeTime(vreme) ?? vreme;
@@ -285,12 +286,12 @@ class VremeVozacService {
       }
       await query;
 
-      // Ukloni iz cache-a — ako je dat grad/vreme, ukloni tačan ključ, inače sve za taj datum
+      // Ukloni iz cache-a — ako je dat grad/vreme, ukloni tačan ključ, inače sve za taj dan
       if (normalizedGrad != null && vreme != null) {
         final normalizedVreme = _normalizeTime(vreme) ?? vreme;
-        _putnikCache.remove('$putnikId|$datum|$normalizedGrad|$normalizedVreme');
+        _putnikCache.remove('$putnikId|$normalizedDan|$normalizedGrad|$normalizedVreme');
       } else {
-        _putnikCache.removeWhere((key, _) => key.startsWith('$putnikId|$datum'));
+        _putnikCache.removeWhere((key, _) => key.startsWith('$putnikId|$normalizedDan'));
       }
 
       _changesController.add(null);
@@ -302,15 +303,16 @@ class VremeVozacService {
   /// 👤 Dobij dodeljenog vozača za konkretnog putnika (SYNC iz cache-a)
   /// [grad] i [vreme] su obavezni da bi se razlikovale dodele za BC 7:00 vs VS 10:00
   /// Vraća ime vozača, 'Nedodeljen' ili null (nema unosa)
-  String? getVozacZaPutnikSync(String putnikId, String datum, {String? grad, String? vreme}) {
+  String? getVozacZaPutnikSync(String putnikId, String dan, {String? grad, String? vreme}) {
+    final normalizedDan = dan.toLowerCase();
     if (grad != null && vreme != null) {
       final normalizedVreme = _normalizeTime(vreme) ?? vreme;
       final normalizedGrad = GradAdresaValidator.normalizeGrad(grad);
-      final key = '$putnikId|$datum|$normalizedGrad|$normalizedVreme';
+      final key = '$putnikId|$normalizedDan|$normalizedGrad|$normalizedVreme';
       return _putnikCache[key];
     }
-    // Fallback: star ključ bez grad/vreme (backward compat)
-    return _putnikCache['$putnikId|$datum'];
+    // Fallback: pretrazi cache po putnikId|dan
+    return _putnikCache['$putnikId|$normalizedDan'];
   }
 
   /// 🔄 Učitaj individualne dodele za određeni datum u cache
@@ -383,17 +385,22 @@ class VremeVozacService {
         if (vozacId != null) _uuidCache[key] = vozacId;
       }
 
-      // Individualne dodele - osvezi za danas, sutra i radni datum (ponedeljak vikendom)
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      final tomorrow = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
-      // Radni datum: vikendom = naredni ponedeljak
-      final weekday = DateTime.now().weekday;
-      final daysToMonday = weekday == DateTime.saturday ? 2 : (weekday == DateTime.sunday ? 1 : 0);
-      final workingDate = daysToMonday > 0
-          ? DateTime.now().add(Duration(days: daysToMonday)).toIso8601String().substring(0, 10)
-          : today;
-      final datesToLoad = {today, tomorrow, workingDate};
-      await Future.wait(datesToLoad.map((d) => loadPutnikDodele(d)));
+      // Individualne dodele - osvezi za danas, sutra i sva radna dana
+      final now = DateTime.now();
+      final todayWd = now.weekday; // 1=Mon...7=Sun
+      // Radni dani koji su danas, sutra, ili naredni ponedeljak (vikendom)
+      final dansToLoad = <String>{};
+      for (int i = 0; i < 2; i++) {
+        final d = now.add(Duration(days: i));
+        if (d.weekday <= 5) {
+          // pon-pet
+          const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
+          dansToLoad.add(abbrs[d.weekday - 1]);
+        }
+      }
+      // Vikendom: dodaj naredni ponedeljak
+      if (todayWd >= 6) dansToLoad.add('pon');
+      await Future.wait(dansToLoad.map((d) => loadPutnikDodele(d)));
     } catch (e) {
       // ignore
     }

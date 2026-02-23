@@ -27,7 +27,6 @@ import 'services/voznje_log_service.dart';
 import 'services/vreme_vozac_service.dart'; // 🚐 Per-vreme dodeljivanje vozača
 import 'services/weather_alert_service.dart'; // 🌤️ Vremenske uzbune
 import 'services/weather_service.dart'; // 🌤️ DODATO za cleanup
-import 'utils/putnik_helpers.dart'; // 📅 Za getWorkingDateIso
 import 'utils/vozac_cache.dart'; // 🎯 Jedinstven vozač cache
 
 // 🎨 Extension za kompatibilnost sa starijim Flutter verzijama
@@ -185,12 +184,18 @@ Future<void> _initAppServices() async {
   // Sync inicijalizacija
   VremeVozacService().loadAllVremeVozac();
 
-  // 🚗 Individualna dodela vozača po putniku - učitaj za danas + sutra + radni datum
-  final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-  final tomorrowStr = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
-  final workingDateStr = PutnikHelpers.getWorkingDateIso();
-  final datesToPreload = {todayStr, tomorrowStr, workingDateStr};
-  for (final d in datesToPreload) {
+  // 🚗 Individualna dodela vozača po putniku - učitaj za danas i sutra (dan kratica)
+  final now = DateTime.now();
+  final dansToPreload = <String>{};
+  for (int i = 0; i < 2; i++) {
+    final d = now.add(Duration(days: i));
+    if (d.weekday <= 5) {
+      const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
+      dansToPreload.add(abbrs[d.weekday - 1]);
+    }
+  }
+  if (now.weekday >= 6) dansToPreload.add('pon'); // vikendom preloaduj ponedeljak
+  for (final d in dansToPreload) {
     unawaited(VremeVozacService().loadPutnikDodele(d));
   }
 
