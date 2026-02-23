@@ -1469,29 +1469,23 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
       'confirmed': 6,
     };
     final sortedRequests = List<Map<String, dynamic>>.from(_activeSeatRequests);
+    // Sortiraj po dan kratica redosledu (pon→pet), pa po statusu prioritetu
+    const daniRedosled = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4};
     sortedRequests.sort((a, b) {
-      final datumCmp = (a['datum'] as String).compareTo(b['datum'] as String);
-      if (datumCmp != 0) return datumCmp;
+      final aDan = daniRedosled[(a['dan'] as String?)?.toLowerCase() ?? ''] ?? 9;
+      final bDan = daniRedosled[(b['dan'] as String?)?.toLowerCase() ?? ''] ?? 9;
+      final danCmp = aDan.compareTo(bDan);
+      if (danCmp != 0) return danCmp;
       final aPrio = statusPrioritet[a['status']] ?? 0;
       final bPrio = statusPrioritet[b['status']] ?? 0;
-      return aPrio.compareTo(bPrio); // niži prioritet dolazi prvi, viši pobijedi
+      return aPrio.compareTo(bPrio);
     });
 
     for (final req in sortedRequests) {
       try {
-        final datumStr = req['datum'] as String?;
-        if (datumStr == null) continue;
+        final danKratica = (req['dan'] as String?)?.toLowerCase();
+        if (danKratica == null || !daniNedelje.contains(danKratica)) continue;
 
-        final datum = DateTime.parse(datumStr);
-        // Prikazujemo samo zahteve koji su u narednih 7 dana
-        if (datum.isBefore(now.subtract(const Duration(days: 1))) || datum.isAfter(now.add(const Duration(days: 7)))) {
-          continue;
-        }
-
-        final danIndex = datum.weekday - 1;
-        if (danIndex < 0 || danIndex >= daniNedelje.length) continue;
-
-        final danKratica = daniNedelje[danIndex];
         final gradRaw = (req['grad'] ?? '').toString().toLowerCase();
         // Normalizuj grad na 'bc' ili 'vs'
         final grad = (gradRaw == 'vs' || gradRaw.contains('vr')) ? 'vs' : 'bc';
