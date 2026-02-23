@@ -189,12 +189,9 @@ Future<void> _initAppServices() async {
   final dansToPreload = <String>{};
   for (int i = 0; i < 2; i++) {
     final d = now.add(Duration(days: i));
-    if (d.weekday <= 5) {
-      const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
-      dansToPreload.add(abbrs[d.weekday - 1]);
-    }
+    const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+    dansToPreload.add(abbrs[d.weekday - 1]);
   }
-  if (now.weekday >= 6) dansToPreload.add('pon'); // vikendom preloaduj ponedeljak
   for (final d in dansToPreload) {
     unawaited(VremeVozacService().loadPutnikDodele(d));
   }

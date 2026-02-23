@@ -71,16 +71,9 @@ class PutnikHelpers {
         .fold(0, (sum, p) => sum + p.brojMesta);
   }
 
-  /// 📅 HELPER: Vraća radni datum - vikendom vraća naredni ponedeljak
+  /// 📅 HELPER: Vraća trenutni datum
   static DateTime getWorkingDateTime() {
-    final today = DateTime.now();
-    // Vikendom (subota=6, nedelja=7) koristi naredni ponedeljak
-    if (today.weekday == DateTime.saturday) {
-      return today.add(const Duration(days: 2));
-    } else if (today.weekday == DateTime.sunday) {
-      return today.add(const Duration(days: 1));
-    }
-    return today;
+    return DateTime.now();
   }
 
   /// 📅 HELPER: Vraća radni ISO datum (yyyy-MM-dd)

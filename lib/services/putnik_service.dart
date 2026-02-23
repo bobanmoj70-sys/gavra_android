@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart' as globals_file;
 import '../models/putnik.dart';
-import '../utils/date_utils.dart' as app_date_utils;
 import '../utils/grad_adresa_validator.dart';
 import '../utils/vozac_cache.dart';
 import 'realtime/realtime_manager.dart';
@@ -105,17 +104,7 @@ class PutnikService {
 
   Stream<List<Putnik>> streamPutnici() {
     // 🆕 REDIREKCIJA NA IZVOR ISTINE (seat_requests)
-    // Vikendom (subota/nedelja) koristi naredni ponedeljak
-    final today = DateTime.now();
-    final DateTime workingDate;
-    if (today.weekday == DateTime.saturday) {
-      workingDate = today.add(const Duration(days: 2));
-    } else if (today.weekday == DateTime.sunday) {
-      workingDate = today.add(const Duration(days: 1));
-    } else {
-      workingDate = today;
-    }
-    final todayDate = workingDate.toIso8601String().split('T')[0];
+    final todayDate = DateTime.now().toIso8601String().split('T')[0];
     return streamKombinovaniPutniciFiltered(isoDate: todayDate);
   }
 

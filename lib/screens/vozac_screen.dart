@@ -267,14 +267,11 @@ class _VozacScreenState extends State<VozacScreen> {
     }
   }
 
-  // ?? IDENTICNA LOGIKA SA DANAS SCREEN - konvertuj ISO datum u kraci dan
+  // 🗓️ Konvertuj ISO datum u kraticu dana
   String _isoDateToDayAbbr(String isoDate) {
     try {
       final date = DateTime.parse(isoDate);
-      // Guard: vikend (6/7) vraća 'pon' — _getWorkingDateIso() uvek vraća radni dan,
-      // ali za slučaj direktnog prosleđivanja vikend datuma nema IndexError
-      if (date.weekday > 5) return 'pon';
-      const dani = ['pon', 'uto', 'sre', 'cet', 'pet'];
+      const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
       return dani[date.weekday - 1];
     } catch (e) {
       return 'pon'; // fallback

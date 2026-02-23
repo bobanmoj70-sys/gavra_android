@@ -394,14 +394,9 @@ class VremeVozacService {
       final dansToLoad = <String>{};
       for (int i = 0; i < 2; i++) {
         final d = now.add(Duration(days: i));
-        if (d.weekday <= 5) {
-          // pon-pet
-          const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
-          dansToLoad.add(abbrs[d.weekday - 1]);
-        }
+        const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+        dansToLoad.add(abbrs[d.weekday - 1]);
       }
-      // Vikendom: dodaj naredni ponedeljak
-      if (todayWd >= 6) dansToLoad.add('pon');
       await Future.wait(dansToLoad.map((d) => loadPutnikDodele(d)));
     } catch (e) {
       // ignore
