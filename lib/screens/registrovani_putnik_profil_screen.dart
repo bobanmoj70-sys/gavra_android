@@ -519,22 +519,21 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
       }
 
       // Sortiraj zahteve po redosledu dana u sedmici (od danas na dalje)
-      final todayWd = now.weekday; // 1=pon...7=ned
+      // Vikend (sub=6, ned=7): sledeća sedmica počinje od ponedeljka → todayWd = 0
+      final rawWd = now.weekday; // 1=pon...7=ned
+      final todayWd = (rawWd >= 6) ? 0 : rawWd; // sub/ned → 0 (sve radne dane prikaži od pon)
       final daniOrder = ['pon', 'uto', 'sre', 'cet', 'pet'];
-      // Redosled počevajući od dana koji sledi nakon danas
+      // Redosled počevajući od danas (ili od ponedeljka ako je vikend)
       final orderedDani = [
         ...daniOrder.where((d) => daniOrder.indexOf(d) + 1 >= todayWd),
         ...daniOrder.where((d) => daniOrder.indexOf(d) + 1 < todayWd),
       ];
 
       for (final danKratica in orderedDani) {
-        final req = _activeSeatRequests
-            .where((r) => (r['dan'] as String?)?.toLowerCase() == danKratica)
-            .where((r) {
-              final status = r['status'] as String?;
-              return status != 'otkazano' && status != 'cancelled';
-            })
-            .firstOrNull;
+        final req = _activeSeatRequests.where((r) => (r['dan'] as String?)?.toLowerCase() == danKratica).where((r) {
+          final status = r['status'] as String?;
+          return status != 'otkazano' && status != 'cancelled';
+        }).firstOrNull;
 
         if (req == null) continue;
 
@@ -545,9 +544,9 @@ class _RegistrovaniPutnikProfilScreenState extends State<RegistrovaniPutnikProfi
         final polazak = '$polazakH:${polazakM.toString().padLeft(2, '0')}';
         if (polazak.isEmpty) continue;
 
-        // Ako je danas, proveri da li je polazak prošao
+        // Ako je danas (ne vikend), proveri da li je polazak prošao
         final danWd = daniOrder.indexOf(danKratica) + 1;
-        if (danWd == todayWd) {
+        if (danWd == rawWd) {
           if (polazakH * 60 + polazakM < now.hour * 60 + now.minute - 30) continue;
         }
 
