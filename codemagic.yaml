@@ -38,9 +38,8 @@ workflows:
 
       - name: Install CocoaPods
         script: |
+          export IPHONEOS_DEPLOYMENT_TARGET=15.0
           cd ios && pod install --repo-update
-        environment:
-          IPHONEOS_DEPLOYMENT_TARGET: "15.0"
 
       - name: Set Xcode signing
         script: |
