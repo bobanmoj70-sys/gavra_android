@@ -201,6 +201,28 @@ class AuthManager {
     }
   }
 
+  /// 🕐 SESSION VALIDATION
+
+  /// Proveri da li je sesija još aktivna (sveža)
+  /// Vraća true ako je korisnik bio autentifikovan u poslednjih 30 minuta
+  static Future<bool> isSessionActive() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sessionTimestamp = prefs.getString(_authSessionKey);
+
+      if (sessionTimestamp == null) return false;
+
+      final sessionTime = DateTime.parse(sessionTimestamp);
+      final now = DateTime.now();
+      final difference = now.difference(sessionTime);
+
+      // Sesija je aktivna ako je prošlo manje od 30 minuta
+      return difference.inMinutes < 30;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// 🚪 LOGOUT FUNCTIONALITY
 
   /// Centralizovan logout - briše sve session podatke

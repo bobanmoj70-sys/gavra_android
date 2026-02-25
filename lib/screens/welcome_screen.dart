@@ -281,25 +281,30 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
       final correctName = VozacCache.getImeByEmail(rememberedEmail) ?? rememberedName;
 
       if (correctName == driverName) {
-        // 👆 BIOMETRIJA: Ako je UKLJUČENA i dostupna, zahtevaj potvrdu pre auto-logina
-        final biometricAvailable = await BiometricService.isBiometricAvailable();
-        final biometricEnabled = await BiometricService.isBiometricEnabled();
+        // 👆 BIOMETRIJA: Traži samo ako sesija nije aktivna (vrati se posle dužeg vremena)
+        final sessionActive = await AuthManager.isSessionActive();
 
-        if (biometricAvailable && biometricEnabled) {
-          final authenticated = await BiometricService.authenticate(
-            reason: 'Potvrdi identitet za prijavu kao $correctName',
-          );
+        if (!sessionActive) {
+          // Sesija je istekla - proveri biometriju ako je uključena
+          final biometricAvailable = await BiometricService.isBiometricAvailable();
+          final biometricEnabled = await BiometricService.isBiometricEnabled();
 
-          if (!authenticated) {
-            // Korisnik je otkazao ili nije uspeo - idi na manual login
-            if (!mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (context) => VozacLoginScreen(vozacIme: driverName),
-              ),
+          if (biometricAvailable && biometricEnabled) {
+            final authenticated = await BiometricService.authenticate(
+              reason: 'Potvrdi identitet za prijavu kao $correctName',
             );
-            return;
+
+            if (!authenticated) {
+              // Korisnik je otkazao ili nije uspeo - idi na manual login
+              if (!mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (context) => VozacLoginScreen(vozacIme: driverName),
+                ),
+              );
+              return;
+            }
           }
         }
 
