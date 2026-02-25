@@ -18,6 +18,7 @@ class BottomNavBarZimski extends StatefulWidget {
     this.vsVremena,
     this.selectedDan, // 🆕 Dan za proveru dodeljenog vozača (npr. 'pon', 'uto')
     this.showVozacBoja = false, // 🆕
+    this.getVozacColor,
   });
   final List<String> sviPolasci;
   final String selectedGrad;
@@ -30,6 +31,7 @@ class BottomNavBarZimski extends StatefulWidget {
   final List<String>? vsVremena;
   final String? selectedDan; // 🆕
   final bool showVozacBoja; // 🆕
+  final Color? Function(String grad, String vreme)? getVozacColor;
 
   @override
   State<BottomNavBarZimski> createState() => _BottomNavBarZimskiState();
@@ -145,6 +147,7 @@ class _BottomNavBarZimskiState extends State<BottomNavBarZimski> {
                     currentThemeId: currentThemeId,
                     selectedDan: widget.selectedDan,
                     showVozacBoja: widget.showVozacBoja,
+                    getVozacColor: widget.getVozacColor,
                   ),
                 ),
                 const Divider(height: 1),
@@ -165,6 +168,7 @@ class _BottomNavBarZimskiState extends State<BottomNavBarZimski> {
                     currentThemeId: currentThemeId,
                     selectedDan: widget.selectedDan,
                     showVozacBoja: widget.showVozacBoja,
+                    getVozacColor: widget.getVozacColor,
                   ),
                 ),
               ],
@@ -191,6 +195,7 @@ class _PolazakRow extends StatelessWidget {
     this.scrollController,
     this.selectedDan, // 🆕
     this.showVozacBoja = false,
+    this.getVozacColor,
   });
   final String label;
   final List<String> vremena;
@@ -205,9 +210,7 @@ class _PolazakRow extends StatelessWidget {
   final String currentThemeId;
   final String? selectedDan; // 🆕
   final bool showVozacBoja;
-
-  /// 🆕 Dobij boju bordera za vreme - uvek null (vreme_vozac tabela uklonjena)
-  Color? _getVozacBorderColor(String vreme) => null;
+  final Color? Function(String grad, String vreme)? getVozacColor;
 
   @override
   Widget build(BuildContext context) {
@@ -232,8 +235,8 @@ class _PolazakRow extends StatelessWidget {
               child: Row(
                 children: vremena.map((vreme) {
                   final bool selected = selectedGrad == grad && selectedVreme == vreme;
-                  // 🆕 Proveri da li je dodeljen vozač za ovo vreme - samo ako showVozacBoja je true
-                  final vozacBorderColor = showVozacBoja ? _getVozacBorderColor(vreme) : null;
+                  // 🆕 Boja vozača za termin (iz raspored cache-a)
+                  final vozacBorderColor = showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
                   final hasVozac = vozacBorderColor != null;
 
                   return GestureDetector(
