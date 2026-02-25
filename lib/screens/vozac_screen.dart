@@ -18,6 +18,7 @@ import '../services/realtime_notification_service.dart'; // 🔔 Za realtime not
 import '../services/smart_navigation_service.dart';
 import '../services/statistika_service.dart';
 import '../services/theme_manager.dart';
+import '../services/vozac_raspored_service.dart';
 import '../utils/app_snack_bar.dart';
 import '../utils/grad_adresa_validator.dart'; // 🏘️ Za validaciju gradova
 import '../utils/putnik_count_helper.dart'; // 🔢 Za brojanje putnika po gradu
@@ -92,6 +93,9 @@ class _VozacScreenState extends State<VozacScreen> {
 
   String? _currentDriver; // 👤 Trenutni vozač
 
+  // 🗓️ VOZAC RASPORED - filter koji putnici su moji
+  List<VozacRasporedEntry> _rasporedCache = [];
+
   // Status varijable
   bool _isListReordered = false;
   bool _isGpsTracking = false; // 🛰️ GPS tracking status
@@ -137,9 +141,17 @@ class _VozacScreenState extends State<VozacScreen> {
     // 1. Inicijalizuj vozača (ovo će takođe pozvati _selectClosestDeparture)
     await _initializeCurrentDriver();
 
-    // 2. Ostalo
+    // 2. Učitaj raspored vozača
+    _loadRaspored();
+
+    // 3. Ostalo
     _initializeNotifications();
     _initializeGpsTracking();
+  }
+
+  Future<void> _loadRaspored() async {
+    final data = await VozacRasporedService().loadAll();
+    if (mounted) setState(() => _rasporedCache = data);
   }
 
   // 🛰️ GPS TRACKING INICIJALIZACIJA
@@ -850,9 +862,20 @@ class _VozacScreenState extends State<VozacScreen> {
                     );
                   }
 
-                  // Prikazuj sve putnike (bez filtriranja po vozaču)
+                  // Prikazuj putnike - filtriraj po vozac_raspored ako ima unosa
                   final sviPutnici = snapshot.data ?? [];
-                  final mojiPutnici = sviPutnici;
+                  final targetDan = _isoDateToDayAbbr(_getWorkingDateIso());
+                  final mojiPutnici = _currentDriver == null
+                      ? sviPutnici
+                      : VozacRasporedService.filterPutniciZaVozaca<Putnik>(
+                          sviPutnici: sviPutnici,
+                          vozac: _currentDriver!,
+                          targetDan: targetDan,
+                          raspored: _rasporedCache,
+                          getId: (p) => p.id?.toString() ?? '',
+                          getGrad: (p) => p.grad,
+                          getPolazak: (p) => p.polazak,
+                        );
 
                   // Cache za Start dugme (izvan StreamBuilder konteksta)
                   // Koristimo ID listu za poređenje da sprečimo beskonačni rebuild
