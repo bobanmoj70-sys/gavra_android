@@ -18,7 +18,6 @@ import '../services/realtime_notification_service.dart'; // 🔔 Za realtime not
 import '../services/smart_navigation_service.dart';
 import '../services/statistika_service.dart';
 import '../services/theme_manager.dart';
-import '../services/vreme_vozac_service.dart'; // 🕒 Za dodeljena vremena vozača
 import '../utils/app_snack_bar.dart';
 import '../utils/grad_adresa_validator.dart'; // 🏘️ Za validaciju gradova
 import '../utils/putnik_count_helper.dart'; // 🔢 Za brojanje putnika po gradu
@@ -52,8 +51,6 @@ class _VozacScreenState extends State<VozacScreen> {
 
   StreamSubscription<Position>? _driverPositionSubscription;
   StreamSubscription<Map<String, dynamic>>? _notificationSubscription; // ⚡ ZA AUTOMATSKI POPIS
-  StreamSubscription<void>? _vremeVozacSubscription; // 🕒 ZA PROMENE DODELJENIH VREMENA
-  StreamSubscription<void>? _putnikVozacSubscription; // 👤 ZA PROMENE INDIVIDUALNIH DODELA PUTNIKA
 
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00'; // ✅ VRAĆENO NA 05:00 (konzistentno sa RouteConfig)
@@ -69,51 +66,26 @@ class _VozacScreenState extends State<VozacScreen> {
   /// 📅 HELPER: Vraća radni datum - vikendom vraća naredni ponedeljak
   String _getWorkingDateIso() => PutnikHelpers.getWorkingDateIso();
 
-  /// 🕒 HELPER: Dobij dodeljena vremena za trenutnog vozača
+  /// 🕒 HELPER: Dobij dodeljena vremena za trenutnog vozača iz liste svih putnika
   List<Map<String, String>> _getDodeljenaVremena({List<Putnik>? sviPutnici}) {
     if (_currentDriver == null) return [];
 
-    final vozaciZaDan = VremeVozacService().getVozaciZaDanSync(_isoDateToDayAbbr(_getWorkingDateIso()));
     final dodeljena = <Map<String, String>>[];
 
-    // 1. Dodaj vremena iz globalnog rasporeda (VremeVozac table)
-    vozaciZaDan.forEach((key, vozac) {
-      if (vozac == _currentDriver) {
-        final parts = key.split('|');
-        if (parts.length == 2) {
-          dodeljena.add({
-            'grad': parts[0],
-            'vreme': parts[1],
-          });
-        }
-      }
-    });
-
-    // 2. Dodaj vremena iz individualnih dodela (ako imamo putnike)
+    // Skupi sva vremena iz liste putnika
     if (sviPutnici != null) {
       for (var p in sviPutnici) {
-        if (p.dodeljenVozac == _currentDriver) {
-          final pGrad = p.grad;
-          final pPolazak = p.polazak;
-
-          // Proveri da li vec imamo ovo vreme u listi
-          bool postoji = dodeljena.any((v) => v['grad'] == pGrad && v['vreme'] == pPolazak);
-          if (!postoji) {
-            dodeljena.add({
-              'grad': pGrad,
-              'vreme': pPolazak,
-            });
-          }
+        final pGrad = p.grad;
+        final pPolazak = p.polazak;
+        bool postoji = dodeljena.any((v) => v['grad'] == pGrad && v['vreme'] == pPolazak);
+        if (!postoji) {
+          dodeljena.add({'grad': pGrad, 'vreme': pPolazak});
         }
       }
     }
 
     // Sortiraj po vremenu
-    dodeljena.sort((a, b) {
-      final aTime = a['vreme']!;
-      final bTime = b['vreme']!;
-      return aTime.compareTo(bTime);
-    });
+    dodeljena.sort((a, b) => a['vreme']!.compareTo(b['vreme']!));
 
     return dodeljena;
   }
@@ -162,32 +134,12 @@ class _VozacScreenState extends State<VozacScreen> {
   }
 
   Future<void> _initAsync() async {
-    // 1. Prvo učitaj dodeljena vremena (vreme_vozac tabela)
-    await _loadVremeVozacData();
-
-    // 2. Inicijalizuj vozača (ovo će takođe pozvati _selectClosestDeparture)
+    // 1. Inicijalizuj vozača (ovo će takođe pozvati _selectClosestDeparture)
     await _initializeCurrentDriver();
 
-    // 3. Ostalo
+    // 2. Ostalo
     _initializeNotifications();
     _initializeGpsTracking();
-
-    // 4. 🕒 Slušaj promene dodeljenih vremena I individualnih dodela - jedan listener radi oba posla
-    _vremeVozacSubscription = VremeVozacService().onChanges.listen((_) {
-      if (mounted) {
-        // Osvezi stream putnika jer dodeljenVozac zavisi od vreme_vozac putnik cache-a
-        _putnikService.refreshAllActiveStreams();
-        setState(() {});
-        // Ponovo izaberi najbliži polazak jer se raspored promenio
-        _selectClosestDeparture();
-      }
-    });
-    // _putnikVozacSubscription uklonjen - bio je duplikat istog listenera
-  }
-
-  // 🕒 UCITAJ VREME VOZAC PODATKE
-  Future<void> _loadVremeVozacData() async {
-    await VremeVozacService().loadAllVremeVozac();
   }
 
   // 🛰️ GPS TRACKING INICIJALIZACIJA
@@ -206,8 +158,6 @@ class _VozacScreenState extends State<VozacScreen> {
   void dispose() {
     _driverPositionSubscription?.cancel();
     _notificationSubscription?.cancel(); // ⚡ CLEANUP
-    _vremeVozacSubscription?.cancel(); // 🕒 CLEANUP
-    _putnikVozacSubscription?.cancel(); // 👤 CLEANUP
     super.dispose();
   }
 
@@ -900,30 +850,9 @@ class _VozacScreenState extends State<VozacScreen> {
                     );
                   }
 
-                  // ?? FILTER: Prikaži putnike koji su direktno dodeljeni ILI putnike koji pripadaju dodeljenom terminu
+                  // Prikazuj sve putnike (bez filtriranja po vozaču)
                   final sviPutnici = snapshot.data ?? [];
-                  final targetDayAbbr = _isoDateToDayAbbr(_getWorkingDateIso());
-                  final mojiPutnici = sviPutnici.where((p) {
-                    // 1. Direktno dodeljen ovom vozaču
-                    if (p.dodeljenVozac == _currentDriver) return true;
-
-                    // 2. Ako nije dodeljen drugom vozaču, proveri da li mu termin (vreme/grad) pripada globalno
-                    bool isAssignedToOther = p.dodeljenVozac != null &&
-                        p.dodeljenVozac != 'Nedodeljen' &&
-                        p.dodeljenVozac!.isNotEmpty &&
-                        p.dodeljenVozac != _currentDriver;
-
-                    if (!isAssignedToOther) {
-                      final globalniVozac = VremeVozacService().getVozacZaVremeSync(
-                        p.grad,
-                        p.polazak,
-                        targetDayAbbr,
-                      );
-                      return globalniVozac == _currentDriver;
-                    }
-
-                    return false;
-                  }).toList();
+                  final mojiPutnici = sviPutnici;
 
                   // Cache za Start dugme (izvan StreamBuilder konteksta)
                   // Koristimo ID listu za poređenje da sprečimo beskonačni rebuild

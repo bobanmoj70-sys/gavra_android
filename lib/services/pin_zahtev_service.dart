@@ -1,11 +1,19 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
+import 'realtime/realtime_manager.dart';
 import 'realtime_notification_service.dart';
 
 /// 📨 Servis za upravljanje PIN zahtevima putnika
 class PinZahtevService {
   static SupabaseClient get _supabase => supabase;
+
+  static StreamSubscription<PostgresChangePayload>? _pinZahteviSubscription;
+  static final StreamController<List<Map<String, dynamic>>> _zahteviController =
+      StreamController<List<Map<String, dynamic>>>.broadcast();
 
   static Future<bool> posaljiZahtev({
     required String putnikId,
@@ -42,30 +50,54 @@ class PinZahtevService {
 
   /// 🛰️ REALTIME STREAM: Prati nove zahteve za PIN
   static Stream<List<Map<String, dynamic>>> streamZahteviKojiCekaju() {
-    return _supabase
-        .from('pin_zahtevi')
-        .stream(primaryKey: ['id'])
-        .eq('status', 'ceka')
-        .order('created_at')
-        .asyncMap((data) async {
-          // Sa FK, relacije bi trebalo da rade
-          if (data.isEmpty) return [];
+    // Inicijalizuj subscription ako ne postoji
+    if (_pinZahteviSubscription == null) {
+      _startRealtimeListener();
+    }
 
-          final ids = data.map((z) => z['id'] as String).toList();
+    return _zahteviController.stream;
+  }
 
-          // Ponovo dohvatiti sa join-om za te ID-eve
-          final fullData = await _supabase.from('pin_zahtevi').select('''
-            *,
-            registrovani_putnici (
-              id,
-              putnik_ime,
-              broj_telefona,
-              tip
-            )
-          ''').inFilter('id', ids).order('created_at');
+  /// Pokreni realtime listener koristeći RealtimeManager
+  static void _startRealtimeListener() {
+    _pinZahteviSubscription = RealtimeManager.instance.subscribe('pin_zahtevi').listen((payload) async {
+      debugPrint('🔔 [PinZahtevService] Primljena realtime promena: ${payload.eventType}');
+      // Učitaj sve zahteve koji čekaju
+      await _fetchAndEmitZahtevi();
+    });
 
-          return List<Map<String, dynamic>>.from(fullData);
-        });
+    // Učitaj početne podatke
+    _fetchAndEmitZahtevi();
+  }
+
+  /// Dohvati zahteve iz baze i emituj na stream
+  static Future<void> _fetchAndEmitZahtevi() async {
+    try {
+      final data = await _supabase.from('pin_zahtevi').select('''
+        *,
+        registrovani_putnici (
+          id,
+          putnik_ime,
+          broj_telefona,
+          tip
+        )
+      ''').eq('status', 'ceka').order('created_at');
+
+      if (!_zahteviController.isClosed) {
+        _zahteviController.add(List<Map<String, dynamic>>.from(data));
+      }
+    } catch (e) {
+      if (!_zahteviController.isClosed) {
+        _zahteviController.addError(e);
+      }
+    }
+  }
+
+  /// Cleanup subscription
+  static void dispose() {
+    _pinZahteviSubscription?.cancel();
+    _pinZahteviSubscription = null;
+    RealtimeManager.instance.unsubscribe('pin_zahtevi');
   }
 
   static Future<int> brojZahtevaKojiCekaju() async {

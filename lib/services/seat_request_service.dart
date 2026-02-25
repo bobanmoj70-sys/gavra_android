@@ -128,25 +128,23 @@ class SeatRequestService {
     }
   }
 
-  /// Stream za zahteve koji čekaju ručnu obradu admina (dnevni putnici sa pending statusom)
+  /// Stream za zahteve koji čekaju ručnu obradu admina (SVI sa pending statusom)
   static Stream<List<SeatRequest>> streamManualRequests() {
     return _supabase
         .from('seat_requests')
         .stream(primaryKey: ['id'])
         .eq('status', 'pending')
         .order('created_at', ascending: false)
-        .map((data) => data
-            .map((json) => SeatRequest.fromJson(json))
-            .where((r) => r.tipPutnika == 'dnevni' || r.tipPutnika == 'posiljka')
-            .toList());
+        .map((data) => data.map((json) => SeatRequest.fromJson(json)).toList());
   }
 
-  /// 🔢 Stream za broj zahteva koji čekaju ručnu obradu (za bedž na Home ekranu)
+  /// 🔢 Stream za broj zahteva koji čekaju ručnu obradu (za bedž na Home ekranu - SVI)
   static Stream<int> streamManualRequestCount() {
-    return _supabase.from('seat_requests').stream(primaryKey: ['id']).eq('status', 'pending').map((list) => list
-        .map((json) => SeatRequest.fromJson(json))
-        .where((r) => r.tipPutnika == 'dnevni' || r.tipPutnika == 'posiljka')
-        .length);
+    return _supabase
+        .from('seat_requests')
+        .stream(primaryKey: ['id'])
+        .eq('status', 'pending')
+        .map((list) => list.map((json) => SeatRequest.fromJson(json)).length);
   }
 
   /// 🤖 POKREĆE DIGITALNOG DISPEČERA U BAZI

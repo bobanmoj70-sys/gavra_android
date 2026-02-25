@@ -282,12 +282,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
 
       if (correctName == driverName) {
         // 👆 BIOMETRIJA: Traži samo ako sesija nije aktivna (vrati se posle dužeg vremena)
+        debugPrint('🔐 [WelcomeScreen] Proveravam sesiju za $correctName...');
         final sessionActive = await AuthManager.isSessionActive();
+        debugPrint('🔐 [WelcomeScreen] Sesija aktivna: $sessionActive');
 
         if (!sessionActive) {
           // Sesija je istekla - proveri biometriju ako je uključena
           final biometricAvailable = await BiometricService.isBiometricAvailable();
           final biometricEnabled = await BiometricService.isBiometricEnabled();
+
+          debugPrint('🔐 [WelcomeScreen] Biometrija: available=$biometricAvailable, enabled=$biometricEnabled');
 
           if (biometricAvailable && biometricEnabled) {
             final authenticated = await BiometricService.authenticate(
@@ -309,6 +313,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
         }
 
         // Ovaj vozač je zapamćen na ovom uređaju - DIREKTNO AUTO-LOGIN
+        debugPrint('🔐 [WelcomeScreen] Postavljam sesiju za $correctName');
         await AuthManager.setCurrentDriver(correctName);
 
         if (!mounted) return;

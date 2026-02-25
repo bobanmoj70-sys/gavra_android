@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
 import '../models/voznje_log.dart';
+import '../services/realtime/realtime_manager.dart';
 import '../theme.dart';
 import '../utils/grad_adresa_validator.dart';
 import '../utils/vozac_cache.dart';
@@ -34,11 +37,15 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
   List<Map<String, dynamic>> _seatRequests = [];
   bool _loadingSeatRequests = false;
 
+  // Realtime
+  StreamSubscription? _realtimeSubscription;
+  final StreamController<List<Map<String, dynamic>>> _logsController =
+      StreamController<List<Map<String, dynamic>>>.broadcast();
+
   // Tabovi
   TabController? _tabController;
-  static const List<String> _actionTypes = ['sve', 'voznja', 'otkazivanje', 'uplata', 'zahtevi'];
+  static const List<String> _actionTypes = ['voznja', 'otkazivanje', 'uplata', 'zahtevi'];
   static const Map<String, String> _actionLabels = {
-    'sve': '📊 Sve',
     'voznja': '🚗 Vožnje',
     'otkazivanje': '❌ Otkazane',
     'uplata': '💰 Uplate',
@@ -66,7 +73,60 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
   void dispose() {
     _tabController?.dispose();
     _searchController.dispose();
+    _realtimeSubscription?.cancel();
+    _logsController.close();
+    RealtimeManager.instance.unsubscribe('voznje_log');
     super.dispose();
+  }
+
+  void _startRealtimeListener() {
+    _realtimeSubscription = RealtimeManager.instance.subscribe('voznje_log').listen((_) {
+      _fetchLogs();
+    });
+    _fetchLogs();
+  }
+
+  Future<void> _fetchLogs() async {
+    if (_selectedPutnikId == null) return;
+
+    try {
+      debugPrint('🔍 [PutnikLog] Učitavam logove za putnik_id: $_selectedPutnikId');
+      final data = await supabase
+          .from('voznje_log')
+          .select()
+          .eq('putnik_id', _selectedPutnikId!)
+          .order('created_at', ascending: false);
+
+      final logs = List<Map<String, dynamic>>.from(data);
+      debugPrint('📊 [PutnikLog] Učitano ${logs.length} logova');
+
+      // Log tipova akcija
+      final tipCounts = <String, int>{};
+      for (final log in logs) {
+        final tip = log['tip'] as String? ?? 'null';
+        tipCounts[tip] = (tipCounts[tip] ?? 0) + 1;
+      }
+      debugPrint('📈 [PutnikLog] Tipovi akcija: $tipCounts');
+
+      // Prikaži prvih 5 logova za debug
+      if (logs.isNotEmpty) {
+        debugPrint('🔍 [PutnikLog] Prvih 5 logova:');
+        for (var i = 0; i < logs.length && i < 5; i++) {
+          final log = logs[i];
+          debugPrint(
+              '  ${i + 1}. tip=${log['tip']}, grad=${log['grad']}, vreme=${log['vreme_polaska']}, vozac_id=${log['vozac_id']}, vozac_ime=${log['vozac_ime']}, detalji=${log['detalji']}, created_at=${log['created_at']}');
+        }
+      }
+
+      if (!_logsController.isClosed) {
+        _logsController.add(logs);
+      }
+    } catch (e) {
+      debugPrint('❌ [PutnikLog] Greška pri učitavanju logova: $e');
+      if (!_logsController.isClosed) {
+        _logsController.addError(e);
+      }
+    }
   }
 
   /// Učitaj sve aktivne putnike za search
@@ -104,14 +164,38 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
     if (_selectedPutnikId == null) return;
     setState(() => _loadingSeatRequests = true);
     try {
+      debugPrint('🔍 [PutnikLog] Učitavam seat_requests za putnik_id: $_selectedPutnikId');
       final response = await supabase
           .from('seat_requests')
           .select(
               'id, grad, dan, zeljeno_vreme, dodeljeno_vreme, status, created_at, broj_mesta, priority, cancelled_by')
           .eq('putnik_id', _selectedPutnikId!)
+          .neq('status', 'pokupljen') // ❌ Ne prikazuj pokupljene - to su završene vožnje
           .order('created_at', ascending: false);
+
+      final requests = List<Map<String, dynamic>>.from(response as List);
+      debugPrint('📊 [PutnikLog] Učitano ${requests.length} seat_requests (bez pokupljenih)');
+
+      // Log statusa
+      final statusCounts = <String, int>{};
+      for (final req in requests) {
+        final status = req['status'] as String? ?? 'null';
+        statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+      }
+      debugPrint('📈 [PutnikLog] Statusi: $statusCounts');
+
+      // Prikaži prvih 5 zahteva za debug
+      if (requests.isNotEmpty) {
+        debugPrint('🔍 [PutnikLog] Prvih 5 seat_requests:');
+        for (var i = 0; i < requests.length && i < 5; i++) {
+          final req = requests[i];
+          debugPrint(
+              '  ${i + 1}. status=${req['status']}, grad=${req['grad']}, dan=${req['dan']}, zeljeno_vreme=${req['zeljeno_vreme']}, created_at=${req['created_at']}');
+        }
+      }
+
       setState(() {
-        _seatRequests = List<Map<String, dynamic>>.from(response as List);
+        _seatRequests = requests;
         _loadingSeatRequests = false;
       });
     } catch (e) {
@@ -127,6 +211,10 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
         return '🚗 Pokupljen';
       case 'otkazivanje':
         return '❌ Otkazano';
+      case 'zakazano':
+        return '📅 Zakazano';
+      case 'potvrda_mesta':
+        return '✅ Potvrđeno mesto';
       case 'uplata_dnevna':
         return '💰 Dnevna uplata';
       case 'uplata_mesecna':
@@ -150,12 +238,10 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
     return VozacCache.getImeByUuid(vozacId) ?? vozacId.substring(0, 8);
   }
 
-  /// Dohvati grad i vreme iz meta
+  /// Dohvati grad i vreme iz log zapisa (direktne kolone, fallback na meta)
   Map<String, String> _getGradVreme(VoznjeLog log) {
-    final meta = log.meta;
-    String grad = meta?['grad']?.toString() ?? '';
-    String vreme = meta?['vreme']?.toString() ?? '';
-
+    String grad = log.grad ?? log.meta?['grad']?.toString() ?? '';
+    String vreme = log.vremePolaska ?? log.meta?['vreme']?.toString() ?? '';
     grad = GradAdresaValidator.normalizeGrad(grad);
     return {'grad': grad, 'vreme': vreme};
   }
@@ -164,7 +250,8 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
   bool _matchesFilter(VoznjeLog log) {
     if (_tabController == null) return true;
     final selectedType = _actionTypes[_tabController!.index];
-    if (selectedType == 'sve') return true;
+
+    // Filtriraj po tipu akcije
     if (selectedType == 'voznja') return log.tip == 'voznja';
     if (selectedType == 'otkazivanje') return log.tip == 'otkazivanje';
     if (selectedType == 'uplata') {
@@ -180,6 +267,10 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
         return Colors.green;
       case 'otkazivanje':
         return Colors.redAccent;
+      case 'zakazano':
+        return Colors.blue;
+      case 'potvrda_mesta':
+        return Colors.teal;
       case 'uplata':
       case 'uplata_dnevna':
       case 'uplata_mesecna':
@@ -320,6 +411,7 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
                                     _searchController.clear();
                                   });
                                   FocusScope.of(context).unfocus();
+                                  _startRealtimeListener();
                                   _loadSeatRequests();
                                 },
                               );
@@ -455,11 +547,7 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
     final putnikId = _selectedPutnikId!;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: supabase
-          .from('voznje_log')
-          .stream(primaryKey: ['id'])
-          .eq('putnik_id', putnikId)
-          .order('created_at', ascending: false),
+      stream: _logsController.stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: _accentColor));
@@ -477,7 +565,10 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
         }
 
         final logs = snapshot.data?.map((json) => VoznjeLog.fromJson(json)).toList() ?? [];
+        debugPrint('📋 [PutnikLog] Ukupno ${logs.length} logova iz stream-a');
+
         final filteredLogs = logs.where((log) => _matchesFilter(log)).toList();
+        debugPrint('🔍 [PutnikLog] Posle filtera: ${filteredLogs.length} logova');
 
         if (filteredLogs.isEmpty) {
           return Center(
@@ -564,12 +655,18 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
     switch (status) {
       case 'approved':
         return Colors.green;
+      case 'confirmed':
+        return Colors.teal;
       case 'pending':
         return Colors.orange;
       case 'rejected':
         return Colors.redAccent;
       case 'cancelled':
         return Colors.grey;
+      case 'otkazano':
+        return Colors.red;
+      case 'bez_polaska':
+        return Colors.blueGrey;
       case 'manual':
         return Colors.blueAccent;
       default:
@@ -582,12 +679,18 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
     switch (status) {
       case 'approved':
         return Icons.check_circle;
+      case 'confirmed':
+        return Icons.verified;
       case 'pending':
         return Icons.hourglass_empty;
       case 'rejected':
         return Icons.cancel;
       case 'cancelled':
         return Icons.block;
+      case 'otkazano':
+        return Icons.close;
+      case 'bez_polaska':
+        return Icons.remove_circle_outline;
       case 'manual':
         return Icons.edit_note;
       default:
@@ -600,12 +703,18 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
     switch (status) {
       case 'approved':
         return '✅ Odobreno';
+      case 'confirmed':
+        return '✓ Potvrđeno';
       case 'pending':
         return '⏳ Na čekanju';
       case 'rejected':
         return '❌ Odbijeno';
       case 'cancelled':
-        return '🚫 Otkazano';
+        return '🚫 Poništeno';
+      case 'otkazano':
+        return '✗ Otkazano';
+      case 'bez_polaska':
+        return '⊘ Bez polaska';
       case 'manual':
         return '✏️ Ručno';
       default:
@@ -672,6 +781,7 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
     final status = req['status'] as String?;
     final statusColor = _colorForStatus(status);
     final grad = _formatGrad(req['grad'] as String?);
+    final dan = req['dan'] as String? ?? '';
     final zeljenoVreme = req['zeljeno_vreme'] as String? ?? '';
     final dodeljenovVreme = req['dodeljeno_vreme'] as String?;
     final brojMesta = req['broj_mesta'] as int? ?? 1;
@@ -737,7 +847,7 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
                   ),
                   const SizedBox(height: 4),
 
-                  // Grad
+                  // Grad i Dan
                   Row(
                     children: [
                       Icon(
@@ -752,48 +862,65 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
                               fontWeight: FontWeight.w600,
                             ),
                       ),
+                      if (dan.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.calendar_today,
+                          size: 11,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          dan.toUpperCase(),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
                     ],
                   ),
 
-                  // Željeno vreme
+                  // Željeno vreme (zahtev putnika)
                   if (zeljenoVreme.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Row(
                         children: [
                           Icon(
-                            Icons.access_time,
+                            Icons.schedule,
                             size: 13,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                            color: Colors.orange.withOpacity(0.7),
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Željeno: $zeljenoVreme',
+                            'Zahtev: $zeljenoVreme',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                  color: Colors.orange.withOpacity(0.8),
+                                  fontWeight: FontWeight.w500,
                                 ),
                           ),
                         ],
                       ),
                     ),
 
-                  // Dodijeljeno vreme
+                  // Dodijeljeno vreme (odobreno od dispečera/admina)
                   if (dodeljenovVreme != null && dodeljenovVreme.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Row(
                         children: [
                           const Icon(
-                            Icons.check_circle_outline,
+                            Icons.check_circle,
                             size: 13,
                             color: Colors.green,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Dodijeljeno: $dodeljenovVreme',
+                            'Odobreno: $dodeljenovVreme',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Colors.green,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.bold,
                                 ),
                           ),
                         ],
@@ -857,7 +984,40 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
   Widget _buildLogCard(VoznjeLog log) {
     final tipColor = _colorForTip(log.tip);
     final gradVreme = _getGradVreme(log);
-    final vozacIme = _getVozacIme(log.vozacId);
+
+    // 🎯 PAMETNO ODREĐIVANJE IZVRŠIOCA AKCIJE
+    String izvrsioIme;
+    IconData izvrsioIkona;
+
+    if (log.vozacId != null && log.vozacId!.isNotEmpty) {
+      // Ima vozača - prikaži njegovo ime
+      izvrsioIme = VozacCache.getImeByUuid(log.vozacId!) ?? log.vozacIme ?? log.vozacId!.substring(0, 8);
+      izvrsioIkona = Icons.person_pin;
+    } else if (log.vozacIme != null && log.vozacIme!.isNotEmpty) {
+      // Nema ID ali ima ime - prikaži ime
+      izvrsioIme = log.vozacIme!;
+      izvrsioIkona = Icons.person_pin;
+    } else {
+      // Nema vozača - odredi ko je izvršio akciju na osnovu tipa
+      switch (log.tip) {
+        case 'zakazano':
+          izvrsioIme = 'Sistem';
+          izvrsioIkona = Icons.settings;
+          break;
+        case 'potvrda_mesta':
+          izvrsioIme = 'Putnik';
+          izvrsioIkona = Icons.person;
+          break;
+        case 'otkazivanje':
+          // Ako nema vozača, znači da je otkazao putnik ili sistem
+          izvrsioIme = 'Putnik';
+          izvrsioIkona = Icons.person;
+          break;
+        default:
+          izvrsioIme = '—';
+          izvrsioIkona = Icons.help_outline;
+      }
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -897,7 +1057,11 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
                       ? Icons.directions_car
                       : log.tip == 'otkazivanje'
                           ? Icons.cancel
-                          : Icons.payments,
+                          : log.tip == 'zakazano'
+                              ? Icons.event
+                              : log.tip == 'potvrda_mesta'
+                                  ? Icons.check_circle
+                                  : Icons.payments,
                   size: 18,
                   color: tipColor,
                 ),
@@ -920,17 +1084,17 @@ class _PutnikActionLogScreenState extends State<PutnikActionLogScreen> with Sing
                   ),
                   const SizedBox(height: 4),
 
-                  // Vozač
+                  // Izvršilac akcije (Vozač/Sistem/Putnik)
                   Row(
                     children: [
                       Icon(
-                        Icons.person_pin,
+                        izvrsioIkona,
                         size: 13,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        vozacIme,
+                        izvrsioIme,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: Theme.of(context).colorScheme.onSurface,

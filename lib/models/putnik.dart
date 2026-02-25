@@ -1,8 +1,6 @@
 ﻿import '../constants/day_constants.dart';
 import '../services/adresa_supabase_service.dart'; // DODATO za fallback učitavanje adrese
-import '../services/vreme_vozac_service.dart'; // Za per-putnik i per-vreme dodeljivanje vozaca
 import '../utils/registrovani_helpers.dart';
-import '../utils/vozac_cache.dart'; // DODATO za UUID<->ime konverziju
 
 class Putnik {
   // NOVO - originalni datum za dnevne putnike (ISO yyyy-MM-dd)
@@ -158,36 +156,8 @@ class Putnik {
       finalStatus = profileStatus;
     }
 
-    // Odredi dodeljenog vozača — PRIORITET 1: per-putnik (vreme_vozac po putnik_id), PRIORITET 2: per-vreme (vreme_vozac po terminu)
+    // Dodeljeni vozač je uvek null (tabele vreme_vozac i putnik_vozac su uklonjene)
     String? dodeljenVozacFinal;
-    try {
-      final putnikId = (p['id'] ?? req['putnik_id'])?.toString();
-
-      // PRIORITET 1: Individualna dodela iz vreme_vozac (putnik_id IS NOT NULL)
-      // Prosleđujemo grad i vreme da bi BC 7:00 i VS 10:00 bili odvojeni cache ključevi
-      final perPutnik = putnikId != null
-          ? VremeVozacService().getVozacZaPutnikSync(putnikId, danStr, grad: grad, vreme: vreme)
-          : null;
-
-      if (perPutnik == 'Nedodeljen') {
-        // Eksplicitno uklonjen sa vozača — ignorišemo globalnu vreme_vozac dodelu
-        dodeljenVozacFinal = null;
-      } else if (perPutnik != null && perPutnik.isNotEmpty) {
-        dodeljenVozacFinal = perPutnik;
-      } else {
-        // PRIORITET 2: Globalna dodela iz vreme_vozac (putnik_id IS NULL)
-        // Cache kljuc je 'BC|vreme|dan' ili 'VS|vreme|dan'
-        // danStr je već kratica (pon, uto...) direktno iz seat_requests.dan kolone
-        final danKratica = danStr.isNotEmpty
-            ? danStr
-            : (datumStr.isNotEmpty ? _getDanNedeljeKratica(DateTime.parse(datumStr).weekday) : '');
-        final gradZaGlobalni = grad;
-        final perVreme = VremeVozacService().getVozacZaVremeSync(gradZaGlobalni, vreme, danKratica);
-        if (perVreme != null && perVreme.isNotEmpty) {
-          dodeljenVozacFinal = _getVozacIme(perVreme);
-        }
-      }
-    } catch (_) {}
 
     return Putnik(
       id: p['id'] ?? req['putnik_id'],
@@ -433,20 +403,8 @@ class Putnik {
     };
   }
 
-  // Helper metoda za dobijanje kratice dana u nedelji
-
-  static String _getDanNedeljeKratica(int weekday) {
-    return DayConstants.getAbbreviationByIndex(DayConstants.weekdayToIndex(weekday));
-  }
-
-  // ? CENTRALIZOVANO: Konvertuj UUID u ime vozaca sa fallback-om
-  static String? _getVozacIme(String? uuidOrName) {
-    if (uuidOrName == null || uuidOrName.isEmpty) return null;
-    return VozacCache.resolveIme(uuidOrName);
-  }
-
   // -----------------------------------------------------------------------
-  // ?? COPY WITH - za ažurivanje putnika sa novim podacima
+  // ?? COPY WITH - za ažuriranje putnika sa novim podacima
   // -----------------------------------------------------------------------
 
   Putnik copyWith({

@@ -24,7 +24,6 @@ import 'services/theme_manager.dart'; // 🎨 Novi tema sistem
 import 'services/vozac_service.dart';
 import 'services/vozila_service.dart';
 import 'services/voznje_log_service.dart';
-import 'services/vreme_vozac_service.dart'; // 🚐 Per-vreme dodeljivanje vozača
 import 'services/weather_alert_service.dart'; // 🌤️ Vremenske uzbune
 import 'services/weather_service.dart'; // 🌤️ DODATO za cleanup
 import 'utils/vozac_cache.dart'; // 🎯 Jedinstven vozač cache
@@ -168,21 +167,6 @@ Future<void> _initAppServices() async {
 
   for (var service in services) {
     unawaited(service);
-  }
-
-  // Sync inicijalizacija
-  VremeVozacService().loadAllVremeVozac();
-
-  // 🚗 Individualna dodela vozača po putniku - učitaj za danas i sutra (dan kratica)
-  final now = DateTime.now();
-  final dansToPreload = <String>{};
-  for (int i = 0; i < 2; i++) {
-    final d = now.add(Duration(days: i));
-    const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-    dansToPreload.add(abbrs[d.weekday - 1]);
-  }
-  for (final d in dansToPreload) {
-    unawaited(VremeVozacService().loadPutnikDodele(d));
   }
 
   // 🚗 Initialize VozacService stream JEDNOM - pokrenuti stream sa listen() da počne emisija

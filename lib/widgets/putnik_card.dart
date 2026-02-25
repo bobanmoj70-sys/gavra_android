@@ -13,7 +13,6 @@ import '../services/permission_service.dart';
 import '../services/putnik_service.dart';
 import '../services/registrovani_putnik_service.dart';
 import '../services/unified_geocoding_service.dart';
-import '../services/vreme_vozac_service.dart';
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';
 import '../utils/card_color_helper.dart';
@@ -905,18 +904,6 @@ class _PutnikCardState extends State<PutnikCard> {
   Widget build(BuildContext context) {
     // Odredi ko je "vlasnik" ovog putnika za potrebe bojenja (siva vs bela)
     String displayDodeljenVozac = _putnik.dodeljenVozac ?? '';
-    if (displayDodeljenVozac.isEmpty || displayDodeljenVozac == 'Nedodeljen') {
-      if (widget.selectedGrad != null && widget.selectedVreme != null && widget.selectedDay != null) {
-        final slotDriver = VremeVozacService().getVozacZaVremeSync(
-          widget.selectedGrad!,
-          widget.selectedVreme!,
-          widget.selectedDay!,
-        );
-        if (slotDriver != null) {
-          displayDodeljenVozac = slotDriver;
-        }
-      }
-    }
 
     // 🎨 BOJE KARTICE - koristi CardColorHelper sa pročišćenim vozačem
     final _colorHelper = CardColorHelper();

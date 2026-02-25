@@ -10,7 +10,6 @@ import '../utils/vozac_cache.dart';
 import 'realtime/realtime_manager.dart';
 import 'seat_request_service.dart';
 import 'voznje_log_service.dart';
-import 'vreme_vozac_service.dart';
 
 class _StreamParams {
   _StreamParams({this.isoDate, this.grad, this.vreme});
@@ -34,7 +33,6 @@ class PutnikService {
   static StreamSubscription? _globalSeatRequestsListener;
   static StreamSubscription? _globalVoznjeLogListener;
   static StreamSubscription? _globalRegistrovaniListener;
-  static StreamSubscription? _globalVremeVozacListener;
 
   String _streamKey({String? isoDate, String? grad, String? vreme}) => '${isoDate ?? ''}|${grad ?? ''}|${vreme ?? ''}';
 
@@ -65,11 +63,9 @@ class PutnikService {
         _globalSeatRequestsListener?.cancel();
         _globalVoznjeLogListener?.cancel();
         _globalRegistrovaniListener?.cancel();
-        _globalVremeVozacListener?.cancel();
         _globalSeatRequestsListener = null;
         _globalVoznjeLogListener = null;
         _globalRegistrovaniListener = null;
-        _globalVremeVozacListener = null;
         debugPrint('🛑 [PutnikService] Svi streamovi zatvoreni - globalni listener-i otkazani');
       }
     };
@@ -172,7 +168,7 @@ class PutnikService {
       final results = allMapped.where((p) => p.status != 'bez_polaska' && p.status != 'cancelled').toList();
 
       debugPrint(
-          '🔍 [_doFetchForStream] Stream key=$key, datum=$todayDate, grad=$grad, vreme=$vreme → ${results.length} putnika');
+          '🔍 [_doFetchForStream] Stream key=$key, datum=$todayDate, grad=$gradNorm, vreme=$vremeNorm → ${results.length} putnika');
 
       _lastValues[key] = results;
       if (!controller.isClosed) controller.add(results);
@@ -214,17 +210,6 @@ class PutnikService {
         _refreshAllActiveStreams();
       });
       debugPrint('✅ [PutnikService] Globalni registrovani_putnici listener kreiran');
-    }
-
-    // Listener za vreme_vozac (individualne i termin dodele vozača)
-    if (_globalVremeVozacListener == null) {
-      _globalVremeVozacListener = RealtimeManager.instance.subscribe('vreme_vozac').listen((payload) async {
-        debugPrint('🔄 [PutnikService] GLOBAL realtime UPDATE (vreme_vozac): ${payload.eventType}');
-        // Refresh cache pa onda streamove da dodeljenVozac bude ažuran
-        await VremeVozacService().refreshCacheFromDatabase();
-        _refreshAllActiveStreams();
-      });
-      debugPrint('✅ [PutnikService] Globalni vreme_vozac listener kreiran');
     }
   }
 
@@ -578,6 +563,8 @@ class PutnikService {
     final gradKey = GradAdresaValidator.normalizeGrad(finalGrad);
     final normalizedTime = GradAdresaValidator.normalizeTime(finalVreme);
     debugPrint('🗑️ [PutnikService] ukloniPolazak (fallback): dan=$danKey, grad=$gradKey, time=$normalizedTime');
+    debugPrint(
+        '🔍 [PutnikService] ukloniPolazak query: putnik_id=$id, dan=$danKey, grad=$gradKey, zeljeno_vreme=$normalizedTime:00');
 
     try {
       if (normalizedTime.isNotEmpty) {
@@ -598,6 +585,7 @@ class PutnikService {
           return;
         }
 
+        debugPrint('⚠️ [PutnikService] No match by zeljeno_vreme, trying dodeljeno_vreme...');
         res = await supabase
             .from('seat_requests')
             .update({
@@ -616,6 +604,7 @@ class PutnikService {
         }
       }
 
+      debugPrint('⚠️ [PutnikService] No match by vremena, trying without time filter...');
       final res = await supabase
           .from('seat_requests')
           .update({

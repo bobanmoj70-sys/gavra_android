@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../config/route_config.dart';
-import '../constants/day_constants.dart';
 import '../services/theme_manager.dart';
-import '../services/vreme_vozac_service.dart';
 import '../theme.dart';
-import '../utils/vozac_cache.dart';
 
 /// Bottom navigation bar za praznike/specijalne dane
 /// BC: 5:00, 6:00, 12:00, 13:00, 15:00
@@ -201,19 +198,8 @@ class _PolazakRow extends StatelessWidget {
   final String? selectedDan;
   final bool showVozacBoja;
 
-  /// 🆕 Konvertuj puno ime dana u kraticu za bazu
-  String _getDanKratica(String dan) {
-    return DayConstants.dayAbbreviations[DayConstants.getIndexByName(dan)];
-  }
-
-  /// Returns the vozač border color for a given vreme, or null if no vozač assigned
-  Color? _getVozacBorderColor(String vreme) {
-    if (selectedDan == null) return null;
-    final danKratica = _getDanKratica(selectedDan!);
-    final vozac = VremeVozacService().getVozacZaVremeSync(grad, vreme, danKratica);
-    if (vozac != null) return VozacCache.getColor(vozac);
-    return null;
-  }
+  /// Returns the vozač border color for a given vreme - always null (vreme_vozac table removed)
+  Color? _getVozacBorderColor(String vreme) => null;
 
   @override
   Widget build(BuildContext context) {

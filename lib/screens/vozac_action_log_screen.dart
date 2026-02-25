@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
 import '../models/voznje_log.dart';
+import '../services/realtime/realtime_manager.dart';
 import '../theme.dart';
 import '../utils/grad_adresa_validator.dart';
 import '../utils/vozac_cache.dart';
@@ -26,6 +29,9 @@ class VozacActionLogScreen extends StatefulWidget {
 class _VozacActionLogScreenState extends State<VozacActionLogScreen> with SingleTickerProviderStateMixin {
   DateTime _selectedDate;
   TabController? _tabController;
+  StreamSubscription? _realtimeSubscription;
+  final StreamController<List<Map<String, dynamic>>> _logsController =
+      StreamController<List<Map<String, dynamic>>>.broadcast();
 
   // Tipovi akcija za tabove
   static const List<String> _actionTypes = [
@@ -49,12 +55,47 @@ class _VozacActionLogScreenState extends State<VozacActionLogScreen> with Single
     super.initState();
     _selectedDate = widget.datum;
     _tabController = TabController(length: _actionTypes.length, vsync: this);
+    _startRealtimeListener();
   }
 
   @override
   void dispose() {
     _tabController?.dispose();
+    _realtimeSubscription?.cancel();
+    _logsController.close();
+    RealtimeManager.instance.unsubscribe('voznje_log');
     super.dispose();
+  }
+
+  void _startRealtimeListener() {
+    _realtimeSubscription = RealtimeManager.instance.subscribe('voznje_log').listen((_) {
+      _fetchLogs();
+    });
+    _fetchLogs();
+  }
+
+  Future<void> _fetchLogs() async {
+    final vozacUuid = VozacCache.getUuidByIme(widget.vozacIme);
+    if (vozacUuid == null) return;
+
+    final datumStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    try {
+      final data = await supabase
+          .from('voznje_log')
+          .select()
+          .eq('vozac_id', vozacUuid)
+          .eq('datum', datumStr)
+          .order('created_at', ascending: false);
+
+      if (!_logsController.isClosed) {
+        _logsController.add(List<Map<String, dynamic>>.from(data));
+      }
+    } catch (e) {
+      if (!_logsController.isClosed) {
+        _logsController.addError(e);
+      }
+    }
   }
 
   /// Otvori date picker
@@ -81,6 +122,7 @@ class _VozacActionLogScreenState extends State<VozacActionLogScreen> with Single
       setState(() {
         _selectedDate = picked;
       });
+      _fetchLogs(); // Refresh logs sa novim datumom
     }
   }
 
@@ -124,11 +166,10 @@ class _VozacActionLogScreenState extends State<VozacActionLogScreen> with Single
     }
   }
 
-  /// Dohvati grad i vreme iz meta
+  /// Dohvati grad i vreme iz log zapisa (direktne kolone, fallback na meta)
   Map<String, String> _getGradVreme(VoznjeLog log) {
-    final meta = log.meta;
-    String grad = meta?['grad']?.toString() ?? '';
-    String vreme = meta?['vreme']?.toString() ?? '';
+    String grad = log.grad ?? log.meta?['grad']?.toString() ?? '';
+    String vreme = log.vremePolaska ?? log.meta?['vreme']?.toString() ?? '';
 
     grad = GradAdresaValidator.normalizeGrad(grad);
 
@@ -266,15 +307,7 @@ class _VozacActionLogScreenState extends State<VozacActionLogScreen> with Single
             // Lista akcija
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
-                stream: supabase
-                    .from('voznje_log')
-                    .stream(primaryKey: ['id'])
-                    .order('created_at', ascending: false)
-                    .map((records) {
-                      return records.where((record) {
-                        return record['vozac_id'] == vozacUuid && record['datum'] == datumStr;
-                      }).toList();
-                    }),
+                stream: _logsController.stream,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(

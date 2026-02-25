@@ -15,6 +15,9 @@ class VoznjeLog {
   final Map<String, dynamic>? meta;
   final String? tipPlacanja;
   final String? status;
+  final String? grad;
+  final String? vremePolaska;
+  final String? vozacIme;
 
   VoznjeLog({
     required this.id,
@@ -32,6 +35,9 @@ class VoznjeLog {
     this.meta,
     this.tipPlacanja,
     this.status,
+    this.grad,
+    this.vremePolaska,
+    this.vozacIme,
   });
 
   factory VoznjeLog.fromJson(Map<String, dynamic> json) {
@@ -51,6 +57,9 @@ class VoznjeLog {
       meta: json['meta'] as Map<String, dynamic>?,
       tipPlacanja: json['tip_placanja'] as String?,
       status: json['status'] as String?,
+      grad: json['grad'] as String?,
+      vremePolaska: json['vreme_polaska'] as String?,
+      vozacIme: json['vozac_ime'] as String?,
     );
   }
 
@@ -70,6 +79,9 @@ class VoznjeLog {
     Map<String, dynamic>? meta,
     String? tipPlacanja,
     String? status,
+    String? grad,
+    String? vremePolaska,
+    String? vozacIme,
   }) {
     return VoznjeLog(
       id: id ?? this.id,
@@ -87,6 +99,9 @@ class VoznjeLog {
       meta: meta ?? this.meta,
       tipPlacanja: tipPlacanja ?? this.tipPlacanja,
       status: status ?? this.status,
+      grad: grad ?? this.grad,
+      vremePolaska: vremePolaska ?? this.vremePolaska,
+      vozacIme: vozacIme ?? this.vozacIme,
     );
   }
 }

@@ -210,15 +210,22 @@ class AuthManager {
       final prefs = await SharedPreferences.getInstance();
       final sessionTimestamp = prefs.getString(_authSessionKey);
 
-      if (sessionTimestamp == null) return false;
+      if (sessionTimestamp == null) {
+        debugPrint('🕐 [AuthManager] Sesija nije aktivna - nema timestamp');
+        return false;
+      }
 
       final sessionTime = DateTime.parse(sessionTimestamp);
       final now = DateTime.now();
       final difference = now.difference(sessionTime);
 
-      // Sesija je aktivna ako je prošlo manje od 30 minuta
-      return difference.inMinutes < 30;
+      final isActive = difference.inMinutes < 30;
+      debugPrint(
+          '🕐 [AuthManager] Sesija: ${difference.inMinutes} min od logina - ${isActive ? "AKTIVNA" : "ISTEKLA"}');
+
+      return isActive;
     } catch (e) {
+      debugPrint('🕐 [AuthManager] Greška pri proveri sesije: $e');
       return false;
     }
   }

@@ -28,7 +28,6 @@ import '../services/registrovani_putnik_service.dart';
 import '../services/seat_request_service.dart';
 import '../services/slobodna_mesta_service.dart'; // 🎫 Provera kapaciteta
 import '../services/theme_manager.dart'; // 🎨 Tema sistem
-import '../services/vreme_vozac_service.dart'; // 🚐 Za border boju dodeljenog vozača
 import '../theme.dart'; // 🎨 Import za prelepe gradijente
 import '../utils/app_snack_bar.dart';
 import '../utils/date_utils.dart' as app_date_utils;
@@ -162,9 +161,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _initializeData();
     _setupRealtimeMonitoring(); // 🔄 Popravljeno ime metode
     _startDigitalDispecer(); // 🤖 Pokreni dispečera
-
-    // 🚐 Učitaj cache za dodeljene vozače terminima
-    VremeVozacService().loadAllVremeVozac();
 
     // 🔄 Slušaj update notifikacije i prikaži dijalog
     updateInfoNotifier.addListener(_onUpdateInfo);
