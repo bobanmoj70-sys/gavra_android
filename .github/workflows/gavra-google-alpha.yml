@@ -196,7 +196,7 @@ jobs:
       - name: 🔄 Update version in Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           VERSION=${{ env.VERSION }}
           echo "🔄 Updating Supabase app_settings: latest_version → $VERSION"
