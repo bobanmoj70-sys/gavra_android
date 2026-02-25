@@ -176,12 +176,24 @@ class _VozacScreenState extends State<VozacScreen> {
     // 1. Inicijalizuj vozača (ovo će takođe pozvati _selectClosestDeparture)
     await _initializeCurrentDriver();
 
-    // 2. Subscribe na realtime promjene (sync init iz initState je dovoljan za početno stanje)
+    // 2. Učitaj raspored vozača + subscribe na realtime promjene
+    _loadRaspored();
     _subscribeRealtime();
 
     // 3. Ostalo
     _initializeNotifications();
     _initializeGpsTracking();
+  }
+
+  Future<void> _loadRaspored() async {
+    final rasporedData = await VozacRasporedService().loadAll();
+    final overridesData = await VozacPutnikService().loadAll();
+    if (mounted) {
+      setState(() {
+        _rasporedCache = rasporedData;
+        _putnikOverridesCache = overridesData;
+      });
+    }
   }
 
   /// 🔴 Realtime: prati vozac_raspored i vozac_putnik i osvježava lokalne cache-ove

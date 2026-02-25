@@ -83,21 +83,6 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   }
 
   Future<void> _loadAll() async {
-    // Preferira RealtimeManager cache (sync, bez DB poziva) — konzistentno s vozac_screen
-    final rmRaspored = RealtimeManager.instance.rasporedCache;
-    final rmPutnik = RealtimeManager.instance.vozacPutnikCache;
-
-    if (rmRaspored.isNotEmpty || rmPutnik.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          _rasporedCache = rmRaspored.values.map((row) => VozacRasporedEntry.fromMap(row)).toList();
-          _putnikOverridesCache = rmPutnik.values.map((row) => VozacPutnikEntry.fromMap(row)).toList();
-        });
-      }
-      return;
-    }
-
-    // Fallback: RealtimeManager još nije popunjen → direktan DB fetch
     final rasporedData = await _rasporedService.loadAll();
     final overridesData = await VozacPutnikService().loadAll();
     if (mounted) {
