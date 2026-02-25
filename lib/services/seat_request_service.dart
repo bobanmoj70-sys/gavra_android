@@ -152,13 +152,154 @@ class SeatRequestService {
         .map((list) => list.map((json) => SeatRequest.fromJson(json)).length);
   }
 
-  /// 🤖 POKREĆE DIGITALNOG DISPEČERA U BAZI
+  /// 🤖 DIGITALNI DISPEČER — replicira dispecer_cron_obrada + obradi_seat_request SQL logiku
   static Future<int> triggerDigitalDispecer() async {
     try {
-      final response = await _supabase.rpc('dispecer_cron_obrada');
-      return (response as List?)?.length ?? 0;
+      // 1. Dohvati sve pending zahteve (osim dnevnih putnika)
+      final pendingRows = await _supabase
+          .from('seat_requests')
+          .select('id, grad, dan, updated_at, zeljeno_vreme, broj_mesta, putnik_id, created_at, '
+              'registrovani_putnici!inner(tip)')
+          .eq('status', 'pending')
+          .neq('registrovani_putnici.tip', 'dnevni');
+
+      if (pendingRows.isEmpty) return 0;
+
+      // 2. Dohvati kapacitete svih polazaka odjednom
+      final kapacitetRows = await _supabase
+          .from('kapacitet_polazaka')
+          .select('grad, vreme, max_mesta')
+          .eq('aktivan', true);
+
+      final Map<String, int> kapacitetMap = {};
+      for (final k in kapacitetRows) {
+        final key = '${k['grad']}_${k['vreme']}';
+        kapacitetMap[key] = (k['max_mesta'] as num).toInt();
+      }
+
+      // 3. Dohvati zauzetost za sve relevantne dan+grad+vreme kombinacije
+      final dani = pendingRows.map((r) => r['dan'].toString()).toSet().toList();
+      final zauzetoRows = await _supabase
+          .from('seat_requests')
+          .select('grad, zeljeno_vreme, dan, broj_mesta')
+          .inFilter('dan', dani)
+          .inFilter('status', ['pending', 'manual', 'approved', 'confirmed']);
+
+      // Grupišemo zauzetost po "GRAD_vreme_dan"
+      final Map<String, int> zauzetoMap = {};
+      for (final z in zauzetoRows) {
+        final key = '${z['grad']}_${z['zeljeno_vreme']}_${z['dan']}';
+        zauzetoMap[key] = (zauzetoMap[key] ?? 0) + ((z['broj_mesta'] as num?)?.toInt() ?? 1);
+      }
+
+      int processedCount = 0;
+      final now = DateTime.now().toUtc();
+
+      for (final req in pendingRows) {
+        final String reqId = req['id'].toString();
+        final String grad = req['grad'].toString().toUpperCase();
+        final String dan = req['dan'].toString().toLowerCase();
+        final String tip = (req['registrovani_putnici']?['tip'] ?? '').toString().toLowerCase();
+        final DateTime updatedAt = DateTime.parse(req['updated_at'].toString()).toUtc();
+        final String createdAtStr = req['created_at']?.toString() ?? req['updated_at'].toString();
+        final DateTime createdAt = DateTime.parse(createdAtStr).toUtc();
+        final String zeljeno = req['zeljeno_vreme'].toString();
+        final int brojMesta = (req['broj_mesta'] as num?)?.toInt() ?? 1;
+
+        // --- get_cekanje_pravilo logika ---
+        int minutaCekanja;
+        bool proveraKapaciteta;
+        if (grad == 'BC') {
+          if (tip == 'ucenik' && createdAt.hour < 16) {
+            minutaCekanja = 5; proveraKapaciteta = false;
+          } else if (tip == 'radnik') {
+            minutaCekanja = 5; proveraKapaciteta = true;
+          } else if (tip == 'ucenik' && createdAt.hour >= 16) {
+            minutaCekanja = 0; proveraKapaciteta = true;
+          } else if (tip == 'posiljka') {
+            minutaCekanja = 5; proveraKapaciteta = false;
+          } else {
+            minutaCekanja = 5; proveraKapaciteta = true;
+          }
+        } else if (grad == 'VS') {
+          if (tip == 'posiljka') {
+            minutaCekanja = 5; proveraKapaciteta = false;
+          } else {
+            minutaCekanja = 10; proveraKapaciteta = true;
+          }
+        } else {
+          minutaCekanja = 5; proveraKapaciteta = true;
+        }
+
+        // --- dispecer_cron_obrada uslov za obradu ---
+        final minutesWaiting = now.difference(updatedAt).inSeconds / 60.0;
+        final bcUcenikNocni = tip == 'ucenik' && grad == 'BC' && createdAt.hour >= 16 && now.hour >= 20;
+        final regularTimeout = minutesWaiting >= minutaCekanja &&
+            !(tip == 'ucenik' && grad == 'BC' && createdAt.hour >= 16);
+
+        if (!bcUcenikNocni && !regularTimeout) continue;
+
+        // --- obradi_seat_request logika ---
+        bool imaMesta;
+        if (tip == 'ucenik' && grad == 'BC' && createdAt.hour < 16) {
+          imaMesta = true; // garantovano mesto
+        } else if (!proveraKapaciteta) {
+          imaMesta = true;
+        } else {
+          final kapKey = '${grad}_$zeljeno';
+          final maxMesta = kapacitetMap[kapKey] ?? 8;
+          final zauzeto = zauzetoMap['${grad}_${zeljeno}_$dan'] ?? 0;
+          imaMesta = (maxMesta - zauzeto) >= brojMesta;
+        }
+
+        String noviStatus;
+        String? alt1;
+        String? alt2;
+
+        if (imaMesta) {
+          noviStatus = 'approved';
+        } else {
+          noviStatus = 'rejected';
+          // Pronađi alternativna vremena
+          final svaVremena = kapacitetRows
+              .where((k) => k['grad'].toString().toUpperCase() == grad)
+              .map((k) => k['vreme'].toString())
+              .toList()
+            ..sort();
+
+          for (final v in svaVremena.reversed) {
+            if (v.compareTo(zeljeno) < 0) {
+              final maxM = kapacitetMap['${grad}_$v'] ?? 8;
+              final zau = zauzetoMap['${grad}_${v}_$dan'] ?? 0;
+              if ((maxM - zau) >= brojMesta) { alt1 = v; break; }
+            }
+          }
+          for (final v in svaVremena) {
+            if (v.compareTo(zeljeno) > 0) {
+              final maxM = kapacitetMap['${grad}_$v'] ?? 8;
+              final zau = zauzetoMap['${grad}_${v}_$dan'] ?? 0;
+              if ((maxM - zau) >= brojMesta) { alt2 = v; break; }
+            }
+          }
+        }
+
+        final nowStr = now.toIso8601String();
+        await _supabase.from('seat_requests').update({
+          'status': noviStatus,
+          'processed_at': nowStr,
+          'updated_at': nowStr,
+          if (noviStatus == 'approved') 'dodeljeno_vreme': zeljeno,
+          if (alt1 != null) 'alternative_vreme_1': alt1,
+          if (alt2 != null) 'alternative_vreme_2': alt2,
+        }).eq('id', reqId);
+
+        debugPrint('🤖 [Dispecer] $reqId → $noviStatus (tip=$tip, grad=$grad, dan=$dan)');
+        processedCount++;
+      }
+
+      return processedCount;
     } catch (e) {
-      debugPrint('❌ [SeatRequestService] Error triggering digital dispecer: $e');
+      debugPrint('❌ [SeatRequestService] Error u digitalnom dispečeru: $e');
       return 0;
     }
   }
