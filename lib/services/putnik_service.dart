@@ -272,67 +272,52 @@ class PutnikService {
         await Future.delayed(const Duration(milliseconds: 300));
       }
 
+      // 📥 Učitaj sve putnike za traženi datum (cache za danas, DB za ostale)
+      final sviPutnici = await getPutniciByDayIso(todayDate);
+
       final gradNorm = grad == null ? null : GradAdresaValidator.normalizeGrad(grad).toUpperCase();
       final vremeNorm = vreme != null ? GradAdresaValidator.normalizeTime(vreme) : null;
+      final danKratica = _isoToDanKratica(todayDate);
 
-      // Filtriranje seat_requests iz cache-a (zamjena RPC)
-      final srRows = rm.srCache.values.where((sr) {
+      // Filtriraj po grad/vreme/vozacId
+      final results = sviPutnici.where((p) {
         // Grad filter
         if (gradNorm != null) {
-          final srGrad = (sr['grad'] ?? '').toString().toUpperCase();
-          if (srGrad != gradNorm) return false;
+          final pGrad = GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
+          if (pGrad != gradNorm) return false;
         }
         // Vreme filter
         if (vremeNorm != null) {
-          final srVreme = (sr['dodeljeno_vreme'] ?? sr['zeljeno_vreme'])?.toString();
-          if (srVreme == null) return false;
-          final srVremeNorm = GradAdresaValidator.normalizeTime(srVreme);
-          if (srVremeNorm != vremeNorm) return false;
+          final pVreme = GradAdresaValidator.normalizeTime(p.polazak);
+          if (pVreme != vremeNorm) return false;
         }
-        // vozacId filter (replicira p_vozac_id logiku iz RPC)
+        // vozacId filter — per-putnik override + per-termin raspored
         if (vozacId != null) {
-          final putnikId = sr['putnik_id']?.toString();
-          if (putnikId == null) return false;
+          final putnikId = p.id?.toString() ?? '';
           // 1. Per-putnik override
-          final hasOverride = rm.vozacPutnikCache.values
-              .any((vp) => vp['putnik_id']?.toString() == putnikId && vp['vozac_id']?.toString() == vozacId);
-          if (hasOverride) return true;
-          // 2. Nema override ni za koga
-          final hasAnyOverride = rm.vozacPutnikCache.values.any((vp) => vp['putnik_id']?.toString() == putnikId);
-          if (hasAnyOverride) return false;
-          // 3. Provjeri raspored
-          final srGrad = (sr['grad'] ?? '').toString().toUpperCase();
-          final srVreme = (sr['dodeljeno_vreme'] ?? sr['zeljeno_vreme'])?.toString();
-          final danKratica = rm.loadedDate != null ? _isoToDanKratica(todayDate) : null;
-          final rasporedZaTermin = danKratica != null
-              ? rm.rasporedCache.values
-                  .where((vr) =>
-                      vr['dan']?.toString() == danKratica &&
-                      vr['grad']?.toString().toUpperCase() == srGrad &&
-                      vr['vreme']?.toString() == (srVreme != null ? GradAdresaValidator.normalizeTime(srVreme) : null))
-                  .toList()
-              : [];
+          final override = rm.vozacPutnikCache.values
+              .where((vp) => vp['putnik_id']?.toString() == putnikId)
+              .firstOrNull;
+          if (override != null) {
+            return override['vozac_id']?.toString() == vozacId;
+          }
+          // 2. Per-termin raspored
+          final rasporedZaTermin = rm.rasporedCache.values
+              .where((vr) =>
+                  vr['dan']?.toString() == danKratica &&
+                  vr['grad']?.toString().toUpperCase() ==
+                      GradAdresaValidator.normalizeGrad(p.grad).toUpperCase() &&
+                  vr['vreme']?.toString() ==
+                      GradAdresaValidator.normalizeTime(p.polazak))
+              .toList();
           if (rasporedZaTermin.isEmpty) return true; // nema termina → vidljivo svima
           return rasporedZaTermin.any((vr) => vr['vozac_id']?.toString() == vozacId);
         }
         return true;
       }).toList();
 
-      // JOIN u Dart-u: dodaj vlCache i rpCache za svakog putnika
-      final results = srRows
-          .map((sr) {
-            final putnikId = sr['putnik_id']?.toString();
-            final vlRows = putnikId != null
-                ? rm.vlCache.values.where((vl) => vl['putnik_id']?.toString() == putnikId).toList()
-                : <Map<String, dynamic>>[];
-            final rp = putnikId != null ? rm.rpCache[putnikId] : null;
-            return _buildPutnik(sr, vlRows, rp, todayDate);
-          })
-          .where((p) => p.status != 'bez_polaska' && p.status != 'cancelled')
-          .toList();
-
       debugPrint(
-          '🔍 [_doFetchForStream] Cache key=$key, datum=$todayDate, grad=$gradNorm, vreme=$vremeNorm → ${results.length} putnika (sr=${srRows.length})');
+          '🔍 [_doFetchForStream] key=$key, datum=$todayDate, grad=$gradNorm, vreme=$vremeNorm → ${results.length} putnika');
 
       _lastValues[key] = results;
       if (!controller.isClosed) controller.add(results);
