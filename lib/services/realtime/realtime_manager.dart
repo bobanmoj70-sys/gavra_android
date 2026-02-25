@@ -7,14 +7,19 @@ import '../../globals.dart';
 import 'realtime_config.dart';
 import 'realtime_status.dart';
 
-/// Centralizovani manager za sve Supabase Realtime konekcije
+/// Centralizovani manager za sve Supabase Realtime konekcije i in-memory cache.
 ///
-/// Singleton koji upravlja svim channel-ima, sa automatskim reconnect-om
-/// i optimalnim brojem konekcija (1 channel po tabeli).
+/// Singleton koji:
+/// 1. Upravlja svim channel-ima (1 channel po tabeli)
+/// 2. Drži sve podatke u memoriji (0 DB upita na realtime event)
+/// 3. Inicijalizuje se jednom pri startu, reinicijalizuje na novi dan
 ///
 /// Korišćenje:
 /// ```dart
-/// // Pretplata
+/// // Cache podaci
+/// final srRows = RealtimeManager.instance.srCache.values.toList();
+///
+/// // Pretplata na realtime evente
 /// final subscription = RealtimeManager.instance
 ///     .subscribe('vozac_lokacije')
 ///     .listen((payload) => handleChange(payload));
@@ -30,6 +35,277 @@ class RealtimeManager {
   static RealtimeManager get instance => _instance;
 
   SupabaseClient get _supabase => supabase;
+
+  // ---------------------------------------------------------------------------
+  // 🗄️ IN-MEMORY CACHE — sve tabele, 0 DB upita na realtime event
+  // ---------------------------------------------------------------------------
+
+  /// seat_requests za tekući dan — ključ: id
+  final Map<String, Map<String, dynamic>> srCache = {};
+
+  /// voznje_log za tekući dan — ključ: id
+  final Map<String, Map<String, dynamic>> vlCache = {};
+
+  /// registrovani_putnici aktivni — ključ: id
+  final Map<String, Map<String, dynamic>> rpCache = {};
+
+  /// vozaci — ključ: id
+  final Map<String, Map<String, dynamic>> vozaciCache = {};
+
+  /// vozila — ključ: id
+  final Map<String, Map<String, dynamic>> vozilaCache = {};
+
+  /// kapacitet_polazaka — ključ: id
+  final Map<String, Map<String, dynamic>> kapacitetCache = {};
+
+  /// app_settings — ključ: id
+  final Map<String, Map<String, dynamic>> settingsCache = {};
+
+  /// pin_zahtevi — ključ: id
+  final Map<String, Map<String, dynamic>> pinCache = {};
+
+  /// vozac_lokacije — ključ: id
+  final Map<String, Map<String, dynamic>> lokacijeCache = {};
+
+  /// adrese — ključ: id
+  final Map<String, Map<String, dynamic>> adreseCache = {};
+
+  /// vozac_raspored — ključ: id
+  final Map<String, Map<String, dynamic>> rasporedCache = {};
+
+  /// vozac_putnik — ključ: id
+  final Map<String, Map<String, dynamic>> vozacPutnikCache = {};
+
+  /// finansije_troskovi — ključ: id
+  final Map<String, Map<String, dynamic>> troskoviCache = {};
+
+  /// pumpa_config — ključ: id
+  final Map<String, Map<String, dynamic>> pumpaConfigCache = {};
+
+  /// Datum za koji su srCache i vlCache učitani (format: 'yyyy-MM-dd')
+  String? _loadedDate;
+
+  /// Datum za koji su podaci učitani (read-only pristup za lifecycle observer)
+  String? get loadedDate => _loadedDate;
+
+  /// Da li je inicijalizacija završena
+  bool _initialized = false;
+  bool get isInitialized => _initialized;
+
+  // ---------------------------------------------------------------------------
+  // 🚀 INICIJALIZACIJA
+  // ---------------------------------------------------------------------------
+
+  /// Učitava sve tabele jednom pri startu aplikacije.
+  /// Poziva se iz main.dart nakon što je Supabase spreman.
+  Future<void> initializeCache() async {
+    if (!isSupabaseReady) {
+      debugPrint('❌ [RealtimeManager] initializeCache: Supabase not ready');
+      return;
+    }
+    _loadedDate = DateTime.now().toIso8601String().split('T')[0];
+    debugPrint('🚀 [RealtimeManager] initializeCache za datum=$_loadedDate ...');
+
+    await Future.wait([
+      _loadSrCache(),
+      _loadVlCache(),
+      _loadRpCache(),
+      _loadStaticCaches(),
+    ]);
+
+    _initialized = true;
+    debugPrint('✅ [RealtimeManager] Cache inicijalizovan: '
+        'sr=${srCache.length}, vl=${vlCache.length}, rp=${rpCache.length}, '
+        'vozaci=${vozaciCache.length}, adrese=${adreseCache.length}');
+  }
+
+  /// Reinicijalizuje dnevne cache-ove (seat_requests + voznje_log) za novi dan.
+  /// Poziva se iz AppLifecycleObserver kada datum nije isti kao _loadedDate.
+  Future<void> reinitializeForNewDay() async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    if (_loadedDate == today) return; // već aktualan
+    debugPrint('🔄 [RealtimeManager] Novi dan ($today) — reinitializeForNewDay...');
+    _loadedDate = today;
+    srCache.clear();
+    vlCache.clear();
+    await Future.wait([_loadSrCache(), _loadVlCache()]);
+    debugPrint('✅ [RealtimeManager] Dnevni cache osvježen: sr=${srCache.length}, vl=${vlCache.length}');
+  }
+
+  Future<void> _loadSrCache() async {
+    try {
+      final dan = _todayKratica();
+      final rows = await _supabase
+          .from('seat_requests')
+          .select('id, putnik_id, grad, zeljeno_vreme, dodeljeno_vreme, status, '
+              'created_at, updated_at, processed_at, priority, broj_mesta, '
+              'custom_adresa_id, alternative_vreme_1, alternative_vreme_2, '
+              'cancelled_by, pokupljeno_by, dan, tip_putnika')
+          .eq('dan', dan)
+          .inFilter('status',
+              ['pending', 'manual', 'approved', 'confirmed', 'otkazano', 'cancelled', 'bez_polaska', 'pokupljen']);
+      for (final row in rows) {
+        srCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      debugPrint('📦 [RealtimeManager] srCache: ${srCache.length} redova (dan=$dan)');
+    } catch (e) {
+      debugPrint('❌ [RealtimeManager] _loadSrCache error: $e');
+    }
+  }
+
+  Future<void> _loadVlCache() async {
+    try {
+      final rows = await _supabase
+          .from('voznje_log')
+          .select('id, putnik_id, datum, tip, iznos, vozac_id, vozac_ime, '
+              'grad, vreme_polaska, tip_putnika, created_at, status')
+          .eq('datum', _loadedDate!);
+      for (final row in rows) {
+        vlCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      debugPrint('📦 [RealtimeManager] vlCache: ${vlCache.length} redova');
+    } catch (e) {
+      debugPrint('❌ [RealtimeManager] _loadVlCache error: $e');
+    }
+  }
+
+  Future<void> _loadRpCache() async {
+    try {
+      final rows = await _supabase
+          .from('registrovani_putnici')
+          .select('id, putnik_ime, broj_telefona, broj_telefona_2, broj_telefona_oca, '
+              'broj_telefona_majke, tip, tip_skole, adresa_bela_crkva_id, adresa_vrsac_id, '
+              'datum_pocetka_meseca, datum_kraja_meseca, created_at, updated_at, '
+              'aktivan, status, obrisan, is_duplicate, tip_prikazivanja, '
+              'pin, email, cena_po_danu, treba_racun, '
+              'firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa, broj_mesta')
+          .eq('aktivan', true)
+          .eq('obrisan', false);
+      for (final row in rows) {
+        rpCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      debugPrint('📦 [RealtimeManager] rpCache: ${rpCache.length} redova');
+    } catch (e) {
+      debugPrint('❌ [RealtimeManager] _loadRpCache error: $e');
+    }
+  }
+
+  Future<void> _loadStaticCaches() async {
+    try {
+      final results = await Future.wait([
+        _supabase.from('vozaci').select('id, ime, email, telefon, sifra, boja'),
+        _supabase.from('vozila').select('id, registarski_broj, marka, model, naziv, broj_mesta'),
+        _supabase.from('kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
+        _supabase.from('app_settings').select(),
+        _supabase.from('adrese').select('id, naziv, grad, gps_lat, gps_lng'),
+        _supabase.from('vozac_raspored').select(),
+        _supabase.from('vozac_putnik').select(),
+        _supabase
+            .from('finansije_troskovi')
+            .select('id, naziv, iznos, tip, aktivan, vozac_id, created_at')
+            .eq('aktivan', true),
+        _supabase.from('pumpa_config').select(),
+      ]);
+      for (final row in results[0] as List) {
+        vozaciCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[1] as List) {
+        vozilaCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[2] as List) {
+        kapacitetCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[3] as List) {
+        settingsCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[4] as List) {
+        adreseCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[5] as List) {
+        rasporedCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[6] as List) {
+        vozacPutnikCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[7] as List) {
+        troskoviCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      for (final row in results[8] as List) {
+        pumpaConfigCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+    } catch (e) {
+      debugPrint('❌ [RealtimeManager] _loadStaticCaches error: $e');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🔧 CACHE UPDATE — poziva se iz realtime listenera
+  // ---------------------------------------------------------------------------
+
+  void updateSrCache(Map<String, dynamic> record) {
+    final id = record['id']?.toString();
+    if (id != null) srCache[id] = Map<String, dynamic>.from(record);
+  }
+
+  void updateVlCache(Map<String, dynamic> record) {
+    final id = record['id']?.toString();
+    if (id != null) vlCache[id] = Map<String, dynamic>.from(record);
+  }
+
+  void updateRpCache(Map<String, dynamic> record) {
+    final id = record['id']?.toString();
+    if (id != null) rpCache[id] = Map<String, dynamic>.from(record);
+  }
+
+  void updateGenericCache(String table, Map<String, dynamic> record) {
+    final id = record['id']?.toString();
+    if (id == null) return;
+    switch (table) {
+      case 'vozaci':
+        vozaciCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'vozila':
+        vozilaCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'kapacitet_polazaka':
+        kapacitetCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'app_settings':
+        settingsCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'vozac_lokacije':
+        lokacijeCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'pin_zahtevi':
+        pinCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'adrese':
+        adreseCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'vozac_raspored':
+        rasporedCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'vozac_putnik':
+        vozacPutnikCache[id] = Map<String, dynamic>.from(record);
+        break;
+      case 'finansije_troskovi':
+        troskoviCache[id] = Map<String, dynamic>.from(record);
+        break;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🛠️ HELPERS
+  // ---------------------------------------------------------------------------
+
+  static String _todayKratica() {
+    const map = {1: 'pon', 2: 'uto', 3: 'sre', 4: 'cet', 5: 'pet', 6: 'sub', 7: 'ned'};
+    return map[DateTime.now().weekday]!;
+  }
+
+  // ---------------------------------------------------------------------------
+  // CHANNEL MANAGEMENT (nepromenjen)
+  // ---------------------------------------------------------------------------
 
   /// Jedan channel po tabeli
   final Map<String, RealtimeChannel> _channels = {};
@@ -136,8 +412,28 @@ class RealtimeManager {
       schema: 'public',
       table: table,
       callback: (payload) {
-        // Filtriraj samo INSERT i UPDATE evente, preskoči DELETE
-        if (payload.eventType == PostgresChangeEvent.delete) return;
+        // Handle DELETE: ukloni iz cache-a i emituj signal
+        if (payload.eventType == PostgresChangeEvent.delete) {
+          final oldRecord = payload.oldRecord;
+          final id = oldRecord['id']?.toString();
+          if (id != null) {
+            switch (table) {
+              case 'vozac_raspored':
+                rasporedCache.remove(id);
+                break;
+              case 'vozac_putnik':
+                vozacPutnikCache.remove(id);
+                break;
+              default:
+                break; // ostale tabele ignorišu DELETE
+            }
+          }
+          // Emituj event da subscriber-i mogu reagovati (npr. vozac_screen)
+          if (_controllers.containsKey(table) && !_controllers[table]!.isClosed) {
+            _controllers[table]!.add(payload);
+          }
+          return;
+        }
 
         debugPrint('🔄 [RealtimeManager] EVENT na tabeli "$table": ${payload.eventType}');
         if (_controllers.containsKey(table) && !_controllers[table]!.isClosed) {
@@ -278,34 +574,16 @@ class RealtimeManager {
     }
   }
 
-  /// Inicijalizuj sve važne tabele za realtime praćenje
-  /// Poziva se jednom pri startu aplikacije
-  /// Za realtime-first aplikacije - samo priprema sistem, kanali se kreiraju on-demand
+  /// Inicijalizuj sve važne tabele za realtime praćenje i učitaj cache.
+  /// Poziva se jednom pri startu aplikacije.
   Future<void> initializeAll() async {
     if (!isSupabaseReady) {
       debugPrint('❌ [RealtimeManager] Cannot initialize: Supabase not ready');
       return;
     }
-
-    // Lista svih tabela koje mogu biti praćene (za referencu)
-    final tablesToMonitor = [
-      'registrovani_putnici', // 👥 Aktivni putnici
-      'kapacitet_polazaka', // 🚐 Kapacitet vozila
-      'vozac_lokacije', // 📍 GPS pozicije vozača
-      'voznje_log', // 📊 Log vožnji
-      'vozila', // 🚗 Vozila
-      'vozaci', // 👨 Vozači
-      'seat_requests', // 🎫 Zahtjevi za mjesta
-      'daily_reports', // 📈 Dnevni izvještaji
-      'app_settings', // ⚙️ Postavke aplikacije
-      'adrese', // 📍 Adrese
-      'registrovani_putnici_svi', // 👥 Svi registrovani putnici
-    ];
-
-    debugPrint(
-        '🚀 [RealtimeManager] Realtime sistem spreman - kanali će se kreirati on-demand za ${tablesToMonitor.length} tabela');
-
-    // Ne kreiraj kanale odmah - čekaj subscribe() pozive
+    // Učitaj sve podatke u memoriju
+    await initializeCache();
+    debugPrint('🚀 [RealtimeManager] initializeAll završen — kanali se kreiraju on-demand');
   }
 
   /// Ugasi sve channel-e i očisti resurse

@@ -2,20 +2,27 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 
-/// Model za jedan red iz vozac_raspored tabele
+/// Model za jedan red iz vozac_raspored tabele.
+///
+/// Čuva per-termin raspored: koji vozač vozi cijeli termin (dan+grad+vreme).
+/// Per-putnik override se čuva u vozac_putnik tabeli (VozacPutnikService).
 class VozacRasporedEntry {
   final String dan;
   final String grad;
   final String vreme;
+
+  /// Ime vozača (za prikaz)
   final String vozac;
-  final String? putnikId; // null = ceo termin, uuid = pojedinacni putnik
+
+  /// UUID vozača iz tabele vozaci.id — primarni identifikator
+  final String? vozacId;
 
   const VozacRasporedEntry({
     required this.dan,
     required this.grad,
     required this.vreme,
     required this.vozac,
-    this.putnikId,
+    this.vozacId,
   });
 
   factory VozacRasporedEntry.fromMap(Map<String, dynamic> map) {
@@ -24,7 +31,7 @@ class VozacRasporedEntry {
       grad: map['grad'] as String,
       vreme: map['vreme'] as String,
       vozac: map['vozac'] as String,
-      putnikId: map['putnik_id'] as String?,
+      vozacId: map['vozac_id'] as String?,
     );
   }
 
@@ -33,7 +40,7 @@ class VozacRasporedEntry {
         'grad': grad,
         'vreme': vreme,
         'vozac': vozac,
-        'putnik_id': putnikId,
+        if (vozacId != null) 'vozac_id': vozacId,
       };
 }
 
@@ -56,12 +63,14 @@ class VozacRasporedService {
     }
   }
 
-  /// Dodaj ili zameni unos (upsert po svim poljima)
+  /// Dodaj ili zameni unos (upsert po dan+grad+vreme+vozac)
   Future<void> upsert(VozacRasporedEntry entry) async {
-    await _supabase.from('vozac_raspored').upsert(entry.toMap());
+    await _supabase
+        .from('vozac_raspored')
+        .upsert(entry.toMap(), onConflict: 'dan,grad,vreme,vozac');
   }
 
-  /// Obriši unos za termin (dan+grad+vreme+vozac, putnik_id=null)
+  /// Obriši unos za termin (dan+grad+vreme+vozac)
   Future<void> deleteTermin({
     required String dan,
     required String grad,
@@ -74,59 +83,47 @@ class VozacRasporedService {
         .eq('dan', dan)
         .eq('grad', grad)
         .eq('vreme', vreme)
-        .eq('vozac', vozac)
-        .isFilter('putnik_id', null);
-  }
-
-  /// Obriši override za pojedinačnog putnika
-  Future<void> deletePutnikOverride({
-    required String putnikId,
-    required String vozac,
-  }) async {
-    await _supabase.from('vozac_raspored').delete().eq('putnik_id', putnikId).eq('vozac', vozac);
+        .eq('vozac', vozac);
   }
 
   /// Filter logika: koji putnici pripadaju vozaču?
   ///
-  /// Prioritet:
-  /// 1. Per-putnik override (putnik_id != null) — direktno pridruživanje
-  /// 2. Per-termin (putnik_id == null, dan+grad+vreme) — ceo termin vozaču
-  /// 3. Nema unosa za termin → svi vozači vide sve putnike (staro ponašanje)
+  /// Filtrira putnike po per-termin rasporedu.
+  /// Per-putnik override se obrađuje PRIJE ovog poziva (VozacPutnikService.filterOverrides).
+  ///
+  /// Logika:
+  ///   - Ako nema unosa za termin → putnik je vidljiv svima
+  ///   - Ako postoji unos → prikaži samo vozaču koji je dodeljen tom terminu
+  ///
+  /// [vozacId] = UUID (preferiran), [vozac] = ime (fallback)
   static List<T> filterPutniciZaVozaca<T>({
     required List<T> sviPutnici,
     required String vozac,
+    String? vozacId,
     required String targetDan, // 'pon', 'uto', ...
     required List<VozacRasporedEntry> raspored,
     required String Function(T) getId,
     required String Function(T) getGrad,
     required String Function(T) getPolazak,
   }) {
-    if (raspored.isEmpty) return sviPutnici; // nema rasporeda = sve vidljivo
+    if (raspored.isEmpty) return sviPutnici;
+
+    // Helper: da li je unos „za ovog vozača"? UUID-first, fallback na ime
+    bool jeVozacov(VozacRasporedEntry r) {
+      if (vozacId != null && r.vozacId != null) return r.vozacId == vozacId;
+      return r.vozac == vozac;
+    }
 
     return sviPutnici.where((p) {
-      final id = getId(p);
       final grad = getGrad(p);
       final vreme = getPolazak(p);
 
-      // 1. Per-putnik override: da li je ovaj putnik EKSPLICITNO dodeljen DRUGOM vozaču?
-      final assignedToOther = raspored.any((r) => r.putnikId != null && r.putnikId == id && r.vozac != vozac);
-      if (assignedToOther) return false;
+      // Koji vozači su dodeljeni ovom terminu?
+      final terminEntries = raspored.where((r) => r.dan == targetDan && r.grad == grad && r.vreme == vreme).toList();
 
-      // 2. Per-putnik override: da li je ovaj putnik EKSPLICITNO dodeljen MENI?
-      final assignedToMe = raspored.any((r) => r.putnikId != null && r.putnikId == id && r.vozac == vozac);
-      if (assignedToMe) return true;
+      if (terminEntries.isEmpty) return true; // nema unosa → vidljivo svima
 
-      // 3. Per-termin: koji vozači su dodeljeni ovom terminu?
-      final terminVozaci = raspored
-          .where((r) => r.putnikId == null && r.dan == targetDan && r.grad == grad && r.vreme == vreme)
-          .map((r) => r.vozac)
-          .toSet();
-
-      // Ako nema unosa za termin → sve vidljivo
-      if (terminVozaci.isEmpty) return true;
-
-      // Inače: prikaži samo ako je ovaj vozač u terminu
-      return terminVozaci.contains(vozac);
+      return terminEntries.any(jeVozacov);
     }).toList();
   }
 }
