@@ -72,6 +72,16 @@ class _VozacScreenState extends State<VozacScreen> {
   /// 📅 HELPER: Vraća radni datum - vikendom vraća naredni ponedeljak
   String _getWorkingDateIso() => PutnikHelpers.getWorkingDateIso();
 
+  /// 🎨 Boja vozača za termin (za bottom nav bar border)
+  Color? _getVozacColorForTermin(String grad, String vreme) {
+    final targetDan = _isoDateToDayAbbr(_getWorkingDateIso());
+    final entry = _rasporedCache
+        .where((r) => r.dan == targetDan && r.grad == grad && r.vreme == vreme)
+        .firstOrNull;
+    if (entry == null) return null;
+    return VozacCache.getColor(entry.vozacId ?? entry.vozac);
+  }
+
   /// 🕒 HELPER: Dobij dodeljena vremena za trenutnog vozača.
   ///
   /// Kombinuje dva izvora:
@@ -926,6 +936,8 @@ class _VozacScreenState extends State<VozacScreen> {
                   onPolazakChanged: _onPolazakChanged,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
+                  showVozacBoja: true,
+                  getVozacColor: _getVozacColorForTermin,
                 );
               case 'zimski':
                 return BottomNavBarZimski(
@@ -937,6 +949,8 @@ class _VozacScreenState extends State<VozacScreen> {
                   onPolazakChanged: _onPolazakChanged,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
+                  showVozacBoja: true,
+                  getVozacColor: _getVozacColorForTermin,
                 );
               default:
                 return BottomNavBarLetnji(
@@ -948,6 +962,8 @@ class _VozacScreenState extends State<VozacScreen> {
                   onPolazakChanged: _onPolazakChanged,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
+                  showVozacBoja: true,
+                  getVozacColor: _getVozacColorForTermin,
                 );
             }
           }
