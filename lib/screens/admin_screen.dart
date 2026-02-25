@@ -31,6 +31,7 @@ import 'putnik_action_log_screen.dart'; // 👤 Dnevnik akcija putnika
 import 'registrovani_putnici_screen.dart';
 import 'vozac_action_log_screen.dart'; // 📋 Dnevnik akcija vozača
 import 'vozac_screen.dart';
+import 'vozac_raspored_screen.dart'; // 🗓️ Raspored vozača
 import 'vozaci_admin_screen.dart'; // Admin panel za upravljanje vozačima
 
 class AdminScreen extends StatefulWidget {
@@ -844,6 +845,33 @@ class _AdminScreenState extends State<AdminScreen> {
                                             child: FittedBox(
                                                 fit: BoxFit.scaleDown,
                                                 child: Text('📊', style: TextStyle(fontSize: 14)))),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // RASPORED VOZAČA
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                          builder: (context) => const VozacRasporedScreen(),
+                                        ),
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        height: 28,
+                                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).glassContainer,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.blue.withOpacity(0.6), width: 1.5),
+                                        ),
+                                        child: const Center(
+                                            child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text('🗓️', style: TextStyle(fontSize: 14)))),
                                       ),
                                     ),
                                   ),
