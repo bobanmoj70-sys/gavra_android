@@ -93,9 +93,18 @@ class _VozacScreenState extends State<VozacScreen> {
       if (!postoji) dodeljena.add({'grad': r.grad, 'vreme': r.vreme});
     }
 
-    // Izvor 2: vremena iz putnika (per-putnik override, već filtrirani za ovog vozača)
+    // Izvor 2: per-putnik override — dodaj samo termine gdje je vozač EKSPLICITNO dodijeljen
+    // (ne "prati termin" — to su putnici bez unosa u rasporedu, vidljivi svima)
     if (sviPutnici != null) {
+      final currentVozacIdLocal = currentVozacId;
       for (var p in sviPutnici) {
+        final pId = p.id?.toString() ?? '';
+        final override = _putnikOverridesCache.where((o) => o.putnikId == pId).firstOrNull;
+        if (override == null) continue; // nema override-a → "prati termin" → NE dodaj u nav bar
+        final jeOvajVozac = currentVozacIdLocal != null
+            ? override.vozacId == currentVozacIdLocal
+            : override.vozac == _currentDriver;
+        if (!jeOvajVozac) continue;
         final pGrad = p.grad;
         final pPolazak = p.polazak;
         final postoji = dodeljena.any((v) => v['grad'] == pGrad && v['vreme'] == pPolazak);
