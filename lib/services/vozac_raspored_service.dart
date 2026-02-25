@@ -49,10 +49,8 @@ class VozacRasporedService {
   Future<List<VozacRasporedEntry>> loadAll() async {
     try {
       final response = await _supabase.from('vozac_raspored').select();
-      return (response as List)
-          .map((row) => VozacRasporedEntry.fromMap(row as Map<String, dynamic>))
-          .toList();
-    // ignore: avoid_catches_without_on_clauses
+      return (response as List).map((row) => VozacRasporedEntry.fromMap(row as Map<String, dynamic>)).toList();
+      // ignore: avoid_catches_without_on_clauses
     } catch (e) {
       return [];
     }
@@ -85,11 +83,7 @@ class VozacRasporedService {
     required String putnikId,
     required String vozac,
   }) async {
-    await _supabase
-        .from('vozac_raspored')
-        .delete()
-        .eq('putnik_id', putnikId)
-        .eq('vozac', vozac);
+    await _supabase.from('vozac_raspored').delete().eq('putnik_id', putnikId).eq('vozac', vozac);
   }
 
   /// Filter logika: koji putnici pripadaju vozaču?
@@ -115,22 +109,16 @@ class VozacRasporedService {
       final vreme = getPolazak(p);
 
       // 1. Per-putnik override: da li je ovaj putnik EKSPLICITNO dodeljen DRUGOM vozaču?
-      final assignedToOther = raspored.any((r) =>
-          r.putnikId != null && r.putnikId == id && r.vozac != vozac);
+      final assignedToOther = raspored.any((r) => r.putnikId != null && r.putnikId == id && r.vozac != vozac);
       if (assignedToOther) return false;
 
       // 2. Per-putnik override: da li je ovaj putnik EKSPLICITNO dodeljen MENI?
-      final assignedToMe = raspored.any((r) =>
-          r.putnikId != null && r.putnikId == id && r.vozac == vozac);
+      final assignedToMe = raspored.any((r) => r.putnikId != null && r.putnikId == id && r.vozac == vozac);
       if (assignedToMe) return true;
 
       // 3. Per-termin: koji vozači su dodeljeni ovom terminu?
       final terminVozaci = raspored
-          .where((r) =>
-              r.putnikId == null &&
-              r.dan == targetDan &&
-              r.grad == grad &&
-              r.vreme == vreme)
+          .where((r) => r.putnikId == null && r.dan == targetDan && r.grad == grad && r.vreme == vreme)
           .map((r) => r.vozac)
           .toSet();
 
