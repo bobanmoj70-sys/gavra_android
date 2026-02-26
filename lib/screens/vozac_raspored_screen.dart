@@ -21,7 +21,7 @@ import '../widgets/bottom_nav_bar_zimski.dart';
 
 /// 🗓️ Ekran za upravljanje rasporedom vozača
 /// Admin može dodijeliti vozača po terminu (vozac_raspored) i po putniku (vozac_putnik).
-/// Realtime: automatski osvježava kada se promijeni raspored ili putnik override.
+/// Realtime: automatski osvježava kada se promijeni raspored ili individualna dodjela putnika.
 class VozacRasporedScreen extends StatefulWidget {
   const VozacRasporedScreen({super.key});
 
@@ -337,11 +337,11 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   // BAZA OPERACIJE
   // ═══════════════════════════════════════════════════════════════
 
-  /// 👤 Dialog: Dodijeli vozača pojedinačnom putniku (vozac_putnik override)
+  /// 👤 Dialog: Dodijeli vozača pojedinačnom putniku (vozac_putnik individualna dodjela)
   /// Samo dostupno kada termin NEMA vozača u vozac_raspored.
   Future<void> _showPutnikAssignDialog(Putnik putnik) async {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
-    // Pronađi trenutni override za ovog putnika
+    // Pronađi trenutnu individualnu dodjelu za ovog putnika
     final trenutniEntry = _vozacPutnikCache
         .where(
           (e) => e.putnikId == putnik.id?.toString(),
@@ -707,15 +707,15 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                             itemCount: filteredByGradVreme.length,
                             itemBuilder: (ctx, i) {
                               final p = filteredByGradVreme[i];
-                              final vozacColor = _getVozacColorForTermin(_selectedGrad, _selectedVreme);
                               // Da li je termin dodeljen (vozac_raspored)?
                               final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
                               // Individualna dodjela putnika (vozac_putnik)?
-                              final individualnaEntry = _vozacPutnikCache
-                                  .where(
-                                    (e) => e.putnikId == p.id?.toString(),
-                                  )
-                                  .firstOrNull;
+                              final individualnaEntry =
+                                  _vozacPutnikCache.where((e) => e.putnikId == p.id?.toString()).firstOrNull;
+                              // Boja: individualna dodjela ima prioritet nad termin bojom
+                              final vozacColor = individualnaEntry != null
+                                  ? VozacCache.getColor(individualnaEntry.vozac)
+                                  : _getVozacColorForTermin(_selectedGrad, _selectedVreme);
                               return _PutnikRasporedTile(
                                 putnik: p,
                                 vozacColor: vozacColor,

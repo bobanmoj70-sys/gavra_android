@@ -41,6 +41,7 @@ class PutnikService {
   static StreamSubscription? _globalVoznjeLogListener;
   static StreamSubscription? _globalRegistrovaniListener;
   static StreamSubscription? _globalVozacRasporedListener;
+  static StreamSubscription? _globalVozacPutnikListener;
 
   static Timer? _refreshDebounceTimer;
 
@@ -76,10 +77,12 @@ class PutnikService {
         _globalVoznjeLogListener?.cancel();
         _globalRegistrovaniListener?.cancel();
         _globalVozacRasporedListener?.cancel();
+        _globalVozacPutnikListener?.cancel();
         _globalSeatRequestsListener = null;
         _globalVoznjeLogListener = null;
         _globalRegistrovaniListener = null;
         _globalVozacRasporedListener = null;
+        _globalVozacPutnikListener = null;
         debugPrint('🛑 [PutnikService] Svi streamovi zatvoreni - globalni listener-i otkazani');
       }
     };
@@ -299,6 +302,20 @@ class PutnikService {
         if (GradAdresaValidator.normalizeTime(p.polazak) != vremeNorm) return false;
       }
       if (vozacId != null) {
+        final putnikIdStr = p.id?.toString() ?? '';
+        // 1. Provjeri per-putnik individualnu dodjelu (vozac_putnik) — klč: putnik_id + dan + grad + vreme
+        final individualnaDodjela = rm.vozacPutnikCache.values
+            .where((vp) =>
+                vp['putnik_id']?.toString() == putnikIdStr &&
+                vp['dan']?.toString() == danKratica &&
+                vp['grad']?.toString().toUpperCase() == GradAdresaValidator.normalizeGrad(p.grad).toUpperCase() &&
+                vp['vreme']?.toString() == GradAdresaValidator.normalizeTime(p.polazak))
+            .toList();
+        if (individualnaDodjela.isNotEmpty) {
+          // Individualna dodjela postoji za ovaj dan+grad+vreme — prikaži samo ako je dodeljen OVOM vozaču
+          return individualnaDodjela.any((vp) => vp['vozac_id']?.toString() == vozacId);
+        }
+        // 2. Nema individualne dodjele → provjeri termin raspored (vozac_raspored)
         final rasporedZaTermin = rm.rasporedCache.values
             .where((vr) =>
                 vr['dan']?.toString() == danKratica &&
@@ -363,6 +380,15 @@ class PutnikService {
       });
       debugPrint('✅ [PutnikService] Globalni vozac_raspored listener kreiran');
     }
+
+    // Listener za vozac_putnik — individualna dodjela promijenjena, refresh svih streamova
+    if (_globalVozacPutnikListener == null) {
+      _globalVozacPutnikListener = RealtimeManager.instance.subscribe('vozac_putnik').listen((_) {
+        debugPrint('🔄 [PutnikService] vozac_putnik promijenjen — full stream refresh');
+        _debouncedRefreshAllStreams();
+      });
+      debugPrint('✅ [PutnikService] Globalni vozac_putnik listener kreiran');
+    }
   }
 
   /// Debounce — čeka 600ms od zadnjeg eventa pa refreshuje sve aktivne streamove
@@ -392,8 +418,8 @@ class PutnikService {
     _refreshAllActiveStreams();
   }
 
-  static final Map<String, DateTime> _lastActionTime = {};
-  static bool _isDuplicateAction(String key) {
+  final Map<String, DateTime> _lastActionTime = {};
+  bool _isDuplicateAction(String key) {
     final now = DateTime.now();
     if (_lastActionTime.containsKey(key) && now.difference(_lastActionTime[key]!) < const Duration(milliseconds: 500)) {
       return true;

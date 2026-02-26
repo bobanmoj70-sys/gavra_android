@@ -5,7 +5,7 @@ import '../globals.dart';
 /// Model za jedan red iz vozac_raspored tabele.
 ///
 /// Čuva per-termin raspored: koji vozač vozi cijeli termin (dan+grad+vreme).
-/// Per-putnik override se čuva u vozac_putnik tabeli (VozacPutnikService).
+/// Per-putnik individualna dodjela čuva se u vozac_putnik tabeli (VozacPutnikService).
 class VozacRasporedEntry {
   final String dan;
   final String grad;

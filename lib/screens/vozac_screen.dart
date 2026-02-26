@@ -92,6 +92,15 @@ class _VozacScreenState extends State<VozacScreen> {
       if (!postoji) dodeljena.add({'grad': r.grad, 'vreme': r.vreme});
     }
 
+    // Izvor 2: termini iz individualno dodijeljenih putnika (vozac_putnik)
+    // Putnik ima termin koji nije u vozac_raspored → dodaj termin u nav bar
+    if (sviPutnici != null) {
+      for (final p in sviPutnici) {
+        final postoji = dodeljena.any((v) => v['grad'] == p.grad && v['vreme'] == p.polazak);
+        if (!postoji) dodeljena.add({'grad': p.grad, 'vreme': p.polazak});
+      }
+    }
+
     // Sortiraj po vremenu
     dodeljena.sort((a, b) => a['vreme']!.compareTo(b['vreme']!));
 
@@ -102,6 +111,9 @@ class _VozacScreenState extends State<VozacScreen> {
 
   // 🗓️ VOZAC RASPORED - per-termin filter
   List<VozacRasporedEntry> _rasporedCache = [];
+
+  // 👤 VOZAC PUTNIK - per-putnik individualne dodjele
+  List<VozacPutnikEntry> _vozacPutnikCache = [];
 
   // Status varijable
   bool _isListReordered = false;
@@ -162,10 +174,14 @@ class _VozacScreenState extends State<VozacScreen> {
   }
 
   Future<void> _loadRaspored() async {
-    final rasporedData = await VozacRasporedService().loadAll();
+    final results = await Future.wait([
+      VozacRasporedService().loadAll(),
+      VozacPutnikService().loadAll(),
+    ]);
     if (mounted) {
       setState(() {
-        _rasporedCache = rasporedData;
+        _rasporedCache = results[0] as List<VozacRasporedEntry>;
+        _vozacPutnikCache = results[1] as List<VozacPutnikEntry>;
       });
     }
   }
@@ -177,6 +193,11 @@ class _VozacScreenState extends State<VozacScreen> {
       final entries =
           RealtimeManager.instance.rasporedCache.values.map((row) => VozacRasporedEntry.fromMap(row)).toList();
       if (mounted) setState(() => _rasporedCache = entries);
+    });
+    RealtimeManager.instance.subscribe('vozac_putnik').listen((_) {
+      VozacPutnikService().loadAll().then((data) {
+        if (mounted) setState(() => _vozacPutnikCache = data);
+      });
     });
   }
 
@@ -848,7 +869,7 @@ class _VozacScreenState extends State<VozacScreen> {
                   vozac: _currentDriver!,
                   vozacId: currentVozacId,
                   targetDan: targetDan,
-                  overrides: const [],
+                  individualneDodjele: _vozacPutnikCache,
                   raspored: _rasporedCache,
                   getId: (p) => p.id?.toString() ?? '',
                   getGrad: (p) => p.grad,

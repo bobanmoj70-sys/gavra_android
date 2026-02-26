@@ -9,7 +9,7 @@ import 'vozac_raspored_service.dart';
 /// Čuva per-putnik raspored: koji vozač vozi određenog putnika
 /// za određeni dan/grad/vreme.
 ///
-/// Jedan putnik može imati najviše jedan aktivan override (UNIQUE putnik_id).
+/// Jedan putnik može imati najviše jednu aktivnu individualnu dodjelu (UNIQUE putnik_id).
 class VozacPutnikEntry {
   final String? id; // uuid PK, null prije inserata
   final String putnikId; // FK → registrovani_putnici.id
@@ -53,12 +53,12 @@ class VozacPutnikEntry {
       };
 }
 
-/// Servis za upravljanje per-putnik vozač overrideom.
+/// Servis za upravljanje per-putnik individualnom dodjelom vozača.
 ///
-/// Jedan putnik → jedan vozač override (UNIQUE putnik_id u tabeli).
+/// Jedan putnik → jedna individualna dodjela vozača (UNIQUE putnik_id u tabeli).
 ///
 /// Arhitektura:
-///   vozac_putnik   — per-putnik override (ovaj servis)
+///   vozac_putnik   — per-putnik individualna dodjela (ovaj servis)
 ///   vozac_raspored — per-termin raspored (VozacRasporedService)
 class VozacPutnikService {
   static final VozacPutnikService _instance = VozacPutnikService._internal();
@@ -67,7 +67,7 @@ class VozacPutnikService {
 
   SupabaseClient get _supabase => supabase;
 
-  /// Učitaj sve override-e
+  /// Učitaj sve individualne dodjele
   Future<List<VozacPutnikEntry>> loadAll() async {
     try {
       final response = await _supabase.from('vozac_putnik').select();
@@ -78,9 +78,9 @@ class VozacPutnikService {
     }
   }
 
-  /// Postavi (ili zamijeni) override za putnika.
+  /// Postavi (ili zamijeni) individualnu dodjelu za putnika.
   ///
-  /// Ako [vozacIme] je prazan string → briše override (vidi [delete]).
+  /// Ako [vozacIme] je prazan string → briše dodjelu (vidi [delete]).
   /// Vraća `true` ako uspješno.
   Future<bool> set({
     required String putnikId,
@@ -116,7 +116,7 @@ class VozacPutnikService {
     }
   }
 
-  /// Briše override za putnika (putnik se vraća na termin-level vozača).
+  /// Briše individualnu dodjelu za putnika (putnik se vraća na termin-level vozača).
   Future<bool> delete({required String putnikId}) async {
     try {
       await _supabase.from('vozac_putnik').delete().eq('putnik_id', putnikId);
@@ -127,18 +127,18 @@ class VozacPutnikService {
     }
   }
 
-  /// Briše sve override-e za datog vozača.
+  /// Briše sve individualne dodjele za datog vozača.
   Future<void> deleteForVozac({required String vozacId}) async {
     await _supabase.from('vozac_putnik').delete().eq('vozac_id', vozacId);
   }
 
-  /// Kombinirani filter: per-putnik override + per-termin raspored.
+  /// Kombinirani filter: per-putnik individualna dodjela + per-termin raspored.
   ///
   /// Tačan prioritet:
-  ///   1. Per-putnik override postoji:
+  ///   1. Per-putnik individualna dodjela postoji:
   ///      - dodeljen MENI   → prikaži (ignoriši termin-raspored)
   ///      - dodeljen DRUGOM → sakrij  (ignoriši termin-raspored)
-  ///   2. Nema override-a → provjeri termin-raspored:
+  ///   2. Nema individualne dodjele → provjeri termin-raspored:
   ///      - nema unosa za termin → vidljivo svima ✅
   ///      - postoji unos → prikaži samo vozaču koji je dodeljen terminu
   ///
@@ -151,7 +151,7 @@ class VozacPutnikService {
     required String vozac,
     required String? vozacId,
     required String targetDan,
-    required List<VozacPutnikEntry> overrides, // zadržano radi compat, nije u upotrebi
+    required List<VozacPutnikEntry> individualneDodjele,
     required List<VozacRasporedEntry> raspored,
     required String Function(T) getId,
     required String Function(T) getGrad,
@@ -163,13 +163,29 @@ class VozacPutnikService {
       return r.vozac == vozac;
     }
 
+    // Helper: da li je individualna dodjela za ovog vozača?
+    bool jeDodjelajeVozacova(VozacPutnikEntry e) {
+      if (vozacId != null) return e.vozacId == vozacId;
+      return e.vozac == vozac;
+    }
+
     return sviPutnici.where((p) {
+      final id = getId(p);
       final grad = getGrad(p);
       final vreme = getPolazak(p);
+
+      // 1. Provjeri per-putnik individualnu dodjelu
+      final putnikDodjele = individualneDodjele
+          .where((e) => e.putnikId == id && e.dan == targetDan && e.grad == grad && e.vreme == vreme)
+          .toList();
+      if (putnikDodjele.isNotEmpty) {
+        // Individualna dodjela postoji za ovaj dan+grad+vreme — prikaži samo ako je dodeljen MENI
+        return putnikDodjele.any(jeDodjelajeVozacova);
+      }
+
+      // 2. Nema individualne dodjele → provjeri termin-raspored
       final terminEntries = raspored.where((r) => r.dan == targetDan && r.grad == grad && r.vreme == vreme).toList();
-
       if (terminEntries.isEmpty) return false; // nema raspodele → putnik nije vidljiv
-
       return terminEntries.any(jeTerminVozacov);
     }).toList();
   }

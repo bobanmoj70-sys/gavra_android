@@ -76,8 +76,8 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
   final Map<String, TextEditingController> _polazakBcControllers = {};
   final Map<String, TextEditingController> _polazakVsControllers = {};
 
-  // 🆕 Weekly seat_requests (overrides)
-  List<Map<String, dynamic>> _weeklyOverrides = [];
+  // Weekly seat_requests za tekuću sedmicu
+  List<Map<String, dynamic>> _weeklySeatRequests = [];
 
   // Form data
   String _tip = 'radnik';
@@ -134,26 +134,26 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       _polazakVsControllers[dan] = TextEditingController();
 
       // Listener: kada korisnik izabere "Bez polaska" (prazno polje),
-      // ukloni lokalni override iz _weeklyOverrides da se status cell-a ažurira
+      // ukloni lokalni seat_request iz _weeklySeatRequests da se status cell-a ažurira
       _polazakBcControllers[dan]!.addListener(() {
         if (_polazakBcControllers[dan]!.text.trim().isEmpty) {
-          _removeLocalOverride(dan, isBC: true);
+          _removeLocalSeatRequest(dan, isBC: true);
         }
       });
       _polazakVsControllers[dan]!.addListener(() {
         if (_polazakVsControllers[dan]!.text.trim().isEmpty) {
-          _removeLocalOverride(dan, isBC: false);
+          _removeLocalSeatRequest(dan, isBC: false);
         }
       });
     }
   }
 
-  /// Uklanja lokalni override iz _weeklyOverrides za dati dan/smer
+  /// Uklanja lokalni seat_request iz _weeklySeatRequests za dati dan/smer
   /// da se status cell-a odmah ažurira u UI bez čekanja na bazu
-  void _removeLocalOverride(String dan, {required bool isBC}) {
+  void _removeLocalSeatRequest(String dan, {required bool isBC}) {
     final targetDanKratica = dan.toLowerCase();
 
-    final updated = _weeklyOverrides.where((req) {
+    final updated = _weeklySeatRequests.where((req) {
       final reqDan = req['dan']?.toString().toLowerCase() ?? '';
       if (reqDan != targetDanKratica) return true; // zadrži
       final grad = req['grad']?.toString() ?? '';
@@ -162,9 +162,9 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       return true;
     }).toList();
 
-    if (updated.length != _weeklyOverrides.length) {
+    if (updated.length != _weeklySeatRequests.length) {
       setState(() {
-        _weeklyOverrides = updated;
+        _weeklySeatRequests = updated;
       });
     }
   }
@@ -199,22 +199,20 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       _firmaZiroController.text = putnik.firmaZiro ?? '';
       _firmaAdresaController.text = putnik.firmaAdresa ?? '';
 
-      // 🆕 UCITAJ OVERRIDE-ove (seat_requests) - ovo je sada primarni izvor vremena
+      // Učitaj seat_requests za tekuću sedmicu — primarni izvor vremena
       try {
         final service = RegistrovaniPutnikService();
-        final overrides = await service.getWeeklySeatRequests(putnik.id);
+        final seatRequests = await service.getWeeklySeatRequests(putnik.id);
         if (mounted) {
           setState(() {
-            _weeklyOverrides = overrides;
+            _weeklySeatRequests = seatRequests;
 
             // SINHRONIZACIJA KONTROLERA: Prikaži ono što je u seat_requests za tekuću nedelju
             for (final dan in ['pon', 'uto', 'sre', 'cet', 'pet']) {
-              // Koristimo _getAnyOverrideForDay da uhvatimo i bez_polaska zapise
-              final bcOver = _getAnyOverrideForDay(dan, true);
+              final bcOver = _getAnySeatRequestForDay(dan, true);
               if (bcOver != null) {
                 final status = bcOver['status']?.toString().toLowerCase();
                 if (status == 'bez_polaska' || status == 'cancelled' || status == 'otkazano' || status == 'pokupljen') {
-                  // Otkazani/pokupljeni termini se NE prikazuju kao aktivni
                   _polazakBcControllers[dan]!.clear();
                 } else if (bcOver['zeljeno_vreme'] != null) {
                   _polazakBcControllers[dan]!.text =
@@ -222,11 +220,10 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                 }
               }
 
-              final vsOver = _getAnyOverrideForDay(dan, false);
+              final vsOver = _getAnySeatRequestForDay(dan, false);
               if (vsOver != null) {
                 final status = vsOver['status']?.toString().toLowerCase();
                 if (status == 'bez_polaska' || status == 'cancelled' || status == 'otkazano' || status == 'pokupljen') {
-                  // Otkazani/pokupljeni termini se NE prikazuju kao aktivni
                   _polazakVsControllers[dan]!.clear();
                 } else if (vsOver['zeljeno_vreme'] != null) {
                   _polazakVsControllers[dan]!.text =
@@ -237,7 +234,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
           });
         }
       } catch (e) {
-        debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška pri učitavanju override-ova: $e');
+        debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška pri učitavanju seat_requests: $e');
       }
 
       // Load addresses asynchronously
@@ -307,27 +304,25 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     }
   }
 
-  /// 🕐 Helper da izvučemo status vaskrsa/bc za određeni dan
-  /// Prioritet imaju seat_requests (override), pa onda šablon (originalPolasciPoDanu)
+  /// 🕐 Helper da izvučemo status za određeni dan
   String? _getStatusForDay(String day, bool isBC) {
-    final override = _getOverrideForDay(day, isBC);
-    if (override != null) {
-      final status = override['status']?.toString();
+    final seatRequest = _getSeatRequestForDay(day, isBC);
+    if (seatRequest != null) {
+      final status = seatRequest['status']?.toString();
       if (status == 'otkazano') return 'otkazano';
       return status;
     }
 
-    // Ako nema override-a, vrati null
     return null;
   }
 
-  /// Privatni helper za dobijanje override-a za dan i smer
+  /// Helper za dobijanje seat_request-a za dan i smer
   /// Preskače bez_polaska, cancelled, obrisan — koristi se za prikaz statusa
-  Map<String, dynamic>? _getOverrideForDay(String day, bool isBC) {
+  Map<String, dynamic>? _getSeatRequestForDay(String day, bool isBC) {
     try {
       final targetDan = day.toLowerCase();
 
-      for (final req in _weeklyOverrides) {
+      for (final req in _weeklySeatRequests) {
         final reqDan = req['dan']?.toString().toLowerCase() ?? '';
         if (reqDan != targetDan) continue;
 
@@ -346,17 +341,17 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         }
       }
     } catch (e) {
-      debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška u _getOverrideForDay: $e');
+      debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška u _getSeatRequestForDay: $e');
     }
     return null;
   }
 
-  /// Helper koji vraća override uključujući bez_polaska — koristi se za sinhronizaciju kontrolera
-  Map<String, dynamic>? _getAnyOverrideForDay(String day, bool isBC) {
+  /// Helper koji vraća seat_request uključujući bez_polaska — koristi se za sinhronizaciju kontrolera
+  Map<String, dynamic>? _getAnySeatRequestForDay(String day, bool isBC) {
     try {
       final targetDan = day.toLowerCase();
 
-      for (final req in _weeklyOverrides) {
+      for (final req in _weeklySeatRequests) {
         final reqDan = req['dan']?.toString().toLowerCase() ?? '';
         if (reqDan != targetDan) continue;
 
@@ -373,7 +368,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         }
       }
     } catch (e) {
-      debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška u _getAnyOverrideForDay: $e');
+      debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška u _getAnySeatRequestForDay: $e');
     }
     return null;
   }
