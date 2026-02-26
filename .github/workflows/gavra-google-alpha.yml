@@ -109,6 +109,9 @@ jobs:
           # 5. Restore .env file
           echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
+          # 6. Restore google-services.json
+          printf "%s" "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+
       - name: 🛡️ Verify Keystore (Fail Fast)
         env:
            KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
