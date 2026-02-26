@@ -1,213 +1,202 @@
-name: gavra google alpha
+name: 🔒 Google Play Closed Testing
 
+# Upload na Google Play Closed Testing (Alpha track)
 on:
   workflow_dispatch:
+    inputs:
+      bump_version:
+        description: 'Auto-bump version in pubspec.yaml?'
+        required: true
+        default: 'false'
+        type: boolean
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'Git Ref to checkout (optional)'
+        required: false
+        type: string
+      bump_version:
+        description: 'Auto-bump version in pubspec.yaml?'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.35.6'
 
 jobs:
-  build-and-release:
+  build-and-upload:
+    name: 🚀 Build & Upload to Google Play
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Get version from pubspec.yaml
-        id: version
-        run: |
-          VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //; s/+.*//')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.6'
-          channel: 'stable'
-          cache: true
+          ref: ${{ inputs.git_ref || github.ref }}
+
+      - name: Auto-Bump Version
+        if: ${{ inputs.bump_version == true }}
+        shell: bash
+        run: |
+          # Read version from pubspec.yaml
+          LINE=$(grep "^version: " pubspec.yaml)
+          VERSION_PART=$(echo "$LINE" | sed 's/version: //g' | cut -d+ -f1)
+          BUILD_PART=$(echo "$LINE" | sed 's/.*+//g')
+
+          # Split version into major.minor.patch
+          IFS='.' read -r -a parts <<< "$VERSION_PART"
+          MAJOR="${parts[0]}"
+          MINOR="${parts[1]}"
+          PATCH="${parts[2]}"
+
+          # Increment Patch and Build (Patch + 1, Build + 1)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_BUILD=$((BUILD_PART + 1))
+
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH+$NEW_BUILD"
+          echo "[INFO] Bumping version: $VERSION_PART+$BUILD_PART -> $NEW_VERSION"
+
+          # Update file using sed (inplace)
+          sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+
+          # Git commit and push
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add pubspec.yaml
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto-bump version [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+            echo "✅ Version bumped and pushed."
+          fi
 
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
 
-      - name: Decode Google Play Key
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Prepare secrets (Linux)
         run: |
-          printf "%s" "${{ secrets.GOOGLE_PLAY_KEY_B64 }}" | base64 -d > $GITHUB_WORKSPACE/android/play-store-key.json
+          # 1. Restore Keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > gavra-release-key-production.keystore
+          
+          # 2. Create key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=../gavra-release-key-production.keystore" >> android/key.properties
 
-      - name: Decode Android Keystore
+          # 3. Restore Google Play JSON
+          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > android/google-service-account.json
+
+          # 4. Restore AgConnect (Huawei) - Required for build even if not releasing to Huawei
+          mkdir -p android/app
+          echo "${{ secrets.AGC_BASE64 }}" | base64 -d > android/app/agconnect-services.json
+
+      - name: 🛡️ Verify Keystore (Fail Fast)
+        env:
+           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          printf "%s" "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > $GITHUB_WORKSPACE/android/app/gavra-release-key-production.keystore
-
-      - name: Create key.properties
-        run: |
-          mkdir -p $GITHUB_WORKSPACE/android
-          cat > $GITHUB_WORKSPACE/android/key.properties << EOF
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=$GITHUB_WORKSPACE/android/app/gavra-release-key-production.keystore
-          EOF
-
-      - name: Create .env file
-        run: |
-          cat > $GITHUB_WORKSPACE/.env << EOF
-          ${{ secrets.ENV_FILE_CONTENT }}
-          EOF
-
-      - name: Create Firebase and Huawei services files
-        run: |
-          mkdir -p $GITHUB_WORKSPACE/android/app
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > $GITHUB_WORKSPACE/android/app/google-services.json
-          echo '${{ secrets.AGCONNECT_SERVICES_JSON }}' > $GITHUB_WORKSPACE/android/app/agconnect-services.json
-
-      - name: Flutter Doctor
-        run: flutter doctor -v
+          echo "Verifying Keystore integrity..."
+          KEYSTORE_PATH="gavra-release-key-production.keystore"
+          if [ -f "$KEYSTORE_PATH" ]; then
+            SIZE=$(stat -c%s "$KEYSTORE_PATH")
+            echo "Keystore size: $SIZE bytes"
+            
+            if [ "$SIZE" -lt 100 ]; then
+              echo "Keystore is too small! Likely corrupted."
+              exit 1
+            fi
+            
+            # Verify with keytool
+            keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD"
+            if [ $? -ne 0 ]; then
+              echo "Keytool verification FAILED! Your KEYSTORE_BASE64 secret is likely invalid or corrupted."
+              exit 1
+            fi
+            echo "✅ Keystore verification PASSED."
+          else
+             echo "Keystore file not found!"
+             exit 1
+          fi
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build AAB (Android App Bundle)
+      - name: Get version info
+        id: version
+        shell: bash
         run: |
-          flutter build appbundle \
-            --release \
-            --target-platform android-arm64 \
-            --obfuscate \
-            --split-debug-info=build/app/outputs/mapping
+          if [ -n "$version_name" ]; then
+            VER_NAME="$version_name"
+            VER_CODE="$version_code"
+          else
+            VER_NAME=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
+            VER_CODE=$(grep '^version:' pubspec.yaml | sed 's/.*+//g')
+          fi
+          echo "VERSION_NAME=$VER_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$VER_CODE" >> $GITHUB_OUTPUT
+          echo "[INFO] Building v$VER_NAME ($VER_CODE)"
 
-      - name: Upload AAB to Google Play (Alpha - Closed Testing)
-        env:
-          GOOGLE_PLAY_KEY_B64: ${{ secrets.GOOGLE_PLAY_KEY_B64 }}
+      - name: Build AAB
         run: |
-          # Decode key
-          echo "$GOOGLE_PLAY_KEY_B64" | base64 -d > google-play-key.json
-          
-          # Install Node dependencies
-          npm install googleapis
-          
-          # Create upload script
-          cat > upload.js << 'UPLOADEOF'
-          const { google } = require('googleapis');
-          const fs = require('fs');
-          
-          const PACKAGE_NAME = 'com.gavra013.gavra_android';
-          const AAB_PATH = 'build/app/outputs/bundle/release/app-release.aab';
-          const TRACK = 'alpha';
-          const credentials = JSON.parse(fs.readFileSync('google-play-key.json', 'utf8'));
-          
-          async function uploadAAB() {
-            const auth = new google.auth.GoogleAuth({
-              credentials,
-              scopes: ['https://www.googleapis.com/auth/androidpublisher']
-            });
-          
-            const androidPublisher = google.androidpublisher({
-              version: 'v3',
-              auth: await auth.getClient()
-            });
-          
-            try {
-              console.log('📱 Starting upload to Alpha (Closed Testing)...\n');
-              
-              // Create edit
-              const editRes = await androidPublisher.edits.insert({
-                packageName: PACKAGE_NAME,
-                requestBody: {}
-              });
-              const editId = editRes.data.id;
-              console.log('✅ Edit session created:', editId);
-          
-              // Upload bundle
-              const bundleRes = await androidPublisher.edits.bundles.upload({
-                packageName: PACKAGE_NAME,
-                editId: editId,
-                media: {
-                  mimeType: 'application/octet-stream',
-                  body: fs.createReadStream(AAB_PATH)
-                }
-              });
-              
-              const versionCode = bundleRes.data.versionCode;
-              console.log('✅ Bundle uploaded. Version Code:', versionCode);
-          
-              // Update alpha track with inProgress status (for closed testing)
-              await androidPublisher.edits.tracks.update({
-                packageName: PACKAGE_NAME,
-                editId: editId,
-                track: TRACK,
-                requestBody: {
-                  track: TRACK,
-                  releases: [{
-                    name: 'Closed Testing Build v' + versionCode,
-                    versionCodes: [versionCode.toString()],
-                    status: 'completed',
-                    releaseNotes: [{
-                      language: 'sr-RS',
-                      text: 'Alpha Closed Testing Build'
-                    }]
-                  }]
-                }
-              });
-              console.log('✅ Alpha track updated (status: completed - Closed Testing)');
-          
-              // Commit edit
-              const commitRes = await androidPublisher.edits.commit({
-                packageName: PACKAGE_NAME,
-                editId: editId
-              });
-              console.log('✅ Changes committed successfully!\n');
-              console.log('📊 Commit details:', commitRes.data);
-              
-            } catch (error) {
-              console.error('❌ Error:', error.message);
-              if (error.errors) {
-                error.errors.forEach(e => console.error('   -', e.message));
-              }
-              process.exit(1);
-            }
-          }
-          
-          uploadAAB();
-          UPLOADEOF
-          
-          node upload.js
+          flutter build appbundle --release --build-name=${{ steps.version.outputs.VERSION_NAME }} --build-number=${{ steps.version.outputs.VERSION_CODE }}
 
-      - name: ✅ Upload complete
+      - name: Upload to Google Play (Closed Testing)
+        uses: r0adkll/upload-google-play@v1.1.2
+        with:
+          serviceAccountJson: android/google-service-account.json
+          packageName: com.gavra013.gavra_android
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab # Linux/Unix path
+          track: alpha # Closed Testing
+          status: completed
+          releaseName: "v${{ steps.version.outputs.VERSION_NAME }}"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-play-aab-${{ steps.version.outputs.VERSION_CODE }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Summary
         run: |
-          echo "🎉 Successfully built and uploaded to Google Play Alpha (Closed Testing)!"
-          echo ""
-          echo "📦 Build Details:"
-          echo "  - Package: com.gavra013.gavra_android"
-          echo "  - Track: alpha"
-          echo "  - Type: Closed Testing"
-          echo "  - Status: Ready for testers"
-          echo ""
-          echo "⏭️  Next steps:"
-          echo "  1. Review in Google Play Console"
-          echo "  2. Notify testers about new build"
-          echo "  3. Monitor feedback and crashes"
+          echo "## ✅ Google Play Upload Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build:** ${{ steps.version.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Track:** Closed Testing (Alpha)" >> $GITHUB_STEP_SUMMARY
 
-      - name: 🔄 Update version in Supabase
+      - name: Update version in Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          VERSION=${{ env.VERSION }}
-          echo "🔄 Updating Supabase app_settings: latest_version → $VERSION"
-
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X PATCH \
             "$SUPABASE_URL/rest/v1/app_settings?id=eq.global" \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
             -H "Content-Type: application/json" \
             -H "Prefer: return=minimal" \
             -d "{\"latest_version\": \"$VERSION\", \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}")
-
           if [ "$RESPONSE" = "204" ]; then
-            echo "✅ Supabase updated: latest_version = $VERSION"
-            echo "🔔 Svi korisnici dobijaju realtime notifikaciju o novoj verziji!"
+            echo "Supabase updated: $VERSION"
           else
-            echo "❌ Supabase update failed (HTTP $RESPONSE)"
+            echo "Supabase update failed (HTTP $RESPONSE)"
             exit 1
           fi
