@@ -257,6 +257,7 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
       icon: Icons.directions_bus,
       title: '🚐 PRAĆENJE KOMBIJA',
       message: 'Ovde će biti prikazano vreme dolaska kombija kada vozač krene',
+      showHeader: false,
     );
   }
 
@@ -270,6 +271,7 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
         title: '🚐 PRAĆENJE KOMBIJA',
         message: '',
         isLoading: true,
+        showHeader: false,
       );
     }
 
@@ -324,6 +326,7 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
     String? subtitle,
     bool bigMessage = false,
     bool isLoading = false,
+    bool showHeader = true,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -355,18 +358,20 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white.withOpacity(0.8), size: 24),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1,
+                if (showHeader) ...[  
+                  Icon(icon, color: Colors.white.withOpacity(0.8), size: 24),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
+                  const SizedBox(height: 4),
+                ],
                 Text(
                   message,
                   style: TextStyle(
