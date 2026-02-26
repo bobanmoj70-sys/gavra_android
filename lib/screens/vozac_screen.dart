@@ -737,17 +737,6 @@ class _VozacScreenState extends State<VozacScreen> {
 
       // Pošalji push notifikacije putnicima - vozač krenuo + ETA
       _sendVozacKrenulNotifikacije();
-
-      // 🚌 Obavesti ostale vozače (npr. iPhone vozač) da pokrenu tracking
-      final vozacId = VozacCache.getUuidByIme(_currentDriver!);
-      if (vozacId != null) {
-        unawaited(RealtimeNotificationService.sendNotificationToOstaleVozace(
-          trenutniVozacIme: _currentDriver!,
-          trenutniVozacId: vozacId,
-          grad: _selectedGrad,
-          vreme: _selectedVreme,
-        ));
-      }
     } catch (e) {
       if (mounted) {
         AppSnackBar.error(context, '❌ Greška pri pokretanju GPS trackinga: $e');

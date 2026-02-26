@@ -178,9 +178,7 @@ class SeatRequestService {
 
     Future<void> fetch() async {
       try {
-        var query = _supabase
-            .from('seat_requests')
-            .select('*, registrovani_putnici(putnik_ime, broj_telefona)');
+        var query = _supabase.from('seat_requests').select('*, registrovani_putnici(putnik_ime, broj_telefona)');
 
         if (statusFilter != null && statusFilter.isNotEmpty) {
           query = query.inFilter('status', statusFilter);
@@ -189,9 +187,7 @@ class SeatRequestService {
           query = query.eq('grad', gradFilter);
         }
 
-        final data = await query
-            .order('created_at', ascending: false)
-            .limit(limit);
+        final data = await query.order('created_at', ascending: false).limit(limit);
 
         if (!controller.isClosed) {
           controller.add(data.map((json) => SeatRequest.fromJson(json)).toList());

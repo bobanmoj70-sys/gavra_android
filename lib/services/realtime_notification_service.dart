@@ -99,44 +99,6 @@ class RealtimeNotificationService {
     }
   }
 
-  /// 🚌 Obavesti ostale vozače da je jedan vozač pokrenuo GPS tracking
-  /// Koristi se da iPhone vozač dobije podsjetnik da pokrene i on tracking
-  static Future<void> sendNotificationToOstaleVozace({
-    required String trenutniVozacIme,
-    required String trenutniVozacId,
-    String? grad,
-    String? vreme,
-  }) async {
-    try {
-      // Dohvati tokene svih vozača OSIM trenutnog
-      final response = await supabase
-          .from('push_tokens')
-          .select('token, provider, vozac_id')
-          .eq('user_type', 'vozac')
-          .neq('vozac_id', trenutniVozacId);
-
-      if ((response as List).isEmpty) return;
-
-      final tokens = (response)
-          .map<Map<String, dynamic>>((t) => {
-                'token': t['token'] as String,
-                'provider': t['provider'] as String,
-              })
-          .toList();
-
-      final gradTekst = grad != null ? ' ($grad${vreme != null ? ' $vreme' : ''})' : '';
-
-      await sendPushNotification(
-        title: '🚌 Gavra 013',
-        body: 'Pokreni GPS da putnici znaju kad stižeš.',
-        tokens: tokens,
-        data: {'type': 'vozac_krenuo', 'vozac_ime': trenutniVozacIme},
-      );
-    } catch (e) {
-      debugPrint('🔴 [RealtimeNotification.sendNotificationToOstaleVozace] Error: $e');
-    }
-  }
-
   /// 📲 Pošalji push notifikaciju putniku
   static Future<bool> sendNotificationToPutnik({
     required String putnikId,

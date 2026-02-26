@@ -9,6 +9,7 @@ import '../models/putnik.dart';
 import '../services/kapacitet_service.dart';
 import '../services/putnik_service.dart';
 import '../services/realtime/realtime_manager.dart';
+import '../services/vozac_putnik_service.dart';
 import '../services/vozac_raspored_service.dart';
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';
@@ -31,11 +32,13 @@ class VozacRasporedScreen extends StatefulWidget {
 class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   final _putnikService = PutnikService();
   final _rasporedService = VozacRasporedService();
+  final _vozacPutnikService = VozacPutnikService();
 
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
   String? _selectedDay;
   List<VozacRasporedEntry> _rasporedCache = [];
+  List<VozacPutnikEntry> _vozacPutnikCache = [];
 
   // 🔴 Realtime subscriptions
   StreamSubscription<PostgresChangePayload>? _rasporedSub;
@@ -105,10 +108,14 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   }
 
   Future<void> _loadAll() async {
-    final rasporedData = await _rasporedService.loadAll();
+    final results = await Future.wait([
+      _rasporedService.loadAll(),
+      _vozacPutnikService.loadAll(),
+    ]);
     if (mounted) {
       setState(() {
-        _rasporedCache = rasporedData;
+        _rasporedCache = results[0] as List<VozacRasporedEntry>;
+        _vozacPutnikCache = results[1] as List<VozacPutnikEntry>;
       });
     }
   }
@@ -120,6 +127,12 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
       final entries =
           RealtimeManager.instance.rasporedCache.values.map((row) => VozacRasporedEntry.fromMap(row)).toList();
       if (mounted) setState(() => _rasporedCache = entries);
+    });
+    RealtimeManager.instance.subscribe('vozac_putnik').listen((_) {
+      // Reload vozac_putnik cache-a pri svakoj promjeni
+      _vozacPutnikService.loadAll().then((data) {
+        if (mounted) setState(() => _vozacPutnikCache = data);
+      });
     });
   }
 
@@ -323,6 +336,171 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   // ═══════════════════════════════════════════════════════════════
   // BAZA OPERACIJE
   // ═══════════════════════════════════════════════════════════════
+
+  /// 👤 Dialog: Dodijeli vozača pojedinačnom putniku (vozac_putnik override)
+  /// Samo dostupno kada termin NEMA vozača u vozac_raspored.
+  Future<void> _showPutnikAssignDialog(Putnik putnik) async {
+    final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+    // Pronađi trenutni override za ovog putnika
+    final trenutniEntry = _vozacPutnikCache
+        .where(
+          (e) => e.putnikId == putnik.id?.toString(),
+        )
+        .firstOrNull;
+    final trenutni = trenutniEntry?.vozac;
+    String? odabranVozac = trenutni;
+
+    final vozaci = VozacCache.imenaVozaca;
+    if (vozaci.isEmpty) {
+      if (mounted) AppSnackBar.warning(context, 'Nema registrovanih vozača');
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          decoration: BoxDecoration(
+            gradient: Theme.of(context).backgroundGradient,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '👤 ${putnik.ime}'.toUpperCase(),
+                style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$_selectedGrad $_selectedVreme — $dan'.toUpperCase(),
+                style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Dodijeli vozača putniku',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              // Lista vozača
+              ...vozaci.map((ime) {
+                final isSelected = odabranVozac == ime;
+                final color = VozacCache.getColor(ime);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () => setSheetState(() => odabranVozac = isSelected ? null : ime),
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? color.withOpacity(0.25) : Colors.white.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? color : Colors.white.withOpacity(0.15),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: color.withOpacity(0.3),
+                            child: Text(
+                              ime.isNotEmpty ? ime[0].toUpperCase() : '?',
+                              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            ime,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white70,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              // Ukloni individualnu dodjelu
+              if (trenutni != null)
+                TextButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final ok = await _vozacPutnikService.delete(putnikId: putnik.id!.toString());
+                    if (ok) {
+                      await _loadAll();
+                      if (mounted) AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
+                    } else {
+                      if (mounted) AppSnackBar.error(context, '❌ Greška pri brisanju');
+                    }
+                  },
+                  icon: const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 18),
+                  label: const Text('Ukloni individualnu dodjelu', style: TextStyle(color: Colors.redAccent)),
+                ),
+              const SizedBox(height: 8),
+              // Potvrdi
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.15),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: odabranVozac == null
+                      ? null
+                      : () async {
+                          Navigator.pop(ctx);
+                          final ok = await _vozacPutnikService.set(
+                            putnikId: putnik.id!.toString(),
+                            vozacIme: odabranVozac!,
+                            dan: dan,
+                            grad: _selectedGrad,
+                            vreme: _selectedVreme,
+                          );
+                          if (ok) {
+                            await _loadAll();
+                            if (mounted) AppSnackBar.success(context, '✅ $odabranVozac → ${putnik.ime}');
+                          } else {
+                            if (mounted) AppSnackBar.error(context, '❌ Greška pri dodjeli');
+                          }
+                        },
+                  child: const Text('Potvrdi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _spasiTermin(String dan, String grad, String vreme, String vozacIme) async {
     final vozacId = VozacCache.getUuidByIme(vozacIme);
@@ -530,9 +708,20 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                             itemBuilder: (ctx, i) {
                               final p = filteredByGradVreme[i];
                               final vozacColor = _getVozacColorForTermin(_selectedGrad, _selectedVreme);
+                              // Da li je termin dodeljen (vozac_raspored)?
+                              final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
+                              // Individualna dodjela putnika (vozac_putnik)?
+                              final individualnaEntry = _vozacPutnikCache
+                                  .where(
+                                    (e) => e.putnikId == p.id?.toString(),
+                                  )
+                                  .firstOrNull;
                               return _PutnikRasporedTile(
                                 putnik: p,
                                 vozacColor: vozacColor,
+                                terminJeDodeljen: terminJeDodeljen,
+                                vozacPutnikIme: individualnaEntry?.vozac,
+                                onTap: () => _showPutnikAssignDialog(p),
                               );
                             },
                           ),
@@ -653,49 +842,68 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 // ═══════════════════════════════════════════════════════════════════
 
 /// Prikazuje jednog putnika u raspored ekranu.
+///
+/// [terminJeDodeljen] — true ako termin ima vozača u vozac_raspored.
+///   - true  → tap je onemogućen, prikazuje se lock ikona
+///   - false → tap otvara dialog za individualnu dodjelu (vozac_putnik)
+///
+/// [vozacPutnikIme] — ime vozača iz individualne dodjele (ako postoji)
+/// [onTap] — callback za tap (null ako je termin dodeljen)
 class _PutnikRasporedTile extends StatelessWidget {
   const _PutnikRasporedTile({
     required this.putnik,
     this.vozacColor,
+    this.terminJeDodeljen = false,
+    this.vozacPutnikIme,
+    this.onTap,
   });
 
   final Putnik putnik;
   final Color? vozacColor;
+  final bool terminJeDodeljen;
+  final String? vozacPutnikIme; // individualna dodjela (vozac_putnik)
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = vozacColor ?? Colors.white12;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.4), width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    putnik.ime,
-                    style: TextStyle(
-                      color: vozacColor ?? Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
+
+    return GestureDetector(
+      onTap: terminJeDodeljen ? null : onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.4), width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      putnik.ime,
+                      style: TextStyle(
+                        color: color != Colors.white12 ? color : Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
-                  ),
-                  Text(
-                    putnik.adresa ?? '${putnik.grad} · ${putnik.polazak}',
-                    style: const TextStyle(color: Colors.white38, fontSize: 12),
-                  ),
-                ],
+                    Text(
+                      putnik.adresa ?? '${putnik.grad} · ${putnik.polazak}',
+                      style: const TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              // Desna strana: ikona za dodjelu (samo kad termin nema vozača)
+              if (!terminJeDodeljen) const Icon(Icons.person_add_outlined, color: Colors.white38, size: 18),
+            ],
+          ),
         ),
       ),
     );

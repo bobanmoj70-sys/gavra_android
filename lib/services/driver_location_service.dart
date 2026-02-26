@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../globals.dart';
 import '../utils/grad_adresa_validator.dart';
+import 'gps_foreground_service.dart';
 import 'openrouteservice.dart';
 import 'permission_service.dart';
 
@@ -89,6 +90,13 @@ class DriverLocationService {
     // ✅ ORS ETA se računa odvojeno svake 60s.
     _etaTimer = Timer.periodic(_etaUpdateInterval, (_) => _refreshEta());
 
+    // 🛰️ Pokreni Android Foreground Service — drži proces živ (kao Waze)
+    await GpsForegroundService.startService(
+      vozacIme: vozacIme,
+      grad: grad,
+      vreme: vremePolaska ?? '',
+    );
+
     return true;
   }
 
@@ -96,6 +104,9 @@ class DriverLocationService {
   Future<void> stopTracking() async {
     _etaTimer?.cancel();
     _positionSubscription?.cancel();
+
+    // 🛑 Zaustavi Android Foreground Service — ukloni notifikaciju iz status bara
+    await GpsForegroundService.stopService();
 
     // Uvijek pokušaj update bez obzira na _isTracking flag
     if (_currentVozacId != null) {
@@ -169,6 +180,20 @@ class DriverLocationService {
       debugPrint('📍 [DriverLocation] ORS ETA (60s): ${result.putniciEta}');
       // Pošalji ažurirani ETA u Supabase odmah
       await _sendCurrentLocation();
+
+      // 📝 Ažuriraj tekst notifikacije — prikaži sledećeg putnika i ETA
+      if (_putniciRedosled != null && _currentPutniciEta != null) {
+        final sledeci = _putniciRedosled!.firstWhere(
+          (ime) => (_currentPutniciEta![ime] ?? -1) >= 0,
+          orElse: () => '',
+        );
+        if (sledeci.isNotEmpty) {
+          final eta = _currentPutniciEta![sledeci];
+          GpsForegroundService.updateNotificationText(
+            'Sledeći: $sledeci — $eta min | $_currentGrad $_currentVremePolaska',
+          );
+        }
+      }
     } else {
       debugPrint('⚠️ [DriverLocation] ORS ETA neuspješan — zadržan stari ETA');
     }

@@ -15,6 +15,7 @@ import 'screens/welcome_screen.dart';
 import 'services/adresa_supabase_service.dart';
 import 'services/app_settings_service.dart'; // 🔧 Podešavanja aplikacije (nav bar tip)
 import 'services/firebase_service.dart';
+import 'services/gps_foreground_service.dart'; // 🛰️ Android Foreground Service za GPS tracking
 import 'services/huawei_push_service.dart';
 import 'services/kapacitet_service.dart'; // 🎫 Realtime kapacitet
 import 'services/realtime/realtime_manager.dart'; // 🎯 Centralizovani realtime manager
@@ -90,6 +91,8 @@ Future<void> _doStartupTasks() async {
   // 🔥 SVE OSTALO POKRENI ISTOVREMENO (Paralelno)
   unawaited(_initPushSystems());
   unawaited(_initAppServices());
+  // 🛰️ Inicijalizuj Android Foreground Service (jednom, pri startu)
+  unawaited(GpsForegroundService.initialize());
 }
 
 /// Inicijalizacija Notifikacija (GMS vs HMS)

@@ -16,16 +16,14 @@ class SeatRequestsLogScreen extends StatefulWidget {
 
 class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
   // Filteri
-  String? _gradFilter; // null = oba, 'BC', 'VS'
-  Set<String> _statusFilter = {}; // prazno = svi statusi
+  String _gradFilter = 'BC'; // 'BC' ili 'VS'
+  final Set<String> _statusFilter = {}; // prazno = svi statusi
 
   static const _sviStatusi = [
     'pending',
     'approved',
     'confirmed',
     'rejected',
-    'otkazano',
-    'pokupljen',
   ];
 
   static const _danLabels = {
@@ -43,15 +41,11 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
       case 'pending':
         return Colors.orange;
       case 'approved':
-        return Colors.lightBlue;
+        return Colors.purple;
       case 'confirmed':
-        return Colors.green;
+        return Colors.deepOrange;
       case 'rejected':
         return Colors.red;
-      case 'otkazano':
-        return Colors.redAccent;
-      case 'pokupljen':
-        return Colors.teal;
       default:
         return Colors.grey;
     }
@@ -62,15 +56,11 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
       case 'pending':
         return Icons.hourglass_top;
       case 'approved':
-        return Icons.thumb_up_outlined;
+        return Icons.settings_suggest;
       case 'confirmed':
-        return Icons.check_circle_outline;
+        return Icons.drive_eta;
       case 'rejected':
         return Icons.cancel_outlined;
-      case 'otkazano':
-        return Icons.block;
-      case 'pokupljen':
-        return Icons.directions_bus;
       default:
         return Icons.help_outline;
     }
@@ -81,15 +71,11 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
       case 'pending':
         return 'ČEKA';
       case 'approved':
-        return 'ODOBREN';
+        return 'DISPECER';
       case 'confirmed':
-        return 'POTVRĐEN';
+        return 'VOZAČ';
       case 'rejected':
         return 'ODBIJEN';
-      case 'otkazano':
-        return 'OTKAZAN';
-      case 'pokupljen':
-        return 'POKUPLJEN';
       default:
         return status.toUpperCase();
     }
@@ -167,8 +153,7 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
                   }
                   if (snapshot.hasError) {
                     return Center(
-                      child: Text('Greška: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.red)),
+                      child: Text('Greška: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
                     );
                   }
                   final lista = snapshot.data ?? [];
@@ -211,16 +196,12 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Grad filter
+          // Grad filter - tabovi
           Row(
             children: [
-              const Text('Grad:', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              const SizedBox(width: 8),
-              _gradChip(null, 'Oba'),
-              const SizedBox(width: 6),
-              _gradChip('BC', 'BC'),
-              const SizedBox(width: 6),
-              _gradChip('VS', 'VS'),
+              _gradTab('BC'),
+              const SizedBox(width: 1),
+              _gradTab('VS'),
             ],
           ),
           const SizedBox(height: 6),
@@ -238,23 +219,31 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
     );
   }
 
-  Widget _gradChip(String? grad, String label) {
+  Widget _gradTab(String grad) {
     final sel = _gradFilter == grad;
     return GestureDetector(
       onTap: () => setState(() => _gradFilter = grad),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        width: 64,
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
-          color: sel ? Colors.white.withOpacity(0.25) : Colors.white.withOpacity(0.07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: sel ? Colors.white54 : Colors.white24),
+          color: sel ? Colors.white.withOpacity(0.2) : Colors.transparent,
+          border: Border(
+            bottom: BorderSide(
+              color: sel ? Colors.white : Colors.transparent,
+              width: 2.5,
+            ),
+          ),
         ),
-        child: Text(label,
-            style: TextStyle(
-              color: sel ? Colors.white : Colors.white60,
-              fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-              fontSize: 12,
-            )),
+        child: Text(
+          grad,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: sel ? Colors.white : Colors.white38,
+            fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+            fontSize: 15,
+          ),
+        ),
       ),
     );
   }
@@ -369,10 +358,12 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
             const SizedBox(height: 8),
             // ── Timeline podataka ──
             _infoRed(
-              ikona: Icons.send,
-              boja: Colors.white54,
-              label: 'Poslat',
-              vrednost: _formatDatumVreme(z.createdAt),
+              ikona: Icons.drive_eta,
+              boja: Colors.deepOrange.shade200,
+              label: 'Vozač',
+              vrednost: (z.approvedBy != null && z.approvedBy!.isNotEmpty)
+                  ? '${z.approvedBy}  (${_formatDatumVreme(z.createdAt)})'
+                  : _formatDatumVreme(z.createdAt),
             ),
             if (z.processedAt != null)
               _infoRed(
@@ -381,33 +372,12 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
                 label: 'Obrađen',
                 vrednost: _formatDatumVreme(z.processedAt),
               ),
-            if (z.approvedBy != null && z.approvedBy!.isNotEmpty)
-              _infoRed(
-                ikona: Icons.person_outline,
-                boja: Colors.green.shade300,
-                label: 'Odobrio',
-                vrednost: '${z.approvedBy}${z.processedAt != null ? "  (${_formatDatumVreme(z.processedAt)})" : ""}',
-              ),
             if (z.cancelledBy != null && z.cancelledBy!.isNotEmpty)
               _infoRed(
                 ikona: Icons.person_off_outlined,
                 boja: Colors.red.shade300,
                 label: 'Otkazao',
                 vrednost: z.cancelledBy!,
-              ),
-            if (z.pokupljenoBy != null && z.pokupljenoBy!.isNotEmpty)
-              _infoRed(
-                ikona: Icons.directions_bus,
-                boja: Colors.teal.shade200,
-                label: 'Pokupio',
-                vrednost: z.pokupljenoBy!,
-              ),
-            if (z.updatedAt != null && z.updatedAt != z.createdAt)
-              _infoRed(
-                ikona: Icons.update,
-                boja: Colors.white30,
-                label: 'Izmenjeno',
-                vrednost: _formatDatumVreme(z.updatedAt),
               ),
             // Alternative vremena
             if ((z.alternativeVreme1 != null && z.alternativeVreme1!.isNotEmpty) ||
@@ -418,7 +388,10 @@ class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
                   Icon(Icons.alt_route, size: 14, color: Colors.cyan.shade200),
                   const SizedBox(width: 6),
                   Text(
-                    'Alternative: ${[z.alternativeVreme1, z.alternativeVreme2].where((v) => v != null && v.isNotEmpty).join(", ")}',
+                    'Alternative: ${[
+                      z.alternativeVreme1,
+                      z.alternativeVreme2
+                    ].where((v) => v != null && v.isNotEmpty).join(", ")}',
                     style: TextStyle(color: Colors.cyan.shade200, fontSize: 12, fontStyle: FontStyle.italic),
                   ),
                 ],

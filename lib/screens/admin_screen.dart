@@ -1050,22 +1050,13 @@ class _AdminScreenState extends State<AdminScreen> {
                                       ),
                                     ),
                                   ),
-                                ],
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 4),
-                          // PETI RED - Log zahteva
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Row(
-                                children: [
+
+                                  // LOG ZAHTEVA
                                   Expanded(
                                     child: InkWell(
                                       onTap: () => Navigator.push(
                                         context,
-                                        MaterialPageRoute<void>(
-                                            builder: (context) => const SeatRequestsLogScreen()),
+                                        MaterialPageRoute<void>(builder: (context) => const SeatRequestsLogScreen()),
                                       ),
                                       borderRadius: BorderRadius.circular(12),
                                       child: Container(
@@ -1075,13 +1066,12 @@ class _AdminScreenState extends State<AdminScreen> {
                                         decoration: BoxDecoration(
                                           color: Theme.of(context).glassContainer,
                                           borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: Colors.blue.withOpacity(0.6), width: 1.5),
+                                          border: Border.all(color: Colors.blue.withOpacity(0.6), width: 1.5),
                                         ),
                                         child: const Center(
                                             child: FittedBox(
                                                 fit: BoxFit.scaleDown,
-                                                child: Text('📋 Log zahteva',
+                                                child: Text('Log',
                                                     style: TextStyle(
                                                         fontWeight: FontWeight.w600,
                                                         fontSize: 14,
