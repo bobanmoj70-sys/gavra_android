@@ -9,7 +9,6 @@ import '../utils/grad_adresa_validator.dart';
 import '../utils/vozac_cache.dart';
 import 'realtime/realtime_manager.dart';
 import 'seat_request_service.dart';
-import 'vozac_putnik_service.dart';
 import 'voznje_log_service.dart';
 
 class _StreamParams {
@@ -217,10 +216,19 @@ class PutnikService {
     }
 
     // naziv_adrese — lookup u adreseCache
+    // 1. custom_adresa_id iz seat_requests (prioritet)
+    // 2. fallback: adresa putnika iz registrovani_putnici (BC ili VS)
     String? nazivAdrese;
     final adresaId = srRow['custom_adresa_id']?.toString();
     if (adresaId != null && adresaId.isNotEmpty) {
       nazivAdrese = RealtimeManager.instance.adreseCache[adresaId]?['naziv']?.toString();
+    }
+    if (nazivAdrese == null && rp != null) {
+      final fallbackAdresaId =
+          srGrad == 'VS' ? rp['adresa_vrsac_id']?.toString() : rp['adresa_bela_crkva_id']?.toString();
+      if (fallbackAdresaId != null && fallbackAdresaId.isNotEmpty) {
+        nazivAdrese = RealtimeManager.instance.adreseCache[fallbackAdresaId]?['naziv']?.toString();
+      }
     }
 
     // Gradi mapu kompatibilnu sa Putnik.fromSeatRequest()
@@ -285,16 +293,13 @@ class PutnikService {
         if (GradAdresaValidator.normalizeTime(p.polazak) != vremeNorm) return false;
       }
       if (vozacId != null) {
-        final putnikId = p.id?.toString() ?? '';
-        final override = rm.vozacPutnikCache.values.where((vp) => vp['putnik_id']?.toString() == putnikId).firstOrNull;
-        if (override != null) return override['vozac_id']?.toString() == vozacId;
         final rasporedZaTermin = rm.rasporedCache.values
             .where((vr) =>
                 vr['dan']?.toString() == danKratica &&
                 vr['grad']?.toString().toUpperCase() == GradAdresaValidator.normalizeGrad(p.grad).toUpperCase() &&
                 vr['vreme']?.toString() == GradAdresaValidator.normalizeTime(p.polazak))
             .toList();
-        if (rasporedZaTermin.isEmpty) return true;
+        if (rasporedZaTermin.isEmpty) return false;
         return rasporedZaTermin.any((vr) => vr['vozac_id']?.toString() == vozacId);
       }
       return true;
@@ -946,36 +951,6 @@ class PutnikService {
     } catch (e) {
       debugPrint('❌ [PutnikService] globalniBezPolaska ERROR: $e');
       return 0;
-    }
-  }
-
-  /// 👤 AŽURIRA DODELJENOG VOZAČA ZA PUTNIKA
-  /// Delegira na VozacPutnikService (tabela vozac_putnik).
-  /// Ako je vozacIme prazan string → briše override.
-  Future<bool> updatePutnikVozac({
-    required dynamic putnikId,
-    required String vozacIme,
-    required String dan,
-    required String grad,
-    required String vreme,
-  }) async {
-    try {
-      final result = await VozacPutnikService().set(
-        putnikId: putnikId.toString(),
-        vozacIme: vozacIme,
-        dan: dan,
-        grad: grad,
-        vreme: vreme,
-      );
-      if (result) {
-        debugPrint('✅ [updatePutnikVozac] putnik=$putnikId → vozac="$vozacIme"');
-      } else {
-        debugPrint('❌ [updatePutnikVozac] Neuspješno za vozac="$vozacIme"');
-      }
-      return result;
-    } catch (e) {
-      debugPrint('❌ [updatePutnikVozac] Greška: $e');
-      return false;
     }
   }
 }

@@ -159,7 +159,7 @@ class VozacPutnikService {
   }) {
     // Helper: da li je termin-unos za ovog vozača?
     bool jeTerminVozacov(VozacRasporedEntry r) {
-      if (vozacId != null && r.vozacId != null) return r.vozacId == vozacId;
+      if (vozacId != null) return r.vozacId == vozacId;
       return r.vozac == vozac;
     }
 
@@ -171,24 +171,6 @@ class VozacPutnikService {
       if (terminEntries.isEmpty) return false; // nema raspodele → putnik nije vidljiv
 
       return terminEntries.any(jeTerminVozacov);
-    }).toList();
-  }
-
-  /// @deprecated Koristiti [filterKombinovan] umjesto ovog.
-  static List<T> filterOverrides<T>({
-    required List<T> sviPutnici,
-    required String vozacId,
-    required String vozac,
-    required List<VozacPutnikEntry> overrides,
-    required String Function(T) getId,
-  }) {
-    if (overrides.isEmpty) return sviPutnici;
-
-    return sviPutnici.where((p) {
-      final id = getId(p);
-      final entry = overrides.where((o) => o.putnikId == id).firstOrNull;
-      if (entry == null) return true;
-      return entry.vozacId == vozacId || entry.vozac == vozac;
     }).toList();
   }
 }

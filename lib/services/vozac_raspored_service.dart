@@ -15,14 +15,14 @@ class VozacRasporedEntry {
   final String vozac;
 
   /// UUID vozača iz tabele vozaci.id — primarni identifikator
-  final String? vozacId;
+  final String vozacId;
 
   const VozacRasporedEntry({
     required this.dan,
     required this.grad,
     required this.vreme,
     required this.vozac,
-    this.vozacId,
+    required this.vozacId,
   });
 
   factory VozacRasporedEntry.fromMap(Map<String, dynamic> map) {
@@ -31,7 +31,7 @@ class VozacRasporedEntry {
       grad: map['grad'] as String,
       vreme: map['vreme'] as String,
       vozac: map['vozac'] as String,
-      vozacId: map['vozac_id'] as String?,
+      vozacId: map['vozac_id'] as String,
     );
   }
 
@@ -40,7 +40,7 @@ class VozacRasporedEntry {
         'grad': grad,
         'vreme': vreme,
         'vozac': vozac,
-        if (vozacId != null) 'vozac_id': vozacId,
+        'vozac_id': vozacId,
       };
 }
 
@@ -65,9 +65,7 @@ class VozacRasporedService {
 
   /// Dodaj ili zameni unos (upsert po dan+grad+vreme+vozac)
   Future<void> upsert(VozacRasporedEntry entry) async {
-    await _supabase
-        .from('vozac_raspored')
-        .upsert(entry.toMap(), onConflict: 'dan,grad,vreme,vozac');
+    await _supabase.from('vozac_raspored').upsert(entry.toMap(), onConflict: 'dan,grad,vreme,vozac');
   }
 
   /// Obriši unos za termin (dan+grad+vreme+vozac)
@@ -89,7 +87,6 @@ class VozacRasporedService {
   /// Filter logika: koji putnici pripadaju vozaču?
   ///
   /// Filtrira putnike po per-termin rasporedu.
-  /// Per-putnik override se obrađuje PRIJE ovog poziva (VozacPutnikService.filterOverrides).
   ///
   /// Logika:
   ///   - Ako nema unosa za termin → putnik je vidljiv svima
@@ -108,9 +105,9 @@ class VozacRasporedService {
   }) {
     if (raspored.isEmpty) return sviPutnici;
 
-    // Helper: da li je unos „za ovog vozača"? UUID-first, fallback na ime
+    // Helper: da li je unos „za ovog vozača“? UUID-first, fallback na ime
     bool jeVozacov(VozacRasporedEntry r) {
-      if (vozacId != null && r.vozacId != null) return r.vozacId == vozacId;
+      if (vozacId != null) return r.vozacId == vozacId;
       return r.vozac == vozac;
     }
 

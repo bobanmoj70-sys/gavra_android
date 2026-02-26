@@ -142,7 +142,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
         )
         .firstOrNull;
     if (entry == null) return null;
-    return VozacCache.getColor(entry.vozacId ?? entry.vozac);
+    return VozacCache.getColor(entry.vozacId);
   }
 
   /// 🚗 Naziv vozača dodijeljenog terminu
@@ -152,8 +152,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
     if (entry == null) return null;
     // Preferuj ime iz vozac stringa, fallback na lookup po vozacId
     if (entry.vozac.isNotEmpty) return entry.vozac;
-    if (entry.vozacId != null) return VozacCache.getImeByUuid(entry.vozacId!);
-    return null;
+    return VozacCache.getImeByUuid(entry.vozacId);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -301,6 +300,10 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 
   Future<void> _spasiTermin(String dan, String grad, String vreme, String vozacIme) async {
     final vozacId = VozacCache.getUuidByIme(vozacIme);
+    if (vozacId == null) {
+      if (mounted) AppSnackBar.error(context, '❌ Vozač nije pronađen u sistemu');
+      return;
+    }
     try {
       await _rasporedService.upsert(VozacRasporedEntry(
         dan: dan,
@@ -500,8 +503,10 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                             itemCount: filteredByGradVreme.length,
                             itemBuilder: (ctx, i) {
                               final p = filteredByGradVreme[i];
+                              final vozacColor = _getVozacColorForTermin(_selectedGrad, _selectedVreme);
                               return _PutnikRasporedTile(
                                 putnik: p,
+                                vozacColor: vozacColor,
                               );
                             },
                           ),
@@ -625,18 +630,21 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 class _PutnikRasporedTile extends StatelessWidget {
   const _PutnikRasporedTile({
     required this.putnik,
+    this.vozacColor,
   });
 
   final Putnik putnik;
+  final Color? vozacColor;
 
   @override
   Widget build(BuildContext context) {
+    final color = vozacColor ?? Colors.white12;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: color.withOpacity(0.07),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12, width: 1),
+        border: Border.all(color: color.withOpacity(0.4), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -648,14 +656,14 @@ class _PutnikRasporedTile extends StatelessWidget {
                 children: [
                   Text(
                     putnik.ime,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: vozacColor ?? Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
                     ),
                   ),
                   Text(
-                    '${putnik.grad} · ${putnik.polazak}',
+                    putnik.adresa ?? '${putnik.grad} · ${putnik.polazak}',
                     style: const TextStyle(color: Colors.white38, fontSize: 12),
                   ),
                 ],

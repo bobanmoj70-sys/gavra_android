@@ -2665,7 +2665,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme)
         .firstOrNull;
     if (entry == null) return null;
-    return VozacCache.getColor(entry.vozacId ?? entry.vozac);
+    return VozacCache.getColor(entry.vozacId);
   }
 
   Widget _buildBottomNavBar(String navType, int Function(String, String) getPutnikCount) {
