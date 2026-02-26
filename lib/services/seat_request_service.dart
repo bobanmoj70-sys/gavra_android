@@ -142,10 +142,8 @@ class SeatRequestService {
         .stream(primaryKey: ['id'])
         .eq('status', 'pending')
         .order('created_at', ascending: false)
-        .map((data) => data
-            .map((json) => SeatRequest.fromJson(json))
-            .where((sr) => sr.tipPutnika == 'dnevni')
-            .toList());
+        .map(
+            (data) => data.map((json) => SeatRequest.fromJson(json)).where((sr) => sr.tipPutnika == 'dnevni').toList());
   }
 
   /// 🔢 Stream za broj zahteva koji čekaju ručnu obradu (za bedž na Home ekranu - samo dnevni)
@@ -154,10 +152,7 @@ class SeatRequestService {
         .from('seat_requests')
         .stream(primaryKey: ['id'])
         .eq('status', 'pending')
-        .map((list) => list
-            .map((json) => SeatRequest.fromJson(json))
-            .where((sr) => sr.tipPutnika == 'dnevni')
-            .length);
+        .map((list) => list.map((json) => SeatRequest.fromJson(json)).where((sr) => sr.tipPutnika == 'dnevni').length);
   }
 
   /// 🤖 DIGITALNI DISPEČER — replicira dispecer_cron_obrada + obradi_seat_request SQL logiku
