@@ -188,6 +188,7 @@ class Putnik {
       naplatioVozacId: req['naplatioVozacId'] as String?,
       otkazaoVozacId: req['otkazaoVozacId'] as String?,
       cena: req['cena']?.toDouble(), // ✅ NOVO: Iznos plaćanja iz voznje_log
+      vremePlacanja: req['vreme_placanja'] != null ? DateTime.parse(req['vreme_placanja']).toLocal() : null,
       obrisan: false,
       dodeljenVozac: dodeljenVozacFinal,
       requestId: req['id']?.toString(), // ✅ DODATO: ID seat_request-a
