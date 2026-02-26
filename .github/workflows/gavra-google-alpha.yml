@@ -5,10 +5,7 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: self-hosted
-    defaults:
-      run:
-        shell: bash
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
