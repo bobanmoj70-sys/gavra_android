@@ -5,7 +5,10 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash
     
     steps:
       - name: Checkout code
@@ -34,12 +37,10 @@ jobs:
       - name: Decode Google Play Key
         run: |
           printf "%s" "${{ secrets.GOOGLE_PLAY_KEY_B64 }}" | base64 -d > $GITHUB_WORKSPACE/android/play-store-key.json
-        shell: bash
 
       - name: Decode Android Keystore
         run: |
           printf "%s" "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > $GITHUB_WORKSPACE/android/app/gavra-release-key-production.keystore
-        shell: bash
 
       - name: Create key.properties
         run: |
@@ -50,21 +51,18 @@ jobs:
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
           storeFile=$GITHUB_WORKSPACE/android/app/gavra-release-key-production.keystore
           EOF
-        shell: bash
 
       - name: Create .env file
         run: |
           cat > $GITHUB_WORKSPACE/.env << EOF
           ${{ secrets.ENV_FILE_CONTENT }}
           EOF
-        shell: bash
 
       - name: Create Firebase and Huawei services files
         run: |
           mkdir -p $GITHUB_WORKSPACE/android/app
           echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > $GITHUB_WORKSPACE/android/app/google-services.json
           echo '${{ secrets.AGCONNECT_SERVICES_JSON }}' > $GITHUB_WORKSPACE/android/app/agconnect-services.json
-        shell: bash
 
       - name: Flutter Doctor
         run: flutter doctor -v
@@ -176,7 +174,6 @@ jobs:
           UPLOADEOF
           
           node upload.js
-        shell: bash
 
       - name: ✅ Upload complete
         run: |
@@ -217,4 +214,3 @@ jobs:
             echo "❌ Supabase update failed (HTTP $RESPONSE)"
             exit 1
           fi
-        shell: bash
