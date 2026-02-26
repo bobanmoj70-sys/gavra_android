@@ -307,9 +307,6 @@ class Putnik {
   // Ime vozača
   String? get vozacIme => naplatioVozac ?? dodeljenVozac;
 
-  // ⚠️ NAPOMENA: Sve metode koje su koristile polasci_po_danu su UKLONJENE.
-  // Koristi se Putnik.fromSeatRequest za kreiranje objekata iz baze.
-
   // HELPER METODE za mapiranje
   static String _determineGradFromRegistrovani(Map<String, dynamic> map) {
     // Odredi grad na osnovu AKTIVNOG polaska za danas

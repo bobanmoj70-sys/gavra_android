@@ -200,9 +200,25 @@ class RegistrovaniPutnikService {
       case PostgresChangeEvent.update:
         await _handleUpdate(newRecord, oldRecord);
         break;
+      case PostgresChangeEvent.delete:
+        _handleDelete(oldRecord);
+        break;
       default:
         debugPrint('⚠️ [RegistrovaniPutnik] Nepoznat event type: ${payload.eventType}');
         break;
+    }
+  }
+
+  /// 🗑️ Handle DELETE event
+  static void _handleDelete(Map<String, dynamic> oldRecord) {
+    final putnikId = oldRecord['id'] as String?;
+    if (putnikId == null || _lastValue == null) return;
+
+    final updatedList = _lastValue!.where((p) => p.id != putnikId).toList();
+    if (updatedList.length != _lastValue!.length) {
+      debugPrint('🗑️ [RegistrovaniPutnik] DELETE: Uklonjen putnik $putnikId');
+      _lastValue = updatedList;
+      _emitUpdate();
     }
   }
 
@@ -361,14 +377,18 @@ class RegistrovaniPutnikService {
 
     // Ako imamo raspored, odmah sinhronizuj sa seat_requests
     if (initialSchedule != null) {
-      await _syncSeatRequestsWithTemplate(noviPutnik.id, initialSchedule);
+      try {
+        await _syncSeatRequests(noviPutnik.id, initialSchedule);
+      } catch (e) {
+        debugPrint('⚠️ [createRegistrovaniPutnik] Greška pri sinhronizaciji seat_requests: $e');
+      }
     }
 
     return noviPutnik;
   }
 
   /// 🚫 Validira da ima slobodnih mesta za sve termine putnika
-  /// Prima weeklySchedule map (format: { "pon": { "bc": "8:00", "vs": null }, ... })
+  /// Prima noviPolasci map (format: { "pon": { "bc": "8:00", "vs": null }, ... })
   Future<void> _validateKapacitetForRawPolasci(Map<String, dynamic> polasciPoDanu,
       {int brojMesta = 1, String? tipPutnika, String? excludeId}) async {
     if (polasciPoDanu.isEmpty) return;
@@ -478,9 +498,6 @@ class RegistrovaniPutnikService {
   }) async {
     updates['updated_at'] = DateTime.now().toUtc().toIso8601String();
 
-    // ČISTIMO UPDATES: Ne smemo slati polasci_po_danu jer je kolona obrisana
-    updates.remove('polasci_po_danu');
-
     // 🚫 PROVERA KAPACITETA - ako se menjaju termini (preko novog rasporeda)
     if (!skipKapacitetCheck && newWeeklySchedule != null) {
       // Dohvati broj_mesta i tip za proveru kapaciteta
@@ -505,7 +522,7 @@ class RegistrovaniPutnikService {
     // Adminove promene u rasporedu se odmah pišu u seat_requests za tekuću nedelju
     if (newWeeklySchedule != null) {
       try {
-        await _syncSeatRequestsWithTemplate(id, newWeeklySchedule);
+        await _syncSeatRequests(id, newWeeklySchedule);
         // ✅ Force refresh svih stream-ova nakon sync-a jer Realtime može kasniti
         PutnikService().refreshAllActiveStreams();
       } catch (e) {
@@ -517,7 +534,7 @@ class RegistrovaniPutnikService {
   }
 
   /// 🔄 Kreira seat_request samo za izabrani dan i vreme (UKLONJEN rolling window)
-  Future<void> _syncSeatRequestsWithTemplate(String putnikId, Map<String, dynamic> noviPolasci) async {
+  Future<void> _syncSeatRequests(String putnikId, Map<String, dynamic> noviPolasci) async {
     debugPrint('🔄 [RegistrovaniPutnikService] Kreiram seat_request za putnika $putnikId');
 
     // 1. Dohvati bazne podatke o putniku (broj_mesta)
@@ -584,7 +601,7 @@ class RegistrovaniPutnikService {
                   status: 'confirmed',
                 );
               } catch (e) {
-                debugPrint('⚠️ [_syncSeatRequestsWithTemplate] logGeneric zakazano greška: $e');
+                debugPrint('⚠️ [_syncSeatRequests] logGeneric zakazano greška: $e');
               }
             } else {
               // AŽURIRAJ postojeći ako se vreme promenilo ILI ako je bio otkazan/pokupljen
@@ -610,7 +627,7 @@ class RegistrovaniPutnikService {
           }
         } catch (e) {
           // Greška za jedan termin ne sme blokirati ostatak sync-a
-          debugPrint('❌ [_syncSeatRequestsWithTemplate] Greška za $danKratica $normalizedGrad: $e');
+          debugPrint('❌ [_syncSeatRequests] Greška za $danKratica $normalizedGrad: $e');
         }
       }
     }

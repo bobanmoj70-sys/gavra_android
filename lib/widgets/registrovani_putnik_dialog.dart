@@ -317,7 +317,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       return status;
     }
 
-    // 2. Ako nema override-a, vrati null (Legacy polasci_po_danu više ne postoji)
+    // Ako nema override-a, vrati null
     return null;
   }
 
@@ -1704,9 +1704,13 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       }
 
       if (mounted) {
-        AppSnackBar.success(context, '✅ Putnik uspešno sačuvan!');
+        // Sačuvaj parent context PRE pop-a (dijalog context postaje invalid nakon pop-a)
+        final parentContext = Navigator.of(context).context;
         Navigator.of(context).pop();
         if (widget.onSaved != null) widget.onSaved!();
+        if (parentContext.mounted) {
+          AppSnackBar.success(parentContext, '✅ Putnik uspešno sačuvan!');
+        }
       }
     } catch (e) {
       debugPrint('❌ Greška pri čuvanju putnika: $e');
@@ -1714,7 +1718,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       // 📝 LOG GRESKE ZA ADMINA
       try {
         await VoznjeLogService.logGreska(
-          putnikId: widget.existingPutnik?.id, // Može biti null za nove
+          putnikId: widget.existingPutnik?.id,
           greska: '[$_tip | ${_imeController.text}] ${e.toString()}',
         );
       } catch (e) {
@@ -1729,7 +1733,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         AppSnackBar.error(context, 'Greška: $errorMsg');
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
