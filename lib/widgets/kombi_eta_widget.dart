@@ -248,8 +248,9 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
       return _buildContainer(
         Colors.white,
         icon: Icons.directions_bus,
-        title: '🚐 SLEDEĆA VOŽNJA',
+        title: 'SLEDEĆA VOŽNJA',
         message: widget.sledecaVoznja!,
+        showHeader: false,
       );
     }
     return _buildContainer(
@@ -297,7 +298,7 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
       return _buildContainer(
         Colors.blue.shade700,
         icon: Icons.directions_bus,
-        title: '🚐 KOMBI STIŽE ZA',
+        title: 'KOMBI STIŽE ZA',
         message: _formatEta(_etaMinutes!),
         subtitle: _vozacIme != null ? 'Vozač: $_vozacIme' : null,
         bigMessage: true,
@@ -307,10 +308,10 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
     // Faza 2 — Vozač aktivan ali ETA još nije izračunat
     if (_isActive) {
       return _buildContainer(
-        Colors.white,
+        Colors.orange.shade700,
         icon: Icons.schedule,
-        title: '🚐 PRAĆENJE KOMBIJA',
-        message: 'Vozač kreće uskoro',
+        title: 'VOZAČ KREĆE USKORO',
+        message: _vozacIme != null ? 'Vozač: $_vozacIme' : 'Kombi je na putu',
       );
     }
 
@@ -329,8 +330,9 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
     bool showHeader = true,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -340,7 +342,7 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
             baseColor.withOpacity(0.05),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Colors.white.withOpacity(0.25),
           width: 1,
@@ -349,8 +351,8 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
       child: isLoading
           ? const Center(
               child: SizedBox(
-                width: 24,
-                height: 24,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               ),
             )
@@ -358,35 +360,35 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (showHeader) ...[  
-                  Icon(icon, color: Colors.white.withOpacity(0.8), size: 24),
-                  const SizedBox(height: 4),
+                if (showHeader) ...[
+                  Icon(icon, color: Colors.white.withOpacity(0.8), size: 18),
+                  const SizedBox(height: 2),
                   Text(
                     title,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                 ],
                 Text(
                   message,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: bigMessage ? 28 : 16,
+                    fontSize: bigMessage ? 20 : 13,
                     fontWeight: bigMessage ? FontWeight.bold : FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 if (subtitle != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       subtitle,
-                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
                     ),
                   ),
               ],

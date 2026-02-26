@@ -1010,15 +1010,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     if (!mounted) return;
 
+    final rootContext = context; // 🔒 Čuvamo home screen context pre otvaranja dijaloga
     bool isDialogLoading = false;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) {
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setStateDialog) {
           // 📱 Dinamički računaj dostupnu visinu (oduzmi tastaturу)
-          final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-          final screenHeight = MediaQuery.of(context).size.height;
+          final keyboardHeight = MediaQuery.of(dialogCtx).viewInsets.bottom;
+          final screenHeight = MediaQuery.of(dialogCtx).size.height;
           final availableHeight = screenHeight - keyboardHeight;
 
           return Dialog(
@@ -1035,13 +1036,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 maxHeight: keyboardHeight > 0
                     ? availableHeight * 0.85 // Više prostora kad je tastatura
                     : screenHeight * 0.7,
-                maxWidth: MediaQuery.of(context).size.width * 0.85,
+                maxWidth: MediaQuery.of(dialogCtx).size.width * 0.85,
               ),
               decoration: BoxDecoration(
-                gradient: Theme.of(context).backgroundGradient,
+                gradient: Theme.of(dialogCtx).backgroundGradient,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Theme.of(context).glassBorder,
+                  color: Theme.of(dialogCtx).glassBorder,
                   width: 1.5,
                 ),
                 boxShadow: [
@@ -1061,14 +1062,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).glassContainer,
+                      color: Theme.of(dialogCtx).glassContainer,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
                       ),
                       border: Border(
                         bottom: BorderSide(
-                          color: Theme.of(context).glassBorder,
+                          color: Theme.of(dialogCtx).glassBorder,
                         ),
                       ),
                     ),
@@ -1093,7 +1094,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         // Close button
                         GestureDetector(
-                          onTap: () => Navigator.pop(context),
+                          onTap: () => Navigator.pop(dialogCtx),
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -1126,10 +1127,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).glassContainer,
+                              color: Theme.of(dialogCtx).glassContainer,
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(
-                                color: Theme.of(context).glassBorder,
+                                color: Theme.of(dialogCtx).glassBorder,
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -1172,10 +1173,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).glassContainer,
+                              color: Theme.of(dialogCtx).glassContainer,
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(
-                                color: Theme.of(context).glassBorder,
+                                color: Theme.of(dialogCtx).glassBorder,
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -1219,7 +1220,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     ),
                                     prefixIcon: Icon(
                                       Icons.person_search,
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color: Theme.of(dialogCtx).colorScheme.primary,
                                     ),
                                     fillColor: Colors.white,
                                     filled: true,
@@ -1560,14 +1561,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).glassContainer,
+                      color: Theme.of(dialogCtx).glassContainer,
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(20),
                         bottomRight: Radius.circular(20),
                       ),
                       border: Border(
                         top: BorderSide(
-                          color: Theme.of(context).glassBorder,
+                          color: Theme.of(dialogCtx).glassBorder,
                         ),
                       ),
                     ),
@@ -1585,7 +1586,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ),
                             child: TextButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(dialogCtx),
                               child: const Text(
                                 'Otkaži',
                                 style: TextStyle(
@@ -1640,12 +1641,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   : () async {
                                       // Validacija - mora biti odabrani putnik
                                       if (selectedPutnik == null) {
-                                        AppSnackBar.error(context, '❌ Morate odabrati putnika iz liste');
+                                        AppSnackBar.error(dialogCtx, '❌ Morate odabrati putnika iz liste');
                                         return;
                                       }
 
                                       if (_selectedVreme.isEmpty || _selectedGrad.isEmpty) {
-                                        AppSnackBar.error(context, '❌ Greška: Nije odabrano vreme polaska');
+                                        AppSnackBar.error(dialogCtx, '❌ Greška: Nije odabrano vreme polaska');
                                         return;
                                       }
 
@@ -1654,8 +1655,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         if (_currentDriver == null ||
                                             _currentDriver!.isEmpty ||
                                             !VozacCache.isValidIme(_currentDriver)) {
-                                          if (!context.mounted) return;
-                                          AppSnackBar.error(context,
+                                          if (!dialogCtx.mounted) return;
+                                          AppSnackBar.error(dialogCtx,
                                               '❌ GREŠKA: Vozač "$_currentDriver" nije registrovan. Molimo ponovo se ulogujte.');
                                           return;
                                         }
@@ -1671,8 +1672,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             _selectedVreme,
                                           );
                                           if (!imaMesta) {
-                                            if (!context.mounted) return;
-                                            AppSnackBar.error(context,
+                                            if (!dialogCtx.mounted) return;
+                                            AppSnackBar.error(dialogCtx,
                                                 '❌ Termin $_selectedVreme ($_selectedGrad) je PUN! Izaberite drugo vreme.');
                                             return;
                                           }
@@ -1720,32 +1721,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         // 🔄 Eksplicitan refresh stream-a da se putnik odmah prikaže
                                         _putnikService.refreshAllActiveStreams();
 
-                                        if (!context.mounted) return;
+                                        if (!dialogCtx.mounted) return;
 
-                                        // Ukloni loading state
+                                        // Ukloni loading state i zatvori dijalog
                                         setStateDialog(() {
                                           isDialogLoading = false;
                                         });
 
-                                        Navigator.pop(context);
+                                        Navigator.pop(dialogCtx);
 
                                         // 🔄 PREBACI NA VREME PUTNIKA DA BI BIO VIDLJIV - mora posle pop()
+                                        // Koristimo rootContext (home screen) - dijalog context je već zatvoren
                                         if (mounted) {
                                           setState(() {
                                             _selectedVreme = putnik.polazak;
                                           });
                                         }
 
-                                        AppSnackBar.success(context, '✅ Putnik je uspešno dodat');
+                                        // ✅ Koristimo rootContext jer je dialog context već pop-ovan
+                                        if (rootContext.mounted) {
+                                          AppSnackBar.success(rootContext, '✅ Putnik je uspešno dodat');
+                                        }
                                       } catch (e) {
                                         // ensure dialog loading is cleared
                                         setStateDialog(() {
                                           isDialogLoading = false;
                                         });
 
-                                        if (!context.mounted) return;
+                                        if (!dialogCtx.mounted) return;
 
-                                        AppSnackBar.error(context, '❌ Greška pri dodavanju: $e');
+                                        AppSnackBar.error(dialogCtx, '❌ Greška pri dodavanju: $e');
                                       }
                                     },
                               child: isDialogLoading

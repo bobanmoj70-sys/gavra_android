@@ -1397,9 +1397,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           ),
                         ),
                         // 📲 SMS TEST DUGME - samo za Bojan
-                        if (_currentDriver?.toLowerCase() == 'bojan') ...[
-                          // SMS test i debug funkcionalnost uklonjena - servis radi u pozadini
-                        ],
+                        if (_currentDriver?.toLowerCase() == 'bojan') ...[],
                       ],
                     ),
                   ),

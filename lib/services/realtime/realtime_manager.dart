@@ -430,6 +430,9 @@ class RealtimeManager {
               case 'vozac_putnik':
                 vozacPutnikCache.remove(id);
                 break;
+              case 'vozac_lokacije':
+                lokacijeCache.remove(id);
+                break;
               default:
                 break; // ostale tabele ignorišu DELETE
             }
@@ -442,6 +445,13 @@ class RealtimeManager {
         }
 
         debugPrint('🔄 [RealtimeManager] EVENT na tabeli "$table": ${payload.eventType}');
+
+        // ✅ Ažuriraj in-memory cache na INSERT/UPDATE
+        final newRecord = payload.newRecord;
+        if (newRecord.isNotEmpty) {
+          updateGenericCache(table, newRecord);
+        }
+
         if (_controllers.containsKey(table) && !_controllers[table]!.isClosed) {
           _controllers[table]!.add(payload);
           debugPrint('✅ [RealtimeManager] Payload emitovan za tabelu "$table"');
