@@ -50,7 +50,7 @@ class V2PolasciService {
         await _supabase.from('v2_polasci').update({
           'status': status,
           'broj_mesta': brojMesta,
-          if (customAdresaId != null) 'custom_adresa_id': customAdresaId,
+          if (customAdresaId != null) 'adresa_id': customAdresaId,
           if (isAdmin) 'dodeljeno_vreme': '$normVreme:00',
           'updated_at': nowStr,
         }).eq('id', existing['id']);
@@ -64,7 +64,7 @@ class V2PolasciService {
           if (isAdmin) 'dodeljeno_vreme': '$normVreme:00',
           'status': status,
           'broj_mesta': brojMesta,
-          if (customAdresaId != null) 'custom_adresa_id': customAdresaId,
+          if (customAdresaId != null) 'adresa_id': customAdresaId,
           'created_at': nowStr,
           'updated_at': nowStr,
         });

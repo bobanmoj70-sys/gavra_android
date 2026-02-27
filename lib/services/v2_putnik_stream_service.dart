@@ -107,10 +107,10 @@ class V2PutnikStreamService {
       final dan = _isoToDanKratica(todayDate);
       final srRows = await supabase
           .from('v2_polasci')
-          .select('id, putnik_id, grad, zeljeno_vreme, dodeljeno_vreme, status, '
-              'created_at, updated_at, processed_at, priority, broj_mesta, '
-              'custom_adresa_id, alternative_vreme_1, alternative_vreme_2, '
-              'cancelled_by, pokupljeno_by, dan, tip_putnika')
+          .select('id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, status, '
+              'created_at, updated_at, processed_at, broj_mesta, '
+              'adresa_id, alternative_vreme_1, alternative_vreme_2, '
+              'cancelled_by, approved_by, pokupljeno_by, dan')
           .eq('dan', dan)
           .inFilter('status',
               ['pending', 'manual', 'approved', 'confirmed', 'otkazano', 'cancelled', 'bez_polaska', 'pokupljen']);
@@ -213,10 +213,10 @@ class V2PutnikStreamService {
     }
 
     // naziv_adrese — lookup u adreseCache
-    // 1. custom_adresa_id iz seat_requests (prioritet)
+    // 1. adresa_id iz v2_polasci (prioritet)
     // 2. fallback: adresa putnika iz registrovani_putnici (BC ili VS)
     String? nazivAdrese;
-    final adresaId = srRow['custom_adresa_id']?.toString();
+    final adresaId = srRow['adresa_id']?.toString();
     if (adresaId != null && adresaId.isNotEmpty) {
       nazivAdrese = V2MasterRealtimeManager.instance.adreseCache[adresaId]?['naziv']?.toString();
     }
