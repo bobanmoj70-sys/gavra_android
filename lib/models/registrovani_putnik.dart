@@ -221,6 +221,20 @@ class RegistrovaniPutnik {
 
   String get punoIme => putnikIme;
 
+  /// Vraća naziv v2 tabele na osnovu tipa putnika
+  String get tabela {
+    switch (tip.toLowerCase()) {
+      case 'ucenik':
+        return 'v2_ucenici';
+      case 'dnevni':
+        return 'v2_dnevni';
+      case 'posiljka':
+        return 'v2_posiljke';
+      default:
+        return 'v2_radnici';
+    }
+  }
+
   /// copyWith metoda za kreiranje kopije sa izmenjenim poljima
   RegistrovaniPutnik copyWith({
     String? id,

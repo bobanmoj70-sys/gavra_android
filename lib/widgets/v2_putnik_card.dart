@@ -7,18 +7,19 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/putnik.dart';
-import '../services/v2_cena_obracun_service.dart';
+import '../models/registrovani_putnik.dart';
 import '../services/haptic_service.dart';
 import '../services/permission_service.dart';
 import '../services/putnik_service.dart';
-import '../services/v2_putnik_service.dart';
 import '../services/unified_geocoding_service.dart';
+import '../services/v2_cena_obracun_service.dart';
+import '../services/v2_putnik_service.dart';
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';
 import '../utils/card_color_helper.dart';
 import '../utils/vozac_cache.dart';
 
-/// Widget za prikaz putnik kartice sa podrškom za mesecne i dnevne putnike
+/// Widget za prikaz putnik kartice sa podrï¿½kom za mesecne i dnevne putnike
 
 class PutnikCard extends StatefulWidget {
   const PutnikCard({
@@ -69,7 +70,7 @@ class _PutnikCardState extends State<PutnikCard> {
   @override
   void didUpdateWidget(PutnikCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // ?? FIX: UVEK ažuriraj _putnik kada se widget promeni
+    // ?? FIX: UVEK aï¿½uriraj _putnik kada se widget promeni
     // Ovo garantuje da realtime promene (pokupljenje, otkazivanje)
     // budu odmah vidljive bez obzira na == operator
     _putnik = widget.putnik;
@@ -83,10 +84,10 @@ class _PutnikCardState extends State<PutnikCard> {
     final vremeStr = '${vreme.hour.toString().padLeft(2, '0')}:${vreme.minute.toString().padLeft(2, '0')}';
 
     if (jeDanas) {
-      // Danas - prikaži samo vreme
+      // Danas - prikaï¿½i samo vreme
       return vremeStr;
     } else {
-      // Ranije - prikaži datum i vreme za vecu preciznost
+      // Ranije - prikaï¿½i datum i vreme za vecu preciznost
       return '${vreme.day}.${vreme.month}. $vremeStr';
     }
   }
@@ -97,11 +98,11 @@ class _PutnikCardState extends State<PutnikCard> {
 
   // ?? UNIVERZALNA METODA ZA PLACANJE - custom cena za sve tipove putnika
   Future<void> _handlePayment() async {
-    // ??? FIX: Validacija vozaca pre pokušaja placanja - koristi VozacCache
+    // ??? FIX: Validacija vozaca pre pokuï¿½aja placanja - koristi VozacCache
     final vozacUuid = VozacCache.getUuidByIme(widget.currentDriver);
     if (vozacUuid == null) {
       if (mounted) {
-        AppSnackBar.error(context, 'Greška: Vozac nije definisan u sistemu');
+        AppSnackBar.error(context, 'Greï¿½ka: Vozac nije definisan u sistemu');
       }
       return;
     }
@@ -243,7 +244,7 @@ class _PutnikCardState extends State<PutnikCard> {
       // Provjeri da li putnik ima valjan ID
       if (_putnik.id == null || _putnik.id.toString().isEmpty) {
         if (mounted) {
-          AppSnackBar.error(context, 'Putnik nema valjan ID - ne može se naplatiti');
+          AppSnackBar.error(context, 'Putnik nema valjan ID - ne moï¿½e se naplatiti');
         }
         return;
       }
@@ -262,12 +263,14 @@ class _PutnikCardState extends State<PutnikCard> {
 
   // ?? PLACANJE MESECNE KARTE - CUSTOM CENA (korisnik unosi iznos)
   Future<void> _handleRegistrovaniPayment() async {
-    // Prvo dohvati mesecnog putnika iz baze po imenu (ne po ID!)
-    final registrovaniPutnik = await RegistrovaniPutnikService.getRegistrovaniPutnikByIme(_putnik.ime);
+    // Dohvati mesecnog putnika iz baze po ID-u
+    final putnikId = _putnik.id?.toString() ?? '';
+    final putnikMap = putnikId.isNotEmpty ? await V2PutnikService().findPutnikById(putnikId) : null;
+    final registrovaniPutnik = putnikMap != null ? RegistrovaniPutnik.fromMap(putnikMap) : null;
 
     if (registrovaniPutnik == null) {
       if (mounted) {
-        AppSnackBar.error(context, 'Greška: Mesecni putnik "${_putnik.ime}" nije pronaden');
+        AppSnackBar.error(context, 'Greï¿½ka: Mesecni putnik "${_putnik.ime}" nije pronaden');
       }
       return;
     }
@@ -275,10 +278,10 @@ class _PutnikCardState extends State<PutnikCard> {
     // UCITAJ SVA PLACANJA IZ BAZE za ovog putnika
     Set<String> placeniMeseci = {};
     try {
-      final svaPlacanja = await RegistrovaniPutnikService().dohvatiPlacanjaZaPutnika(_putnik.ime);
+      final svaPlacanja = await V2PutnikService().dohvatiPlacanja(putnikId);
       for (var placanje in svaPlacanja) {
-        final mesec = placanje['placeniMesec'];
-        final godina = placanje['placenaGodina'];
+        final mesec = placanje['placeni_mesec'];
+        final godina = placanje['placena_godina'];
         if (mesec != null && godina != null) {
           // Format: "mesec-godina" za internu proveru
           placeniMeseci.add('$mesec-$godina');
@@ -301,15 +304,15 @@ class _PutnikCardState extends State<PutnikCard> {
     int brojPutovanja = 0;
     int brojOtkazivanja = 0;
     try {
-      brojPutovanja = await RegistrovaniPutnikService.izracunajBrojPutovanjaIzIstorije(
+      brojPutovanja = await V2PutnikService().izracunajBrojVoznji(
         _putnik.id! as String,
       );
       // Racunaj otkazivanja iz stvarne istorije
-      brojOtkazivanja = await RegistrovaniPutnikService.izracunajBrojOtkazivanjaIzIstorije(
+      brojOtkazivanja = await V2PutnikService().izracunajBrojOtkazivanja(
         _putnik.id! as String,
       );
     } catch (e) {
-      // Greška pri citanju - koristi 0
+      // Greï¿½ka pri citanju - koristi 0
       brojPutovanja = 0;
       brojOtkazivanja = 0;
     }
@@ -319,7 +322,7 @@ class _PutnikCardState extends State<PutnikCard> {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) {
-        // ?? Sugeriši cenu na osnovu tipa putnika
+        // ?? Sugeriï¿½i cenu na osnovu tipa putnika
         final sugerisanaCena = CenaObracunService.getCenaPoDanu(registrovaniPutnik);
 
         final tipLower = registrovaniPutnik.tip.toLowerCase();
@@ -731,7 +734,7 @@ class _PutnikCardState extends State<PutnikCard> {
       // Provjeri da li putnik ima valjan ID
       if (_putnik.id == null || _putnik.id.toString().isEmpty) {
         if (mounted) {
-          AppSnackBar.error(context, 'Putnik nema valjan ID - ne može se naplatiti');
+          AppSnackBar.error(context, 'Putnik nema valjan ID - ne moï¿½e se naplatiti');
         }
         return;
       }
@@ -743,7 +746,7 @@ class _PutnikCardState extends State<PutnikCard> {
         HapticService.lightImpact();
       } catch (e) {
         if (mounted) {
-          AppSnackBar.error(context, 'Greška pri placanju: $e');
+          AppSnackBar.error(context, 'Greï¿½ka pri placanju: $e');
         }
       }
     }
@@ -755,9 +758,9 @@ class _PutnikCardState extends State<PutnikCard> {
     required bool isRegistrovani,
     String? mesec,
   }) async {
-    // ?? GLOBALNI LOCK - ako BILO KOJA kartica procesira, ignoriši
+    // ?? GLOBALNI LOCK - ako BILO KOJA kartica procesira, ignoriï¿½i
     if (_globalProcessingLock) return;
-    // ?? ZAŠTITA OD DUPLOG KLIKA - ako vec procesiramo, ignoriši
+    // ?? ZAï¿½TITA OD DUPLOG KLIKA - ako vec procesiramo, ignoriï¿½i
     if (_isProcessing) return;
 
     try {
@@ -768,7 +771,7 @@ class _PutnikCardState extends State<PutnikCard> {
         });
       }
 
-      // ?? KRATKA PAUZA - samo da se UI osveži
+      // ?? KRATKA PAUZA - samo da se UI osveï¿½i
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       if (!mounted) {
@@ -784,11 +787,15 @@ class _PutnikCardState extends State<PutnikCard> {
         }
 
         // Za mesecne putnike koristi funkciju iz registrovani_putnici_screen.dart
-        final registrovaniPutnik = await RegistrovaniPutnikService.getRegistrovaniPutnikByIme(_putnik.ime);
-        if (registrovaniPutnik != null) {
+        final existingId = _putnik.id?.toString() ?? '';
+        final existingMap = existingId.isNotEmpty ? await V2PutnikService().findPutnikById(existingId) : null;
+        if (existingMap != null) {
+          final tabela = existingMap['_tabela'] as String? ?? 'v2_radnici';
           // Koristi static funkciju kao u registrovani_putnici_screen.dart
           await _sacuvajPlacanjeStatic(
-            putnikId: registrovaniPutnik.id,
+            putnikId: existingId,
+            putnikIme: _putnik.ime,
+            putnikTabela: tabela,
             iznos: iznos,
             mesec: mesec,
             vozacIme: widget.currentDriver,
@@ -814,17 +821,17 @@ class _PutnikCardState extends State<PutnikCard> {
         );
       }
 
-      // ? OSVEŽI STANJE PUTNIKA - postavi placeno na true
+      // ? OSVEï¿½I STANJE PUTNIKA - postavi placeno na true
       if (mounted) {
         setState(() {
           _putnik = _putnik.copyWith(placeno: true);
         });
 
-        AppSnackBar.payment(context, 'Placanje uspešno evidentirano: $iznos RSD');
+        AppSnackBar.payment(context, 'Placanje uspeï¿½no evidentirano: $iznos RSD');
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, 'Greška pri placanju: $e');
+        AppSnackBar.error(context, 'Greï¿½ka pri placanju: $e');
       }
     } finally {
       // ? OBAVEZNO OSLOBODI LOCK
@@ -871,7 +878,7 @@ class _PutnikCardState extends State<PutnikCard> {
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, 'Greška pri pokupljenju: $e');
+        AppSnackBar.error(context, 'Greï¿½ka pri pokupljenju: $e');
       }
     } finally {
       // ? OBAVEZNO OSLOBODI LOCK
@@ -896,7 +903,7 @@ class _PutnikCardState extends State<PutnikCard> {
         await launchUrl(launchUri);
       }
     } catch (e) {
-      debugPrint('Greška pri pozivu: $e');
+      debugPrint('Greï¿½ka pri pozivu: $e');
     }
   }
 
@@ -905,7 +912,7 @@ class _PutnikCardState extends State<PutnikCard> {
     // Odredi ko je "vlasnik" ovog putnika za potrebe bojenja (siva vs bela)
     String displayDodeljenVozac = _putnik.dodeljenVozac ?? '';
 
-    // ?? BOJE KARTICE - koristi CardColorHelper sa procišcenim vozacem
+    // ?? BOJE KARTICE - koristi CardColorHelper sa prociï¿½cenim vozacem
     final _colorHelper = CardColorHelper();
     final BoxDecoration cardDecoration = _colorHelper.getCardDecorationWithDriver(
       _putnik,
@@ -995,7 +1002,7 @@ class _PutnikCardState extends State<PutnikCard> {
                                 maxLines: 1,
                               ),
                             ),
-                            // Prikaži oznaku broja mesta ako je više od 1
+                            // Prikaï¿½i oznaku broja mesta ako je viï¿½e od 1
                             if (_putnik.brojMesta > 1)
                               Padding(
                                 padding: const EdgeInsets.only(left: 4),
@@ -1006,7 +1013,7 @@ class _PutnikCardState extends State<PutnikCard> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    // ? Ako je placeno, prikaži placeni iznos; inace prikaži cenu po mestu
+                                    // ? Ako je placeno, prikaï¿½i placeni iznos; inace prikaï¿½i cenu po mestu
                                     (_putnik.cena != null && (_putnik.cena ?? 0) > 0)
                                         ? 'x${_putnik.brojMesta} (${_putnik.cena!.toStringAsFixed(0)} RSD)'
                                         : 'x${_putnik.brojMesta} (${(_putnik.effectivePrice * _putnik.brojMesta).toStringAsFixed(0)} RSD)',
@@ -1020,7 +1027,7 @@ class _PutnikCardState extends State<PutnikCard> {
                               ),
                           ],
                         ),
-                        // ?? ADRESA - prikaži adresu sa fallback ucitavanjem ako je NULL
+                        // ?? ADRESA - prikaï¿½i adresu sa fallback ucitavanjem ako je NULL
                         StreamBuilder<String?>(
                           stream: Stream.fromFuture(_putnik.adresa != null &&
                                   _putnik.adresa!.isNotEmpty &&
@@ -1030,7 +1037,7 @@ class _PutnikCardState extends State<PutnikCard> {
                           builder: (context, snapshot) {
                             final displayAdresa = snapshot.data;
 
-                            // ?? Prikaži adresu samo ako je dostupna i nije placeholder
+                            // ?? Prikaï¿½i adresu samo ako je dostupna i nije placeholder
                             if (displayAdresa != null &&
                                 displayAdresa.isNotEmpty &&
                                 displayAdresa != 'Adresa nije definisana') {
@@ -1049,14 +1056,14 @@ class _PutnikCardState extends State<PutnikCard> {
                               );
                             }
 
-                            return const SizedBox.shrink(); // Ništa ako nema adrese
+                            return const SizedBox.shrink(); // Niï¿½ta ako nema adrese
                           },
                         ),
                       ],
                     ),
                   ),
-                  // OPTIMIZOVANE ACTION IKONE - koristi Flexible + Wrap umesto fiksne širine
-                  // da spreci overflow na manjim ekranima ili kada ima više ikona
+                  // OPTIMIZOVANE ACTION IKONE - koristi Flexible + Wrap umesto fiksne ï¿½irine
+                  // da spreci overflow na manjim ekranima ili kada ima viï¿½e ikona
                   // Smanjen flex na 0 da ikone ne "kradu" prostor od imena
                   if ((isAdmin || isVozac) && widget.showActions && driver.isNotEmpty)
                     Flexible(
@@ -1069,7 +1076,7 @@ class _PutnikCardState extends State<PutnikCard> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // ?? MESECNA BADGE – prikazuj samo za radnik i ucenik tipove
+                              // ?? MESECNA BADGE ï¿½ prikazuj samo za radnik i ucenik tipove
                               if (_putnik.isMesecniTip)
                                 Align(
                                   alignment: Alignment.topRight,
@@ -1091,10 +1098,10 @@ class _PutnikCardState extends State<PutnikCard> {
                                     ),
                                   ),
                                 ),
-                              // ULTRA-SAFE ADAPTIVE ACTION IKONE - potpuno eliminiše overflow
+                              // ULTRA-SAFE ADAPTIVE ACTION IKONE - potpuno eliminiï¿½e overflow
                               LayoutBuilder(
                                 builder: (context, constraints) {
-                                  // Izracunaj dostupnu širinu za ikone
+                                  // Izracunaj dostupnu ï¿½irinu za ikone
                                   final availableWidth = constraints.maxWidth;
 
                                   // Ultra-conservative prag sa safety margin - povecani pragovi
@@ -1185,7 +1192,7 @@ class _PutnikCardState extends State<PutnikCard> {
                                                   ],
                                                 ),
                                                 actions: [
-                                                  // Dugme za navigaciju - uvek prikaži, koordinate ce se dobiti po potrebi
+                                                  // Dugme za navigaciju - uvek prikaï¿½i, koordinate ce se dobiti po potrebi
                                                   TextButton.icon(
                                                     onPressed: () async {
                                                       // INSTANT GPS - koristi novi PermissionService
@@ -1201,7 +1208,7 @@ class _PutnikCardState extends State<PutnikCard> {
 
                                                       // Proveri internetsku konekciju i dozvole
                                                       try {
-                                                        // Pokaži loading sa dužim timeout-om
+                                                        // Pokaï¿½i loading sa duï¿½im timeout-om
                                                         if (mounted && context.mounted) {
                                                           AppSnackBar.info(context, '?? Pripremam navigaciju...');
                                                         }
@@ -1219,20 +1226,20 @@ class _PutnikCardState extends State<PutnikCard> {
                                                           ).hideCurrentSnackBar();
 
                                                           if (koordinate != null) {
-                                                            // Uspešno - pokaži pozitivnu poruku
+                                                            // Uspeï¿½no - pokaï¿½i pozitivnu poruku
                                                             AppSnackBar.success(context, '?? Otvaram navigaciju...');
                                                             await _otvoriNavigaciju(
                                                               koordinate,
                                                             );
                                                           } else {
-                                                            // Neuspešno - prikaži detaljniju grešku
+                                                            // Neuspeï¿½no - prikaï¿½i detaljniju greï¿½ku
                                                             AppSnackBar.warning(context,
-                                                                '?? Lokacija nije pronadena\nAdresa: ${_putnik.adresa}\n?? Pokušajte ponovo za 10 sekundi');
+                                                                '?? Lokacija nije pronadena\nAdresa: ${_putnik.adresa}\n?? Pokuï¿½ajte ponovo za 10 sekundi');
                                                           }
                                                         }
                                                       } catch (e) {
                                                         if (mounted && context.mounted) {
-                                                          AppSnackBar.error(context, '? Greška: ${e.toString()}');
+                                                          AppSnackBar.error(context, '? Greï¿½ka: ${e.toString()}');
                                                         }
                                                       }
                                                     },
@@ -1490,7 +1497,7 @@ class _PutnikCardState extends State<PutnikCard> {
                           _putnik.jeBolovanje
                               ? 'Bolovanje'
                               : _putnik.jeGodisnji
-                                  ? 'Godišnji'
+                                  ? 'Godiï¿½nji'
                                   : 'Odsustvo',
                           style: TextStyle(
                             fontSize: 13,
@@ -1502,7 +1509,7 @@ class _PutnikCardState extends State<PutnikCard> {
                     ],
                   ),
                 ),
-              // Status se prikazuje kroz ikone i boje (bolovanje/godišnji), 'radi' status se ne prikazuje
+              // Status se prikazuje kroz ikone i boje (bolovanje/godiï¿½nji), 'radi' status se ne prikazuje
             ], // kraj children liste za Column
           ), // kraj Column
         ), // kraj Padding
@@ -1569,6 +1576,8 @@ class _PutnikCardState extends State<PutnikCard> {
   // ?? CUVANJE PLACANJA - KOPIJA iz registrovani_putnici_screen.dart
   Future<void> _sacuvajPlacanjeStatic({
     required String putnikId,
+    required String putnikIme,
+    required String putnikTabela,
     required double iznos,
     required String mesec,
     required String vozacIme,
@@ -1599,12 +1608,15 @@ class _PutnikCardState extends State<PutnikCard> {
       // Ime vozaca se koristi za validaciju placanja u voznje_log
 
       // Koristi metodu koja postavlja vreme placanja na trenutni datum
-      final uspeh = await RegistrovaniPutnikService().azurirajPlacanjeZaMesec(
-        putnikId,
-        iznos,
-        vozacIme, // ??? FIX: šaljemo IME, ne UUID
-        pocetakMeseca,
-        krajMeseca,
+      final uspeh = await V2PutnikService().upisPlacanjaULog(
+        putnikId: putnikId,
+        putnikIme: putnikIme,
+        putnikTabela: putnikTabela,
+        iznos: iznos,
+        vozacIme: vozacIme,
+        datum: pocetakMeseca,
+        placeniMesec: pocetakMeseca.month,
+        placenaGodina: pocetakMeseca.year,
       );
 
       if (uspeh) {
@@ -1612,12 +1624,12 @@ class _PutnikCardState extends State<PutnikCard> {
           AppSnackBar.payment(context, '?? Placanje od ${iznos.toStringAsFixed(0)} RSD za $mesec je sacuvano');
         }
       } else {
-        // ? FIX: Baci exception da _executePayment ne prikaže uspešnu poruku
-        throw Exception('Greška pri cuvanju placanja u bazu');
+        // ? FIX: Baci exception da _executePayment ne prikaï¿½e uspeï¿½nu poruku
+        throw Exception('Greï¿½ka pri cuvanju placanja u bazu');
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, '? Greška: $e');
+        AppSnackBar.error(context, '? Greï¿½ka: $e');
       }
     }
   }
@@ -1665,12 +1677,12 @@ class _PutnikCardState extends State<PutnikCard> {
               // Opcije
               Column(
                 children: [
-                  // Otkaži
+                  // Otkaï¿½i
                   if (!_putnik.jeOtkazan)
                     ListTile(
                       leading: const Icon(Icons.close, color: Colors.orange),
-                      title: const Text('Otkaži putnika'),
-                      subtitle: const Text('Otkaži za trenutno vreme i datum'),
+                      title: const Text('Otkaï¿½i putnika'),
+                      subtitle: const Text('Otkaï¿½i za trenutno vreme i datum'),
                       onTap: () {
                         Navigator.pop(context);
                         _handleOtkazivanje();
@@ -1687,11 +1699,11 @@ class _PutnikCardState extends State<PutnikCard> {
                         _handleBezPolaska();
                       },
                     ),
-                  // Godišnji/Bolovanje
+                  // Godiï¿½nji/Bolovanje
                   if (_putnik.mesecnaKarta == true && !_putnik.jeOtkazan && !_putnik.jeOdsustvo)
                     ListTile(
                       leading: const Icon(Icons.beach_access, color: Colors.orange),
-                      title: const Text('Godišnji/Bolovanje'),
+                      title: const Text('Godiï¿½nji/Bolovanje'),
                       subtitle: const Text('Postavi odsustvo'),
                       onTap: () {
                         Navigator.pop(context);
@@ -1729,7 +1741,7 @@ class _PutnikCardState extends State<PutnikCard> {
           ),
         ),
         content: Text(
-          'Da li ste sigurni da želite da uklonite vreme polaska za ovog putnika?',
+          'Da li ste sigurni da ï¿½elite da uklonite vreme polaska za ovog putnika?',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
           ),
@@ -1788,7 +1800,7 @@ class _PutnikCardState extends State<PutnikCard> {
 
         if (mounted) {
           AppSnackBar.info(context, 'Vreme polaska je uklonjeno za danas.');
-          // Osvježi lokalno stanje
+          // Osvjeï¿½i lokalno stanje
           setState(() {
             _putnik = _putnik.copyWith(status: 'bez_polaska');
           });
@@ -1797,7 +1809,7 @@ class _PutnikCardState extends State<PutnikCard> {
         }
       } catch (e) {
         if (mounted) {
-          AppSnackBar.error(context, 'Greška: $e');
+          AppSnackBar.error(context, 'Greï¿½ka: $e');
         }
       }
     }
@@ -1871,7 +1883,7 @@ class _PutnikCardState extends State<PutnikCard> {
 
     if (confirm == true) {
       try {
-        // Otkaži seat_request za ovaj termin - postavi status 'otkazano' i upiši u voznje_log
+        // Otkaï¿½i seat_request za ovaj termin - postavi status 'otkazano' i upiï¿½i u voznje_log
         await PutnikService().otkaziPutnika(
           _putnik.id!,
           widget.currentDriver,
@@ -1883,7 +1895,7 @@ class _PutnikCardState extends State<PutnikCard> {
           status: 'otkazano',
         );
 
-        // Ažuriraj lokalni _putnik sa novim statusom
+        // Aï¿½uriraj lokalni _putnik sa novim statusom
         if (mounted) {
           setState(() {
             _putnik = _putnik.copyWith(status: 'otkazano');
@@ -1894,13 +1906,13 @@ class _PutnikCardState extends State<PutnikCard> {
         }
       } catch (e) {
         if (mounted) {
-          AppSnackBar.error(context, 'Greška: $e');
+          AppSnackBar.error(context, 'Greï¿½ka: $e');
         }
       }
     }
   }
 
-  // ?? POMOCNA METODA: Dobij koordinate za adresu (sa keširanjem i validacijom)
+  // ?? POMOCNA METODA: Dobij koordinate za adresu (sa keï¿½iranjem i validacijom)
   Future<Position?> _getKoordinateZaAdresu(String? grad, String? adresa, String? adresaId) async {
     if (adresa == null || adresa.isEmpty || adresa == 'Adresa nije definisana') return null;
 
@@ -1908,19 +1920,19 @@ class _PutnikCardState extends State<PutnikCard> {
       // Koristi UnifiedGeocodingService koji ima saVrsenu logiku (Baza -> API)
       final result = await UnifiedGeocodingService.getCoordinatesForPutnici(
         [_putnik],
-        saveToDatabase: true, // Automatski sacuvaj u bazu ako nadeš preko API-ja
+        saveToDatabase: true, // Automatski sacuvaj u bazu ako nadeï¿½ preko API-ja
       );
 
       if (result.isNotEmpty && result.containsKey(_putnik)) {
         return result[_putnik];
       }
     } catch (e) {
-      debugPrint('Greška pri dobijanju koordinata: $e');
+      debugPrint('Greï¿½ka pri dobijanju koordinata: $e');
     }
     return null;
   }
 
-  // ?? NAVIGACIJA — samo HERE WeGo
+  // ?? NAVIGACIJA ï¿½ samo HERE WeGo
   Future<void> _otvoriNavigaciju(Position position) async {
     final lat = position.latitude;
     final lng = position.longitude;
@@ -1932,7 +1944,7 @@ class _PutnikCardState extends State<PutnikCard> {
       if (await canLaunchUrl(hereUrl)) {
         await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
       } else {
-        // HERE WeGo nije instaliran — prikaži dialog
+        // HERE WeGo nije instaliran ï¿½ prikaï¿½i dialog
         if (mounted) {
           showDialog<void>(
             context: context,
@@ -1944,7 +1956,7 @@ class _PutnikCardState extends State<PutnikCard> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Otkaži'),
+                  child: const Text('Otkaï¿½i'),
                 ),
                 TextButton(
                   onPressed: () async {
@@ -1965,11 +1977,11 @@ class _PutnikCardState extends State<PutnikCard> {
         }
       }
     } catch (e) {
-      debugPrint('Greška pri otvaranju navigacije: $e');
+      debugPrint('Greï¿½ka pri otvaranju navigacije: $e');
     }
   }
 
-  // ?? PICKER ZA ODSUSTVO (Bolovanje / Godišnji)
+  // ?? PICKER ZA ODSUSTVO (Bolovanje / Godiï¿½nji)
   void _pokaziOdsustvoPicker() {
     showModalBottomSheet<void>(
       context: context,
@@ -1987,7 +1999,7 @@ class _PutnikCardState extends State<PutnikCard> {
             ),
             ListTile(
               leading: const Icon(Icons.beach_access, color: Colors.blue),
-              title: const Text('Godišnji odmor'),
+              title: const Text('Godiï¿½nji odmor'),
               onTap: () {
                 Navigator.pop(context);
                 _postaviOdsustvo('godisnji');
@@ -2011,11 +2023,11 @@ class _PutnikCardState extends State<PutnikCard> {
 
       if (mounted) {
         if (widget.onChanged != null) widget.onChanged!();
-        AppSnackBar.warning(context, 'Postavljeno: ${tip == 'bolovanje' ? 'Bolovanje' : 'Godišnji'}');
+        AppSnackBar.warning(context, 'Postavljeno: ${tip == 'bolovanje' ? 'Bolovanje' : 'Godiï¿½nji'}');
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, 'Greška: $e');
+        AppSnackBar.error(context, 'Greï¿½ka: $e');
       }
     }
   }

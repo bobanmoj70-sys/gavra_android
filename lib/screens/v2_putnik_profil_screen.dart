@@ -14,6 +14,7 @@ import '../services/theme_manager.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_putnik_push_service.dart'; // 📱 Push notifikacije za putnike
+import '../services/v2_putnik_service.dart';
 import '../services/weather_service.dart'; // 🌤️ Vremenska prognoza
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';

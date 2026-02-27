@@ -38,8 +38,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   // 🔄 REFRESH KEY: Forsira kreiranje novog stream-a nakon cuvanja
   int _streamRefreshKey = 0;
 
-  // Novi servis instance
-  final RegistrovaniPutnikService _registrovaniPutnikService = RegistrovaniPutnikService();
+  // V2 servis instance
+  final V2PutnikService _putnikService = V2PutnikService();
 
   // ?? OPTIMIZACIJA: Connection resilience
   StreamSubscription<dynamic>? _connectionSubscription;
@@ -576,7 +576,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
             Expanded(
               child: StreamBuilder<List<RegistrovaniPutnik>>(
                 // ? REMOVED: ValueKey - ispravljeno memory leak problem sa stream lifecycle-om
-                stream: RegistrovaniPutnikService.streamAktivniRegistrovaniPutnici(),
+                stream: _putnikService.streamAktivniPutnici(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                     return const Center(
@@ -990,8 +990,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                             ),
                             const SizedBox(width: 4),
                             StreamBuilder<int>(
-                              stream: Stream.fromFuture(
-                                  RegistrovaniPutnikService.izracunajBrojPutovanjaIzIstorije(putnik.id)),
+                              stream: Stream.fromFuture(_putnikService.izracunajBrojVoznji(putnik.id)),
                               builder: (context, snapshot) => Text(
                                 '${snapshot.data ?? 0}',
                                 style: TextStyle(
@@ -1033,8 +1032,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                             ),
                             const SizedBox(width: 4),
                             StreamBuilder<int>(
-                              stream: Stream.fromFuture(
-                                  RegistrovaniPutnikService.izracunajBrojOtkazivanjaIzIstorije(putnik.id)),
+                              stream: Stream.fromFuture(_putnikService.izracunajBrojOtkazivanja(putnik.id)),
                               builder: (context, snapshot) => Text(
                                 '${snapshot.data ?? 0}',
                                 style: TextStyle(
@@ -1174,9 +1172,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   Future<void> _toggleAktivnost(RegistrovaniPutnik putnik) async {
     final noviStatus = putnik.aktivan ? 'neaktivan' : 'aktivan';
     try {
-      await _registrovaniPutnikService.updateRegistrovaniPutnik(
+      await _putnikService.updatePutnik(
         putnik.id,
         {'status': noviStatus},
+        putnik.tabela,
       );
       if (mounted) {
         AppSnackBar.success(context, '${putnik.putnikIme} je ${noviStatus == 'aktivan' ? "aktiviran" : "deaktiviran"}');
@@ -1191,7 +1190,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   void _editPutnik(RegistrovaniPutnik putnik) {
     showDialog(
       context: context,
-      builder: (context) => RegistrovaniPutnikDialog(
+      builder: (context) => V2PutnikDialog(
         existingPutnik: putnik,
         onSaved: () {
           // ?? REFRESH: Inkrementiraj key da forsira novi stream sa svježim podacima
@@ -1212,9 +1211,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   void _showPinDialog(RegistrovaniPutnik putnik) {
     showDialog(
       context: context,
-      builder: (context) => PinDialog(
+      builder: (context) => V2PinDialog(
         putnikId: putnik.id,
         putnikIme: putnik.putnikIme,
+        putnikTabela: putnik.tabela,
         trenutniPin: putnik.pin,
         brojTelefona: putnik.brojTelefona,
       ),
@@ -1225,7 +1225,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => RegistrovaniPutnikDialog(
+      builder: (context) => V2PutnikDialog(
         existingPutnik: null, // null indicates adding mode
         onSaved: () {
           if (mounted) {
@@ -1307,7 +1307,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
     if (potvrda == true && mounted) {
       try {
-        final success = await _registrovaniPutnikService.obrisiRegistrovaniPutnik(putnik.id);
+        final success = await _putnikService.deletePutnik(putnik.id, putnik.tabela);
 
         if (success) {
           // logic simplified slightly if not needing immediate mount check
@@ -1462,7 +1462,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     String selectedMonth = _getCurrentMonthYear(); // Default current month
 
     // ?? FIX: Ucitaj stvarni ukupni iznos iz baze
-    final ukupnoPlaceno = await RegistrovaniPutnikService.dohvatiUkupnoPlaceno(putnik.id);
+    final ukupnoPlaceno = await _putnikService.dohvatiUkupnoPlaceno(putnik.id);
 
     // Default cena po danu za input field
     final cenaPoDanu = CenaObracunService.getCenaPoDanu(putnik);
@@ -1552,7 +1552,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                                       ),
                                       // ?? REALTIME: Vozac i datum poslednjeg placanja iz voznje_log
                                       StreamBuilder<Map<String, dynamic>?>(
-                                        stream: RegistrovaniPutnikService.streamPoslednjePlacanje(putnik.id),
+                                        stream: Stream.fromFuture(_putnikService.dohvatiPlacanja(putnik.id))
+                                            .map((lista) => lista.isNotEmpty ? lista.first : null),
                                         builder: (context, snapshot) {
                                           final placanje = snapshot.data;
                                           if (placanje == null) {
@@ -1735,7 +1736,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                     final iznos = double.tryParse(iznosController.text);
                     if (iznos != null && iznos > 0) {
                       Navigator.of(context).pop();
-                      await _sacuvajPlacanje(putnik.id, iznos, selectedMonth);
+                      await _sacuvajPlacanje(putnik, iznos, selectedMonth);
                     } else {
                       AppSnackBar.error(context, 'Unesite valjan iznos');
                     }
@@ -1771,7 +1772,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   Future<void> _sacuvajPlacanje(
-    String putnikId,
+    RegistrovaniPutnik putnik,
     double iznos,
     String mesec,
   ) async {
@@ -1782,12 +1783,15 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       // ?? Konvertuj string meseca u datume
       final Map<String, dynamic> datumi = _konvertujMesecUDatume(mesec);
 
-      final uspeh = await _registrovaniPutnikService.azurirajPlacanjeZaMesec(
-        putnikId,
-        iznos,
-        currentDriverName, // ?? FIX: Koristi IME vozaca za prikaz boja
-        datumi['pocetakMeseca'] as DateTime,
-        datumi['krajMeseca'] as DateTime,
+      final uspeh = await _putnikService.upisPlacanjaULog(
+        putnikId: putnik.id,
+        putnikIme: putnik.putnikIme,
+        putnikTabela: putnik.tabela,
+        iznos: iznos,
+        vozacIme: currentDriverName,
+        datum: datumi['pocetakMeseca'] as DateTime,
+        placeniMesec: (datumi['pocetakMeseca'] as DateTime).month,
+        placenaGodina: (datumi['pocetakMeseca'] as DateTime).year,
       );
 
       if (uspeh) {

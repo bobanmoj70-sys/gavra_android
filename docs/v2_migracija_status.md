@@ -39,19 +39,20 @@ Poslednje ažurirano: 2026-02-27
 | Fajl | Napomena |
 |---|---|
 | `realtime/v2_master_realtime_manager.dart` | ✅ JEDINI globalni realtime singleton, 17 cache-ova |
-| `realtime/realtime_manager.dart` | ⚠️ Zadržan (nije obrisan) — više ga ne koristi nijidan consumer fajl |
-| `main.dart` | ✅ V2MasterRealtimeManager.initialize() |
+| `realtime/realtime_manager.dart` | ⚠️ Zadržan u fajl sistemu (nije obrisan) — nijidan consumer fajl ga ne importuje |
+| `main.dart` | ✅ Samo V2MasterRealtimeManager.instance.initialize() |
 
 ### Screeni
 | Fajl | Napomena |
 |---|---|
-| `v2_home_screen.dart` | ✅ V2PolasciService umjesto SeatRequestService |
 | `v2_polasci_screen.dart` | ✅ V2PolasciService |
 | `v2_polasci_log_screen.dart` | ✅ V2PolasciService |
 | `registrovani_putnici_screen.dart` | ✅ V2PutnikService, v2_statistika_istorija |
 | `registrovani_putnik_login_screen.dart` | ✅ V2PutnikService.getSviAktivni() |
 | `v2_vozac_action_log_screen.dart` | ✅ V2MasterRealtimeManager, v2_statistika_istorija (stari vozac_action_log_screen.dart obrisan) |
 | `v2_vozac_screen.dart` | ✅ V2MasterRealtimeManager, v2_vozac_raspored, v2_vozac_putnik (preimenovan iz vozac_screen.dart) |
+| `vozac_raspored_screen.dart` | ✅ V2MasterRealtimeManager, v2_vozac_raspored, v2_vozac_putnik |
+| `v2_home_screen.dart` | ✅ V2MasterRealtimeManager.rasporedCache (+ V2PolasciService) |
 
 ### Widgeti
 | Fajl | Napomena |

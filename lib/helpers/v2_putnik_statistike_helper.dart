@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../models/registrovani_putnik.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_putnik_service.dart';
 
@@ -199,13 +200,13 @@ class PutnikStatistikeHelper {
   // 💰 DOHVATI PLAĆENE MESECE ZA PUTNIKA
   static Future<Set<String>> _getPlaceniMeseci(String putnikId) async {
     try {
-      final RegistrovaniPutnikService service = RegistrovaniPutnikService();
-      final svaPlacanja = await service.dohvatiPlacanjaZaPutnikaById(putnikId);
+      final V2PutnikService service = V2PutnikService();
+      final svaPlacanja = await service.dohvatiPlacanja(putnikId);
       final Set<String> placeni = {};
 
       for (var placanje in svaPlacanja) {
-        final mesec = placanje['placeniMesec'];
-        final godina = placanje['placenaGodina'];
+        final mesec = placanje['placeni_mesec'];
+        final godina = placanje['placena_godina'];
         if (mesec != null && godina != null) {
           placeni.add('$mesec-$godina');
         }
@@ -407,7 +408,8 @@ class PutnikStatistikeHelper {
           const Divider(),
           // 🔥 REALTIME: Datum, iznos i vozač poslednjeg plaćanja
           StreamBuilder<Map<String, dynamic>?>(
-            stream: RegistrovaniPutnikService.streamPoslednjePlacanje(putnikId),
+            stream: Stream.fromFuture(V2PutnikService().dohvatiPlacanja(putnikId))
+                .map((l) => l.isNotEmpty ? l.first : null),
             builder: (context, snapshot) {
               final placanje = snapshot.data;
               final datum = placanje?['datum'] as String?;
@@ -592,9 +594,9 @@ class PutnikStatistikeHelper {
 
   static Future<Map<String, dynamic>> _getStatistikeForPeriod(String putnikId, String period, String tipPutnika) async {
     try {
-      final RegistrovaniPutnikService service = RegistrovaniPutnikService();
       final placeniMeseci = await _getPlaceniMeseci(putnikId);
-      final putnikObj = await service.getRegistrovaniPutnikById(putnikId);
+      final putnikMap = await V2PutnikService().findPutnikById(putnikId);
+      final putnikObj = putnikMap != null ? RegistrovaniPutnik.fromMap(putnikMap) : null;
 
       Map<String, dynamic> stats = {};
 
@@ -713,8 +715,11 @@ class PutnikStatistikeHelper {
   }
 
   static Future<Map<String, dynamic>> _getUkupneStatistike(String putnikId, String tipPutnika) async {
-    final response =
-        await supabase.from('v2_statistika_istorija').select().eq('putnik_id', putnikId).order('datum', ascending: false);
+    final response = await supabase
+        .from('v2_statistika_istorija')
+        .select()
+        .eq('putnik_id', putnikId)
+        .order('datum', ascending: false);
 
     Map<String, int> dailyMaxVoznje = {};
     Map<String, int> dailyMaxOtkazivanja = {};

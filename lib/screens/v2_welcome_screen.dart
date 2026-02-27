@@ -129,7 +129,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
 
       // Traži dozvole za notifikacije
       try {
-        await PermissionService.requestNotificationPermission();
+        await Permission.notification.request();
       } catch (e) {
         // Silently ignore permission errors
       }

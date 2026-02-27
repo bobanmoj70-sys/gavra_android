@@ -375,7 +375,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final scaffoldMessenger = ScaffoldMessenger.of(ctx);
 
     // Ucitaj putnike kojima treba racun
-    final putnici = await RegistrovaniPutnikService().getPutniciZaRacun();
+    final sviPutnici = await V2PutnikService().getAllAktivniKaoModel();
+    final putnici = sviPutnici.where((p) => p.trebaRacun).toList();
 
     if (!mounted) return;
 
@@ -997,8 +998,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     List<Map<String, String>> dostupneAdrese = []; // ?? Lista adresa za dropdown
 
     // Povuci SVE registrovane putnike iz registrovani_putnici tabele (ucenici, radnici, dnevni)
-    final serviceInstance = RegistrovaniPutnikService();
-    final lista = await serviceInstance.getAllRegistrovaniPutnici();
+    final lista = await V2PutnikService().getAllAktivniKaoModel();
     // ?? Filtrirana lista aktivnih putnika za brzu pretragu
     final aktivniPutnici = lista.where((RegistrovaniPutnik putnik) => !putnik.obrisan && putnik.aktivan).toList()
       ..sort((a, b) => a.putnikIme.toLowerCase().compareTo(b.putnikIme.toLowerCase()));
@@ -2396,7 +2396,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       onTap: () {
                                         AnimatedNavigation.pushSmooth(
                                           context,
-                                          const SeatRequestsScreen(),
+                                          const V2PolasciScreen(),
                                         );
                                       },
                                     ),

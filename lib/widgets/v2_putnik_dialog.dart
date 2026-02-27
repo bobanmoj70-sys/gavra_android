@@ -37,7 +37,7 @@ class V2PutnikDialog extends StatefulWidget {
 }
 
 class _V2PutnikDialogState extends State<V2PutnikDialog> {
-  final RegistrovaniPutnikService _registrovaniPutnikService = RegistrovaniPutnikService();
+  final V2PutnikService _putnikService = V2PutnikService();
 
   // Form controllers
   final TextEditingController _imeController = TextEditingController();
@@ -1379,14 +1379,15 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
       final putnikData = _preparePutnikData();
 
       if (widget.isEditing) {
-        await _registrovaniPutnikService.updateRegistrovaniPutnik(
+        await _putnikService.updatePutnik(
           widget.existingPutnik!.id,
           putnikData,
+          widget.existingPutnik!.tabela,
         );
       } else {
-        await _registrovaniPutnikService.dodajMesecnogPutnika(
-          RegistrovaniPutnik.fromMap(putnikData),
-        );
+        // Odredi tabelu na osnovu tipa
+        final tabela = RegistrovaniPutnik.fromMap(putnikData).tabela;
+        await _putnikService.createPutnik(putnikData, tabela);
       }
 
       if (mounted) {
