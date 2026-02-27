@@ -309,7 +309,8 @@ class PutnikService {
                 vp['putnik_id']?.toString() == putnikIdStr &&
                 vp['dan']?.toString() == danKratica &&
                 vp['grad']?.toString().toUpperCase() == GradAdresaValidator.normalizeGrad(p.grad).toUpperCase() &&
-                vp['vreme']?.toString() == GradAdresaValidator.normalizeTime(p.polazak))
+                GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) ==
+                    GradAdresaValidator.normalizeTime(p.polazak))
             .toList();
         if (individualnaDodjela.isNotEmpty) {
           // Individualna dodjela postoji za ovaj dan+grad+vreme — prikaži samo ako je dodeljen OVOM vozaču

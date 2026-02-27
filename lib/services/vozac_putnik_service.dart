@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
+import '../utils/grad_adresa_validator.dart';
 import '../utils/vozac_cache.dart';
 import 'vozac_raspored_service.dart';
 
@@ -172,11 +173,16 @@ class VozacPutnikService {
     return sviPutnici.where((p) {
       final id = getId(p);
       final grad = getGrad(p);
-      final vreme = getPolazak(p);
+      // Normalizuj vreme za konzistentno poređenje ('07:00:00' → '07:00')
+      final vreme = GradAdresaValidator.normalizeTime(getPolazak(p));
 
       // 1. Provjeri per-putnik individualnu dodjelu
       final putnikDodjele = individualneDodjele
-          .where((e) => e.putnikId == id && e.dan == targetDan && e.grad == grad && e.vreme == vreme)
+          .where((e) =>
+              e.putnikId == id &&
+              e.dan == targetDan &&
+              e.grad.toUpperCase() == grad.toUpperCase() &&
+              GradAdresaValidator.normalizeTime(e.vreme) == vreme)
           .toList();
       if (putnikDodjele.isNotEmpty) {
         // Individualna dodjela postoji za ovaj dan+grad+vreme — prikaži samo ako je dodeljen MENI
@@ -184,7 +190,12 @@ class VozacPutnikService {
       }
 
       // 2. Nema individualne dodjele → provjeri termin-raspored
-      final terminEntries = raspored.where((r) => r.dan == targetDan && r.grad == grad && r.vreme == vreme).toList();
+      final terminEntries = raspored
+          .where((r) =>
+              r.dan == targetDan &&
+              r.grad.toUpperCase() == grad.toUpperCase() &&
+              GradAdresaValidator.normalizeTime(r.vreme) == vreme)
+          .toList();
       if (terminEntries.isEmpty) return false; // nema raspodele → putnik nije vidljiv
       return terminEntries.any(jeTerminVozacov);
     }).toList();
