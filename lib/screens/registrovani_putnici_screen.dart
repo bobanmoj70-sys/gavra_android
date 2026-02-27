@@ -1172,12 +1172,19 @@ class _RegistrovaniPutniciScreenState extends State<RegistrovaniPutniciScreen> {
   }
 
   Future<void> _toggleAktivnost(RegistrovaniPutnik putnik) async {
-    final success = await _registrovaniPutnikService.toggleAktivnost(putnik.id, !putnik.aktivan);
-
-    if (success && mounted) {
-      AppSnackBar.success(context, '${putnik.putnikIme} je ${!putnik.aktivan ? "aktiviran" : "deaktiviran"}');
-    } else if (mounted) {
-      AppSnackBar.error(context, 'Greška pri promeni statusa');
+    final noviStatus = putnik.aktivan ? 'neaktivan' : 'aktivan';
+    try {
+      await _registrovaniPutnikService.updateRegistrovaniPutnik(
+        putnik.id,
+        {'status': noviStatus},
+      );
+      if (mounted) {
+        AppSnackBar.success(context, '${putnik.putnikIme} je ${noviStatus == 'aktivan' ? "aktiviran" : "deaktiviran"}');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Greška pri promeni statusa');
+      }
     }
   }
 

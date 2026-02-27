@@ -3,19 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../constants/day_constants.dart';
 import '../globals.dart';
 import '../models/registrovani_putnik.dart';
-import '../services/admin_security_service.dart';
 import '../services/adresa_supabase_service.dart';
-import '../services/auth_manager.dart';
 import '../services/registrovani_putnik_service.dart';
 import '../services/voznje_log_service.dart'; // 📝 DODATO
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';
-import '../utils/grad_adresa_validator.dart';
-import '../utils/registrovani_helpers.dart';
-import '../widgets/shared/time_row.dart';
 
 /// UNIFIKOVANI WIDGET ZA DODAVANJE I EDITOVANJE MESEČNIH PUTNIKA
 ///
@@ -72,13 +66,6 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
   List<Map<String, String>> _adreseBelaCrkva = [];
   List<Map<String, String>> _adreseVrsac = [];
 
-  // Time controllers — map based for days (pon, uto, sre, cet, pet)
-  final Map<String, TextEditingController> _polazakBcControllers = {};
-  final Map<String, TextEditingController> _polazakVsControllers = {};
-
-  // Weekly seat_requests za tekuću sedmicu
-  List<Map<String, dynamic>> _weeklySeatRequests = [];
-
   // Form data
   String _tip = 'radnik';
 
@@ -87,8 +74,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
   @override
   void initState() {
     super.initState();
-    _initializeControllers();
-    _loadAdreseFromDatabase(); // Učitaj adrese
+    _loadAdreseFromDatabase();
     _loadDataFromExistingPutnik();
   }
 
@@ -127,48 +113,6 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     return normalize(a).compareTo(normalize(b));
   }
 
-  void _initializeControllers() {
-    // Initialize per-day time controllers
-    for (final dan in ['pon', 'uto', 'sre', 'cet', 'pet']) {
-      _polazakBcControllers[dan] = TextEditingController();
-      _polazakVsControllers[dan] = TextEditingController();
-
-      // Listener: kada korisnik izabere "Bez polaska" (prazno polje),
-      // ukloni lokalni seat_request iz _weeklySeatRequests da se status cell-a ažurira
-      _polazakBcControllers[dan]!.addListener(() {
-        if (_polazakBcControllers[dan]!.text.trim().isEmpty) {
-          _removeLocalSeatRequest(dan, isBC: true);
-        }
-      });
-      _polazakVsControllers[dan]!.addListener(() {
-        if (_polazakVsControllers[dan]!.text.trim().isEmpty) {
-          _removeLocalSeatRequest(dan, isBC: false);
-        }
-      });
-    }
-  }
-
-  /// Uklanja lokalni seat_request iz _weeklySeatRequests za dati dan/smer
-  /// da se status cell-a odmah ažurira u UI bez čekanja na bazu
-  void _removeLocalSeatRequest(String dan, {required bool isBC}) {
-    final targetDanKratica = dan.toLowerCase();
-
-    final updated = _weeklySeatRequests.where((req) {
-      final reqDan = req['dan']?.toString().toLowerCase() ?? '';
-      if (reqDan != targetDanKratica) return true; // zadrži
-      final grad = req['grad']?.toString() ?? '';
-      final targetGrad = isBC ? 'BC' : 'VS';
-      if (grad == targetGrad) return false; // ukloni
-      return true;
-    }).toList();
-
-    if (updated.length != _weeklySeatRequests.length) {
-      setState(() {
-        _weeklySeatRequests = updated;
-      });
-    }
-  }
-
   void _loadDataFromExistingPutnik() async {
     if (widget.isEditing) {
       final putnik = widget.existingPutnik!;
@@ -198,44 +142,6 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       _firmaMbController.text = putnik.firmaMb ?? '';
       _firmaZiroController.text = putnik.firmaZiro ?? '';
       _firmaAdresaController.text = putnik.firmaAdresa ?? '';
-
-      // Učitaj seat_requests za tekuću sedmicu — primarni izvor vremena
-      try {
-        final service = RegistrovaniPutnikService();
-        final seatRequests = await service.getWeeklySeatRequests(putnik.id);
-        if (mounted) {
-          setState(() {
-            _weeklySeatRequests = seatRequests;
-
-            // SINHRONIZACIJA KONTROLERA: Prikaži ono što je u seat_requests za tekuću nedelju
-            for (final dan in ['pon', 'uto', 'sre', 'cet', 'pet']) {
-              final bcOver = _getAnySeatRequestForDay(dan, true);
-              if (bcOver != null) {
-                final status = bcOver['status']?.toString().toLowerCase();
-                if (status == 'bez_polaska' || status == 'cancelled' || status == 'otkazano' || status == 'pokupljen') {
-                  _polazakBcControllers[dan]!.clear();
-                } else if (bcOver['zeljeno_vreme'] != null) {
-                  _polazakBcControllers[dan]!.text =
-                      GradAdresaValidator.normalizeTime(bcOver['zeljeno_vreme'].toString());
-                }
-              }
-
-              final vsOver = _getAnySeatRequestForDay(dan, false);
-              if (vsOver != null) {
-                final status = vsOver['status']?.toString().toLowerCase();
-                if (status == 'bez_polaska' || status == 'cancelled' || status == 'otkazano' || status == 'pokupljen') {
-                  _polazakVsControllers[dan]!.clear();
-                } else if (vsOver['zeljeno_vreme'] != null) {
-                  _polazakVsControllers[dan]!.text =
-                      GradAdresaValidator.normalizeTime(vsOver['zeljeno_vreme'].toString());
-                }
-              }
-            }
-          });
-        }
-      } catch (e) {
-        debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška pri učitavanju seat_requests: $e');
-      }
 
       // Load addresses asynchronously
       _loadAdreseForEditovanje();
@@ -304,75 +210,6 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     }
   }
 
-  /// 🕐 Helper da izvučemo status za određeni dan
-  String? _getStatusForDay(String day, bool isBC) {
-    final seatRequest = _getSeatRequestForDay(day, isBC);
-    if (seatRequest != null) {
-      final status = seatRequest['status']?.toString();
-      if (status == 'otkazano') return 'otkazano';
-      return status;
-    }
-
-    return null;
-  }
-
-  /// Helper za dobijanje seat_request-a za dan i smer
-  /// Preskače bez_polaska, cancelled, obrisan — koristi se za prikaz statusa
-  Map<String, dynamic>? _getSeatRequestForDay(String day, bool isBC) {
-    try {
-      final targetDan = day.toLowerCase();
-
-      for (final req in _weeklySeatRequests) {
-        final reqDan = req['dan']?.toString().toLowerCase() ?? '';
-        if (reqDan != targetDan) continue;
-
-        // Preskoči cancelled, bez_polaska, obrisan
-        final status = req['status']?.toString().toLowerCase() ?? '';
-        if (status == 'cancelled' || status == 'bez_polaska' || status == 'obrisan') {
-          continue;
-        }
-
-        // Poređenje grada (BC/VS)
-        final grad = req['grad']?.toString() ?? '';
-        final targetGrad = isBC ? 'BC' : 'VS';
-
-        if (grad == targetGrad) {
-          return req;
-        }
-      }
-    } catch (e) {
-      debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška u _getSeatRequestForDay: $e');
-    }
-    return null;
-  }
-
-  /// Helper koji vraća seat_request uključujući bez_polaska — koristi se za sinhronizaciju kontrolera
-  Map<String, dynamic>? _getAnySeatRequestForDay(String day, bool isBC) {
-    try {
-      final targetDan = day.toLowerCase();
-
-      for (final req in _weeklySeatRequests) {
-        final reqDan = req['dan']?.toString().toLowerCase() ?? '';
-        if (reqDan != targetDan) continue;
-
-        // Preskoči samo obrisan
-        final status = req['status']?.toString().toLowerCase() ?? '';
-        if (status == 'obrisan') continue;
-
-        // Poređenje grada (BC/VS)
-        final grad = req['grad']?.toString() ?? '';
-        final targetGrad = isBC ? 'BC' : 'VS';
-
-        if (grad == targetGrad) {
-          return req;
-        }
-      }
-    } catch (e) {
-      debugPrint('⚠️ [RegistrovaniPutnikDialog] Greška u _getAnySeatRequestForDay: $e');
-    }
-    return null;
-  }
-
   @override
   void dispose() {
     try {
@@ -392,13 +229,6 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       _firmaMbController.dispose();
       _firmaZiroController.dispose();
       _firmaAdresaController.dispose();
-
-      for (final c in _polazakBcControllers.values) {
-        c.dispose();
-      }
-      for (final c in _polazakVsControllers.values) {
-        c.dispose();
-      }
 
       super.dispose();
     } catch (e) {
@@ -533,8 +363,6 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
           _buildContactSection(),
           const SizedBox(height: 20),
           _buildAddressSection(),
-          const SizedBox(height: 20),
-          _buildTimesSection(),
         ],
       ),
     );
@@ -1015,111 +843,6 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                     _adreseVrsac.firstWhere((a) => a['id'] == value, orElse: () => {'naziv': ''})['naziv'] ?? '';
               });
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimesSection() {
-    return _buildGlassSection(
-      title: '🕐 Vremena polaska',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const SizedBox(width: 80), // Placeholder for day label
-              const SizedBox(width: 4),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  'BC',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(1, 1),
-                        blurRadius: 3,
-                        color: Colors.black54,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  'VS',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(1, 1),
-                        blurRadius: 3,
-                        color: Colors.black54,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TimeRow(
-            dayLabel: DayConstants.dayNamesInternal[0],
-            bcController: _polazakBcControllers['pon']!,
-            vsController: _polazakVsControllers['pon']!,
-            bcStatus: _getStatusForDay('pon', true),
-            vsStatus: _getStatusForDay('pon', false),
-            dayName: 'pon',
-            isAdmin: true,
-          ),
-          const SizedBox(height: 8),
-          TimeRow(
-            dayLabel: DayConstants.dayNamesInternal[1],
-            bcController: _polazakBcControllers['uto']!,
-            vsController: _polazakVsControllers['uto']!,
-            bcStatus: _getStatusForDay('uto', true),
-            vsStatus: _getStatusForDay('uto', false),
-            dayName: 'uto',
-            isAdmin: true,
-          ),
-          const SizedBox(height: 8),
-          TimeRow(
-            dayLabel: DayConstants.dayNamesInternal[2],
-            bcController: _polazakBcControllers['sre']!,
-            vsController: _polazakVsControllers['sre']!,
-            bcStatus: _getStatusForDay('sre', true),
-            vsStatus: _getStatusForDay('sre', false),
-            dayName: 'sre',
-            isAdmin: true,
-          ),
-          const SizedBox(height: 8),
-          TimeRow(
-            dayLabel: DayConstants.dayNamesInternal[3],
-            bcController: _polazakBcControllers['cet']!,
-            vsController: _polazakVsControllers['cet']!,
-            bcStatus: _getStatusForDay('cet', true),
-            vsStatus: _getStatusForDay('cet', false),
-            dayName: 'cet',
-            isAdmin: true,
-          ),
-          const SizedBox(height: 8),
-          TimeRow(
-            dayLabel: DayConstants.dayNamesInternal[4],
-            bcController: _polazakBcControllers['pet']!,
-            vsController: _polazakVsControllers['pet']!,
-            bcStatus: _getStatusForDay('pet', true),
-            vsStatus: _getStatusForDay('pet', false),
-            dayName: 'pet',
-            isAdmin: true,
           ),
         ],
       ),
@@ -1664,37 +1387,14 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
 
       final putnikData = _preparePutnikData();
 
-      // 🆕 PRIPREMA NOVOG RASPOREDA (za seat_requests)
-      // Format: {'pon': {'bc': '07:00', 'vs': null}, 'uto': {...}, ...}
-      // null vrednost znači "bez polaska" → briše postojeći seat_request
-      final Map<String, dynamic> weeklySchedule = {};
-      for (final dan in ['pon', 'uto', 'sre', 'cet', 'pet']) {
-        final bcVal = _polazakBcControllers[dan]?.text.trim() ?? '';
-        final vsVal = _polazakVsControllers[dan]?.text.trim() ?? '';
-
-        final bc = bcVal.isNotEmpty ? RegistrovaniHelpers.normalizeTime(bcVal) : null;
-        final vs = vsVal.isNotEmpty ? RegistrovaniHelpers.normalizeTime(vsVal) : null;
-
-        // Uvek uključi dan u raspored (sa null vrednostima za brisanje)
-        weeklySchedule[dan] = {'bc': bc, 'vs': vs};
-      }
-
-      final currentDriver = await AuthManager.getCurrentDriver();
-      final skipCheck = AdminSecurityService.isAdmin(currentDriver);
-
       if (widget.isEditing) {
         await _registrovaniPutnikService.updateRegistrovaniPutnik(
           widget.existingPutnik!.id,
           putnikData,
-          skipKapacitetCheck: skipCheck,
-          newWeeklySchedule: weeklySchedule, // 🆕 Prosleđujemo raspored
         );
       } else {
-        // Za novog putnika, kreiramo ga ODMAH sa rasporedom
         await _registrovaniPutnikService.dodajMesecnogPutnika(
           RegistrovaniPutnik.fromMap(putnikData),
-          skipKapacitetCheck: skipCheck,
-          initialSchedule: weeklySchedule, // 🆕 Prosleđujemo raspored
         );
       }
 
