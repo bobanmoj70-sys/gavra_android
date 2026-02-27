@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_manager.dart';
 import 'firebase_background_handler.dart';
-import 'local_notification_service.dart';
-import 'realtime_notification_service.dart';
+import 'v2_local_notification_service.dart';
+import 'v2_realtime_notification_service.dart';
 import 'v2_push_token_service.dart';
 
 class FirebaseService {
@@ -193,3 +193,5 @@ class FirebaseService {
     );
   }
 }
+
+

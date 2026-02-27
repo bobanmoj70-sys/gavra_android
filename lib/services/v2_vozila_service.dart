@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
-import 'realtime/realtime_manager.dart';
+import 'realtime/v2_master_realtime_manager.dart';
 
 /// 🚗 VOZILA SERVICE - Kolska knjiga
 /// Evidencija vozila i njihovo tehničko stanje
@@ -26,7 +26,7 @@ class V2VozilaService {
   /// Stream vozila sa realtime osvežavanjem
   static Stream<List<Vozilo>> streamVozila() {
     if (_vozilaSubscription == null) {
-      _vozilaSubscription = RealtimeManager.instance.subscribe('v2_vozila').listen((payload) {
+      _vozilaSubscription = V2MasterRealtimeManager.instance.subscribe('v2_vozila').listen((payload) {
         _refreshVozilaStream();
       });
       // Inicijalno učitavanje

@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/vozac.dart';
-import 'realtime/realtime_manager.dart';
+import 'realtime/v2_master_realtime_manager.dart';
 
 /// Servis za upravljanje vozačima
 class V2VozacService {
@@ -56,7 +56,7 @@ class V2VozacService {
         // Periodično proveravaj da li je Supabase postao spreman
         _waitForSupabaseAndSubscribe();
       } else {
-        _vozaciSubscription = RealtimeManager.instance.subscribe('v2_vozaci').listen((payload) {
+        _vozaciSubscription = V2MasterRealtimeManager.instance.subscribe('v2_vozaci').listen((payload) {
           _refreshVozaciStream();
         });
         // Inicijalno učitavanje
@@ -77,7 +77,7 @@ class V2VozacService {
       if (isSupabaseReady || attempts >= maxAttempts) {
         timer.cancel();
         if (isSupabaseReady && _vozaciSubscription == null) {
-          _vozaciSubscription = RealtimeManager.instance.subscribe('v2_vozaci').listen((payload) {
+          _vozaciSubscription = V2MasterRealtimeManager.instance.subscribe('v2_vozaci').listen((payload) {
             _refreshVozaciStream();
           });
           // Inicijalno učitavanje

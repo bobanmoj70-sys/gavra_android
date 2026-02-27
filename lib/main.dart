@@ -11,11 +11,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'globals.dart';
-import 'screens/welcome_screen.dart';
+import 'screens/v2_welcome_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/gps_foreground_service.dart'; // 🛰️ Android Foreground Service za GPS tracking
 import 'services/huawei_push_service.dart';
-import 'services/realtime/realtime_manager.dart'; // 🎯 Centralizovani realtime manager
+import 'services/realtime/realtime_manager.dart'; // 🎯 Centralizovani realtime manager (legacy)
+import 'services/realtime/v2_master_realtime_manager.dart'; // 🆕 V2 Master Realtime Manager
 import 'services/realtime_gps_service.dart'; // 🛰️ DODATO za cleanup
 import 'services/slobodna_mesta_service.dart';
 import 'services/theme_manager.dart'; // 🎨 Novi tema sistem
@@ -173,12 +174,15 @@ Future<void> _initAppServices() async {
   }
 
   // 🚗 Initialize VozacService stream JEDNOM - pokrenuti stream sa listen() da počne emisija
-  VozacService().streamAllVozaci().listen((_) {
+  V2VozacService().streamAllVozaci().listen((_) {
     // Samo slušamo, ne radimo ništa - samo da stream počne da emituje podatke
   });
 
-  // 🔔 Initialize centralized realtime manager (monitoring sve tabele)
+  // 🔔 Initialize centralized realtime manager (legacy — stare tabele)
   unawaited(RealtimeManager.instance.initializeAll());
+
+  // 🆕 Initialize V2 Master Realtime Manager (v2_ tabele)
+  unawaited(V2MasterRealtimeManager.instance.initialize());
 
   // 🚐 Realtime & AI (bez čekanja ikoga)
   // NOTE: RouteService.setupRealtimeListener() je sada dio RealtimeManager.initializeAll()

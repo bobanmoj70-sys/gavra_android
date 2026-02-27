@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../globals.dart';
-import '../screens/home_screen.dart';
 import '../screens/pin_zahtevi_screen.dart';
+import '../screens/v2_home_screen.dart';
 import '../screens/v2_putnik_profil_screen.dart';
 import '../screens/v2_vozac_screen.dart';
 import 'realtime/v2_master_realtime_manager.dart';

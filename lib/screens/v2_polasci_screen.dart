@@ -7,14 +7,14 @@ import '../services/v2_polasci_service.dart';
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';
 
-class SeatRequestsScreen extends StatefulWidget {
-  const SeatRequestsScreen({super.key});
+class V2PolasciScreen extends StatefulWidget {
+  const V2PolasciScreen({super.key});
 
   @override
-  State<SeatRequestsScreen> createState() => _SeatRequestsScreenState();
+  State<V2PolasciScreen> createState() => _V2PolasciScreenState();
 }
 
-class _SeatRequestsScreenState extends State<SeatRequestsScreen> {
+class _V2PolasciScreenState extends State<V2PolasciScreen> {
   bool _isLoading = false;
 
   @override

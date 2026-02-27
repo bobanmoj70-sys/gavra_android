@@ -4,30 +4,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../globals.dart';
+import '../services/v2_putnik_service.dart';
 import '../utils/app_snack_bar.dart';
 
 /// PIN DIALOG za mesečne putnike
 /// Prikazuje/generiše/šalje PIN kod
-class PinDialog extends StatefulWidget {
+class V2PinDialog extends StatefulWidget {
   final String putnikId;
   final String putnikIme;
+  final String putnikTabela;
   final String? trenutniPin;
   final String? brojTelefona;
 
-  const PinDialog({
+  const V2PinDialog({
     super.key,
     required this.putnikId,
     required this.putnikIme,
+    required this.putnikTabela,
     this.trenutniPin,
     this.brojTelefona,
   });
 
   @override
-  State<PinDialog> createState() => _PinDialogState();
+  State<V2PinDialog> createState() => _V2PinDialogState();
 }
 
-class _PinDialogState extends State<PinDialog> {
+class _V2PinDialogState extends State<V2PinDialog> {
   late String? _pin;
   bool _isLoading = false;
 
@@ -48,7 +50,7 @@ class _PinDialogState extends State<PinDialog> {
     setState(() => _isLoading = true);
 
     try {
-      await supabase.from('registrovani_putnici').update({'pin': newPin}).eq('id', widget.putnikId);
+      await V2PutnikService().updatePin(widget.putnikId, newPin, widget.putnikTabela);
 
       setState(() {
         _pin = newPin;

@@ -12,8 +12,8 @@ import '../utils/app_snack_bar.dart';
 import '../utils/grad_adresa_validator.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_notification_navigation_service.dart';
-import 'v2_polasci_service.dart';
 import 'v2_realtime_notification_service.dart';
+import 'v2_polasci_service.dart';
 import 'v2_statistika_istorija_service.dart';
 import 'wake_lock_service.dart';
 
@@ -517,8 +517,12 @@ class LocalNotificationService {
       final tabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
       String? putnikId;
       for (final tabela in tabele) {
-        final row =
-            await supabase.from(tabela).select('id').eq('ime', putnikIme).neq('status', 'neaktivan').maybeSingle();
+        final row = await supabase
+            .from(tabela)
+            .select('id')
+            .eq('ime', putnikIme)
+            .neq('status', 'neaktivan')
+            .maybeSingle();
         if (row != null) {
           putnikId = row['id'] as String;
           break;

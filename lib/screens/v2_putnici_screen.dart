@@ -24,14 +24,14 @@ extension SetExtensions<T> on Set<T> {
   }
 }
 
-class RegistrovaniPutniciScreen extends StatefulWidget {
-  const RegistrovaniPutniciScreen({super.key});
+class V2PutniciScreen extends StatefulWidget {
+  const V2PutniciScreen({super.key});
 
   @override
-  State<RegistrovaniPutniciScreen> createState() => _RegistrovaniPutniciScreenState();
+  State<V2PutniciScreen> createState() => _V2PutniciScreenState();
 }
 
-class _RegistrovaniPutniciScreenState extends State<RegistrovaniPutniciScreen> {
+class _V2PutniciScreenState extends State<V2PutniciScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'svi'; // 'svi', 'radnik', 'ucenik', 'dnevni'
 
@@ -100,8 +100,8 @@ class _RegistrovaniPutniciScreenState extends State<RegistrovaniPutniciScreen> {
     // Periodiski ping server da proveri konekciju (svakih 30 sekundi)
     _connectionSubscription = Stream.periodic(const Duration(seconds: 30)).listen((_) async {
       try {
-        // Pokušaj da učitaš jedan registrovani putnik - brz test konekcije
-        await V2PutnikService().getSviAktivni().then((l) => l.take(1).toList());
+        // Ping: dohvati jedan red iz v2_radnici
+        await supabase.from('v2_radnici').select('id').limit(1).maybeSingle();
         if (_isConnected == false && mounted) {
           setState(() => _isConnected = true);
         }

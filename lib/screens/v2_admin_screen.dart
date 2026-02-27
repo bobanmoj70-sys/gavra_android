@@ -29,9 +29,9 @@ import 'pin_zahtevi_screen.dart'; // ?? PIN ZAHTEVI
 import 'v2_polasci_log_screen.dart'; // ?? Log svih zahteva
 import 'v2_putnici_screen.dart';
 import 'v2_vozac_action_log_screen.dart'; // ?? Dnevnik akcija vozaca
-import 'vozac_raspored_screen.dart'; // ??? Raspored vozaca
 import 'v2_vozac_screen.dart';
-import 'vozaci_admin_screen.dart'; // Admin panel za upravljanje vozacima
+import 'v2_vozaci_admin_screen.dart'; // Admin panel za upravljanje vozacima
+import 'vozac_raspored_screen.dart'; // ??? Raspored vozaca
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});

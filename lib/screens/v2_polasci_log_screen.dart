@@ -7,14 +7,14 @@ import '../services/v2_polasci_service.dart';
 import '../theme.dart';
 
 /// 📋 Audit/log ekran za SVE seat_requests — admin pregled celog toka zahteva
-class SeatRequestsLogScreen extends StatefulWidget {
-  const SeatRequestsLogScreen({super.key});
+class V2PolasciLogScreen extends StatefulWidget {
+  const V2PolasciLogScreen({super.key});
 
   @override
-  State<SeatRequestsLogScreen> createState() => _SeatRequestsLogScreenState();
+  State<V2PolasciLogScreen> createState() => _V2PolasciLogScreenState();
 }
 
-class _SeatRequestsLogScreenState extends State<SeatRequestsLogScreen> {
+class _V2PolasciLogScreenState extends State<V2PolasciLogScreen> {
   // Filteri
   String _gradFilter = 'BC'; // 'BC' ili 'VS'
   final Set<String> _statusFilter = {}; // prazno = svi statusi

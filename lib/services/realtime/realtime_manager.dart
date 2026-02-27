@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../globals.dart';
 import 'realtime_config.dart';
 import 'realtime_status.dart';
+import 'v2_master_realtime_manager.dart';
 
 /// Centralizovani manager za sve Supabase Realtime konekcije i in-memory cache.
 ///
@@ -171,20 +172,12 @@ class RealtimeManager {
 
   Future<void> _loadRpCache() async {
     try {
-      final rows = await _supabase
-          .from('registrovani_putnici')
-          .select('id, putnik_ime, broj_telefona, broj_telefona_2, broj_telefona_oca, '
-              'broj_telefona_majke, tip, tip_skole, adresa_bela_crkva_id, adresa_vrsac_id, '
-              'datum_pocetka_meseca, datum_kraja_meseca, created_at, updated_at, '
-              'status, obrisan, is_duplicate, tip_prikazivanja, '
-              'pin, email, cena_po_danu, treba_racun, '
-              'firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa, broj_mesta')
-          .neq('status', 'neaktivan')
-          .eq('obrisan', false);
-      for (final row in rows) {
-        rpCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      final putnici = V2MasterRealtimeManager.instance.getAllPutnici();
+      for (final row in putnici) {
+        final id = row['id']?.toString();
+        if (id != null) rpCache[id] = Map<String, dynamic>.from(row);
       }
-      debugPrint('📦 [RealtimeManager] rpCache: ${rpCache.length} redova');
+      debugPrint('📦 [RealtimeManager] rpCache: ${rpCache.length} redova (iz V2MasterRealtimeManager)');
     } catch (e) {
       debugPrint('❌ [RealtimeManager] _loadRpCache error: $e');
     }

@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../globals.dart';
 import 'firebase_service.dart';
 import 'huawei_push_service.dart';
 import 'realtime/v2_master_realtime_manager.dart';

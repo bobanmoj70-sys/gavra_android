@@ -8,13 +8,13 @@ import '../models/seat_request.dart';
 import '../utils/grad_adresa_validator.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
-/// Servis za upravljanje aktivnim zahtevima za sedišta (seat_requests tabela)
-class V2SeatRequestService {
+/// Servis za upravljanje aktivnim zahtevima za sedišta (v2_polasci tabela)
+class V2PolasciService {
   static SupabaseClient get _supabase => supabase;
 
   /// ✅ UNIFIKOVANA ULAZNA TAČKA — koriste je svi akteri (putnik, admin, vozač)
   ///
-  /// Model: dan + grad + zeljeno_vreme → upsert u seat_requests
+  /// Model: dan + grad + zeljeno_vreme → upsert u v2_polasci
   ///
   /// - [isAdmin] = true → status='confirmed', dodeljeno_vreme=vreme odmah (vozač/admin ručno dodaje)
   /// - [isAdmin] = false → status='pending' (putnik šalje zahtev, backend obrađuje)
@@ -54,7 +54,7 @@ class V2SeatRequestService {
           if (isAdmin) 'dodeljeno_vreme': '$normVreme:00',
           'updated_at': nowStr,
         }).eq('id', existing['id']);
-        debugPrint('✅ [V2SeatRequestService] submitPolazak UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
+        debugPrint('✅ [V2PolasciService] submitPolazak UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
       } else {
         await _supabase.from('v2_polasci').insert({
           'putnik_id': putnikId,
@@ -68,10 +68,10 @@ class V2SeatRequestService {
           'created_at': nowStr,
           'updated_at': nowStr,
         });
-        debugPrint('✅ [V2SeatRequestService] submitPolazak INSERT $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
+        debugPrint('✅ [V2PolasciService] submitPolazak INSERT $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
       }
     } catch (e) {
-      debugPrint('❌ [V2SeatRequestService] submitPolazak error: $e');
+      debugPrint('❌ [V2PolasciService] submitPolazak error: $e');
       rethrow;
     }
   }
@@ -97,7 +97,7 @@ class V2SeatRequestService {
 
       return true;
     } catch (e) {
-      debugPrint('❌ [V2SeatRequestService] Error approving request: $e');
+      debugPrint('❌ [V2PolasciService] Error approving request: $e');
       return false;
     }
   }
@@ -114,7 +114,7 @@ class V2SeatRequestService {
 
       return true;
     } catch (e) {
-      debugPrint('❌ [V2SeatRequestService] Error rejecting request: $e');
+      debugPrint('❌ [V2PolasciService] Error rejecting request: $e');
       return false;
     }
   }
@@ -131,7 +131,7 @@ class V2SeatRequestService {
           controller.add(data.map((json) => SeatRequest.fromJson(json)).toList());
         }
       } catch (e) {
-        debugPrint('❌ [V2SeatRequestService] streamManualRequests fetch error: $e');
+        debugPrint('❌ [V2PolasciService] streamManualRequests fetch error: $e');
       }
     }
 
@@ -171,7 +171,7 @@ class V2SeatRequestService {
           controller.add(data.map((json) => SeatRequest.fromJson(json)).toList());
         }
       } catch (e) {
-        debugPrint('❌ [V2SeatRequestService] streamSviZahtevi fetch error: $e');
+        debugPrint('❌ [V2PolasciService] streamSviZahtevi fetch error: $e');
       }
     }
 
@@ -196,7 +196,7 @@ class V2SeatRequestService {
           controller.add((data as List).length);
         }
       } catch (e) {
-        debugPrint('❌ [V2SeatRequestService] streamManualRequestCount fetch error: $e');
+        debugPrint('❌ [V2PolasciService] streamManualRequestCount fetch error: $e');
       }
     }
 
@@ -374,7 +374,7 @@ class V2SeatRequestService {
 
       return processedCount;
     } catch (e) {
-      debugPrint('❌ [V2SeatRequestService] Error u digitalnom dispečeru: $e');
+      debugPrint('❌ [V2PolasciService] Error u digitalnom dispečeru: $e');
       return 0;
     }
   }
@@ -415,8 +415,48 @@ class V2SeatRequestService {
       }
       return true;
     } catch (e) {
-      debugPrint('❌ [V2SeatRequestService] Error accepting alternative: $e');
+      debugPrint('❌ [V2PolasciService] Error accepting alternative: $e');
       return false;
+    }
+  }
+
+  /// 🗑️ Uklanja polazak — postavlja status na 'bez_polaska'
+  static Future<void> ukloniPolazak(
+    String putnikId, {
+    required String grad,
+    required String dan,
+    String? vreme,
+    String? requestId,
+  }) async {
+    try {
+      final gradKey = GradAdresaValidator.normalizeGrad(grad);
+      final danKey = dan.toLowerCase();
+      final nowStr = DateTime.now().toUtc().toIso8601String();
+      final updates = {
+        'status': 'bez_polaska',
+        'processed_at': nowStr,
+        'updated_at': nowStr,
+      };
+
+      // Prioritet: po requestId
+      if (requestId != null && requestId.isNotEmpty) {
+        await _supabase.from('v2_polasci').update(updates).eq('id', requestId);
+        return;
+      }
+
+      // Fallback: po putnik_id + dan + grad (+ vreme ako ima)
+      var query =
+          _supabase.from('v2_polasci').update(updates).eq('putnik_id', putnikId).eq('dan', danKey).eq('grad', gradKey);
+
+      if (vreme != null && vreme.isNotEmpty) {
+        final normVreme = GradAdresaValidator.normalizeTime(vreme);
+        query = query.eq('zeljeno_vreme', '$normVreme:00');
+      }
+
+      await query;
+    } catch (e) {
+      debugPrint('❌ [V2PolasciService] ukloniPolazak error: $e');
+      rethrow;
     }
   }
 }

@@ -17,8 +17,8 @@ import '../utils/vozac_cache.dart';
 import 'o_nama_screen.dart';
 import 'v2_home_screen.dart';
 import 'v2_putnik_login_screen.dart';
+import 'v2_vozac_login_screen.dart';
 import 'v2_vozac_screen.dart';
-import 'vozac_login_screen.dart';
 
 Widget _getScreenForDriver(String driverName) {
   // VozaÄi koji koriste VozacScreen umesto HomeScreen

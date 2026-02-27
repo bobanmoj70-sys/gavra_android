@@ -3,22 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/biometric_service.dart';
-import '../services/putnik_push_service.dart';
 import '../services/v2_pin_zahtev_service.dart';
+import '../services/v2_putnik_push_service.dart';
 import '../services/v2_putnik_service.dart';
 import '../theme.dart';
-import 'registrovani_putnik_profil_screen.dart';
+import 'v2_putnik_profil_screen.dart';
 
-class RegistrovaniPutnikLoginScreen extends StatefulWidget {
-  const RegistrovaniPutnikLoginScreen({super.key});
+class V2PutnikLoginScreen extends StatefulWidget {
+  const V2PutnikLoginScreen({super.key});
 
   @override
-  State<RegistrovaniPutnikLoginScreen> createState() => _RegistrovaniPutnikLoginScreenState();
+  State<V2PutnikLoginScreen> createState() => _V2PutnikLoginScreenState();
 }
 
 enum _LoginStep { telefon, email, pin, izborPutnika, zahtevPoslat }
 
-class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginScreen> {
+class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   final _telefonController = TextEditingController();
   final _emailController = TextEditingController();
   final _pinController = TextEditingController();
@@ -28,12 +28,12 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
   String? _errorMessage;
   String? _infoMessage;
 
-  // Podaci o pronađenom putniku
+  // Podaci o pronadenom putniku
   Map<String, dynamic>? _putnikData;
-  // Lista mogućih putnika (kod deljenih brojeva/pina)
+  // Lista mogucih putnika (kod deljenih brojeva/pina)
   List<Map<String, dynamic>>? _putnikCandidates;
 
-  // 🔐 Biometrija
+  // ?? Biometrija
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
   String _biometricTypeText = 'otisak prsta';
@@ -45,7 +45,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     _checkSavedLogin();
   }
 
-  /// 🔐 Proveri dostupnost biometrije
+  /// ?? Proveri dostupnost biometrije
   Future<void> _checkBiometric() async {
     final available = await BiometricService.isBiometricAvailable();
     final enabled = await BiometricService.isBiometricEnabled();
@@ -60,15 +60,15 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     }
   }
 
-  /// Proveri da li je putnik već ulogovan
+  /// Proveri da li je putnik vec ulogovan
   Future<void> _checkSavedLogin() async {
-    // 🔐 Prvo proveri biometrijsku prijavu
+    // ?? Prvo proveri biometrijsku prijavu
     if (_biometricAvailable && _biometricEnabled) {
       final credentials = await BiometricService.getSavedCredentials();
       if (credentials != null) {
         // Pokušaj biometrijsku autentifikaciju
         final authenticated = await BiometricService.authenticate(
-          reason: 'Prijavite se pomoću $_biometricTypeText',
+          reason: 'Prijavite se pomocu $_biometricTypeText',
         );
 
         if (authenticated && mounted) {
@@ -93,7 +93,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     }
   }
 
-  /// 📱 Normalizuje broj telefona za poređenje
+  /// ?? Normalizuje broj telefona za poredenje
   String _normalizePhone(String telefon) {
     var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
     if (cleaned.startsWith('+381')) {
@@ -123,32 +123,12 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       // Normalizuj uneti broj
       final normalizedInput = _normalizePhone(telefon);
 
-      // Traži putnika — dohvati sve koji nisu obrisani
-      final allPutnici = await V2PutnikService().getSviAktivni();
+      // Traži putnika po telefonu kroz sve v2_ tabele
+      final found = await V2PutnikService().findByTelefon(telefon);
 
-      // Pronađi putnika sa istim normalizovanim brojem
       Map<String, dynamic>? response;
-      for (final p in allPutnici) {
-        final storedPhone = p['broj_telefona'] as String? ?? '';
-        if (_normalizePhone(storedPhone) == normalizedInput) {
-          // Ako smo našli duplikat, proveravamo da li postoji "master" zapis na koji treba preći
-          if (p['is_duplicate'] == true && p['merged_into_id'] != null) {
-            final masterId = p['merged_into_id'];
-            // Pokušaj da nađeš mastera u listi koju već imamo
-            final master = allPutnici.firstWhere(
-              (m) => m['id'] == masterId,
-              orElse: () => <String, dynamic>{},
-            );
-
-            if (master.isNotEmpty) {
-              response = Map<String, dynamic>.from(master);
-              break;
-            }
-          }
-
-          response = Map<String, dynamic>.from(p);
-          break;
-        }
+      if (found != null) {
+        response = found;
       }
 
       if (response != null) {
@@ -161,16 +141,16 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
           // Nema email - traži ga
           setState(() {
             _currentStep = _LoginStep.email;
-            _infoMessage = 'Pronađeni ste! Unesite email za kontakt.';
+            _infoMessage = 'Pronadeni ste! Unesite email za kontakt.';
           });
         } else if (pin == null || pin.isEmpty) {
           // Ima email ali nema PIN
-          // Proveri da li je već poslao zahtev
+          // Proveri da li je vec poslao zahtev
           final imaZahtev = await V2PinZahtevService.imaZahtevKojiCeka(response['id']);
           if (imaZahtev) {
             setState(() {
               _currentStep = _LoginStep.zahtevPoslat;
-              _infoMessage = 'Vaš zahtev za PIN je već poslat. Molimo sačekajte da admin odobri.';
+              _infoMessage = 'Vaš zahtev za PIN je vec poslat. Molimo sacekajte da admin odobri.';
             });
           } else {
             // Ponudi da pošalje zahtev
@@ -185,7 +165,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
         }
       } else {
         setState(() {
-          _errorMessage = 'Niste pronađeni u sistemu.\nKontaktirajte admina za registraciju.';
+          _errorMessage = 'Niste pronadeni u sistemu.\nKontaktirajte admina za registraciju.';
         });
       }
     } catch (e) {
@@ -199,7 +179,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     }
   }
 
-  /// Korak 2: Sačuvaj email i proveri dalje
+  /// Korak 2: Sacuvaj email i proveri dalje
   Future<void> _saveEmail() async {
     final email = _emailController.text.trim();
 
@@ -215,7 +195,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       return;
     }
 
-    // Dodatne provere za očigledne gluposti
+    // Dodatne provere za ocigledne gluposti
     final emailLower = email.toLowerCase();
     final localPart = emailLower.split('@')[0]; // deo pre @
     final domainPart = emailLower.split('@')[1]; // deo posle @
@@ -226,7 +206,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       return;
     }
 
-    // Blokiraj ponavljajuće karaktere (aaa@, bbb@, 111@)
+    // Blokiraj ponavljajuce karaktere (aaa@, bbb@, 111@)
     if (RegExp(r'^(.)\1{2,}').hasMatch(localPart)) {
       setState(() => _errorMessage = 'Unesite stvarnu email adresu');
       return;
@@ -246,12 +226,13 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
 
     try {
       final putnikId = _putnikData!['id'] as String;
+      final putnikTabela = _putnikData!['_tabela'] as String? ?? 'v2_radnici';
 
-      // Sačuvaj email u bazi
+      // Sacuvaj email u bazi
       final success = await V2PinZahtevService.azurirajEmail(
         putnikId: putnikId,
         email: email,
-        putnikTabela: _putnikData!['_tabela'] as String? ?? 'v2_radnici',
+        putnikTabela: putnikTabela,
       );
 
       if (success) {
@@ -265,11 +246,11 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
           // Ima PIN - idi na unos PIN-a
           setState(() {
             _currentStep = _LoginStep.pin;
-            _infoMessage = 'Email sačuvan! Unesite svoj 4-cifreni PIN';
+            _infoMessage = 'Email sacuvan! Unesite svoj 4-cifreni PIN';
           });
         }
       } else {
-        setState(() => _errorMessage = 'Greška pri čuvanju email-a');
+        setState(() => _errorMessage = 'Greška pri cuvanju email-a');
       }
     } catch (e) {
       setState(() => _errorMessage = 'Greška: $e');
@@ -305,7 +286,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(this.context); // Vrati na početni ekran
+              Navigator.pop(this.context); // Vrati na pocetni ekran
             },
             child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
           ),
@@ -343,7 +324,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       if (success) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Zahtev je uspešno poslat! Admin će vam dodeliti PIN.';
+          _infoMessage = 'Zahtev je uspešno poslat! Admin ce vam dodeliti PIN.';
         });
       } else {
         setState(() => _errorMessage = 'Greška pri slanju zahteva');
@@ -378,19 +359,19 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     });
 
     try {
-      // 📱 Normalizuj uneti broj za poređenje (isti kao u _checkTelefon)
+      // ?? Normalizuj uneti broj za poredenje (isti kao u _checkTelefon)
       final normalizedInput = _normalizePhone(telefon);
 
-      // Traži putnika — dohvati sve sa PIN-om i uporedi normalizovane brojeve
-      final allPutnici = await V2PutnikService().getSviAktivni();
-      final pinPutnici = allPutnici.where((p) => (p['pin'] as String?) == pin).toList();
-
-      // Pronađi SVE putnike sa istim normalizovanim brojem i istim PIN-om
+      // Traži putnika po PIN-u kroz sve v2_ tabele, pa filtriraj po telefonu
+      final tabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
       List<Map<String, dynamic>> matches = [];
-      for (final p in pinPutnici) {
-        final storedPhone = p['broj_telefona'] as String? ?? '';
-        if (_normalizePhone(storedPhone) == normalizedInput) {
-          matches.add(Map<String, dynamic>.from(p));
+      for (final tabela in tabele) {
+        final found = await V2PutnikService().getByPin(pin, tabela);
+        if (found != null) {
+          final storedPhone = found['telefon'] as String? ?? '';
+          if (_normalizePhone(storedPhone) == normalizedInput) {
+            matches.add(found);
+          }
         }
       }
 
@@ -399,7 +380,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
         setState(() {
           _putnikCandidates = matches;
           _currentStep = _LoginStep.izborPutnika;
-          _infoMessage = 'Pronađeno je više korisnika na ovom broju. Izaberite svoj profil:';
+          _infoMessage = 'Pronadeno je više korisnika na ovom broju. Izaberite svoj profil:';
         });
         return;
       }
@@ -412,7 +393,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
         setState(() {
           _errorMessage = 'Pogrešan PIN ili broj telefona. Pokušajte ponovo.';
         });
-        // ... (očisti saved credentials ako treba)
+        // ... (ocisti saved credentials ako treba)
       }
     } catch (e) {
       if (kDebugMode) print('Login error: $e');
@@ -422,7 +403,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     }
   }
 
-  /// Pomoćna funkcija za izVrsavanje logina nakon uspešne identifikacije
+  /// Pomocna funkcija za izVrsavanje logina nakon uspešne identifikacije
   Future<void> _performLogin(
     Map<String, dynamic> response,
     String telefon,
@@ -430,12 +411,12 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     bool showBiometricPrompt,
   ) async {
     try {
-      // Sačuvaj za auto-login
+      // Sacuvaj za auto-login
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('registrovani_putnik_telefon', telefon);
       await prefs.setString('registrovani_putnik_pin', pin);
 
-      // 🎯 FIX: Sačuvaj ID i Ime za Firebase/Push token osvežavanje
+      // ?? FIX: Sacuvaj ID i Ime za Firebase/Push token osvežavanje
       final putnikId = response['id'];
       final putnikIme = response['putnik_ime'] ?? response['ime_prezime'] ?? 'Putnik';
 
@@ -444,10 +425,10 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
         await prefs.setString('registrovani_putnik_ime', putnikIme.toString());
       }
 
-      // 📱 Registruj push token za notifikacije
+      // ?? Registruj push token za notifikacije
       if (putnikId != null) {
         await PutnikPushService.registerPutnikToken(putnikId);
-      } // 🔐 Ponudi biometrijsku prijavu ako je dostupna i nije već uključena
+      } // ?? Ponudi biometrijsku prijavu ako je dostupna i nije vec ukljucena
       if (showBiometricPrompt && _biometricAvailable && !_biometricEnabled && mounted) {
         await _showBiometricSetupDialog(telefon, pin);
       }
@@ -457,7 +438,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => RegistrovaniPutnikProfilScreen(
+            builder: (context) => V2PutnikProfilScreen(
               putnikData: response,
             ),
           ),
@@ -468,7 +449,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     }
   }
 
-  /// 🔐 Ponudi setup biometrijske prijave
+  /// ?? Ponudi setup biometrijske prijave
   Future<void> _showBiometricSetupDialog(String phone, String pin) async {
     final biometricIcon = await BiometricService.getBiometricIcon();
 
@@ -493,7 +474,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
           ],
         ),
         content: Text(
-          'Želite li ubuduće da se prijavljujete pomoću $_biometricTypeText?\n\nNećete morati da unosite PIN svaki put.',
+          'Želite li ubuduce da se prijavljujete pomocu $_biometricTypeText?\n\nNecete morati da unosite PIN svaki put.',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -504,7 +485,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            child: Text('Uključi $_biometricTypeText', style: const TextStyle(color: Colors.black)),
+            child: Text('Ukljuci $_biometricTypeText', style: const TextStyle(color: Colors.black)),
           ),
         ],
       ),
@@ -678,7 +659,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
                         ),
                       ),
                       child: const Text(
-                        '← Nazad na početnu',
+                        '? Nazad na pocetnu',
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
@@ -903,14 +884,14 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
         ),
         const SizedBox(height: 16),
 
-        // 🔐 Dugme za biometrijsku prijavu
+        // ?? Dugme za biometrijsku prijavu
         if (_biometricAvailable && _biometricEnabled)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: OutlinedButton.icon(
               onPressed: _loginWithBiometric,
               icon: const Icon(Icons.fingerprint, size: 28),
-              label: Text('Prijavi se pomoću $_biometricTypeText'),
+              label: Text('Prijavi se pomocu $_biometricTypeText'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.amber,
                 side: const BorderSide(color: Colors.amber),
@@ -922,7 +903,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
             ),
           ),
 
-        // 🔑 Link za zaboravljen PIN
+        // ?? Link za zaboravljen PIN
         GestureDetector(
           onTap: _showForgotPinDialog,
           child: Text(
@@ -939,16 +920,16 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     );
   }
 
-  /// 🔐 Login sa biometrijom
+  /// ?? Login sa biometrijom
   Future<void> _loginWithBiometric() async {
     final credentials = await BiometricService.getSavedCredentials();
     if (credentials == null) {
-      setState(() => _errorMessage = 'Nema sačuvanih podataka za biometrijsku prijavu');
+      setState(() => _errorMessage = 'Nema sacuvanih podataka za biometrijsku prijavu');
       return;
     }
 
     final authenticated = await BiometricService.authenticate(
-      reason: 'Prijavite se pomoću $_biometricTypeText',
+      reason: 'Prijavite se pomocu $_biometricTypeText',
     );
 
     if (authenticated && mounted) {
@@ -958,7 +939,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     }
   }
 
-  /// 🔑 Dialog za zaboravljen PIN
+  /// ?? Dialog za zaboravljen PIN
   void _showForgotPinDialog() {
     showDialog(
       context: context,
@@ -973,7 +954,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
           ],
         ),
         content: const Text(
-          'Možemo poslati zahtev adminu da vam dodeli novi PIN.\n\nNakon što admin odobri zahtev, moći ćete da se prijavite sa novim PIN-om.',
+          'Možemo poslati zahtev adminu da vam dodeli novi PIN.\n\nNakon što admin odobri zahtev, moci cete da se prijavite sa novim PIN-om.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -994,7 +975,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
     );
   }
 
-  /// 🔑 Pošalji zahtev za reset PIN-a
+  /// ?? Pošalji zahtev za reset PIN-a
   Future<void> _sendPinResetRequest() async {
     setState(() {
       _isLoading = true;
@@ -1006,12 +987,12 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       final email = _putnikData!['email'] as String? ?? '';
       final telefon = _putnikData!['broj_telefona'] as String? ?? _telefonController.text.trim();
 
-      // Proveri da li već ima zahtev koji čeka
+      // Proveri da li vec ima zahtev koji ceka
       final imaZahtev = await V2PinZahtevService.imaZahtevKojiCeka(putnikId);
       if (imaZahtev) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Već ste poslali zahtev za PIN. Molimo sačekajte da admin odobri.';
+          _infoMessage = 'Vec ste poslali zahtev za PIN. Molimo sacekajte da admin odobri.';
         });
         return;
       }
@@ -1025,7 +1006,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       if (success) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Zahtev za novi PIN je uspešno poslat! Admin će vam dodeliti novi PIN.';
+          _infoMessage = 'Zahtev za novi PIN je uspešno poslat! Admin ce vam dodeliti novi PIN.';
         });
       } else {
         setState(() => _errorMessage = 'Greška pri slanju zahteva. Pokušajte ponovo.');
@@ -1063,7 +1044,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
               ),
               const SizedBox(height: 8),
               Text(
-                'Admin će pregledati vaš zahtev i dodeliti vam PIN.\nBićete obavešteni kada PIN bude spreman.',
+                'Admin ce pregledati vaš zahtev i dodeliti vam PIN.\nBicete obavešteni kada PIN bude spreman.',
                 style: TextStyle(color: Colors.white.withOpacity(0.7)),
                 textAlign: TextAlign.center,
               ),
@@ -1115,18 +1096,18 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       case _LoginStep.izborPutnika:
         return 'Izaberite svoj profil sa liste ispod';
       case _LoginStep.zahtevPoslat:
-        return 'Sačekajte odobrenje od admina';
+        return 'Sacekajte odobrenje od admina';
     }
   }
 
   String _getStepButtonText() {
     switch (_currentStep) {
       case _LoginStep.telefon:
-        return '→ Nastavi';
+        return '? Nastavi';
       case _LoginStep.email:
-        return '→ Sačuvaj email';
+        return '? Sacuvaj email';
       case _LoginStep.pin:
-        return '🔓 Pristupi';
+        return '?? Pristupi';
       case _LoginStep.izborPutnika:
         return '';
       case _LoginStep.zahtevPoslat:
@@ -1160,7 +1141,7 @@ class _RegistrovaniPutnikLoginScreenState extends State<RegistrovaniPutnikLoginS
       case _LoginStep.izborPutnika:
         return 'Više osoba koristi isti broj telefona. Kliknite na svoje ime za ulaz.';
       case _LoginStep.zahtevPoslat:
-        return 'Možete zatvoriti aplikaciju. Obavestićemo vas kada PIN bude dodeljen.';
+        return 'Možete zatvoriti aplikaciju. Obavesticemo vas kada PIN bude dodeljen.';
     }
   }
 }

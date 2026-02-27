@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
-import '../services/cena_obracun_service.dart';
-import '../services/registrovani_putnik_service.dart';
+import '../services/v2_cena_obracun_service.dart';
+import '../services/v2_putnik_service.dart';
 
 /// 📊 Helper za prikazivanje detaljnih statistika putnika
 /// Koristi se i u admin ekranu i u profilu putnika
@@ -635,7 +635,7 @@ class PutnikStatistikeHelper {
     final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('pošiljka');
 
     final response = await supabase
-        .from('voznje_log')
+        .from('v2_statistika_istorija')
         .select()
         .eq('putnik_id', putnikId)
         .gte('datum', startOfYearStr)
@@ -714,7 +714,7 @@ class PutnikStatistikeHelper {
 
   static Future<Map<String, dynamic>> _getUkupneStatistike(String putnikId, String tipPutnika) async {
     final response =
-        await supabase.from('voznje_log').select().eq('putnik_id', putnikId).order('datum', ascending: false);
+        await supabase.from('v2_statistika_istorija').select().eq('putnik_id', putnikId).order('datum', ascending: false);
 
     Map<String, int> dailyMaxVoznje = {};
     Map<String, int> dailyMaxOtkazivanja = {};
@@ -799,7 +799,7 @@ class PutnikStatistikeHelper {
       final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('pošiljka');
 
       final response = await supabase
-          .from('voznje_log')
+          .from('v2_statistika_istorija')
           .select()
           .eq('putnik_id', putnikId)
           .gte('datum', startOfMonthStr)

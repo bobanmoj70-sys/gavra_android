@@ -1,29 +1,29 @@
-﻿import 'package:flutter/gestures.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../globals.dart';
 import '../models/registrovani_putnik.dart';
-import '../services/registrovani_putnik_service.dart';
 import '../services/v2_adresa_supabase_service.dart';
-import '../services/voznje_log_service.dart'; // 📝 DODATO
+import '../services/v2_putnik_service.dart';
+import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';
 
-/// UNIFIKOVANI WIDGET ZA DODAVANJE I EDITOVANJE MESEČNIH PUTNIKA
+/// UNIFIKOVANI WIDGET ZA DODAVANJE I EDITOVANJE MESECNIH PUTNIKA
 ///
 /// Kombinuje funkcionalnost iz add_registrovani_putnik_dialog.dart i edit_registrovani_putnik_dialog.dart
 /// u jedan optimizovan widget koji radi i za dodavanje i za editovanje.
 ///
 /// Parametri:
-/// - existingPutnik: null za dodavanje, postojeći objekat za editovanje
-/// - onSaved: callback koji se poziva posle uspešnog čuvanja
-class RegistrovaniPutnikDialog extends StatefulWidget {
+/// - existingPutnik: null za dodavanje, postojeci objekat za editovanje
+/// - onSaved: callback koji se poziva posle uspe�nog cuvanja
+class V2PutnikDialog extends StatefulWidget {
   final RegistrovaniPutnik? existingPutnik; // null = dodavanje, !null = editovanje
   final VoidCallback? onSaved;
 
-  const RegistrovaniPutnikDialog({
+  const V2PutnikDialog({
     super.key,
     this.existingPutnik,
     this.onSaved,
@@ -33,10 +33,10 @@ class RegistrovaniPutnikDialog extends StatefulWidget {
   bool get isEditing => existingPutnik != null;
 
   @override
-  State<RegistrovaniPutnikDialog> createState() => _RegistrovaniPutnikDialogState();
+  State<V2PutnikDialog> createState() => _V2PutnikDialogState();
 }
 
-class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
+class _V2PutnikDialogState extends State<V2PutnikDialog> {
   final RegistrovaniPutnikService _registrovaniPutnikService = RegistrovaniPutnikService();
 
   // Form controllers
@@ -51,7 +51,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
   final TextEditingController _brojMestaController = TextEditingController();
   final TextEditingController _cenaPoDanuController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  // 🧾 Kontroleri za podatke o firmi (račun)
+  // ?? Kontroleri za podatke o firmi (racun)
   final TextEditingController _firmaNazivController = TextEditingController();
   final TextEditingController _firmaPibController = TextEditingController();
   final TextEditingController _firmaMbController = TextEditingController();
@@ -78,7 +78,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     _loadDataFromExistingPutnik();
   }
 
-  /// Učitaj odobrene adrese iz baze
+  /// Ucitaj odobrene adrese iz baze
   Future<void> _loadAdreseFromDatabase() async {
     try {
       final adreseBC = await V2AdresaSupabaseService.getAdreseZaGrad('BC');
@@ -97,17 +97,17 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     }
   }
 
-  /// 🔤 Srpsko sortiranje - pravilno sortira č, ć, š, ž, đ
+  /// ?? Srpsko sortiranje - pravilno sortira c, c, �, �, d
   int _serbianCompare(String a, String b) {
     // Normalizuj za sortiranje: zameni srpske karaktere
     String normalize(String s) {
       return s
           .toLowerCase()
-          .replaceAll('č', 'c~')
-          .replaceAll('ć', 'c~~')
-          .replaceAll('đ', 'd~')
-          .replaceAll('š', 's~')
-          .replaceAll('ž', 'z~');
+          .replaceAll('c', 'c~')
+          .replaceAll('c', 'c~~')
+          .replaceAll('d', 'd~')
+          .replaceAll('�', 's~')
+          .replaceAll('�', 'z~');
     }
 
     return normalize(a).compareTo(normalize(b));
@@ -132,10 +132,10 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         _cenaPoDanuController.text = putnik.cenaPoDanu!.toStringAsFixed(0);
       }
 
-      // 📧 Load email
+      // ?? Load email
       _emailController.text = putnik.email ?? '';
 
-      // 🧾 Load podaci za račun
+      // ?? Load podaci za racun
       _trebaRacun = putnik.trebaRacun;
       _firmaNazivController.text = putnik.firmaNaziv ?? '';
       _firmaPibController.text = putnik.firmaPib ?? '';
@@ -189,7 +189,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
           });
         }
       } else {
-        // No UUIDs present → leave controllers empty
+        // No UUIDs present ? leave controllers empty
         if (mounted) {
           setState(() {
             _adresaBelaCrkvaController.text = '';
@@ -232,14 +232,14 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
 
       super.dispose();
     } catch (e) {
-      debugPrint('🔴 Error disposing RegistrovaniPutnikDialog: $e');
+      debugPrint('?? Error disposing V2PutnikDialog: $e');
       super.dispose();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 📱 Izračunaj dostupnu visinu uzimajući u obzir tastaturу
+    // ?? Izracunaj dostupnu visinu uzimajuci u obzir tastatur?
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final screenHeight = MediaQuery.of(context).size.height;
     final availableHeight = screenHeight - keyboardHeight;
@@ -291,7 +291,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
   }
 
   Widget _buildHeader() {
-    final title = widget.isEditing ? '🔧 Uredi putnika' : '✨ Dodaj putnika';
+    final title = widget.isEditing ? '?? Uredi putnika' : '? Dodaj putnika';
 
     return Container(
       width: double.infinity,
@@ -353,7 +353,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
   Widget _buildContent() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      dragStartBehavior: DragStartBehavior.down, // Omogući long press na child widgetima
+      dragStartBehavior: DragStartBehavior.down, // Omoguci long press na child widgetima
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,7 +404,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
             validator: (value) {
               if (value == null || value.isEmpty) return 'Unesite broj mesta';
               final n = int.tryParse(value);
-              if (n == null || n < 1) return 'Broj mesta mora biti veći od 0';
+              if (n == null || n < 1) return 'Broj mesta mora biti veci od 0';
               return null;
             },
           ),
@@ -412,7 +412,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
             const SizedBox(height: 24),
             _buildTextField(
               controller: _tipSkoleController,
-              label: 'Škola',
+              label: '�kola',
               icon: Icons.school,
             ),
           ],
@@ -423,12 +423,12 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
 
   Widget _buildContactSection() {
     return _buildGlassSection(
-      title: '📱 Kontakt informacije',
+      title: '?? Kontakt informacije',
       child: Column(
         children: [
           _buildPhoneFieldWithContactPicker(
             controller: _brojTelefonaController,
-            label: _tip == 'ucenik' ? 'Broj telefona učenika' : 'Broj telefona',
+            label: _tip == 'ucenik' ? 'Broj telefona ucenika' : 'Broj telefona',
             icon: Icons.phone,
           ),
           const SizedBox(height: 12),
@@ -526,7 +526,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
               ),
             ),
           ],
-          // Cena po danu sekcija - VIDLJIVA ZA SVE TIPOVE (učenik, radnik, dnevni)
+          // Cena po danu sekcija - VIDLJIVA ZA SVE TIPOVE (ucenik, radnik, dnevni)
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
@@ -544,7 +544,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Cena obračuna (obavezno)',
+                        'Cena obracuna (obavezno)',
                         style: TextStyle(
                           color: Colors.amber,
                           fontWeight: FontWeight.w600,
@@ -557,7 +557,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Unesite cenu po danu za obračun. Ova cena će se koristiti za naplatu usluga.\n• Radnik/Učenik: naplata po danu.\n• Dnevni/Pošiljka: naplata po svakom pokupljenju.',
+                  'Unesite cenu po danu za obracun. Ova cena ce se koristiti za naplatu usluga.\n� Radnik/Ucenik: naplata po danu.\n� Dnevni/Po�iljka: naplata po svakom pokupljenju.',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 12,
@@ -568,7 +568,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                   controller: _cenaPoDanuController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: 'Iznos za obračun (RSD)',
+                    labelText: 'Iznos za obracun (RSD)',
                     hintText: 'npr. 500',
                     prefixIcon: const Icon(Icons.payments),
                     suffixText: 'RSD',
@@ -580,18 +580,18 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Cena obračuna je obavezna';
+                      return 'Cena obracuna je obavezna';
                     }
                     final cena = double.tryParse(value);
                     if (cena == null || cena <= 0) {
-                      return 'Unesite validan iznos veći od 0';
+                      return 'Unesite validan iznos veci od 0';
                     }
                     return null;
                   },
                   style: const TextStyle(color: Colors.black),
                 ),
                 const SizedBox(height: 16),
-                // 📧 EMAIL POLJE
+                // ?? EMAIL POLJE
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -608,7 +608,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                   style: const TextStyle(color: Colors.black),
                 ),
                 const SizedBox(height: 16),
-                // 🧾 CHECKBOX ZA RAČUN
+                // ?? CHECKBOX ZA RACUN
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -630,7 +630,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Treba račun na kraju meseca',
+                              'Treba racun na kraju meseca',
                               style: TextStyle(
                                 color: _trebaRacun ? Colors.green : Colors.white70,
                                 fontWeight: FontWeight.w600,
@@ -689,7 +689,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     );
   }
 
-  /// 🧾 Popup za unos podataka firme
+  /// ?? Popup za unos podataka firme
   void _showFirmaDialog() {
     showDialog(
       context: context,
@@ -700,7 +700,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
           children: [
             const Icon(Icons.business, color: Colors.green),
             const SizedBox(width: 8),
-            const Text('Podaci firme za račun'),
+            const Text('Podaci firme za racun'),
           ],
         ),
         content: SingleChildScrollView(
@@ -711,7 +711,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                 controller: _firmaNazivController,
                 decoration: const InputDecoration(
                   labelText: 'Naziv firme *',
-                  hintText: 'npr. PR Optičarska radnja MAZA',
+                  hintText: 'npr. PR Opticarska radnja MAZA',
                   prefixIcon: Icon(Icons.business),
                 ),
               ),
@@ -730,7 +730,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                 controller: _firmaMbController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Matični broj',
+                  labelText: 'Maticni broj',
                   hintText: '65380200',
                   prefixIcon: Icon(Icons.badge),
                 ),
@@ -739,7 +739,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
               TextField(
                 controller: _firmaZiroController,
                 decoration: const InputDecoration(
-                  labelText: 'Žiro račun',
+                  labelText: '�iro racun',
                   hintText: '340-0000011427591-61',
                   prefixIcon: Icon(Icons.account_balance),
                 ),
@@ -759,7 +759,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Otkaži'),
+            child: const Text('Otka�i'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -771,7 +771,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
               Navigator.pop(dialogContext);
               setState(() {}); // Refresh UI
             },
-            child: const Text('Sačuvaj'),
+            child: const Text('Sacuvaj'),
           ),
         ],
       ),
@@ -780,7 +780,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
 
   Widget _buildAddressSection() {
     return _buildGlassSection(
-      title: '🏠 Adrese',
+      title: '?? Adrese',
       child: Column(
         children: [
           // DROPDOWN ZA BELA CRKVA
@@ -850,7 +850,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
   }
 
   Widget _buildActions() {
-    final buttonText = widget.isEditing ? 'Sačuvaj' : 'Dodaj';
+    final buttonText = widget.isEditing ? 'Sacuvaj' : 'Dodaj';
     final buttonIcon = widget.isEditing ? Icons.save : Icons.add_circle;
 
     return Container(
@@ -884,7 +884,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
               child: TextButton(
                 onPressed: _isLoading ? null : () => Navigator.pop(context),
                 child: const Text(
-                  'Otkaži',
+                  'Otka�i',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -956,7 +956,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                               ],
                             ),
                             child: Text(
-                              widget.isEditing ? 'Čuva...' : 'Dodaje...',
+                              widget.isEditing ? 'Cuva...' : 'Dodaje...',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
@@ -1083,7 +1083,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     );
   }
 
-  /// 📇 Polje za telefon sa dugmetom za biranje iz imenika
+  /// ?? Polje za telefon sa dugmetom za biranje iz imenika
   Widget _buildPhoneFieldWithContactPicker({
     required TextEditingController controller,
     required String label,
@@ -1119,7 +1119,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
           ),
         ),
         const SizedBox(width: 8),
-        // 📇 Dugme za biranje iz imenika
+        // ?? Dugme za biranje iz imenika
         Material(
           color: Colors.green,
           borderRadius: BorderRadius.circular(12),
@@ -1173,7 +1173,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
                 }
               } catch (e) {
                 if (mounted) {
-                  AppSnackBar.error(context, 'Greška pri izboru kontakta: $e');
+                  AppSnackBar.error(context, 'Gre�ka pri izboru kontakta: $e');
                 }
               }
             },
@@ -1221,20 +1221,20 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       ),
       dropdownColor: Theme.of(context).colorScheme.surface,
       items: items.map((String item) {
-        // Mapiranje internih vrednosti u lepše labele za prikaz
+        // Mapiranje internih vrednosti u lep�e labele za prikaz
         String displayLabel = item;
         switch (item) {
           case 'radnik':
             displayLabel = 'Radnik';
             break;
           case 'ucenik':
-            displayLabel = 'Učenik';
+            displayLabel = 'Ucenik';
             break;
           case 'dnevni':
             displayLabel = 'Dnevni';
             break;
           case 'posiljka':
-            displayLabel = 'Pošiljka';
+            displayLabel = 'Po�iljka';
             break;
         }
 
@@ -1259,7 +1259,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       return 'Ime putnika mora imati najmanje 2 karaktera';
     }
 
-    // 📱 Validacija broja telefona
+    // ?? Validacija broja telefona
     final telefon = _brojTelefonaController.text.trim();
     if (telefon.isEmpty) {
       return 'Broj telefona je obavezan';
@@ -1273,7 +1273,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     return null;
   }
 
-  /// 📱 Validacija formata srpskog broja telefona
+  /// ?? Validacija formata srpskog broja telefona
   String? _validatePhoneNumber(String telefon) {
     // Ukloni razmake, crtice, zagrade
     final cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
@@ -1289,7 +1289,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         return 'Neispravan format broja (+381 6x xxx xxxx)';
       }
       if (!localPart.startsWith('6')) {
-        return 'Mobilni broj mora počinjati sa 6 posle +381';
+        return 'Mobilni broj mora pocinjati sa 6 posle +381';
       }
     } else if (cleaned.startsWith('00381')) {
       final localPart = cleaned.substring(5);
@@ -1297,61 +1297,52 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         return 'Neispravan format broja (00381 6x xxx xxxx)';
       }
       if (!localPart.startsWith('6')) {
-        return 'Mobilni broj mora počinjati sa 6 posle 00381';
+        return 'Mobilni broj mora pocinjati sa 6 posle 00381';
       }
     } else if (cleaned.startsWith('06')) {
       if (cleaned.length < 9 || cleaned.length > 10) {
         return 'Broj mora imati 9-10 cifara (06x xxx xxxx)';
       }
     } else {
-      return 'Broj mora počinjati sa 06, +381 ili 00381';
+      return 'Broj mora pocinjati sa 06, +381 ili 00381';
     }
 
     // Proveri da su sve ostale cifre
     final digitsOnly = cleaned.replaceAll('+', '');
     if (!RegExp(r'^\d+$').hasMatch(digitsOnly)) {
-      return 'Broj telefona može sadržati samo cifre';
+      return 'Broj telefona mo�e sadr�ati samo cifre';
     }
 
     return null;
   }
 
-  /// 📱 Provera da li broj telefona već postoji u bazi
+  /// ?? Provera da li broj telefona vec postoji u bazi
   Future<String?> _checkDuplicatePhone() async {
     final telefon = _brojTelefonaController.text.trim();
     if (telefon.isEmpty) return null;
 
-    // Normalizuj broj za poređenje (ukloni +381, 00381, vodeću 0)
+    // Normalizuj broj za poredenje (ukloni +381, 00381, vodecu 0)
     final normalized = _normalizePhoneNumber(telefon);
 
     try {
-      final response =
-          await supabase.from('registrovani_putnici').select('id, putnik_ime, broj_telefona').eq('obrisan', false);
-
-      for (final row in response as List) {
-        final existingPhone = row['broj_telefona'] as String?;
-        if (existingPhone == null) continue;
-
-        final existingNormalized = _normalizePhoneNumber(existingPhone);
-
-        // Ako je isti broj, a nije isti putnik (za edit mode)
-        if (existingNormalized == normalized) {
-          final existingId = row['id'] as String;
-          if (widget.isEditing && widget.existingPutnik?.id == existingId) {
-            continue; // Isti putnik, OK
-          }
-          final existingName = row['putnik_ime'] as String? ?? 'Nepoznat';
-          return 'Broj telefona već koristi putnik: $existingName';
+      final existing = await V2PutnikService().findByTelefon(telefon);
+      if (existing != null) {
+        final existingId = existing['id'] as String;
+        // U edit modu preskoci ako je isti putnik
+        if (widget.isEditing && widget.existingPutnik?.id == existingId) {
+          return null;
         }
+        final existingName = existing['ime'] as String? ?? 'Nepoznat';
+        return 'Broj telefona već koristi putnik: $existingName';
       }
     } catch (e) {
-      // Ako ne možemo proveriti, nastavi (bolje nego blokirati)
+      // Ako ne mo�emo proveriti, nastavi (bolje nego blokirati)
     }
 
     return null;
   }
 
-  /// Normalizuje broj telefona za poređenje
+  /// Normalizuje broj telefona za poredenje
   String _normalizePhoneNumber(String telefon) {
     var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
 
@@ -1375,7 +1366,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     setState(() => _isLoading = true);
 
     try {
-      // 📱 Provera duplikata broja telefona
+      // ?? Provera duplikata broja telefona
       final duplicateError = await _checkDuplicatePhone();
       if (duplicateError != null) {
         if (mounted) {
@@ -1399,25 +1390,25 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       }
 
       if (mounted) {
-        // Sačuvaj parent context PRE pop-a (dijalog context postaje invalid nakon pop-a)
+        // Sacuvaj parent context PRE pop-a (dijalog context postaje invalid nakon pop-a)
         final parentContext = Navigator.of(context).context;
         Navigator.of(context).pop();
         if (widget.onSaved != null) widget.onSaved!();
         if (parentContext.mounted) {
-          AppSnackBar.success(parentContext, '✅ Putnik uspešno sačuvan!');
+          AppSnackBar.success(parentContext, '? Putnik uspe�no sacuvan!');
         }
       }
     } catch (e) {
-      debugPrint('❌ Greška pri čuvanju putnika: $e');
+      debugPrint('? Gre�ka pri cuvanju putnika: $e');
 
-      // 📝 LOG GRESKE ZA ADMINA
+      // ?? LOG GRESKE ZA ADMINA
       try {
-        await VoznjeLogService.logGreska(
+        await V2StatistikaIstorijaService.logGreska(
           putnikId: widget.existingPutnik?.id,
           greska: '[$_tip | ${_imeController.text}] ${e.toString()}',
         );
       } catch (e) {
-        debugPrint('⚠️ Error logging user action: $e');
+        debugPrint('?? Error logging user action: $e');
       }
 
       if (mounted) {
@@ -1425,7 +1416,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         if (errorMsg.contains('Exception:')) {
           errorMsg = errorMsg.split('Exception:').last.trim();
         }
-        AppSnackBar.error(context, 'Greška: $errorMsg');
+        AppSnackBar.error(context, 'Gre�ka: $errorMsg');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1439,7 +1430,7 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
     final kraj = widget.existingPutnik?.datumKrajaMeseca ?? DateTime(now.year, now.month + 1, 0);
 
     return {
-      'id': widget.existingPutnik?.id, // Može biti null za novi insert
+      'id': widget.existingPutnik?.id, // Mo�e biti null za novi insert
       'putnik_ime': _imeController.text.trim(),
       'tip': _tip,
       'broj_mesta': int.tryParse(_brojMestaController.text) ?? 1,
@@ -1453,14 +1444,14 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
       // Datumi
       'datum_pocetka_meseca': pocetak.toIso8601String().split('T')[0],
       'datum_kraja_meseca': kraj.toIso8601String().split('T')[0],
-      // Eksplicitno postavi adrese (uključujući null za brisanje)
+      // Eksplicitno postavi adrese (ukljucujuci null za brisanje)
       'adresa_bela_crkva_id': _adresaBelaCrkvaId,
       'adresa_vrsac_id': _adresaVrsacId,
       // Cena po danu (custom ili null za default)
       'cena_po_danu': _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text),
       // Email
       'email': _emailController.text.isEmpty ? null : _emailController.text.trim(),
-      // Polja za račun
+      // Polja za racun
       'treba_racun': _trebaRacun,
       'firma_naziv': _firmaNazivController.text.isEmpty ? null : _firmaNazivController.text.trim(),
       'firma_pib': _firmaPibController.text.isEmpty ? null : _firmaPibController.text.trim(),
@@ -1493,18 +1484,18 @@ class _RegistrovaniPutnikDialogState extends State<RegistrovaniPutnikDialog> {
         return AlertDialog(
           title: const Text('Dozvola za kontakte'),
           content: const Text('Dozvola za pristup kontaktima je trajno odbijena. '
-              'Da biste mogli da birate kontakte, omogućite dozvolu u podešavanjima aplikacije.'),
+              'Da biste mogli da birate kontakte, omogucite dozvolu u pode�avanjima aplikacije.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Otkaži'),
+              child: const Text('Otka�i'),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 openAppSettings();
               },
-              child: const Text('Otvori podešavanja'),
+              child: const Text('Otvori pode�avanja'),
             ),
           ],
         );
@@ -1563,7 +1554,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
       ),
       child: Column(
         children: [
-          // 🛑 Handle for dragging
+          // ?? Handle for dragging
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: 12),
@@ -1575,7 +1566,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
               ),
             ),
           ),
-          // 🔎 Search Header
+          // ?? Search Header
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Row(
@@ -1603,14 +1594,14 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
               ],
             ),
           ),
-          // 🔦 Search Bar
+          // ?? Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: TextField(
               controller: _searchController,
               onChanged: _filterContacts,
               decoration: InputDecoration(
-                hintText: 'Pretraži kontakte...',
+                hintText: 'Pretra�i kontakte...',
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -1632,7 +1623,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          // 👥 Contacts List
+          // ?? Contacts List
           Expanded(
             child: _filteredContacts.isEmpty
                 ? Center(
@@ -1642,7 +1633,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
                         Icon(Icons.search_off, size: 64, color: Colors.grey.withOpacity(0.5)),
                         const SizedBox(height: 16),
                         Text(
-                          'Nema pronađenih kontakata',
+                          'Nema pronadenih kontakata',
                           style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
                         ),
                       ],

@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../globals.dart';
 import '../models/vozac.dart';
-import '../screens/welcome_screen.dart';
+import '../screens/v2_welcome_screen.dart';
 import '../utils/vozac_cache.dart';
 import 'firebase_service.dart';
 import 'huawei_push_service.dart';

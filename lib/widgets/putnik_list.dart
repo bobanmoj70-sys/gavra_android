@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/putnik.dart';
 import '../utils/putnik_helpers.dart';
-import 'putnik_card.dart';
+import 'v2_putnik_card.dart';
 
 /// Widget koji prikazuje listu putnika koristeći PutnikCard za svaki element.
 

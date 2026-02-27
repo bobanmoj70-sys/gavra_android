@@ -1,16 +1,16 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import '../globals.dart';
 import '../models/adresa.dart';
 import 'geocoding_service.dart';
-import 'realtime/realtime_manager.dart';
+import 'realtime/v2_master_realtime_manager.dart';
 
 /// Servis za rad sa normalizovanim adresama iz Supabase tabele
-/// ðŸŽ¯ KORISTI UUID REFERENCE umesto TEXT polja
+/// 🎯 KORISTI UUID REFERENCE umesto TEXT polja
 class V2AdresaSupabaseService {
   static StreamSubscription? _adreseSubscription;
   static final StreamController<List<Adresa>> _adreseController = StreamController<List<Adresa>>.broadcast();
-  static List<Adresa> _cachedAdrese = []; // ðŸš€ Cache za brÅ¾e uÄitavanje
+  static List<Adresa> _cachedAdrese = []; // 🚀 Cache za brže učitavanje
 
   /// Dobija adresu po UUID-u
   static Future<Adresa?> getAdresaByUuid(String uuid) async {
@@ -33,7 +33,7 @@ class V2AdresaSupabaseService {
     return adresa?.naziv;
   }
 
-  /// Dobija sve adrese za odreÄ‘eni grad
+  /// Dobija sve adrese za određeni grad
   static Future<List<Adresa>> getAdreseZaGrad(String grad) async {
     try {
       final response =
@@ -56,10 +56,10 @@ class V2AdresaSupabaseService {
     }
   }
 
-  /// ðŸ›°ï¸ REALTIME STREAM: Prati promene u tabeli 'v2_adrese'
+  /// 🛰️ REALTIME STREAM: Prati promene u tabeli 'v2_adrese'
   static Stream<List<Adresa>> streamSveAdrese() {
     if (_adreseSubscription == null) {
-      // UÄitaj prvi put (ako nema cache)
+      // Učitaj prvi put (ako nema cache)
       if (_cachedAdrese.isEmpty) {
         _refreshAdreseStream();
       } else {
@@ -69,8 +69,8 @@ class V2AdresaSupabaseService {
         }
       }
 
-      _adreseSubscription = RealtimeManager.instance.subscribe('v2_adrese').listen((payload) {
-        _refreshAdreseStream(); // AÅ¾uriraj samo na promenu
+      _adreseSubscription = V2MasterRealtimeManager.instance.subscribe('v2_adrese').listen((payload) {
+        _refreshAdreseStream(); // Ažuriraj samo na promenu
       });
     }
     return _adreseController.stream;
@@ -78,13 +78,13 @@ class V2AdresaSupabaseService {
 
   static void _refreshAdreseStream() async {
     final adrese = await getSveAdrese();
-    _cachedAdrese = adrese; // ðŸ’¾ ÄŒuva se u memoriji
+    _cachedAdrese = adrese; // 💾 Čuva se u memoriji
     if (!_adreseController.isClosed) {
       _adreseController.add(adrese);
     }
   }
 
-  /// PronaÄ‘i adresu po nazivu i gradu
+  /// Pronađi adresu po nazivu i gradu
   static Future<Adresa?> findAdresaByNazivAndGrad(String naziv, String grad) async {
     try {
       final response = await supabase
@@ -103,8 +103,8 @@ class V2AdresaSupabaseService {
     }
   }
 
-  /// Pronalazi postojeÄ‡u adresu - NE KREIRA NOVE
-  /// ðŸš« ZAKLJUÄŒANO: Nove adrese moÅ¾e dodati samo admin direktno u bazi
+  /// Pronalazi postojeću adresu - NE KREIRA NOVE
+  /// 🚫 ZAKLJUČANO: Nove adrese može dodati samo admin direktno u bazi
   static Future<Adresa?> createOrGetAdresa({
     required String naziv,
     required String grad,
@@ -113,11 +113,11 @@ class V2AdresaSupabaseService {
     double? lat,
     double? lng,
   }) async {
-    // ðŸ”’ Samo pronaÄ‘i postojeÄ‡u adresu - NE KREIRAJ NOVU
+    // 🔒 Samo pronađi postojeću adresu - NE KREIRAJ NOVU
     try {
       final postojeca = await findAdresaByNazivAndGrad(naziv, grad);
       if (postojeca != null) {
-        // Ako postojeÄ‡a adresa NEMA koordinate ali imamo ih, aÅ¾uriraj
+        // Ako postojeća adresa NEMA koordinate ali imamo ih, ažuriraj
         if (!postojeca.hasValidCoordinates && lat != null && lng != null) {
           final updatedAdresa = await _geocodeAndUpdateAdresa(postojeca, grad);
           if (updatedAdresa != null) {
@@ -127,15 +127,15 @@ class V2AdresaSupabaseService {
         return postojeca;
       }
     } catch (_) {
-      // ðŸ”‡ Ignore
+      // 🔇 Ignore
     }
 
-    // ðŸš« NE KREIRAJ NOVU ADRESU - vrati null
-    // Nove adrese moÅ¾e dodati samo admin direktno u Supabase
+    // 🚫 NE KREIRAJ NOVU ADRESU - vrati null
+    // Nove adrese može dodati samo admin direktno u Supabase
     return null;
   }
 
-  /// ðŸŒ Geocodira adresu i aÅ¾urira u bazi
+  /// 🌍 Geocodira adresu i ažurira u bazi
   static Future<Adresa?> _geocodeAndUpdateAdresa(Adresa adresa, String grad) async {
     try {
       final coordsString = await GeocodingService.getKoordinateZaAdresu(
@@ -150,7 +150,7 @@ class V2AdresaSupabaseService {
           final lng = double.tryParse(parts[1]);
 
           if (lat != null && lng != null) {
-            // AÅ¾uriraj u bazi
+            // Ažuriraj u bazi
             final response = await supabase
                 .from('v2_adrese')
                 .update({
@@ -167,12 +167,12 @@ class V2AdresaSupabaseService {
         }
       }
     } catch (_) {
-      // ðŸ”‡ Ignore
+      // 🔇 Ignore
     }
     return null;
   }
 
-  /// Batch uÄitavanje adresa
+  /// Batch učitavanje adresa
   static Future<Map<String, Adresa>> getAdreseByUuids(List<String> uuids) async {
     final Map<String, Adresa> result = {};
 
@@ -186,8 +186,8 @@ class V2AdresaSupabaseService {
     return result;
   }
 
-  /// ðŸŽ¯ NOVO: AÅ¾uriraj koordinate za postojeÄ‡u adresu
-  /// Koristi se kada Nominatim pronaÄ‘e koordinate za adresu koja ih nema u bazi
+  /// 🎯 NOVO: Ažuriraj koordinate za postojeću adresu
+  /// Koristi se kada Nominatim pronađe koordinate za adresu koja ih nema u bazi
   static Future<bool> updateKoordinate(
     String uuid, {
     required double lat,
@@ -205,7 +205,7 @@ class V2AdresaSupabaseService {
     }
   }
 
-  /// ðŸ§¹ ÄŒisti realtime subscription
+  /// 🧹 Čisti realtime subscription
   static void dispose() {
     _adreseSubscription?.cancel();
     _adreseSubscription = null;

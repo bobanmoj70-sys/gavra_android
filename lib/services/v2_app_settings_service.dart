@@ -6,12 +6,12 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
-import '../services/realtime/realtime_manager.dart';
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_statistika_istorija_service.dart';
 
 /// Servis za globalna podešavanja aplikacije iz Supabase
 class V2AppSettingsService {
-  AppSettingsService._();
+  V2AppSettingsService._();
 
   static StreamSubscription? _subscription;
 
@@ -21,7 +21,7 @@ class V2AppSettingsService {
     await _loadSettings();
 
     // Slušaj promene u realtime
-    _subscription = RealtimeManager.instance.subscribe('app_settings').listen((payload) {
+    _subscription = V2MasterRealtimeManager.instance.subscribe('app_settings').listen((payload) {
       // Na svaku promenu, ponovo učitaj podešavanja
       _loadSettings();
     });
@@ -130,13 +130,14 @@ class V2AppSettingsService {
 
     // 📝 LOG U DNEVNIK
     try {
-      await V2StatistikaIstorijaService.logGeneric(tip: 'admin_akcija', detalji: 'Promenjen red vožnje na: ${type.toUpperCase()}');
+      await V2StatistikaIstorijaService.logGeneric(
+          tip: 'admin_akcija', detalji: 'Promenjen red vožnje na: ${type.toUpperCase()}');
     } catch (_) {}
   }
 
   static void dispose() {
     _subscription?.cancel();
-    RealtimeManager.instance.unsubscribe('app_settings');
+    V2MasterRealtimeManager.instance.unsubscribe('app_settings');
     _subscription = null;
   }
 }

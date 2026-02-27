@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../globals.dart';
 import '../models/voznje_log.dart';
-import '../services/realtime/realtime_manager.dart';
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../theme.dart';
 import '../utils/grad_adresa_validator.dart';
 import '../utils/vozac_cache.dart';
@@ -63,12 +63,12 @@ class _VozacActionLogScreenState extends State<VozacActionLogScreen> with Single
     _tabController?.dispose();
     _realtimeSubscription?.cancel();
     _logsController.close();
-    RealtimeManager.instance.unsubscribe('voznje_log');
+    V2MasterRealtimeManager.instance.unsubscribe('v2_statistika_istorija');
     super.dispose();
   }
 
   void _startRealtimeListener() {
-    _realtimeSubscription = RealtimeManager.instance.subscribe('voznje_log').listen((_) {
+    _realtimeSubscription = V2MasterRealtimeManager.instance.subscribe('v2_statistika_istorija').listen((_) {
       _fetchLogs();
     });
     _fetchLogs();
@@ -82,7 +82,7 @@ class _VozacActionLogScreenState extends State<VozacActionLogScreen> with Single
 
     try {
       final data = await supabase
-          .from('voznje_log')
+          .from('v2_statistika_istorija')
           .select()
           .eq('vozac_id', vozacUuid)
           .eq('datum', datumStr)
@@ -154,16 +154,12 @@ class _VozacActionLogScreenState extends State<VozacActionLogScreen> with Single
   Future<String> _getPutnikIme(String? putnikId) async {
     if (putnikId == null || putnikId.isEmpty) return '—';
 
-    try {
-      final response = await supabase.from('registrovani_putnici').select('putnik_ime').eq('id', putnikId).single();
-      return response['putnik_ime'] as String;
-    } catch (e) {
-      // Ako ne može da nađe u registrovani_putnici, vrati skraćeni ID
-      if (putnikId.length > 8) {
-        return putnikId.substring(0, 8);
-      }
-      return putnikId;
-    }
+    // Prvo pokusaj iz cache-a
+    final cached = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+    if (cached != null) return cached['ime'] as String? ?? '—';
+
+    // Fallback: skraceni ID
+    return putnikId.length > 8 ? putnikId.substring(0, 8) : putnikId;
   }
 
   /// Dohvati grad i vreme iz log zapisa (direktne kolone, fallback na meta)

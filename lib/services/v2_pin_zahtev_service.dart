@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
-import 'realtime/realtime_manager.dart';
-import 'realtime_notification_service.dart';
+import 'realtime/v2_master_realtime_manager.dart';
+import 'v2_realtime_notification_service.dart';
 
 /// 📨 Servis za upravljanje PIN zahtevima putnika
 class V2PinZahtevService {
@@ -60,7 +60,7 @@ class V2PinZahtevService {
 
   /// Pokreni realtime listener koristeći RealtimeManager
   static void _startRealtimeListener() {
-    _pinZahteviSubscription = RealtimeManager.instance.subscribe('v2_pin_zahtevi').listen((payload) async {
+    _pinZahteviSubscription = V2MasterRealtimeManager.instance.subscribe('v2_pin_zahtevi').listen((payload) async {
       debugPrint('🔔 [PinZahtevService] Primljena realtime promena: ${payload.eventType}');
       // Učitaj sve zahteve koji čekaju
       await _fetchAndEmitZahtevi();
@@ -71,20 +71,31 @@ class V2PinZahtevService {
   }
 
   /// Dohvati zahteve iz baze i emituj na stream
+  /// Putnik podaci se čitaju iz V2MasterRealtimeManager cache-a
   static Future<void> _fetchAndEmitZahtevi() async {
     try {
-      final data = await _supabase.from('v2_pin_zahtevi').select('''
-        *,
-        registrovani_putnici (
-          id,
-          putnik_ime,
-          broj_telefona,
-          tip
-        )
-      ''').eq('status', 'ceka').order('created_at');
+      final data = await _supabase
+          .from('v2_pin_zahtevi')
+          .select('id, putnik_id, putnik_tabela, email, telefon, status, created_at')
+          .eq('status', 'ceka')
+          .order('created_at');
+
+      // Obogati svaki zahtev sa podacima putnika iz cache-a
+      final enriched = (data as List).map((z) {
+        final putnikId = z['putnik_id'] as String?;
+        final putnikData = putnikId != null ? V2MasterRealtimeManager.instance.getPutnikById(putnikId) : null;
+        return <String, dynamic>{
+          ...Map<String, dynamic>.from(z as Map),
+          'putnik_ime': putnikData?['ime'],
+          'broj_telefona': putnikData?['telefon'],
+          'tip': putnikData != null
+              ? V2MasterRealtimeManager.instance.getIme(z['putnik_tabela'] as String? ?? '', putnikId ?? '')
+              : null,
+        };
+      }).toList();
 
       if (!_zahteviController.isClosed) {
-        _zahteviController.add(List<Map<String, dynamic>>.from(data));
+        _zahteviController.add(List<Map<String, dynamic>>.from(enriched));
       }
     } catch (e) {
       if (!_zahteviController.isClosed) {
@@ -97,7 +108,7 @@ class V2PinZahtevService {
   static void dispose() {
     _pinZahteviSubscription?.cancel();
     _pinZahteviSubscription = null;
-    RealtimeManager.instance.unsubscribe('v2_pin_zahtevi');
+    V2MasterRealtimeManager.instance.unsubscribe('v2_pin_zahtevi');
   }
 
   static Future<int> brojZahtevaKojiCekaju() async {
@@ -115,11 +126,16 @@ class V2PinZahtevService {
     required String pin,
   }) async {
     try {
-      final zahtev = await _supabase.from('v2_pin_zahtevi').select('putnik_id').eq('id', zahtevId).single();
+      final zahtev =
+          await _supabase.from('v2_pin_zahtevi').select('putnik_id, putnik_tabela').eq('id', zahtevId).single();
 
       final putnikId = zahtev['putnik_id'] as String;
+      final putnikTabela = zahtev['putnik_tabela'] as String? ?? '';
 
-      await _supabase.from('registrovani_putnici').update({'pin': pin}).eq('id', putnikId);
+      // UPDATE pin na pravoj v2_ tabeli
+      if (putnikTabela.isNotEmpty) {
+        await _supabase.from(putnikTabela).update({'pin': pin}).eq('id', putnikId);
+      }
 
       await _supabase.from('v2_pin_zahtevi').update({'status': 'odobren'}).eq('id', zahtevId);
 
@@ -141,8 +157,12 @@ class V2PinZahtevService {
 
   static Future<bool> imaZahtevKojiCeka(String putnikId) async {
     try {
-      final response =
-          await _supabase.from('v2_pin_zahtevi').select('id').eq('putnik_id', putnikId).eq('status', 'ceka').maybeSingle();
+      final response = await _supabase
+          .from('v2_pin_zahtevi')
+          .select('id')
+          .eq('putnik_id', putnikId)
+          .eq('status', 'ceka')
+          .maybeSingle();
 
       return response != null;
     } catch (e) {
@@ -152,11 +172,13 @@ class V2PinZahtevService {
 
   static Future<bool> azurirajEmail({
     required String putnikId,
+    required String putnikTabela,
     required String email,
   }) async {
     try {
-      await _supabase.from('registrovani_putnici').update({'email': email}).eq('id', putnikId);
-
+      if (putnikTabela.isNotEmpty) {
+        await _supabase.from(putnikTabela).update({'email': email}).eq('id', putnikId);
+      }
       return true;
     } catch (e) {
       return false;

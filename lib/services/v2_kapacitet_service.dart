@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,17 +6,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/route_config.dart';
 import '../globals.dart';
 import '../utils/grad_adresa_validator.dart';
-import 'realtime/realtime_manager.dart';
+import 'realtime/v2_master_realtime_manager.dart';
 
-/// 🎫 Servis za upravljanje kapacitetom polazaka
-/// Omogućava realtime prikaz slobodnih mesta i admin kontrolu
+/// ?? Servis za upravljanje kapacitetom polazaka
+/// Omogucava realtime prikaz slobodnih mesta i admin kontrolu
 class V2KapacitetService {
   static SupabaseClient get _supabase => supabase;
 
-  // 🔄 GLOBAL REALTIME LISTENER za automatsko ažuriranje
+  // ?? GLOBAL REALTIME LISTENER za automatsko a�uriranje
   static StreamSubscription? _globalRealtimeSubscription;
 
-  // 💾 CACHE za kapacitet (inicijalizuje se na startup)
+  // ?? CACHE za kapacitet (inicijalizuje se na startup)
   static Map<String, Map<String, int>> _kapacitetCache = {
     'BC': {},
     'VS': {},
@@ -47,7 +47,7 @@ class V2KapacitetService {
     }
   }
 
-  /// Sva moguća vremena (zimska + letnja + praznična) - za kapacitet tabelu
+  /// Sva moguca vremena (zimska + letnja + praznicna) - za kapacitet tabelu
   static List<String> get svaVremenaBc {
     return {...RouteConfig.bcVremenaZimski, ...RouteConfig.bcVremenaLetnji, ...RouteConfig.bcVremenaPraznici}.toList();
   }
@@ -66,7 +66,7 @@ class V2KapacitetService {
     return bcVremena; // default
   }
 
-  /// Dohvati sva moguća vremena za grad (obe sezone) - za kapacitet tabelu
+  /// Dohvati sva moguca vremena za grad (obe sezone) - za kapacitet tabelu
   static List<String> getSvaVremenaZaGrad(String grad) {
     if (grad == 'BC') {
       return svaVremenaBc;
@@ -77,7 +77,7 @@ class V2KapacitetService {
   }
 
   /// Dohvati kapacitet (max mesta) za sve polaske
-  /// Vraća: {'BC': {'5:00': 8, '6:00': 8, ...}, 'VS': {'6:00': 8, ...}}
+  /// Vraca: {'BC': {'5:00': 8, '6:00': 8, ...}, 'VS': {'6:00': 8, ...}}
   static Future<Map<String, Map<String, int>>> getKapacitet() async {
     try {
       final response =
@@ -102,7 +102,7 @@ class V2KapacitetService {
         final rawVreme = row['vreme'] as String;
         final maxMesta = row['max_mesta'] as int;
 
-        // ✅ NORMALIZUJ VREME iz baze (osigurava konzistentnost sa RouteConfig)
+        // ? NORMALIZUJ VREME iz baze (osigurava konzistentnost sa RouteConfig)
         final vreme = GradAdresaValidator.normalizeTime(rawVreme);
 
         if (result.containsKey(grad)) {
@@ -120,12 +120,12 @@ class V2KapacitetService {
     }
   }
 
-  /// Stream kapaciteta (realtime ažuriranje) - koristi RealtimeManager
+  /// Stream kapaciteta (realtime a�uriranje) - koristi RealtimeManager
   static Stream<Map<String, Map<String, int>>> streamKapacitet() {
     final controller = StreamController<Map<String, Map<String, int>>>.broadcast();
     StreamSubscription? subscription;
 
-    // Učitaj inicijalne podatke
+    // Ucitaj inicijalne podatke
     getKapacitet().then((data) {
       if (!controller.isClosed) {
         controller.add(data);
@@ -133,8 +133,8 @@ class V2KapacitetService {
     });
 
     // Koristi centralizovani RealtimeManager
-    subscription = RealtimeManager.instance.subscribe('v2_kapacitet_polazaka').listen((payload) {
-      // Na bilo koju promenu, ponovo učitaj sve
+    subscription = V2MasterRealtimeManager.instance.subscribe('v2_kapacitet_polazaka').listen((payload) {
+      // Na bilo koju promenu, ponovo ucitaj sve
       getKapacitet().then((data) {
         if (!controller.isClosed) {
           controller.add(data);
@@ -144,13 +144,13 @@ class V2KapacitetService {
 
     controller.onCancel = () {
       subscription?.cancel();
-      RealtimeManager.instance.unsubscribe('v2_kapacitet_polazaka');
+      V2MasterRealtimeManager.instance.unsubscribe('v2_kapacitet_polazaka');
     };
 
     return controller.stream;
   }
 
-  /// Admin: Promeni kapacitet za određeni polazak
+  /// Admin: Promeni kapacitet za odredeni polazak
   static Future<bool> setKapacitet(String grad, String vreme, int maxMesta, {String? napomena}) async {
     try {
       // Prvo probaj update ako postoji zapis
@@ -165,7 +165,7 @@ class V2KapacitetService {
           .eq('vreme', vreme)
           .select();
 
-      // Ako update nije promenio ništa, uradi insert
+      // Ako update nije promenio ni�ta, uradi insert
       if (updateResult.isEmpty) {
         await _supabase.from('v2_kapacitet_polazaka').insert({
           'grad': grad,
@@ -182,8 +182,8 @@ class V2KapacitetService {
     }
   }
 
-  /// Dohvati kapacitet za grad/vreme (vraća iz cache-a)
-  /// Vraća default 8 ako nije dostupno u cache-u
+  /// Dohvati kapacitet za grad/vreme (vraca iz cache-a)
+  /// Vraca default 8 ako nije dostupno u cache-u
   static int getKapacitetSync(String grad, String vreme) {
     // Normalizuj vreme
     final normalizedVreme = GradAdresaValidator.normalizeTime(vreme);
@@ -212,31 +212,31 @@ class V2KapacitetService {
       _kapacitetCacheInitialized = true;
     }
 
-    // Pokreni realtime listener za ažuriranje cache-a
+    // Pokreni realtime listener za a�uriranje cache-a
     startGlobalRealtimeListener();
   }
 
-  /// Ažurira cache iz baze
+  /// A�urira cache iz baze
   static Future<void> refreshKapacitetCache() async {
     try {
       final data = await getKapacitet();
       _kapacitetCache = data;
     } catch (e) {
-      // Zadrži stari cache ako fetch nije useo
+      // Zadr�i stari cache ako fetch nije useo
     }
   }
 
-  /// 🚀 INICIJALIZUJ GLOBALNI REALTIME LISTENER
+  /// ?? INICIJALIZUJ GLOBALNI REALTIME LISTENER
   /// Pozovi ovu funkciju jednom pri startu aplikacije (npr. u main.dart ili home_screen)
   static void startGlobalRealtimeListener() {
-    // Ako već postoji subscription, preskoči
+    // Ako vec postoji subscription, preskoci
     if (_globalRealtimeSubscription != null) {
       return;
     }
 
     // Pokreni globalni listener
-    _globalRealtimeSubscription = RealtimeManager.instance.subscribe('v2_kapacitet_polazaka').listen((payload) {
-      // Na svaku promenu, osveži cache
+    _globalRealtimeSubscription = V2MasterRealtimeManager.instance.subscribe('v2_kapacitet_polazaka').listen((payload) {
+      // Na svaku promenu, osve�i cache
       refreshKapacitetCache();
     });
   }
@@ -245,7 +245,7 @@ class V2KapacitetService {
   static void stopGlobalRealtimeListener() {
     _globalRealtimeSubscription?.cancel();
     _globalRealtimeSubscription = null;
-    RealtimeManager.instance.unsubscribe('v2_kapacitet_polazaka');
-    debugPrint('🛑 Globalni kapacitet listener zaustavljen');
+    V2MasterRealtimeManager.instance.unsubscribe('v2_kapacitet_polazaka');
+    debugPrint('?? Globalni kapacitet listener zaustavljen');
   }
 }

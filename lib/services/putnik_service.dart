@@ -7,9 +7,9 @@ import '../globals.dart' as globals_file;
 import '../models/putnik.dart';
 import '../utils/grad_adresa_validator.dart';
 import '../utils/vozac_cache.dart';
-import 'realtime/realtime_manager.dart';
-import 'seat_request_service.dart';
-import 'voznje_log_service.dart';
+import 'realtime/v2_master_realtime_manager.dart';
+import 'v2_polasci_service.dart';
+import 'v2_statistika_istorija_service.dart';
 
 class _StreamParams {
   _StreamParams({this.isoDate, this.grad, this.vreme, this.vozacId});
@@ -98,16 +98,16 @@ class PutnikService {
   Future<List<Putnik>> getPutniciByDayIso(String isoDate) async {
     try {
       final todayDate = isoDate.split('T')[0];
-      final rm = RealtimeManager.instance;
+      final rm = V2MasterRealtimeManager.instance;
       // Ako je traženi datum jednak cache datumu, čitaj iz cache-a
       if (rm.loadedDate == todayDate && rm.isInitialized) {
-        return rm.srCache.values
+        return rm.polasciCache.values
             .map((sr) {
               final putnikId = sr['putnik_id']?.toString();
               final vlRows = putnikId != null
-                  ? rm.vlCache.values.where((vl) => vl['putnik_id']?.toString() == putnikId).toList()
+                  ? rm.statistikaCache.values.where((vl) => vl['putnik_id']?.toString() == putnikId).toList()
                   : <Map<String, dynamic>>[];
-              final rp = putnikId != null ? rm.rpCache[putnikId] : null;
+              final rp = putnikId != null ? rm.getPutnikById(putnikId) : null;
               return _buildPutnik(sr, vlRows, rp, todayDate);
             })
             .where((p) => p.status != 'bez_polaska' && p.status != 'cancelled')
@@ -116,7 +116,7 @@ class PutnikService {
       // Fallback: direktni upit za drugi datum (ne danas)
       final dan = _isoToDanKratica(todayDate);
       final srRows = await supabase
-          .from('seat_requests')
+          .from('v2_polasci')
           .select('id, putnik_id, grad, zeljeno_vreme, dodeljeno_vreme, status, '
               'created_at, updated_at, processed_at, priority, broj_mesta, '
               'custom_adresa_id, alternative_vreme_1, alternative_vreme_2, '
@@ -125,8 +125,8 @@ class PutnikService {
           .inFilter('status',
               ['pending', 'manual', 'approved', 'confirmed', 'otkazano', 'cancelled', 'bez_polaska', 'pokupljen']);
       final vlRows = await supabase
-          .from('voznje_log')
-          .select('id, putnik_id, datum, tip, iznos, vozac_id, vozac_ime, grad, vreme_polaska, created_at')
+          .from('v2_statistika_istorija')
+          .select('id, putnik_id, datum, tip, iznos, vozac_id, vozac_ime, grad, vreme as vreme_polaska, created_at')
           .eq('datum', todayDate);
       final vlByPutnik = <String, List<Map<String, dynamic>>>{};
       for (final vl in vlRows) {
@@ -136,7 +136,7 @@ class PutnikService {
       return srRows
           .map((sr) {
             final pid = sr['putnik_id']?.toString();
-            final rp = pid != null ? rm.rpCache[pid] : null;
+            final rp = pid != null ? V2MasterRealtimeManager.instance.getPutnikById(pid) : null;
             final vls = pid != null ? (vlByPutnik[pid] ?? []) : <Map<String, dynamic>>[];
             return _buildPutnik(Map<String, dynamic>.from(sr), vls, rp, todayDate);
           })
@@ -216,7 +216,7 @@ class PutnikService {
     // pokupioVozacId — lookup po imenu u vozaciCache
     String? pokupioVozacId;
     if (pokupioVozac != null && pokupioVozac.isNotEmpty) {
-      pokupioVozacId = RealtimeManager.instance.vozaciCache.values
+      pokupioVozacId = V2MasterRealtimeManager.instance.vozaciCache.values
           .where((v) => v['ime']?.toString() == pokupioVozac)
           .firstOrNull?['id']
           ?.toString();
@@ -228,13 +228,13 @@ class PutnikService {
     String? nazivAdrese;
     final adresaId = srRow['custom_adresa_id']?.toString();
     if (adresaId != null && adresaId.isNotEmpty) {
-      nazivAdrese = RealtimeManager.instance.adreseCache[adresaId]?['naziv']?.toString();
+      nazivAdrese = V2MasterRealtimeManager.instance.adreseCache[adresaId]?['naziv']?.toString();
     }
     if (nazivAdrese == null && rp != null) {
       final fallbackAdresaId =
           srGrad == 'VS' ? rp['adresa_vrsac_id']?.toString() : rp['adresa_bela_crkva_id']?.toString();
       if (fallbackAdresaId != null && fallbackAdresaId.isNotEmpty) {
-        nazivAdrese = RealtimeManager.instance.adreseCache[fallbackAdresaId]?['naziv']?.toString();
+        nazivAdrese = V2MasterRealtimeManager.instance.adreseCache[fallbackAdresaId]?['naziv']?.toString();
       }
     }
 
@@ -282,7 +282,7 @@ class PutnikService {
   /// Koristi cache za danas, DB upit za ostale datume.
   Future<List<Putnik>> _fetchPutnici({String? isoDate, String? grad, String? vreme, String? vozacId}) async {
     final todayDate = (isoDate ?? DateTime.now().toIso8601String()).split('T')[0];
-    final rm = RealtimeManager.instance;
+    final rm = V2MasterRealtimeManager.instance;
 
     if (!rm.isInitialized) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -340,55 +340,53 @@ class PutnikService {
       String key, String? isoDate, String? grad, String? vreme, StreamController<List<Putnik>> controller) {
     // 🌐 SETUP GLOBALNIH SHARED LISTENER-A (samo ako već nisu kreirani)
 
-    // Listener za seat_requests — ažuriraj cache + debounce refresh
+    // Listener za v2_polasci — ažuriraj cache + debounce refresh
     if (_globalSeatRequestsListener == null) {
-      _globalSeatRequestsListener = RealtimeManager.instance.subscribe('seat_requests').listen((payload) {
+      _globalSeatRequestsListener = V2MasterRealtimeManager.instance.subscribe('v2_polasci').listen((payload) {
         final record = payload.newRecord;
-        debugPrint('⚡ [PutnikService] seat_requests event: putnik=${record['putnik_id']}');
-        RealtimeManager.instance.updateSrCache(record);
+        debugPrint('⚡ [PutnikService] v2_polasci event: putnik=${record["putnik_id"]}');
+        V2MasterRealtimeManager.instance.upsertToCache('v2_polasci', record);
         _debouncedRefreshAllStreams();
       });
-      debugPrint('✅ [PutnikService] Globalni seat_requests listener kreiran');
+      debugPrint('✅ [PutnikService] Globalni v2_polasci listener kreiran');
     }
 
-    // Listener za voznje_log — ažuriraj cache + debounce refresh
+    // Listener za v2_statistika_istorija — ažuriraj cache + debounce refresh
     if (_globalVoznjeLogListener == null) {
-      _globalVoznjeLogListener = RealtimeManager.instance.subscribe('voznje_log').listen((payload) {
+      _globalVoznjeLogListener = V2MasterRealtimeManager.instance.subscribe('v2_statistika_istorija').listen((payload) {
         final record = payload.newRecord;
-        debugPrint('⚡ [PutnikService] voznje_log event: putnik=${record['putnik_id']}');
-        RealtimeManager.instance.updateVlCache(record);
+        debugPrint('⚡ [PutnikService] v2_statistika_istorija event: putnik=${record["putnik_id"]}');
+        V2MasterRealtimeManager.instance.upsertToCache('v2_statistika_istorija', record);
         _debouncedRefreshAllStreams();
       });
-      debugPrint('✅ [PutnikService] Globalni voznje_log listener kreiran');
+      debugPrint('✅ [PutnikService] Globalni v2_statistika_istorija listener kreiran');
     }
 
-    // Listener za registrovani_putnici — ažuriraj rpCache + debounce refresh
+    // Listener za v2_ putnik tabele — refresh kada se neko putnik promeni
     if (_globalRegistrovaniListener == null) {
-      _globalRegistrovaniListener = RealtimeManager.instance.subscribe('registrovani_putnici').listen((payload) {
-        final record = payload.newRecord;
-        debugPrint('🔄 [PutnikService] registrovani_putnici event: ${payload.eventType}');
-        RealtimeManager.instance.updateRpCache(record);
+      _globalRegistrovaniListener = V2MasterRealtimeManager.instance.subscribe('v2_radnici').listen((_) {
+        debugPrint('🔄 [PutnikService] v2_radnici promenjeni — debounce refresh');
         _debouncedRefreshAllStreams();
       });
-      debugPrint('✅ [PutnikService] Globalni registrovani_putnici listener kreiran');
+      debugPrint('✅ [PutnikService] Globalni v2_radnici listener kreiran');
     }
 
-    // Listener za vozac_raspored — kada se doda/promijeni/briše termin, refresh svih streamova
+    // Listener za v2_vozac_raspored — kada se doda/promijeni/briše termin, refresh svih streamova
     if (_globalVozacRasporedListener == null) {
-      _globalVozacRasporedListener = RealtimeManager.instance.subscribe('vozac_raspored').listen((_) {
-        debugPrint('🔄 [PutnikService] vozac_raspored promijenjen — full stream refresh');
+      _globalVozacRasporedListener = V2MasterRealtimeManager.instance.subscribe('v2_vozac_raspored').listen((_) {
+        debugPrint('🔄 [PutnikService] v2_vozac_raspored promijenjen — full stream refresh');
         _debouncedRefreshAllStreams();
       });
-      debugPrint('✅ [PutnikService] Globalni vozac_raspored listener kreiran');
+      debugPrint('✅ [PutnikService] Globalni v2_vozac_raspored listener kreiran');
     }
 
-    // Listener za vozac_putnik — individualna dodjela promijenjena, refresh svih streamova
+    // Listener za v2_vozac_putnik — individualna dodjela promijenjena, refresh svih streamova
     if (_globalVozacPutnikListener == null) {
-      _globalVozacPutnikListener = RealtimeManager.instance.subscribe('vozac_putnik').listen((_) {
-        debugPrint('🔄 [PutnikService] vozac_putnik promijenjen — full stream refresh');
+      _globalVozacPutnikListener = V2MasterRealtimeManager.instance.subscribe('v2_vozac_putnik').listen((_) {
+        debugPrint('🔄 [PutnikService] v2_vozac_putnik promijenjen — full stream refresh');
         _debouncedRefreshAllStreams();
       });
-      debugPrint('✅ [PutnikService] Globalni vozac_putnik listener kreiran');
+      debugPrint('✅ [PutnikService] Globalni v2_vozac_putnik listener kreiran');
     }
   }
 
@@ -430,19 +428,19 @@ class PutnikService {
   }
 
   Future<Putnik?> getPutnikByName(String ime, {String? grad}) async {
-    final todayStr = DateTime.now().toIso8601String().split('T')[0];
-    final rm = RealtimeManager.instance;
+    final String todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final rm = V2MasterRealtimeManager.instance;
 
-    // Nađi putnik_id po imenu iz rpCache
-    final rpEntry = rm.rpCache.values.where((r) => r['putnik_ime']?.toString() == ime).firstOrNull;
+    // Nađi putnik_id po imenu iz V2MasterRealtimeManager cache-a
+    final rpEntry = rm.getAllPutnici().where((r) => r['putnik_ime']?.toString() == ime).firstOrNull;
     if (rpEntry == null) return null;
     final putnikId = rpEntry['id']?.toString();
     if (putnikId == null) return null;
 
-    // Nađi seat_request za ovog putnika iz srCache
-    final srRow = rm.srCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
+    // Nađi seat_request za ovog putnika iz polasciCache
+    final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
     if (srRow != null) {
-      final vlRows = rm.vlCache.values.where((vl) => vl['putnik_id']?.toString() == putnikId).toList();
+      final vlRows = rm.statistikaCache.values.where((vl) => vl['putnik_id']?.toString() == putnikId).toList();
       return _buildPutnik(srRow, vlRows, rpEntry, todayStr);
     }
 
@@ -453,14 +451,14 @@ class PutnikService {
   Future<Putnik?> getPutnikFromAnyTable(dynamic id) async {
     try {
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
-      final idStr = id.toString();
-      final rm = RealtimeManager.instance;
+      final String idStr = id.toString();
+      final rm = V2MasterRealtimeManager.instance;
 
-      final srRow = rm.srCache.values.where((r) => r['putnik_id']?.toString() == idStr).firstOrNull;
-      final rp = rm.rpCache[idStr];
+      final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == idStr).firstOrNull;
+      final rp = rm.getPutnikById(idStr);
 
       if (srRow != null) {
-        final vlRows = rm.vlCache.values.where((vl) => vl['putnik_id']?.toString() == idStr).toList();
+        final vlRows = rm.statistikaCache.values.where((vl) => vl['putnik_id']?.toString() == idStr).toList();
         return _buildPutnik(srRow, vlRows, rp, todayStr);
       }
       if (rp != null) return Putnik.fromRegistrovaniPutnici(rp);
@@ -496,23 +494,19 @@ class PutnikService {
   Future<void> dodajPutnika(Putnik putnik) async {
     debugPrint('🔍 [PutnikService] dodajPutnika: ime="${putnik.ime}"');
 
-    final res = await supabase
-        .from('registrovani_putnici')
-        .select('id, tip')
-        .eq('putnik_ime', putnik.ime)
-        .neq('status', 'neaktivan')
-        .eq('obrisan', false)
-        .maybeSingle();
+    // Traži putnika po imenu u v2_ cache-u (sve 4 tabele)
+    final allPutnici = V2MasterRealtimeManager.instance.getAllPutnici();
+    final found = allPutnici.where((r) => r['ime']?.toString() == putnik.ime).firstOrNull;
 
-    debugPrint('🔍 [PutnikService] Query result: ${res != null ? "FOUND id=${res['id']}" : "NOT FOUND"}');
+    debugPrint('🔍 [PutnikService] Cache lookup: ${found != null ? 'FOUND id=${found['id']}' : 'NOT FOUND'}');
 
-    if (res == null) {
+    if (found == null) {
       throw Exception('Putnik "${putnik.ime}" nije pronađen u bazi ili nije aktivan');
     }
-    final putnikId = res['id'].toString();
+    final putnikId = found['id'].toString();
 
-    // Vozač/admin ručno dodaje → isAdmin=true → confirmed + dodeljeno_vreme odmah
-    await SeatRequestService.submitPolazak(
+    // Voza\u010d/admin ru\u010dno dodaje \u2192 isAdmin=true \u2192 confirmed + dodeljeno_vreme odmah
+    await V2PolasciService.submitPolazak(
       putnikId: putnikId,
       dan: putnik.dan,
       grad: putnik.grad,
@@ -546,13 +540,13 @@ class PutnikService {
     // 1. Označi status='pokupljen' u seat_requests (operativno stanje)
     try {
       if (requestId != null && requestId.isNotEmpty) {
-        await supabase.from('seat_requests').update({
+        await supabase.from('v2_polasci').update({
           'status': 'pokupljen',
           'updated_at': DateTime.now().toUtc().toIso8601String(),
           'processed_at': DateTime.now().toUtc().toIso8601String(),
           if (driver != null) 'pokupljeno_by': driver,
         }).eq('id', requestId);
-        debugPrint('✅ [oznaciPokupljen] seat_requests status=pokupljen (requestId=$requestId)');
+        debugPrint('✅ [oznaciPokupljen] v2_polasci status=pokupljen (requestId=$requestId)');
       } else {
         // Fallback: match po putnik_id + datum + grad + vreme (PRAVILO: DAN+GRAD+VREME)
         final gradKey = grad != null ? GradAdresaValidator.normalizeGrad(grad) : null;
@@ -567,7 +561,7 @@ class PutnikService {
           debugPrint('⛔ [oznaciPokupljen] Nedostaje grad, vreme ili dan — ne mogu da označim pokupljenim!');
         } else {
           await supabase
-              .from('seat_requests')
+              .from('v2_polasci')
               .update({
                 'status': 'pokupljen',
                 'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -578,16 +572,15 @@ class PutnikService {
               .eq('dan', danKey)
               .eq('grad', gradKey)
               .eq('zeljeno_vreme', vremeKey);
-          debugPrint(
-              '✅ [oznaciPokupljen] seat_requests status=pokupljen (dan=$danKey, grad=$gradKey, vreme=$vremeKey)');
+          debugPrint('✅ [oznaciPokupljen] v2_polasci status=pokupljen (dan=$danKey, grad=$gradKey, vreme=$vremeKey)');
         }
       }
     } catch (e) {
-      debugPrint('⚠️ [oznaciPokupljen] Greška pri update seat_requests: $e');
+      debugPrint('⚠️ [oznaciPokupljen] Greška pri update v2_polasci: $e');
     }
 
-    // 2. Upiši u voznje_log (TRAJNI ZAPIS ZA STATISTIKU - nikad se ne briše)
-    final existing = await VoznjeLogService.getLogEntry(
+    // 2. Upiši u v2_statistika_istorija (TRAJNI ZAPIS ZA STATISTIKU - nikad se ne briše)
+    final existing = await V2StatistikaIstorijaService.getLogEntry(
       putnikId: id.toString(),
       datum: targetDatum,
       tip: 'voznja',
@@ -596,7 +589,7 @@ class PutnikService {
     );
 
     if (existing == null) {
-      await VoznjeLogService.logGeneric(
+      await V2StatistikaIstorijaService.logGeneric(
         tip: 'voznja',
         putnikId: id.toString(),
         vozacId: vozacId,
@@ -612,13 +605,19 @@ class PutnikService {
   /// Takođe otkazuje njegove vožnje u seat_requests za taj dan ili period
   Future<void> oznaciBolovanjeGodisnji(String putnikId, String status, String actor) async {
     try {
-      // 1. Ažuriraj status putnika
-      await supabase.from('registrovani_putnici').update({
-        'status': status,
-        'updated_at': nowToString(),
-      }).eq('id', putnikId);
+      // 1. Ažuriraj status putnika u odgovarajućoj v2_ tabeli
+      final putnikData = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+      final tabela = putnikData?['_tabela'] as String?;
+      if (tabela != null) {
+        await supabase.from(tabela).update({
+          'status': status,
+          'updated_at': nowToString(),
+        }).eq('id', putnikId);
+      } else {
+        debugPrint('⚠️ [oznaciBolovanjeGodisnji] Putnik $putnikId nije u v2_ cache-u!');
+      }
 
-      // 2. Ako je na bolovanju/godišnjem, otkaži sve pending seat_requests za DANAS i SUTRA
+      // 2. Ako je na bolovanju/godišnjem, otkaži sve pending v2_polasci za DANAS i SUTRA
       if (status == 'bolovanje' || status == 'godisnji') {
         final danasDay = DateTime.now().weekday;
         final sutraDay = DateTime.now().add(const Duration(days: 1)).weekday;
@@ -627,7 +626,7 @@ class PutnikService {
         final sutraKratica = dani[sutraDay - 1];
 
         await supabase
-            .from('seat_requests')
+            .from('v2_polasci')
             .update({'status': 'cancelled', 'updated_at': nowToString()})
             .eq('putnik_id', putnikId)
             .inFilter('dan', [danasKratica, sutraKratica])
@@ -659,7 +658,7 @@ class PutnikService {
     if (requestId != null && requestId.isNotEmpty) {
       try {
         final res = await supabase
-            .from('seat_requests')
+            .from('v2_polasci')
             .update({
               'status': 'bez_polaska',
               'processed_at': DateTime.now().toUtc().toIso8601String(),
@@ -708,7 +707,7 @@ class PutnikService {
     try {
       if (normalizedTime.isNotEmpty) {
         var res = await supabase
-            .from('seat_requests')
+            .from('v2_polasci')
             .update({
               'status': 'bez_polaska',
               'processed_at': DateTime.now().toUtc().toIso8601String(),
@@ -726,7 +725,7 @@ class PutnikService {
 
         debugPrint('⚠️ [PutnikService] No match by zeljeno_vreme, trying dodeljeno_vreme...');
         res = await supabase
-            .from('seat_requests')
+            .from('v2_polasci')
             .update({
               'status': 'bez_polaska',
               'processed_at': DateTime.now().toUtc().toIso8601String(),
@@ -745,7 +744,7 @@ class PutnikService {
 
       debugPrint('⚠️ [PutnikService] No match by vremena, trying without time filter...');
       final res = await supabase
-          .from('seat_requests')
+          .from('v2_polasci')
           .update({
             'status': 'bez_polaska',
             'processed_at': DateTime.now().toUtc().toIso8601String(),
@@ -783,7 +782,7 @@ class PutnikService {
         vozacUuid = VozacCache.getUuidByIme(driver);
       }
 
-      await VoznjeLogService.logGeneric(
+      await V2StatistikaIstorijaService.logGeneric(
         tip: 'otkazivanje',
         putnikId: id.toString(),
         vozacId: vozacUuid,
@@ -800,7 +799,7 @@ class PutnikService {
     if (requestId != null && requestId.isNotEmpty) {
       try {
         final res = await supabase
-            .from('seat_requests')
+            .from('v2_polasci')
             .update({
               'status': status,
               'processed_at': DateTime.now().toUtc().toIso8601String(),
@@ -847,7 +846,7 @@ class PutnikService {
     try {
       if (normalizedTime.isNotEmpty) {
         var res = await supabase
-            .from('seat_requests')
+            .from('v2_polasci')
             .update({
               'status': status,
               'processed_at': DateTime.now().toUtc().toIso8601String(),
@@ -865,7 +864,7 @@ class PutnikService {
         }
 
         res = await supabase
-            .from('seat_requests')
+            .from('v2_polasci')
             .update({
               'status': status,
               'processed_at': DateTime.now().toUtc().toIso8601String(),
@@ -920,10 +919,9 @@ class PutnikService {
       debugPrint('⚠️ [oznaciPlaceno] driver je NULL!');
     }
 
-    // 💰 Plaćanje se evidentira SAMO u voznje_log (izvor istine za finansije)
-    // seat_requests.status se NE mijenja - 'pokupljen' ostaje 'pokupljen', 'confirmed' ostaje 'confirmed'
-    // Dodaj u voznje_log preko servisa (sa gradom i vremenom za preciznost)
-    await VoznjeLogService.dodajUplatu(
+    // 💰 Plaćanje se evidentira SAMO u v2_statistika_istorija (izvor istine za finansije)
+    // v2_polasci.status se NE mijenja - 'pokupljen' ostaje 'pokupljen', 'confirmed' ostaje 'confirmed'
+    await V2StatistikaIstorijaService.dodajUplatu(
       putnikId: id.toString(),
       datum: DateTime.parse(dateStr),
       iznos: iznos.toDouble(),
@@ -943,7 +941,7 @@ class PutnikService {
     try {
       final gradKey = GradAdresaValidator.normalizeGrad(grad);
 
-      var query = supabase.from('seat_requests').update({
+      var query = supabase.from('v2_polasci').update({
         'status': 'bez_polaska',
         'processed_at': DateTime.now().toUtc().toIso8601String(),
         'updated_at': DateTime.now().toUtc().toIso8601String(),

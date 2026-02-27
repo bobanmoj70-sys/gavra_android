@@ -1,9 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
-import 'local_notification_service.dart';
+import 'v2_local_notification_service.dart';
 
 // This file exposes two background handlers:
 //  - firebaseMessagingBackgroundHandler(RemoteMessage) which is registered
@@ -17,7 +17,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final payload = Map<String, dynamic>.from(message.data);
     await backgroundNotificationHandler(payload);
   } catch (e) {
-    debugPrint('🔴 Error in Firebase background handler: $e');
+    debugPrint('ðŸ”´ Error in Firebase background handler: $e');
   }
 }
 
@@ -30,14 +30,16 @@ Future<void> backgroundNotificationHandler(Map<String, dynamic> payload) async {
         (payload['message'] as String?) ??
         'Nova notifikacija';
 
-    // 🛡️ FIX: Umesto samo payload['data'], prosleđujemo ceo payload.
-    // FCM postavlja sve podatke direktno u message.data, tako da je payload već 'data' mapa.
+    // ðŸ›¡ï¸ FIX: Umesto samo payload['data'], prosleÄ‘ujemo ceo payload.
+    // FCM postavlja sve podatke direktno u message.data, tako da je payload veÄ‡ 'data' mapa.
     await LocalNotificationService.showNotificationFromBackground(
       title: title,
       body: body,
       payload: jsonEncode(payload),
     );
   } catch (e) {
-    debugPrint('⚠️ Error handling background notification: $e');
+    debugPrint('âš ï¸ Error handling background notification: $e');
   }
 }
+
+

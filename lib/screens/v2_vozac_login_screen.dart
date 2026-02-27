@@ -10,7 +10,7 @@ import '../services/theme_manager.dart';
 import '../services/v2_vozac_service.dart';
 import '../utils/app_snack_bar.dart';
 import 'v2_home_screen.dart';
-import 'vozac_screen.dart';
+import 'v2_vozac_screen.dart';
 
 /// 🔐 VOZAČ LOGIN SCREEN
 /// Lokalni login - proverava email/telefon/šifru iz SharedPreferences
