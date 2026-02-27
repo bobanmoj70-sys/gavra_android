@@ -15,13 +15,13 @@ class V2AppSettingsService {
 
   static StreamSubscription? _subscription;
 
-  /// Inicijalizuje listener na app_settings tabelu
+  /// Inicijalizuje listener na v2_app_settings tabelu
   static Future<void> initialize() async {
     // Učitaj početne vrednosti
     await _loadSettings();
 
     // Slušaj promene u realtime
-    _subscription = V2MasterRealtimeManager.instance.subscribe('app_settings').listen((payload) {
+    _subscription = V2MasterRealtimeManager.instance.subscribe('v2_app_settings').listen((payload) {
       // Na svaku promenu, ponovo učitaj podešavanja
       _loadSettings();
     });
@@ -137,7 +137,7 @@ class V2AppSettingsService {
 
   static void dispose() {
     _subscription?.cancel();
-    V2MasterRealtimeManager.instance.unsubscribe('app_settings');
+    V2MasterRealtimeManager.instance.unsubscribe('v2_app_settings');
     _subscription = null;
   }
 }

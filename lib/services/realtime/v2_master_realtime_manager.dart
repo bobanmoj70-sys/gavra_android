@@ -33,7 +33,7 @@ import 'v2_realtime_status.dart';
 ///   troskoviCache    ← v2_finansije_troskovi (statički, aktivni)
 ///   pumpaCache       ← v2_pumpa_config      (statički)
 ///   pinCache         ← v2_pin_zahtevi       (statički)
-///   settingsCache    ← app_settings         (statički)
+///   settingsCache    ← v2_app_settings      (statički)
 /// ════════════════════════════════════════════════════════════════════════════
 class V2MasterRealtimeManager {
   V2MasterRealtimeManager._internal();
@@ -98,7 +98,7 @@ class V2MasterRealtimeManager {
   /// v2_pin_zahtevi
   final Map<String, Map<String, dynamic>> pinCache = {};
 
-  /// app_settings
+  /// v2_app_settings
   final Map<String, Map<String, dynamic>> settingsCache = {};
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ class V2MasterRealtimeManager {
         _db.from('v2_pumpa_config').select(),
         _db.from('v2_vozac_lokacije').select().eq('aktivan', true),
         _db.from('v2_pin_zahtevi').select(),
-        _db.from('app_settings').select(),
+        _db.from('v2_app_settings').select(),
       ]);
 
       _fillCache(vozaciCache, results[0]);
@@ -368,7 +368,7 @@ class V2MasterRealtimeManager {
         return pumpaCache;
       case 'v2_pin_zahtevi':
         return pinCache;
-      case 'app_settings':
+      case 'v2_app_settings':
         return settingsCache;
       default:
         debugPrint('⚠️ [V2MasterRealtimeManager] Nepoznata tabela za cache: $table');
