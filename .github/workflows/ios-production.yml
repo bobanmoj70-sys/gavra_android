@@ -43,6 +43,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Auto-Bump Version
+        id: version_bump
+        run: |
+          CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
+          VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
+          VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
+          NEW_CODE=$((VERSION_CODE + 1))
+          NEW_VERSION="${VERSION_NAME}+${NEW_CODE}"
+          sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$NEW_CODE" >> $GITHUB_OUTPUT
+          echo "📌 Bumped: $CURRENT → $NEW_VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          git commit -m "chore: bump build number to $NEW_CODE [skip ci]"
+          git push
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -96,34 +117,17 @@ jobs:
           </plist>
           EOF
 
-      - name: Get version info
-        id: version
-        run: |
-          VERSION_LINE=$(grep "^version:" pubspec.yaml)
-          VERSION_NAME=$(echo "$VERSION_LINE" | sed 's/version: \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')
-          VERSION_CODE=$(echo "$VERSION_LINE" | sed 's/version: [0-9]*\.[0-9]*\.[0-9]*+\([0-9]*\)/\1/')
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "📌 Version: $VERSION_NAME ($VERSION_CODE)"
-
-      - name: Get latest build number
-        id: build_info
-        run: |
-          NEW_BUILD="${{ steps.version.outputs.VERSION_CODE }}"
-          echo "BUILD_NUMBER=$NEW_BUILD" >> $GITHUB_OUTPUT
-          echo "📱 Build number: $NEW_BUILD"
-
       - name: Update Info.plist
         run: |
           # Ensure Info.plist has the correct version
-          plutil -replace CFBundleShortVersionString -string "${{ steps.version.outputs.VERSION_NAME }}" ios/Runner/Info.plist
-          plutil -replace CFBundleVersion -string "${{ steps.build_info.outputs.BUILD_NUMBER }}" ios/Runner/Info.plist
+          plutil -replace CFBundleShortVersionString -string "${{ steps.version_bump.outputs.VERSION_NAME }}" ios/Runner/Info.plist
+          plutil -replace CFBundleVersion -string "${{ steps.version_bump.outputs.VERSION_CODE }}" ios/Runner/Info.plist
 
       - name: Build iOS App
         run: |
           flutter build ipa --release \
-            --build-name=${{ steps.version.outputs.VERSION_NAME }} \
-            --build-number=${{ steps.build_info.outputs.BUILD_NUMBER }} \
+            --build-name=${{ steps.version_bump.outputs.VERSION_NAME }} \
+            --build-number=${{ steps.version_bump.outputs.VERSION_CODE }} \
             --export-options-plist=$HOME/export_options.plist
 
       - name: Upload to App Store Connect
@@ -140,7 +144,7 @@ jobs:
       - name: Find and link build to version
         id: link_build
         run: |
-          BUILD_NUM="${{ steps.build_info.outputs.BUILD_NUMBER }}"
+          BUILD_NUM="${{ steps.version_bump.outputs.VERSION_CODE }}"
           echo "🔍 Looking for build $BUILD_NUM..."
 
           # Try to find the build
@@ -192,5 +196,5 @@ jobs:
         if: always()
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
-          echo "ver: ${{ steps.version.outputs.VERSION_NAME }} (${{ steps.build_info.outputs.BUILD_NUMBER }})" >> $GITHUB_STEP_SUMMARY
+          echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
 
