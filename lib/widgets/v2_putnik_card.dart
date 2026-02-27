@@ -24,7 +24,7 @@ import '../utils/v2_vozac_cache.dart';
 class PutnikCard extends StatefulWidget {
   const PutnikCard({
     super.key,
-    required this.V2Putnik,
+    required this.putnik,
     this.showActions = true,
     required this.currentDriver,
     this.redniBroj,
@@ -36,7 +36,7 @@ class PutnikCard extends StatefulWidget {
     this.onChanged,
     this.onPokupljen,
   });
-  final V2Putnik V2Putnik;
+  final V2Putnik putnik;
   final bool showActions;
   final String currentDriver;
   final int? redniBroj;
@@ -64,7 +64,7 @@ class _PutnikCardState extends State<PutnikCard> {
   @override
   void initState() {
     super.initState();
-    _putnik = widget.V2Putnik;
+    _putnik = widget.putnik;
   }
 
   @override
@@ -73,7 +73,7 @@ class _PutnikCardState extends State<PutnikCard> {
     // ?? FIX: UVEK a�uriraj _putnik kada se widget promeni
     // Ovo garantuje da realtime promene (pokupljenje, otkazivanje)
     // budu odmah vidljive bez obzira na == operator
-    _putnik = widget.V2Putnik;
+    _putnik = widget.putnik;
   }
 
   // Format za otkazivanje - prikazuje vreme ako je danas, inace datum i vreme

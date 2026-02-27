@@ -44,9 +44,9 @@ import '../widgets/v2_bottom_nav_bar_zimski.dart';
 import '../widgets/v2_putnik_list.dart';
 import '../widgets/v2_registracija_countdown_widget.dart';
 import '../widgets/v2_shimmer_widgets.dart';
-import 'v2_promena_sifre_screen.dart';
 import 'v2_admin_screen.dart';
 import 'v2_polasci_screen.dart';
+import 'v2_promena_sifre_screen.dart';
 import 'v2_vozac_screen.dart';
 import 'v2_welcome_screen.dart';
 
@@ -1698,7 +1698,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             ? samoDanasAdresaId
                                             : null; // Stalna adresa ima adresaId u registrovani_putnici
 
-                                        final V2Putnik = V2Putnik(
+                                        final noviPutnik = V2Putnik(
                                           ime: selectedPutnik!.putnikIme,
                                           polazak: _selectedVreme,
                                           grad: _selectedGrad,
@@ -1713,7 +1713,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         );
 
                                         // Duplikat provera se Vrsi u PutnikService.dodajPutnika()
-                                        await _putnikService.dodajPutnika(V2Putnik);
+                                        await _putnikService.dodajPutnika(noviPutnik);
 
                                         // ?? Eksplicitan refresh stream-a da se V2Putnik odmah prika�e
                                         _putnikService.refreshAllActiveStreams();
@@ -1731,7 +1731,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         // Koristimo rootContext (home screen) - dijalog context je vec zatvoren
                                         if (mounted) {
                                           setState(() {
-                                            _selectedVreme = V2Putnik.polazak;
+                                            _selectedVreme = noviPutnik.polazak;
                                           });
                                         }
 
@@ -2055,8 +2055,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               V2Putnik.adresa,
               _selectedGrad,
             );
-            final odgovarajuceVreme =
-                GradAdresaValidator.normalizeTime(V2Putnik.polazak) == GradAdresaValidator.normalizeTime(_selectedVreme);
+            final odgovarajuceVreme = GradAdresaValidator.normalizeTime(V2Putnik.polazak) ==
+                GradAdresaValidator.normalizeTime(_selectedVreme);
             // ?? FIX: Dopusti otkazane putnike - PutnikList ce ih sortirati na dno sa crvenom bojom
             // Iskljuci bez_polaska, cancelled - admin ih je eksplicitno uklonio
             final prikazi = imaVreme &&

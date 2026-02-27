@@ -109,28 +109,28 @@ class CardColorHelper {
 
   /// Enum za stanje kartice sa proverom vozaca (za sivu boju)
   /// [currentDriver] - ime trenutnog vozaca koji gleda listu
-  static CardState getCardStateWithDriver(V2Putnik V2Putnik, String currentDriver) {
+  static CardState getCardStateWithDriver(V2Putnik putnik, String currentDriver) {
     // Provera po prioritetu - odsustvo i otkazano imaju najveci prioritet
-    if (V2Putnik.jeOdsustvo) {
+    if (putnik.jeOdsustvo) {
       return CardState.odsustvo;
     }
-    if (V2Putnik.jeOtkazan) {
+    if (putnik.jeOtkazan) {
       return CardState.otkazano;
     }
-    if (V2Putnik.jePokupljen) {
+    if (putnik.jePokupljen) {
       // ?? PRAVI FIX: Proveravamo `placeno` polje umesto iznosa
-      final bool isPlaceno = V2Putnik.placeno == true;
-      final bool isMesecniTip = V2Putnik.isMesecniTip;
+      final bool isPlaceno = putnik.placeno == true;
+      final bool isMesecniTip = putnik.isMesecniTip;
       if (isPlaceno || isMesecniTip) {
         return CardState.placeno;
       }
       return CardState.pokupljeno;
     }
-    // ?? TUĐI V2Putnik: ima vozaca, vozac nije trenutni i nije "Nedodeljen"
-    if (V2Putnik.dodeljenVozac != null &&
-        V2Putnik.dodeljenVozac!.isNotEmpty &&
-        V2Putnik.dodeljenVozac != 'Nedodeljen' &&
-        V2Putnik.dodeljenVozac != currentDriver) {
+    // ?? TUĐI putnik: ima vozaca, vozac nije trenutni i nije "Nedodeljen"
+    if (putnik.dodeljenVozac != null &&
+        putnik.dodeljenVozac!.isNotEmpty &&
+        putnik.dodeljenVozac != 'Nedodeljen' &&
+        putnik.dodeljenVozac != currentDriver) {
       return CardState.tudji;
     }
     return CardState.nepokupljeno;
@@ -141,8 +141,8 @@ class CardColorHelper {
   // ---------------------------------------------------------------------------
 
   /// Vraca BoxDecoration kartice SA proverom vozaca
-  BoxDecoration getCardDecorationWithDriver(V2Putnik V2Putnik, String currentDriver) {
-    final state = getCardStateWithDriver(V2Putnik, currentDriver);
+  BoxDecoration getCardDecorationWithDriver(V2Putnik putnik, String currentDriver) {
+    final state = getCardStateWithDriver(putnik, currentDriver);
     final gradient = _getGradientForState(state);
 
     return BoxDecoration(
@@ -165,18 +165,18 @@ class CardColorHelper {
 
   /// Vraca boju teksta SA proverom vozaca
   Color getTextColorWithDriver(
-    V2Putnik V2Putnik,
+    V2Putnik putnik,
     String currentDriver,
     BuildContext context, {
     required Color successPrimary,
   }) {
-    final state = getCardStateWithDriver(V2Putnik, currentDriver);
+    final state = getCardStateWithDriver(putnik, currentDriver);
     return _getTextForState(state, successPrimary);
   }
 
   /// Vraca sekundarnu boju teksta SA proverom vozaca
-  Color getSecondaryTextColorWithDriver(V2Putnik V2Putnik, String currentDriver) {
-    final state = getCardStateWithDriver(V2Putnik, currentDriver);
+  Color getSecondaryTextColorWithDriver(V2Putnik putnik, String currentDriver) {
+    final state = getCardStateWithDriver(putnik, currentDriver);
     return _getSecondaryTextForState(state);
   }
 

@@ -24,13 +24,13 @@ typedef GeocodingProgressCallback = void Function(
 /// Rezultat geocodinga za jednog putnika
 class GeocodingResult {
   const GeocodingResult({
-    required this.V2Putnik,
+    required this.putnik,
     this.position,
     this.source,
     this.error,
   });
 
-  final V2Putnik V2Putnik;
+  final V2Putnik putnik;
   final Position? position;
   final String? source; // 'database', 'nominatim'
   final String? error;
@@ -65,11 +65,11 @@ class UnifiedGeocodingService {
     int completed = 0;
     final int total = putniciSaAdresama.length;
 
-    for (final V2Putnik in putniciSaAdresama) {
+    for (final putnik in putniciSaAdresama) {
       tasks.add(() async {
-        final result = await _getCoordinatesForPutnik(V2Putnik, saveToDatabase);
+        final result = await _getCoordinatesForPutnik(putnik, saveToDatabase);
         completed++;
-        onProgress?.call(completed, total, V2Putnik.adresa ?? V2Putnik.ime);
+        onProgress?.call(completed, total, putnik.adresa ?? putnik.ime);
         return result;
       });
     }
@@ -81,7 +81,7 @@ class UnifiedGeocodingService {
 
     for (final result in results) {
       if (result.success) {
-        coordinates[result.V2Putnik] = result.position!;
+        coordinates[result.putnik] = result.position!;
       }
     }
 
@@ -90,7 +90,7 @@ class UnifiedGeocodingService {
 
   /// Dobij koordinate za jednog putnika
   static Future<GeocodingResult> _getCoordinatesForPutnik(
-    V2Putnik V2Putnik,
+    V2Putnik putnik,
     bool saveToDatabase,
   ) async {
     try {
@@ -99,9 +99,9 @@ class UnifiedGeocodingService {
       String? realAddressName;
 
       // PRIORITET 1: Koordinate iz baze (preko adresaId)
-      if (V2Putnik.adresaId != null && V2Putnik.adresaId!.isNotEmpty) {
+      if (putnik.adresaId != null && putnik.adresaId!.isNotEmpty) {
         final adresaFromDb = await V2AdresaSupabaseService.getAdresaByUuid(
-          V2Putnik.adresaId!,
+          putnik.adresaId!,
         );
         if (adresaFromDb != null) {
           realAddressName = adresaFromDb.naziv;
@@ -118,9 +118,9 @@ class UnifiedGeocodingService {
 
       // PRIORITET 3: Nominatim API
       if (position == null) {
-        final addressToGeocode = realAddressName ?? V2Putnik.adresa!;
+        final addressToGeocode = realAddressName ?? putnik.adresa!;
         final coordsString = await GeocodingService.getKoordinateZaAdresu(
-          V2Putnik.grad,
+          putnik.grad,
           addressToGeocode,
         );
 
@@ -131,7 +131,7 @@ class UnifiedGeocodingService {
 
             if (saveToDatabase) {
               await _saveCoordinatesToDatabase(
-                V2Putnik: V2Putnik,
+                putnik: putnik,
                 lat: position.latitude,
                 lng: position.longitude,
               );
@@ -141,14 +141,14 @@ class UnifiedGeocodingService {
       }
 
       return GeocodingResult(
-        V2Putnik: V2Putnik,
+        putnik: putnik,
         position: position,
         source: source,
         error: position == null ? 'Koordinate nisu pronadene' : null,
       );
     } catch (e) {
       return GeocodingResult(
-        V2Putnik: V2Putnik,
+        putnik: putnik,
         error: e.toString(),
       );
     }
@@ -159,17 +159,17 @@ class UnifiedGeocodingService {
   // -----------------------------------------------------------------------
 
   /// Proveri da li V2Putnik ima validnu adresu
-  static bool _hasValidAddress(V2Putnik V2Putnik) {
+  static bool _hasValidAddress(V2Putnik putnik) {
     // MESECNI PUTNICI: Imaju adresaId koji pokazuje na pravu adresu
-    if (V2Putnik.adresaId != null && V2Putnik.adresaId!.isNotEmpty) {
+    if (putnik.adresaId != null && putnik.adresaId!.isNotEmpty) {
       return true;
     }
 
     // DNEVNI PUTNICI: Moraju imati adresu koja nije samo grad
-    if (V2Putnik.adresa == null || V2Putnik.adresa!.trim().isEmpty) {
+    if (putnik.adresa == null || putnik.adresa!.trim().isEmpty) {
       return false;
     }
-    if (V2Putnik.adresa!.toLowerCase().trim() == V2Putnik.grad.toLowerCase().trim()) {
+    if (putnik.adresa!.toLowerCase().trim() == putnik.grad.toLowerCase().trim()) {
       return false;
     }
     return true;
@@ -210,21 +210,21 @@ class UnifiedGeocodingService {
 
   /// Sacuvaj koordinate u bazu
   static Future<void> _saveCoordinatesToDatabase({
-    required V2Putnik V2Putnik,
+    required V2Putnik putnik,
     required double lat,
     required double lng,
   }) async {
     try {
-      if (V2Putnik.adresaId != null && V2Putnik.adresaId!.isNotEmpty) {
+      if (putnik.adresaId != null && putnik.adresaId!.isNotEmpty) {
         await V2AdresaSupabaseService.updateKoordinate(
-          V2Putnik.adresaId!,
+          putnik.adresaId!,
           lat: lat,
           lng: lng,
         );
-      } else if (V2Putnik.adresa != null && V2Putnik.adresa!.isNotEmpty) {
+      } else if (putnik.adresa != null && putnik.adresa!.isNotEmpty) {
         await V2AdresaSupabaseService.createOrGetAdresa(
-          naziv: V2Putnik.adresa!,
-          grad: V2Putnik.grad,
+          naziv: putnik.adresa!,
+          grad: putnik.grad,
           lat: lat,
           lng: lng,
         );

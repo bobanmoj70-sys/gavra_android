@@ -339,12 +339,12 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 
   /// 👤 Dialog: Dodijeli vozača pojedinačnom putniku (vozac_putnik individualna dodjela)
   /// Samo dostupno kada termin NEMA vozača u vozac_raspored.
-  Future<void> _showPutnikAssignDialog(V2Putnik V2Putnik) async {
+  Future<void> _showPutnikAssignDialog(V2Putnik putnik) async {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
     // Pronađi trenutnu individualnu dodjelu za ovog putnika
     final trenutniEntry = _vozacPutnikCache
         .where(
-          (e) => e.putnikId == V2Putnik.id?.toString(),
+          (e) => e.putnikId == putnik.id?.toString(),
         )
         .firstOrNull;
     final trenutni = trenutniEntry?.vozac;
@@ -385,7 +385,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                '👤 ${V2Putnik.ime}'.toUpperCase(),
+                '👤 ${putnik.ime}'.toUpperCase(),
                 style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1),
               ),
               const SizedBox(height: 4),
@@ -452,7 +452,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                 TextButton.icon(
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    final ok = await _vozacPutnikService.delete(putnikId: V2Putnik.id!.toString());
+                    final ok = await _vozacPutnikService.delete(putnikId: putnik.id!.toString());
                     if (ok) {
                       await _loadAll();
                       if (mounted) AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
@@ -479,7 +479,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                       : () async {
                           Navigator.pop(ctx);
                           final ok = await _vozacPutnikService.set(
-                            putnikId: V2Putnik.id!.toString(),
+                            putnikId: putnik.id!.toString(),
                             vozacIme: odabranVozac!,
                             dan: dan,
                             grad: _selectedGrad,
@@ -487,7 +487,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                           );
                           if (ok) {
                             await _loadAll();
-                            if (mounted) AppSnackBar.success(context, '✅ $odabranVozac → ${V2Putnik.ime}');
+                            if (mounted) AppSnackBar.success(context, '✅ $odabranVozac → ${putnik.ime}');
                           } else {
                             if (mounted) AppSnackBar.error(context, '❌ Greška pri dodjeli');
                           }
@@ -717,7 +717,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                                   ? VozacCache.getColor(individualnaEntry.vozac)
                                   : _getVozacColorForTermin(_selectedGrad, _selectedVreme);
                               return _PutnikRasporedTile(
-                                V2Putnik: p,
+                                putnik: p,
                                 vozacColor: vozacColor,
                                 terminJeDodeljen: terminJeDodeljen,
                                 vozacPutnikIme: individualnaEntry?.vozac,
@@ -851,14 +851,14 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 /// [onTap] — callback za tap (null ako je termin dodeljen)
 class _PutnikRasporedTile extends StatelessWidget {
   const _PutnikRasporedTile({
-    required this.V2Putnik,
+    required this.putnik,
     this.vozacColor,
     this.terminJeDodeljen = false,
     this.vozacPutnikIme,
     this.onTap,
   });
 
-  final V2Putnik V2Putnik;
+  final V2Putnik putnik;
   final Color? vozacColor;
   final bool terminJeDodeljen;
   final String? vozacPutnikIme; // individualna dodjela (vozac_putnik)
@@ -886,7 +886,7 @@ class _PutnikRasporedTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      V2Putnik.ime,
+                      putnik.ime,
                       style: TextStyle(
                         color: color != Colors.white12 ? color : Colors.white,
                         fontWeight: FontWeight.w600,
@@ -894,7 +894,7 @@ class _PutnikRasporedTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      V2Putnik.adresa ?? '${V2Putnik.grad} · ${V2Putnik.polazak}',
+                      putnik.adresa ?? '${putnik.grad} · ${putnik.polazak}',
                       style: const TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ],

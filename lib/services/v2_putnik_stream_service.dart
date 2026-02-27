@@ -481,29 +481,29 @@ class V2PutnikStreamService {
     }
   }
 
-  Future<void> dodajPutnika(V2Putnik V2Putnik) async {
-    debugPrint('🔍 [PutnikService] dodajPutnika: ime="${V2Putnik.ime}"');
+  Future<void> dodajPutnika(V2Putnik putnik) async {
+    debugPrint('🔍 [PutnikService] dodajPutnika: ime="${putnik.ime}"');
 
     // Traži putnika po imenu u v2_ cache-u (sve 4 tabele)
     final allPutnici = V2MasterRealtimeManager.instance.getAllPutnici();
-    final found = allPutnici.where((r) => r['ime']?.toString() == V2Putnik.ime).firstOrNull;
+    final found = allPutnici.where((r) => r['ime']?.toString() == putnik.ime).firstOrNull;
 
     debugPrint('🔍 [PutnikService] Cache lookup: ${found != null ? 'FOUND id=${found['id']}' : 'NOT FOUND'}');
 
     if (found == null) {
-      throw Exception('V2Putnik "${V2Putnik.ime}" nije pronađen u bazi ili nije aktivan');
+      throw Exception('Putnik "${putnik.ime}" nije pronađen u bazi ili nije aktivan');
     }
     final putnikId = found['id'].toString();
 
     // Voza\u010d/admin ru\u010dno dodaje \u2192 isAdmin=true \u2192 confirmed + dodeljeno_vreme odmah
     await V2PolasciService.submitPolazak(
       putnikId: putnikId,
-      dan: V2Putnik.dan,
-      grad: V2Putnik.grad,
-      vreme: V2Putnik.polazak,
-      brojMesta: V2Putnik.brojMesta,
+      dan: putnik.dan,
+      grad: putnik.grad,
+      vreme: putnik.polazak,
+      brojMesta: putnik.brojMesta,
       isAdmin: true,
-      customAdresaId: V2Putnik.adresaId,
+      customAdresaId: putnik.adresaId,
     );
   }
 

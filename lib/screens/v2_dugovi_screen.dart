@@ -75,10 +75,10 @@ class _DugoviScreenState extends State<DugoviScreen> {
   }
 
   // 💰 CALCULATE DUG AMOUNT HELPER
-  double _calculateDugAmount(V2Putnik V2Putnik) {
+  double _calculateDugAmount(V2Putnik putnik) {
     // ✅ FIX: Koristi efektivnu cenu iz modela pomnoženu sa brojem mesta
     // Umesto hardkodovanih 500.0
-    return V2Putnik.effectivePrice * (V2Putnik.brojMesta > 0 ? V2Putnik.brojMesta : 1);
+    return putnik.effectivePrice * (putnik.brojMesta > 0 ? putnik.brojMesta : 1);
   }
 
   List<V2Putnik> _applyFiltersAndSort(List<V2Putnik> input) {

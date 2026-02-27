@@ -181,7 +181,7 @@ class PutnikList extends StatelessWidget {
               }
 
               return PutnikCard(
-                V2Putnik: V2Putnik,
+                putnik: V2Putnik,
                 showActions: showActions,
                 currentDriver: currentDriver,
                 redniBroj: redniBroj,
@@ -266,7 +266,7 @@ class PutnikList extends StatelessWidget {
               redniBroj = _pocetniRedniBroj(prikaz, index);
             }
             return PutnikCard(
-              V2Putnik: V2Putnik,
+              putnik: V2Putnik,
               showActions: showActions,
               currentDriver: currentDriver,
               redniBroj: redniBroj,
@@ -307,7 +307,7 @@ class PutnikList extends StatelessWidget {
             redniBroj = _pocetniRedniBroj(filteredPutnici, index);
           }
           return PutnikCard(
-            V2Putnik: V2Putnik,
+            putnik: V2Putnik,
             showActions: showActions,
             currentDriver: currentDriver,
             redniBroj: redniBroj,
