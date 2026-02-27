@@ -13,7 +13,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'globals.dart';
 import 'screens/welcome_screen.dart';
 import 'services/adresa_supabase_service.dart';
-import 'services/app_settings_service.dart'; // 🔧 Podešavanja aplikacije (nav bar tip)
 import 'services/firebase_service.dart';
 import 'services/gps_foreground_service.dart'; // 🛰️ Android Foreground Service za GPS tracking
 import 'services/huawei_push_service.dart';
@@ -22,10 +21,11 @@ import 'services/realtime/realtime_manager.dart'; // 🎯 Centralizovani realtim
 import 'services/realtime_gps_service.dart'; // 🛰️ DODATO za cleanup
 import 'services/slobodna_mesta_service.dart';
 import 'services/theme_manager.dart'; // 🎨 Novi tema sistem
+import 'services/v2_app_settings_service.dart'; // 🔧 Podešavanja aplikacije (nav bar tip)
+import 'services/v2_weather_alert_service.dart'; // 🌤️ Vremenske uzbune
 import 'services/vozac_service.dart';
 import 'services/vozila_service.dart';
 import 'services/voznje_log_service.dart';
-import 'services/weather_alert_service.dart'; // 🌤️ Vremenske uzbune
 import 'services/weather_service.dart'; // 🌤️ DODATO za cleanup
 import 'utils/vozac_cache.dart'; // 🎯 Jedinstven vozač cache
 
@@ -160,7 +160,7 @@ Future<void> _initAppServices() async {
 
   // Ostali servisi se mogu pokrenuti paralelno
   final services = [
-    AppSettingsService.initialize().timeout(const Duration(seconds: 3)).catchError((e) {
+    V2AppSettingsService.initialize().timeout(const Duration(seconds: 3)).catchError((e) {
       if (kDebugMode) debugPrint('[Main] AppSettings init timeout: $e');
     }),
     KapacitetService.initializeKapacitetCache().timeout(const Duration(seconds: 3)).catchError((e) {
@@ -183,7 +183,7 @@ Future<void> _initAppServices() async {
   // 🚐 Realtime & AI (bez čekanja ikoga)
   // NOTE: RouteService.setupRealtimeListener() je sada dio RealtimeManager.initializeAll()
   // NOTE: KapacitetService.startGlobalRealtimeListener() je sada dio RealtimeManager.initializeAll()
-  unawaited(WeatherAlertService.checkAndSendWeatherAlerts());
+  unawaited(V2WeatherAlertService.checkAndSendWeatherAlerts());
 }
 
 class MyApp extends StatefulWidget {
@@ -214,7 +214,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     VozilaService.dispose();
     VoznjeLogService.dispose();
     SlobodnaMestaService.dispose();
-    AppSettingsService.dispose();
+    V2AppSettingsService.dispose();
     KapacitetService.stopGlobalRealtimeListener();
     super.dispose();
   }

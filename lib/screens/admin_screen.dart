@@ -6,7 +6,6 @@ import '../constants/day_constants.dart';
 import '../globals.dart';
 import '../models/putnik.dart';
 import '../services/admin_security_service.dart'; // 🛡️ ADMIN SECURITY
-import '../services/app_settings_service.dart'; // ⚙️ NAV BAR SETTINGS
 import '../services/firebase_service.dart';
 import '../services/local_notification_service.dart';
 import '../services/pin_zahtev_service.dart'; // 🔑 PIN ZAHTEVI
@@ -14,6 +13,7 @@ import '../services/putnik_service.dart'; // ⏪ VRAĆEN na stari servis zbog gr
 import '../services/realtime_notification_service.dart';
 import '../services/statistika_service.dart'; // 📊 STATISTIKA
 import '../services/theme_manager.dart';
+import '../services/v2_app_settings_service.dart'; // ⚙️ NAV BAR SETTINGS
 import '../services/vozac_service.dart'; // 🛠️ VOZAC SERVIS
 import '../theme.dart';
 import '../utils/app_snack_bar.dart';
@@ -678,7 +678,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                               ],
                                               onChanged: (value) {
                                                 if (value != null) {
-                                                  AppSettingsService.setNavBarType(value);
+                                                  V2AppSettingsService.setNavBarType(value);
                                                 }
                                               },
                                             ),

@@ -13,7 +13,7 @@ import '../globals.dart';
 import '../utils/app_snack_bar.dart';
 
 /// Servis za generisanje i štampanje računa za fizička lica
-class RacunService {
+class V2RacunService {
   // ========== FONTOVI SA PODRŠKOM ZA SRPSKA SLOVA ==========
   static pw.Font get regularFont => pw.Font.helvetica();
   static pw.Font get boldFont => pw.Font.helveticaBold();
@@ -44,11 +44,11 @@ class RacunService {
       for (int attempt = 0; attempt < 5; attempt++) {
         // Čitaj trenutni broj
         final selectResp =
-            await _supabase.from('racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
+            await _supabase.from('v2_racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
 
         if (selectResp == null) {
           // Red ne postoji — kreiraj ga s brojem 1
-          await _supabase.from('racun_sequence').insert({'godina': godina, 'poslednji_broj': 1});
+          await _supabase.from('v2_racun_sequence').insert({'godina': godina, 'poslednji_broj': 1});
           return '1/$godina';
         }
 
@@ -57,7 +57,7 @@ class RacunService {
 
         // Pokušaj UPDATE samo ako stari_broj == onaj koji smo pročitali
         final updateResp = await _supabase
-            .from('racun_sequence')
+            .from('v2_racun_sequence')
             .update({'poslednji_broj': novi})
             .eq('godina', godina)
             .eq('poslednji_broj', stari)
@@ -87,7 +87,7 @@ class RacunService {
 
     try {
       final response =
-          await _supabase.from('racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
+          await _supabase.from('v2_racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
 
       final trenutniBroj = response?['poslednji_broj'] as int? ?? 0;
       return '${trenutniBroj + 1}/$godina';

@@ -12,7 +12,7 @@ import 'weather_service.dart';
 /// - 🧊 Ledena kiša (freezing rain)
 /// - ⛈️ Nevreme (grmljavina)
 /// - 🌫️ Gusta magla
-class WeatherAlertService {
+class V2WeatherAlertService {
   static SupabaseClient get _supabase => supabase;
 
   /// Glavna funkcija - proverava prognozu i šalje upozorenje ako treba

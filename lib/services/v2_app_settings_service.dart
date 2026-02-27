@@ -10,7 +10,7 @@ import '../services/realtime/realtime_manager.dart';
 import '../services/voznje_log_service.dart';
 
 /// Servis za globalna podešavanja aplikacije iz Supabase
-class AppSettingsService {
+class V2AppSettingsService {
   AppSettingsService._();
 
   static StreamSubscription? _subscription;
@@ -31,7 +31,7 @@ class AppSettingsService {
   static Future<void> _loadSettings() async {
     try {
       final response = await supabase
-          .from('app_settings')
+          .from('v2_app_settings')
           .select('nav_bar_type, min_version, latest_version, store_url_android, store_url_huawei, store_url_ios')
           .eq('id', 'global')
           .single();
@@ -125,7 +125,7 @@ class AppSettingsService {
   /// Postavi nav_bar_type (samo admin može)
   static Future<void> setNavBarType(String type) async {
     await supabase
-        .from('app_settings')
+        .from('v2_app_settings')
         .update({'nav_bar_type': type, 'updated_at': DateTime.now().toIso8601String()}).eq('id', 'global');
 
     // 📝 LOG U DNEVNIK

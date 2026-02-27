@@ -13,7 +13,6 @@ import '../models/putnik.dart';
 import '../models/registrovani_putnik.dart';
 import '../services/admin_security_service.dart';
 import '../services/adresa_supabase_service.dart';
-import '../services/app_settings_service.dart'; // 🔄 Update check
 import '../services/auth_manager.dart';
 import '../services/cena_obracun_service.dart';
 import '../services/firebase_service.dart';
@@ -22,13 +21,14 @@ import '../services/kapacitet_service.dart'; // 🎫 Kapacitet za bottom nav bar
 import '../services/local_notification_service.dart';
 import '../services/printing_service.dart';
 import '../services/putnik_service.dart'; // ⏪ VRAĆEN na stari servis zbog grešaka u novom
-import '../services/racun_service.dart';
 import '../services/realtime/realtime_manager.dart';
 import '../services/realtime_notification_service.dart';
 import '../services/registrovani_putnik_service.dart';
 import '../services/seat_request_service.dart';
 import '../services/slobodna_mesta_service.dart'; // 🎫 Provera kapaciteta
 import '../services/theme_manager.dart'; // 🎨 Tema sistem
+import '../services/v2_app_settings_service.dart'; // 🔄 Update check
+import '../services/v2_racun_service.dart';
 import '../services/vozac_raspored_service.dart';
 import '../theme.dart'; // 🎨 Import za prelepe gradijente
 import '../utils/app_snack_bar.dart';
@@ -731,7 +731,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               return;
                             }
 
-                            await RacunService.stampajRacuneZaFirme(
+                            await V2RacunService.stampajRacuneZaFirme(
                               racuniPodaci: racuniPodaci,
                               context: context,
                               datumPrometa: selectedDate,
@@ -866,13 +866,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   Navigator.pop(dialogContext);
 
                   // Dohvati sledeći broj računa
-                  final brojRacuna = await RacunService.getTrenutniBrojRacuna();
+                  final brojRacuna = await V2RacunService.getTrenutniBrojRacuna();
 
                   // Proveri mounted pre korišćenja context-a
                   if (!ctx.mounted) return;
 
                   // Štampaj račun
-                  await RacunService.stampajRacun(
+                  await V2RacunService.stampajRacun(
                     brojRacuna: brojRacuna,
                     imePrezimeKupca: imePrezime,
                     adresaKupca: '', // Fizičko lice bez adrese
@@ -2791,7 +2791,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ElevatedButton(
               onPressed: () {
-                AppSettingsService.openStore();
+                V2AppSettingsService.openStore();
                 if (!info.isForced) Navigator.of(ctx).pop();
               },
               child: const Text('Ažuriraj'),
