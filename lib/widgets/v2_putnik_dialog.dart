@@ -537,32 +537,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.attach_money, color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Cena obracuna (obavezno)',
-                        style: TextStyle(
-                          color: Colors.amber,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Unesite cenu po danu za obracun. Ova cena ce se koristiti za naplatu usluga.\nš Radnik/Ucenik: naplata po danu.\nš Dnevni/Pošiljka: naplata po svakom pokupljenju.',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 TextFormField(
                   controller: _cenaPoDanuController,
                   keyboardType: TextInputType.number,
@@ -590,23 +564,25 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
                   style: const TextStyle(color: Colors.black),
                 ),
                 const SizedBox(height: 16),
-                // ?? EMAIL POLJE
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email (opciono)',
-                    hintText: 'npr. V2Putnik@email.com',
-                    prefixIcon: const Icon(Icons.email),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                // ?? EMAIL POLJE - samo radnik i ucenik
+                if (_tip != 'dnevni' && _tip != 'posiljka') ...[
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email (opciono)',
+                      hintText: 'npr. V2Putnik@email.com',
+                      prefixIcon: const Icon(Icons.email),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
+                    style: const TextStyle(color: Colors.black),
                   ),
-                  style: const TextStyle(color: Colors.black),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
                 // ?? CHECKBOX ZA RACUN
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -1377,16 +1353,32 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
       final putnikData = _preparePutnikData();
 
+      String putnikId;
+      String putnikTabela;
+
       if (widget.isEditing) {
-        await _putnikService.updatePutnik(
-          widget.existingPutnik!.id,
-          putnikData,
-          widget.existingPutnik!.tabela,
-        );
+        putnikId = widget.existingPutnik!.id;
+        putnikTabela = widget.existingPutnik!.tabela;
+        await _putnikService.updatePutnik(putnikId, putnikData, putnikTabela);
       } else {
         // Odredi tabelu na osnovu tipa
-        final tabela = RegistrovaniPutnik.fromMap(putnikData).tabela;
-        await _putnikService.createPutnik(putnikData, tabela);
+        final noviPutnik = RegistrovaniPutnik.fromMap(putnikData);
+        putnikTabela = noviPutnik.tabela;
+        final row = await _putnikService.createPutnik(putnikData, putnikTabela);
+        putnikId = row['id'] as String;
+      }
+
+      // Upsert firme u v2_racuni
+      if (_trebaRacun && _firmaNazivController.text.trim().isNotEmpty) {
+        await _putnikService.upsertFirma(
+          putnikId: putnikId,
+          putnikTabela: putnikTabela,
+          firmaNaziv: _firmaNazivController.text.trim(),
+          firmaPib: _firmaPibController.text.trim().isEmpty ? null : _firmaPibController.text.trim(),
+          firmaMb: _firmaMbController.text.trim().isEmpty ? null : _firmaMbController.text.trim(),
+          firmaZiro: _firmaZiroController.text.trim().isEmpty ? null : _firmaZiroController.text.trim(),
+          firmaAdresa: _firmaAdresaController.text.trim().isEmpty ? null : _firmaAdresaController.text.trim(),
+        );
       }
 
       if (mounted) {
@@ -1452,17 +1444,16 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
       // Eksplicitno postavi adrese (ukljucujuci null za brisanje)
       'adresa_bela_crkva_id': _adresaBelaCrkvaId,
       'adresa_vrsac_id': _adresaVrsacId,
-      // Cena po danu (custom ili null za default)
-      'cena_po_danu': _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text),
-      // Email
-      'email': _emailController.text.isEmpty ? null : _emailController.text.trim(),
-      // Polja za racun
+      // Cena - radnik/ucenik imaju cena_po_danu, dnevni/posiljka imaju cena
+      if (_tip == 'dnevni' || _tip == 'posiljka')
+        'cena': _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text)
+      else
+        'cena_po_danu': _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text),
+      // Email - samo radnik i ucenik imaju email kolonu
+      if (_tip != 'dnevni' && _tip != 'posiljka')
+        'email': _emailController.text.isEmpty ? null : _emailController.text.trim(),
+      // treba_racun flag - postoji u svim 4 tabelama
       'treba_racun': _trebaRacun,
-      'firma_naziv': _firmaNazivController.text.isEmpty ? null : _firmaNazivController.text.trim(),
-      'firma_pib': _firmaPibController.text.isEmpty ? null : _firmaPibController.text.trim(),
-      'firma_mb': _firmaMbController.text.isEmpty ? null : _firmaMbController.text.trim(),
-      'firma_ziro': _firmaZiroController.text.isEmpty ? null : _firmaZiroController.text.trim(),
-      'firma_adresa': _firmaAdresaController.text.isEmpty ? null : _firmaAdresaController.text.trim(),
     };
   }
 

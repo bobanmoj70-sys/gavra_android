@@ -150,6 +150,28 @@ class V2PutnikService {
     }).eq('id', id);
   }
 
+  /// Upsert podataka firme u v2_racuni (jedna firma po putniku)
+  Future<void> upsertFirma({
+    required String putnikId,
+    required String putnikTabela,
+    required String firmaNaziv,
+    String? firmaPib,
+    String? firmaMb,
+    String? firmaZiro,
+    String? firmaAdresa,
+  }) async {
+    await _supabase.from('v2_racuni').upsert({
+      'putnik_id': putnikId,
+      'putnik_tabela': putnikTabela,
+      'firma_naziv': firmaNaziv,
+      'firma_pib': firmaPib,
+      'firma_mb': firmaMb,
+      'firma_ziro': firmaZiro,
+      'firma_adresa': firmaAdresa,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'putnik_id');
+  }
+
   // ---------------------------------------------
   // BRISANJE
   // ---------------------------------------------

@@ -139,13 +139,13 @@ class RegistrovaniPutnik {
   factory RegistrovaniPutnik.fromMap(Map<String, dynamic> map) {
     // Tip se određuje isključivo iz _tabela ključa koji dodaje V2PutnikService
     final tabela = map['_tabela'] as String;
-    final tipIzTabele = switch (tabela) {
-      'v2_radnici' => 'radnik',
-      'v2_ucenici' => 'ucenik',
-      'v2_dnevni' => 'dnevni',
-      'v2_posiljke' => 'posiljka',
-      _ => throw ArgumentError('Nepoznata tabela: $tabela'),
-    };
+    final tipIzTabele = tabela == 'v2_radnici'
+        ? 'radnik'
+        : tabela == 'v2_ucenici'
+            ? 'ucenik'
+            : tabela == 'v2_dnevni'
+                ? 'dnevni'
+                : 'posiljka';
     return RegistrovaniPutnik(
       id: map['id'] as String? ?? _generateUuid(),
       putnikIme: map['putnik_ime'] as String? ?? map['ime'] as String? ?? '',
@@ -176,7 +176,9 @@ class RegistrovaniPutnik {
       grad: map['grad'] as String? ?? (map['adresa_bc'] is Map ? 'BC' : (map['adresa_vs'] is Map ? 'VS' : null)),
       pin: map['pin'] as String?,
       email: map['email'] as String?, // ?? Email
-      cenaPoDanu: _parseNum(map['cena_po_danu'])?.toDouble(), // ?? Custom cena po danu
+      cenaPoDanu: (tabela == 'v2_dnevni' || tabela == 'v2_posiljke')
+          ? _parseNum(map['cena'])?.toDouble()
+          : _parseNum(map['cena_po_danu'])?.toDouble(),
       trebaRacun: map['treba_racun'] as bool? ?? false,
       firmaNaziv: map['firma_naziv'] as String?,
       firmaPib: map['firma_pib'] as String?,
