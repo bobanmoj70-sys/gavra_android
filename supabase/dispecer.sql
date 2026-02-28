@@ -530,7 +530,7 @@ BEGIN
     LOOP
         SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
         INTO v_tokens
-        FROM push_tokens
+        FROM v2_push_tokens
         WHERE putnik_id = v_putnik.id;
 
         IF v_tokens IS NULL OR jsonb_array_length(v_tokens) = 0 THEN CONTINUE; END IF;

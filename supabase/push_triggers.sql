@@ -42,10 +42,10 @@ BEGIN
 
     v_grad_display := CASE WHEN NEW.grad = 'BC' THEN 'Bela Crkva' WHEN NEW.grad = 'VS' THEN 'Vršac' ELSE NEW.grad END;
 
-    -- Dohvati tokene putnika iz push_tokens (vezano za putnik_id)
+    -- Dohvati tokene putnika iz v2_push_tokens (vezano za putnik_id)
     SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
     INTO v_tokens
-    FROM push_tokens
+    FROM v2_push_tokens
     WHERE putnik_id = NEW.putnik_id;
 
     IF v_tokens IS NOT NULL AND jsonb_array_length(v_tokens) > 0 THEN
@@ -90,14 +90,14 @@ BEGIN
             -- Vozač otkazao → šalji svim OSIM njemu
             SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
             INTO v_tokens
-            FROM push_tokens
+            FROM v2_push_tokens
             WHERE vozac_id IN (SELECT id FROM v2_vozaci)
               AND vozac_id IS DISTINCT FROM (SELECT id FROM v2_vozaci WHERE ime = NEW.cancelled_by LIMIT 1);
         ELSE
             -- Putnik otkazao → šalji svim vozačima
             SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
             INTO v_tokens
-            FROM push_tokens
+            FROM v2_push_tokens
             WHERE vozac_id IN (SELECT id FROM v2_vozaci);
         END IF;
 
@@ -147,7 +147,7 @@ BEGIN
     -- Dohvati tokene za admine (jednom, van petlje)
     SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
     INTO v_admin_tokens
-    FROM push_tokens
+    FROM v2_push_tokens
     WHERE user_id IN (SELECT ime FROM vozaci WHERE email = 'gavra.prevoz@gmail.com' OR ime = 'Bojan');
 
     -- Iteriraj kroz sve vozače koji su imali akcije u tom periodu
@@ -174,7 +174,7 @@ BEGIN
         -- 1. Pošalji vozaču
         SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
         INTO v_tokens
-        FROM push_tokens
+        FROM v2_push_tokens
         WHERE vozac_id = v_record.vozac_id;
         
         IF v_tokens IS NOT NULL THEN
