@@ -573,9 +573,9 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                   Navigator.pop(ctx);
                   if (ok) setState(() {});
                   if (ok) {
-                    AppSnackBar.success(context, 'o. Punjenje dodato: $litri L');
+                    AppSnackBar.success(context, '✅ Punjenje dodato: $litri L');
                   } else {
-                    AppSnackBar.error(context, 'O Greška pri dodavanju');
+                    AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }
                 },
                 icon: const Icon(Icons.add),
@@ -674,10 +674,9 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                   Navigator.pop(ctx);
                   if (ok) setState(() {});
                   if (ok) {
-                    AppSnackBar.success(
-                        context, 'o. Točenje zabeleženo: $litri L ?' ${selectedVozilo!.registarskiBroj}');
+                    AppSnackBar.success(context, '✅ Točenje zabeleženo: $litri L — ${selectedVozilo!.registarskiBroj}');
                   } else {
-                    AppSnackBar.error(context, 'O Greška pri dodavanju');
+                    AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }
                 },
                 icon: const Icon(Icons.local_gas_station),
@@ -736,9 +735,9 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                 Navigator.pop(ctx);
                 if (ok) setState(() {});
                 if (ok) {
-                  AppSnackBar.success(context, 'o. podešavanja sačuvana');
+                  AppSnackBar.success(context, '✅ Podešavanja sačuvana');
                 } else {
-                  AppSnackBar.error(context, 'O Greška pri čuvanju');
+                  AppSnackBar.error(context, '❌ Greška pri čuvanju');
                 }
               },
               icon: const Icon(Icons.save),
