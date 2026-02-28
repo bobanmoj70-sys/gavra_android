@@ -6,7 +6,7 @@ import '../services/v2_vozila_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 
 /// > GORIVO SCREEN
-/// Ku?na pumpa ?" stanje, punjenja, točenja, statistike po vozilu
+/// Kucna pumpa — stanje, punjenja, tocenja, statistike po vozilu
 class GorivoScreen extends StatefulWidget {
   const GorivoScreen({super.key});
 
@@ -53,9 +53,9 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           tabs: const [
-            Tab(text: 'Y"S Stanje'),
-            Tab(text: 'Y>️ Punjenja'),
-            Tab(text: 'Ys- Točenja'),
+            Tab(text: '⛽ Stanje'),
+            Tab(text: '🛢️ Punjenja'),
+            Tab(text: '🚗 Točenja'),
           ],
         ),
       ),
@@ -168,7 +168,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                       border: Border.all(color: Colors.red),
                     ),
                     child: const Text(
-                      's️ MALO GORIVA',
+                      '⚠️ MALO GORIVA',
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
@@ -400,7 +400,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Colors.green.withOpacity(0.15),
-          child: const Text('Y>️', style: TextStyle(fontSize: 20)),
+          child: const Text('🛢️', style: TextStyle(fontSize: 20)),
         ),
         title: Text(
           '+${_fmt.format(p.litri)} L',
@@ -542,7 +542,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => _buildBottomSheet(
-          title: 'Y>️ Novo punjenje pumpe',
+          title: '🛢️ Novo punjenje pumpe',
           accentColor: Colors.green,
           children: [
             // Datum
@@ -707,12 +707,12 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _buildBottomSheet(
-        title: 'sT️ Podešavanja pumpe',
+        title: '⚙️ Podešavanja pumpe',
         accentColor: Colors.blueGrey,
         children: [
           _inputField(kapacitetCtrl, 'Kapacitet pumpe', suffixText: 'L', keyboardType: TextInputType.number),
           const SizedBox(height: 12),
-          _inputField(alarmCtrl, 'Alarm ?" upozorenje ispod', suffixText: 'L', keyboardType: TextInputType.number),
+          _inputField(alarmCtrl, 'Alarm — upozorenje ispod', suffixText: 'L', keyboardType: TextInputType.number),
           const SizedBox(height: 12),
           _inputField(pocetnoCtrl, 'Početno stanje (koliko ima sad)',
               suffixText: 'L', keyboardType: TextInputType.number),
