@@ -566,8 +566,8 @@ class _VozacScreenState extends State<VozacScreen> {
       if (pTime != normFilterTime) return false;
       if (p.jeOtkazan || p.jeBezPolaska || p.jePokupljen || p.jeOdsustvo) return false;
       if (!TextUtils.isStatusActive(p.status)) return false;
-      // ??? Iskljuci pending putnike (još nisu obradeni)
-      if (p.status?.toLowerCase() == 'pending') return false;
+      // Iskljuci putnike u obradi (još nisu obrađeni)
+      if (p.status?.toLowerCase() == 'obrada') return false;
       return true;
     }).toList();
 
@@ -1008,10 +1008,9 @@ class _VozacScreenState extends State<VozacScreen> {
                           GradAdresaValidator.normalizeTime(p.polazak) ==
                               GradAdresaValidator.normalizeTime(_selectedVreme);
 
-                      // ??? Predlog 3: Sakrij putnike na cekanju (pending)
-                      final isPending = p.status?.toLowerCase() == 'pending';
-
-                      return gradMatch && vremeMatch && !isPending;
+                      // Sakrij putnike u obradi
+                      final isObrada = p.status?.toLowerCase() == 'obrada';
+                      return gradMatch && vremeMatch && !isObrada;
                     }).toList();
 
                     // ?? FIX: Uvek koristi `filteredByGradVreme` kao izvor istine (iz streama)
@@ -1263,9 +1262,9 @@ class _VozacScreenState extends State<VozacScreen> {
       // SAMO UCENICI za kocku Povratak
       if (p.tipPutnika != 'ucenik') continue;
 
-      // DODATNA PROVERA: eksplicitno preskoci 'otkazano', 'cancelled', 'bez_polaska' status
+      // Preskoči otkazano i bez_polaska
       final statusLower = p.status?.toLowerCase() ?? '';
-      if (statusLower == 'otkazano' || statusLower == 'cancelled' || statusLower == 'bez_polaska') continue;
+      if (statusLower == 'otkazano' || statusLower == 'bez_polaska') continue;
 
       final id = p.id;
       if (id == null) continue;

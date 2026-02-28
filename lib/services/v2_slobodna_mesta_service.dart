@@ -58,7 +58,7 @@ class SlobodnaMestaService {
       // Ne racuna: otkazane (jeOtkazan), odsustvo (jeOdsustvo)
       if (!PutnikHelpers.shouldCountInSeats(p)) continue;
 
-      // Filtriraj po dan kraticama (seat_requests nema datum kolonu)
+      // Filtriraj po dan kraticama (v2_polasci nema datum kolonu)
       if (!p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase())) continue;
 
       // Proveri vreme - OBA MORAJU BITI NORMALIZOVANA
@@ -92,7 +92,7 @@ class SlobodnaMestaService {
       // Filter: SAMO UCENICI
       if (p.tipPutnika != 'ucenik') continue;
 
-      // Filtriraj po dan kraticama (seat_requests nema datum kolonu)
+      // Filtriraj po dan kraticama (v2_polasci nema datum kolonu)
       if (!p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase())) continue;
 
       // Proveri vreme

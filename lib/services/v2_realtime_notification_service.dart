@@ -197,9 +197,9 @@ class RealtimeNotificationService {
       final notificationType = messageData['type'] ?? 'unknown';
 
       if (notificationType == 'transport_started' ||
-          notificationType == 'seat_request_approved' ||
-          notificationType == 'seat_request_rejected' ||
-          notificationType == 'seat_request_alternatives') {
+          notificationType == 'v2_odobreno' ||
+          notificationType == 'v2_odbijeno' ||
+          notificationType == 'v2_alternativa') {
         await NotificationNavigationService.navigateToPassengerProfile();
         return;
       }
@@ -209,7 +209,7 @@ class RealtimeNotificationService {
         return;
       }
 
-      if (notificationType == 'pin_zahtev' || notificationType == 'seat_request_manual') {
+      if (notificationType == 'pin_zahtev' || notificationType == 'v2_obrada') {
         await NotificationNavigationService.navigateToPinZahtevi();
         return;
       }

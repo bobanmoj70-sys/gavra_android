@@ -54,7 +54,7 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
     _subscription?.cancel();
     _putnikSubscription?.cancel();
     V2MasterRealtimeManager.instance.unsubscribe('v2_vozac_lokacije');
-    // ✅ NE pozivamo unsubscribe('seat_requests') — profil ekran već drži taj
+    // ✅ NE pozivamo unsubscribe('v2_polasci') — profil ekran već drži taj
     // channel otvoren (registrovan u _setupRealtimeListener). Dovoljno je
     // otkazati dart StreamSubscription iznad. Bez ovog fixa _listenerCount bi
     // pao na 1 i channel bi ostao otvoren sa dead stream-om bez slušaoca.
@@ -237,7 +237,7 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
         });
       }
     } catch (e) {
-      debugPrint('⚠️ [KombiEta] Greška pri čitanju seat_requests: $e');
+      debugPrint('⚠️ [KombiEta] Greška pri čitanju v2_polasci: $e');
     }
   }
 

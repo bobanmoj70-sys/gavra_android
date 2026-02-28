@@ -146,11 +146,11 @@ class LocalNotificationService {
         debugPrint('⚠️ Error waking screen: $e');
       }
 
-      // 🎨 Specijalna obrada za seat_request_alternatives
+      // Specijalna obrada za alternative notifikacije
       if (payload != null) {
         try {
           final Map<String, dynamic> data = jsonDecode(payload);
-          if (data['type'] == 'seat_request_alternatives') {
+          if (data['type'] == 'v2_alternativa') {
             // ✅ NOVO: Čitanje iz alternative_1 i alternative_2 umesto JSONB niza
             List<String> parsedAlts = [];
             final alt1 = data['alternative_1']?.toString();
@@ -163,7 +163,7 @@ class LocalNotificationService {
               parsedAlts.add(alt2);
             }
 
-            await showSeatRequestAlternativesNotification(
+            await showV2AlternativaNotification(
               id: data['id']?.toString() ?? '',
               zeljenoVreme: data['vreme']?.toString() ?? '',
               putnikId: data['putnik_id']?.toString() ?? '',
@@ -241,7 +241,7 @@ class LocalNotificationService {
           final Map<String, dynamic> data = jsonDecode(payload);
 
           // 🎨 SPECIJALNA OBRADA ZA ALTERNATIVE U POZADINI
-          if (data['type'] == 'seat_request_alternatives') {
+          if (data['type'] == 'v2_alternativa') {
             // ✅ NOVO: Čitanje iz alternative_1 i alternative_2 umesto JSONB niza
             List<String> parsedAlts = [];
             final alt1 = data['alternative_1']?.toString();
@@ -254,7 +254,7 @@ class LocalNotificationService {
               parsedAlts.add(alt2);
             }
 
-            await showSeatRequestAlternativesNotification(
+            await showV2AlternativaNotification(
               id: data['id']?.toString() ?? '',
               zeljenoVreme: data['vreme']?.toString() ?? '',
               putnikId: data['putnik_id']?.toString() ?? '',
@@ -356,7 +356,7 @@ class LocalNotificationService {
     try {
       // 🎫 Handle Seat Request alternativa action buttons
       if (response.actionId != null && response.actionId!.startsWith('prihvati_alt_')) {
-        await _handleSeatRequestAlternativeAction(response);
+        await _handleV2AlternativaAction(response);
         return;
       }
 
@@ -397,18 +397,18 @@ class LocalNotificationService {
           // 🛠️ FIX: Assign notificationType from payload
           notificationType = payloadData['type'] as String?;
 
-          // 🎫 BC/VS alternativa ili Seat Request - otvori profil
+          // 🎫 BC/VS alternativa ili v2 polazak - otvori profil
           if (notificationType == 'bc_alternativa' ||
               notificationType == 'vs_alternativa' ||
-              notificationType == 'seat_request_alternatives' ||
-              notificationType == 'seat_request_approved' ||
-              notificationType == 'seat_request_rejected') {
+              notificationType == 'v2_alternativa' ||
+              notificationType == 'v2_odobreno' ||
+              notificationType == 'v2_odbijeno') {
             await NotificationNavigationService.navigateToPassengerProfile();
             return;
           }
 
-          // 🔐 PIN zahtev ili Manual Seat Request - otvori PIN zahtevi ekran (Admin/Vozac screen)
-          if (notificationType == 'pin_zahtev' || notificationType == 'seat_request_manual') {
+          // 🔐 PIN zahtev ili v2 obrada - otvori PIN zahtevi ekran (Admin/Vozac screen)
+          if (notificationType == 'pin_zahtev' || notificationType == 'v2_obrada') {
             await NotificationNavigationService.navigateToPinZahtevi();
             return;
           }
@@ -504,7 +504,7 @@ class LocalNotificationService {
   }
 
   /// 🔍 FETCH V2Putnik DATA FROM DATABASE BY NAME
-  /// 🔄 NOVO: Koristi seat_requests kao izvor istine za termine
+  /// Koristi v2_polasci kao izvor istine za termine
   static Future<Map<String, dynamic>?> _fetchPutnikFromDatabase(
     String putnikIme,
   ) async {
@@ -533,7 +533,7 @@ class LocalNotificationService {
           .select('grad, zeljeno_vreme')
           .eq('putnik_id', putnikId)
           .eq('dan', danKratica)
-          .inFilter('status', ['approved', 'confirmed', 'pending', 'manual']).maybeSingle();
+          .inFilter('status', ['obrada', 'odobreno']).maybeSingle();
 
       if (polazak != null) {
         final gradRaw = polazak['grad']?.toString() ?? '';
@@ -684,7 +684,7 @@ class LocalNotificationService {
   }
 
   /// 🎫 Prikazuje notifikaciju sa alternativnim polascima (+/- 3 sata)
-  static Future<void> showSeatRequestAlternativesNotification({
+  static Future<void> showV2AlternativaNotification({
     required String id,
     required String zeljenoVreme,
     required String putnikId,
@@ -695,7 +695,7 @@ class LocalNotificationService {
   }) async {
     try {
       final payload = jsonEncode({
-        'type': 'seat_request_alternatives',
+        'type': 'v2_alternativa',
         'id': id,
         'putnik_id': putnikId,
         'grad': grad,
@@ -748,11 +748,11 @@ class LocalNotificationService {
         payload: payload,
       );
     } catch (e) {
-      debugPrint('❌ Error showing seat request alternatives notification: $e');
+      debugPrint('❌ Error showing v2 alternativa notification: $e');
     }
   }
 
-  static Future<void> _handleSeatRequestAlternativeAction(NotificationResponse response) async {
+  static Future<void> _handleV2AlternativaAction(NotificationResponse response) async {
     try {
       if (response.payload == null || response.actionId == null) return;
       final data = jsonDecode(response.payload!) as Map<String, dynamic>;
@@ -762,13 +762,13 @@ class LocalNotificationService {
       final dan = data['dan']?.toString();
 
       if (putnikId == null || dan == null) {
-        debugPrint('❌ [SeatRequestAlternative] Nedostaje putnik_id ili dan u payload-u');
+        debugPrint('❌ [Alternativa] Nedostaje putnik_id ili dan u payload-u');
         return;
       }
 
       final selectedTime = response.actionId!.replaceFirst('prihvati_alt_', '');
 
-      // 🚀 PRIHVATI ALTERNATIVU → status postaje 'approved' → trigger šalje push potvrde
+      // 🚀 PRIHVATI ALTERNATIVU → status postaje 'odobreno' → trigger šalje push potvrde
       final success = await V2PolasciService.acceptAlternative(
         requestId: requestId,
         putnikId: putnikId,
@@ -778,9 +778,9 @@ class LocalNotificationService {
       );
 
       if (success) {
-        debugPrint('✅ [SeatRequestAlternative] Prihvaćeno: $selectedTime ($grad, $dan)');
+        debugPrint('✅ [Alternativa] Prihvaćeno: $selectedTime ($grad, $dan)');
       } else {
-        debugPrint('❌ [SeatRequestAlternative] Nije uspelo prihvatanje alternative');
+        debugPrint('❌ [Alternativa] Nije uspelo prihvatanje alternative');
       }
     } catch (e) {
       debugPrint('❌ Error handling seat request alternative action: $e');

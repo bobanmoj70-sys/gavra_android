@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../globals.dart';
-import '../../services/v2_route_service.dart';
-import '../../services/v2_theme_manager.dart';
-import '../../utils/v2_app_snack_bar.dart';
+import '../globals.dart';
+import '../services/v2_route_service.dart';
+import '../services/v2_theme_manager.dart';
+import '../utils/v2_app_snack_bar.dart';
 
 /// UNIVERZALNI TIME PICKER CELL WIDGET
 /// Koristi se za prikaz i izbor vremena polaska (BC ili VS)
@@ -13,22 +13,19 @@ import '../../utils/v2_app_snack_bar.dart';
 /// - Uredi putnika (RegistrovaniPutnikDialog)
 /// - Moj profil učenici (RegistrovaniPutnikProfilScreen)
 /// - Moj profil radnici (RegistrovaniPutnikProfilScreen)
-class TimePickerCell extends StatelessWidget {
+class V2TimePickerCell extends StatelessWidget {
   final String? value;
   final bool isBC;
   final ValueChanged<String?> onChanged;
   final double? width;
   final double? height;
-  final String? status; // 🆕 pending, confirmed, null
-  final String? dayName; // 🆕 Dan u nedelji (pon, uto, sre...) za zaključavanje prošlih dana
-  final bool isCancelled; // 🆕 Da li je otkazan (crveno)
-  final String? tipPutnika; // 🆕 Tip putnika: radnik, ucenik, dnevni
-  final String? tipPrikazivanja; // 🆕 Režim prikaza: standard, DNEVNI
-  final DateTime? datumKrajaMeseca; // 🆕 Datum do kog je plaćeno
-  final bool isAdmin; // 🆕 Da li je admin (može da menja sve)
-  final Future<void> Function()? onBezPolaska; // 🆕 Callback za "Bez polaska" akciju (admin)
+  final String? status; // obrada, odobreno, otkazano, odbijeno, pokupljen, bez_polaska
+  final String? dayName; // Dan u nedelji (pon, uto, sre...) za zaključavanje prošlih dana
+  final String? tipPutnika; // Tip putnika: radnik, ucenik, dnevni
+  final String? tipPrikazivanja; // Režim prikaza: standard, DNEVNI
+  final DateTime? datumKrajaMeseca; // Datum do kog je plaćeno
 
-  const TimePickerCell({
+  const V2TimePickerCell({
     super.key,
     required this.value,
     required this.isBC,
@@ -37,12 +34,9 @@ class TimePickerCell extends StatelessWidget {
     this.height = 40,
     this.status,
     this.dayName,
-    this.isCancelled = false,
     this.tipPutnika,
     this.tipPrikazivanja,
     this.datumKrajaMeseca,
-    this.isAdmin = false,
-    this.onBezPolaska,
   });
 
   // ─────────────────────────────────────────────────────────────────
@@ -139,48 +133,48 @@ class TimePickerCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasTime = value != null && value!.isNotEmpty;
-    final isPending = status == 'pending' || status == 'manual';
-    final isRejected = status == 'rejected';
-    final isApproved = status == 'approved';
-    final isConfirmed = status == 'confirmed';
-    final locked = isAdmin ? false : isLocked;
+    final isObrada = status == 'obrada';
+    final isOdobreno = status == 'odobreno';
+    final isOtkazano = status == 'otkazano';
+    final isOdbijeno = status == 'odbijeno';
+    final locked = isLocked;
 
     // Boje za različite statuse
     Color borderColor = Colors.grey.shade300;
     Color bgColor = Colors.white;
     Color textColor = Colors.black87;
 
-    // 🔴 OTKAZANO - crvena (prioritet nad svim ostalim) - bez obzira na locked
-    if (isCancelled) {
+    // 🔴 OTKAZANO - crvena (prioritet nad svim ostalim)
+    if (isOtkazano) {
       borderColor = Colors.red;
       bgColor = Colors.red.shade50;
       textColor = Colors.red.shade800;
     }
-    // ❌ ODBIJENO - narandžasto/crvena ivica (da se razlikuje od otkazanog)
-    else if (isRejected) {
-      borderColor = Colors.orange.shade800;
-      bgColor = Colors.red.shade50;
-      textColor = Colors.red.shade900;
+    // 🔵 ODBIJENO - plava
+    else if (isOdbijeno) {
+      borderColor = Colors.blue;
+      bgColor = Colors.blue.shade50;
+      textColor = Colors.blue.shade900;
     }
-    // ⬜ PROŠLI DAN (nije otkazan) - sivo
+    // ⬜ PROŠLI DAN - sivo
     else if (locked) {
       borderColor = Colors.grey.shade400;
       bgColor = Colors.grey.shade200;
       textColor = Colors.grey.shade600;
     }
-    // 🟢 APPROVED ili CONFIRMED - zelena
-    else if (isApproved || isConfirmed) {
+    // 🟢 ODOBRENO - zelena
+    else if (isOdobreno) {
       borderColor = Colors.green;
       bgColor = Colors.green.shade50;
       textColor = Colors.green.shade800;
     }
-    // 🟠 PENDING - narandžasto (prioritet nad hasTime!)
-    else if (isPending) {
+    // 🟠 OBRADA - narandžasta
+    else if (isObrada) {
       borderColor = Colors.orange;
-      bgColor = Colors.orange.shade200; // Malo jača narandžasta
+      bgColor = Colors.orange.shade200;
       textColor = Colors.orange.shade900;
     }
-    // 🟢 IMA VREMENA - zelena (osnovna stanja - V2Putnik je zakazao vreme)
+    // 🟢 IMA VREMENA - zelena
     else if (hasTime) {
       borderColor = Colors.green;
       bgColor = Colors.green.shade50;
@@ -190,43 +184,36 @@ class TimePickerCell extends StatelessWidget {
     return GestureDetector(
       onTap: () async {
         // Omogućavamo otkazanim terminima da se ponovo aktiviraju ukoliko vreme nije prošlo
-        if (isCancelled && _isTimePassed() && !isAdmin) return;
+        if (isOtkazano && _isTimePassed()) return;
 
-        // 🔒 VREME POLASKA JE NASTUPILO - zaključano do subote 02:00
-        if (_isTimePassed() && !isAdmin) {
+        // 🔒 VREME POLASKA JE NASTUPILO
+        if (_isTimePassed()) {
           AppSnackBar.warning(context, '🔒 Vreme polaska je nastupilo. Izmene nisu moguće do subote.');
           return;
         }
 
         final now = DateTime.now();
 
-        // 🛡️ PROVERA PLAĆANJA I PORUKE (User requirement) - UKLONJENO
-
-        // 🚫 BLOKADA ZA PENDING STATUS - čeka se odgovor (sprečavanje spama)
-        // ⚠️ GRANULARNA BLOKADA: Blokira se samo ISTO vreme (dan+grad+vreme) koje je pending
-        // V2Putnik može imati više različitih termina za isti dan, svaki se obrađuje nezavisno
-        if (isPending && hasTime && !isAdmin) {
+        // 🚫 BLOKADA ZA OBRADA STATUS
+        if (isObrada && hasTime) {
           AppSnackBar.warning(context, '⏳ Vaš zahtev za ovo vreme je već u obradi. Molimo sačekajte odgovor.');
           return;
         }
 
-        // ❌ BLOKADA ZA REJECTED STATUS - objasni korisniku
-        if (isRejected && !isAdmin) {
+        // ❌ BLOKADA ZA ODBIJENO STATUS
+        if (isOdbijeno) {
           AppSnackBar.error(context, '❌ Ovaj termin je popunjen. Izaberite neko drugo slobodno vreme.');
           return;
         }
 
-        // 🆕 UKLONJENA BLOKADA ZA APPROVED STATUS - dozvoljavamo otkazivanje
-        // V2Putnik sada može da klikne na odobren termin i izabere "Bez polaska"
-
-        // 🆕 EKSPLICITNA PORUKA DNEVNIM PUTNICIMA AKO JE ZAKLJUČANO
-        if ((tipPutnika == 'dnevni' || tipPrikazivanja == 'DNEVNI') && isLocked && !isAdmin) {
+        // EKSPLICITNA PORUKA DNEVNIM PUTNICIMA AKO JE ZAKLJUČANO
+        if ((tipPutnika == 'dnevni' || tipPrikazivanja == 'DNEVNI') && isLocked) {
           AppSnackBar.blocked(context,
               'Zbog optimizacije kapaciteta, rezervacije za dnevne putnike su moguće samo za tekući dan i sutrašnji dan. Hvala na razumevanju! 🚌');
           return;
         }
 
-        if (locked && !isAdmin) {
+        if (locked) {
           final msg = hasTime
               ? '🔒 Vreme polaska je nastupilo. Izmene nisu moguće do subote.'
               : '🔒 Zakazivanje za ovo vreme je prošlo. Od subote kreće novi ciklus.';
@@ -234,8 +221,8 @@ class TimePickerCell extends StatelessWidget {
           return;
         }
 
-        // 🆕 PROVERA ZA DNEVNE PUTNIKE - samo danas i sutra
-        if ((tipPutnika == 'dnevni' || tipPrikazivanja == 'DNEVNI') && !isAdmin) {
+        // PROVERA ZA DNEVNE PUTNIKE - samo danas i sutra
+        if (tipPutnika == 'dnevni' || tipPrikazivanja == 'DNEVNI') {
           final now = DateTime.now();
           final todayOnly = DateTime(now.year, now.month, now.day);
           final tomorrowOnly = todayOnly.add(const Duration(days: 1));
@@ -260,31 +247,25 @@ class TimePickerCell extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: borderColor,
-            width: (isPending || isCancelled) ? 2 : 1,
+            width: (isObrada || isOtkazano) ? 2 : 1,
           ),
         ),
         child: Center(
-          child: (hasTime || isPending || isRejected)
+          child: (hasTime || isObrada || isOdbijeno || isOtkazano || isOdobreno)
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isCancelled) ...[
-                      Icon(Icons.cancel, size: 12, color: textColor),
+                    if (isOtkazano) ...[
+                      Icon(Icons.close, size: 14, color: textColor),
                       const SizedBox(width: 2),
-                    ] else if (isRejected) ...[
-                      // ❌ Ikonica za odbijen status
+                    ] else if (isOdbijeno) ...[
                       Icon(Icons.error_outline, size: 14, color: textColor),
                       const SizedBox(width: 2),
-                    ] else if (isPending) ...[
+                    ] else if (isObrada) ...[
                       Icon(Icons.hourglass_empty, size: 14, color: textColor),
                       const SizedBox(width: 2),
-                    ] else if (isApproved) ...[
-                      // ✅ Ikonica za approved status
-                      Icon(Icons.check_circle, size: 12, color: textColor),
-                      const SizedBox(width: 2),
-                    ] else if (isConfirmed || (hasTime && status == null)) ...[
-                      // ✅ Ikonica za confirmed status ili zakazane (implicitno kada nema statusa ali ima vreme)
+                    ] else if (isOdobreno) ...[
                       Icon(Icons.check_circle, size: 12, color: textColor),
                       const SizedBox(width: 2),
                     ],
@@ -298,11 +279,10 @@ class TimePickerCell extends StatelessWidget {
                               style: TextStyle(
                                 color: textColor,
                                 fontWeight: FontWeight.bold,
-                                fontSize: (isPending || locked || isCancelled) ? 12 : 14,
+                                fontSize: (isObrada || locked || isOtkazano) ? 12 : 14,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                          // "PENDING" text removed by user request
                         ],
                       ),
                     ),
@@ -321,25 +301,19 @@ class TimePickerCell extends StatelessWidget {
   Future<void> _showTimePickerDialog(BuildContext context) async {
     final timePassed = _isTimePassed();
 
-    // Koristi navBarTypeNotifier za određivanje vremena (prati aktivan bottom nav bar)
     final navType = navBarTypeNotifier.value;
     List<String> vremena;
 
-    // Mapiramo sezonu iz navType (AUTO je uklonjen)
     String sezona;
     if (navType == 'praznici') {
       sezona = 'praznici';
     } else if (navType == 'zimski') {
       sezona = 'zimski';
     } else {
-      sezona = 'letnji'; // Default fallback je letnji
+      sezona = 'letnji';
     }
 
-    // Učitaj vremena iz RouteService
     final gradCode = isBC ? 'BC' : 'VS';
-
-    // Učitaj vremena iz RouteService za sve korisnike (admin i putnici)
-    // RouteService sada automatski vraća ispravna vremena iz RouteConfig-a
     vremena = await RouteService.getVremenaPolazaka(grad: gradCode, sezona: sezona);
 
     showDialog(
@@ -357,8 +331,8 @@ class TimePickerCell extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ⚠️ VREME PROŠLO INFO BANER - samo ako nije admin
-                if (timePassed && !isAdmin)
+                // ⚠️ VREME PROŠLO INFO BANER
+                if (timePassed)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -389,7 +363,7 @@ class TimePickerCell extends StatelessWidget {
                     ),
                   ),
 
-                // Title - sa ili bez paddinga zavisno od banera
+                // Title
                 Padding(
                   padding: EdgeInsets.only(
                     left: 16,
@@ -411,54 +385,37 @@ class TimePickerCell extends StatelessWidget {
                   height: 350,
                   child: ListView(
                     children: [
-                      // "Bez polaska" - dostupno svima
-                      // Admin: neutralno (bez_polaska), V2Putnik: računa se kao otkazivanje
+                      // "Otkaži" - putnik otkazuje termin, računa se u statistiku
                       ListTile(
                         title: Text(
-                          'Bez polaska',
-                          style: TextStyle(
-                            color: isAdmin ? Colors.white70 : Colors.red.shade300,
-                          ),
+                          'Otkaži',
+                          style: TextStyle(color: Colors.red.shade300),
                         ),
                         leading: Icon(
                           value == null || value!.isEmpty ? Icons.check_circle : Icons.circle_outlined,
-                          color: value == null || value!.isEmpty
-                              ? Colors.green
-                              : (isAdmin ? Colors.white54 : Colors.red.shade300),
+                          color: value == null || value!.isEmpty ? Colors.green : Colors.red.shade300,
                         ),
-                        subtitle: !isAdmin
-                            ? const Text(
-                                '⚠️ Računa se kao otkazana vožnja',
-                                style: TextStyle(color: Colors.orange, fontSize: 11),
-                              )
-                            : null,
+                        subtitle: const Text(
+                          '⚠️ Računa se u statistiku kao otkazana vožnja',
+                          style: TextStyle(color: Colors.orange, fontSize: 11),
+                        ),
                         onTap: () async {
                           if (value != null && value!.isNotEmpty) {
-                            // Admin koristi callback koji postavlja status 'bez_polaska' u bazi
-                            if (isAdmin && onBezPolaska != null) {
-                              Navigator.of(dialogContext).pop();
-                              await onBezPolaska!();
-                            } else {
-                              // V2Putnik: poziva onChanged(null) što će roditelj da obradi
-                              // Roditelj će pozvati PutnikService().otkaziPutnika() sa statusom 'otkazano'
-                              Navigator.of(dialogContext).pop();
-                              onChanged(null);
-                              AppSnackBar.warning(context, 'Vožnja otkazana. Evidentirano kao otkazivanje.');
-                            }
+                            Navigator.of(dialogContext).pop();
+                            onChanged(null);
+                            AppSnackBar.warning(context, 'Vožnja otkazana. Evidentirano kao otkazivanje.');
                           } else {
                             AppSnackBar.info(context, 'Vreme polaska je već prazno.');
-                            if (dialogContext.mounted) {
-                              Navigator.of(dialogContext).pop();
-                            }
+                            if (dialogContext.mounted) Navigator.of(dialogContext).pop();
                           }
                         },
                       ),
                       const Divider(color: Colors.white24),
-                      // Time options - INDIVIDUALNO ZAKLJUČANA VREMENA
+                      // Time options
                       ...vremena.map((vreme) {
                         final isSelected = value == vreme;
                         final isTimePassedIndividual = _isSpecificTimePassed(vreme);
-                        final isDisabled = !isAdmin && isTimePassedIndividual;
+                        final isDisabled = isTimePassedIndividual;
 
                         return ListTile(
                           enabled: !isDisabled,
@@ -496,7 +453,7 @@ class TimePickerCell extends StatelessWidget {
                   padding: const EdgeInsets.all(8),
                   child: TextButton(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Otkaži', style: TextStyle(color: Colors.white70)),
+                    child: const Text('Zatvori', style: TextStyle(color: Colors.white70)),
                   ),
                 ),
               ],

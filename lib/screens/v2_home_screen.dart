@@ -2028,7 +2028,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
           // Additional client-side filtering like danas_screen
           Iterable<V2Putnik> filtered = allPutnici.where((p) {
-            // Filtriraj po dan kraticama ž seat_requests nema datum, samo dan TEXT
+            // Filtriraj po dan kraticama (v2_polasci nema datum kolonu, samo dan TEXT)
             final dayMatch = p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase());
 
             return dayMatch;
@@ -2058,7 +2058,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             final odgovarajuceVreme = GradAdresaValidator.normalizeTime(V2Putnik.polazak) ==
                 GradAdresaValidator.normalizeTime(_selectedVreme);
             // ?? FIX: Dopusti otkazane putnike - PutnikList ce ih sortirati na dno sa crvenom bojom
-            // Iskljuci bez_polaska, cancelled - admin ih je eksplicitno uklonio
+            // Iskljuci bez_polaska, otkazano - admin ih je eksplicitno uklonio
             final prikazi = imaVreme &&
                 imaGrad &&
                 imaDan &&
@@ -2066,9 +2066,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 odgovarajuciGrad &&
                 odgovarajuceVreme &&
                 normalizedStatus != 'obrisan' &&
-                normalizedStatus != 'pending' &&
+                normalizedStatus != 'obrada' &&
                 normalizedStatus != 'bez_polaska' &&
-                normalizedStatus != 'cancelled';
+                normalizedStatus != 'otkazano';
             return prikazi;
           });
           final sviPutnici = filtered.toList();

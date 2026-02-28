@@ -26,8 +26,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 2. FUNKCIJA: Automatizacija Seat Request Notifikacija
-CREATE OR REPLACE FUNCTION notify_seat_request_update()
+-- 2. FUNKCIJA: Automatizacija v2_polasci Notifikacija
+CREATE OR REPLACE FUNCTION notify_v2_polazak_update()
 RETURNS trigger AS $$
 DECLARE
     v_tokens jsonb;
@@ -42,18 +42,18 @@ BEGIN
 
     v_grad_display := CASE WHEN NEW.grad = 'BC' THEN 'Bela Crkva' WHEN NEW.grad = 'VS' THEN 'Vršac' ELSE NEW.grad END;
 
-    -- Dohvati tokene putnika
+    -- Dohvati tokene putnika iz push_tokens (vezano za putnik_id)
     SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
     INTO v_tokens
     FROM push_tokens
     WHERE putnik_id = NEW.putnik_id;
 
     IF v_tokens IS NOT NULL AND jsonb_array_length(v_tokens) > 0 THEN
-        IF NEW.status = 'approved' THEN
+        IF NEW.status = 'odobreno' THEN
             v_title := '✅ Mesto osigurano!';
             v_body := 'Vaš zahtev za ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' (' || v_grad_display || ') je odobren. Srećan put!';
-            v_data := jsonb_build_object('type', 'seat_request_approved', 'id', NEW.id, 'grad', NEW.grad);
-        ELSIF NEW.status = 'rejected' THEN
+            v_data := jsonb_build_object('type', 'v2_odobreno', 'id', NEW.id, 'grad', NEW.grad);
+        ELSIF NEW.status = 'odbijeno' THEN
             IF NEW.alternative_vreme_1 IS NOT NULL OR NEW.alternative_vreme_2 IS NOT NULL THEN
                 v_title := '⚠️ Termin pun - Izaberi alternativu';
                 v_body := 'Termin ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' je pun. Slobodna mesta: '
@@ -61,7 +61,7 @@ BEGIN
                     || CASE WHEN NEW.alternative_vreme_1 IS NOT NULL AND NEW.alternative_vreme_2 IS NOT NULL THEN ' i ' ELSE '' END
                     || COALESCE(to_char(NEW.alternative_vreme_2, 'HH24:MI'), '');
                 v_data := jsonb_build_object(
-                    'type', 'seat_request_alternatives',
+                    'type', 'v2_alternativa',
                     'id', NEW.id,
                     'grad', NEW.grad,
                     'dan', NEW.dan,
@@ -73,7 +73,7 @@ BEGIN
             ELSE
                 v_title := '❌ Termin popunjen';
                 v_body := 'Nažalost, u terminu ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' više nema slobodnih mesta.';
-                v_data := jsonb_build_object('type', 'seat_request_rejected', 'id', NEW.id, 'grad', NEW.grad);
+                v_data := jsonb_build_object('type', 'v2_odbijeno', 'id', NEW.id, 'grad', NEW.grad);
             END IF;
         END IF;
 
@@ -82,40 +82,36 @@ BEGIN
         END IF;
     END IF;
 
-    -- Za pending dnevni → obavijesti admina (Bojan)
-    IF NEW.status = 'pending' AND NEW.tip_putnika = 'dnevni' THEN
-        SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
-        INTO v_tokens
-        FROM push_tokens
-        WHERE user_id IN (SELECT ime FROM vozaci WHERE email = 'gavra.prevoz@gmail.com' OR ime = 'Bojan');
-
-        IF v_tokens IS NOT NULL AND jsonb_array_length(v_tokens) > 0 THEN
-            SELECT putnik_ime INTO v_putnik_ime FROM registrovani_putnici WHERE id = NEW.putnik_id;
-            PERFORM notify_push(
-                v_tokens,
-                '🔔 Novi zahtev (' || v_grad_display || ')',
-                v_putnik_ime || ' traži mesto za ' || to_char(NEW.zeljeno_vreme, 'HH24:MI'),
-                jsonb_build_object('type', 'seat_request_manual', 'id', NEW.id, 'grad', NEW.grad)
-            );
-        END IF;
-    END IF;
-
-    -- Za otkazano → obavijesti sve vozače (osim onog koji je otkazao)
+    -- Za otkazano → obavijesti vozače
+    -- Ako je putnik otkazao (cancelled_by nije vozač) → svi vozači
+    -- Ako je vozač otkazao (cancelled_by je u v2_vozaci) → ostali vozači (ne taj vozač)
     IF NEW.status = 'otkazano' THEN
-        SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
-        INTO v_tokens
-        FROM push_tokens
-        WHERE user_id IN (SELECT ime FROM vozaci)
-          AND user_id IS DISTINCT FROM NEW.cancelled_by;
+        IF EXISTS (SELECT 1 FROM v2_vozaci WHERE ime = NEW.cancelled_by) THEN
+            -- Vozač otkazao → šalji svim OSIM njemu
+            SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
+            INTO v_tokens
+            FROM push_tokens
+            WHERE vozac_id IN (SELECT id FROM v2_vozaci)
+              AND vozac_id IS DISTINCT FROM (SELECT id FROM v2_vozaci WHERE ime = NEW.cancelled_by LIMIT 1);
+        ELSE
+            -- Putnik otkazao → šalji svim vozačima
+            SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
+            INTO v_tokens
+            FROM push_tokens
+            WHERE vozac_id IN (SELECT id FROM v2_vozaci);
+        END IF;
 
         IF v_tokens IS NOT NULL AND jsonb_array_length(v_tokens) > 0 THEN
-            SELECT putnik_ime INTO v_putnik_ime FROM registrovani_putnici WHERE id = NEW.putnik_id;
+            -- Pokušaj da nađeš ime putnika u svim v2 tabelama
+            SELECT ime INTO v_putnik_ime FROM v2_radnici WHERE id = NEW.putnik_id;
+            IF v_putnik_ime IS NULL THEN SELECT ime INTO v_putnik_ime FROM v2_ucenici WHERE id = NEW.putnik_id; END IF;
+            IF v_putnik_ime IS NULL THEN SELECT ime INTO v_putnik_ime FROM v2_dnevni WHERE id = NEW.putnik_id; END IF;
+            IF v_putnik_ime IS NULL THEN SELECT ime INTO v_putnik_ime FROM v2_posiljke WHERE id = NEW.putnik_id; END IF;
             PERFORM notify_push(
                 v_tokens,
                 '🚫 Otkazivanje (' || v_grad_display || ')',
-                -- ✅ NEW.datum → NEW.dan (seat_requests.datum je dropovan)
                 COALESCE(v_putnik_ime, 'Putnik') || ' otkazao vožnju za ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' (' || UPPER(NEW.dan) || ')',
-                jsonb_build_object('type', 'seat_request_otkazano', 'id', NEW.id, 'grad', NEW.grad)
+                jsonb_build_object('type', 'v2_otkazano', 'id', NEW.id, 'grad', NEW.grad)
             );
         END IF;
     END IF;
@@ -124,11 +120,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 3. TRIGGER: Aktiviraj na tabeli seat_requests
--- DROP TRIGGER IF EXISTS tr_seat_request_notification ON seat_requests;
--- CREATE TRIGGER tr_seat_request_notification
--- AFTER INSERT OR UPDATE ON seat_requests
--- FOR EACH ROW EXECUTE FUNCTION notify_seat_request_update();
+-- 3. TRIGGER: Aktiviraj na tabeli v2_polasci
+DROP TRIGGER IF EXISTS tr_v2_polazak_notification ON v2_polasci;
+CREATE TRIGGER tr_v2_polazak_notification
+AFTER INSERT OR UPDATE ON v2_polasci
+FOR EACH ROW EXECUTE FUNCTION notify_v2_polazak_update();
 
 -- ==========================================
 -- 4. FUNKCIJA: Automatizovani Dnevni Popis (21:00h)

@@ -267,10 +267,11 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       }).toList();
     }
 
-    // ?? BINARYBITCH SORTING BLADE: A Ž (Serbian alphabet), neaktivni na dno
+    // ?? BINARYBITCH SORTING BLADE: A Ž (Serbian alphabet), neaktivni/godisnji/bolovanje na dno
     filtered.sort((a, b) {
-      // Neaktivni uvek idu na kraj
-      if (a.aktivan != b.aktivan) return a.aktivan ? -1 : 1;
+      final aAktivan = a.status == 'aktivan';
+      final bAktivan = b.status == 'aktivan';
+      if (aAktivan != bAktivan) return aAktivan ? -1 : 1;
       return a.putnikIme.toLowerCase().compareTo(b.putnikIme.toLowerCase());
     });
 
@@ -789,7 +790,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     // Sada prikazujemo sve dane koji imaju bar jedan polazak (BC i/ili VS)
     final List<String> _daniOrder = ['pon', 'uto', 'sre', 'cet', 'pet'];
 
-    final bool neaktivan = !V2Putnik.aktivan && !bolovanje;
+    // neaktivan vizualno: sve osim 'aktivan'
+    final bool neaktivan = V2Putnik.status != 'aktivan';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -801,29 +803,35 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: bolovanje
-                ? LinearGradient(
-                    colors: [Colors.amber[50]!, Colors.orange[50]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : neaktivan
-                    ? LinearGradient(
-                        colors: [Colors.grey[200]!, Colors.grey[300]!],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : LinearGradient(
-                        colors: [Colors.white, Colors.grey[50]!],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+            gradient: switch (V2Putnik.status) {
+              'bolovanje' => LinearGradient(
+                  colors: [Colors.orange[50]!, Colors.amber[50]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              'godisnji' => LinearGradient(
+                  colors: [Colors.teal[50]!, Colors.cyan[50]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              'neaktivan' => LinearGradient(
+                  colors: [Colors.grey[200]!, Colors.grey[300]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              _ => LinearGradient(
+                  colors: [Colors.white, Colors.grey[50]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+            },
             border: Border.all(
-              color: bolovanje
-                  ? Colors.orange[200]!
-                  : neaktivan
-                      ? Colors.grey[400]!
-                      : Colors.grey[200]!,
+              color: switch (V2Putnik.status) {
+                'bolovanje' => Colors.orange[200]!,
+                'godisnji' => Colors.teal[200]!,
+                'neaktivan' => Colors.grey[400]!,
+                _ => Colors.grey[200]!,
+              },
             ),
           ),
           child: Padding(
@@ -831,7 +839,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ?? HEADER - Ime, broj i aktivnost switch
+                // ?? HEADER - Ime, broj, tip
                 Row(
                   children: [
                     // Redni broj i ime
@@ -860,35 +868,41 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         ],
                       ),
                     ),
-                    // Switch za aktivnost ili bolovanje
+                    // Tip putnika - skroz desno
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          bolovanje ? 'BOLUJE' : (V2Putnik.aktivan ? 'AKTIVAN' : 'PAUZIRAN'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: bolovanje ? Colors.orange : (V2Putnik.aktivan ? Colors.green : Colors.grey),
-                          ),
+                        Icon(
+                          switch (V2Putnik.tip) {
+                            'radnik' => Icons.engineering,
+                            'ucenik' => Icons.school,
+                            'dnevni' => Icons.today,
+                            'posiljka' => Icons.local_shipping,
+                            _ => Icons.person,
+                          },
+                          size: 14,
+                          color: switch (V2Putnik.tip) {
+                            'radnik' => Colors.blue.shade600,
+                            'ucenik' => Colors.green.shade600,
+                            'dnevni' => Colors.orange.shade600,
+                            'posiljka' => Colors.deepOrange.shade600,
+                            _ => Colors.grey.shade600,
+                          },
                         ),
-                        const SizedBox(width: 6),
-                        Switch(
-                          value: V2Putnik.aktivan,
-                          onChanged: bolovanje ? null : (value) => _toggleAktivnost(V2Putnik),
-                          thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return Colors.green;
-                            }
-                            return Colors.grey;
-                          }),
-                          trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return Colors.green.shade200;
-                            }
-                            return Colors.grey.shade300;
-                          }),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        const SizedBox(width: 3),
+                        Text(
+                          V2Putnik.tip.toUpperCase(),
+                          style: TextStyle(
+                            color: switch (V2Putnik.tip) {
+                              'radnik' => Colors.blue.shade700,
+                              'ucenik' => Colors.green.shade700,
+                              'dnevni' => Colors.orange.shade700,
+                              'posiljka' => Colors.deepOrange.shade700,
+                              _ => Colors.grey.shade700,
+                            },
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -897,117 +911,30 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                 const SizedBox(height: 12),
 
-                // ?? OSNOVNE INFORMACIJE - tip, telefon, škola, statistike u jednom redu
-                Row(
-                  children: [
-                    // Tip putnika
-                    Expanded(
-                      flex: 2,
-                      child: Row(
-                        children: [
-                          Icon(
-                            switch (V2Putnik.tip) {
-                              'radnik' => Icons.engineering,
-                              'ucenik' => Icons.school,
-                              'dnevni' => Icons.today,
-                              'posiljka' => Icons.local_shipping,
-                              _ => Icons.person,
-                            },
-                            size: 16,
-                            color: switch (V2Putnik.tip) {
-                              'radnik' => Colors.blue.shade600,
-                              'ucenik' => Colors.green.shade600,
-                              'dnevni' => Colors.orange.shade600,
-                              'posiljka' => Colors.deepOrange.shade600,
-                              _ => Colors.grey.shade600,
-                            },
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            V2Putnik.tip.toUpperCase(),
-                            style: TextStyle(
-                              color: switch (V2Putnik.tip) {
-                                'radnik' => Colors.blue.shade700,
-                                'ucenik' => Colors.green.shade700,
-                                'dnevni' => Colors.orange.shade700,
-                                'posiljka' => Colors.deepOrange.shade700,
-                                _ => Colors.grey.shade700,
-                              },
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                // ?? OSNOVNE INFORMACIJE - škola/ustanova
+                if (V2Putnik.tipSkole != null) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        V2Putnik.tip == 'ucenik' ? Icons.school_outlined : Icons.business_outlined,
+                        size: 16,
+                        color: Colors.grey.shade600,
                       ),
-                    ),
-
-                    // Telefon - prikaže broj dostupnih kontakata
-                    if (V2Putnik.brojTelefona != null ||
-                        V2Putnik.brojTelefonaOca != null ||
-                        V2Putnik.brojTelefonaMajke != null)
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: [
-                            // Ikone za dostupne kontakte
-                            if (V2Putnik.brojTelefona != null)
-                              Icon(
-                                Icons.person,
-                                size: 14,
-                                color: Colors.green.shade600,
-                              ),
-                            if (V2Putnik.brojTelefonaOca != null)
-                              Icon(
-                                Icons.man,
-                                size: 14,
-                                color: Colors.blue.shade600,
-                              ),
-                            if (V2Putnik.brojTelefonaMajke != null)
-                              Icon(
-                                Icons.woman,
-                                size: 14,
-                                color: Colors.pink.shade600,
-                              ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${_prebrojKontakte(V2Putnik)} kontakt${_prebrojKontakte(V2Putnik) == 1 ? '' : 'a'}',
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          V2Putnik.tipSkole!,
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-
-                    // Tip škole/ustanova (ako postoji)
-                    if (V2Putnik.tipSkole != null)
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: [
-                            Icon(
-                              V2Putnik.tip == 'ucenik' ? Icons.school_outlined : Icons.business_outlined,
-                              size: 16,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                V2Putnik.tipSkole!,
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  fontSize: 12,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
 
                 // ??? PLACANJE I STATISTIKE - jednaki elementi u redu
 
@@ -1029,6 +956,36 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                     const SizedBox(width: 6),
 
+                    // ?? TOGGLE AKTIVNOST
+                    Expanded(
+                      child: _buildCompactActionButton(
+                        onPressed: () => _toggleAktivnost(V2Putnik),
+                        icon: switch (V2Putnik.status) {
+                          'aktivan' => Icons.toggle_on_outlined,
+                          'neaktivan' => Icons.toggle_off_outlined,
+                          'godisnji' => Icons.beach_access_outlined,
+                          'bolovanje' => Icons.medical_services_outlined,
+                          _ => Icons.toggle_off_outlined,
+                        },
+                        label: switch (V2Putnik.status) {
+                          'aktivan' => 'Aktivan',
+                          'neaktivan' => 'Neaktivan',
+                          'godisnji' => 'Godišnji',
+                          'bolovanje' => 'Bolovanje',
+                          _ => V2Putnik.status,
+                        },
+                        color: switch (V2Putnik.status) {
+                          'aktivan' => Colors.green,
+                          'neaktivan' => Colors.grey,
+                          'godisnji' => Colors.teal,
+                          'bolovanje' => Colors.orange,
+                          _ => Colors.grey,
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(width: 6),
+
                     // ?? DUGME ZA DETALJE
                     Expanded(
                       child: _buildCompactActionButton(
@@ -1036,90 +993,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         icon: Icons.analytics_outlined,
                         label: 'Detalji',
                         color: Colors.blue,
-                      ),
-                    ),
-
-                    const SizedBox(width: 6),
-
-                    // ?? BROJAC PUTOVANJA
-                    Expanded(
-                      child: Container(
-                        height: 28,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: Colors.green.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.trending_up,
-                              size: 14,
-                              color: Colors.green.shade700,
-                            ),
-                            const SizedBox(width: 4),
-                            StreamBuilder<int>(
-                              stream: Stream.fromFuture(_putnikService.izracunajBrojVoznji(V2Putnik.id)),
-                              builder: (context, snapshot) => Text(
-                                '${snapshot.data ?? 0}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.green.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 6),
-
-                    // ? BROJAC OTKAZIVANJA
-                    Expanded(
-                      child: Container(
-                        height: 28,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: Colors.red.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.cancel_outlined,
-                              size: 14,
-                              color: Colors.red.shade700,
-                            ),
-                            const SizedBox(width: 4),
-                            StreamBuilder<int>(
-                              stream: Stream.fromFuture(_putnikService.izracunajBrojOtkazivanja(V2Putnik.id)),
-                              builder: (context, snapshot) => Text(
-                                '${snapshot.data ?? 0}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.red.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ],
@@ -1189,7 +1062,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   Widget _buildCompactActionButton({
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required IconData icon,
     required String label,
     required Color color,
@@ -1246,7 +1119,83 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   Future<void> _toggleAktivnost(RegistrovaniPutnik V2Putnik) async {
-    final noviStatus = V2Putnik.aktivan ? 'neaktivan' : 'aktivan';
+    // Ako nije aktivan → odmah vrati na aktivan
+    if (!V2Putnik.aktivan) {
+      await _postaviStatus(V2Putnik, 'aktivan');
+      return;
+    }
+
+    // Ako je aktivan → prikaži izbor
+    if (!mounted) return;
+    final odabrani = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              V2Putnik.putnikIme,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Promeni status putnika',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.beach_access_outlined, color: Colors.teal),
+              title: const Text('Godišnji odmor'),
+              subtitle: const Text('Putnik je na godišnjem'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: Colors.teal.withOpacity(0.07),
+              onTap: () => Navigator.pop(ctx, 'godisnji'),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.medical_services_outlined, color: Colors.orange),
+              title: const Text('Bolovanje'),
+              subtitle: const Text('Putnik je na bolovanju'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: Colors.orange.withOpacity(0.07),
+              onTap: () => Navigator.pop(ctx, 'bolovanje'),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.pause_circle_outline, color: Colors.grey),
+              title: const Text('Neaktivan'),
+              subtitle: const Text('Privremeno deaktiviran'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: Colors.grey.withOpacity(0.07),
+              onTap: () => Navigator.pop(ctx, 'neaktivan'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (odabrani != null) {
+      await _postaviStatus(V2Putnik, odabrani);
+    }
+  }
+
+  Future<void> _postaviStatus(RegistrovaniPutnik V2Putnik, String noviStatus) async {
     try {
       await _putnikService.updatePutnik(
         V2Putnik.id,
@@ -1254,8 +1203,14 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         V2Putnik.tabela,
       );
       if (mounted) {
-        AppSnackBar.success(
-            context, '${V2Putnik.putnikIme} je ${noviStatus == 'aktivan' ? "aktiviran" : "deaktiviran"}');
+        final poruka = switch (noviStatus) {
+          'aktivan' => '${V2Putnik.putnikIme} je aktiviran',
+          'neaktivan' => '${V2Putnik.putnikIme} je deaktiviran',
+          'godisnji' => '${V2Putnik.putnikIme} je na godišnjem',
+          'bolovanje' => '${V2Putnik.putnikIme} je na bolovanju',
+          _ => 'Status promenjen',
+        };
+        AppSnackBar.success(context, poruka);
       }
     } catch (e) {
       if (mounted) {
@@ -1404,20 +1359,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   // Helper funkcija za brojanje kontakata
-  int _prebrojKontakte(RegistrovaniPutnik V2Putnik) {
-    int brojKontakata = 0;
-    if (V2Putnik.brojTelefona != null && V2Putnik.brojTelefona!.isNotEmpty) {
-      brojKontakata++;
-    }
-    if (V2Putnik.brojTelefonaOca != null && V2Putnik.brojTelefonaOca!.isNotEmpty) {
-      brojKontakata++;
-    }
-    if (V2Putnik.brojTelefonaMajke != null && V2Putnik.brojTelefonaMajke!.isNotEmpty) {
-      brojKontakata++;
-    }
-    return brojKontakata;
-  }
-
   // ??????????? NOVA FUNKCIJA - Prikazuje sve dostupne kontakte
   Future<void> _pokaziKontaktOpcije(RegistrovaniPutnik V2Putnik) async {
     final List<Widget> opcije = [];

@@ -16,8 +16,8 @@ class V2PolasciService {
   ///
   /// Model: dan + grad + zeljeno_vreme → upsert u v2_polasci
   ///
-  /// - [isAdmin] = true → status='confirmed', dodeljeno_vreme=vreme odmah (vozač/admin ručno dodaje)
-  /// - [isAdmin] = false → status='pending' (V2Putnik šalje zahtev, backend obrađuje)
+  /// - [isAdmin] = true → status='odobreno', dodeljeno_vreme=vreme odmah (vozač/admin ručno dodaje)
+  /// - [isAdmin] = false → status='obrada' (V2Putnik šalje zahtev, backend obrađuje)
   ///
   /// Nema datuma, nema sedmice, nema predviđanja.
   static Future<void> submitPolazak({
@@ -34,7 +34,7 @@ class V2PolasciService {
       final normVreme = GradAdresaValidator.normalizeTime(vreme);
       final danKey = dan.toLowerCase();
       final nowStr = DateTime.now().toUtc().toIso8601String();
-      final status = isAdmin ? 'confirmed' : 'pending';
+      final status = isAdmin ? 'odobreno' : 'obrada';
 
       // Upsert po (putnik_id, dan, grad, zeljeno_vreme) — svaka kombinacija je jedinstvena
       final existing = await _supabase
@@ -88,7 +88,7 @@ class V2PolasciService {
 
       // 2. Odobri i upisi dodeljeno_vreme = zeljeno_vreme
       await _supabase.from('v2_polasci').update({
-        'status': 'approved',
+        'status': 'odobreno',
         'dodeljeno_vreme': zeljenoVreme, // kopira zeljeno_vreme u dodeljeno_vreme
         'updated_at': nowStr,
         'processed_at': nowStr,
@@ -106,7 +106,7 @@ class V2PolasciService {
   static Future<bool> rejectRequest(String id, {String? rejectedBy}) async {
     try {
       await _supabase.from('v2_polasci').update({
-        'status': 'rejected',
+        'status': 'odbijeno',
         'updated_at': DateTime.now().toUtc().toIso8601String(),
         'processed_at': DateTime.now().toUtc().toIso8601String(),
         if (rejectedBy != null) 'cancelled_by': rejectedBy,
@@ -119,14 +119,14 @@ class V2PolasciService {
     }
   }
 
-  /// Stream za zahteve koji čekaju ručnu obradu admina (svi tipovi, status=pending)
+  /// Stream za zahteve koji čekaju ručnu obradu admina (svi tipovi, status=obrada)
   static Stream<List<V2Polazak>> streamManualRequests() {
     final controller = StreamController<List<V2Polazak>>.broadcast();
 
     Future<void> fetch() async {
       try {
         final data =
-            await _supabase.from('v2_polasci').select().eq('status', 'pending').order('created_at', ascending: false);
+            await _supabase.from('v2_polasci').select().eq('status', 'obrada').order('created_at', ascending: false);
         if (!controller.isClosed) {
           controller.add(data.map((json) => V2Polazak.fromJson(json)).toList());
         }
@@ -191,7 +191,7 @@ class V2PolasciService {
 
     Future<void> fetch() async {
       try {
-        final data = await _supabase.from('v2_polasci').select('id').eq('status', 'pending');
+        final data = await _supabase.from('v2_polasci').select('id').eq('status', 'obrada');
         if (!controller.isClosed) {
           controller.add((data as List).length);
         }
@@ -210,14 +210,14 @@ class V2PolasciService {
     return controller.stream;
   }
 
-  /// 🤖 DIGITALNI DISPEČER — replicira dispecer_cron_obrada + obradi_seat_request SQL logiku
+  /// 🤖 DIGITALNI DISPEČER — replicira dispecer_cron_obrada + obrada v2_polasci logiku
   static Future<int> triggerDigitalDispecer() async {
     try {
       // 1. Dohvati sve pending zahteve
       final pendingRows = await _supabase
           .from('v2_polasci')
           .select('id, grad, dan, updated_at, zeljeno_vreme, broj_mesta, putnik_id, putnik_tabela, created_at')
-          .eq('status', 'pending');
+          .eq('status', 'obrada');
 
       if (pendingRows.isEmpty) return 0;
 
@@ -237,7 +237,7 @@ class V2PolasciService {
           .from('v2_polasci')
           .select('grad, zeljeno_vreme, dan, broj_mesta')
           .inFilter('dan', dani)
-          .inFilter('status', ['pending', 'manual', 'approved', 'confirmed']);
+          .inFilter('status', ['obrada', 'odobreno']);
 
       // Grupišemo zauzetost po "GRAD_vreme_dan"
       final Map<String, int> zauzetoMap = {};
@@ -308,7 +308,7 @@ class V2PolasciService {
 
         if (!bcUcenikNocni && !regularTimeout) continue;
 
-        // --- obradi_seat_request logika ---
+        // --- obrada v2_polasci logika ---
         bool imaMesta;
         if (tip == 'ucenik' && grad == 'BC' && createdAt.hour < 16) {
           imaMesta = true; // garantovano mesto
@@ -326,9 +326,9 @@ class V2PolasciService {
         String? alt2;
 
         if (imaMesta) {
-          noviStatus = 'approved';
+          noviStatus = 'odobreno';
         } else {
-          noviStatus = 'rejected';
+          noviStatus = 'odbijeno';
           // Pronađi alternativna vremena
           final svaVremena = kapacitetRows
               .where((k) => k['grad'].toString().toUpperCase() == grad)
@@ -363,7 +363,7 @@ class V2PolasciService {
           'status': noviStatus,
           'processed_at': nowStr,
           'updated_at': nowStr,
-          if (noviStatus == 'approved') 'dodeljeno_vreme': zeljeno,
+          if (noviStatus == 'odobreno') 'dodeljeno_vreme': zeljeno,
           if (alt1 != null) 'alternative_vreme_1': alt1,
           if (alt2 != null) 'alternative_vreme_2': alt2,
         }).eq('id', reqId);
@@ -397,7 +397,7 @@ class V2PolasciService {
         await _supabase.from('v2_polasci').update({
           'zeljeno_vreme': novoVreme, // cekaonica → premestamo na novi termin
           'dodeljeno_vreme': novoVreme, // stvarni termin putovanja → novi termin
-          'status': 'approved',
+          'status': 'odobreno',
           'processed_at': nowStr,
           'updated_at': nowStr,
         }).eq('id', requestId);
@@ -409,7 +409,7 @@ class V2PolasciService {
           'dan': danKey,
           'zeljeno_vreme': novoVreme, // cekaonica
           'dodeljeno_vreme': novoVreme, // stvarni termin putovanja
-          'status': 'approved',
+          'status': 'odobreno',
           'processed_at': nowStr,
         });
       }
@@ -420,22 +420,27 @@ class V2PolasciService {
     }
   }
 
-  /// 🗑️ Uklanja polazak — postavlja status na 'bez_polaska'
+  /// 🗑️ Uklanja polazak
+  /// - [otkazaoKo] prosleđen → status='otkazano' + cancelled_by (putnik/vozač otkazao, računa se u statistiku)
+  /// - [otkazaoKo] null → status='bez_polaska' (admin korekcija, ne računa se)
   static Future<void> ukloniPolazak(
     String putnikId, {
     required String grad,
     required String dan,
     String? vreme,
     String? requestId,
+    String? otkazaoKo,
   }) async {
     try {
       final gradKey = GradAdresaValidator.normalizeGrad(grad);
       final danKey = dan.toLowerCase();
       final nowStr = DateTime.now().toUtc().toIso8601String();
+      final noviStatus = otkazaoKo != null ? 'otkazano' : 'bez_polaska';
       final updates = {
-        'status': 'bez_polaska',
+        'status': noviStatus,
         'processed_at': nowStr,
         'updated_at': nowStr,
+        if (otkazaoKo != null) 'cancelled_by': otkazaoKo,
       };
 
       // Prioritet: po requestId

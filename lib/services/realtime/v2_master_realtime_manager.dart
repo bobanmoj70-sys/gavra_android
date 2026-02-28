@@ -172,16 +172,14 @@ class V2MasterRealtimeManager {
             'id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
             'status, created_at, updated_at, processed_at, broj_mesta, '
             'alternative_vreme_1, alternative_vreme_2, adresa_id, '
-            'cancelled_by, approved_by, pokupljeno_by, dan',
+            'cancelled_by, pokupljeno_by, dan',
           )
           .eq('dan', dan)
           .inFilter('status', [
-        'pending',
-        'manual',
-        'approved',
-        'confirmed',
+        'obrada',
+        'odobreno',
         'otkazano',
-        'cancelled',
+        'odbijeno',
         'bez_polaska',
         'pokupljen',
       ]);

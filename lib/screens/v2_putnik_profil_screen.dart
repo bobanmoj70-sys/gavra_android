@@ -18,8 +18,8 @@ import '../services/v2_theme_manager.dart';
 import '../services/v2_weather_service.dart'; // 🌤️ Vremenska prognoza
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
-import '../widgets/shared/v2_time_picker_cell.dart';
 import '../widgets/v2_kombi_eta_widget.dart'; // 🆕 Jednostavan ETA widget
+import '../widgets/v2_time_picker_cell.dart';
 
 /// 📊 MESEČNI V2Putnik PROFIL SCREEN
 /// Prikazuje podatke o mesečnom putniku: raspored, vožnje, dugovanja
@@ -45,7 +45,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   // 📊 Statistike - detaljno po zapisima iz dnevnika
   final Map<String, List<Map<String, dynamic>>> _voznjeDetaljno = {}; // mesec -> lista zapisa vožnji
   final Map<String, List<Map<String, dynamic>>> _otkazivanjaDetaljno = {}; // mesec -> lista zapisa otkazivanja
-  final Map<String, int> _brojMestaPoVoznji = {}; // datum -> broj_mesta (za tačan obračun)
   double _ukupnoZaduzenje = 0.0; // ukupno zaduženje za celu godinu
   double _cenaPoVoznji = 0.0; // 💰 Cena po vožnji/danu
   String? _adresaBC; // BC adresa
@@ -56,7 +55,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   // 🎯 Realtime subscription za status promene
   StreamSubscription? _statusSubscription;
   // 🆕 Realtime subscription za seat request approvals
-  StreamSubscription? _seatRequestSubscription;
+  StreamSubscription? _polasciSubscription;
 
   @override
   void initState() {
@@ -73,7 +72,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     _registerPushToken(); // 📱 Registruj push token (retry ako nije uspelo pri login-u)
     // ❌ UKLONJENO: Client-side pending resolution - sada se radi putem Supabase cron jobs
     // _checkAndResolvePendingRequests();
-    // ❌ UKLONJENO: _cleanupOldSeatRequests() - metoda je bila stub koji ništa nije radio
+    // ❌ UKLONJENO: _cleanupOldSeatRequests() - metoda je bila prazan stub
     WeatherService.refreshAll(); // 🌤️ Učitaj vremensku prognozu
     _setupRealtimeListener(); // 🎯 Sluša promene statusa u realtime
     _loadActiveRequests();
@@ -93,7 +92,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     WidgetsBinding.instance.removeObserver(this);
     navBarTypeNotifier.removeListener(_onSeasonChanged);
     _statusSubscription?.cancel(); // 🛑 Zatvori Realtime listener
-    _seatRequestSubscription?.cancel(); // 🛑 Zatvori Seat Request listener
+    _polasciSubscription?.cancel(); // 🛑 Zatvori Polasci listener
     V2MasterRealtimeManager.instance.unsubscribe('v2_radnici');
     V2MasterRealtimeManager.instance.unsubscribe('v2_polasci');
     super.dispose();
@@ -136,7 +135,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   Future<void> _registerPushToken() async {
     final putnikId = _putnikData['id'];
     if (putnikId != null) {
-      await PutnikPushService.registerPutnikToken(putnikId);
+      final tabela = _putnikData['_tabela'] as String? ?? _putnikData['putnik_tabela'] as String?;
+      await PutnikPushService.registerPutnikToken(putnikId, putnikTabela: tabela);
     }
   }
 
@@ -154,22 +154,22 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       _handleStatusChange(payload);
     });
 
-    // 🆕 Dodaj listener za v2_polasci (sve promene za ovog putnika)
-    _seatRequestSubscription = V2MasterRealtimeManager.instance.subscribe('v2_polasci').where((payload) {
+    // 🆕 Dodaj listener za v2_polasci promene za ovog putnika
+    _polasciSubscription = V2MasterRealtimeManager.instance.subscribe('v2_polasci').where((payload) {
       // Filtriraj samo za ovog putnika
       final record = payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;
       return record['putnik_id'].toString() == putnikId;
     }).listen((payload) {
       debugPrint('🆕 [Realtime] v2_polasci promena detektovana: ${payload.eventType}');
-      _loadActiveRequests(); // Osveži listu zahteva
+      _loadActiveRequests(); // Osveži
     });
 
     debugPrint('🎯 [Realtime] Listener aktivan za putnika $putnikId');
   }
 
-  List<Map<String, dynamic>> _activeSeatRequests = [];
+  List<Map<String, dynamic>> _polasci = [];
 
-  /// 📥 Učitava aktivne (pending/manual) zahteve iz v2_polasci tabele
+  /// 📥 Učitava aktivne v2_polasci redove za ovog putnika
   Future<void> _loadActiveRequests() async {
     try {
       final putnikId = _putnikData['id']?.toString();
@@ -183,21 +183,21 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           .select()
           .eq('putnik_id', putnikId)
           .inFilter('dan', radniDani)
-          .inFilter('status', ['pending', 'manual', 'approved', 'confirmed', 'otkazano', 'cancelled', 'bez_polaska']);
+          .inFilter('status', ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen']);
 
       if (mounted) {
         setState(() {
-          _activeSeatRequests = List<Map<String, dynamic>>.from(res);
+          _polasci = List<Map<String, dynamic>>.from(res);
           _sledecaVoznjaInfo = _izracunajSledecuVoznju(); // 🔄 Reračunaj nakon učitavanja
-          debugPrint('📥 [ActiveRequests] Učitano: ${_activeSeatRequests.length} zahteva');
+          debugPrint('📥 [Polasci] Učitano: ${_polasci.length} redova');
         });
       }
     } catch (e) {
-      debugPrint('❌ [ActiveRequests] Greška: $e');
+      debugPrint('❌ [Polasci] Greška: $e');
     }
   }
 
-  /// 🔔 Hendluje promenu statusa (confirmed/null) - samo osvežava UI
+  /// 🔔 Hendluje promenu statusa — samo osvežava UI
   Future<void> _handleStatusChange(PostgresChangePayload payload) async {
     try {
       debugPrint('🔄 [Realtime] Osvežavam podatke putnika...');
@@ -205,7 +205,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       await _loadActiveRequests();
 
       // ⚠️ FIX: Uklonjen snackbar odavde jer se aktivirao na svaku promenu profila
-      // ako je globalni status putnika bio 'approved'
+      // ako je globalni status putnika bio 'odobreno'
     } catch (e) {
       debugPrint('❌ [Realtime] Greška pri obradi: $e');
     }
@@ -255,7 +255,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   // - Job #6: cleanup-expired-pending (svakih 5 minuta)
 
   // ❌ _cleanupOldSeatRequests() uklonjen — metoda je bila prazan stub.
-  // Brisanje seat_requests nije dozvoljeno iz klijentskog koda (videti PRAVILA.md).
+  // Brisanje v2_polasci redova nije dozvoljeno iz klijentskog koda (videti PRAVILA.md).
   // Cleanup se radi server-side putem Supabase cron job-ova.
 
   /// 🔧 Helperi za sigurno parsiranje brojeva iz Supabase-a (koji mogu biti String)
@@ -264,13 +264,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     if (v is num) return v.toDouble();
     if (v is String) return double.tryParse(v) ?? 0.0;
     return 0.0;
-  }
-
-  int _toInt(dynamic v, {int defaultValue = 1}) {
-    if (v == null) return defaultValue;
-    if (v is num) return v.toInt();
-    if (v is String) return int.tryParse(v) ?? defaultValue;
-    return defaultValue;
   }
 
   /// 📊 Učitava statistike za profil (vožnje i otkazivanja)
@@ -291,7 +284,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
       final voznjeResponse = await supabase
           .from('v2_statistika_istorija')
-          .select('datum, tip, broj_mesta')
+          .select('datum')
           .eq('putnik_id', putnikId)
           .eq('tip', 'voznja')
           .gte('datum', datumPocetakMeseca)
@@ -300,56 +293,27 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       // 2. Dohvati otkazivanja za TEKUĆI MESEC
       final otkazivanjaResponse = await supabase
           .from('v2_statistika_istorija')
-          .select('datum, tip, broj_mesta')
+          .select('datum')
           .eq('putnik_id', putnikId)
           .eq('tip', 'otkazivanje')
           .gte('datum', datumPocetakMeseca)
           .lte('datum', datumKrajMeseca);
 
-      // Broj vožnji ovog meseca
-      int brojVoznjiTotal = 0;
-      final Map<String, int> dailyMaxSeatsV = {};
-      if (jeDnevni) {
-        for (final v in voznjeResponse) {
-          brojVoznjiTotal += _toInt(v['broj_mesta']);
-        }
-      } else {
-        for (final v in voznjeResponse) {
-          final d = v['datum'] as String?;
-          if (d != null) {
-            final bm = _toInt(v['broj_mesta']);
-            if (bm > (dailyMaxSeatsV[d] ?? 0)) {
-              dailyMaxSeatsV[d] = bm;
-            }
-          }
-        }
-        dailyMaxSeatsV.forEach((_, val) => brojVoznjiTotal += val);
+      // Broj vožnji ovog meseca — 1 red = 1 vožnja
+      final Set<String> daniSaVoznjom = {};
+      for (final v in voznjeResponse) {
+        final d = v['datum'] as String?;
+        if (d != null) daniSaVoznjom.add(d);
       }
+      final int brojVoznjiTotal = jeDnevni ? voznjeResponse.length : daniSaVoznjom.length;
 
-      // Broj otkazivanja ovog meseca
-      int brojOtkazivanjaTotal = 0;
-      if (jeDnevni) {
-        for (final o in otkazivanjaResponse) {
-          brojOtkazivanjaTotal += _toInt(o['broj_mesta']);
-        }
-      } else {
-        final Map<String, int> dailyMaxSeatsO = {};
-        for (final o in otkazivanjaResponse) {
-          final d = o['datum'] as String?;
-          if (d != null) {
-            final bm = _toInt(o['broj_mesta']);
-            if (bm > (dailyMaxSeatsO[d] ?? 0)) {
-              dailyMaxSeatsO[d] = bm;
-            }
-          }
-        }
-        // Broji otkazivanje samo ako taj dan NEMA vožnje (isti dan = vožnja, ne otkazivanje)
-        dailyMaxSeatsO.forEach((dan, val) {
-          if (!dailyMaxSeatsV.containsKey(dan)) {
-            brojOtkazivanjaTotal += val;
-          }
-        });
+      // Broj otkazivanja ovog meseca — 1 red = 1 otkazivanje
+      final Set<String> daniSaOtkazivanjem = {};
+      for (final o in otkazivanjaResponse) {
+        final d = o['datum'] as String?;
+        if (d != null && !daniSaVoznjom.contains(d)) daniSaOtkazivanjem.add(d);
       }
+      final int brojOtkazivanjaTotal = jeDnevni ? otkazivanjaResponse.length : daniSaOtkazivanjem.length;
 
       // 🏠 Učitaj obe adrese iz tabele adrese
       String? adresaBcNaziv;
@@ -422,37 +386,19 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final cenaPoVoznji = CenaObracunService.getCenaPoDanu(putnikModel);
 
       double ukupnoZaplacanje = 0;
-      final Map<String, int> brojMestaPoVoznji = {};
       try {
-        final sveVoznjeZaDug = await supabase
-            .from('v2_statistika_istorija')
-            .select('datum, broj_mesta')
-            .eq('putnik_id', putnikId)
-            .eq('tip', 'voznja');
+        final sveVoznjeZaDug =
+            await supabase.from('v2_statistika_istorija').select('datum').eq('putnik_id', putnikId).eq('tip', 'voznja');
 
         if (jeDnevni) {
-          for (final voznja in sveVoznjeZaDug) {
-            final bm = _toInt(voznja['broj_mesta']);
-            ukupnoZaplacanje += bm * cenaPoVoznji;
-            final dStr = voznja['datum'] as String?;
-            if (dStr != null) {
-              brojMestaPoVoznji[dStr] = (brojMestaPoVoznji[dStr] ?? 0) + bm;
-            }
-          }
+          ukupnoZaplacanje = sveVoznjeZaDug.length * cenaPoVoznji;
         } else {
-          final Map<String, int> dnevniMaxMesta = {};
-          for (final voznja in sveVoznjeZaDug) {
-            final dStr = voznja['datum'] as String?;
-            if (dStr == null) continue;
-            final bm = _toInt(voznja['broj_mesta']);
-            if (bm > (dnevniMaxMesta[dStr] ?? 0)) {
-              dnevniMaxMesta[dStr] = bm;
-            }
+          final Set<String> daniSet = {};
+          for (final v in sveVoznjeZaDug) {
+            final d = v['datum'] as String?;
+            if (d != null) daniSet.add(d);
           }
-          dnevniMaxMesta.forEach((datum, maxMesta) {
-            ukupnoZaplacanje += maxMesta * cenaPoVoznji;
-            brojMestaPoVoznji[datum] = maxMesta;
-          });
+          ukupnoZaplacanje = daniSet.length * cenaPoVoznji;
         }
       } catch (e) {
         debugPrint('❌ [Obračun] Greška: $e');
@@ -487,8 +433,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           _voznjeDetaljno.addAll(voznjeDetaljnoMap);
           _otkazivanjaDetaljno.clear();
           _otkazivanjaDetaljno.addAll(otkazivanjaDetaljnoMap);
-          _brojMestaPoVoznji.clear();
-          _brojMestaPoVoznji.addAll(brojMestaPoVoznji);
           _ukupnoZaduzenje = zaduzenje;
           _cenaPoVoznji = cenaPoVoznji;
           _adresaBC = adresaBcNaziv;
@@ -507,7 +451,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   /// Vraća format: "Ponedeljak, 7:00 BC" ili null ako nema zakazanih vožnji
   String? _izracunajSledecuVoznju() {
     try {
-      if (_activeSeatRequests.isEmpty) return null;
+      if (_polasci.isEmpty) return null;
 
       final now = DateTime.now();
       final daniPuniNaziv = <String, String>{};
@@ -526,9 +470,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       ];
 
       for (final danKratica in orderedDani) {
-        final req = _activeSeatRequests.where((r) => (r['dan'] as String?)?.toLowerCase() == danKratica).where((r) {
+        final req = _polasci.where((r) => (r['dan'] as String?)?.toLowerCase() == danKratica).where((r) {
           final status = r['status'] as String?;
-          return status != 'otkazano' && status != 'cancelled';
+          return status != 'otkazano';
         }).firstOrNull;
 
         if (req == null) continue;
@@ -560,15 +504,15 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   /// Vraća vreme polaska za DANAS (npr. '7:00') iz aktivnih zahteva, ili null
   String? _getVremeZaDanas() {
     try {
-      if (_activeSeatRequests.isEmpty) return null;
+      if (_polasci.isEmpty) return null;
       const daniOrder = ['pon', 'uto', 'sre', 'cet', 'pet'];
       final now = DateTime.now();
       if (now.weekday > 5) return null; // vikend
       final danasKratica = daniOrder[now.weekday - 1];
-      final req = _activeSeatRequests.where((r) {
+      final req = _polasci.where((r) {
         if ((r['dan'] as String?)?.toLowerCase() != danasKratica) return false;
         final status = r['status'] as String?;
-        return status != 'otkazano' && status != 'cancelled';
+        return status != 'otkazano' && status != 'odbijeno';
       }).firstOrNull;
       if (req == null) return null;
       return (req['dodeljeno_vreme'] ?? '').toString().trim();
@@ -1446,22 +1390,21 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       };
     }
 
-    // 🆕 MERGE AKTIVNIH ZAHTEVA iz _activeSeatRequests
+    // MERGE v2_polasci redova po danima
     final daniNedelje = ['pon', 'uto', 'sre', 'cet', 'pet'];
     final now = DateTime.now();
 
-    // Sortiramo: aktivni (confirmed/approved/pending) ZADNJI da pregazе otkazane
-    // Redosljed: otkazano/cancelled/bez_polaska → pending/manual/approved/confirmed
+    // Sortiramo: aktivni (odobreno/obrada) ZADNJI da pregaze otkazane
+    // Redosljed: otkazano/bez_polaska/odbijeno → obrada → odobreno → pokupljen
     const statusPrioritet = {
       'bez_polaska': 0,
-      'cancelled': 1,
+      'odbijeno': 1,
       'otkazano': 2,
-      'pending': 3,
-      'manual': 4,
-      'approved': 5,
-      'confirmed': 6,
+      'obrada': 3,
+      'odobreno': 4,
+      'pokupljen': 5,
     };
-    final sortedRequests = List<Map<String, dynamic>>.from(_activeSeatRequests);
+    final sortedRequests = List<Map<String, dynamic>>.from(_polasci);
     // Sortiraj po dan kratica redosledu (pon→pet), pa po statusu prioritetu
     const daniRedosled = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4};
     sortedRequests.sort((a, b) {
@@ -1489,10 +1432,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
         final existing = polasci[danKratica]!;
 
-        if (status == 'otkazano' || status == 'cancelled' || status == 'bez_polaska') {
+        if (status == 'otkazano' || status == 'bez_polaska' || status == 'odbijeno') {
           // Postavi otkazano SAMO ako još nema aktivnog zahtjeva za ovaj grad
           // (aktivni zahtjev dolazi zadnji zbog sortiranja pa će ga pregaziti)
-          existing['${grad}_status'] = status == 'bez_polaska' ? 'bez_polaska' : 'otkazano';
+          existing['${grad}_status'] = status;
           existing['${grad}_otkazano'] = status != 'bez_polaska';
           existing['${grad}_otkazano_vreme'] = vreme;
           // ✅ bez_polaska: čuvamo vreme u grad ključu da TimePickerCell može prikazati
@@ -1577,33 +1520,27 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                       child: Text(daniLabels[dan] ?? dan, style: const TextStyle(color: Colors.white, fontSize: 14))),
                   Expanded(
                     child: Center(
-                      child: TimePickerCell(
+                      child: V2TimePickerCell(
                         value: bcDisplayVreme,
                         isBC: true,
                         status: bcStatus,
                         dayName: dan,
-                        isCancelled: bcOtkazano,
                         tipPutnika: tip.toString(),
                         tipPrikazivanja: tipPrikazivanja,
-                        isAdmin: false,
                         onChanged: (newValue) => _updatePolazak(dan, 'bc', newValue),
-                        onBezPolaska: () async => await _updatePolazak(dan, 'bc', null),
                       ),
                     ),
                   ),
                   Expanded(
                     child: Center(
-                      child: TimePickerCell(
+                      child: V2TimePickerCell(
                         value: vsDisplayVreme,
                         isBC: false,
                         status: vsStatus,
                         dayName: dan,
-                        isCancelled: vsOtkazano,
                         tipPutnika: tip.toString(),
                         tipPrikazivanja: tipPrikazivanja,
-                        isAdmin: false,
                         onChanged: (newValue) => _updatePolazak(dan, 'vs', newValue),
-                        onBezPolaska: () async => await _updatePolazak(dan, 'vs', null),
                       ),
                     ),
                   ),
@@ -1632,7 +1569,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
             .eq('putnik_id', putnikId)
             .eq('dan', dan)
             .eq('grad', gradKey)
-            .inFilter('status', ['pending', 'manual', 'approved', 'confirmed', 'bez_polaska'])
+            .inFilter('status', ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen'])
             .order('created_at', ascending: false)
             .limit(1)
             .maybeSingle();
@@ -1649,6 +1586,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           dan: dan,
           vreme: vremeZaUklanjanje,
           requestId: existing['id']?.toString(),
+          otkazaoKo: _putnikData['ime'] as String? ?? _putnikData['putnik_ime'] as String? ?? 'putnik',
         );
       } catch (e) {
         debugPrint('❌ _updatePolazak (bez_polaska): $e');

@@ -10,7 +10,7 @@ import 'v2_push_token_service.dart';
 class PutnikPushService {
   /// Registruje push token za putnika u push_tokens tabelu
   /// Koristi unificirani PushTokenService
-  static Future<bool> registerPutnikToken(dynamic putnikId) async {
+  static Future<bool> registerPutnikToken(dynamic putnikId, {String? putnikTabela}) async {
     try {
       if (kDebugMode) {
         debugPrint('📱 [PutnikPush] Registrujem token za putnika: $putnikId');
@@ -47,17 +47,17 @@ class PutnikPushService {
         return false;
       }
 
-      // Dohvati podatke putnika iz cache-a (ako dostupno)
-      final putnikData = V2MasterRealtimeManager.instance.getPutnikById(putnikId ?? '');
-      final putnikTabela = putnikData?['putnik_tabela'] as String?;
-      if (kDebugMode) debugPrint('📝 [PutnikPush] putnikTabela: $putnikTabela');
+      // Koristi prosleđenu putnikTabela, fallback na cache
+      final resolvedTabela = putnikTabela ??
+          (V2MasterRealtimeManager.instance.getPutnikById(putnikId?.toString() ?? '')?['putnik_tabela'] as String?);
+      if (kDebugMode) debugPrint('📝 [PutnikPush] putnikTabela: $resolvedTabela');
 
       // Koristi unificirani PushTokenService
       final success = await V2PushTokenService.registerToken(
         token: token,
         provider: provider,
         putnikId: putnikId?.toString(),
-        putnikTabela: putnikTabela,
+        putnikTabela: resolvedTabela,
       );
 
       if (kDebugMode) {

@@ -172,30 +172,6 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
                                             ),
                                           ),
                                         ),
-                                        if (zahtev.priority > 1)
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.amber.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: Colors.amber.withOpacity(0.5)),
-                                            ),
-                                            child: const Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(Icons.star, color: Colors.amber, size: 14),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  'PRIORITET',
-                                                  style: TextStyle(
-                                                    color: Colors.amber,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 10,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
                                       ],
                                     ),
                                     const SizedBox(height: 4),

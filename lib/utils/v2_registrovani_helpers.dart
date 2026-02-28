@@ -8,10 +8,10 @@ class RegistrovaniHelpers {
     return GradAdresaValidator.normalizeTime(raw);
   }
 
-  // ⚠️ SSOT: Polasci po danu se sada čuvaju ISKLJUČIVO u seat_requests tabeli.
-  // Ove metode su zadržane radi kompatibilnosti interfejsa, ali više ne koriste JSON kolone.
+  // ⚠️ SSOT: Polasci po danu se sada čuvaju ISKLJUČIVO u v2_polasci tabeli.
+  // Ove metode su zadržane radi kompatibilnosti interfejsa.
 
-  // Get polazak for a day and place ('bc' or 'vs') from seat_request
+  // Get polazak for a day and place ('bc' or 'vs') from v2_polasci
   static String? getPolazakForDay(
     Map<String, dynamic> rawMap,
     String dayKratica,

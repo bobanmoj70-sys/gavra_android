@@ -44,12 +44,11 @@ class V2PutnikService {
     return null;
   }
 
-  /// Dohvata sve aktivne putnike iz date tabele
+  /// Dohvata sve putnike iz date tabele (svi statusi)
   Future<List<Map<String, dynamic>>> getAktivniIzTabele(String tabela) async {
     final rows = await _supabase
         .from(tabela)
         .select('*, adresa_bc:adresa_bc_id(naziv, gps_lat, gps_lng), adresa_vs:adresa_vs_id(naziv, gps_lat, gps_lng)')
-        .neq('status', 'neaktivan')
         .order('ime');
     return rows.map((r) => {...r, '_tabela': tabela}).toList();
   }

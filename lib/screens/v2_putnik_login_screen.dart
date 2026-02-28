@@ -427,7 +427,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
       // ?? Registruj push token za notifikacije
       if (putnikId != null) {
-        await PutnikPushService.registerPutnikToken(putnikId);
+        final tabela = response['_tabela'] as String? ?? response['putnik_tabela'] as String?;
+        await PutnikPushService.registerPutnikToken(putnikId, putnikTabela: tabela);
       } // ?? Ponudi biometrijsku prijavu ako je dostupna i nije vec ukljucena
       if (showBiometricPrompt && _biometricAvailable && !_biometricEnabled && mounted) {
         await _showBiometricSetupDialog(telefon, pin);

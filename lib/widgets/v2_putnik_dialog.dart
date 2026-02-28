@@ -400,12 +400,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
             label: 'Broj mesta (kapacitet)',
             icon: Icons.event_seat,
             keyboardType: TextInputType.number,
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Unesite broj mesta';
-              final n = int.tryParse(value);
-              if (n == null || n < 1) return 'Broj mesta mora biti veci od 0';
-              return null;
-            },
           ),
           if (_tip == 'ucenik') ...[
             const SizedBox(height: 24),
@@ -551,16 +545,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Cena obracuna je obavezna';
-                    }
-                    final cena = double.tryParse(value);
-                    if (cena == null || cena <= 0) {
-                      return 'Unesite validan iznos veci od 0';
-                    }
-                    return null;
-                  },
                   style: const TextStyle(color: Colors.black),
                 ),
                 const SizedBox(height: 16),
@@ -1245,6 +1229,14 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
       return telefonError;
     }
 
+    // Validacija broja mesta (samo za radnik i ucenik)
+    if (_tip == 'radnik' || _tip == 'ucenik') {
+      final brojMesta = int.tryParse(_brojMestaController.text.trim());
+      if (brojMesta == null || brojMesta < 1) {
+        return 'Broj mesta mora biti veci od 0';
+      }
+    }
+
     return null;
   }
 
@@ -1416,45 +1408,55 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
   }
 
   Map<String, dynamic> _preparePutnikData() {
-    final now = DateTime.now();
-    // Default datumi ako nedostaju
-    final pocetak = widget.existingPutnik?.datumPocetkaMeseca ?? DateTime(now.year, now.month);
-    final kraj = widget.existingPutnik?.datumKrajaMeseca ?? DateTime(now.year, now.month + 1, 0);
-
-    return {
-      'id': widget.existingPutnik?.id, // Može biti null za novi insert
-      'putnik_ime': _imeController.text.trim(),
-      'tip': _tip,
-      '_tabela': switch (_tip) {
-        'ucenik' => 'v2_ucenici',
-        'dnevni' => 'v2_dnevni',
-        'posiljka' => 'v2_posiljke',
-        _ => 'v2_radnici',
-      },
-      'broj_mesta': int.tryParse(_brojMestaController.text) ?? 1,
-      'tip_skole': _tipSkoleController.text.isEmpty ? null : _tipSkoleController.text.trim(),
+    // Zajednicke kolone za sve 4 tabele
+    final data = <String, dynamic>{
+      'id': widget.existingPutnik?.id,
+      'ime': _imeController.text.trim(),
       'telefon': _brojTelefonaController.text.isEmpty ? null : _brojTelefonaController.text.trim(),
-      'telefon_2': _brojTelefona2Controller.text.isEmpty ? null : _brojTelefona2Controller.text.trim(),
-      'telefon_oca': _brojTelefonaOcaController.text.isEmpty ? null : _brojTelefonaOcaController.text.trim(),
-      'telefon_majke': _brojTelefonaMajkeController.text.isEmpty ? null : _brojTelefonaMajkeController.text.trim(),
-      'status': (widget.existingPutnik?.status == null) ? 'aktivan' : widget.existingPutnik!.status,
-      // Datumi
-      'datum_pocetka_meseca': pocetak.toIso8601String().split('T')[0],
-      'datum_kraja_meseca': kraj.toIso8601String().split('T')[0],
-      // Eksplicitno postavi adrese (ukljucujuci null za brisanje)
-      'adresa_bela_crkva_id': _adresaBelaCrkvaId,
-      'adresa_vrsac_id': _adresaVrsacId,
-      // Cena - radnik/ucenik imaju cena_po_danu, dnevni/posiljka imaju cena
-      if (_tip == 'dnevni' || _tip == 'posiljka')
-        'cena': _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text)
-      else
-        'cena_po_danu': _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text),
-      // Email - samo radnik i ucenik imaju email kolonu
-      if (_tip != 'dnevni' && _tip != 'posiljka')
-        'email': _emailController.text.isEmpty ? null : _emailController.text.trim(),
-      // treba_racun flag - postoji u svim 4 tabelama
+      'status': widget.existingPutnik?.status ?? 'aktivan',
+      'adresa_bc_id': _adresaBelaCrkvaId,
+      'adresa_vs_id': _adresaVrsacId,
       'treba_racun': _trebaRacun,
+      // Interni kljucevi - servis ih uklanja pre slanja u bazu
+      '_tabela': _tip == 'ucenik'
+          ? 'v2_ucenici'
+          : _tip == 'dnevni'
+              ? 'v2_dnevni'
+              : _tip == 'posiljka'
+                  ? 'v2_posiljke'
+                  : 'v2_radnici',
     };
+
+    // v2_radnici - specificne kolone
+    if (_tip == 'radnik') {
+      data['telefon_2'] = _brojTelefona2Controller.text.isEmpty ? null : _brojTelefona2Controller.text.trim();
+      data['email'] = _emailController.text.isEmpty ? null : _emailController.text.trim();
+      data['cena_po_danu'] = _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text);
+      data['broj_mesta'] = int.parse(_brojMestaController.text);
+    }
+
+    // v2_ucenici - specificne kolone
+    if (_tip == 'ucenik') {
+      data['telefon_oca'] = _brojTelefonaOcaController.text.isEmpty ? null : _brojTelefonaOcaController.text.trim();
+      data['telefon_majke'] =
+          _brojTelefonaMajkeController.text.isEmpty ? null : _brojTelefonaMajkeController.text.trim();
+      data['email'] = _emailController.text.isEmpty ? null : _emailController.text.trim();
+      data['cena_po_danu'] = _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text);
+      data['broj_mesta'] = int.parse(_brojMestaController.text);
+    }
+
+    // v2_dnevni - specificne kolone
+    if (_tip == 'dnevni') {
+      data['telefon_2'] = _brojTelefona2Controller.text.isEmpty ? null : _brojTelefona2Controller.text.trim();
+      data['cena'] = _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text);
+    }
+
+    // v2_posiljke - specificne kolone
+    if (_tip == 'posiljka') {
+      data['cena'] = _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text);
+    }
+
+    return data;
   }
 
   /// Helper method to show contact picker dialog

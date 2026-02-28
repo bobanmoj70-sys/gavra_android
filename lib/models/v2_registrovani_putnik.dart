@@ -17,7 +17,6 @@ class RegistrovaniPutnik {
     required this.datumKrajaMeseca,
     required this.createdAt,
     required this.updatedAt,
-    this.aktivan = true,
     this.status = 'aktivan',
     this.obrisan = false,
     // Nova polja za database kompatibilnost
@@ -82,10 +81,10 @@ class RegistrovaniPutnik {
   /// Datum i vreme poslednje izmene zapisa
   final DateTime updatedAt;
 
-  /// Da li je V2Putnik aktivan
-  final bool aktivan;
+  /// Da li je V2Putnik aktivan — derivirano iz status polja
+  bool get aktivan => status == 'aktivan';
 
-  /// Status putnika (aktivan, neaktivan, itd.)
+  /// Status putnika (aktivan, neaktivan, godisnji, bolovanje)
   final String status;
 
   /// Da li je V2Putnik obrisan (logicko brisanje)
@@ -155,8 +154,8 @@ class RegistrovaniPutnik {
       brojTelefonaMajke: map['telefon_majke'] as String?,
       tip: tipIzTabele,
       tipSkole: map['tip_skole'] as String?,
-      adresaBelaCrkvaId: map['adresa_bela_crkva_id'] as String?,
-      adresaVrsacId: map['adresa_vrsac_id'] as String?,
+      adresaBelaCrkvaId: map['adresa_bc_id'] as String?,
+      adresaVrsacId: map['adresa_vs_id'] as String?,
       datumPocetkaMeseca: map['datum_pocetka_meseca'] != null
           ? DateTime.parse(map['datum_pocetka_meseca'] as String)
           : DateTime(DateTime.now().year, DateTime.now().month),
@@ -165,7 +164,6 @@ class RegistrovaniPutnik {
           : DateTime(DateTime.now().year, DateTime.now().month + 1, 0),
       createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String).toLocal() : DateTime.now(),
       updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String).toLocal() : DateTime.now(),
-      aktivan: map['aktivan'] as bool? ?? true,
       status: map['status'] as String? ?? 'aktivan',
       obrisan: map['obrisan'] as bool? ?? false,
       tipPrikazivanja: map['tip_prikazivanja'] as String? ?? 'standard',
@@ -259,7 +257,7 @@ class RegistrovaniPutnik {
     String? adresaVrsacId,
     DateTime? datumPocetkaMeseca,
     DateTime? datumKrajaMeseca,
-    bool? aktivan,
+    bool? aktivan, // ignorisano, derivira se iz status
     String? status,
     bool? obrisan,
     // Computed fields za UI
@@ -287,7 +285,6 @@ class RegistrovaniPutnik {
       datumKrajaMeseca: datumKrajaMeseca ?? this.datumKrajaMeseca,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
-      aktivan: aktivan ?? this.aktivan,
       status: status ?? this.status,
       obrisan: obrisan ?? this.obrisan,
       // Computed fields za UI

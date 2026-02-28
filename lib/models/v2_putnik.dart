@@ -29,13 +29,12 @@ class V2Putnik {
     this.adresa,
     this.adresaId, // NOVO - UUID reference u tabelu adrese
     this.obrisan = false, // default vrednost
-    this.priority, // prioritet za optimizaciju ruta
     this.brojTelefona, // broj telefona putnika
     this.datum,
     this.brojMesta = 1, // ?? Broj rezervisanih mesta (default 1)
     this.tipPutnika, // ?? Tip putnika: radnik, ucenik, dnevni
     this.otkazanZaPolazak = false, // ?? Da li je otkazan za ovaj specificni polazak (grad)
-    this.requestId, // ?? ID konkretnog seat_request zapisa
+    this.requestId, // ID konkretnog v2_polasci reda
     this.pokupioVozacId, // UUID vozaca koji je pokupljanje izVrsio
     this.naplatioVozacId, // UUID vozaca koji je naplatio
     this.otkazaoVozacId, // UUID vozaca koji je otkazao
@@ -79,7 +78,7 @@ class V2Putnik {
     );
   }
 
-  final dynamic id; // UUID iz registrovani_putnici
+  final dynamic id; // UUID putnika iz v2_radnici/v2_ucenici/v2_dnevni/v2_posiljke
   final String ime;
   final String polazak;
   final bool? pokupljen;
@@ -103,24 +102,24 @@ class V2Putnik {
   final String? adresa; // NOVO - adresa putnika za optimizaciju rute
   final String? adresaId; // NOVO - UUID reference u tabelu adrese
   final bool obrisan; // NOVO - soft delete flag
-  final int? priority; // NOVO - prioritet za optimizaciju ruta (1-5, gde je 1 najmanji)
   final String? brojTelefona; // NOVO - broj telefona putnika
   final String? datum; // ISO format
   final int brojMesta; // ?? Broj rezervisanih mesta
   final String? tipPutnika; // ?? Tip putnika: radnik, ucenik, dnevni
   final bool otkazanZaPolazak; // ?? Da li je otkazan za ovaj polazak
-  final String? requestId; // ?? ID konkretnog seat_request-a
+  final String? requestId; // ID konkretnog v2_polasci reda
   final String? pokupioVozacId; // UUID vozaca koji je pokupljanje izVrsio
   final String? naplatioVozacId; // UUID vozaca koji je naplatio
   final String? otkazaoVozacId; // UUID vozaca koji je otkazao
 
   factory V2Putnik.v2FromPolazak(Map<String, dynamic> req, {Map<String, dynamic>? profile}) {
-    // Ako je profil join-ovan u samom requestu (Supabase .select('*, registrovani_putnici(...)'))
+    // Profil je prosleđen direktno ili ugnezden u mapi pod kljucem 'registrovani_putnici'
+    // (taj ključ stavlja _buildPutnik iz v2_putnik_stream_service.dart)
     final Map<String, dynamic> p = profile ?? (req['registrovani_putnici'] as Map<String, dynamic>? ?? {});
 
     final danStr = (req['dan']?.toString() ?? '').toLowerCase();
     // ? PRIORITET: datum iz RPC-a (p_datum = danas) š ne racunaj iz dana jer ide u buducnost
-    // Fallback: _getIsoDateForDan samo ako RPC nije vratio datum (direktni seat_requests query)
+    // Fallback: _getIsoDateForDan samo ako RPC nije vratio datum (direktni v2_polasci query)
     final rpcDatum = req['datum']?.toString();
     final datumStr = (rpcDatum != null && rpcDatum.isNotEmpty)
         ? rpcDatum.split('T')[0] // ISO: "2026-02-23T00:00:00" ? "2026-02-23"
@@ -145,7 +144,7 @@ class V2Putnik {
     final isDnevni = tip == 'dnevni' || tip == 'posiljka';
 
     // Status: Prioritet ima status iz profila ako je na bolovanju/godišnjem,
-    // inace koristimo status iz seat_request (approved, confirmed, cancelled...)
+    // inace koristimo status iz v2_polasci (odobreno, obrada, otkazano...)
     final profileStatus = p['status']?.toString().toLowerCase();
     String? finalStatus = req['status']?.toString();
 
@@ -174,7 +173,8 @@ class V2Putnik {
           (grad == 'VS'
               ? ((p['adresa_vs'] as Map<String, dynamic>?)?['naziv'] as String?)
               : ((p['adresa_bc'] as Map<String, dynamic>?)?['naziv'] as String?)),
-      adresaId: req['custom_adresa_id'] as String? ?? (grad == 'VS' ? p['adresa_vs_id'] as String? : p['adresa_bc_id'] as String?),
+      adresaId: req['custom_adresa_id'] as String? ??
+          (grad == 'VS' ? p['adresa_vs_id'] as String? : p['adresa_bc_id'] as String?),
       brojTelefona: p['telefon'] as String?,
       statusVreme: p['updated_at'],
       vremeDodavanja: p['created_at'] != null ? DateTime.parse(p['created_at']) : null,
@@ -190,7 +190,7 @@ class V2Putnik {
       vremeOtkazivanja: req['vreme_otkazivanja'] != null ? DateTime.parse(req['vreme_otkazivanja']).toLocal() : null,
       obrisan: false,
       dodeljenVozac: dodeljenVozacFinal,
-      requestId: req['id']?.toString(), // ? DODATO: ID seat_request-a
+      requestId: req['id']?.toString(), // ID v2_polasci reda
     );
   }
 
@@ -274,7 +274,7 @@ class V2Putnik {
           otkazanZaPolazak ||
           status?.toLowerCase() == 'otkazano' ||
           status?.toLowerCase() == 'otkazan' ||
-          status?.toLowerCase() == 'cancelled');
+          status?.toLowerCase() == 'cancelled'); // legacy backward compat
 
   bool get jeBezPolaska => status?.toLowerCase() == 'bez_polaska';
 
@@ -288,10 +288,10 @@ class V2Putnik {
     // 1. Ako je eksplicitno prosleden flag (iz voznje_log preko _enrichWithLogData) - NAJVECI PRIORITET
     if (pokupljen == true) return true;
 
-    // ??? STATUS 'confirmed' NIJE POKUPLJEN (to je samo potvrdena rezervacija)
-    if (status?.toLowerCase() == 'confirmed') return false;
+    // STATUS 'odobreno' NIJE POKUPLJEN (to je samo odobrena rezervacija)
+    if (status?.toLowerCase() == 'odobreno') return false;
 
-    // 2. Za seat_requests: pokupljen je ako je status 'pokupljen'
+    // 2. Za v2_polasci: pokupljen je ako je status 'pokupljen'
     if (status?.toLowerCase() == 'pokupljen') {
       return true;
     }
@@ -346,29 +346,6 @@ class V2Putnik {
     return map['adresa_bc_id'] as String?;
   }
 
-  // ?? MAPIRANJE ZA registrovani_putnici TABELU
-  Map<String, dynamic> toRegistrovaniPutniciMap() {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0);
-
-    return {
-      // 'id': id, // Uklonjen - Supabase ce auto-generirati UUID
-      'putnik_ime': ime,
-      'tip': 'radnik', // ili 'ucenik' - treba logiku za odredivanje
-      'tip_skole': null, // ? NOVA KOLONA - mošda treba logika
-      'broj_telefona': brojTelefona,
-      'tip_prikazivanja': null,
-      'status': status ?? 'aktivan',
-      'datum_pocetka_meseca': startOfMonth.toIso8601String().split('T')[0],
-      'datum_kraja_meseca': endOfMonth.toIso8601String().split('T')[0],
-      // UUID validacija za vozac_id
-      'vozac_id': (vozac?.isEmpty ?? true) ? null : vozac,
-      'created_at': vremeDodavanja?.toUtc().toIso8601String(),
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    };
-  }
-
   // -----------------------------------------------------------------------
   // ?? COPY WITH - za ažuriranje putnika sa novim podacima
   // -----------------------------------------------------------------------
@@ -397,7 +374,6 @@ class V2Putnik {
     String? adresa,
     String? adresaId,
     bool? obrisan,
-    int? priority,
     String? brojTelefona,
     String? datum,
     int? brojMesta,
@@ -432,7 +408,6 @@ class V2Putnik {
       adresa: adresa ?? this.adresa,
       adresaId: adresaId ?? this.adresaId,
       obrisan: obrisan ?? this.obrisan,
-      priority: priority ?? this.priority,
       brojTelefona: brojTelefona ?? this.brojTelefona,
       datum: datum ?? this.datum,
       brojMesta: brojMesta ?? this.brojMesta,

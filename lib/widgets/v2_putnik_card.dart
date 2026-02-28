@@ -855,7 +855,7 @@ class _PutnikCardState extends State<PutnikCard> {
       // ?? Haptic feedback
       HapticService.mediumImpact();
 
-      // ??? NOVO: Direktno oznaci kao pokupljen u bazi (seat_requests)
+      // Direktno oznaci kao pokupljen u bazi (v2_polasci)
       await V2PutnikStreamService().oznaciPokupljen(
         _putnik.id!,
         true,
@@ -1688,28 +1688,6 @@ class _PutnikCardState extends State<PutnikCard> {
                         _handleOtkazivanje();
                       },
                     ),
-                  // Bez polaska
-                  if (!_putnik.jeOtkazan && _putnik.polazak.isNotEmpty)
-                    ListTile(
-                      leading: const Icon(Icons.schedule, color: Colors.blue),
-                      title: const Text('Bez polaska'),
-                      subtitle: const Text('Ukloni vreme polaska'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _handleBezPolaska();
-                      },
-                    ),
-                  // Godišnji/Bolovanje
-                  if (_putnik.mesecnaKarta == true && !_putnik.jeOtkazan && !_putnik.jeOdsustvo)
-                    ListTile(
-                      leading: const Icon(Icons.beach_access, color: Colors.orange),
-                      title: const Text('Godišnji/Bolovanje'),
-                      subtitle: const Text('Postavi odsustvo'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _pokaziOdsustvoPicker();
-                      },
-                    ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -1718,101 +1696,6 @@ class _PutnikCardState extends State<PutnikCard> {
         ),
       ),
     );
-  }
-
-  // ?? BEZ POLASKA - Postavi polazak na null (kao "Bez polaska" opcija)
-  Future<void> _handleBezPolaska() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-            width: 2,
-          ),
-        ),
-        title: Text(
-          'Bez polaska',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          'Da li ste sigurni da želite da uklonite vreme polaska za ovog putnika?',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        actions: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.grey.shade400,
-                  Colors.grey.shade600,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text(
-                'Ne',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: TripleBlueFashionStyles.gradientButton,
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text(
-                'Da',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        // Ukloni polazak za ovaj termin - to ce sakriti putnika iz liste (status: bez_polaska)
-        await V2PutnikStreamService().ukloniPolazak(
-          _putnik.id!,
-          grad: _putnik.grad,
-          vreme: _putnik.polazak,
-          selectedDan: _putnik.dan,
-          datum: _putnik.datum,
-          requestId: _putnik.requestId,
-        );
-
-        if (mounted) {
-          AppSnackBar.info(context, 'Vreme polaska je uklonjeno za danas.');
-          // Osvježi lokalno stanje
-          setState(() {
-            _putnik = _putnik.copyWith(status: 'bez_polaska');
-          });
-          // Pozovi callback da parent zna da se lista promenila
-          widget.onChanged?.call();
-        }
-      } catch (e) {
-        if (mounted) {
-          AppSnackBar.error(context, 'Greška: $e');
-        }
-      }
-    }
   }
 
   // ?? OTKAZIVANJE - izdvojeno u funkciju
@@ -1883,7 +1766,7 @@ class _PutnikCardState extends State<PutnikCard> {
 
     if (confirm == true) {
       try {
-        // Otkaži seat_request za ovaj termin - postavi status 'otkazano' i upiši u voznje_log
+        // Otkaži v2_polasci za ovaj termin - postavi status 'otkazano'
         await V2PutnikStreamService().otkaziPutnika(
           _putnik.id!,
           widget.currentDriver,
@@ -1982,56 +1865,6 @@ class _PutnikCardState extends State<PutnikCard> {
   }
 
   // ?? PICKER ZA ODSUSTVO (Bolovanje / Godišnji)
-  void _pokaziOdsustvoPicker() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.medical_services, color: Colors.red),
-              title: const Text('Bolovanje'),
-              onTap: () {
-                Navigator.pop(context);
-                _postaviOdsustvo('bolovanje');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.beach_access, color: Colors.blue),
-              title: const Text('Godišnji odmor'),
-              onTap: () {
-                Navigator.pop(context);
-                _postaviOdsustvo('godisnji');
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ?? POSTAVI ODSUSTVO U BAZU
-  Future<void> _postaviOdsustvo(String tip) async {
-    try {
-      await V2PutnikStreamService().oznaciBolovanjeGodisnji(
-        _putnik.id!,
-        tip,
-        widget.currentDriver,
-      );
-
-      if (mounted) {
-        if (widget.onChanged != null) widget.onChanged!();
-        AppSnackBar.warning(context, 'Postavljeno: ${tip == 'bolovanje' ? 'Bolovanje' : 'Godišnji'}');
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackBar.error(context, 'Greška: $e');
-      }
-    }
-  }
-
   void _startLongPressTimer() {
     _longPressTimer?.cancel();
     _isLongPressActive = true;

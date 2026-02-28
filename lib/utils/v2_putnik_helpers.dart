@@ -22,9 +22,8 @@ class PutnikHelpers {
     // Takođe ne računaj ako je uklonjen polazak (bez_polaska)
     if (p.jeOtkazan || p.jeBezPolaska) return false;
 
-    // Ne računaj ako je na čekanju (pending) - "Predlog 3"
-    // Pending putnici se obrađuju u SeatRequestsScreen i ne zauzimaju mesto dok ne budu odobreni
-    if (p.status?.toLowerCase() == 'pending') return false;
+    // Ne računaj ako je na čekanju (obrada) - zauzima mesto tek kad je odobreno
+    if (p.status?.toLowerCase() == 'obrada') return false;
 
     // Ne računaj ako je na odsustvu (bolovanje/godišnji)
     if (p.jeOdsustvo) return false;

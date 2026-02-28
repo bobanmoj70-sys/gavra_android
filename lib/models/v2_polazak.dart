@@ -10,7 +10,6 @@ class V2Polazak {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? processedAt;
-  final int priority;
   final String? alternativeVreme1;
   final String? alternativeVreme2;
   final int brojMesta;
@@ -31,11 +30,10 @@ class V2Polazak {
     this.dan,
     this.zeljenoVreme,
     this.dodeljenoVreme,
-    this.status = 'pending',
+    this.status = 'obrada',
     this.createdAt,
     this.updatedAt,
     this.processedAt,
-    this.priority = 1,
     this.alternativeVreme1,
     this.alternativeVreme2,
     this.brojMesta = 1,
@@ -49,7 +47,7 @@ class V2Polazak {
   });
 
   factory V2Polazak.fromJson(Map<String, dynamic> json) {
-    // Provera da li su podaci o putniku ugneždeni (iz JOIN-a)
+    // Provera da li su podaci o putniku ugneždeni (iz JOIN-a sa v2_radnici/v2_ucenici)
     final putnikData = json['registrovani_putnici'] as Map<String, dynamic>?;
 
     return V2Polazak(
@@ -59,11 +57,10 @@ class V2Polazak {
       dan: json['dan'] as String?,
       zeljenoVreme: json['zeljeno_vreme'] as String?,
       dodeljenoVreme: json['dodeljeno_vreme'] as String?,
-      status: json['status'] as String? ?? 'pending',
+      status: json['status'] as String? ?? 'obrada',
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : null,
       processedAt: json['processed_at'] != null ? DateTime.parse(json['processed_at'] as String) : null,
-      priority: json['priority'] as int? ?? 1,
       alternativeVreme1: json['alternative_vreme_1'] as String?,
       alternativeVreme2: json['alternative_vreme_2'] as String?,
       brojMesta: json['broj_mesta'] as int? ?? 1,
@@ -88,7 +85,6 @@ class V2Polazak {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? processedAt,
-    int? priority,
     String? alternativeVreme1,
     String? alternativeVreme2,
     int? brojMesta,
@@ -111,7 +107,6 @@ class V2Polazak {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       processedAt: processedAt ?? this.processedAt,
-      priority: priority ?? this.priority,
       alternativeVreme1: alternativeVreme1 ?? this.alternativeVreme1,
       alternativeVreme2: alternativeVreme2 ?? this.alternativeVreme2,
       brojMesta: brojMesta ?? this.brojMesta,

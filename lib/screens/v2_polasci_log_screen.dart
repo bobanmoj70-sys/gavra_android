@@ -6,7 +6,7 @@ import '../services/v2_polasci_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../theme.dart';
 
-/// 📋 Audit/log ekran za SVE seat_requests — admin pregled celog toka zahteva
+/// 📋 Audit/log ekran za SVE v2_polasci redove — admin pregled celog toka zahteva
 class V2PolasciLogScreen extends StatefulWidget {
   const V2PolasciLogScreen({super.key});
 
@@ -20,10 +20,12 @@ class _V2PolasciLogScreenState extends State<V2PolasciLogScreen> {
   final Set<String> _statusFilter = {}; // prazno = svi statusi
 
   static const _sviStatusi = [
-    'pending',
-    'approved',
-    'confirmed',
-    'rejected',
+    'obrada',
+    'odobreno',
+    'odbijeno',
+    'otkazano',
+    'bez_polaska',
+    'pokupljen',
   ];
 
   static const _danLabels = {
@@ -38,14 +40,18 @@ class _V2PolasciLogScreenState extends State<V2PolasciLogScreen> {
 
   Color _statusBoja(String status) {
     switch (status) {
-      case 'pending':
+      case 'obrada':
         return Colors.orange;
-      case 'approved':
-        return Colors.purple;
-      case 'confirmed':
-        return Colors.deepOrange;
-      case 'rejected':
+      case 'odobreno':
+        return Colors.green;
+      case 'odbijeno':
+        return Colors.blue;
+      case 'otkazano':
         return Colors.red;
+      case 'bez_polaska':
+        return Colors.grey;
+      case 'pokupljen':
+        return Colors.teal;
       default:
         return Colors.grey;
     }
@@ -53,14 +59,18 @@ class _V2PolasciLogScreenState extends State<V2PolasciLogScreen> {
 
   IconData _statusIkona(String status) {
     switch (status) {
-      case 'pending':
+      case 'obrada':
         return Icons.hourglass_top;
-      case 'approved':
-        return Icons.settings_suggest;
-      case 'confirmed':
-        return Icons.drive_eta;
-      case 'rejected':
+      case 'odobreno':
+        return Icons.check_circle_outline;
+      case 'odbijeno':
         return Icons.cancel_outlined;
+      case 'otkazano':
+        return Icons.person_off_outlined;
+      case 'bez_polaska':
+        return Icons.remove_circle_outline;
+      case 'pokupljen':
+        return Icons.drive_eta;
       default:
         return Icons.help_outline;
     }
@@ -68,14 +78,18 @@ class _V2PolasciLogScreenState extends State<V2PolasciLogScreen> {
 
   String _statusLabel(String status) {
     switch (status) {
-      case 'pending':
+      case 'obrada':
         return 'ČEKA';
-      case 'approved':
-        return 'DISPECER';
-      case 'confirmed':
-        return 'VOZAČ';
-      case 'rejected':
-        return 'ODBIJEN';
+      case 'odobreno':
+        return 'ODOBRENO';
+      case 'odbijeno':
+        return 'ODBIJENO';
+      case 'otkazano':
+        return 'OTKAZANO';
+      case 'bez_polaska':
+        return 'BEZ POLASKA';
+      case 'pokupljen':
+        return 'POKUPLJEN';
       default:
         return status.toUpperCase();
     }
