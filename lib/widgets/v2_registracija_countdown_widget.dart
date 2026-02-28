@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+?import 'package:flutter/material.dart';
 
 import '../screens/v2_odrzavanje_screen.dart';
 import '../services/v2_vozila_service.dart';
@@ -67,15 +67,15 @@ class _RegistracijaData {
     if (danaDoIsteka! < 0) return Colors.red.shade900; // Istekla - tamno crvena
     if (danaDoIsteka! <= 2) return Colors.red; // 0-2 dana - crvena
     if (danaDoIsteka! <= 5) {
-      return Colors.deepOrange; // 3-5 dana - tamno narandÅ¾asta
+      return Colors.deepOrange; // 3-5 dana - tamno narandžasta
     }
-    if (danaDoIsteka! <= 8) return Colors.orange; // 6-8 dana - narandÅ¾asta
-    if (danaDoIsteka! <= 11) return Colors.amber; // 9-11 dana - Å¾uta
+    if (danaDoIsteka! <= 8) return Colors.orange; // 6-8 dana - narandžasta
+    if (danaDoIsteka! <= 11) return Colors.amber; // 9-11 dana - žuta
     return Colors.lime; // 12-14 dana - limeta
   }
 }
 
-/// ðŸ·ï¸ TABLICA WIDGET - samo slika tablice (leva strana)
+/// �Y��️ TABLICA WIDGET - samo slika tablice (leva strana)
 class RegistracijaTablicaWidget extends StatefulWidget {
   const RegistracijaTablicaWidget({super.key});
 
@@ -138,7 +138,7 @@ class _RegistracijaTablicaWidgetState extends State<RegistracijaTablicaWidget> {
   }
 }
 
-/// ðŸ“Š BROJAÄŒ WIDGET - samo broj dana (desna strana)
+/// �Y"S BROJA�O WIDGET - samo broj dana (desna strana)
 class RegistracijaBrojacWidget extends StatefulWidget {
   const RegistracijaBrojacWidget({super.key});
 
