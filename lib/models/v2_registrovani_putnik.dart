@@ -137,6 +137,18 @@ class RegistrovaniPutnik {
   final int brojMesta;
 
   factory RegistrovaniPutnik.fromMap(Map<String, dynamic> map) {
+    // Odredi tip iz _tabela ključa (koji dodaje V2PutnikService) ili iz tip kolone
+    String tipIzTabele = 'radnik';
+    final tabela = map['_tabela'] as String?;
+    if (tabela != null) {
+      if (tabela == 'v2_radnici')
+        tipIzTabele = 'radnik';
+      else if (tabela == 'v2_ucenici')
+        tipIzTabele = 'ucenik';
+      else if (tabela == 'v2_dnevni')
+        tipIzTabele = 'dnevni';
+      else if (tabela == 'v2_posiljke') tipIzTabele = 'posiljka';
+    }
     return RegistrovaniPutnik(
       id: map['id'] as String? ?? _generateUuid(),
       putnikIme: map['putnik_ime'] as String? ?? map['ime'] as String? ?? '',
@@ -144,7 +156,7 @@ class RegistrovaniPutnik {
       brojTelefona2: map['broj_telefona_2'] as String?,
       brojTelefonaOca: map['broj_telefona_oca'] as String?,
       brojTelefonaMajke: map['broj_telefona_majke'] as String?,
-      tip: map['tip'] as String? ?? 'radnik',
+      tip: map['tip'] as String? ?? tipIzTabele,
       tipSkole: map['tip_skole'] as String?,
       adresaBelaCrkvaId: map['adresa_bela_crkva_id'] as String?,
       adresaVrsacId: map['adresa_vrsac_id'] as String?,
