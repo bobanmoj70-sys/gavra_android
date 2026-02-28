@@ -1159,9 +1159,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                _buildGlassStatRow('?? Vreme:', _selectedVreme),
-                                _buildGlassStatRow('??? Grad:', _selectedGrad),
-                                _buildGlassStatRow('?? Dan:', _selectedDay),
+                                _buildGlassStatRow('⏰ Vreme:', _selectedVreme),
+                                _buildGlassStatRow('📍 Grad:', _selectedGrad),
+                                _buildGlassStatRow('📅 Dan:', _selectedDay),
                               ],
                             ),
                           ),
@@ -1641,12 +1641,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   : () async {
                                       // Validacija - mora biti odabrani V2Putnik
                                       if (selectedPutnik == null) {
-                                        AppSnackBar.error(dialogCtx, '? Morate odabrati putnika iz liste');
+                                        AppSnackBar.error(dialogCtx, '⚠️ Morate odabrati putnika iz liste');
                                         return;
                                       }
 
                                       if (_selectedVreme.isEmpty || _selectedGrad.isEmpty) {
-                                        AppSnackBar.error(dialogCtx, '? Greška: Nije odabrano vreme polaska');
+                                        AppSnackBar.error(dialogCtx, '⚠️ Greška: Nije odabrano vreme polaska');
                                         return;
                                       }
 
@@ -1657,7 +1657,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             !VozacCache.isValidIme(_currentDriver)) {
                                           if (!dialogCtx.mounted) return;
                                           AppSnackBar.error(dialogCtx,
-                                              '? GREŠKA: Vozac "$_currentDriver" nije registrovan. Molimo ponovo se ulogujte.');
+                                              '❌ GREŠKA: Vozac "$_currentDriver" nije registrovan. Molimo ponovo se ulogujte.');
                                           return;
                                         }
 
@@ -1674,7 +1674,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           if (!imaMesta) {
                                             if (!dialogCtx.mounted) return;
                                             AppSnackBar.error(dialogCtx,
-                                                '? Termin $_selectedVreme ($_selectedGrad) je PUN! Izaberite drugo vreme.');
+                                                '⚠️ Termin $_selectedVreme ($_selectedGrad) je PUN! Izaberite drugo vreme.');
                                             return;
                                           }
                                         }
@@ -1737,7 +1737,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                                         // ? Koristimo rootContext jer je dialog context vec pop-ovan
                                         if (rootContext.mounted) {
-                                          AppSnackBar.success(rootContext, '? V2Putnik je uspešno dodat');
+                                          AppSnackBar.success(rootContext, '✅ Putnik je uspešno dodat');
                                         }
                                       } catch (e) {
                                         // ensure dialog loading is cleared
@@ -1747,7 +1747,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                                         if (!dialogCtx.mounted) return;
 
-                                        AppSnackBar.error(dialogCtx, '? Greška pri dodavanju: $e');
+                                        AppSnackBar.error(dialogCtx, '❌ Greška pri dodavanju: $e');
                                       }
                                     },
                               child: isDialogLoading
@@ -2777,7 +2777,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (ctx) => PopScope(
         canPop: !info.isForced,
         child: AlertDialog(
-          title: Text(info.isForced ? '?? Obavezno ažuriranje' : '?? Dostupna nova verzija'),
+          title: Text(info.isForced ? '🔴 Obavezno ažuriranje' : '🆕 Dostupna nova verzija'),
           content: Text(
             info.isForced
                 ? 'Ova verzija aplikacije više nije podržana.\nMolimo ažurirajte na verziju ${info.latestVersion} da biste nastavili sa korišćenjem.'
