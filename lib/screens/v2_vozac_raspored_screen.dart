@@ -43,7 +43,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   // 🔴 Realtime subscriptions
   StreamSubscription<PostgresChangePayload>? _rasporedSub;
 
-  final List<String> _days = ['pon', 'uto', 'sre', 'cet', 'pet'];
+  final List<String> _days = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
 
   List<String> get bcVremena {
     final navType = navBarTypeNotifier.value;
@@ -148,7 +148,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
         : (1 - todayWeekday); // radni dan → ovaj ponedeljak
     final monday = now.add(Duration(days: daysToMonday));
 
-    const dayOffsets = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4};
+    const dayOffsets = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4, 'sub': 5, 'ned': 6};
     final offset = dayOffsets[_selectedDay ?? 'pon'] ?? 0;
     return monday.add(Duration(days: offset)).toIso8601String().split('T').first;
   }

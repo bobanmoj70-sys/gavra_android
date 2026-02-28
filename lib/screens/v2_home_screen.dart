@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   StreamSubscription<dynamic>? _networkStatusSubscription;
   Timer? _dispecerTimer; // ?? Tajmer za digitalnog dispecera
 
-  final List<String> _dani = DayConstants.dayNamesInternal.sublist(0, 5); // Samo radni dani (Pon-Pet)
+  final List<String> _dani = DayConstants.dayNamesInternal; // Svi dani (Pon-Ned)
 
   // ?? DINAMICKA VREMENA - prate navBarTypeNotifier (praznici/zimski/letnji)
   List<String> get bcVremena {
@@ -131,11 +131,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ? KORISTI UTILS FUNKCIJU ZA DROPDOWN DAN
   String _getTodayName() {
-    final today = DateTime.now();
-    // ?? FIX: Vikendom (subota=6, nedelja=7) prikaži ponedeljak jer radni dani su samo Pon-Pet
-    if (today.weekday == DateTime.saturday || today.weekday == DateTime.sunday) {
-      return 'Ponedeljak';
-    }
     return app_date_utils.DateUtils.getTodayFullName();
   }
 
@@ -2016,7 +2011,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // Get target day abbreviation for additional filtering
           final targetDateIso = _getTargetDateIsoFromSelectedDay(_selectedDay);
           final date = DateTime.parse(targetDateIso);
-          const dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
+          const dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
           final targetDayAbbr = dayAbbrs[date.weekday - 1];
 
           // Additional client-side filtering like danas_screen

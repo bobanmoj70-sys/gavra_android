@@ -175,8 +175,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final putnikId = _putnikData['id']?.toString();
       if (putnikId == null) return;
 
-      // v2_polasci filtrira po 'dan' kraticama (radni dani)
-      const radniDani = ['pon', 'uto', 'sre', 'cet', 'pet'];
+      // v2_polasci filtrira po 'dan' kraticama (svi dani)
+      const radniDani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
 
       final res = await supabase
           .from('v2_polasci')
