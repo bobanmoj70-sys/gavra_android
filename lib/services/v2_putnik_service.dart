@@ -161,7 +161,6 @@ class V2PutnikService {
       await _supabase.from('v2_pin_zahtevi').delete().eq('putnik_id', id);
       await _supabase.from('v2_polasci').delete().eq('putnik_id', id);
       await _supabase.from('v2_vozac_putnik').delete().eq('putnik_id', id);
-      // v2_voznje_log se ne briše (audit trail)
       // Briši putnika
       await _supabase.from(tabela).delete().eq('id', id);
       return true;
