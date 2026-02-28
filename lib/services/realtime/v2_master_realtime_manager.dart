@@ -275,7 +275,7 @@ class V2MasterRealtimeManager {
     try {
       final results = await Future.wait([
         _db.from('v2_vozaci').select('id, ime, email, telefon, sifra, boja'),
-        _db.from('v2_vozila').select('id, registarski_broj, marka, model, naziv, broj_mesta'),
+        _db.from('v2_vozila').select('id, registarski_broj, marka, model, godina_proizvodnje, kilometraza, napomena'),
         _db.from('v2_kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
         _db.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng'),
         _db.from('v2_vozac_raspored').select(),
