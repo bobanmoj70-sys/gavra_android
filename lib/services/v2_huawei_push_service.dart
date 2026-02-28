@@ -6,6 +6,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:huawei_push/huawei_push.dart';
 
+import '../utils/v2_vozac_cache.dart';
 import 'v2_auth_manager.dart';
 import 'v2_local_notification_service.dart';
 import 'v2_push_token_service.dart';
@@ -266,8 +267,7 @@ class HuaweiPushService {
     await V2PushTokenService.registerToken(
       token: token,
       provider: 'huawei',
-      userType: 'vozac',
-      userId: driverName,
+      vozacId: VozacCache.getUuidByIme(driverName),
     );
   }
 

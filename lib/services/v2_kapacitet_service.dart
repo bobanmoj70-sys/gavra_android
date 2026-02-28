@@ -80,8 +80,7 @@ class V2KapacitetService {
   /// Vraca: {'BC': {'5:00': 8, '6:00': 8, ...}, 'VS': {'6:00': 8, ...}}
   static Future<Map<String, Map<String, int>>> getKapacitet() async {
     try {
-      final response =
-          await _supabase.from('v2_kapacitet_polazaka').select('grad, vreme, max_mesta').eq('aktivan', true);
+      final response = await _supabase.from('v2_kapacitet_polazaka').select('grad, vreme, max_mesta');
 
       final result = <String, Map<String, int>>{
         'BC': {},
@@ -151,16 +150,12 @@ class V2KapacitetService {
   }
 
   /// Admin: Promeni kapacitet za odredeni polazak
-  static Future<bool> setKapacitet(String grad, String vreme, int maxMesta, {String? napomena}) async {
+  static Future<bool> setKapacitet(String grad, String vreme, int maxMesta) async {
     try {
       // Prvo probaj update ako postoji zapis
       final updateResult = await _supabase
           .from('v2_kapacitet_polazaka')
-          .update({
-            'max_mesta': maxMesta,
-            'aktivan': true,
-            if (napomena != null) 'napomena': napomena,
-          })
+          .update({'max_mesta': maxMesta})
           .eq('grad', grad)
           .eq('vreme', vreme)
           .select();
@@ -171,8 +166,6 @@ class V2KapacitetService {
           'grad': grad,
           'vreme': vreme,
           'max_mesta': maxMesta,
-          'aktivan': true,
-          if (napomena != null) 'napomena': napomena,
         });
       }
 

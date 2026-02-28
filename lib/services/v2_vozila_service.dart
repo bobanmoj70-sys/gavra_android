@@ -59,16 +59,6 @@ class V2VozilaService {
     }
   }
 
-  /// Ažuriraj broj mesta vozila
-  static Future<bool> updateBrojMesta(String id, int brojMesta) async {
-    try {
-      await _supabase.from('v2_vozila').update({'broj_mesta': brojMesta}).eq('id', id);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
   // ==================== ISTORIJA SERVISA ====================
 
   /// Dodaj zapis u istoriju vozila
@@ -105,8 +95,6 @@ class Vozilo {
   final String? marka;
   final String? model;
   final int? godinaProizvodnje;
-  final int? brojMesta;
-  final String? naziv;
 
   // Kolska knjiga
   final String? brojSasije;
@@ -146,8 +134,6 @@ class Vozilo {
     this.marka,
     this.model,
     this.godinaProizvodnje,
-    this.brojMesta,
-    this.naziv,
     this.brojSasije,
     this.registracijaVaziDo,
     this.maliServisDatum,
@@ -186,8 +172,6 @@ class Vozilo {
       marka: json['marka'] as String?,
       model: json['model'] as String?,
       godinaProizvodnje: json['godina_proizvodnje'] as int?,
-      brojMesta: json['broj_mesta'] as int?,
-      naziv: json['naziv'] as String?,
       brojSasije: json['broj_sasije'] as String?,
       registracijaVaziDo: _parseDate(json['registracija_vazi_do']),
       maliServisDatum: _parseDate(json['mali_servis_datum']),
@@ -227,9 +211,8 @@ class Vozilo {
 
   /// Prikaži naziv
   String get displayNaziv {
-    if (naziv != null && naziv!.isNotEmpty) return naziv!;
     if (marka != null && model != null) {
-      return '$marka $model${brojMesta != null ? ' ($brojMesta mesta)' : ''}';
+      return '$marka $model';
     }
     return registarskiBroj;
   }

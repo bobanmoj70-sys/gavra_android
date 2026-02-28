@@ -189,8 +189,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
     final entry = _rasporedCache.where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme).firstOrNull;
     if (entry == null) return null;
-    // Preferuj ime iz vozac stringa, fallback na lookup po vozacId
-    if (entry.vozac.isNotEmpty) return entry.vozac;
+    // Lookup vozac ime po vozacId
     return VozacCache.getImeByUuid(entry.vozacId);
   }
 
@@ -347,7 +346,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
           (e) => e.putnikId == putnik.id?.toString(),
         )
         .firstOrNull;
-    final trenutni = trenutniEntry?.vozac;
+    final trenutni = trenutniEntry != null ? VozacCache.getImeByUuid(trenutniEntry.vozacId) : null;
     String? odabranVozac = trenutni;
 
     final vozaci = VozacCache.imenaVozaca;
@@ -513,7 +512,6 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
         dan: dan,
         grad: grad,
         vreme: vreme,
-        vozac: vozacIme,
         vozacId: vozacId,
       ));
       await _loadAll();
@@ -524,8 +522,13 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   }
 
   Future<void> _ukloniTermin(String dan, String grad, String vreme, String vozacIme) async {
+    final vozacId = VozacCache.getUuidByIme(vozacIme);
+    if (vozacId == null) {
+      if (mounted) AppSnackBar.error(context, '❌ Vozač nije pronađen u sistemu');
+      return;
+    }
     try {
-      await _rasporedService.deleteTermin(dan: dan, grad: grad, vreme: vreme, vozac: vozacIme);
+      await _rasporedService.deleteTermin(dan: dan, grad: grad, vreme: vreme, vozacId: vozacId);
       await _loadAll();
       if (mounted) AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($dan)');
     } catch (e) {
@@ -714,13 +717,15 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                                   _vozacPutnikCache.where((e) => e.putnikId == p.id?.toString()).firstOrNull;
                               // Boja: individualna dodjela ima prioritet nad termin bojom
                               final vozacColor = individualnaEntry != null
-                                  ? VozacCache.getColor(individualnaEntry.vozac)
+                                  ? VozacCache.getColorByUuid(individualnaEntry.vozacId)
                                   : _getVozacColorForTermin(_selectedGrad, _selectedVreme);
                               return _PutnikRasporedTile(
                                 putnik: p,
                                 vozacColor: vozacColor,
                                 terminJeDodeljen: terminJeDodeljen,
-                                vozacPutnikIme: individualnaEntry?.vozac,
+                                vozacPutnikIme: individualnaEntry != null
+                                    ? VozacCache.getImeByUuid(individualnaEntry.vozacId)
+                                    : null,
                                 onTap: () => _showPutnikAssignDialog(p),
                               );
                             },

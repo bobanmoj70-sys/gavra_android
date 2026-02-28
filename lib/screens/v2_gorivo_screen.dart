@@ -415,7 +415,6 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                 '${_fmt.format(p.cenaPoPLitru!)} din/L  â†’  ${_fmtInt.format(p.ukupnoCena ?? 0)} din',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
-            if (p.dobavljac != null) Text('DobavljaÄ: ${p.dobavljac}', style: const TextStyle(fontSize: 12)),
             if (p.napomena != null) Text(p.napomena!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
           ],
         ),
@@ -534,7 +533,6 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
   void _showDodajPunjenjeDialog() {
     final litriCtrl = TextEditingController();
     final cenaCtrl = TextEditingController();
-    final dobavljacCtrl = TextEditingController();
     final napomenaCtrl = TextEditingController();
     DateTime datum = DateTime.now();
 
@@ -554,8 +552,6 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
             const SizedBox(height: 12),
             _inputField(cenaCtrl, 'Cena po litru', suffixText: 'din/L', keyboardType: TextInputType.number),
             const SizedBox(height: 12),
-            _inputField(dobavljacCtrl, 'DobavljaÄ'),
-            const SizedBox(height: 12),
             _inputField(napomenaCtrl, 'Napomena'),
             const SizedBox(height: 20),
             SizedBox(
@@ -571,7 +567,6 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                     datum: datum,
                     litri: litri,
                     cenaPoPLitru: double.tryParse(cenaCtrl.text),
-                    dobavljac: dobavljacCtrl.text.isEmpty ? null : dobavljacCtrl.text,
                     napomena: napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text,
                   );
                   if (!context.mounted) return;

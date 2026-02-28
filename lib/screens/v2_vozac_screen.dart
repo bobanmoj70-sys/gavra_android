@@ -86,7 +86,7 @@ class _VozacScreenState extends State<VozacScreen> {
     // Izvor 1: termini iz raspored cache-a za ovog vozaca i dana�nji dan
     for (final r in _rasporedCache) {
       if (r.dan != targetDan) continue;
-      final isVozacov = (currentVozacId != null && r.vozacId == currentVozacId) || r.vozac == _currentDriver;
+      final isVozacov = currentVozacId != null && r.vozacId == currentVozacId;
       if (!isVozacov) continue;
       final postoji = dodeljena.any((v) => v['grad'] == r.grad && v['vreme'] == r.vreme);
       if (!postoji) dodeljena.add({'grad': r.grad, 'vreme': r.vreme});
@@ -866,8 +866,7 @@ class _VozacScreenState extends State<VozacScreen> {
               ? sviPutnici
               : V2VozacPutnikService.filterKombinovan<V2Putnik>(
                   sviPutnici: sviPutnici,
-                  vozac: _currentDriver!,
-                  vozacId: currentVozacId,
+                  vozacId: currentVozacId ?? '',
                   targetDan: targetDan,
                   individualneDodjele: _vozacPutnikCache,
                   raspored: _rasporedCache,

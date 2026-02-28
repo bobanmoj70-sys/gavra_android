@@ -15,7 +15,6 @@ class VozacPutnikEntry {
   final String? id; // uuid PK, null prije inserata
   final String putnikId; // FK → registrovani_putnici.id
   final String vozacId; // FK → vozaci.id
-  final String vozac; // ime vozača (denormalizovano za display)
   final String dan; // 'pon','uto','sre','cet','pet'
   final String grad; // 'BC' ili 'VS'
   final String vreme; // '07:00', '08:00', ...
@@ -24,7 +23,6 @@ class VozacPutnikEntry {
     this.id,
     required this.putnikId,
     required this.vozacId,
-    required this.vozac,
     required this.dan,
     required this.grad,
     required this.vreme,
@@ -35,7 +33,6 @@ class VozacPutnikEntry {
       id: map['id'] as String?,
       putnikId: map['putnik_id'] as String,
       vozacId: map['vozac_id'] as String,
-      vozac: map['vozac'] as String,
       dan: map['dan'] as String,
       grad: map['grad'] as String,
       vreme: map['vreme'] as String,
@@ -46,7 +43,6 @@ class VozacPutnikEntry {
         if (id != null) 'id': id,
         'putnik_id': putnikId,
         'vozac_id': vozacId,
-        'vozac': vozac,
         'dan': dan,
         'grad': grad,
         'vreme': vreme,
@@ -102,7 +98,6 @@ class V2VozacPutnikService {
         {
           'putnik_id': putnikId,
           'vozac_id': vozacId,
-          'vozac': vozacIme,
           'dan': dan,
           'grad': grad,
           'vreme': vreme,
@@ -146,11 +141,10 @@ class V2VozacPutnikService {
   /// Filtrira putnike za datog vozača na osnovu termin rasporeda (vozac_raspored).
   /// V2Putnik je vidljiv vozaču samo ako postoji unos u rasporedu koji ga dodjeljuje tom vozaču.
   ///
-  /// [vozacId] = UUID (preferiran), [vozac] = ime (fallback)
+  /// [vozacId] = UUID vozača
   static List<T> filterKombinovan<T>({
     required List<T> sviPutnici,
-    required String vozac,
-    required String? vozacId,
+    required String vozacId,
     required String targetDan,
     required List<VozacPutnikEntry> individualneDodjele,
     required List<VozacRasporedEntry> raspored,
@@ -160,14 +154,12 @@ class V2VozacPutnikService {
   }) {
     // Helper: da li je termin-unos za ovog vozača?
     bool jeTerminVozacov(VozacRasporedEntry r) {
-      if (vozacId != null) return r.vozacId == vozacId;
-      return r.vozac == vozac;
+      return r.vozacId == vozacId;
     }
 
     // Helper: da li je individualna dodjela za ovog vozača?
     bool jeDodjelajeVozacova(VozacPutnikEntry e) {
-      if (vozacId != null) return e.vozacId == vozacId;
-      return e.vozac == vozac;
+      return e.vozacId == vozacId;
     }
 
     return sviPutnici.where((p) {

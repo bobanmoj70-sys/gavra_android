@@ -7,8 +7,6 @@ class Adresa {
   Adresa({
     String? id,
     required this.naziv,
-    this.ulica,
-    this.broj,
     this.grad,
     this.gpsLat, // Direct DECIMAL column
     this.gpsLng, // Direct DECIMAL column
@@ -31,8 +29,6 @@ class Adresa {
     return Adresa(
       id: map['id'] as String,
       naziv: map['naziv'] as String,
-      ulica: map['ulica'] as String?,
-      broj: map['broj'] as String?,
       grad: _normalizeGrad(map['grad'] as String?),
       gpsLat: map['gps_lat'] as double?, // Direct column
       gpsLng: map['gps_lng'] as double?, // Direct column
@@ -43,8 +39,6 @@ class Adresa {
 
   final String id;
   final String naziv;
-  final String? ulica;
-  final String? broj;
   final String? grad;
   final double? gpsLat; // Direct DECIMAL column
   final double? gpsLng; // Direct DECIMAL column
@@ -62,8 +56,6 @@ class Adresa {
     return {
       'id': id,
       'naziv': naziv,
-      'ulica': ulica,
-      'broj': broj,
       'grad': grad,
       'gps_lat': gpsLat, // Direct column
       'gps_lng': gpsLng, // Direct column
@@ -104,8 +96,6 @@ class Adresa {
   Adresa copyWith({
     String? id,
     String? naziv,
-    String? ulica,
-    String? broj,
     String? grad,
     double? gpsLat,
     double? gpsLng,
@@ -115,8 +105,6 @@ class Adresa {
     return Adresa(
       id: id ?? this.id,
       naziv: naziv ?? this.naziv,
-      ulica: ulica ?? this.ulica,
-      broj: broj ?? this.broj,
       grad: grad ?? this.grad,
       gpsLat: gpsLat ?? this.gpsLat,
       gpsLng: gpsLng ?? this.gpsLng,

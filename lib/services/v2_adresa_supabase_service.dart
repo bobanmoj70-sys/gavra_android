@@ -89,7 +89,7 @@ class V2AdresaSupabaseService {
     try {
       final response = await supabase
           .from('v2_adrese')
-          .select('id, naziv, grad, ulica, broj, gps_lat, gps_lng')
+          .select('id, naziv, grad, gps_lat, gps_lng')
           .eq('naziv', naziv)
           .eq('grad', grad)
           .maybeSingle();
@@ -158,7 +158,7 @@ class V2AdresaSupabaseService {
                   'gps_lng': lng, // Direct column
                 })
                 .eq('id', adresa.id)
-                .select('id, naziv, grad, ulica, broj, gps_lat, gps_lng')
+                .select('id, naziv, grad, gps_lat, gps_lng')
                 .single();
 
             final updatedAdresa = Adresa.fromMap(response);

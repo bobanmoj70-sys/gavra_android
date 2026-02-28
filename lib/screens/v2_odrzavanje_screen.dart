@@ -159,49 +159,6 @@ class _OdrzavanjeScreenState extends State<OdrzavanjeScreen> {
     return Colors.grey.shade300;
   }
 
-  // Dijalog za promenu broja mesta
-  Future<void> _editBrojMesta(Vozilo vozilo) async {
-    final controller = TextEditingController(text: vozilo.brojMesta?.toString() ?? '');
-
-    final result = await showDialog<int>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Broj mesta - ${vozilo.registarskiBroj}'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Broj mesta',
-            hintText: 'npr. 8, 10, 14...',
-            prefixIcon: Icon(Icons.event_seat),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OtkaÅ¾i'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final broj = int.tryParse(controller.text);
-              Navigator.pop(context, broj);
-            },
-            child: const Text('SaÄuvaj'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null && result != vozilo.brojMesta) {
-      await V2VozilaService.updateBrojMesta(vozilo.id, result);
-      await _loadVozila();
-      if (mounted) {
-        AppSnackBar.info(context, 'Broj mesta za ${vozilo.registarskiBroj}: $result');
-      }
-    }
-  }
-
   Widget _buildVoziloDropdown() {
     // Sortiraj: 066 levo, 102 desno, ostali po redu
     final sortedVozila = List<Vozilo>.from(_vozila)
@@ -230,7 +187,6 @@ class _OdrzavanjeScreenState extends State<OdrzavanjeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: GestureDetector(
                 onTap: () => _selectVozilo(vozilo),
-                onLongPress: () => _editBrojMesta(vozilo),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -276,15 +232,6 @@ class _OdrzavanjeScreenState extends State<OdrzavanjeScreen> {
                           height: 15,
                           fit: BoxFit.contain,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    // Broj mesta
-                    Text(
-                      '${vozilo.brojMesta ?? '?'} mesta',
-                      style: TextStyle(
-                        fontSize: 8,
-                        color: Colors.grey.shade500,
                       ),
                     ),
                   ],

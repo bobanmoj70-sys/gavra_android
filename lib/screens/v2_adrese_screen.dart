@@ -55,8 +55,6 @@ class _AdreseScreenState extends State<AdreseScreen> {
         final insertData = {
           'naziv': result['naziv'],
           'grad': result['grad'],
-          'ulica': result['ulica'],
-          'broj': result['broj'],
         };
 
         // Add coordinates if provided
@@ -87,8 +85,6 @@ class _AdreseScreenState extends State<AdreseScreen> {
       builder: (context) => _AdresaDialog(
         initialNaziv: adresa.naziv,
         initialGrad: adresa.grad,
-        initialUlica: adresa.ulica,
-        initialBroj: adresa.broj,
         initialLatitude: adresa.gpsLat,
         initialLongitude: adresa.gpsLng,
       ),
@@ -99,8 +95,6 @@ class _AdreseScreenState extends State<AdreseScreen> {
         final updateData = {
           'naziv': result['naziv'],
           'grad': result['grad'],
-          'ulica': result['ulica'],
-          'broj': result['broj'],
         };
 
         // Add coordinates if provided
@@ -369,11 +363,6 @@ class _AdreseScreenState extends State<AdreseScreen> {
               '${adresa.grad}',
               style: TextStyle(color: Colors.grey[400], fontSize: 12),
             ),
-            if (adresa.ulica != null)
-              Text(
-                '${adresa.ulica} ${adresa.broj ?? ""}',
-                style: TextStyle(color: Colors.grey[500], fontSize: 11),
-              ),
           ],
         ),
         trailing: Row(
@@ -398,16 +387,12 @@ class _AdreseScreenState extends State<AdreseScreen> {
 class _AdresaDialog extends StatefulWidget {
   final String? initialNaziv;
   final String? initialGrad;
-  final String? initialUlica;
-  final String? initialBroj;
   final double? initialLatitude;
   final double? initialLongitude;
 
   const _AdresaDialog({
     this.initialNaziv,
     this.initialGrad,
-    this.initialUlica,
-    this.initialBroj,
     this.initialLatitude,
     this.initialLongitude,
   });
@@ -418,8 +403,6 @@ class _AdresaDialog extends StatefulWidget {
 
 class _AdresaDialogState extends State<_AdresaDialog> {
   late TextEditingController _nazivController;
-  late TextEditingController _ulicaController;
-  late TextEditingController _brojController;
   late TextEditingController _latitudeController;
   late TextEditingController _longitudeController;
   String _selectedGrad = 'BC';
@@ -428,8 +411,6 @@ class _AdresaDialogState extends State<_AdresaDialog> {
   void initState() {
     super.initState();
     _nazivController = TextEditingController(text: widget.initialNaziv);
-    _ulicaController = TextEditingController(text: widget.initialUlica);
-    _brojController = TextEditingController(text: widget.initialBroj);
     _latitudeController = TextEditingController(text: widget.initialLatitude?.toString());
     _longitudeController = TextEditingController(text: widget.initialLongitude?.toString());
     if (widget.initialGrad != null) {
@@ -440,8 +421,6 @@ class _AdresaDialogState extends State<_AdresaDialog> {
   @override
   void dispose() {
     _nazivController.dispose();
-    _ulicaController.dispose();
-    _brojController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
     super.dispose();
@@ -475,22 +454,6 @@ class _AdresaDialogState extends State<_AdresaDialog> {
               onChanged: (value) {
                 if (value != null) setState(() => _selectedGrad = value);
               },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _ulicaController,
-              decoration: const InputDecoration(
-                labelText: 'Ulica (opciono)',
-                hintText: 'npr. Dejana Brankova',
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _brojController,
-              decoration: const InputDecoration(
-                labelText: 'Broj (opciono)',
-                hintText: 'npr. 99',
-              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -554,8 +517,6 @@ class _AdresaDialogState extends State<_AdresaDialog> {
             Navigator.pop(context, {
               'naziv': naziv,
               'grad': _selectedGrad,
-              'ulica': _ulicaController.text.trim().isEmpty ? naziv : _ulicaController.text.trim(),
-              'broj': _brojController.text.trim().isEmpty ? null : _brojController.text.trim(),
               'latitude': latitude,
               'longitude': longitude,
             });

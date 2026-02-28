@@ -71,7 +71,6 @@ class V2GorivoService {
     required DateTime datum,
     required double litri,
     double? cenaPoPLitru,
-    String? dobavljac,
     String? napomena,
   }) async {
     try {
@@ -79,7 +78,6 @@ class V2GorivoService {
         'datum': datum.toIso8601String().split('T')[0],
         'litri': litri,
         'cena_po_litru': cenaPoPLitru,
-        'dobavljac': dobavljac,
         'napomena': napomena,
       });
       debugPrint('✅ [Gorivo] Punjenje dodato: $litri L');
@@ -299,7 +297,6 @@ class PumpaPunjenje {
   final double litri;
   final double? cenaPoPLitru;
   final double? ukupnoCena;
-  final String? dobavljac;
   final String? napomena;
   final DateTime createdAt;
 
@@ -309,7 +306,6 @@ class PumpaPunjenje {
     required this.litri,
     this.cenaPoPLitru,
     this.ukupnoCena,
-    this.dobavljac,
     this.napomena,
     required this.createdAt,
   });
@@ -320,7 +316,6 @@ class PumpaPunjenje {
         litri: (j['litri'] as num).toDouble(),
         cenaPoPLitru: (j['cena_po_litru'] as num?)?.toDouble(),
         ukupnoCena: (j['ukupno_cena'] as num?)?.toDouble(),
-        dobavljac: j['dobavljac'] as String?,
         napomena: j['napomena'] as String?,
         createdAt: DateTime.parse(j['created_at'] as String).toLocal(),
       );

@@ -47,18 +47,17 @@ class PutnikPushService {
         return false;
       }
 
-      // Dohvati ime putnika iz cache-a
+      // Dohvati podatke putnika iz cache-a (ako dostupno)
       final putnikData = V2MasterRealtimeManager.instance.getPutnikById(putnikId ?? '');
-      final putnikIme = putnikData?['ime'] as String?;
-      if (kDebugMode) debugPrint('📝 [PutnikPush] Ime putnika: $putnikIme');
+      final putnikTabela = putnikData?['putnik_tabela'] as String?;
+      if (kDebugMode) debugPrint('📝 [PutnikPush] putnikTabela: $putnikTabela');
 
       // Koristi unificirani PushTokenService
       final success = await V2PushTokenService.registerToken(
         token: token,
         provider: provider,
-        userType: 'V2Putnik',
-        userId: putnikIme,
         putnikId: putnikId?.toString(),
+        putnikTabela: putnikTabela,
       );
 
       if (kDebugMode) {

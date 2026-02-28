@@ -11,9 +11,6 @@ class VozacRasporedEntry {
   final String grad;
   final String vreme;
 
-  /// Ime vozača (za prikaz)
-  final String vozac;
-
   /// UUID vozača iz tabele vozaci.id — primarni identifikator
   final String vozacId;
 
@@ -21,7 +18,6 @@ class VozacRasporedEntry {
     required this.dan,
     required this.grad,
     required this.vreme,
-    required this.vozac,
     required this.vozacId,
   });
 
@@ -30,7 +26,6 @@ class VozacRasporedEntry {
       dan: map['dan'] as String,
       grad: map['grad'] as String,
       vreme: map['vreme'] as String,
-      vozac: map['vozac'] as String,
       vozacId: map['vozac_id'] as String,
     );
   }
@@ -39,7 +34,6 @@ class VozacRasporedEntry {
         'dan': dan,
         'grad': grad,
         'vreme': vreme,
-        'vozac': vozac,
         'vozac_id': vozacId,
       };
 }
@@ -63,17 +57,17 @@ class V2VozacRasporedService {
     }
   }
 
-  /// Dodaj ili zameni unos (upsert po dan+grad+vreme+vozac)
+  /// Dodaj ili zameni unos (upsert po dan+grad+vreme+vozac_id)
   Future<void> upsert(VozacRasporedEntry entry) async {
-    await _supabase.from('v2_vozac_raspored').upsert(entry.toMap(), onConflict: 'dan,grad,vreme,vozac');
+    await _supabase.from('v2_vozac_raspored').upsert(entry.toMap(), onConflict: 'dan,grad,vreme,vozac_id');
   }
 
-  /// Obriši unos za termin (dan+grad+vreme+vozac)
+  /// Obriši unos za termin (dan+grad+vreme+vozac_id)
   Future<void> deleteTermin({
     required String dan,
     required String grad,
     required String vreme,
-    required String vozac,
+    required String vozacId,
   }) async {
     await _supabase
         .from('v2_vozac_raspored')
@@ -81,7 +75,7 @@ class V2VozacRasporedService {
         .eq('dan', dan)
         .eq('grad', grad)
         .eq('vreme', vreme)
-        .eq('vozac', vozac);
+        .eq('vozac_id', vozacId);
   }
 
   /// Filter logika: koji putnici pripadaju vozaču?
@@ -95,8 +89,7 @@ class V2VozacRasporedService {
   /// [vozacId] = UUID (preferiran), [vozac] = ime (fallback)
   static List<T> filterPutniciZaVozaca<T>({
     required List<T> sviPutnici,
-    required String vozac,
-    String? vozacId,
+    required String vozacId,
     required String targetDan, // 'pon', 'uto', ...
     required List<VozacRasporedEntry> raspored,
     required String Function(T) getId,
@@ -105,10 +98,9 @@ class V2VozacRasporedService {
   }) {
     if (raspored.isEmpty) return sviPutnici;
 
-    // Helper: da li je unos „za ovog vozača“? UUID-first, fallback na ime
+    // Helper: da li je unos za ovog vozača? Poredi po UUID
     bool jeVozacov(VozacRasporedEntry r) {
-      if (vozacId != null) return r.vozacId == vozacId;
-      return r.vozac == vozac;
+      return r.vozacId == vozacId;
     }
 
     return sviPutnici.where((p) {

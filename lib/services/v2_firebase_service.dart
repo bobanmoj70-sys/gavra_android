@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/v2_vozac_cache.dart';
 import 'v2_auth_manager.dart';
 import 'v2_firebase_background_handler.dart';
 import 'v2_local_notification_service.dart';
@@ -126,18 +127,16 @@ class FirebaseService {
 
     // Registruj ako imamo bilo koga
     if (driverName != null && driverName.isNotEmpty) {
+      final vozacId = VozacCache.getUuidByIme(driverName);
       await V2PushTokenService.registerToken(
         token: token,
         provider: 'fcm',
-        userType: 'vozac',
-        userId: driverName,
+        vozacId: vozacId,
       );
     } else if (putnikId != null && putnikId.isNotEmpty) {
       await V2PushTokenService.registerToken(
         token: token,
         provider: 'fcm',
-        userType: 'V2Putnik',
-        userId: putnikIme,
         putnikId: putnikId,
       );
     } else {

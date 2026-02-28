@@ -32,9 +32,7 @@ class V2FinansijeService {
   /// Ažuriraj trošak
   static Future<bool> updateTrosak(String id, double noviIznos) async {
     try {
-      await _supabase
-          .from('v2_finansije_troskovi')
-          .update({'iznos': noviIznos, 'updated_at': DateTime.now().toIso8601String()}).eq('id', id);
+      await _supabase.from('v2_finansije_troskovi').update({'iznos': noviIznos}).eq('id', id);
       return true;
     } catch (e) {
       return false;

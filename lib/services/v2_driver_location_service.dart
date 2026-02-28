@@ -237,7 +237,6 @@ class V2DriverLocationService {
 
       await supabase.from('v2_vozac_lokacije').upsert({
         'vozac_id': _currentVozacId,
-        'vozac_ime': _currentVozacIme,
         'lat': position.latitude,
         'lng': position.longitude,
         'grad': _currentGrad,

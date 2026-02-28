@@ -97,8 +97,6 @@ class AuthManager {
         final success = await V2PushTokenService.registerToken(
           token: fcmToken,
           provider: 'fcm',
-          userType: 'vozac',
-          userId: driverName,
           vozacId: vozacId,
         );
         debugPrint('ðŸ”„ [AuthManager] FCM registracija: ${success ? "USPEH" : "NEUSPEH"}');
@@ -113,8 +111,6 @@ class AuthManager {
           final success = await V2PushTokenService.registerToken(
             token: hmsToken,
             provider: 'huawei',
-            userType: 'vozac',
-            userId: driverName,
             vozacId: vozacId,
           );
           debugPrint('ðŸ”„ [AuthManager] HMS registracija: ${success ? "USPEH" : "NEUSPEH"}');
