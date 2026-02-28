@@ -936,7 +936,7 @@ class V2PutnikStreamService {
         'dan': dan.toLowerCase(),
       }).eq('grad', gradKey);
 
-      if (vreme.isNotEmpty) {
+      if (vreme.isNotEmpty && vreme != 'Sva vremena') {
         query = query.eq('zeljeno_vreme', '${GradAdresaValidator.normalizeTime(vreme)}:00');
       }
 
