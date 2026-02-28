@@ -163,13 +163,7 @@ class V2DnevniService {
   static RegistrovaniPutnik _fromRow(Map<String, dynamic> r) {
     return RegistrovaniPutnik.fromMap({
       ...r,
-      'tip': 'dnevni',
-      'putnik_ime': r['ime'],
-      'broj_telefona': r['telefon'],
-      'broj_telefona_2': r['telefon_2'],
-      'adresa_bela_crkva_id': r['adresa_bc_id'],
-      'adresa_vrsac_id': r['adresa_vs_id'],
-      'cena_po_danu': r['cena'],
+      '_tabela': 'v2_dnevni',
     });
   }
 }

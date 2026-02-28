@@ -161,13 +161,7 @@ class V2PosiljkaService {
   static RegistrovaniPutnik _fromRow(Map<String, dynamic> r) {
     return RegistrovaniPutnik.fromMap({
       ...r,
-      'tip': 'posiljka',
-      // Mapiranje novih kolona na polja koja fromMap očekuje
-      'putnik_ime': r['ime'],
-      'broj_telefona': r['telefon'],
-      'adresa_bela_crkva_id': r['adresa_bc_id'],
-      'adresa_vrsac_id': r['adresa_vs_id'],
-      'cena_po_danu': r['cena'],
+      '_tabela': 'v2_posiljke',
     });
   }
 }

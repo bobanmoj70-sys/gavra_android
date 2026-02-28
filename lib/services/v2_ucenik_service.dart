@@ -185,14 +185,7 @@ class V2UcenikService {
   static RegistrovaniPutnik _fromRow(Map<String, dynamic> r) {
     return RegistrovaniPutnik.fromMap({
       ...r,
-      'tip': 'ucenik',
-      'putnik_ime': r['ime'],
-      'broj_telefona': r['telefon'],
-      // učenici imaju telefon_oca i telefon_majke — mapiramo oca kao primarni drugi
-      'broj_telefona_2': r['telefon_oca'] ?? r['telefon_majke'],
-      'adresa_bela_crkva_id': r['adresa_bc_id'],
-      'adresa_vrsac_id': r['adresa_vs_id'],
-      // cena_po_danu i broj_mesta su isti nazivi — direktno se proslede
+      '_tabela': 'v2_ucenici',
     });
   }
 }

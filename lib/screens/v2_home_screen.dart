@@ -597,7 +597,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            p.putnikIme,
+                                            p.ime,
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 15,
@@ -1000,8 +1000,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Povuci SVE registrovane putnike iz registrovani_putnici tabele (ucenici, radnici, dnevni)
     final lista = await V2PutnikService().getAllAktivniKaoModel();
     // ?? Filtrirana lista aktivnih putnika za brzu pretragu
-    final aktivniPutnici = lista.where((RegistrovaniPutnik V2Putnik) => !V2Putnik.obrisan && V2Putnik.aktivan).toList()
-      ..sort((a, b) => a.putnikIme.toLowerCase().compareTo(b.putnikIme.toLowerCase()));
+    final aktivniPutnici = lista.where((RegistrovaniPutnik V2Putnik) => V2Putnik.aktivan).toList()
+      ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase()));
 
     // ?? Ucitaj adrese za selektovani grad
     final adreseZaGrad = await V2AdresaSupabaseService.getAdreseZaGrad(_selectedGrad);
@@ -1266,7 +1266,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     searchMatchFn: (item, searchValue) {
                                       final V2Putnik = item.value;
                                       if (V2Putnik == null) return false;
-                                      return V2Putnik.putnikIme.toLowerCase().contains(searchValue.toLowerCase());
+                                      return V2Putnik.ime.toLowerCase().contains(searchValue.toLowerCase());
                                     },
                                   ),
                                   items: aktivniPutnici
@@ -1277,22 +1277,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             children: [
                                               // Ikonica tipa putnika
                                               Icon(
-                                                V2Putnik.tip == 'radnik'
+                                                V2Putnik.v2Tabela == 'v2_radnici'
                                                     ? Icons.engineering
-                                                    : V2Putnik.tip == 'dnevni'
+                                                    : V2Putnik.v2Tabela == 'v2_dnevni'
                                                         ? Icons.today
                                                         : Icons.school,
                                                 size: 18,
-                                                color: V2Putnik.tip == 'radnik'
+                                                color: V2Putnik.v2Tabela == 'v2_radnici'
                                                     ? Colors.blue.shade600
-                                                    : V2Putnik.tip == 'dnevni'
+                                                    : V2Putnik.v2Tabela == 'v2_dnevni'
                                                         ? Colors.orange.shade600
                                                         : Colors.green.shade600,
                                               ),
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(
-                                                  V2Putnik.putnikIme,
+                                                  V2Putnik.ime,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
@@ -1304,7 +1304,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   onChanged: (RegistrovaniPutnik? V2Putnik) async {
                                     setStateDialog(() {
                                       selectedPutnik = V2Putnik;
-                                      telefonController.text = V2Putnik?.brojTelefona ?? '';
+                                      telefonController.text = V2Putnik?.telefon ?? '';
                                       adresaController.text = 'Ucitavanje...';
                                     });
                                     if (V2Putnik != null) {
@@ -1504,16 +1504,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     margin: const EdgeInsets.only(top: 12),
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: selectedPutnik!.tip == 'radnik'
+                                      color: selectedPutnik!.v2Tabela == 'v2_radnici'
                                           ? Colors.blue.withOpacity(0.15)
-                                          : selectedPutnik!.tip == 'dnevni'
+                                          : selectedPutnik!.v2Tabela == 'v2_dnevni'
                                               ? Colors.orange.withOpacity(0.15)
                                               : Colors.green.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: selectedPutnik!.tip == 'radnik'
+                                        color: selectedPutnik!.v2Tabela == 'v2_radnici'
                                             ? Colors.blue.withOpacity(0.4)
-                                            : selectedPutnik!.tip == 'dnevni'
+                                            : selectedPutnik!.v2Tabela == 'v2_dnevni'
                                                 ? Colors.orange.withOpacity(0.4)
                                                 : Colors.green.withOpacity(0.4),
                                       ),
@@ -1521,26 +1521,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     child: Row(
                                       children: [
                                         Icon(
-                                          selectedPutnik!.tip == 'radnik'
+                                          selectedPutnik!.v2Tabela == 'v2_radnici'
                                               ? Icons.engineering
-                                              : selectedPutnik!.tip == 'dnevni'
+                                              : selectedPutnik!.v2Tabela == 'v2_dnevni'
                                                   ? Icons.today
                                                   : Icons.school,
                                           size: 20,
-                                          color: selectedPutnik!.tip == 'radnik'
+                                          color: selectedPutnik!.v2Tabela == 'v2_radnici'
                                               ? Colors.blue.shade700
-                                              : selectedPutnik!.tip == 'dnevni'
+                                              : selectedPutnik!.v2Tabela == 'v2_dnevni'
                                                   ? Colors.orange.shade700
                                                   : Colors.green.shade700,
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Tip: ${selectedPutnik!.tip.toUpperCase()}',
+                                          'Tip: ${selectedPutnik!.v2Tabela.toUpperCase()}',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color: selectedPutnik!.tip == 'radnik'
+                                            color: selectedPutnik!.v2Tabela == 'v2_radnici'
                                                 ? Colors.blue.shade700
-                                                : selectedPutnik!.tip == 'dnevni'
+                                                : selectedPutnik!.v2Tabela == 'v2_dnevni'
                                                     ? Colors.orange.shade700
                                                     : Colors.green.shade700,
                                           ),
@@ -1699,7 +1699,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             : null; // Stalna adresa ima adresaId u registrovani_putnici
 
                                         final noviPutnik = V2Putnik(
-                                          ime: selectedPutnik!.putnikIme,
+                                          ime: selectedPutnik!.ime,
                                           polazak: _selectedVreme,
                                           grad: _selectedGrad,
                                           dan: _getDayAbbreviation(_selectedDay),
@@ -1708,7 +1708,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           dodeljenVozac: _currentDriver!, // Safe non-null assertion nakon validacije
                                           adresa: adresaZaKoristiti,
                                           adresaId: adresaIdZaKoristiti, // ?? Za brži geocoding
-                                          brojTelefona: selectedPutnik!.brojTelefona,
+                                          brojTelefona: selectedPutnik!.telefon,
                                           brojMesta: brojMesta, // ?? Prosledujemo broj rezervisanih mesta
                                         );
 
