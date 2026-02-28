@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -22,33 +22,33 @@ class FirebaseService {
 
       final messaging = FirebaseMessaging.instance;
 
-      // 🌙 Background Handler Registration
+      // ?? Background Handler Registration
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       // Request notification permission
       try {
         await messaging.requestPermission();
       } catch (e) {
-        debugPrint('⚠️ Error requesting FCM permission: $e');
+        debugPrint('?? Error requesting FCM permission: $e');
       }
     } catch (e) {
-      // Ignoriši greške
+      // Ignorisi greske
     }
   }
 
-  /// Dobija trenutnog vozača - DELEGIRA NA AuthManager
-  /// AuthManager čita iz Supabase (push_tokens tabela) kao izvor istine
+  /// Dobija trenutnog vozaca - DELEGIRA NA AuthManager
+  /// AuthManager cita iz Supabase (push_tokens tabela) kao izvor istine
   static Future<String?> getCurrentDriver() async {
     _currentDriver = await AuthManager.getCurrentDriver();
     return _currentDriver;
   }
 
-  /// Postavlja trenutnog vozača
+  /// Postavlja trenutnog vozaca
   static Future<void> setCurrentDriver(String driver) async {
     _currentDriver = driver;
   }
 
-  /// Briše trenutnog vozača
+  /// Brise trenutnog vozaca
   static Future<void> clearCurrentDriver() async {
     _currentDriver = null;
   }
@@ -64,7 +64,7 @@ class FirebaseService {
     }
   }
 
-  /// 📲 Registruje FCM token na server (push_tokens tabela)
+  /// ?? Registruje FCM token na server (push_tokens tabela)
   /// Ovo se mora pozvati pri pokretanju aplikacije
   static Future<String?> initializeAndRegisterToken() async {
     try {
@@ -76,7 +76,7 @@ class FirebaseService {
       try {
         await messaging.requestPermission();
       } catch (e) {
-        debugPrint('⚠️ Error requesting FCM permission (init): $e');
+        debugPrint('?? Error requesting FCM permission (init): $e');
       }
 
       // Get token
@@ -90,7 +90,7 @@ class FirebaseService {
             await _registerTokenWithServer(newToken);
           },
           onError: (error) {
-            debugPrint('🔴 [FirebaseService] Token refresh error: $error');
+            debugPrint('?? [FirebaseService] Token refresh error: $error');
           },
         );
 
@@ -113,16 +113,16 @@ class FirebaseService {
     try {
       driverName = await AuthManager.getCurrentDriver();
 
-      // Ako nije vozač, proveri da li je V2Putnik
+      // Ako nije vozac, proveri da li je V2Putnik
       if (driverName == null || driverName.isEmpty) {
         final prefs = await SharedPreferences.getInstance();
-        // Ovi ključevi se koriste u RegistrovaniPutnikProfilScreen za auto-login i identifikaciju
-        // Moramo naći putnikId - obično se dobija iz baze pri prijavi, ali ga možemo keširati
+        // Ovi kljucevi se koriste u RegistrovaniPutnikProfilScreen za auto-login i identifikaciju
+        // Moramo naci putnikId - obicno se dobija iz baze pri prijavi, ali ga mozemo kesirati
         putnikId = prefs.getString('registrovani_putnik_id');
         putnikIme = prefs.getString('registrovani_putnik_ime');
       }
     } catch (e) {
-      debugPrint('⚠️ Error getting current user for FCM: $e');
+      debugPrint('?? Error getting current user for FCM: $e');
     }
 
     // Registruj ako imamo bilo koga
@@ -140,16 +140,16 @@ class FirebaseService {
         putnikId: putnikId,
       );
     } else {
-      debugPrint('⚠️ [FirebaseService] Korisnik nije ulogovan - FCM token nije registrovan na serveru');
+      debugPrint('?? [FirebaseService] Korisnik nije ulogovan - FCM token nije registrovan na serveru');
     }
   }
 
-  /// 🔒 Flag da sprečimo višestruko registrovanje FCM listenera
+  /// ?? Flag da sprecimo visestruko registrovanje FCM listenera
   static bool _fcmListenerRegistered = false;
 
   /// Postavlja FCM listener
   static void setupFCMListeners() {
-    // ✅ Sprečava višestruko registrovanje (duplirane notifikacije)
+    // ? Sprecava visestruko registrovanje (duplirane notifikacije)
     if (_fcmListenerRegistered) return;
     _fcmListenerRegistered = true;
 
@@ -162,7 +162,7 @@ class FirebaseService {
 
         // Show a local notification when app is foreground
         try {
-          // Prvo pokušaj notification payload, pa data payload
+          // Prvo pokusaj notification payload, pa data payload
           final title = message.notification?.title ?? message.data['title'] as String? ?? 'Gavra Notification';
           final body = message.notification?.body ??
               message.data['body'] as String? ??
@@ -173,7 +173,7 @@ class FirebaseService {
         } catch (_) {}
       },
       onError: (error) {
-        debugPrint('🔴 [FirebaseService] onMessage stream error: $error');
+        debugPrint('?? [FirebaseService] onMessage stream error: $error');
       },
     );
 
@@ -183,11 +183,11 @@ class FirebaseService {
           // Navigate or handle tap
           RealtimeNotificationService.handleInitialMessage(message.data);
         } catch (e) {
-          debugPrint('🔴 [FirebaseService] onMessageOpenedApp error: $e');
+          debugPrint('?? [FirebaseService] onMessageOpenedApp error: $e');
         }
       },
       onError: (error) {
-        debugPrint('🔴 [FirebaseService] onMessageOpenedApp stream error: $error');
+        debugPrint('?? [FirebaseService] onMessageOpenedApp stream error: $error');
       },
     );
   }
