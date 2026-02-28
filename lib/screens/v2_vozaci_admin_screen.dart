@@ -5,7 +5,7 @@ import '../services/v2_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// �Y'� VOZA�OI ADMIN SCREEN - Admin panel za upravljanje vozačima
+///  VOZAČI ADMIN SCREEN - Admin panel za upravljanje vozačima
 /// Ovde dodaješ/brišeš vozače, emailove, šifre, telefone, boje
 class VozaciAdminScreen extends StatefulWidget {
   const VozaciAdminScreen({super.key});
@@ -91,8 +91,8 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
   /// Obriši vozača
   Future<void> _deleteVozac(int index) async {
     // Trebam pristup svim vozačima iz StreamBuilder-a
-    // Za sada �?emo koristiti prvi vozač kao test
-    // U pravoj implementaciji, trebalo bi prosle�'ivanje vozača kao parametra
+    // Za sada emo koristiti prvi vozač kao test
+    // U pravoj implementaciji, trebalo bi prosleÄ‘ivanje vozača kao parametra
 
     showDialog(
       context: context,
@@ -309,7 +309,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                '�Y'� Vozači Admin',
+                ' Vozači Admin',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 12),
@@ -355,11 +355,11 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
-                // �Y'� SEKCIJA VOZA�OA
+                //  SEKCIJA VOZAČA
                 Row(
                   children: [
                     const Text(
-                      '�Y'� VOZA�OI',
+                      ' VOZAČI',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -485,7 +485,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
                                       if (vozac.sifra?.isNotEmpty == true)
                                         const Padding(
                                           padding: EdgeInsets.only(left: 6),
-                                          child: Text('�Y"'', style: TextStyle(fontSize: 12)),
+                                          child: Text('', style: TextStyle(fontSize: 12)),
                                         ),
                                     ],
                                   ),
