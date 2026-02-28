@@ -231,7 +231,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
       super.dispose();
     } catch (e) {
-      debugPrint('?? Error disposing V2PutnikDialog: $e');
+      debugPrint('❌ Error disposing V2PutnikDialog: $e');
       super.dispose();
     }
   }
@@ -290,7 +290,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
   }
 
   Widget _buildHeader() {
-    final title = widget.isEditing ? '?? Uredi putnika' : '? Dodaj putnika';
+    final title = widget.isEditing ? '✏️ Uredi putnika' : '➕ Dodaj putnika';
 
     return Container(
       width: double.infinity,
@@ -422,7 +422,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
   Widget _buildContactSection() {
     return _buildGlassSection(
-      title: '?? Kontakt informacije',
+      title: '📞 Kontakt informacije',
       child: Column(
         children: [
           _buildPhoneFieldWithContactPicker(
@@ -779,7 +779,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
   Widget _buildAddressSection() {
     return _buildGlassSection(
-      title: '?? Adrese',
+      title: '📍 Adrese',
       child: Column(
         children: [
           // DROPDOWN ZA BELA CRKVA
@@ -1395,11 +1395,11 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         Navigator.of(context).pop();
         if (widget.onSaved != null) widget.onSaved!();
         if (parentContext.mounted) {
-          AppSnackBar.success(parentContext, '? V2Putnik uspešno sacuvan!');
+          AppSnackBar.success(parentContext, '✅ V2Putnik uspešno sacuvan!');
         }
       }
     } catch (e) {
-      debugPrint('? Greška pri cuvanju putnika: $e');
+      debugPrint('❌ Greška pri cuvanju putnika: $e');
 
       // ?? LOG GRESKE ZA ADMINA
       try {
@@ -1408,7 +1408,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
           greska: '[$_tip | ${_imeController.text}] ${e.toString()}',
         );
       } catch (e) {
-        debugPrint('?? Error logging user action: $e');
+        debugPrint('❌ Error logging user action: $e');
       }
 
       if (mounted) {

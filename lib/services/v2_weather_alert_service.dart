@@ -22,7 +22,7 @@ class V2WeatherAlertService {
       // Proveri da li je vec poslato danas
       if (await _isAlertAlreadySentToday()) {
         if (kDebugMode) {
-          debugPrint('?? [WeatherAlert] Upozorenje vec poslato danas');
+          debugPrint('ℹ️ [WeatherAlert] Upozorenje vec poslato danas');
         }
         return;
       }
@@ -48,7 +48,7 @@ class V2WeatherAlertService {
 
       if (alerts.isEmpty) {
         if (kDebugMode) {
-          debugPrint('? [WeatherAlert] Nema opasnih vremenskih uslova');
+          debugPrint('✅ [WeatherAlert] Nema opasnih vremenskih uslova');
         }
         return;
       }
@@ -60,10 +60,10 @@ class V2WeatherAlertService {
       await _markAlertSent(alerts.join(', '));
 
       if (kDebugMode) {
-        debugPrint('?? [WeatherAlert] Poslato upozorenje: ${alerts.join(', ')}');
+        debugPrint('✅ [WeatherAlert] Poslato upozorenje: ${alerts.join(', ')}');
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('? [WeatherAlert] Greška: $e');
+      if (kDebugMode) debugPrint('❌ [WeatherAlert] Greška: $e');
     }
   }
 
@@ -74,27 +74,27 @@ class V2WeatherAlertService {
 
     // ?? SNEG (71-77, 85-86)
     if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
-      alerts.add('?? Sneg u $grad');
+      alerts.add('❄️ Sneg u $grad');
     }
 
     // ?? LEDENA KIŠA (56-57, 66-67) - POSEBNO OPASNO
     if ((code >= 56 && code <= 57) || (code >= 66 && code <= 67)) {
-      alerts.add('?? Ledena kiša u $grad - OPREZ!');
+      alerts.add('🌨️ Ledena kiša u $grad - OPREZ!');
     }
 
     // ?? NEVREME/GRMLJAVINA (95-99)
     if (code >= 95 && code <= 99) {
-      alerts.add('?? Nevreme u $grad');
+      alerts.add('⚡ Nevreme u $grad');
     }
 
     // ??? GUSTA MAGLA (45-48)
     if (code >= 45 && code <= 48) {
-      alerts.add('??? Gusta magla u $grad');
+      alerts.add('🌫️ Gusta magla u $grad');
     }
 
     // ??? JAKA KIŠA (65, 82) - samo najjaci intenzitet
     if (code == 65 || code == 82) {
-      alerts.add('??? Jaka kiša u $grad');
+      alerts.add('🌧️ Jaka kiša u $grad');
     }
 
     return alerts;
@@ -116,7 +116,7 @@ class V2WeatherAlertService {
     } catch (e) {
       // Ako tabela ne postoji, vrati false
       if (kDebugMode) {
-        debugPrint('?? [WeatherAlert] Greška pri proveri loga: $e');
+        debugPrint('❌ [WeatherAlert] Greška pri proveri loga: $e');
       }
       return false;
     }
@@ -129,12 +129,12 @@ class V2WeatherAlertService {
       final vozacTokens = await V2PushTokenService.getTokensForVozaci();
 
       if (vozacTokens.isEmpty) {
-        if (kDebugMode) debugPrint('?? [WeatherAlert] Nema vozackih tokena');
+        if (kDebugMode) debugPrint('⚠️ [WeatherAlert] Nema vozackih tokena');
         return;
       }
 
       // Kreiraj poruku
-      final title = '?? Upozorenje - Vremenski uslovi';
+      final title = '⚠️ Upozorenje - Vremenski uslovi';
       final body = _createAlertMessage(alerts);
 
       // Pošalji push
@@ -149,10 +149,10 @@ class V2WeatherAlertService {
       );
 
       if (kDebugMode) {
-        debugPrint('? [WeatherAlert] Poslato ${vozacTokens.length} vozacima');
+        debugPrint('✅ [WeatherAlert] Poslato ${vozacTokens.length} vozacima');
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('? [WeatherAlert] Greška pri slanju: $e');
+      if (kDebugMode) debugPrint('❌ [WeatherAlert] Greška pri slanju: $e');
     }
   }
 
@@ -161,10 +161,10 @@ class V2WeatherAlertService {
     final now = DateTime.now();
     final dateStr = '${now.day}.${now.month}.${now.year}';
 
-    return '?? GAVRA 013 - $dateStr\n\n'
+    return '🚗 GAVRA 013 - $dateStr\n\n'
         'Ocekuju se loši vremenski uslovi:\n\n'
-        '${alerts.map((a) => 'š $a').join('\n')}\n\n'
-        '?? Vozite oprezno i prilagodite brzinu uslovima na putu!';
+        '${alerts.map((a) => '• $a').join('\n')}\n\n'
+        '⚠️ Vozite oprezno i prilagodite brzinu uslovima na putu!';
   }
 
   /// Oznaci da je upozorenje poslato danas
@@ -178,7 +178,7 @@ class V2WeatherAlertService {
         'alert_types': alertTypes,
       });
     } catch (e) {
-      if (kDebugMode) debugPrint('? [WeatherAlert] Greška pri upisu loga: $e');
+      if (kDebugMode) debugPrint('❌ [WeatherAlert] Greška pri upisu loga: $e');
     }
   }
 }

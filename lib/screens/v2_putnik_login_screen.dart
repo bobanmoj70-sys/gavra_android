@@ -659,7 +659,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                         ),
                       ),
                       child: const Text(
-                        '? Nazad na pocetnu',
+                        '⬅️ Nazad na pocetnu',
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
@@ -1103,11 +1103,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   String _getStepButtonText() {
     switch (_currentStep) {
       case _LoginStep.telefon:
-        return '? Nastavi';
+        return '➡️ Nastavi';
       case _LoginStep.email:
-        return '? Sacuvaj email';
+        return '💾 Sacuvaj email';
       case _LoginStep.pin:
-        return '?? Pristupi';
+        return '🔑 Pristupi';
       case _LoginStep.izborPutnika:
         return '';
       case _LoginStep.zahtevPoslat:

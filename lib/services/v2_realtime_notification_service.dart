@@ -59,7 +59,7 @@ class RealtimeNotificationService {
         return false;
       }
     } catch (e) {
-      debugPrint('?? [RealtimeNotification.sendPushNotification] Error: $e');
+      debugPrint('❌ [RealtimeNotification.sendPushNotification] Error: $e');
       return false;
     }
   }
@@ -75,17 +75,12 @@ class RealtimeNotificationService {
       const adminNames = ['Bojan'];
       final vozacService = V2VozacService();
       final allVozaci = await vozacService.getAllVozaci();
-      final adminVozacIds = allVozaci
-          .where((v) => adminNames.contains(v.ime))
-          .map((v) => v.id)
-          .toList();
+      final adminVozacIds = allVozaci.where((v) => adminNames.contains(v.ime)).map((v) => v.id).toList();
 
       if (adminVozacIds.isEmpty) return;
 
-      final response = await supabase
-          .from('v2_push_tokens')
-          .select('token, provider')
-          .inFilter('vozac_id', adminVozacIds);
+      final response =
+          await supabase.from('v2_push_tokens').select('token, provider').inFilter('vozac_id', adminVozacIds);
 
       if ((response as List).isEmpty) return;
 
@@ -103,7 +98,7 @@ class RealtimeNotificationService {
         data: data,
       );
     } catch (e) {
-      debugPrint('?? [RealtimeNotification.sendNotificationToAdmins] Error: $e');
+      debugPrint('❌ [RealtimeNotification.sendNotificationToAdmins] Error: $e');
     }
   }
 
@@ -118,7 +113,7 @@ class RealtimeNotificationService {
       final response = await supabase.from('v2_push_tokens').select('token, provider').eq('putnik_id', putnikId);
 
       if ((response as List).isEmpty) {
-        debugPrint('?? [RealtimeNotification] Nema tokena za putnika $putnikId');
+        debugPrint('⚠️ [RealtimeNotification] Nema tokena za putnika $putnikId');
         return false;
       }
 
@@ -136,7 +131,7 @@ class RealtimeNotificationService {
         data: data,
       );
     } catch (e) {
-      debugPrint('?? [RealtimeNotification.sendNotificationToPutnik] Error: $e');
+      debugPrint('❌ [RealtimeNotification.sendNotificationToPutnik] Error: $e');
       return false;
     }
   }
@@ -149,7 +144,7 @@ class RealtimeNotificationService {
 
       await _handleNotificationTap(messageData);
     } catch (e) {
-      debugPrint('?? [RealtimeNotification.handleInitialMessage] Error: $e');
+      debugPrint('❌ [RealtimeNotification.handleInitialMessage] Error: $e');
     }
   }
 
@@ -164,7 +159,7 @@ class RealtimeNotificationService {
   static void listenForForegroundNotifications(BuildContext context) {
     if (_foregroundListenerRegistered) return;
     _foregroundListenerRegistered = true;
-    debugPrint('?? [RealtimeNotification] Globalni listener je vec postavljen u main.dart, preskacem lokalni.');
+    debugPrint('ℹ️ [RealtimeNotification] Globalni listener je vec postavljen u main.dart, preskacem lokalni.');
   }
 
   static Future<void> subscribeToDriverTopics(String? driverId) async {
@@ -175,7 +170,7 @@ class RealtimeNotificationService {
       await messaging.subscribeToTopic('gavra_driver_${driverId.toLowerCase()}');
       await messaging.subscribeToTopic('gavra_all_drivers');
     } catch (e) {
-      debugPrint('?? [RealtimeNotification.subscribeToDriverTopics] Error: $e');
+      debugPrint('❌ [RealtimeNotification.subscribeToDriverTopics] Error: $e');
     }
   }
 
@@ -192,7 +187,7 @@ class RealtimeNotificationService {
       return settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional;
     } catch (e) {
-      debugPrint('?? [RealtimeNotification.requestNotificationPermissions] Error: $e');
+      debugPrint('❌ [RealtimeNotification.requestNotificationPermissions] Error: $e');
       return false;
     }
   }
@@ -228,7 +223,7 @@ class RealtimeNotificationService {
         );
       }
     } catch (e) {
-      debugPrint('?? [RealtimeNotification._handleNotificationTap] Error: $e');
+      debugPrint('❌ [RealtimeNotification._handleNotificationTap] Error: $e');
     }
   }
 }

@@ -98,7 +98,7 @@ class SmartNavigationService {
 
       // 3. VRATI OPTIMIZOVANU RUTU
       return NavigationResult.success(
-        message: '? Ruta optimizovana',
+        message: '✅ Ruta optimizovana',
         optimizedPutnici: optimizedRoute,
         totalDistance: osrmResult.totalDistanceKm != null
             ? osrmResult.totalDistanceKm! * 1000 // km -> m
@@ -107,7 +107,7 @@ class SmartNavigationService {
         putniciEta: osrmResult.putniciEta,
       );
     } catch (e) {
-      return NavigationResult.error('? Greška pri optimizaciji: $e');
+      return NavigationResult.error('❌ Greška pri optimizaciji: $e');
     }
   }
 
@@ -131,7 +131,7 @@ class SmartNavigationService {
       final coordinates = await UnifiedGeocodingService.getCoordinatesForPutnici(putnici);
 
       if (coordinates.isEmpty) {
-        return NavigationResult.error('? Nijedan V2Putnik nema validnu adresu');
+        return NavigationResult.error('❌ Nijedan V2Putnik nema validnu adresu');
       }
 
       // 2. ODREDI KRAJNJU DESTINACIJU
@@ -139,7 +139,7 @@ class SmartNavigationService {
 
       // 3. POKRENI MULTI-PROVIDER NAVIGACIJU
       if (!context.mounted) {
-        return NavigationResult.error('? Context nije više aktivan');
+        return NavigationResult.error('❌ Context nije više aktivan');
       }
       final result = await HereWeGoNavigationService.startNavigation(
         context: context,
@@ -158,7 +158,7 @@ class SmartNavigationService {
         return NavigationResult.error(result.message);
       }
     } catch (e) {
-      return NavigationResult.error('? Greška: $e');
+      return NavigationResult.error('❌ Greška: $e');
     }
   }
 

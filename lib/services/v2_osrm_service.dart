@@ -236,7 +236,7 @@ class OsrmResult {
   }) {
     return OsrmResult._(
       success: true,
-      message: '? Ruta optimizovana (OSRM)',
+      message: '✅ Ruta optimizovana (OSRM)',
       optimizedPutnici: optimizedPutnici,
       totalDistanceKm: totalDistanceKm,
       totalDurationMin: totalDurationMin,

@@ -33,7 +33,7 @@ class PrintingService {
       try {
         isoDate = DateTime.now().toIso8601String().split('T')[0];
       } catch (e) {
-        debugPrint('?? Error parsing ISO date for printing: $e');
+        debugPrint('❌ Error parsing ISO date for printing: $e');
         isoDate = DateTime.now().toIso8601String().split('T')[0];
       }
 
@@ -106,7 +106,7 @@ class PrintingService {
         if (context.mounted) {
           AppSnackBar.warning(
             context,
-            '?? Nema putnika za $selectedDay - $selectedVreme - $selectedGrad',
+            '⚠️ Nema putnika za $selectedDay - $selectedVreme - $selectedGrad',
           );
         }
         return;
@@ -132,7 +132,7 @@ class PrintingService {
       await OpenFilex.open(file.path);
     } catch (e) {
       if (context.mounted) {
-        AppSnackBar.error(context, '? Greška pri štampanju: $e');
+        AppSnackBar.error(context, '❌ Greška pri štampanju: $e');
       }
     }
   }

@@ -239,6 +239,6 @@ class V2KapacitetService {
     _globalRealtimeSubscription?.cancel();
     _globalRealtimeSubscription = null;
     V2MasterRealtimeManager.instance.unsubscribe('v2_kapacitet_polazaka');
-    debugPrint('?? Globalni kapacitet listener zaustavljen');
+    debugPrint('🛑 Globalni kapacitet listener zaustavljen');
   }
 }

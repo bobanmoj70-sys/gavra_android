@@ -139,9 +139,9 @@ class V2StatistikaIstorijaService {
         try {
           final vozacData = await _supabase.from('v2_vozaci').select('ime').eq('id', vozacId).maybeSingle();
           vozacIme = vozacData?['ime'] as String?;
-          debugPrint('?? [dodajUplatu] vozacId=$vozacId ? vozac_ime=$vozacIme');
+          debugPrint('🔍 [dodajUplatu] vozacId=$vozacId → vozac_ime=$vozacIme');
         } catch (e) {
-          debugPrint('?? Greška pri dohvatanju vozac_ime: $e');
+          debugPrint('❌ Greška pri dohvatanju vozac_ime: $e');
         }
       }
       // ? Poslednji fallback: direktno prosledeno ime
@@ -150,9 +150,9 @@ class V2StatistikaIstorijaService {
       }
     } else if (vozacImeParam != null && vozacImeParam.isNotEmpty) {
       vozacIme = vozacImeParam;
-      debugPrint('?? [dodajUplatu] vozacId NULL, koristim vozacImeParam=$vozacIme');
+      debugPrint('ℹ️ [dodajUplatu] vozacId NULL, koristim vozacImeParam=$vozacIme');
     } else {
-      debugPrint('?? [dodajUplatu] vozacId je NULL ili prazan!');
+      debugPrint('⚠️ [dodajUplatu] vozacId je NULL ili prazan!');
     }
 
     await _supabase.from('v2_statistika_istorija').insert({
@@ -268,7 +268,7 @@ class V2StatistikaIstorijaService {
         'vreme': vremeNormalizovano,
       });
     } catch (e, stack) {
-      debugPrint('? Greška pri logovanju akcije ($tip): $e\n$stack');
+      debugPrint('❌ Greška pri logovanju akcije ($tip): $e\n$stack');
     }
   }
 

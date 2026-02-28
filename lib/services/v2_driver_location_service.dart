@@ -111,17 +111,17 @@ class V2DriverLocationService {
     // Uvijek pokušaj update bez obzira na _isTracking flag
     if (_currentVozacId != null) {
       try {
-        debugPrint('?? [DriverLocation] Stopping tracking for vozac: $_currentVozacId');
+        debugPrint('🛑 [DriverLocation] Stopping tracking for vozac: $_currentVozacId');
         await supabase.from('v2_vozac_lokacije').update({
           'aktivan': false,
           'updated_at': DateTime.now().toIso8601String(),
         }).eq('vozac_id', _currentVozacId!);
-        debugPrint('? [DriverLocation] aktivan=false upisano u DB');
+        debugPrint('✅ [DriverLocation] aktivan=false upisano u DB');
       } catch (e) {
-        debugPrint('? [DriverLocation] Stop error: $e');
+        debugPrint('❌ [DriverLocation] Stop error: $e');
       }
     } else {
-      debugPrint('?? [DriverLocation] stopTracking pozvan ali _currentVozacId je null');
+      debugPrint('⚠️ [DriverLocation] stopTracking pozvan ali _currentVozacId je null');
     }
 
     _isTracking = false;
@@ -148,7 +148,7 @@ class V2DriverLocationService {
     // ?? Check if all finished
     final activeCount = _currentPutniciEta!.values.where((v) => v >= 0).length;
     if (activeCount == 0 && _isTracking) {
-      debugPrint('? Svi putnici zaVrseni (ETA update) - zaustavljam tracking');
+      debugPrint('✅ Svi putnici zaVrseni (ETA update) - zaustavljam tracking');
       _onAllPassengersPickedUp?.call();
       stopTracking();
     }
@@ -177,7 +177,7 @@ class V2DriverLocationService {
       for (final entry in result.putniciEta!.entries) {
         _currentPutniciEta![entry.key] = entry.value;
       }
-      debugPrint('?? [DriverLocation] ORS ETA (60s): ${result.putniciEta}');
+      debugPrint('✅ [DriverLocation] ORS ETA (60s): ${result.putniciEta}');
       // Pošalji ažurirani ETA u Supabase odmah
       await _sendCurrentLocation();
 
@@ -195,7 +195,7 @@ class V2DriverLocationService {
         }
       }
     } else {
-      debugPrint('?? [DriverLocation] ORS ETA neuspješan ž zadržan stari ETA');
+      debugPrint('⚠️ [DriverLocation] ORS ETA neuspješan ž zadržan stari ETA');
     }
   }
 
@@ -214,7 +214,7 @@ class V2DriverLocationService {
     if (!_isTracking || _currentVozacId == null) return;
     // ?? Ako je prethodni poziv još aktivan (npr. spor GPS ili DB), preskoci
     if (_isSending) {
-      debugPrint('?? [DriverLocation] _sendCurrentLocation preskocen ž prethodni poziv još aktivan');
+      debugPrint('⏭️ [DriverLocation] _sendCurrentLocation preskocen ž prethodni poziv još aktivan');
       return;
     }
     _isSending = true;
@@ -230,7 +230,7 @@ class V2DriverLocationService {
           position.longitude,
         );
         // Log distance za debugging ako treba
-        debugPrint('?? GPS: pomeraj ${distance.toStringAsFixed(0)}m');
+        debugPrint('📍 GPS: pomeraj ${distance.toStringAsFixed(0)}m');
       }
 
       _lastPosition = position;
@@ -247,7 +247,7 @@ class V2DriverLocationService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'vozac_id');
     } catch (e) {
-      debugPrint('? [DriverLocation] _sendCurrentLocation greška: $e');
+      debugPrint('❌ [DriverLocation] _sendCurrentLocation greška: $e');
     } finally {
       _isSending = false; // ?? Oslobodi lock bez obzira na ishod
     }

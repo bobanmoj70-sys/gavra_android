@@ -92,7 +92,7 @@ class V2RacunService {
       final trenutniBroj = response?['poslednji_broj'] as int? ?? 0;
       return '${trenutniBroj + 1}/$godina';
     } catch (e) {
-      return '?/$godina';
+      return '❌/$godina';
     }
   }
 

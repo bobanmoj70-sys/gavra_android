@@ -34,7 +34,7 @@ class HereWeGoNavigationService {
         if (shouldInstall) {
           await _openStore();
         }
-        return HereWeGoNavResult.error('?? Molimo instalirajte HERE WeGo aplikaciju pre nastavka.');
+        return HereWeGoNavResult.error('📲 Molimo instalirajte HERE WeGo aplikaciju pre nastavka.');
       }
 
       // FILTRIRAJ PUTNIKE SA VALIDNIM KOORDINATAMA
@@ -92,7 +92,7 @@ class HereWeGoNavigationService {
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
-            title: const Text('?? HERE WeGo Navigacija'),
+            title: const Text('🗺️ HERE WeGo Navigacija'),
             content: const Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +197,7 @@ class HereWeGoNavigationService {
         final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (success) {
           return HereWeGoNavResult.success(
-            message: '??? HERE WeGo: ${putnici.length} putnika',
+            message: '✅ HERE WeGo: ${putnici.length} putnika',
             launchedPutnici: putnici,
             remainingPutnici: [],
           );
@@ -282,7 +282,7 @@ class HereWeGoNavigationService {
     }
 
     return HereWeGoNavResult.success(
-      message: '? HERE WeGo: svih ${launchedPutnici.length} putnika',
+      message: '✅ HERE WeGo: svih ${launchedPutnici.length} putnika',
       launchedPutnici: launchedPutnici,
       remainingPutnici: [],
     );

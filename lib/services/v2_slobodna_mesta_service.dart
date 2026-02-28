@@ -143,7 +143,7 @@ class SlobodnaMestaService {
         );
       }
     } catch (e) {
-      debugPrint('? getSlobodnaMesta BC error: $e');
+      debugPrint('❌ getSlobodnaMesta BC error: $e');
     }
 
     try {
@@ -171,7 +171,7 @@ class SlobodnaMestaService {
         );
       }
     } catch (e) {
-      debugPrint('? getSlobodnaMesta VS error: $e');
+      debugPrint('❌ getSlobodnaMesta VS error: $e');
     }
 
     return result;

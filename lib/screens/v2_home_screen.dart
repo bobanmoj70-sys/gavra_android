@@ -974,7 +974,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       try {
         await AuthManager.logout(context);
       } catch (e) {
-        debugPrint('?? Logout error: $e');
+        debugPrint('❌ Logout error: $e');
         // Ako logout fail, pokreni navigaciju rucno
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
@@ -2107,7 +2107,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               return countHelper.getCount(grad, vreme);
             } catch (e) {
               if (kDebugMode) {
-                debugPrint('?? [Home] Error in getPutnikCount: $e');
+                debugPrint('❌ [Home] Error in getPutnikCount: $e');
               }
               return 0;
             }

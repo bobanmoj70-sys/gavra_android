@@ -115,7 +115,7 @@ class _AdminScreenState extends State<AdminScreen> {
       if (!mounted) return;
 
       if (vozaci.isEmpty) {
-        AppSnackBar.error(context, '? Nema ucitanih vozaca');
+        AppSnackBar.error(context, '⚠️ Nema ucitanih vozaca');
         return;
       }
 
@@ -184,7 +184,7 @@ class _AdminScreenState extends State<AdminScreen> {
       if (!mounted) return;
 
       if (vozaci.isEmpty) {
-        AppSnackBar.error(context, '? Nema ucitanih vozaca');
+        AppSnackBar.error(context, '⚠️ Nema ucitanih vozaca');
         return;
       }
 
@@ -235,9 +235,9 @@ class _AdminScreenState extends State<AdminScreen> {
         },
       );
     } catch (e) {
-      if (kDebugMode) debugPrint('? Error loading drivers: $e');
+      if (kDebugMode) debugPrint('❌ Error loading drivers: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, '? Greška pri ucitavanju vozaca');
+      AppSnackBar.error(context, '❌ Greška pri ucitavanju vozaca');
     }
   }
 
@@ -377,8 +377,8 @@ class _AdminScreenState extends State<AdminScreen> {
                         AppSnackBar.success(
                             context,
                             selectedVreme == 'Sva vremena'
-                                ? '? Uspešno uklonjeno $count putnika za ceo dan ($selectedGrad) - $selectedDan'
-                                : '? Uspešno uklonjeno $count putnika za $selectedVreme ($selectedGrad) - $selectedDan');
+                                ? '✅ Uspešno uklonjeno $count putnika za ceo dan ($selectedGrad) - $selectedDan'
+                                : '✅ Uspešno uklonjeno $count putnika za $selectedVreme ($selectedGrad) - $selectedDan');
                       }
                     },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
@@ -421,12 +421,12 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  '?? Statistike',
+                  '📊 Statistike',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Text('??', style: TextStyle(fontSize: 24)),
+                  leading: const Text('💰', style: TextStyle(fontSize: 24)),
                   title: const Text('Finansije'),
                   subtitle: const Text('Prihodi, troškovi, neto zarada'),
                   trailing: const Icon(Icons.chevron_right),
@@ -442,7 +442,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
                 const Divider(),
                 ListTile(
-                  leading: const Text('??', style: TextStyle(fontSize: 24)),
+                  leading: const Text('🔧', style: TextStyle(fontSize: 24)),
                   title: const Text('Kolska knjiga'),
                   subtitle: const Text('Servisi, registracija, gume...'),
                   trailing: const Icon(Icons.chevron_right),
@@ -646,15 +646,15 @@ class _AdminScreenState extends State<AdminScreen> {
                                                   bool useEmoji = false;
                                                   switch (t) {
                                                     case 'zimski':
-                                                      label = '??';
+                                                      label = '❄️';
                                                       useEmoji = true;
                                                       break;
                                                     case 'letnji':
-                                                      label = '??';
+                                                      label = '☀️';
                                                       useEmoji = true;
                                                       break;
                                                     case 'praznici':
-                                                      label = '??';
+                                                      label = '🎉';
                                                       useEmoji = true;
                                                       break;
                                                     default:
@@ -843,7 +843,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                         child: const Center(
                                             child: FittedBox(
                                                 fit: BoxFit.scaleDown,
-                                                child: Text('??', style: TextStyle(fontSize: 14)))),
+                                                child: Text('📊', style: TextStyle(fontSize: 14)))),
                                       ),
                                     ),
                                   ),
@@ -870,7 +870,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                         child: const Center(
                                             child: FittedBox(
                                                 fit: BoxFit.scaleDown,
-                                                child: Text('???', style: TextStyle(fontSize: 14)))),
+                                                child: Text('📅', style: TextStyle(fontSize: 14)))),
                                       ),
                                     ),
                                   ),
@@ -933,7 +933,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                         child: const Center(
                                             child: FittedBox(
                                                 fit: BoxFit.scaleDown,
-                                                child: Text('??',
+                                                child: Text('📋',
                                                     style: TextStyle(
                                                         fontWeight: FontWeight.w600,
                                                         fontSize: 14,
@@ -970,7 +970,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                         child: const Center(
                                             child: FittedBox(
                                                 fit: BoxFit.scaleDown,
-                                                child: Text('?',
+                                                child: Text('⛽',
                                                     style: TextStyle(
                                                         fontWeight: FontWeight.w600,
                                                         fontSize: 14,
@@ -1211,7 +1211,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.all(16.0),
-                      child: Text('? Ucitavanje...'),
+                      child: Text('⏳ Ucitavanje...'),
                     ),
                   );
                 }

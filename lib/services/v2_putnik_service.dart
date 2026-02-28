@@ -166,7 +166,7 @@ class V2PutnikService {
       await _supabase.from(tabela).delete().eq('id', id);
       return true;
     } catch (e) {
-      debugPrint('? [V2PutnikService] deletePutnik error: $e');
+      debugPrint('❌ [V2PutnikService] deletePutnik error: $e');
       return false;
     }
   }
