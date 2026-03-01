@@ -75,7 +75,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Real-time subscription variables
   StreamSubscription<dynamic>? _realtimeSubscription;
   StreamSubscription<dynamic>? _networkStatusSubscription;
-  Timer? _dispecerTimer; // ?? Tajmer za digitalnog dispecera
 
   // ?? Cache-based stream (kreiran jednom u initState, ne unutar build())
   late final Stream<int> _streamBrojZahteva;
@@ -182,26 +181,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
     _initializeData();
     _setupRealtimeMonitoring(); // ?? Popravljeno ime metode
-    _startDigitalDispecer(); // ?? Pokreni dispecera
-
     // ?? Slušaj update notifikacije i prikaži dijalog
     updateInfoNotifier.addListener(_onUpdateInfo);
     // Provjeri odmah ako je update vec detektovan
     WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
-  }
-
-  /// ?? POKRECE DIGITALNOG DISPECERA
-  /// Svakih 5 minuta proverava bazu i "cisti" stare zahteve
-  void _startDigitalDispecer() {
-    // 1. Odmah okini jednu proveru
-    V2PolasciService.v2PokreniDispecera();
-
-    // 2. Postavi periodicnu proveru
-    _dispecerTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (mounted) {
-        V2PolasciService.v2PokreniDispecera();
-      }
-    });
   }
 
   void _initializeData() async {
@@ -2739,7 +2722,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       _realtimeSubscription?.cancel();
       _networkStatusSubscription?.cancel();
-      _dispecerTimer?.cancel();
     } catch (e) {
       // Silently ignore
     }

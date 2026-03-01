@@ -47,10 +47,7 @@ class V2ProfilService {
 
   /// Dohvata sve putnike iz date tabele (uključujući neaktivne)
   static List<RegistrovaniPutnik> getSve(String tabela) {
-    return _cacheForTabela(tabela)
-        .values
-        .map((r) => _fromRow(r, tabela))
-        .toList()
+    return _cacheForTabela(tabela).values.map((r) => _fromRow(r, tabela)).toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
@@ -70,8 +67,8 @@ class V2ProfilService {
   static RegistrovaniPutnik? getByPin(String pin, String tabela) {
     try {
       final row = _cacheForTabela(tabela).values.firstWhere(
-        (r) => r['pin'] == pin && r['status'] == 'aktivan',
-      );
+            (r) => r['pin'] == pin && r['status'] == 'aktivan',
+          );
       return _fromRow(row, tabela);
     } catch (_) {
       return null;
@@ -151,20 +148,24 @@ class V2ProfilService {
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
-      final row = await _supabase.from('v2_radnici').insert({
-        'ime': ime,
-        'telefon': telefon,
-        'telefon_2': telefon2,
-        'adresa_bc_id': adresaBcId,
-        'adresa_vs_id': adresaVsId,
-        'pin': pin,
-        'email': email,
-        'cena_po_danu': cenaPosDanu,
-        'broj_mesta': brojMesta,
-        'status': status,
-        'created_at': now,
-        'updated_at': now,
-      }).select().single();
+      final row = await _supabase
+          .from('v2_radnici')
+          .insert({
+            'ime': ime,
+            'telefon': telefon,
+            'telefon_2': telefon2,
+            'adresa_bc_id': adresaBcId,
+            'adresa_vs_id': adresaVsId,
+            'pin': pin,
+            'email': email,
+            'cena_po_danu': cenaPosDanu,
+            'broj_mesta': brojMesta,
+            'status': status,
+            'created_at': now,
+            'updated_at': now,
+          })
+          .select()
+          .single();
       return _fromRow(row, 'v2_radnici');
     } catch (e) {
       debugPrint('❌ [V2ProfilService] createRadnik error: $e');
@@ -188,21 +189,25 @@ class V2ProfilService {
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
-      final row = await _supabase.from('v2_ucenici').insert({
-        'ime': ime,
-        'telefon': telefon,
-        'telefon_oca': telefonOca,
-        'telefon_majke': telefonMajke,
-        'adresa_bc_id': adresaBcId,
-        'adresa_vs_id': adresaVsId,
-        'pin': pin,
-        'email': email,
-        'cena_po_danu': cenaPosDanu,
-        'broj_mesta': brojMesta,
-        'status': status,
-        'created_at': now,
-        'updated_at': now,
-      }).select().single();
+      final row = await _supabase
+          .from('v2_ucenici')
+          .insert({
+            'ime': ime,
+            'telefon': telefon,
+            'telefon_oca': telefonOca,
+            'telefon_majke': telefonMajke,
+            'adresa_bc_id': adresaBcId,
+            'adresa_vs_id': adresaVsId,
+            'pin': pin,
+            'email': email,
+            'cena_po_danu': cenaPosDanu,
+            'broj_mesta': brojMesta,
+            'status': status,
+            'created_at': now,
+            'updated_at': now,
+          })
+          .select()
+          .single();
       return _fromRow(row, 'v2_ucenici');
     } catch (e) {
       debugPrint('❌ [V2ProfilService] createUcenik error: $e');
@@ -222,17 +227,21 @@ class V2ProfilService {
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
-      final row = await _supabase.from('v2_dnevni').insert({
-        'ime': ime,
-        'telefon': telefon,
-        'telefon_2': telefon2,
-        'adresa_bc_id': adresaBcId,
-        'adresa_vs_id': adresaVsId,
-        'cena': cena,
-        'status': status,
-        'created_at': now,
-        'updated_at': now,
-      }).select().single();
+      final row = await _supabase
+          .from('v2_dnevni')
+          .insert({
+            'ime': ime,
+            'telefon': telefon,
+            'telefon_2': telefon2,
+            'adresa_bc_id': adresaBcId,
+            'adresa_vs_id': adresaVsId,
+            'cena': cena,
+            'status': status,
+            'created_at': now,
+            'updated_at': now,
+          })
+          .select()
+          .single();
       return _fromRow(row, 'v2_dnevni');
     } catch (e) {
       debugPrint('❌ [V2ProfilService] createDnevni error: $e');
@@ -251,16 +260,20 @@ class V2ProfilService {
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
-      final row = await _supabase.from('v2_posiljke').insert({
-        'ime': ime,
-        'telefon': telefon,
-        'adresa_bc_id': adresaBcId,
-        'adresa_vs_id': adresaVsId,
-        'cena': cena,
-        'status': status,
-        'created_at': now,
-        'updated_at': now,
-      }).select().single();
+      final row = await _supabase
+          .from('v2_posiljke')
+          .insert({
+            'ime': ime,
+            'telefon': telefon,
+            'adresa_bc_id': adresaBcId,
+            'adresa_vs_id': adresaVsId,
+            'cena': cena,
+            'status': status,
+            'created_at': now,
+            'updated_at': now,
+          })
+          .select()
+          .single();
       return _fromRow(row, 'v2_posiljke');
     } catch (e) {
       debugPrint('❌ [V2ProfilService] createPosiljka error: $e');
