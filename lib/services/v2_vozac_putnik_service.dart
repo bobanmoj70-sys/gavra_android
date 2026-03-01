@@ -30,13 +30,15 @@ class VozacPutnikEntry {
   });
 
   factory VozacPutnikEntry.fromMap(Map<String, dynamic> map) {
+    final vremeRaw = map['vreme'] as String;
+    final vreme = vremeRaw.length > 5 ? vremeRaw.substring(0, 5) : vremeRaw;
     return VozacPutnikEntry(
       id: map['id'] as String?,
       putnikId: map['putnik_id'] as String,
       vozacId: map['vozac_id'] as String,
       dan: map['dan'] as String,
       grad: map['grad'] as String,
-      vreme: map['vreme'] as String,
+      vreme: vreme,
     );
   }
 

@@ -150,12 +150,6 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
     return monday.add(Duration(days: offset)).toIso8601String().split('T').first;
   }
 
-  /// Da li je selektovani dan u sledećoj sedmici (vikend slučaj)
-  bool get _isNextWeek {
-    final now = DateTime.now();
-    return now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
-  }
-
   String _getDayAbbreviation(DateTime date) {
     const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
     return dani[date.weekday - 1];
@@ -587,23 +581,6 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                   'Raspored vozača',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
-                const SizedBox(width: 8),
-                // 🟡 Indikator: koliko termina ima dodjelu za selektovani dan
-                Builder(builder: (_) {
-                  final count = _rasporedCache.where((r) => r.dan == targetDay).length;
-                  if (count == 0 && !_isNextWeek) return const SizedBox.shrink();
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _isNextWeek ? Colors.orange.withOpacity(0.3) : Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      _isNextWeek ? 'sledeća sedmica' : '$count',
-                      style: const TextStyle(fontSize: 12, color: Colors.white70),
-                    ),
-                  );
-                }),
               ],
             ),
           ),
@@ -619,8 +596,6 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                     child: Row(
                       children: _days.map((day) {
                         final isSelected = _selectedDay == day;
-                        // Broj dodjela za ovaj dan
-                        final dodjeleCount = _rasporedCache.where((r) => r.dan == day).length;
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(
@@ -639,36 +614,16 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                                   width: 1.5,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    day.toUpperCase(),
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Theme.of(context).colorScheme.onPrimary.withOpacity(0.6),
-                                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                                      fontSize: 13,
-                                      letterSpacing: 0.8,
-                                    ),
-                                  ),
-                                  if (dodjeleCount > 0) ...[
-                                    const SizedBox(width: 5),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.25),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '$dodjeleCount',
-                                        style: const TextStyle(
-                                            fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                              child: Text(
+                                day.toUpperCase(),
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Theme.of(context).colorScheme.onPrimary.withOpacity(0.6),
+                                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                                  fontSize: 13,
+                                  letterSpacing: 0.8,
+                                ),
                               ),
                             ),
                           ),
