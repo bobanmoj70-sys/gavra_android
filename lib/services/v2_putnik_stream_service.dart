@@ -664,9 +664,12 @@ class V2PutnikStreamService {
 
       var query = supabase.from('v2_polasci').update({
         'status': 'bez_polaska',
-        'processed_at': nowToString(),
+        'dodeljeno_vreme': null,
+        'pokupljeno_by': null,
+        'cancelled_by': null,
+        'processed_at': null,
         'updated_at': nowToString(),
-      }).match({'dan': danKey}).inFilter('status', ['odobreno', 'obrada']).eq('grad', gradKey);
+      }).match({'dan': danKey}).inFilter('status', ['odobreno', 'obrada', 'pokupljen', 'otkazano']).eq('grad', gradKey);
 
       if (vreme.isNotEmpty && vreme != 'Sva vremena') {
         query = query.eq('zeljeno_vreme', '${GradAdresaValidator.normalizeTime(vreme)}:00');
