@@ -99,6 +99,7 @@ class V2PutnikService {
     data['updated_at'] = DateTime.now().toUtc().toIso8601String();
     data.remove('_tabela');
     data.remove('tip');
+    if (data['id'] == null) data.remove('id');
 
     final row = await _supabase.from(tabela).insert(data).select().single();
     return {...row, '_tabela': tabela};

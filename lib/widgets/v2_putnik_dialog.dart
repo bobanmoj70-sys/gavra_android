@@ -1352,8 +1352,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         putnikTabela = widget.existingPutnik!.v2Tabela;
         await _putnikService.updatePutnik(putnikId, putnikData, putnikTabela);
       } else {
-        final noviPutnik = RegistrovaniPutnik.fromMap(putnikData);
-        putnikTabela = noviPutnik.v2Tabela;
+        putnikTabela = putnikData['_tabela'] as String? ?? 'v2_radnici';
         final row = await _putnikService.createPutnik(putnikData, putnikTabela);
         putnikId = row['id'] as String;
       }
