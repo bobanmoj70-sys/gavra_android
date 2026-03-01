@@ -1029,19 +1029,6 @@ class _AdminScreenState extends State<AdminScreen> {
         body: StreamBuilder<List<V2Putnik>>(
           stream: _streamPutnici,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              // Loading state - add refresh option to prevent infinite loading
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Ucitavanje admin panela...'),
-                  ],
-                ),
-              );
-            }
             if (snapshot.hasError) {
               // Error handling - logging removed for production
               return Center(
@@ -1063,10 +1050,7 @@ class _AdminScreenState extends State<AdminScreen> {
               );
             }
 
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final allPutnici = snapshot.data!;
+            final allPutnici = snapshot.data ?? [];
 
             // Filter po današnjem danu
             final todayKratica = _getShortDayName(app_date_utils.DateUtils.getTodayFullName()).toLowerCase();
@@ -1081,11 +1065,7 @@ class _AdminScreenState extends State<AdminScreen> {
             return StreamBuilder<Map<String, double>>(
               stream: _streamPazar,
               builder: (context, pazarSnapshot) {
-                if (!pazarSnapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final pazarMap = pazarSnapshot.data!;
+                final pazarMap = pazarSnapshot.data ?? <String, double>{'_ukupno': 0};
                 final ukupno = pazarMap['_ukupno'] ?? 0.0;
                 final Map<String, double> pazar = Map.from(pazarMap)..remove('_ukupno');
 

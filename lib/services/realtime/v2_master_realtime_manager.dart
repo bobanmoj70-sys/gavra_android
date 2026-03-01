@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../../services/v2_app_settings_service.dart';
 import '../../utils/v2_vozac_cache.dart';
 
 /// ════════════════════════════════════════════════════════════════════════════
@@ -303,9 +304,6 @@ class V2MasterRealtimeManager {
 
       _fillCache(vozaciCache, results[0]);
       _fillCache(vozilaCache, results[1]);
-
-      // Osvježi VozacCache odmah nakon što su vozači učitani iz baze
-      await VozacCache.initialize();
       _fillCache(kapacitetCache, results[2]);
       _fillCache(adreseCache, results[3]);
       _fillCache(rasporedCache, results[4]);
@@ -315,6 +313,10 @@ class V2MasterRealtimeManager {
       _fillCache(lokacijeCache, results[8]);
       _fillCache(pinCache, results[9]);
       _fillCache(settingsCache, results[10]);
+
+      // Osvježi VozacCache i AppSettings nakon što su SVI cache-ovi popunjeni
+      await VozacCache.initialize();
+      await V2AppSettingsService.initialize();
 
       debugPrint(
         '📦 [V2MasterRealtimeManager] infra: '

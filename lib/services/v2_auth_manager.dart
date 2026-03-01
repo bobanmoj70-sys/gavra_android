@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -126,28 +127,34 @@ class AuthManager {
     }
   }
 
-  /// Dobij trenutnog vozača - ITA IZ SUPABASE po FCM/HMS tokenu
-  /// Fallback na SharedPreferences ako nema interneta
+  /// Dobij trenutnog vozača - PRVO iz SharedPreferences (brzo, bez mreže),
+  /// pa Supabase sinhronizacija u pozadini (unawaited)
   static Future<String?> getCurrentDriver() async {
     debugPrint(
         '🔍 [AuthManager] getCurrentDriver POZVAN | stack: ${StackTrace.current.toString().split('\n').take(3).join(' | ')}');
-    // 2. Pokušaj iz Supabase
-    try {
-      final driverFromSupabase = await _getDriverFromSupabase();
-      if (driverFromSupabase != null) {
-        // Sinhronizuj sa SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_driverKey, driverFromSupabase);
-        return driverFromSupabase;
-      }
-    } catch (e) {
-      debugPrint(' [AuthManager] Supabase nedostupan: $e');
-    }
 
-    // 3. Fallback na SharedPreferences (offline mod)
+    // 1. Odmah vrati lokalni podatak — nema čekanja na mrežu
     final prefs = await SharedPreferences.getInstance();
     final localDriver = prefs.getString(_driverKey);
+
+    // 2. Supabase sinhronizacija u pozadini — ne blokira UI
+    unawaited(_syncDriverFromSupabase(localDriver));
+
     return localDriver;
+  }
+
+  /// Sinhronizuje vozača iz Supabase u pozadini (ne blokira)
+  static Future<void> _syncDriverFromSupabase(String? currentLocal) async {
+    try {
+      final driverFromSupabase = await _getDriverFromSupabase();
+      if (driverFromSupabase != null && driverFromSupabase != currentLocal) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_driverKey, driverFromSupabase);
+        debugPrint(' [AuthManager] Vozač sinhronizovan iz Supabase: $driverFromSupabase');
+      }
+    } catch (e) {
+      debugPrint(' [AuthManager] Supabase sync neuspešan: $e');
+    }
   }
 
   /// "Dohvati vozača iz Supabase po FCM/HMS tokenu
