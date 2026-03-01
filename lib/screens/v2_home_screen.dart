@@ -190,12 +190,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// Svakih 5 minuta proverava bazu i "cisti" stare zahteve
   void _startDigitalDispecer() {
     // 1. Odmah okini jednu proveru
-    V2PolasciService.triggerDigitalDispecer();
+    V2PolasciService.v2PokreniDispecera();
 
     // 2. Postavi periodicnu proveru
     _dispecerTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       if (mounted) {
-        V2PolasciService.triggerDigitalDispecer();
+        V2PolasciService.v2PokreniDispecera();
       }
     });
   }
@@ -1700,8 +1700,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           brojMesta: brojMesta, // ?? Prosledujemo broj rezervisanih mesta
                                         );
 
-                                        // Duplikat provera se Vrsi u PutnikService.dodajPutnika()
-                                        await _putnikService.dodajPutnika(noviPutnik);
+                                        // Duplikat provera se Vrsi u PutnikService.v2DodajPutnika()
+                                        await _putnikService.v2DodajPutnika(noviPutnik);
 
                                         // ?? Eksplicitan refresh stream-a da se V2Putnik odmah prikaže
                                         _putnikService.refreshAllActiveStreams();
@@ -2372,7 +2372,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 4),
                           Expanded(
                             child: StreamBuilder<int>(
-                              stream: V2PolasciService.streamManualRequestCount(),
+                              stream: V2PolasciService.v2StreamBrojZahteva(),
                               builder: (context, snapshot) {
                                 final count = snapshot.data ?? 0;
                                 return Stack(

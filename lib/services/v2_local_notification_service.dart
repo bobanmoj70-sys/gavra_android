@@ -593,7 +593,7 @@ class LocalNotificationService {
       if (putnikId == null || dan == null || termin.isEmpty) return;
 
       // Prihvati alternativu u v2_polasci
-      await V2PolasciService.acceptAlternative(
+      await V2PolasciService.v2PrihvatiAlternativu(
         putnikId: putnikId,
         novoVreme: termin,
         grad: 'BC',
@@ -646,7 +646,7 @@ class LocalNotificationService {
       if (putnikId == null || dan == null || termin.isEmpty) return;
 
       // Prihvati alternativu u v2_polasci
-      await V2PolasciService.acceptAlternative(
+      await V2PolasciService.v2PrihvatiAlternativu(
         putnikId: putnikId,
         novoVreme: termin,
         grad: 'VS',
@@ -769,7 +769,7 @@ class LocalNotificationService {
       final selectedTime = response.actionId!.replaceFirst('prihvati_alt_', '');
 
       // 🚀 PRIHVATI ALTERNATIVU → status postaje 'odobreno' → trigger šalje push potvrde
-      final success = await V2PolasciService.acceptAlternative(
+      final success = await V2PolasciService.v2PrihvatiAlternativu(
         requestId: requestId,
         putnikId: putnikId,
         novoVreme: selectedTime,

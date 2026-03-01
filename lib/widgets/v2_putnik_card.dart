@@ -811,7 +811,7 @@ class _PutnikCardState extends State<PutnikCard> {
 
         // ? FIX: ?alji grad umesto place - oznaciPlaceno sada sam racuna place
         // ISTO kao oznaciPokupljen - konzistentna logika!
-        await V2PutnikStreamService().oznaciPlaceno(
+        await V2PutnikStreamService().v2OznaciPlaceno(
           _putnik.id!,
           iznos,
           widget.currentDriver,
@@ -856,7 +856,7 @@ class _PutnikCardState extends State<PutnikCard> {
       HapticService.mediumImpact();
 
       // Direktno oznaci kao pokupljen u bazi (v2_polasci)
-      await V2PutnikStreamService().oznaciPokupljen(
+      await V2PutnikStreamService().v2OznaciPokupljen(
         _putnik.id!,
         true,
         grad: _putnik.grad,
@@ -1767,7 +1767,7 @@ class _PutnikCardState extends State<PutnikCard> {
     if (confirm == true) {
       try {
         // Otkaži v2_polasci za ovaj termin - postavi status 'otkazano'
-        await V2PutnikStreamService().otkaziPutnika(
+        await V2PutnikStreamService().v2OtkaziPutnika(
           _putnik.id!,
           widget.currentDriver,
           grad: _putnik.grad,

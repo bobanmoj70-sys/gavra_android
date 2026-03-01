@@ -20,7 +20,7 @@ class V2PolasciService {
   /// - [isAdmin] = false → status='obrada' (V2Putnik šalje zahtev, backend obrađuje)
   ///
   /// Nema datuma, nema sedmice, nema predviđanja.
-  static Future<void> submitPolazak({
+  static Future<void> v2PoSaljiZahtev({
     required String putnikId,
     required String dan,
     required String grad,
@@ -28,6 +28,7 @@ class V2PolasciService {
     int brojMesta = 1,
     bool isAdmin = false,
     String? customAdresaId,
+    String? putnikTabela, // v2_radnici / v2_ucenici / v2_dnevni / v2_posiljke
   }) async {
     try {
       final gradKey = GradAdresaValidator.normalizeGrad(grad);
@@ -50,11 +51,12 @@ class V2PolasciService {
         await _supabase.from('v2_polasci').update({
           'status': status,
           'broj_mesta': brojMesta,
+          if (putnikTabela != null) 'putnik_tabela': putnikTabela,
           if (customAdresaId != null) 'adresa_id': customAdresaId,
           if (isAdmin) 'dodeljeno_vreme': '$normVreme:00',
           'updated_at': nowStr,
         }).eq('id', existing['id']);
-        debugPrint('✅ [V2PolasciService] submitPolazak UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
+        debugPrint('✅ [V2PolasciService] v2PoSaljiZahtev UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
       } else {
         await _supabase.from('v2_polasci').insert({
           'putnik_id': putnikId,
@@ -64,20 +66,21 @@ class V2PolasciService {
           if (isAdmin) 'dodeljeno_vreme': '$normVreme:00',
           'status': status,
           'broj_mesta': brojMesta,
+          if (putnikTabela != null) 'putnik_tabela': putnikTabela,
           if (customAdresaId != null) 'adresa_id': customAdresaId,
           'created_at': nowStr,
           'updated_at': nowStr,
         });
-        debugPrint('✅ [V2PolasciService] submitPolazak INSERT $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
+        debugPrint('✅ [V2PolasciService] v2PoSaljiZahtev INSERT $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
       }
     } catch (e) {
-      debugPrint('❌ [V2PolasciService] submitPolazak error: $e');
+      debugPrint('❌ [V2PolasciService] v2PoSaljiZahtev error: $e');
       rethrow;
     }
   }
 
   /// Odobrava zahtev — kopira zeljeno_vreme u dodeljeno_vreme
-  static Future<bool> approveRequest(String id, {String? approvedBy}) async {
+  static Future<bool> v2OdobriZahtev(String id, {String? approvedBy}) async {
     try {
       final nowStr = DateTime.now().toUtc().toIso8601String();
 
@@ -103,7 +106,7 @@ class V2PolasciService {
   }
 
   /// Odbija zahtev
-  static Future<bool> rejectRequest(String id, {String? rejectedBy}) async {
+  static Future<bool> v2OdbijZahtev(String id, {String? rejectedBy}) async {
     try {
       await _supabase.from('v2_polasci').update({
         'status': 'odbijeno',
@@ -120,18 +123,52 @@ class V2PolasciService {
   }
 
   /// Stream za zahteve koji čekaju ručnu obradu admina (svi tipovi, status=obrada)
-  static Stream<List<V2Polazak>> streamManualRequests() {
+  static Stream<List<V2Polazak>> v2StreamZahteviObrada() {
     final controller = StreamController<List<V2Polazak>>.broadcast();
 
     Future<void> fetch() async {
       try {
         final data =
             await _supabase.from('v2_polasci').select().eq('status', 'obrada').order('created_at', ascending: false);
-        if (!controller.isClosed) {
-          controller.add(data.map((json) => V2Polazak.fromJson(json)).toList());
-        }
+
+        final rm = V2MasterRealtimeManager.instance;
+
+        final enriched = data.map((json) {
+          final putnikId = json['putnik_id']?.toString();
+          final putnikTabela = json['putnik_tabela']?.toString();
+
+          // Nađi putnika u v2_* cache-u po tabeli ili pretragom svih cache-ova
+          Map<String, dynamic>? putnikRow;
+          if (putnikId != null) {
+            if (putnikTabela == 'v2_radnici') {
+              putnikRow = rm.radniciCache[putnikId];
+            } else if (putnikTabela == 'v2_ucenici') {
+              putnikRow = rm.uceniciCache[putnikId];
+            } else if (putnikTabela == 'v2_dnevni') {
+              putnikRow = rm.dnevniCache[putnikId];
+            } else {
+              // putnik_tabela = null ili stari format — pretraži sve cache-ove
+              putnikRow = rm.getPutnikById(putnikId);
+            }
+          }
+
+          // Enrichuj json sa imenom i telefonom iz v2_* cache-a
+          final enrichedJson = Map<String, dynamic>.from(json);
+          if (putnikRow != null) {
+            enrichedJson['putnik_ime'] = putnikRow['ime'];
+            enrichedJson['broj_telefona'] = putnikRow['broj_telefona'];
+            // Postavi putnik_tabela iz cache-a ako nedostaje
+            if (putnikTabela == null) {
+              enrichedJson['putnik_tabela'] = putnikRow['_tabela'];
+            }
+          }
+
+          return V2Polazak.fromJson(enrichedJson);
+        }).toList();
+
+        if (!controller.isClosed) controller.add(enriched);
       } catch (e) {
-        debugPrint('❌ [V2PolasciService] streamManualRequests fetch error: $e');
+        debugPrint('❌ [V2PolasciService] v2StreamZahteviObrada fetch error: $e');
       }
     }
 
@@ -186,7 +223,7 @@ class V2PolasciService {
   }
 
   /// 🔢 Stream za broj zahteva koji čekaju ručnu obradu (za bedž na Home ekranu - svi tipovi)
-  static Stream<int> streamManualRequestCount() {
+  static Stream<int> v2StreamBrojZahteva() {
     final controller = StreamController<int>.broadcast();
 
     Future<void> fetch() async {
@@ -196,7 +233,7 @@ class V2PolasciService {
           controller.add((data as List).length);
         }
       } catch (e) {
-        debugPrint('❌ [V2PolasciService] streamManualRequestCount fetch error: $e');
+        debugPrint('❌ [V2PolasciService] v2StreamBrojZahteva fetch error: $e');
       }
     }
 
@@ -211,7 +248,7 @@ class V2PolasciService {
   }
 
   /// 🤖 DIGITALNI DISPEČER — replicira dispecer_cron_obrada + obrada v2_polasci logiku
-  static Future<int> triggerDigitalDispecer() async {
+  static Future<int> v2PokreniDispecera() async {
     try {
       // 1. Dohvati sve pending zahteve
       final pendingRows = await _supabase
@@ -380,7 +417,7 @@ class V2PolasciService {
   }
 
   /// 🎫 Prihvata alternativni termin - ODMAH ODOBRAVA
-  static Future<bool> acceptAlternative({
+  static Future<bool> v2PrihvatiAlternativu({
     String? requestId,
     required String putnikId,
     required String novoVreme,
@@ -417,51 +454,6 @@ class V2PolasciService {
     } catch (e) {
       debugPrint('❌ [V2PolasciService] Error accepting alternative: $e');
       return false;
-    }
-  }
-
-  /// 🗑️ Uklanja polazak
-  /// - [otkazaoKo] prosleđen → status='otkazano' + cancelled_by (putnik/vozač otkazao, računa se u statistiku)
-  /// - [otkazaoKo] null → status='bez_polaska' (admin korekcija, ne računa se)
-  static Future<void> ukloniPolazak(
-    String putnikId, {
-    required String grad,
-    required String dan,
-    String? vreme,
-    String? requestId,
-    String? otkazaoKo,
-  }) async {
-    try {
-      final gradKey = GradAdresaValidator.normalizeGrad(grad);
-      final danKey = dan.toLowerCase();
-      final nowStr = DateTime.now().toUtc().toIso8601String();
-      final noviStatus = otkazaoKo != null ? 'otkazano' : 'bez_polaska';
-      final updates = {
-        'status': noviStatus,
-        'processed_at': nowStr,
-        'updated_at': nowStr,
-        if (otkazaoKo != null) 'cancelled_by': otkazaoKo,
-      };
-
-      // Prioritet: po requestId
-      if (requestId != null && requestId.isNotEmpty) {
-        await _supabase.from('v2_polasci').update(updates).eq('id', requestId);
-        return;
-      }
-
-      // Fallback: po putnik_id + dan + grad (+ vreme ako ima)
-      var query =
-          _supabase.from('v2_polasci').update(updates).eq('putnik_id', putnikId).eq('dan', danKey).eq('grad', gradKey);
-
-      if (vreme != null && vreme.isNotEmpty) {
-        final normVreme = GradAdresaValidator.normalizeTime(vreme);
-        query = query.eq('zeljeno_vreme', '$normVreme:00');
-      }
-
-      await query;
-    } catch (e) {
-      debugPrint('❌ [V2PolasciService] ukloniPolazak error: $e');
-      rethrow;
     }
   }
 }

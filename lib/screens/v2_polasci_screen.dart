@@ -74,7 +74,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
           ),
         ),
         body: StreamBuilder<List<V2Polazak>>(
-          stream: V2PolasciService.streamManualRequests(),
+          stream: V2PolasciService.v2StreamZahteviObrada(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
               return const Center(child: CircularProgressIndicator(color: Colors.white));
@@ -343,7 +343,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
     setState(() => _isLoading = true);
     try {
       final currentDriver = await AuthManager.getCurrentDriver();
-      final success = await V2PolasciService.approveRequest(id, approvedBy: currentDriver);
+      final success = await V2PolasciService.v2OdobriZahtev(id, approvedBy: currentDriver);
       if (success && mounted) {
         AppSnackBar.success(context, '✅ Zahtev uspešno odobren');
       }
@@ -356,7 +356,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
     setState(() => _isLoading = true);
     try {
       final currentDriver = await AuthManager.getCurrentDriver();
-      final success = await V2PolasciService.rejectRequest(id, rejectedBy: currentDriver);
+      final success = await V2PolasciService.v2OdbijZahtev(id, rejectedBy: currentDriver);
       if (success && mounted) {
         AppSnackBar.error(context, '❌ Zahtev je odbijen');
       }

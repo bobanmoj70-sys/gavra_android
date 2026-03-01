@@ -1579,15 +1579,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           return;
         }
 
-        final vremeZaUklanjanje = (existing['dodeljeno_vreme'] ?? existing['zeljeno_vreme'])?.toString();
-        await V2PolasciService.ukloniPolazak(
-          putnikId,
-          grad: gradKey,
-          dan: dan,
-          vreme: vremeZaUklanjanje,
-          requestId: existing['id']?.toString(),
-          otkazaoKo: _putnikData['ime'] as String? ?? _putnikData['putnik_ime'] as String? ?? 'putnik',
-        );
+        final nowStr = DateTime.now().toUtc().toIso8601String();
+        final imePutnika = _putnikData['ime'] as String? ?? _putnikData['putnik_ime'] as String? ?? 'putnik';
+        await supabase.from('v2_polasci').update({
+          'status': 'otkazano',
+          'cancelled_by': imePutnika,
+          'processed_at': nowStr,
+          'updated_at': nowStr,
+        }).eq('id', existing['id'].toString());
       } catch (e) {
         debugPrint('❌ _updatePolazak (bez_polaska): $e');
         if (mounted) AppSnackBar.error(context, 'Greška pri uklanjanju polaska.');
@@ -1598,13 +1597,18 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       try {
         final rpRow = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
         final brojMesta = (rpRow?['broj_mesta'] as int?) ?? 1;
-        await V2PolasciService.submitPolazak(
+        // _tabela iz cache-a → npr. 'v2_radnici'
+        final putnikTabela = (_putnikData['_tabela'] as String?) ??
+            (_putnikData['putnik_tabela'] as String?) ??
+            rpRow?['_tabela']?.toString();
+        await V2PolasciService.v2PoSaljiZahtev(
           putnikId: putnikId,
           dan: dan,
           grad: gradKey,
           vreme: novoVreme,
           brojMesta: brojMesta,
           isAdmin: false,
+          putnikTabela: putnikTabela,
         );
       } catch (e) {
         debugPrint('❌ _updatePolazak: $e');
