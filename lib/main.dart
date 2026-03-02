@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 📱 Za Edge-to-Edge prikaz (Android 15+)
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_api_availability/google_api_availability.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -12,29 +12,27 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'globals.dart';
 import 'screens/v2_welcome_screen.dart';
-import 'services/realtime/v2_master_realtime_manager.dart'; // 🆕 V2 Master Realtime Manager
+import 'services/realtime/v2_master_realtime_manager.dart';
 import 'services/v2_firebase_service.dart';
 import 'services/v2_huawei_push_service.dart';
-import 'services/v2_realtime_gps_service.dart'; // 🛰️ DODATO za cleanup
+import 'services/v2_realtime_gps_service.dart';
 import 'services/v2_slobodna_mesta_service.dart';
 import 'services/v2_statistika_istorija_service.dart';
-import 'services/v2_theme_manager.dart'; // 🎨 Novi tema sistem
-import 'services/v2_weather_alert_service.dart'; // 🌤️ Vremenske uzbune
-import 'services/v2_weather_service.dart'; // 🌤️ DODATO za cleanup
+import 'services/v2_theme_manager.dart';
+import 'services/v2_weather_alert_service.dart';
+import 'services/v2_weather_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (kDebugMode) debugPrint('[Main] App starting...');
+  debugPrint('[Main] App starting...');
 
   // KONFIGURACIJA - Inicijalizuj osnovne kredencijale (bez Supabase)
   try {
     await configService.initializeBasic();
-    if (kDebugMode) {
-      debugPrint('[Main] Basic config initialized');
-    }
+    debugPrint('[Main] Basic config initialized');
   } catch (e) {
-    if (kDebugMode) debugPrint('[Main] Basic config init failed: $e');
+    debugPrint('[Main] Basic config init failed: $e');
     // Critical error - cannot continue without credentials
     throw Exception('Ne mogu da inicijalizujem osnovne kredencijale: $e');
   }
@@ -45,21 +43,12 @@ void main() async {
       url: configService.getSupabaseUrl(),
       anonKey: configService.getSupabaseAnonKey(),
     );
-    if (kDebugMode) debugPrint('[Main] Supabase initialized');
+    debugPrint('[Main] Supabase initialized');
   } catch (e) {
-    if (kDebugMode) debugPrint('[Main] Supabase init failed: $e');
-    // Možeš dodati fallback ili crash app ako je kritično
+    debugPrint('[Main] Supabase init failed: $e');
   }
 
-  // 🔐 DOVrsI KONFIGURACIJU - učitaj preostale kredencijale iz Vault-a
-  // try {
-  //   await configService.initializeVaultCredentials();
-  // } catch (e) {
-  //   if (kDebugMode) debugPrint('❌ [Main] Vault credentials failed: $e');
-  //   // Non-critical - app can continue with basic credentials
-  // }
-
-  // 1. Pokreni UI ODMAH (bez čekanja Supabase)
+  // 1. Pokreni UI ODMAH (bez cekanja Supabase)
   runApp(const MyApp());
 
   // 2. Čekaj malo da se UI renderira, pa tek onda inicijalizuj servise
@@ -72,16 +61,18 @@ void main() async {
 Future<void> _doStartupTasks() async {
   if (kDebugMode) debugPrint('[Main] Background tasks started');
 
-  // 🕯️ WAKELOCK & UI
+  // Wakelock i edge-to-edge UI
   try {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('[Main] Wakelock/SystemChrome init failed: $e');
+  }
 
-  // 🌍 LOCALE - UTF-8 podrška za dijakritiku
+  // Locale - UTF-8 podrska za dijakritiku
   unawaited(initializeDateFormatting('sr', null));
 
-  // 🔥 SVE OSTALO POKRENI ISTOVREMENO (Paralelno)
+  // Sve ostalo pokreni istovremeno (paralelno)
   unawaited(_initPushSystems());
   unawaited(_initAppServices());
 }
@@ -94,44 +85,38 @@ Future<void> _initPushSystems() async {
         await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability().timeout(const Duration(seconds: 2));
 
     if (availability == GooglePlayServicesAvailability.success) {
-      if (kDebugMode) debugPrint('[Main] Detected GMS (Google Play Services)');
+      debugPrint('[Main] Detected GMS (Google Play Services)');
       try {
         await Firebase.initializeApp().timeout(const Duration(seconds: 5));
         await FirebaseService.initialize();
         FirebaseService.setupFCMListeners();
         unawaited(FirebaseService.initializeAndRegisterToken());
-        if (kDebugMode) debugPrint('[Main] FCM initialized successfully');
+        debugPrint('[Main] FCM initialized successfully');
       } catch (e) {
-        if (kDebugMode) debugPrint('[Main] FCM initialization failed: $e');
+        debugPrint('[Main] FCM initialization failed: $e');
       }
     } else {
-      if (kDebugMode) {
-        debugPrint('[Main] GMS not available, trying HMS (Huawei Mobile Services)');
-      }
+      debugPrint('[Main] GMS not available, trying HMS (Huawei Mobile Services)');
       try {
         final hmsToken = await HuaweiPushService().initialize().timeout(const Duration(seconds: 5));
         if (hmsToken != null) {
           await HuaweiPushService().tryRegisterPendingToken();
-          if (kDebugMode) debugPrint('[Main] HMS initialized successfully');
+          debugPrint('[Main] HMS initialized successfully');
         } else {
-          if (kDebugMode) {
-            debugPrint('[Main] HMS initialization returned null token');
-          }
+          debugPrint('[Main] HMS initialization returned null token');
         }
       } catch (e) {
-        if (kDebugMode) debugPrint('[Main] HMS initialization failed: $e');
+        debugPrint('[Main] HMS initialization failed: $e');
       }
     }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('[Main] Push services initialization failed: $e');
-    }
+    debugPrint('[Main] Push services initialization failed: $e');
     // Try HMS as last resort
     try {
-      if (kDebugMode) debugPrint('[Main] Last resort: trying HMS');
+      debugPrint('[Main] Last resort: trying HMS');
       await HuaweiPushService().initialize().timeout(const Duration(seconds: 2));
     } catch (e2) {
-      if (kDebugMode) debugPrint('[Main] All push services failed: $e2');
+      debugPrint('[Main] All push services failed: $e2');
     }
   }
 }
@@ -140,11 +125,11 @@ Future<void> _initPushSystems() async {
 Future<void> _initAppServices() async {
   if (kDebugMode) debugPrint('[Main] Starting app services...');
 
-  // V2 Master Realtime Manager — jedini koji sluša Supabase.
+  // V2 Master Realtime Manager — jedini koji slusa Supabase.
   // On ucitava sve cache-ove (vozaci, kapacitet, settings...) i otvara WebSocket.
   unawaited(V2MasterRealtimeManager.instance.initialize());
 
-  // 🚐 Weather alerts (bez čekanja)
+  // Weather alerts (bez cekanja)
   unawaited(V2WeatherAlertService.checkAndSendWeatherAlerts());
 }
 
@@ -162,13 +147,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _initializeApp();
 
-    // 🔐 DOZVOLE - Sada se pozivaju iz WelcomeScreen da izbegnu MaterialLocalizations grešku
+    // Dozvole se pozivaju iz WelcomeScreen da izbegnu MaterialLocalizations gresku
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // 🧹 CLEANUP: Zatvori stream controllere
+    // Cleanup: zatvori stream controllere
     V2WeatherService.dispose();
     RealtimeGpsService.dispose();
     V2StatistikaIstorijaService.dispose();
@@ -183,22 +168,19 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       try {
         HuaweiPushService().tryRegisterPendingToken();
       } catch (e) {
-        // Error while trying pending token registration on resume
+        debugPrint('[Main] HMS pending token registration failed: $e');
       }
     }
   }
 
   Future<void> _initializeApp() async {
     try {
-      // 🚀 OPTIMIZOVANA INICIJALIZACIJA
       await Future<void>.delayed(const Duration(milliseconds: 200));
 
-      // 🎨 Inicijalizuj ThemeManager
+      // Inicijalizuj ThemeManager
       await ThemeManager().initialize();
-
-      // Inicijalizacija zaVrsena
-    } catch (_) {
-      // Init error - silent
+    } catch (e) {
+      debugPrint('[Main] App init failed: $e');
     }
   }
 
