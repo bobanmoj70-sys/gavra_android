@@ -128,7 +128,8 @@ BEGIN
        WHERE p2.grad    = upper(v_req.grad)
          AND p2.dan     = v_req.dan
          AND p2.zeljeno_vreme = v_req.zeljeno_vreme
-         AND p2.status  IN ('obrada', 'odobreno');
+         AND p2.status  IN ('obrada', 'odobreno')
+         AND p2.id     != v_req.id;
 
       v_ima_mesta := (v_max_mesta - v_zauzeto) >= COALESCE(v_req.broj_mesta, 1);
     END IF;
@@ -154,6 +155,7 @@ BEGIN
                   AND p3.dan  = v_req.dan
                   AND p3.zeljeno_vreme = kp.vreme
                   AND p3.status IN ('obrada', 'odobreno')
+                  AND p3.id  != v_req.id
              ), 0)) >= COALESCE(v_req.broj_mesta, 1)
        ORDER BY kp.vreme DESC
        LIMIT 1;
@@ -171,6 +173,7 @@ BEGIN
                   AND p3.dan  = v_req.dan
                   AND p3.zeljeno_vreme = kp.vreme
                   AND p3.status IN ('obrada', 'odobreno')
+                  AND p3.id  != v_req.id
              ), 0)) >= COALESCE(v_req.broj_mesta, 1)
        ORDER BY kp.vreme ASC
        LIMIT 1;
