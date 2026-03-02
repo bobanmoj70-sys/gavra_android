@@ -408,8 +408,6 @@ class V2ProfilService {
         'vozac_id': vozacId,
         'vozac_ime': vozacIme,
         'datum': datumStr,
-        if (placeniMesec != null) 'placeni_mesec': placeniMesec,
-        if (placenaGodina != null) 'placena_godina': placenaGodina,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
       return true;
