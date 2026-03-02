@@ -19,8 +19,8 @@ class V2DriverLocationService {
   static V2DriverLocationService get instance => _instance;
 
   // RealtimeGpsService garantuje slanje lokacije svakih 30s putem positionStream.
-  // Lokacija (lat/lng) ? Supabase svake 30s (bez API poziva).
-  // ORS ETA korekcija ? svake 60s (odvojeni timer, ~900 poziva/dan).
+  // Lokacija (lat/lng) → Supabase svake 30s (bez API poziva).
+  // ORS ETA korekcija → svake 60s (odvojeni timer, ~900 poziva/dan).
   static const Duration _etaUpdateInterval = Duration(minutes: 1);
   static const int _gpsNotifId = 9001;
   static const String _gpsChannelId = 'gavra_gps_tracking';
@@ -28,8 +28,7 @@ class V2DriverLocationService {
 
   // State
   Timer? _etaTimer;
-  bool _isSending = false; // ?? Lock: sprecava konkurentne _sendCurrentLocation pozive
-  StreamSubscription<Position>? _positionSubscription;
+  bool _isSending = false; // Lock: sprecava konkurentne _sendCurrentLocation pozive
   Position? _lastPosition;
   bool _isTracking = false;
   String? _currentVozacId;
@@ -39,7 +38,7 @@ class V2DriverLocationService {
   String? _currentSmer;
   Map<String, int>? _currentPutniciEta;
   Map<String, Position>? _putniciCoordinates;
-  List<String>? _putniciRedosled; // ?? Redosled putnika (optimizovan)
+  List<String>? _putniciRedosled; // Redosled putnika (optimizovan)
   VoidCallback? _onAllPassengersPickedUp; // Callback za auto-stop
 
   // Getteri
@@ -61,7 +60,7 @@ class V2DriverLocationService {
     List<String>? putniciRedosled,
     VoidCallback? onAllPassengersPickedUp,
   }) async {
-    // ?? REALTIME FIX: Ako je tracking vec aktivan, samo ažuriraj ETA
+    // Ako je tracking vec aktivan, samo ažuriraj ETA
     if (_isTracking) {
       if (putniciEta != null) {
         _currentPutniciEta = Map.from(putniciEta);
@@ -89,8 +88,8 @@ class V2DriverLocationService {
 
     await _sendCurrentLocation();
 
-    // ? Lokacija (lat/lng) se šalje svake 30s putem RealtimeGpsService (bez API).
-    // ? ORS ETA se racuna odvojeno svake 60s.
+    // Lokacija (lat/lng) se šalje svake 30s putem RealtimeGpsService (bez API).
+    // ORS ETA se racuna odvojeno svake 60s.
     _etaTimer = Timer.periodic(_etaUpdateInterval, (_) => _refreshEta());
 
     // 🛰️ Prikaži persistent notifikaciju — drži app živ dok vozač prikuplja putnike
@@ -106,28 +105,28 @@ class V2DriverLocationService {
   /// Rucno stopiranje tracking-a
   Future<void> stopTracking() async {
     _etaTimer?.cancel();
-    _positionSubscription?.cancel();
+    // Postavi flag odmah da spriječi novi _sendCurrentLocation
+    _isTracking = false;
 
-    // 🛑 Ukloni persistent notifikaciju iz status bara
+    // Ukloni persistent notifikaciju iz status bara
     await _cancelGpsNotif();
 
     // Uvijek pokušaj update bez obzira na _isTracking flag
     if (_currentVozacId != null) {
       try {
-        debugPrint('🛑 [DriverLocation] Stopping tracking for vozac: $_currentVozacId');
+        debugPrint('[DriverLocation] Stopping tracking for vozac: $_currentVozacId');
         await supabase.from('v2_vozac_lokacije').update({
           'aktivan': false,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('vozac_id', _currentVozacId!);
-        debugPrint('✅ [DriverLocation] aktivan=false upisano u DB');
+        debugPrint('[DriverLocation] aktivan=false upisano u DB');
       } catch (e) {
-        debugPrint('❌ [DriverLocation] Stop error: $e');
+        debugPrint('[DriverLocation] Stop error: $e');
       }
     } else {
-      debugPrint('⚠️ [DriverLocation] stopTracking pozvan ali _currentVozacId je null');
+      debugPrint('[DriverLocation] stopTracking pozvan ali _currentVozacId je null');
     }
 
-    _isTracking = false;
     _currentVozacId = null;
     _currentVozacIme = null;
     _currentGrad = null;
@@ -140,25 +139,25 @@ class V2DriverLocationService {
     _lastPosition = null;
   }
 
-  /// ?? REALTIME FIX: Ažuriraj ETA za putnike bez ponovnog pokretanja trackinga
-  /// Poziva se nakon reoptimizacije rute kada se doda/otkaže V2Putnik
+  /// Ažuriraj ETA za putnike bez ponovnog pokretanja trackinga.
+  /// Poziva se nakon reoptimizacije rute kada se doda/otkaže V2Putnik.
   Future<void> updatePutniciEta(Map<String, int> newPutniciEta) async {
     if (!_isTracking) return;
 
     _currentPutniciEta = Map.from(newPutniciEta);
     await _sendCurrentLocation();
 
-    // ?? Check if all finished
+    // Provjeri jesu li svi putnici završeni
     final activeCount = _currentPutniciEta!.values.where((v) => v >= 0).length;
     if (activeCount == 0 && _isTracking) {
-      debugPrint('✅ Svi putnici zaVrseni (ETA update) - zaustavljam tracking');
+      debugPrint('[DriverLocation] Svi putnici završeni (ETA update) - zaustavljam tracking');
       _onAllPassengersPickedUp?.call();
       stopTracking();
     }
   }
 
-  /// ?? ORS ETA korekcija ž poziva se svake 60s
-  /// Ako API ne odgovori ž zadrži stari ETA (nema skakanja).
+  /// ORS ETA korekcija — poziva se svake 60s.
+  /// Ako API ne odgovori — zadrži stari ETA (nema skakanja).
   Future<void> _refreshEta() async {
     if (!_isTracking || _lastPosition == null) return;
     if (_putniciCoordinates == null || _putniciRedosled == null) return;
@@ -176,15 +175,17 @@ class V2DriverLocationService {
       putnikCoordinates: _putniciCoordinates!,
     );
 
+    // Provjeri da tracking nije zaustavljen tokom await-a
+    if (!_isTracking || _currentPutniciEta == null) return;
+
     if (result.success && result.putniciEta != null) {
       for (final entry in result.putniciEta!.entries) {
         _currentPutniciEta![entry.key] = entry.value;
       }
-      debugPrint('✅ [DriverLocation] ORS ETA (60s): ${result.putniciEta}');
-      // Pošalji ažurirani ETA u Supabase odmah
+      debugPrint('[DriverLocation] ORS ETA (60s): ${result.putniciEta}');
       await _sendCurrentLocation();
     } else {
-      debugPrint('⚠️ [DriverLocation] ORS ETA neuspješan ž zadržan stari ETA');
+      debugPrint('[DriverLocation] ORS ETA neuspješan — zadržan stari ETA');
     }
   }
 
@@ -244,9 +245,9 @@ class V2DriverLocationService {
   /// Pošalji trenutnu lokaciju u Supabase
   Future<void> _sendCurrentLocation({Position? knownPosition}) async {
     if (!_isTracking || _currentVozacId == null) return;
-    // ?? Ako je prethodni poziv još aktivan (npr. spor GPS ili DB), preskoci
+    // Ako je prethodni poziv još aktivan (npr. spor GPS ili DB), preskoči
     if (_isSending) {
-      debugPrint('⏭️ [DriverLocation] _sendCurrentLocation preskocen ž prethodni poziv još aktivan');
+      debugPrint('[DriverLocation] _sendCurrentLocation preskoćen — prethodni poziv još aktivan');
       return;
     }
     _isSending = true;
@@ -261,8 +262,7 @@ class V2DriverLocationService {
           position.latitude,
           position.longitude,
         );
-        // Log distance za debugging ako treba
-        debugPrint('📍 GPS: pomeraj ${distance.toStringAsFixed(0)}m');
+        debugPrint('[DriverLocation] GPS pomeraj: ${distance.toStringAsFixed(0)}m');
       }
 
       _lastPosition = position;
@@ -279,9 +279,9 @@ class V2DriverLocationService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'vozac_id');
     } catch (e) {
-      debugPrint('❌ [DriverLocation] _sendCurrentLocation greška: $e');
+      debugPrint('[DriverLocation] _sendCurrentLocation greška: $e');
     } finally {
-      _isSending = false; // ?? Oslobodi lock bez obzira na ishod
+      _isSending = false; // Oslobodi lock bez obzira na ishod
     }
   }
 }

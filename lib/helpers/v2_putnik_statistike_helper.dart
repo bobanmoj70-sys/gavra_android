@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
-import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
 
 /// 📊 Helper za prikazivanje detaljnih statistika putnika
@@ -399,7 +398,9 @@ class PutnikStatistikeHelper {
                 ),
               ),
               Text(
-                '${(customCena != null && customCena > 0) ? (customCena as num).toStringAsFixed(0) : CenaObracunService.getDefaultCenaByTip(tip).toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'vožnja'}',
+                (customCena != null && customCena > 0)
+                    ? '${(customCena as num).toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'vožnja'}'
+                    : 'Cena nije postavljena',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,

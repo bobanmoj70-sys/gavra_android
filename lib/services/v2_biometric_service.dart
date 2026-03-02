@@ -2,9 +2,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-/// 🔐 BIOMETRIC SERVICE
 /// Servis za biometrijsku autentifikaciju (otisak prsta, Face ID)
 class BiometricService {
+  BiometricService._();
+
   static final LocalAuthentication _auth = LocalAuthentication();
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
@@ -42,20 +43,25 @@ class BiometricService {
 
   /// Da li je biometrija dostupna (uređaj podržava + ima upisane podatke)
   static Future<bool> isBiometricAvailable() async {
-    final isSupported = await isDeviceSupported();
-    final canCheck = await canCheckBiometrics();
-    return isSupported && canCheck;
+    final results = await Future.wait([
+      isDeviceSupported(),
+      canCheckBiometrics(),
+    ]);
+    return results[0] && results[1];
   }
 
   /// Da li je biometrija uključena za korisnika
   static Future<bool> isBiometricEnabled() async {
-    // Return false
-    return false;
+    final value = await _secureStorage.read(key: _biometricEnabledKey);
+    return value == 'true';
   }
 
   /// Uključi/isključi biometriju
   static Future<void> setBiometricEnabled(bool enabled) async {
-    // Do nothing
+    await _secureStorage.write(
+      key: _biometricEnabledKey,
+      value: enabled.toString(),
+    );
   }
 
   /// Sačuvaj kredencijale za biometrijsku prijavu
@@ -114,8 +120,7 @@ class BiometricService {
       return 'otisak prsta';
     } else if (types.contains(BiometricType.iris)) {
       return 'iris';
-    } else if (types.contains(BiometricType.strong) ||
-        types.contains(BiometricType.weak)) {
+    } else if (types.contains(BiometricType.strong) || types.contains(BiometricType.weak)) {
       return 'biometriju';
     }
     return 'biometriju';

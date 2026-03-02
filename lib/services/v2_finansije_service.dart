@@ -5,8 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../globals.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
-/// 💰 FINANSIJE SERVICE
-/// Računa prihode, troškove i neto zaradu
+/// Servis za računanje prihoda, troškova i neto zarade
 class V2FinansijeService {
   static SupabaseClient get _supabase => supabase;
 
@@ -25,6 +24,7 @@ class V2FinansijeService {
       final response = await query.order('tip');
       return (response as List).map((row) => Trosak.fromJson(row)).toList();
     } catch (e) {
+      debugPrint('[Finansije] getTroskovi greška: $e');
       return [];
     }
   }
@@ -35,6 +35,7 @@ class V2FinansijeService {
       await _supabase.from('v2_finansije_troskovi').update({'iznos': noviIznos}).eq('id', id);
       return true;
     } catch (e) {
+      debugPrint('[Finansije] updateTrosak greška: $e');
       return false;
     }
   }
@@ -43,8 +44,7 @@ class V2FinansijeService {
   static Future<bool> addTrosak(String naziv, String tip, double iznos, {int? mesec, int? godina}) async {
     try {
       final now = DateTime.now();
-      debugPrint(
-          '📝 [Finansije] Dodajem trošak: $naziv ($tip) = $iznos za ${mesec ?? now.month}/${godina ?? now.year}');
+      debugPrint('[Finansije] Dodajem trošak: $naziv ($tip) = $iznos za ${mesec ?? now.month}/${godina ?? now.year}');
       await _supabase.from('v2_finansije_troskovi').insert({
         'naziv': naziv,
         'tip': tip,
@@ -54,11 +54,11 @@ class V2FinansijeService {
         'mesec': mesec ?? now.month,
         'godina': godina ?? now.year,
       });
-      debugPrint('✅ [Finansije] Trošak dodat uspešno: $naziv');
+      debugPrint('[Finansije] Trošak dodat uspešno: $naziv');
 
       return true;
     } catch (e) {
-      debugPrint('❌ [Finansije] Greška pri dodavanju troška $naziv: $e');
+      debugPrint('[Finansije] Greška pri dodavanju troška $naziv: $e');
       return false;
     }
   }
@@ -69,6 +69,7 @@ class V2FinansijeService {
       await _supabase.from('v2_finansije_troskovi').update({'aktivan': false}).eq('id', id);
       return true;
     } catch (e) {
+      debugPrint('[Finansije] deleteTrosak greška: $e');
       return false;
     }
   }
@@ -79,14 +80,16 @@ class V2FinansijeService {
       final now = DateTime.now();
       final mesec = now.month;
       final godina = now.year;
+      final mesecOd = '$godina-${mesec.toString().padLeft(2, '0')}-01';
+      final mesecDo = _fmtDate(DateTime(godina, mesec + 1, 0)); // zadnji dan meseca
 
       // Dohvati sve putnike koji su imali vožnje ovaj mesec
       final voznjeResp = await _supabase
           .from('v2_statistika_istorija')
           .select('putnik_id')
           .eq('tip', 'voznja')
-          .filter('datum', 'gte', '$godina-${mesec.toString().padLeft(2, '0')}-01')
-          .filter('datum', 'lte', '$godina-${mesec.toString().padLeft(2, '0')}-31');
+          .filter('datum', 'gte', mesecOd)
+          .filter('datum', 'lte', mesecDo);
 
       final putnikIds =
           (voznjeResp as List).map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet().toList();
@@ -98,22 +101,22 @@ class V2FinansijeService {
           .from('v2_statistika_istorija')
           .select('putnik_id')
           .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna'])
-          .filter('datum', 'gte', '$godina-${mesec.toString().padLeft(2, '0')}-01')
-          .filter('datum', 'lte', '$godina-${mesec.toString().padLeft(2, '0')}-31');
+          .filter('datum', 'gte', mesecOd)
+          .filter('datum', 'lte', mesecDo);
 
       final placeniIds = (uplateResp as List).map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet();
 
       // Putnici s dugom = imaju vožnje ali nisu platili
-      final duznici = putnikIds.where((id) => !placeniIds.contains(id)).toList();
+      final duznici = putnikIds.where((id) => !placeniIds.contains(id)).whereType<String>().toList();
 
-      // Proceni dug: 1500 din po dnevnom, 6000 po mesečnom (prosek)
-      // Tačniji pristup: broji voznje * cena_po_danu za dnevne
       if (duznici.isEmpty) return 0;
 
       // Čitaj podatke putnika iz V2MasterRealtimeManager cache-a (nema DB upita)
+      // Odvoji mesečne od dnevnih — dnevni trebaju broj vožnji iz DB-a
       double ukupnoDug = 0;
+      final List<String> dnevniDuznici = [];
+
       for (final id in duznici) {
-        if (id == null) continue;
         final p = V2MasterRealtimeManager.instance.getPutnikById(id);
         if (p == null) continue;
         final String tabela = (p['_tabela'] as String? ?? '');
@@ -130,22 +133,38 @@ class V2FinansijeService {
           // Mesečni - paušal 6000 ako nema cenu
           ukupnoDug += cenaPoDanu != null ? cenaPoDanu * 22 : 6000;
         } else {
-          // Dnevni - procena po broju vožnji
-          final brojVoznjiResp = await _supabase
-              .from('v2_statistika_istorija')
-              .select('id')
-              .eq('putnik_id', p['id'] as String)
-              .eq('tip', 'voznja')
-              .filter('datum', 'gte', '$godina-${mesec.toString().padLeft(2, '0')}-01')
-              .filter('datum', 'lte', '$godina-${mesec.toString().padLeft(2, '0')}-31');
-          final brojVoznji = (brojVoznjiResp as List).length;
+          dnevniDuznici.add(id);
+        }
+      }
+
+      // Jedan batch DB upit za sve dnevne dužnike
+      if (dnevniDuznici.isNotEmpty) {
+        final brojVoznjiResp = await _supabase
+            .from('v2_statistika_istorija')
+            .select('putnik_id')
+            .inFilter('putnik_id', dnevniDuznici)
+            .eq('tip', 'voznja')
+            .filter('datum', 'gte', mesecOd)
+            .filter('datum', 'lte', mesecDo);
+
+        final Map<String, int> voznjePoId = {};
+        for (final r in (brojVoznjiResp as List)) {
+          final pid = r['putnik_id'] as String?;
+          if (pid != null) voznjePoId[pid] = (voznjePoId[pid] ?? 0) + 1;
+        }
+
+        for (final id in dnevniDuznici) {
+          final p = V2MasterRealtimeManager.instance.getPutnikById(id);
+          if (p == null) continue;
+          final cenaPoDanu = (p['cena_po_danu'] as num?)?.toDouble() ?? (p['cena'] as num?)?.toDouble();
+          final brojVoznji = voznjePoId[id] ?? 0;
           ukupnoDug += brojVoznji * (cenaPoDanu ?? 300);
         }
       }
 
       return ukupnoDug;
     } catch (e) {
-      debugPrint('❌ [Finansije] Greška pri računanju potraživanja: $e');
+      debugPrint('[Finansije] Greška pri računanju potraživanja: $e');
       return 0;
     }
   }
@@ -162,7 +181,7 @@ class V2FinansijeService {
       final nedFrom = _fmtDate(mondayThisWeek);
       final nedTo = _fmtDate(sundayThisWeek);
       final mesFrom = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
-      final mesTo = '${now.year}-${now.month.toString().padLeft(2, '0')}-31';
+      final mesTo = _fmtDate(DateTime(now.year, now.month + 1, 0)); // zadnji dan meseca
       final godFrom = '${now.year}-01-01';
       final godTo = '${now.year}-12-31';
       final proslaFrom = '${now.year - 1}-01-01';
@@ -250,7 +269,7 @@ class V2FinansijeService {
         endNedelja: sundayThisWeek,
       );
     } catch (e) {
-      debugPrint('❌ [Finansije] Greška pri dohvatanju izveštaja: $e');
+      debugPrint('[Finansije] Greška pri dohvatanju izveštaja: $e');
       return _getEmptyIzvestaj();
     }
   }
@@ -335,12 +354,12 @@ class V2FinansijeService {
         'neto': prihod - troskovi,
       };
     } catch (e) {
-      debugPrint('❌ [Finansije] Greška custom report: $e');
+      debugPrint('[Finansije] Greška custom report: $e');
       return {'prihod': 0, 'voznje': 0, 'troskovi': 0, 'neto': 0};
     }
   }
 
-  /// 🛰️ REALTIME STREAM: Prati promene u relevantnim tabelama i osvežava izveštaj
+  /// REALTIME STREAMati promene u relevantnim tabelama i osvežava izveštaj
   static Stream<FinansijskiIzvestaj> streamIzvestaj() async* {
     // Emituj inicijalne podatke
     yield await getIzvestaj();
@@ -413,6 +432,12 @@ class Trosak {
     }
     return naziv;
   }
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is Trosak && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
 
   /// Emoji za tip troška
   String get emoji {
@@ -510,4 +535,18 @@ class FinansijskiIzvestaj {
   String get nedeljaPeriod {
     return '${startNedelja.day}.${startNedelja.month}. - ${endNedelja.day}.${endNedelja.month}.';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! FinansijskiIzvestaj) return false;
+    return prihodMesec == other.prihodMesec &&
+        troskoviMesec == other.troskoviMesec &&
+        prihodGodina == other.prihodGodina &&
+        potrazivanja == other.potrazivanja &&
+        voznjiMesec == other.voznjiMesec;
+  }
+
+  @override
+  int get hashCode => Object.hash(prihodMesec, troskoviMesec, prihodGodina, potrazivanja, voznjiMesec);
 }

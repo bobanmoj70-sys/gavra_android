@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v2_registrovani_putnik.dart';
 
-/// 💰 Servis za obračun mesečne cene za putnike
+/// Servis za obračun mesečne cene za putnike
 ///
 /// PRAVILA: Cena se MORA manuelno postaviti od strane admina - više nema default cena!
 /// - RADNIK: Admin postavlja cenu (nema default-a)
@@ -11,6 +12,8 @@ import '../models/v2_registrovani_putnik.dart';
 /// - DNEVNI: Admin postavlja cenu (nema default-a)
 /// - POŠILJKA: Admin postavlja cenu (osim "ZUBI" koji ima fiksnih 300 RSD)
 class CenaObracunService {
+  CenaObracunService._();
+
   static SupabaseClient get _supabase => supabase;
 
   /// Dobija cenu po danu za putnika (SAMO custom cena)
@@ -28,11 +31,6 @@ class CenaObracunService {
     }
 
     // 3. Ako nema custom cene - više nema default cena, vraća 0.0
-    return 0.0;
-  }
-
-  /// Dobija default cenu po danu samo na osnovu tipa (String) - VRAĆA 0.0
-  static double getDefaultCenaByTip(String tip) {
     return 0.0;
   }
 
@@ -67,7 +65,8 @@ class CenaObracunService {
       // Grupiši rekorde po putniku
       final Map<String, List<dynamic>> grupisanRekordi = {};
       for (var r in records) {
-        final pid = r['putnik_id'] as String;
+        final pid = r['putnik_id'] as String?;
+        if (pid == null) continue;
         grupisanRekordi.putIfAbsent(pid, () => []).add(r);
       }
 
@@ -98,12 +97,15 @@ class CenaObracunService {
             }
           }
           int totalUnits = 0;
-          dailyMaxSeats.forEach((key, value) => totalUnits += value);
+          for (final value in dailyMaxSeats.values) {
+            totalUnits += value;
+          }
           rezultati[p.id] = totalUnits;
         }
       }
       return rezultati;
     } catch (e) {
+      debugPrint('CenaObracunService.prebrojJediniceMasovno error: $e');
       return {};
     }
   }
