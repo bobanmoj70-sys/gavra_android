@@ -737,11 +737,11 @@ class V2MasterRealtimeManager {
   }
 
   /// Stream aktivnih putnika iz cache-a — 0 DB upita
-  Stream<List<RegistrovaniPutnik>> streamAktivniPutnici() {
-    final controller = StreamController<List<RegistrovaniPutnik>>.broadcast();
+  Stream<List<V2RegistrovaniPutnik>> streamAktivniPutnici() {
+    final controller = StreamController<List<V2RegistrovaniPutnik>>.broadcast();
     void emit() {
       if (controller.isClosed) return;
-      final putnici = getAllPutnici().map((row) => RegistrovaniPutnik.fromMap(row)).toList()
+      final putnici = getAllPutnici().map((row) => V2RegistrovaniPutnik.fromMap(row)).toList()
         ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase()));
       controller.add(putnici);
     }

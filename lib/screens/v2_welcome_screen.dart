@@ -44,7 +44,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   late final Animation<double> _fadeAnimation;
 
   // Lista vozača učitana iz baze
-  List<Vozac> _drivers = [];
+  List<V2Vozac> _drivers = [];
   bool _isLoadingDrivers = true;
 
   @override
@@ -77,7 +77,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   /// Učitaj vozače direktno iz master cache-a (0 DB upita)
   void _loadDrivers() {
     final rm = V2MasterRealtimeManager.instance;
-    final vozaci = rm.vozaciCache.values.map((row) => Vozac.fromMap(row)).toList()
+    final vozaci = rm.vozaciCache.values.map((row) => V2Vozac.fromMap(row)).toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
     setState(() {
       _drivers = vozaci;

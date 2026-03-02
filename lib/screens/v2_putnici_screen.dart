@@ -40,7 +40,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   final _rm = V2MasterRealtimeManager.instance;
 
   // 🔄 Master realtime stream — inicijalizovan jednom u initState()
-  late final Stream<List<RegistrovaniPutnik>> _streamPutnici;
+  late final Stream<List<V2RegistrovaniPutnik>> _streamPutnici;
 
   // Mapa placenih meseci po putniku
   Map<String, Set<String>> _placeniMeseci = {};
@@ -67,7 +67,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   // 🚀 BATCH UCITAVANJE
-  Future<void> _ucitajSvePodatke(List<RegistrovaniPutnik> putnici) async {
+  Future<void> _ucitajSvePodatke(List<V2RegistrovaniPutnik> putnici) async {
     if (putnici.isEmpty) return;
 
     try {
@@ -78,7 +78,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   // 💰 UCITAJ STVARNA PLACANJA — batch query (1 DB upit) + dopuna iz statistikaCache
-  Future<void> _ucitajStvarnaPlacanja(List<RegistrovaniPutnik> putnici) async {
+  Future<void> _ucitajStvarnaPlacanja(List<V2RegistrovaniPutnik> putnici) async {
     try {
       if (putnici.isEmpty) return;
 
@@ -187,8 +187,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     super.dispose();
   }
 
-  List<RegistrovaniPutnik> _filterPutniciDirect(
-    List<RegistrovaniPutnik> putnici,
+  List<V2RegistrovaniPutnik> _filterPutniciDirect(
+    List<V2RegistrovaniPutnik> putnici,
     String searchTerm,
   ) {
     var filtered = putnici;
@@ -379,7 +379,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
             // 🔄 LISTA PUTNIKA — master realtime cache stream
             Expanded(
-              child: StreamBuilder<List<RegistrovaniPutnik>>(
+              child: StreamBuilder<List<V2RegistrovaniPutnik>>(
                 stream: _streamPutnici,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
@@ -534,7 +534,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     );
   }
 
-  Widget _buildPutnikCard(RegistrovaniPutnik v2Putnik, int redniBroj) {
+  Widget _buildPutnikCard(V2RegistrovaniPutnik v2Putnik, int redniBroj) {
     final bool bolovanje = v2Putnik.status == 'bolovanje';
     // Sačuvaj sva vremena po danima (pon -> pet) i prikaži ih na kartici.
     // Prethodna logika je prikazivala samo PRVI dan koji je imao vreme.
@@ -873,7 +873,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     );
   }
 
-  Future<void> _toggleAktivnost(RegistrovaniPutnik v2Putnik) async {
+  Future<void> _toggleAktivnost(V2RegistrovaniPutnik v2Putnik) async {
     // Ako nije aktivan → odmah vrati na aktivan
     if (!v2Putnik.aktivan) {
       await _postaviStatus(v2Putnik, 'aktivan');
@@ -950,7 +950,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     }
   }
 
-  Future<void> _postaviStatus(RegistrovaniPutnik v2Putnik, String noviStatus) async {
+  Future<void> _postaviStatus(V2RegistrovaniPutnik v2Putnik, String noviStatus) async {
     try {
       await _rm.updatePutnik(
         v2Putnik.id,
@@ -974,11 +974,11 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     }
   }
 
-  void _editPutnik(RegistrovaniPutnik V2Putnik) {
+  void _editPutnik(V2RegistrovaniPutnik v2Putnik) {
     showDialog(
       context: context,
       builder: (context) => V2PutnikDialog(
-        existingPutnik: V2Putnik,
+        existingPutnik: v2Putnik,
         onSaved: () {
           if (mounted) {
             setState(() {
@@ -992,7 +992,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   /// ?? Prikaži PIN dijalog za putnika
-  void _showPinDialog(RegistrovaniPutnik v2Putnik) {
+  void _showPinDialog(V2RegistrovaniPutnik v2Putnik) {
     showDialog(
       context: context,
       builder: (context) => V2PinDialog(
@@ -1023,7 +1023,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     );
   }
 
-  void _obrisiPutnika(RegistrovaniPutnik v2Putnik) async {
+  void _obrisiPutnika(V2RegistrovaniPutnik v2Putnik) async {
     // Pokaži potvrdu za brisanje
     final potvrda = await showDialog<bool>(
       context: context,
@@ -1107,7 +1107,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
   // Helper funkcija za brojanje kontakata
   // ??????????? NOVA FUNKCIJA - Prikazuje sve dostupne kontakte
-  Future<void> _pokaziKontaktOpcije(RegistrovaniPutnik v2Putnik) async {
+  Future<void> _pokaziKontaktOpcije(V2RegistrovaniPutnik v2Putnik) async {
     final List<Widget> opcije = [];
 
     // Glavni broj telefona
@@ -1220,7 +1220,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   // ?? PRIKAZ DIJALOGA ZA PLACANJE
-  Future<void> _prikaziPlacanje(RegistrovaniPutnik v2Putnik) async {
+  Future<void> _prikaziPlacanje(V2RegistrovaniPutnik v2Putnik) async {
     if (!mounted) return;
 
     final TextEditingController iznosController = TextEditingController();
@@ -1232,7 +1232,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   Future<void> _prikaziPlacanjeDialog(
-    RegistrovaniPutnik v2Putnik,
+    V2RegistrovaniPutnik v2Putnik,
     TextEditingController iznosController,
   ) async {
     if (!mounted) return;
@@ -1534,7 +1534,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   } // ?? CUVANJE PLACANJA
 
   // ?? PRIKAŽI DETALJNE STATISTIKE PUTNIKA
-  Future<void> _prikaziDetaljneStatistike(RegistrovaniPutnik v2Putnik) async {
+  Future<void> _prikaziDetaljneStatistike(V2RegistrovaniPutnik v2Putnik) async {
     await PutnikStatistikeHelper.prikaziDetaljneStatistike(
       context: context,
       putnikId: v2Putnik.id,
@@ -1549,7 +1549,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   Future<void> _sacuvajPlacanje(
-    RegistrovaniPutnik v2Putnik,
+    V2RegistrovaniPutnik v2Putnik,
     double iznos,
     String mesec,
   ) async {

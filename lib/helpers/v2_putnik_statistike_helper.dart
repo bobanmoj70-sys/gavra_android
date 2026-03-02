@@ -593,7 +593,7 @@ class PutnikStatistikeHelper {
     try {
       final placeniMeseci = await _getPlaceniMeseci(putnikId);
       final putnikMap = await V2MasterRealtimeManager.instance.findPutnikById(putnikId);
-      final putnikObj = putnikMap != null ? RegistrovaniPutnik.fromMap(putnikMap) : null;
+      final putnikObj = putnikMap != null ? V2RegistrovaniPutnik.fromMap(putnikMap) : null;
 
       Map<String, dynamic> stats = {};
 

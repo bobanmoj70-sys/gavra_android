@@ -14,7 +14,7 @@ import '../services/realtime/v2_master_realtime_manager.dart';
 /// - `V2VozacCache.getImeByUuid(uuid)` — ime po UUID-u, null ako ne postoji
 /// - `V2VozacCache.getUuidByIme(ime)` — UUID po imenu, null ako ne postoji
 /// - `V2VozacCache.isValidIme(ime)` — provjera da li je ime registrovan vozač
-/// - `V2VozacCache.vozaci` — lista svih Vozac objekata
+/// - `V2VozacCache.vozaci` — lista svih V2Vozac objekata
 /// - `V2VozacCache.imenaVozaca` — lista svih imena
 class V2VozacCache {
   V2VozacCache._();
@@ -22,7 +22,7 @@ class V2VozacCache {
   // INTERNA STANJA
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static List<Vozac> _vozaci = [];
+  static List<V2Vozac> _vozaci = [];
 
   // Primarni lookup map-ovi
   static Map<String, Color> _imeToColor = {};
@@ -65,7 +65,7 @@ class V2VozacCache {
 
   static Future<void> _load() async {
     final rm = V2MasterRealtimeManager.instance;
-    final vozaci = rm.vozaciCache.values.map((r) => Vozac.fromMap(r)).toList();
+    final vozaci = rm.vozaciCache.values.map((r) => V2Vozac.fromMap(r)).toList();
 
     final Map<String, Color> imeToColor = {};
     final Map<String, Color> uuidToColor = {};
@@ -161,8 +161,8 @@ class V2VozacCache {
   // LISTE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Svi Vozac objekti.
-  static List<Vozac> get vozaci => _vozaci;
+  /// Svi V2Vozac objekti.
+  static List<V2Vozac> get vozaci => _vozaci;
 
   /// Sva registrovana imena.
   static List<String> get imenaVozaca => _imeToUuid.keys.toList();
@@ -174,8 +174,8 @@ class V2VozacCache {
   // HELPER METODE (email, telefon — zamjena za VozacBoja helpers)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Vraća Vozac objekat za dato ime.
-  static Vozac? getVozacByIme(String? ime) {
+  /// Vraća V2Vozac objekat za dato ime.
+  static V2Vozac? getVozacByIme(String? ime) {
     if (ime == null || ime.isEmpty) return null;
     try {
       return _vozaci.firstWhere((v) => v.ime == ime);
@@ -231,7 +231,7 @@ class V2VozacCache {
     if (fromCache != null) return fromCache;
     try {
       final rm = V2MasterRealtimeManager.instance;
-      final vozaci = rm.vozaciCache.values.map((r) => Vozac.fromMap(r)).toList();
+      final vozaci = rm.vozaciCache.values.map((r) => V2Vozac.fromMap(r)).toList();
       return vozaci.firstWhere((v) => v.ime == ime).id;
     } catch (_) {
       return null;

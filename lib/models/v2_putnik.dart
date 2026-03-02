@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../services/v2_adresa_supabase_service.dart'; // DODATO za fallback ucitavanje adrese
 import '../utils/v2_registrovani_helpers.dart';
 
@@ -17,7 +19,7 @@ class V2Putnik {
     this.vremePokupljenja,
     this.vremePlacanja,
     this.placeno,
-    this.cena, // ? STANDARDIZOVANO: cena umesto iznosPlacanja
+    this.cena, // STANDARDIZOVANO: cena umesto iznosPlacanja
     this.naplatioVozac,
     this.pokupioVozac,
     this.dodeljenVozac,
@@ -27,16 +29,16 @@ class V2Putnik {
     this.vremeOtkazivanja,
     this.adresa,
     this.adresaId, // NOVO - UUID reference u tabelu adrese
-    this.obrisan = false, // default vrednost
-    this.brojTelefona, // broj telefona putnika
+    this.obrisan = false,
+    this.brojTelefona,
     this.datum,
     this.brojMesta = 1,
     this.tipPutnika,
     this.otkazanZaPolazak = false,
-    this.requestId, // ID konkretnog v2_polasci reda
-    this.pokupioVozacId, // UUID vozaca koji je pokupljanje izVrsio
-    this.naplatioVozacId, // UUID vozaca koji je naplatio
-    this.otkazaoVozacId, // UUID vozaca koji je otkazao
+    this.requestId,
+    this.pokupioVozacId,
+    this.naplatioVozacId,
+    this.otkazaoVozacId,
   });
 
   factory V2Putnik.fromMap(Map<String, dynamic> map) {
@@ -89,10 +91,10 @@ class V2Putnik {
   final DateTime? vremePokupljenja; // ? DateTime
   final DateTime? vremePlacanja; // ? DateTime
   final bool? placeno;
-  final double? cena; // ? STANDARDIZOVANO: cena umesto iznosPlacanja
-  double? get iznosPlacanja => cena; // BACKWARD COMPATIBILITY
+  final double? cena; // STANDARDIZOVANO: cena umesto iznosPlacanja
+  double? get iznosPlacanja => cena; // backward compatibility
   final String? naplatioVozac;
-  final String? pokupioVozac; // NOVO - vozac koji je pokupljanje izVrsio
+  final String? pokupioVozac;
   final String? dodeljenVozac;
   final String? vozac;
   final String grad;
@@ -117,26 +119,26 @@ class V2Putnik {
     final Map<String, dynamic> p = profile ?? (req['registrovani_putnici'] as Map<String, dynamic>? ?? {});
 
     final danStr = (req['dan']?.toString() ?? '').toLowerCase();
-    // ? PRIORITET: datum iz RPC-a (p_datum = danas) š ne racunaj iz dana jer ide u buducnost
+    // PRIORITET: datum iz RPC-a (p_datum = danas) — ne racunaj iz dana jer ide u buducnost
     // Fallback: _getIsoDateForDan samo ako RPC nije vratio datum (direktni v2_polasci query)
     final rpcDatum = req['datum']?.toString();
     final datumStr = (rpcDatum != null && rpcDatum.isNotEmpty)
-        ? rpcDatum.split('T')[0] // ISO: "2026-02-23T00:00:00" ? "2026-02-23"
+        ? rpcDatum.split('T')[0] // ISO: "2026-02-23T00:00:00" -> "2026-02-23"
         : _getIsoDateForDan(danStr);
     final gRaw = req['grad']?.toString().toLowerCase() ?? '';
     final grad = (gRaw == 'vs' || gRaw.contains('vrs') || gRaw.contains('vr')) ? 'VS' : 'BC';
 
-    // ? PRIORITET: Dodeljeno vreme (ako je vozac pomerio termin), inace šeljeno
+    // PRIORITET: Dodeljeno vreme (ako je vozac pomerio termin), inace zeljeno
     final vremeRaw = (req['dodeljeno_vreme'] ?? req['zeljeno_vreme'])?.toString() ?? '';
 
     // Provera da li je pokupljen (iz voznje_log ili statusa)
     final bool isPickedUp = req['pokupljen_iz_loga'] == true || req['status']?.toString().toLowerCase() == 'pokupljen';
 
     // Provera da li je placeno (za dnevne putnike)
-    // ? SAMO iz voznje_log (uplata/uplata_dnevna), ne iz statusa!
+    // SAMO iz voznje_log (uplata/uplata_dnevna), ne iz statusa!
     final bool isPaid = req['placeno_iz_loga'] == true;
 
-    // ? FIX: Koristi centralizovanu normalizaciju vremena
+    // Koristi centralizovanu normalizaciju vremena
     final vreme = V2RegistrovaniHelpers.normalizeTime(vremeRaw) ?? '05:00';
 
     final tip = p['tip'] as String?;
@@ -184,7 +186,7 @@ class V2Putnik {
       pokupioVozacId: req['pokupioVozacId'] as String?,
       naplatioVozacId: req['naplatioVozacId'] as String?,
       otkazaoVozacId: req['otkazaoVozacId'] as String?,
-      cena: req['cena']?.toDouble(), // ? NOVO: Iznos placanja iz voznje_log
+      cena: req['cena']?.toDouble(),
       vremePlacanja: req['vreme_placanja'] != null ? DateTime.parse(req['vreme_placanja']).toLocal() : null,
       vremeOtkazivanja: req['vreme_otkazivanja'] != null ? DateTime.parse(req['vreme_otkazivanja']).toLocal() : null,
       obrisan: false,
@@ -199,7 +201,8 @@ class V2Putnik {
     try {
       final dt = DateTime.parse(isoDate);
       return _dayAbbreviations[dt.weekday - 1];
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2Putnik] _getDayNameFromIso failed for "$isoDate": $e');
       return '';
     }
   }
@@ -220,15 +223,16 @@ class V2Putnik {
         }
       }
       return '';
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2Putnik] _getIsoDateForDan failed for "$danKratica": $e');
       return '';
     }
   }
 
-  // ?? Helper getter za proveru da li je dnevni tip
+  // Helper getter za proveru da li je dnevni tip
   bool get isDnevniTip => tipPutnika?.toLowerCase() == 'dnevni' || mesecnaKarta == false;
 
-  // ?? Helper getter za proveru da li je radnik ili ucenik (prikazuje MESECNA badge)
+  // Helper getter za proveru da li je radnik ili ucenik (prikazuje MESECNA badge)
   // Fallback: ako tipPutnika nije poznat, koristi mesecnaKarta kao indikator
   bool get isMesecniTip =>
       tipPutnika?.toLowerCase() == 'radnik' ||
@@ -263,8 +267,7 @@ class V2Putnik {
   }
 
   // Getter-i za centralizovanu logiku statusa
-  // ?? IZMENJENO: jeOtkazan sada proverava otkazanZaPolazak (po gradu) umesto globalnog statusa
-  // Dodata provera za status 'otkazano' za kompatibilnost
+  // jeOtkazan proverava otkazanZaPolazak (po gradu) umesto globalnog statusa
   bool get jeOtkazan =>
       !jeOdsustvo &&
       (obrisan ||
@@ -343,7 +346,7 @@ class V2Putnik {
   }
 
   // -----------------------------------------------------------------------
-  // ?? COPY WITH - za ažuriranje putnika sa novim podacima
+  // COPY WITH - za azuriranje putnika sa novim podacima
   // -----------------------------------------------------------------------
 
   V2Putnik copyWith({
@@ -417,8 +420,8 @@ class V2Putnik {
   }
 
   // -----------------------------------------------------------------------
-  // ?? EQUALITY OPERATORS - za stabilno mapiranje u Map<V2Putnik, Position>
-  // ?? FIX: Ukljuci SVE relevantne atribute za detekciju promena iz realtime-a
+  // EQUALITY OPERATORS - za stabilno mapiranje u Map<V2Putnik, Position>
+  // Ukljuci SVE relevantne atribute za detekciju promena iz realtime-a
   // -----------------------------------------------------------------------
 
   @override
@@ -426,7 +429,7 @@ class V2Putnik {
     if (identical(this, other)) return true;
     if (other is! V2Putnik) return false;
 
-    // ?? FIX: Poredi SVE relevantne atribute, ne samo id
+    // Poredi SVE relevantne atribute, ne samo id
     // Ovo omogucava da didUpdateWidget detektuje promene iz realtime-a
     return id == other.id &&
         ime == other.ime &&
@@ -453,7 +456,7 @@ class V2Putnik {
   @override
   String toString() => 'V2Putnik(id: $id, ime: $ime, grad: $grad, status: $status, dan: $dan, polazak: $polazak)';
 
-  // ?? FALLBACK METODA: Ucitaj adresu iz rm cache-a ako je NULL
+  // FALLBACK METODA: Ucitaj adresu iz rm cache-a ako je NULL
   String? getAdresaFallback() {
     // Ako vec imamo adresu, vrati je
     if (adresa != null && adresa!.isNotEmpty && adresa != 'Adresa nije definisana') {

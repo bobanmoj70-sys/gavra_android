@@ -267,7 +267,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
     // Dohvati mesecnog putnika iz baze po ID-u
     final putnikId = _putnik.id?.toString() ?? '';
     final putnikMap = putnikId.isNotEmpty ? await V2ProfilService.findPutnikById(putnikId) : null;
-    final registrovaniPutnik = putnikMap != null ? RegistrovaniPutnik.fromMap(putnikMap) : null;
+    final registrovaniPutnik = putnikMap != null ? V2RegistrovaniPutnik.fromMap(putnikMap) : null;
 
     if (registrovaniPutnik == null) {
       if (mounted) {

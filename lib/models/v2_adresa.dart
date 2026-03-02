@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:uuid/uuid.dart';
 
 /// Model za adrese
-class Adresa {
-  Adresa({
+class V2Adresa {
+  V2Adresa({
     String? id,
     required this.naziv,
     this.grad,
@@ -16,7 +16,7 @@ class Adresa {
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
-  factory Adresa.fromMap(Map<String, dynamic> map) {
+  factory V2Adresa.fromMap(Map<String, dynamic> map) {
     // Normalizuj grad: 'Vršac'/'Vrsac'/'vs' → 'VS', 'Bela Crkva'/'bc' → 'BC'
     String? _normalizeGrad(String? g) {
       if (g == null) return null;
@@ -26,7 +26,7 @@ class Adresa {
       return g;
     }
 
-    return Adresa(
+    return V2Adresa(
       id: map['id'] as String,
       naziv: map['naziv'] as String,
       grad: _normalizeGrad(map['grad'] as String?),
@@ -68,7 +68,7 @@ class Adresa {
   bool get hasValidCoordinates => gpsLat != null && gpsLng != null;
 
   /// Distance calculation between two addresses
-  double? distanceTo(Adresa other) {
+  double? distanceTo(V2Adresa other) {
     if (!hasValidCoordinates || !other.hasValidCoordinates) {
       return null;
     }
@@ -93,7 +93,7 @@ class Adresa {
   // ✅ COPY AND MODIFICATION METHODS
 
   /// Create a copy with updated fields
-  Adresa copyWith({
+  V2Adresa copyWith({
     String? id,
     String? naziv,
     String? grad,
@@ -102,7 +102,7 @@ class Adresa {
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    return Adresa(
+    return V2Adresa(
       id: id ?? this.id,
       naziv: naziv ?? this.naziv,
       grad: grad ?? this.grad,
@@ -118,7 +118,7 @@ class Adresa {
   /// Enhanced toString for debugging
   @override
   String toString() {
-    return 'Adresa{id: $id, naziv: $naziv, '
+    return 'V2Adresa{id: $id, naziv: $naziv, '
         'koordinate: ${hasValidCoordinates ? "($latitude,$longitude)" : "none"}}';
   }
 }

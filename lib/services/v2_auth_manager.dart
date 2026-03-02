@@ -43,7 +43,7 @@ class AuthManager {
   /// Podržava i FCM (Google) i HMS (Huawei) tokene.
   static Future<void> _updatePushTokenWithUserId(String driverName) async {
     try {
-      final Vozac? vozac = V2VozacCache.getVozacByIme(driverName);
+      final V2Vozac? vozac = V2VozacCache.getVozacByIme(driverName);
       final String? vozacId = vozac?.id;
 
       if (vozacId == null || vozacId.isEmpty || driverName.isEmpty) {
@@ -166,7 +166,7 @@ class AuthManager {
       try {
         final currentDriver = await getCurrentDriver();
         if (currentDriver != null) {
-          final Vozac? vozac = V2VozacCache.getVozacByIme(currentDriver);
+          final V2Vozac? vozac = V2VozacCache.getVozacByIme(currentDriver);
           if (vozac?.id != null) {
             await V2PushTokenService.clearToken(vozacId: vozac!.id);
           }

@@ -23,15 +23,15 @@ class V2VozacService {
   V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
   /// Dohvata sve vozače iz rm cache-a (sync)
-  List<Vozac> getAllVozaci() {
-    return _rm.vozaciCache.values.map((json) => Vozac.fromMap(json)).toList()..sort((a, b) => a.ime.compareTo(b.ime));
+  List<V2Vozac> getAllVozaci() {
+    return _rm.vozaciCache.values.map((json) => V2Vozac.fromMap(json)).toList()..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
   /// Dodaje novog vozača
-  Future<Vozac> addVozac(Vozac vozac) async {
+  Future<V2Vozac> addVozac(V2Vozac vozac) async {
     try {
       final response = await _supabase.from('v2_vozaci').insert(vozac.toMap()).select().single();
-      return Vozac.fromMap(response);
+      return V2Vozac.fromMap(response);
     } catch (e) {
       debugPrint('[V2VozacService] Greška u addVozac(): $e');
       rethrow;
@@ -39,10 +39,10 @@ class V2VozacService {
   }
 
   /// Ažurira postojećeg vozača
-  Future<Vozac> updateVozac(Vozac vozac) async {
+  Future<V2Vozac> updateVozac(V2Vozac vozac) async {
     try {
       final response = await _supabase.from('v2_vozaci').update(vozac.toMap()).eq('id', vozac.id).select().single();
-      return Vozac.fromMap(response);
+      return V2Vozac.fromMap(response);
     } catch (e) {
       debugPrint('[V2VozacService] Greška u updateVozac(): $e');
       rethrow;
@@ -51,8 +51,8 @@ class V2VozacService {
 
   /// Realtime stream: dohvata sve vozače u realnom vremenu.
   /// Emituje direktno iz rm cache-a, bez DB fetcha na svaki event.
-  Stream<List<Vozac>> streamAllVozaci() {
-    final controller = StreamController<List<Vozac>>.broadcast();
+  Stream<List<V2Vozac>> streamAllVozaci() {
+    final controller = StreamController<List<V2Vozac>>.broadcast();
     // Inicijalno emitovanje
     controller.add(getAllVozaci());
     // Svaki rm event → emit iz cache

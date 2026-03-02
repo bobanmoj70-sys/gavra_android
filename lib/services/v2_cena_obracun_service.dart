@@ -17,7 +17,7 @@ class CenaObracunService {
   static SupabaseClient get _supabase => supabase;
 
   /// Dobija cenu po danu za putnika (SAMO custom cena)
-  static double getCenaPoDanu(RegistrovaniPutnik v2Putnik) {
+  static double getCenaPoDanu(V2RegistrovaniPutnik v2Putnik) {
     // 1. Ako ima postavljenu custom cenu - koristi je
     if (v2Putnik.cena != null && v2Putnik.cena! > 0) {
       return v2Putnik.cena!;
@@ -36,11 +36,11 @@ class CenaObracunService {
 
   /// Izračunaj mesečnu cenu za putnika na osnovu pokupljenja
   ///
-  /// [V2Putnik] - RegistrovaniPutnik objekat
+  /// [V2Putnik] - V2RegistrovaniPutnik objekat
   /// [mesec] - Mesec za koji se računa (1-12)
   /// Masovni obračun jedinica za listu putnika (optimizovano - jedan upit)
   static Future<Map<String, int>> prebrojJediniceMasovno({
-    required List<RegistrovaniPutnik> putnici,
+    required List<V2RegistrovaniPutnik> putnici,
     required int mesec,
     required int godina,
   }) async {

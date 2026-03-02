@@ -360,7 +360,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
 
       // 💰 Obračun dugovanja — iz sveZapisiGodina (nema dodatnih DB upita)
-      final putnikModel = RegistrovaniPutnik.fromMap(_putnikData);
+      final putnikModel = V2RegistrovaniPutnik.fromMap(_putnikData);
       final cenaPoVoznji = CenaObracunService.getCenaPoDanu(putnikModel);
 
       final sveVoznjeGodina = sveZapisiGodina.where((r) => r['tip'] == 'voznja').toList();

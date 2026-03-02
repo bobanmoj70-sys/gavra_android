@@ -38,7 +38,7 @@ class V2ProfilService {
   // ---------------------------------------------------------------------------
 
   /// Dohvata sve aktivne putnike iz date tabele
-  static List<RegistrovaniPutnik> getAktivne(String tabela) {
+  static List<V2RegistrovaniPutnik> getAktivne(String tabela) {
     return _cacheForTabela(tabela)
         .values
         .where((r) => r['status'] == 'aktivan')
@@ -48,13 +48,13 @@ class V2ProfilService {
   }
 
   /// Dohvata sve putnike iz date tabele (uključujući neaktivne)
-  static List<RegistrovaniPutnik> getSve(String tabela) {
+  static List<V2RegistrovaniPutnik> getSve(String tabela) {
     return _cacheForTabela(tabela).values.map((r) => _fromRow(r, tabela)).toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
   /// Dohvata putnika po ID-u iz date tabele
-  static RegistrovaniPutnik? getById(String id, String tabela) {
+  static V2RegistrovaniPutnik? getById(String id, String tabela) {
     final row = _cacheForTabela(tabela)[id];
     if (row == null) return null;
     return _fromRow(row, tabela);
@@ -66,7 +66,7 @@ class V2ProfilService {
   }
 
   /// Pronalazi putnika po PIN-u (za autentifikaciju)
-  static RegistrovaniPutnik? getByPin(String pin, String tabela) {
+  static V2RegistrovaniPutnik? getByPin(String pin, String tabela) {
     try {
       final row = _cacheForTabela(tabela).values.firstWhere(
             (r) => r['pin'] == pin && r['status'] == 'aktivan',
@@ -114,8 +114,8 @@ class V2ProfilService {
   // ---------------------------------------------------------------------------
 
   /// Stream aktivnih putnika iz date tabele (realtime, 0 DB upita)
-  static Stream<List<RegistrovaniPutnik>> streamAktivne(String tabela) {
-    final controller = StreamController<List<RegistrovaniPutnik>>.broadcast();
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne(String tabela) {
+    final controller = StreamController<List<V2RegistrovaniPutnik>>.broadcast();
 
     void emit() {
       if (!controller.isClosed) controller.add(getAktivne(tabela));
@@ -136,7 +136,7 @@ class V2ProfilService {
   // ---------------------------------------------------------------------------
 
   /// Kreira novog radnika (v2_radnici)
-  static Future<RegistrovaniPutnik?> createRadnik({
+  static Future<V2RegistrovaniPutnik?> createRadnik({
     required String ime,
     String? telefon,
     String? telefon2,
@@ -176,7 +176,7 @@ class V2ProfilService {
   }
 
   /// Kreira novog ucenika (v2_ucenici)
-  static Future<RegistrovaniPutnik?> createUcenik({
+  static Future<V2RegistrovaniPutnik?> createUcenik({
     required String ime,
     String? telefon,
     String? telefonOca,
@@ -218,7 +218,7 @@ class V2ProfilService {
   }
 
   /// Kreira novog dnevnog putnika (v2_dnevni)
-  static Future<RegistrovaniPutnik?> createDnevni({
+  static Future<V2RegistrovaniPutnik?> createDnevni({
     required String ime,
     String? telefon,
     String? telefon2,
@@ -252,7 +252,7 @@ class V2ProfilService {
   }
 
   /// Kreira novu posiljku (v2_posiljke)
-  static Future<RegistrovaniPutnik?> createPosiljka({
+  static Future<V2RegistrovaniPutnik?> createPosiljka({
     required String ime,
     String? telefon,
     String? adresaBcId,
@@ -287,8 +287,8 @@ class V2ProfilService {
   // HELPER
   // ---------------------------------------------------------------------------
 
-  static RegistrovaniPutnik _fromRow(Map<String, dynamic> r, String tabela) {
-    return RegistrovaniPutnik.fromMap({...r, '_tabela': tabela});
+  static V2RegistrovaniPutnik _fromRow(Map<String, dynamic> r, String tabela) {
+    return V2RegistrovaniPutnik.fromMap({...r, '_tabela': tabela});
   }
 
   // ---------------------------------------------------------------------------
@@ -296,7 +296,7 @@ class V2ProfilService {
   // ---------------------------------------------------------------------------
 
   /// Vraca sve aktivne putnike iz sva 4 cache-a kao modele (0 DB upita)
-  static List<RegistrovaniPutnik> getAllAktivniKaoModel() {
+  static List<V2RegistrovaniPutnik> getAllAktivniKaoModel() {
     return _rm
         .getAllPutnici()
         .where((r) => r['status'] == 'aktivan')
@@ -305,7 +305,7 @@ class V2ProfilService {
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  /// Trazi putnika po ID-u kroz sva 4 cache-a, vraca raw Map (za RegistrovaniPutnik.fromMap)
+  /// Trazi putnika po ID-u kroz sva 4 cache-a, vraca raw Map (za V2RegistrovaniPutnik.fromMap)
   static Future<Map<String, dynamic>?> findPutnikById(String id) async {
     final row = _rm.getPutnikById(id);
     if (row != null) return row;

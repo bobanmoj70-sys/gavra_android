@@ -1,7 +1,7 @@
 import '../services/v2_adresa_supabase_service.dart';
 
-class RegistrovaniPutnik {
-  RegistrovaniPutnik({
+class V2RegistrovaniPutnik {
+  V2RegistrovaniPutnik({
     required this.id,
     required this.ime,
     required this.v2Tabela,
@@ -52,10 +52,10 @@ class RegistrovaniPutnik {
   final String? adresa;
   final String? grad;
 
-  factory RegistrovaniPutnik.fromMap(Map<String, dynamic> map) {
+  factory V2RegistrovaniPutnik.fromMap(Map<String, dynamic> map) {
     final v2Tabela = map['_tabela'] as String;
     final bool dnevniIliPosiljka = v2Tabela == 'v2_dnevni' || v2Tabela == 'v2_posiljke';
-    return RegistrovaniPutnik(
+    return V2RegistrovaniPutnik(
       id: map['id'] as String,
       ime: map['ime'] as String,
       v2Tabela: v2Tabela,
@@ -111,7 +111,7 @@ class RegistrovaniPutnik {
     return result;
   }
 
-  RegistrovaniPutnik copyWith({
+  V2RegistrovaniPutnik copyWith({
     String? id,
     String? ime,
     String? v2Tabela,
@@ -132,7 +132,7 @@ class RegistrovaniPutnik {
     String? adresa,
     String? grad,
   }) {
-    return RegistrovaniPutnik(
+    return V2RegistrovaniPutnik(
       id: id ?? this.id,
       ime: ime ?? this.ime,
       v2Tabela: v2Tabela ?? this.v2Tabela,
@@ -156,10 +156,10 @@ class RegistrovaniPutnik {
   }
 
   @override
-  String toString() => 'RegistrovaniPutnik(id: $id, ime: $ime, v2Tabela: $v2Tabela, status: $status)';
+  String toString() => 'V2RegistrovaniPutnik(id: $id, ime: $ime, v2Tabela: $v2Tabela, status: $status)';
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is RegistrovaniPutnik && other.id == id);
+  bool operator ==(Object other) => identical(this, other) || (other is V2RegistrovaniPutnik && other.id == id);
 
   @override
   int get hashCode => id.hashCode;

@@ -43,19 +43,19 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
   final V2VozacService _vozacService = V2VozacService();
 
   // 🔄 Master realtime stream — inicijalizovan jednom u initState()
-  late final Stream<List<Vozac>> _streamVozaci;
+  late final Stream<List<V2Vozac>> _streamVozaci;
   StreamSubscription? _vozaciSub;
-  StreamController<List<Vozac>>? _vozaciCtrl;
+  StreamController<List<V2Vozac>>? _vozaciCtrl;
 
   @override
   void initState() {
     super.initState();
     final rm = V2MasterRealtimeManager.instance;
-    final ctrl = StreamController<List<Vozac>>.broadcast();
+    final ctrl = StreamController<List<V2Vozac>>.broadcast();
 
     void emit() {
       if (ctrl.isClosed) return;
-      final vozaci = rm.vozaciCache.values.map((row) => Vozac.fromMap(row)).toList()
+      final vozaci = rm.vozaciCache.values.map((row) => V2Vozac.fromMap(row)).toList()
         ..sort((a, b) => a.ime.compareTo(b.ime));
       ctrl.add(vozaci);
     }
@@ -81,7 +81,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
   Future<void> _addVozac() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final noviVozac = Vozac(
+    final noviVozac = V2Vozac(
       ime: _imeController.text.trim(),
       email: _emailController.text.trim().toLowerCase(),
       sifra: _sifraController.text,
@@ -92,7 +92,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
     try {
       await _vozacService.addVozac(noviVozac);
       if (!mounted) return;
-      AppSnackBar.info(context, 'Vozac dodan');
+      AppSnackBar.info(context, 'V2Vozac dodan');
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.error(context, 'Greska: $e');
@@ -107,12 +107,12 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
 
     if (mounted) {
       Navigator.pop(context);
-      AppSnackBar.success(context, 'Vozac ${noviVozac.ime} dodat!');
+      AppSnackBar.success(context, 'V2Vozac ${noviVozac.ime} dodat!');
     }
   }
 
   /// Obrisi vozaca
-  void _deleteVozac(Vozac vozac) {
+  void _deleteVozac(V2Vozac vozac) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -133,7 +133,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
   }
 
   /// Edituj vozaca
-  void _editVozac(Vozac vozac) {
+  void _editVozac(V2Vozac vozac) {
     // Popuni formu iz cache podataka — bez DB upita
     _imeController.text = vozac.ime;
     _emailController.text = vozac.email ?? '';
@@ -148,7 +148,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
         onSave: () async {
           if (!_formKey.currentState!.validate()) return;
 
-          final updatedVozac = Vozac(
+          final updatedVozac = V2Vozac(
             id: vozac.id,
             ime: _imeController.text.trim(),
             email: _emailController.text.trim().toLowerCase(),
@@ -161,7 +161,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
             await _vozacService.updateVozac(updatedVozac);
             if (!mounted) return;
             Navigator.pop(context);
-            AppSnackBar.info(context, 'Vozac azuriran');
+            AppSnackBar.info(context, 'V2Vozac azuriran');
           } catch (e) {
             if (!mounted) return;
             AppSnackBar.error(context, 'Greska: $e');
@@ -346,7 +346,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
             ],
           ),
         ),
-        body: StreamBuilder<List<Vozac>>(
+        body: StreamBuilder<List<V2Vozac>>(
           stream: _streamVozaci,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 /// Model za vozače
-class Vozac {
-  Vozac({
+class V2Vozac {
+  V2Vozac({
     String? id,
     required this.ime,
     this.brojTelefona,
@@ -13,8 +13,8 @@ class Vozac {
   })  : assert(ime.trim().isNotEmpty, 'Ime vozača ne može biti prazno'),
         id = id ?? const Uuid().v4();
 
-  factory Vozac.fromMap(Map<String, dynamic> map) {
-    return Vozac(
+  factory V2Vozac.fromMap(Map<String, dynamic> map) {
+    return V2Vozac(
       id: map['id']?.toString() ?? '',
       ime: map['ime']?.toString() ?? '',
       brojTelefona: map['telefon']?.toString(),
@@ -90,14 +90,14 @@ class Vozac {
   }
 
   /// Kreira kopiju vozača sa promenjenim vrednostima
-  Vozac copyWith({
+  V2Vozac copyWith({
     String? ime,
     String? brojTelefona,
     String? email,
     String? boja,
     String? sifra,
   }) {
-    return Vozac(
+    return V2Vozac(
       id: id,
       ime: ime ?? this.ime,
       brojTelefona: brojTelefona ?? this.brojTelefona,
@@ -108,11 +108,11 @@ class Vozac {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is Vozac && other.id == id);
+  bool operator ==(Object other) => identical(this, other) || (other is V2Vozac && other.id == id);
 
   @override
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'Vozac(id: $id, ime: $ime)';
+  String toString() => 'V2Vozac(id: $id, ime: $ime)';
 }

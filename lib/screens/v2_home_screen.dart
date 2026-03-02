@@ -919,7 +919,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final adresaController = TextEditingController();
     final telefonController = TextEditingController(); // ?? OPCIONO: Broj telefona
     final searchPutnikController = TextEditingController(); // ?? Za pretragu putnika
-    RegistrovaniPutnik? selectedPutnik; // ?? Izabrani V2Putnik iz liste
+    V2RegistrovaniPutnik? selectedPutnik; // ?? Izabrani V2Putnik iz liste
     int brojMesta = 1; // ?? Broj rezervisanih mesta (default 1)
     bool promeniAdresuSamoDanas = false; // ?? Opcija za promenu adrese samo za danas
     String? samoDanasAdresa; // ?? Adresa samo za danas
@@ -929,7 +929,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Povuci SVE registrovane putnike iz rm cache-a
     final lista = V2ProfilService.getAllAktivniKaoModel();
     // Filtrirana lista aktivnih putnika za brzu pretragu
-    final aktivniPutnici = lista.where((RegistrovaniPutnik v2Putnik) => v2Putnik.aktivan).toList()
+    final aktivniPutnici = lista.where((V2RegistrovaniPutnik v2Putnik) => v2Putnik.aktivan).toList()
       ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase()));
 
     // ?? Ucitaj adrese za selektovani grad
@@ -1136,10 +1136,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 const SizedBox(height: 16),
 
                                 // ?? DROPDOWN ZA IZBOR PUTNIKA IZ LISTE
-                                DropdownButtonFormField2<RegistrovaniPutnik>(
+                                DropdownButtonFormField2<V2RegistrovaniPutnik>(
                                   isExpanded: true,
                                   value: aktivniPutnici
-                                      .cast<RegistrovaniPutnik?>()
+                                      .cast<V2RegistrovaniPutnik?>()
                                       .firstWhere((p) => p?.id == selectedPutnik?.id, orElse: () => null),
                                   decoration: InputDecoration(
                                     labelText: 'Izaberi putnika',
@@ -1200,7 +1200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                   items: aktivniPutnici
                                       .map(
-                                        (RegistrovaniPutnik v2Putnik) => DropdownMenuItem<RegistrovaniPutnik>(
+                                        (V2RegistrovaniPutnik v2Putnik) => DropdownMenuItem<V2RegistrovaniPutnik>(
                                           value: v2Putnik,
                                           child: Row(
                                             children: [
@@ -1230,7 +1230,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                       )
                                       .toList(),
-                                  onChanged: (RegistrovaniPutnik? v2Putnik) async {
+                                  onChanged: (V2RegistrovaniPutnik? v2Putnik) async {
                                     setStateDialog(() {
                                       selectedPutnik = v2Putnik;
                                       telefonController.text = v2Putnik?.telefon ?? '';

@@ -19,7 +19,7 @@ import '../utils/v2_app_snack_bar.dart';
 /// - existingPutnik: null za dodavanje, postojeci objekat za editovanje
 /// - onSaved: callback koji se poziva posle uspešnog cuvanja
 class V2PutnikDialog extends StatefulWidget {
-  final RegistrovaniPutnik? existingPutnik; // null = dodavanje, !null = editovanje
+  final V2RegistrovaniPutnik? existingPutnik; // null = dodavanje, !null = editovanje
   final VoidCallback? onSaved;
 
   const V2PutnikDialog({
