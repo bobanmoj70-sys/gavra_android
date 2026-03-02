@@ -25,9 +25,9 @@ class SmartNavigationService {
   ///
   /// LOGIKA VOžNJE:
   /// - BC polazak (ujutru): Putnici su u BC, vozac ih pokuplja i vozi u VS
-  ///   -> endDestination = Vrsac (gde ih vozi)
+  /// -> endDestination = Vrsac (gde ih vozi)
   /// - VS polazak (popodne): Putnici su u VS, vozac ih pokuplja i vraca u BC
-  ///   -> endDestination = Bela Crkva (gde ih vraca)
+  /// -> endDestination = Bela Crkva (gde ih vraca)
   ///
   /// Dakle: endDestination je SUPROTNI grad od startCity
   static Position? _getEndDestination(String startCity) {

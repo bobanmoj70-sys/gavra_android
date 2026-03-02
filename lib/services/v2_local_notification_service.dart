@@ -453,7 +453,7 @@ class LocalNotificationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const HomeScreen(),
+            builder: (context) => const V2HomeScreen(),
           ),
         );
       }
@@ -488,7 +488,7 @@ class LocalNotificationService {
       if (context != null && context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const HomeScreen(),
+            builder: (context) => const V2HomeScreen(),
           ),
         );
       }

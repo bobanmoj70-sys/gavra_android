@@ -41,30 +41,30 @@ class V2PutnikList extends StatelessWidget {
   // Prati CardColorHelper prioritet boja:
   // Beli (moji→nedodeljeni) → Sivi (tuđi) → Plavi → Zeleni → Crveni → Žuti
   int _putnikSortKey(V2Putnik p, String currentDriver, {bool imaSivih = false}) {
-    // 🟡 ŽUTE - Odsustvo
+    // ŽUTE - Odsustvo
     if (p.jeOdsustvo) {
       return 7; // žute na dno liste
     }
 
-    // 🔴 CRVENE - Otkazane
+    // CRVENE - Otkazane
     if (p.jeOtkazan) {
       return 6; // crvene pre žutih
     }
 
     // Pokupljeni putnici (plavi/zeleni ostaju normalno)
     if (p.jePokupljen) {
-      // 🟢 ZELENE - Plaćeni ili mesečni
+      // ZELENE - Plaćeni ili mesečni
       // 🆕 FIX: Koristi `placeno` umesto iznosa
       final bool isPlaceno = p.placeno == true;
       final bool isMesecniTip = p.isMesecniTip;
       if (isPlaceno || isMesecniTip) {
         return 5; // zelene
       }
-      // 🔵 PLAVE - Pokupljeni neplaćeni (dnevni tip)
+      // PLAVE - Pokupljeni neplaćeni (dnevni tip)
       return 4;
     }
 
-    // 🔘 SIVI - Tuđi putnici (dodeljen DRUGOM vozaču)
+    // SIVI - Tuđi putnici (dodeljen DRUGOM vozaču)
     final bool isTudji = p.dodeljenVozac != null &&
         p.dodeljenVozac!.isNotEmpty &&
         p.dodeljenVozac != 'Nedodeljen' &&
@@ -73,7 +73,7 @@ class V2PutnikList extends StatelessWidget {
       return 3; // sivi - između belih i plavih
     }
 
-    // ⚪ BELI - Moji ili Nedodeljeni (na vrhu)
+    // BELI - Moji ili Nedodeljeni (na vrhu)
     if (imaSivih) {
       final bool isMoj = p.dodeljenVozac == currentDriver;
       if (isMoj) {

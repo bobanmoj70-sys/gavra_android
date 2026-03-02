@@ -12,18 +12,18 @@ import '../utils/v2_vozac_cache.dart';
 import 'v2_home_screen.dart';
 import 'v2_vozac_screen.dart';
 
-/// 🔐 VOZAČ LOGIN SCREEN
+/// VOZAČ LOGIN SCREEN
 /// Lokalni login - proverava email/telefon/šifru iz SharedPreferences
-class VozacLoginScreen extends StatefulWidget {
+class V2VozacLoginScreen extends StatefulWidget {
   final String vozacIme;
 
-  const VozacLoginScreen({super.key, required this.vozacIme});
+  const V2VozacLoginScreen({super.key, required this.vozacIme});
 
   @override
-  State<VozacLoginScreen> createState() => _VozacLoginScreenState();
+  State<V2VozacLoginScreen> createState() => _VozacLoginScreenState();
 }
 
-class _VozacLoginScreenState extends State<VozacLoginScreen> {
+class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _telefonController = TextEditingController();
@@ -32,7 +32,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
   bool _isLoading = false;
   bool _sifraVisible = false;
 
-  // 👆 Biometrija
+  // Biometrija
   bool _biometricAvailable = false;
   bool _hasSavedCredentials = false;
   String _biometricIcon = '👆';
@@ -43,7 +43,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
     _checkBiometric();
   }
 
-  /// 👆 Proveri biometriju i sačuvane kredencijale
+  /// Proveri biometriju i sačuvane kredencijale
   Future<void> _checkBiometric() async {
     final available = await BiometricService.isBiometricAvailable();
     final hasCreds = await _hasBiometricCredentials();
@@ -71,7 +71,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
     return savedVozac != null;
   }
 
-  /// 👆 Login sa biometrijom
+  /// Login sa biometrijom
   Future<void> _loginWithBiometric() async {
     final prefs = await SharedPreferences.getInstance();
     final savedData = prefs.getString('biometric_vozac_${widget.vozacIme}');
@@ -107,7 +107,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
     await _login(saveBiometric: false);
   }
 
-  /// 👆 Sačuvaj kredencijale za biometriju
+  /// Sačuvaj kredencijale za biometriju
   Future<void> _saveBiometricCredentials() async {
     if (!_biometricAvailable) return;
 
@@ -131,7 +131,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
   /// Učitaj vozače iz rm cache-a, sa fallback na SharedPreferences
   Future<List<Map<String, dynamic>>> _loadVozaci() async {
     try {
-      // ✅ Čita direktno iz rm cache-a — sync, bez timeout-a
+      // Čita direktno iz rm cache-a — sync, bez timeout-a
       final vozacService = V2VozacService();
       final vozaciFromDB = vozacService.getAllVozaci();
 
@@ -168,7 +168,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
       // Nastavi sa SharedPreferences fallback-om
     }
 
-    // 📱 FALLBACK: Ako Supabase fails, koristi SharedPreferences
+    // FALLBACK: Ako Supabase fails, koristi SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     final vozaciJson = prefs.getString('auth_vozaci');
     if (vozaciJson != null) {
@@ -224,13 +224,13 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
         return;
       }
 
-      // ✅ SVE OK - LOGIN USPEŠAN
+      // SVE OK - LOGIN USPEŠAN
       await AuthManager.setCurrentDriver(widget.vozacIme);
 
       // Zapamti uređaj
       await AuthManager.rememberDevice(email, widget.vozacIme);
 
-      // 👆 Sačuvaj za biometriju
+      // Sačuvaj za biometriju
       if (saveBiometric && _biometricAvailable) {
         await _saveBiometricCredentials();
       }
@@ -252,14 +252,14 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
   }
 
   static Widget _getScreenForDriver(String driverName) {
-    // Vozači koji koriste VozacScreen umesto HomeScreen
+    // Vozači koji koriste V2VozacScreen umesto V2HomeScreen
     if (V2VozacCache.prefersVozacScreen(driverName)) {
-      return const VozacScreen();
+      return const V2VozacScreen();
     }
-    return const HomeScreen();
+    return const V2HomeScreen();
   }
 
-  /// 📱 Normalizuje broj telefona za poređenje
+  /// Normalizuje broj telefona za poređenje
   /// Uklanja razmake, crtice, zagrade i prefikse (+381, 00381)
   String _normalizePhone(String telefon) {
     var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
@@ -425,7 +425,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
                         ),
                 ),
 
-                // 👆 Biometrija dugme
+                // Biometrija dugme
                 if (_biometricAvailable && _hasSavedCredentials) ...[
                   const SizedBox(height: 16),
                   OutlinedButton.icon(

@@ -58,7 +58,7 @@ class RealtimeNotificationService {
       } else {
         // ?? UKLONJENO: Fallback na lokalnu notifikaciju (korisnik želi iskljucivo Supabase/Push)
         // await LocalNotificationService.showRealtimeNotification(
-        //    title: title, body: body, payload: jsonEncode(data ?? {}));
+        // title: title, body: body, payload: jsonEncode(data ?? {}));
         return false;
       }
     } catch (e) {

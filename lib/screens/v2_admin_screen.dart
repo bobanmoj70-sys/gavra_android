@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart'; // ?? RASPORED VREMENA
@@ -31,14 +30,14 @@ import 'v2_vozac_raspored_screen.dart'; // ??? Raspored vozaca
 import 'v2_vozac_screen.dart';
 import 'v2_vozaci_admin_screen.dart'; // Admin panel za upravljanje vozacima
 
-class AdminScreen extends StatefulWidget {
-  const AdminScreen({super.key});
+class V2AdminScreen extends StatefulWidget {
+  const V2AdminScreen({super.key});
 
   @override
-  State<AdminScreen> createState() => _AdminScreenState();
+  State<V2AdminScreen> createState() => _AdminScreenState();
 }
 
-class _AdminScreenState extends State<AdminScreen> {
+class _AdminScreenState extends State<V2AdminScreen> {
   static const List<String> _dayNamesInternal = [
     'Ponedeljak',
     'Utorak',
@@ -146,7 +145,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute<void>(
-                          builder: (context) => VozacScreen(previewAsDriver: vozac.ime),
+                          builder: (context) => V2VozacScreen(previewAsDriver: vozac.ime),
                         ),
                       );
                     },
@@ -164,7 +163,7 @@ class _AdminScreenState extends State<AdminScreen> {
         },
       );
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ Error loading drivers: $e');
+      debugPrint('❌ Error loading drivers: $e');
       if (!mounted) return;
       AppSnackBar.error(context, '❌ Greška pri ucitavanju vozaca');
     }
@@ -354,7 +353,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (context) => const FinansijeScreen(),
+                        builder: (context) => const V2FinansijeScreen(),
                       ),
                     );
                   },
@@ -370,7 +369,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (context) => const OdrzavanjeScreen(),
+                        builder: (context) => const V2OdrzavanjeScreen(),
                       ),
                     );
                   },
@@ -497,7 +496,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute<void>(
-                                      builder: (context) => const AdreseScreen(),
+                                      builder: (context) => const V2AdreseScreen(),
                                     ),
                                   ),
                                   borderRadius: BorderRadius.circular(12),
@@ -605,7 +604,7 @@ class _AdminScreenState extends State<AdminScreen> {
                               Expanded(
                                 child: InkWell(
                                   onTap: () => Navigator.push(context,
-                                      MaterialPageRoute<void>(builder: (context) => const VozaciAdminScreen())),
+                                      MaterialPageRoute<void>(builder: (context) => const V2VozaciAdminScreen())),
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     height: 28,
@@ -629,7 +628,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                 child: InkWell(
                                   onTap: () async {
                                     await Navigator.push(context,
-                                        MaterialPageRoute<void>(builder: (context) => const PinZahteviScreen()));
+                                        MaterialPageRoute<void>(builder: (context) => const V2PinZahteviScreen()));
                                     // Stream automatski osvjezava _brojPinZahteva
                                   },
                                   borderRadius: BorderRadius.circular(12),
@@ -710,7 +709,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute<void>(
-                                      builder: (context) => const VozacRasporedScreen(),
+                                      builder: (context) => const V2VozacRasporedScreen(),
                                     ),
                                   ),
                                   borderRadius: BorderRadius.circular(12),
@@ -770,7 +769,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute<void>(
-                                      builder: (context) => const GorivoScreen(),
+                                      builder: (context) => const V2GorivoScreen(),
                                     ),
                                   ),
                                   borderRadius: BorderRadius.circular(12),
@@ -830,8 +829,8 @@ class _AdminScreenState extends State<AdminScreen> {
                               // MESTA
                               Expanded(
                                 child: InkWell(
-                                  onTap: () => Navigator.push(
-                                      context, MaterialPageRoute<void>(builder: (context) => const KapacitetScreen())),
+                                  onTap: () => Navigator.push(context,
+                                      MaterialPageRoute<void>(builder: (context) => const V2KapacitetScreen())),
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     height: 28,
@@ -945,7 +944,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        //  Info box za individualnog vozaca
+                        // Info box za individualnog vozaca
                         if (!isAdmin)
                           Container(
                             width: double.infinity,
@@ -1056,7 +1055,7 @@ class _AdminScreenState extends State<AdminScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute<void>(
-                                builder: (context) => DugoviScreen(
+                                builder: (context) => V2DugoviScreen(
                                   // duznici: filteredDuznici,
                                   currentDriver: _currentDriver!,
                                 ),

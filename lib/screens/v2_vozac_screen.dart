@@ -39,18 +39,18 @@ import 'v2_welcome_screen.dart';
 
 /// ?? VOZAC SCREEN
 /// Prikazuje putnike koristeci isti PutnikService stream kao DanasScreen
-class VozacScreen extends StatefulWidget {
+class V2VozacScreen extends StatefulWidget {
   /// Opcioni parametar - ako je null, koristi trenutnog ulogovanog vozaca
   /// Ako je prosleden, prikazuje ekran kao da je taj vozac ulogovan (admin preview)
   final String? previewAsDriver;
 
-  const VozacScreen({super.key, this.previewAsDriver});
+  const V2VozacScreen({super.key, this.previewAsDriver});
 
   @override
-  State<VozacScreen> createState() => _VozacScreenState();
+  State<V2VozacScreen> createState() => _VozacScreenState();
 }
 
-class _VozacScreenState extends State<VozacScreen> {
+class _VozacScreenState extends State<V2VozacScreen> {
   final V2PutnikStreamService _putnikService = V2PutnikStreamService();
 
   StreamSubscription<Position>? _driverPositionSubscription;
@@ -187,7 +187,7 @@ class _VozacScreenState extends State<VozacScreen> {
     }
   }
 
-  /// 🔄 Realtime: prati vozac_raspored i vozac_putnik i osvježava lokalne cache-ove
+  /// Realtime: prati vozac_raspored i vozac_putnik i osvježava lokalne cache-ove
   void _subscribeRealtime() {
     _rasporedRealtimeSub?.cancel();
     _vozacPutnikRealtimeSub?.cancel();
@@ -348,7 +348,7 @@ class _VozacScreenState extends State<VozacScreen> {
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+        MaterialPageRoute(builder: (context) => const V2WelcomeScreen()),
         (route) => false,
       );
     }
@@ -1316,7 +1316,7 @@ class _VozacScreenState extends State<VozacScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute<void>(
-                    builder: (context) => DugoviScreen(currentDriver: _currentDriver!),
+                    builder: (context) => V2DugoviScreen(currentDriver: _currentDriver!),
                   ),
                 );
               },

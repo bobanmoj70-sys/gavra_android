@@ -102,8 +102,8 @@ class V2VozacRasporedService {
   /// Filtrira putnike po per-termin rasporedu.
   ///
   /// Logika:
-  ///   - Ako nema unosa za termin → V2Putnik je vidljiv svima
-  ///   - Ako postoji unos → prikaži samo vozaču koji je dodeljen tom terminu
+  /// - Ako nema unosa za termin → V2Putnik je vidljiv svima
+  /// - Ako postoji unos → prikaži samo vozaču koji je dodeljen tom terminu
   ///
   /// [vozacId] = UUID vozača
   static List<T> filterPutniciZaVozaca<T>({

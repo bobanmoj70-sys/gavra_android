@@ -6,20 +6,20 @@ import '../services/v2_adresa_supabase_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// 📍 ADRESE SCREEN - Upravljanje dozvoljenim adresama
+/// ADRESE SCREEN - Upravljanje dozvoljenim adresama
 /// Omogućava dodavanje, uređivanje i brisanje adresa direktno iz aplikacije
-class AdreseScreen extends StatefulWidget {
-  const AdreseScreen({super.key});
+class V2AdreseScreen extends StatefulWidget {
+  const V2AdreseScreen({super.key});
 
   @override
-  State<AdreseScreen> createState() => _AdreseScreenState();
+  State<V2AdreseScreen> createState() => _AdreseScreenState();
 }
 
-class _AdreseScreenState extends State<AdreseScreen> {
+class _AdreseScreenState extends State<V2AdreseScreen> {
   String _filterGrad = 'Svi';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  late final Stream<List<Adresa>> _streamAdrese;
+  late final Stream<List<V2Adresa>> _streamAdrese;
 
   @override
   void initState() {
@@ -33,7 +33,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
     super.dispose();
   }
 
-  List<Adresa> _getFilteredAdrese(List<Adresa> adrese) {
+  List<V2Adresa> _getFilteredAdrese(List<V2Adresa> adrese) {
     return adrese.where((adresa) {
       final naziv = (adresa.naziv).toLowerCase();
       final grad = adresa.grad ?? '';
@@ -69,7 +69,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
         await supabase.from('v2_adrese').insert(insertData);
 
         if (mounted) {
-          AppSnackBar.success(context, '✅ Adresa dodana');
+          AppSnackBar.success(context, '✅ V2Adresa dodana');
         }
       } catch (e) {
         if (mounted) {
@@ -79,7 +79,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
     }
   }
 
-  Future<void> _editAdresa(Adresa adresa) async {
+  Future<void> _editAdresa(V2Adresa adresa) async {
     final result = await showDialog<Map<String, dynamic>>(
       // Changed to Map<String, dynamic> to include doubles
       context: context,
@@ -109,7 +109,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
         await supabase.from('v2_adrese').update(updateData).eq('id', adresa.id);
 
         if (mounted) {
-          AppSnackBar.success(context, '✅ Adresa ažurirana');
+          AppSnackBar.success(context, '✅ V2Adresa ažurirana');
         }
       } catch (e) {
         if (mounted) {
@@ -119,7 +119,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
     }
   }
 
-  Future<void> _deleteAdresa(Adresa adresa) async {
+  Future<void> _deleteAdresa(V2Adresa adresa) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -144,12 +144,12 @@ class _AdreseScreenState extends State<AdreseScreen> {
     try {
       await supabase.from('v2_adrese').delete().eq('id', adresa.id);
       if (mounted) {
-        AppSnackBar.warning(context, '🗑️ Adresa obrisana');
+        AppSnackBar.warning(context, '🗑️ V2Adresa obrisana');
       }
     } catch (e) {
       if (mounted) {
         final msg = e.toString().contains('23503') || e.toString().toLowerCase().contains('foreign key')
-            ? '❌ Adresa se koristi i ne može se obrisati'
+            ? '❌ V2Adresa se koristi i ne može se obrisati'
             : '❌ Greška: $e';
         AppSnackBar.error(context, msg);
       }
@@ -158,7 +158,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Adresa>>(
+    return StreamBuilder<List<V2Adresa>>(
       stream: _streamAdrese,
       builder: (context, snapshot) {
         final adrese = snapshot.data ?? [];
@@ -277,7 +277,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
               ),
             ),
           ),
-          // 📱 ANDROID 15 EDGE-TO-EDGE: Padding za gesture navigation bar
+          // ANDROID 15 EDGE-TO-EDGE: Padding za gesture navigation bar
           floatingActionButton: Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
             child: FloatingActionButton.extended(
@@ -333,7 +333,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
     );
   }
 
-  Widget _buildAdresaCard(Adresa adresa) {
+  Widget _buildAdresaCard(V2Adresa adresa) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(

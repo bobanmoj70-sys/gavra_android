@@ -78,7 +78,7 @@ class V2AppSettingsService {
         updateInfoNotifier.value = null;
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('[AppSettings] Version check failed: $e');
+      debugPrint('[AppSettings] Version check failed: $e');
     }
   }
 

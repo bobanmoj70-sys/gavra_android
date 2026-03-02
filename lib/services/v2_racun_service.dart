@@ -141,7 +141,7 @@ class V2RacunService {
     }
   }
 
-  /// 🧾 Štampa račune za firme (B2B) - kraj meseca
+  /// Štampa račune za firme (B2B) - kraj meseca
   static Future<void> stampajRacuneZaFirme({
     required List<Map<String, dynamic>> racuniPodaci,
     required BuildContext context,

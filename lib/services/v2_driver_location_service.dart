@@ -92,7 +92,7 @@ class V2DriverLocationService {
     // ORS ETA se racuna odvojeno svake 60s.
     _etaTimer = Timer.periodic(_etaUpdateInterval, (_) => _refreshEta());
 
-    // 🛰️ Prikaži persistent notifikaciju — drži app živ dok vozač prikuplja putnike
+    // Prikaži persistent notifikaciju — drži app živ dok vozač prikuplja putnike
     await _showGpsNotif(
       grad: grad,
       vreme: vremePolaska ?? '',
@@ -199,7 +199,7 @@ class V2DriverLocationService {
     return await PermissionService.ensureGpsForNavigation();
   }
 
-  /// 🛰️ Prikaži ongoing notifikaciju u status baru
+  /// Prikaži ongoing notifikaciju u status baru
   Future<void> _showGpsNotif({
     required String grad,
     required String vreme,
@@ -237,7 +237,7 @@ class V2DriverLocationService {
     );
   }
 
-  /// 🛑 Ukloni ongoing notifikaciju
+  /// Ukloni ongoing notifikaciju
   Future<void> _cancelGpsNotif() async {
     await _notifPlugin.cancel(_gpsNotifId);
   }

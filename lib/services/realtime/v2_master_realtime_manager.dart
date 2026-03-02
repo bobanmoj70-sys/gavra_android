@@ -12,29 +12,29 @@ import '../../utils/v2_vozac_cache.dart';
 /// V2MasterRealtimeManager — čist, novi singleton za v2_ tabele
 ///
 /// PRAVILA:
-///   1. Samo v2_ tabele — nikad stare (registrovani_putnici, voznje_log, itd.)
-///   2. Cache ime = tačno ime tabele bez prefiksa: polasci, putnici, vozaci...
-///   3. subscribe/unsubscribe ostaje isti pattern kao RealtimeManager
-///   4. Inicijalizuje se JEDNOM iz main.dart — ne iz servisa
+/// 1. Samo v2_ tabele — nikad stare (registrovani_putnici, voznje_log, itd.)
+/// 2. Cache ime = tačno ime tabele bez prefiksa: polasci, putnici, vozaci...
+/// 3. subscribe/unsubscribe ostaje isti pattern kao RealtimeManager
+/// 4. Inicijalizuje se JEDNOM iz main.dart — ne iz servisa
 ///
 /// CACHE MAPA:
-///   polasciCache     ← v2_polasci          (dnevni, filter po danas)
-///   statistikaCache  ← v2_statistika_istorija (dnevni, filter po danas)
-///   radniciCache     ← v2_radnici           (statički, svi aktivni)
-///   uceniciCache     ← v2_ucenici           (statički, svi aktivni)
-///   dnevniCache      ← v2_dnevni            (statički, svi aktivni)
-///   posiljkeCache    ← v2_posiljke          (statički, sve aktivne)
-///   vozaciCache      ← v2_vozaci            (statički)
-///   vozilaCache      ← v2_vozila            (statički)
-///   kapacitetCache   ← v2_kapacitet_polazaka (statički, aktivni)
-///   adreseCache      ← v2_adrese            (statički)
-///   rasporedCache    ← v2_vozac_raspored    (statički)
-///   vozacPutnikCache ← v2_vozac_putnik      (statički)
-///   lokacijeCache    ← v2_vozac_lokacije    (statički, aktivne)
-///   troskoviCache    ← v2_finansije_troskovi (statički, aktivni)
-///   pumpaCache       ← v2_pumpa_config      (statički)
-///   pinCache         ← v2_pin_zahtevi       (statički)
-///   settingsCache    ← v2_app_settings      (statički)
+/// polasciCache     ← v2_polasci          (dnevni, filter po danas)
+/// statistikaCache  ← v2_statistika_istorija (dnevni, filter po danas)
+/// radniciCache     ← v2_radnici           (statički, svi aktivni)
+/// uceniciCache     ← v2_ucenici           (statički, svi aktivni)
+/// dnevniCache      ← v2_dnevni            (statički, svi aktivni)
+/// posiljkeCache    ← v2_posiljke          (statički, sve aktivne)
+/// vozaciCache      ← v2_vozaci            (statički)
+/// vozilaCache      ← v2_vozila            (statički)
+/// kapacitetCache   ← v2_kapacitet_polazaka (statički, aktivni)
+/// adreseCache      ← v2_adrese            (statički)
+/// rasporedCache    ← v2_vozac_raspored    (statički)
+/// vozacPutnikCache ← v2_vozac_putnik      (statički)
+/// lokacijeCache    ← v2_vozac_lokacije    (statički, aktivne)
+/// troskoviCache    ← v2_finansije_troskovi (statički, aktivni)
+/// pumpaCache       ← v2_pumpa_config      (statički)
+/// pinCache         ← v2_pin_zahtevi       (statički)
+/// settingsCache    ← v2_app_settings      (statički)
 /// ════════════════════════════════════════════════════════════════════════════
 class V2MasterRealtimeManager {
   V2MasterRealtimeManager._internal();
@@ -45,7 +45,7 @@ class V2MasterRealtimeManager {
   SupabaseClient get _db => supabase;
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 🗄️  IN-MEMORY CACHE — ključ je uvek 'id' reda
+  // IN-MEMORY CACHE — ključ je uvek 'id' reda
   // ──────────────────────────────────────────────────────────────────────────
 
   // --- Dnevni (čisti se na novi dan) ---
@@ -103,7 +103,7 @@ class V2MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> settingsCache = {};
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 📅  State
+  // State
   // ──────────────────────────────────────────────────────────────────────────
 
   String? _loadedDate;
@@ -113,7 +113,7 @@ class V2MasterRealtimeManager {
   bool get isInitialized => _initialized;
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 🚀  INICIJALIZACIJA — poziva se jednom iz main.dart
+  // INICIJALIZACIJA — poziva se jednom iz main.dart
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
@@ -162,7 +162,7 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 📥  LOAD metode — jedna po grupi tabela
+  // LOAD metode — jedna po grupi tabela
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<void> _loadPolasciCache() async {
@@ -333,7 +333,7 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 🔧  CACHE UPDATE — poziva se iz realtime callback-a
+  // CACHE UPDATE — poziva se iz realtime callback-a
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Ažurira odgovarajući cache na INSERT/UPDATE event
@@ -381,7 +381,7 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 📡  CHANNEL MANAGEMENT — subscribe / unsubscribe
+  // CHANNEL MANAGEMENT — subscribe / unsubscribe
   // ──────────────────────────────────────────────────────────────────────────
 
   final Map<String, RealtimeChannel> _channels = {};
@@ -519,7 +519,7 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 🔍  LOOKUP HELPERS — česte operacije iz servisa/screena
+  // LOOKUP HELPERS — česte operacije iz servisa/screena
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Vraća ime putnika iz odgovarajućeg cache-a po putnik_tabela + putnik_id
@@ -554,7 +554,7 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 🛠️  PRIVATE HELPERS
+  // PRIVATE HELPERS
   // ──────────────────────────────────────────────────────────────────────────
 
   static String _today() => DateTime.now().toIso8601String().split('T')[0];
@@ -582,7 +582,7 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // ✍️  WRITE OPERACIJE — jedino mesto za direktne upite ka bazi
+  // WRITE OPERACIJE — jedino mesto za direktne upite ka bazi
   // ──────────────────────────────────────────────────────────────────────────
 
   static const List<String> putnikTabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
@@ -768,7 +768,7 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 🗑️  DISPOSE
+  // DISPOSE
   // ──────────────────────────────────────────────────────────────────────────
 
   void dispose() {

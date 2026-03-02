@@ -6,16 +6,16 @@ import '../theme.dart';
 import '../utils/v2_putnik_helpers.dart';
 import '../widgets/v2_putnik_list.dart';
 
-class DugoviScreen extends StatefulWidget {
-  const DugoviScreen({super.key, required this.currentDriver});
+class V2DugoviScreen extends StatefulWidget {
+  const V2DugoviScreen({super.key, required this.currentDriver});
   final String currentDriver;
 
   @override
-  State<DugoviScreen> createState() => _DugoviScreenState();
+  State<V2DugoviScreen> createState() => _DugoviScreenState();
 }
 
-class _DugoviScreenState extends State<DugoviScreen> {
-  // 🔍 SEARCH & FILTERING (bez RxDart)
+class _DugoviScreenState extends State<V2DugoviScreen> {
+  // SEARCH & FILTERING (bez RxDart)
   final TextEditingController _searchController = TextEditingController();
   final _putnikService = V2PutnikStreamService();
 
@@ -35,19 +35,19 @@ class _DugoviScreenState extends State<DugoviScreen> {
 
   @override
   void dispose() {
-    // 🧹 SEARCH CLEANUP
+    // SEARCH CLEANUP
     _searchController.dispose();
     super.dispose();
   }
 
-  // 🔍 SEARCH SETUP (bez RxDart - jednostavan setState)
+  // SEARCH SETUP (bez RxDart - jednostavan setState)
   void _setupDebouncedSearch() {
     _searchController.addListener(() {
       if (mounted) setState(() {});
     });
   }
 
-  // 📊 SORT DUGOVE
+  // SORT DUGOVE
   void _sortDugovi(List<V2Putnik> dugovi) {
     switch (_sortBy) {
       case 'iznos':
@@ -79,9 +79,9 @@ class _DugoviScreenState extends State<DugoviScreen> {
     }
   }
 
-  // 💰 CALCULATE DUG AMOUNT HELPER
+  // CALCULATE DUG AMOUNT HELPER
   static double _calculateDugAmount(V2Putnik putnik) {
-    // ✅ FIX: Koristi efektivnu cenu iz modela pomnoženu sa brojem mesta
+    // FIX: Koristi efektivnu cenu iz modela pomnoženu sa brojem mesta
     // Umesto hardkodovanih 500.0
     return putnik.effectivePrice * (putnik.brojMesta > 0 ? putnik.brojMesta : 1);
   }
@@ -127,19 +127,19 @@ class _DugoviScreenState extends State<DugoviScreen> {
         final putnici = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting && putnici.isEmpty;
 
-        // ✅ Filter dužnike - putnici sa PLAVOM KARTICOM (nisu mesečni tip) koji nisu platili
+        // Filter dužnike - putnici sa PLAVOM KARTICOM (nisu mesečni tip) koji nisu platili
         final duzniciRaw = putnici
             .where(
               (p) =>
-                  (!p.isMesecniTip) && // ✅ FIX: Plava kartica = nije mesečni tip
-                  (p.placeno != true) && // ✅ FIX: Koristi placeno flag iz voznje_log
+                  (!p.isMesecniTip) && // FIX: Plava kartica = nije mesečni tip
+                  (p.placeno != true) && // FIX: Koristi placeno flag iz voznje_log
                   (p.jePokupljen) &&
                   (p.status == null || (p.status != 'Otkazano' && p.status != 'otkazan')),
-              // 🎯 IZMENA: Uklonjen filter po vozaču da bi se prikazali SVI dužnici (zahtev 26.01.2026)
+              // IZMENA: Uklonjen filter po vozaču da bi se prikazali SVI dužnici (zahtev 26.01.2026)
             )
             .toList();
 
-        // ✅ DEDUPLIKACIJA: Jedan V2Putnik može imati više termina, ali je jedan dužnik
+        // DEDUPLIKACIJA: Jedan V2Putnik može imati više termina, ali je jedan dužnik
         final seenIds = <dynamic>{};
         final duzniciDeduplicated = duzniciRaw.where((p) {
           final key = p.id ?? '${p.ime}_${p.dan}';

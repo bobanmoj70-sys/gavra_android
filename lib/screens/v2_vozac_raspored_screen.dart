@@ -20,17 +20,17 @@ import '../widgets/v2_bottom_nav_bar_letnji.dart';
 import '../widgets/v2_bottom_nav_bar_praznici.dart';
 import '../widgets/v2_bottom_nav_bar_zimski.dart';
 
-/// 🗓️ Ekran za upravljanje rasporedom vozača
+/// Ekran za upravljanje rasporedom vozača
 /// Admin može dodijeliti vozača po terminu (vozac_raspored) i po putniku (vozac_putnik).
 /// Realtime: automatski osvježava kada se promijeni raspored ili individualna dodjela putnika.
-class VozacRasporedScreen extends StatefulWidget {
-  const VozacRasporedScreen({super.key});
+class V2VozacRasporedScreen extends StatefulWidget {
+  const V2VozacRasporedScreen({super.key});
 
   @override
-  State<VozacRasporedScreen> createState() => _VozacRasporedScreenState();
+  State<V2VozacRasporedScreen> createState() => _VozacRasporedScreenState();
 }
 
-class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
+class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   // Write-only servisi (DB mutacije)
   final _rasporedService = V2VozacRasporedService();
   final _vozacPutnikService = V2VozacPutnikService();
@@ -115,7 +115,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
     super.dispose();
   }
 
-  /// 🔴 Realtime: prati vozac_raspored i vozac_putnik tabele
+  /// Realtime: prati vozac_raspored i vozac_putnik tabele
   void _subscribeRealtime() {
     final rm = V2MasterRealtimeManager.instance;
     _rasporedSub = rm.subscribe('v2_vozac_raspored').listen((_) {
@@ -164,20 +164,20 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
       });
   }
 
-  /// 🔍 Helper: vraca VozacRasporedEntry za termin ili null (izbjegava dupliciranu logiku)
+  /// Helper: vraca VozacRasporedEntry za termin ili null (izbjegava dupliciranu logiku)
   VozacRasporedEntry? _getRasporedEntry(String grad, String vreme) {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
     return _rasporedCache.where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme).firstOrNull;
   }
 
-  /// 🎨 Vraća boju vozača dodijeljenog terminu (grad+vreme) za selektovani dan
+  /// Vraća boju vozača dodijeljenog terminu (grad+vreme) za selektovani dan
   Color? _getVozacColorForTermin(String grad, String vreme) {
     final entry = _getRasporedEntry(grad, vreme);
     if (entry == null) return null;
     return V2VozacCache.getColor(entry.vozacId);
   }
 
-  /// 🚗 Naziv vozača dodijeljenog terminu
+  /// Naziv vozača dodijeljenog terminu
   String? _getVozacZaTermin(String grad, String vreme) {
     final entry = _getRasporedEntry(grad, vreme);
     if (entry == null) return null;
@@ -188,7 +188,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   // DIALOZI ZA DODJELU
   // ═══════════════════════════════════════════════════════════════
 
-  /// 🗓️ Dialog: Dodijeli vozača terminu (vozac_raspored)
+  /// Dialog: Dodijeli vozača terminu (vozac_raspored)
   Future<void> _showTerminAssignDialog(String grad, String vreme) async {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
     final trenutni = _getVozacZaTermin(grad, vreme);
@@ -327,7 +327,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   // BAZA OPERACIJE
   // ═══════════════════════════════════════════════════════════════
 
-  /// 👤 Dialog: Dodijeli vozača pojedinačnom putniku (vozac_putnik individualna dodjela)
+  /// Dialog: Dodijeli vozača pojedinačnom putniku (vozac_putnik individualna dodjela)
   /// Samo dostupno kada termin NEMA vozača u vozac_raspored.
   Future<void> _showPutnikAssignDialog(V2Putnik putnik) async {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
@@ -553,7 +553,8 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
         int getPutnikCount(String grad, String vreme) {
           try {
             return countHelper.getCount(grad, vreme);
-          } catch (_) {
+          } catch (e) {
+            debugPrint('[V2VozacRasporedScreen] getPutnikCount error: $e');
             return 0;
           }
         }
@@ -592,7 +593,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // 🗓️ DAY CHIPS
+                  // DAY CHIPS
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -635,7 +636,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
                     ),
                   ),
 
-                  // 🗓️ TERMIN INFO TRAKA: koji vozač je dodeljen selektovanom terminu
+                  // TERMIN INFO TRAKA: koji vozač je dodeljen selektovanom terminu
                   if (_selectedVreme.isNotEmpty) _buildTerminInfoRow(targetDay),
 
                   // Lista putnika
@@ -698,7 +699,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
     );
   }
 
-  /// 🟡 Traka ispod day chips-a: vozač za selektovani termin + tap za izmjenu
+  /// Traka ispod day chips-a: vozač za selektovani termin + tap za izmjenu
   Widget _buildTerminInfoRow(String dan) {
     final vozac = _getVozacZaTermin(_selectedGrad, _selectedVreme);
     final color = vozac != null ? V2VozacCache.getColor(vozac) : Colors.white24;
@@ -791,8 +792,8 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 /// Prikazuje jednog putnika u raspored ekranu.
 ///
 /// [terminJeDodeljen] — true ako termin ima vozača u vozac_raspored.
-///   - true  → tap je onemogućen, prikazuje se lock ikona
-///   - false → tap otvara dialog za individualnu dodjelu (vozac_putnik)
+/// - true  → tap je onemogućen, prikazuje se lock ikona
+/// - false → tap otvara dialog za individualnu dodjelu (vozac_putnik)
 ///
 /// [vozacPutnikIme] — ime vozača iz individualne dodjele (ako postoji)
 /// [onTap] — callback za tap (null ako je termin dodeljen)

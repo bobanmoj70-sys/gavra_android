@@ -17,7 +17,7 @@ import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_pin_dialog.dart';
 import '../widgets/v2_putnik_dialog.dart';
 
-// 🔌 HELPER EXTENSION za Set poredenje
+// HELPER EXTENSION za Set poredenje
 extension SetExtensions<T> on Set<T> {
   bool isEqualTo(Set<T> other) {
     if (length != other.length) return false;
@@ -39,23 +39,23 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   // V2 servis - koristi V2MasterRealtimeManager za write ops, V2PutnikStatistikaService za placanja
   final _rm = V2MasterRealtimeManager.instance;
 
-  // 🔄 Master realtime stream — inicijalizovan jednom u initState()
+  // Master realtime stream — inicijalizovan jednom u initState()
   late final Stream<List<V2RegistrovaniPutnik>> _streamPutnici;
 
   // Mapa placenih meseci po putniku
   Map<String, Set<String>> _placeniMeseci = {};
 
-  // 🔢 BADGE COUNTERS
+  // BADGE COUNTERS
   int _brojRadnika = 0;
   int _brojUcenika = 0;
   int _brojDnevnih = 0;
   int _brojPosiljki = 0;
 
-  // 💳 PLACANJE STATE
+  // PLACANJE STATE
   Map<String, double> _stvarnaPlacanja = {};
   DateTime? _lastPaymentUpdate;
   Set<String> _lastPutnikIds = {};
-  Timer? _paymentUpdateDebounceTimer; // ⏱️ DEBOUNCE TIMER za payment updates
+  Timer? _paymentUpdateDebounceTimer; // ⏱ DEBOUNCE TIMER za payment updates
 
   @override
   void initState() {
@@ -66,7 +66,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     });
   }
 
-  // 🚀 BATCH UCITAVANJE
+  // BATCH UCITAVANJE
   Future<void> _ucitajSvePodatke(List<V2RegistrovaniPutnik> putnici) async {
     if (putnici.isEmpty) return;
 
@@ -77,7 +77,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     }
   }
 
-  // 💰 UCITAJ STVARNA PLACANJA — batch query (1 DB upit) + dopuna iz statistikaCache
+  // UCITAJ STVARNA PLACANJA — batch query (1 DB upit) + dopuna iz statistikaCache
   Future<void> _ucitajStvarnaPlacanja(List<V2RegistrovaniPutnik> putnici) async {
     try {
       if (putnici.isEmpty) return;
@@ -93,7 +93,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
       final putnikIds = putnici.map((p) => p.id).toList();
 
-      // 1️⃣ Iz statistikaCache (danas, 0 DB) — dopuni plaćanja tekućeg dana
+      // 1 Iz statistikaCache (danas, 0 DB) — dopuni plaćanja tekućeg dana
       final rm = V2MasterRealtimeManager.instance;
       for (final row in rm.statistikaCache.values) {
         final putnikId = row['putnik_id'] as String?;
@@ -109,7 +109,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         if (iznos > placanja[putnikId]!) placanja[putnikId] = iznos;
       }
 
-      // 2️⃣ Jedan batch DB upit za historijska plaćanja (svi putnici odjednom)
+      // 2 Jedan batch DB upit za historijska plaćanja (svi putnici odjednom)
       try {
         final histRows = await supabase
             .from('v2_statistika_istorija')
@@ -131,7 +131,9 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
           final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
           if (iznos > placanja[putnikId]!) placanja[putnikId] = iznos;
         }
-      } catch (_) {}
+      } catch (e) {
+      debugPrint('[V2PutniciScreen] Error: $e');
+    }
       if (mounted) {
         // ?? ANTI-REBUILD OPTIMIZATION: Samo update ako su se podaci stvarno promenili
         final existingKeys = _stvarnaPlacanja.keys.toSet();
@@ -377,7 +379,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
             const SizedBox(height: 16),
 
-            // 🔄 LISTA PUTNIKA — master realtime cache stream
+            // LISTA PUTNIKA — master realtime cache stream
             Expanded(
               child: StreamBuilder<List<V2RegistrovaniPutnik>>(
                 stream: _streamPutnici,

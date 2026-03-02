@@ -11,10 +11,10 @@ class V2AdresaSupabaseService {
   V2AdresaSupabaseService._();
 
   /// Dobija adresu po UUID-u — iz rm.adreseCache
-  static Adresa? getAdresaByUuid(String uuid) {
+  static V2Adresa? getAdresaByUuid(String uuid) {
     final row = V2MasterRealtimeManager.instance.adreseCache[uuid];
     if (row == null) return null;
-    return Adresa.fromMap(row);
+    return V2Adresa.fromMap(row);
   }
 
   /// Dobija naziv adrese po UUID-u
@@ -24,16 +24,16 @@ class V2AdresaSupabaseService {
   }
 
   /// Dobija sve adrese za određeni grad — iz rm.adreseCache
-  static List<Adresa> getAdreseZaGrad(String grad) {
+  static List<V2Adresa> getAdreseZaGrad(String grad) {
     final rm = V2MasterRealtimeManager.instance;
-    return rm.adreseCache.values.where((r) => r['grad'] == grad).map((r) => Adresa.fromMap(r)).toList()
+    return rm.adreseCache.values.where((r) => r['grad'] == grad).map((r) => V2Adresa.fromMap(r)).toList()
       ..sort((a, b) => a.naziv.compareTo(b.naziv));
   }
 
   /// Dobija sve adrese — iz rm.adreseCache
-  static List<Adresa> getSveAdrese() {
+  static List<V2Adresa> getSveAdrese() {
     final rm = V2MasterRealtimeManager.instance;
-    return rm.adreseCache.values.map((r) => Adresa.fromMap(r)).toList()
+    return rm.adreseCache.values.map((r) => V2Adresa.fromMap(r)).toList()
       ..sort((a, b) {
         final g = (a.grad ?? '').compareTo(b.grad ?? '');
         return g != 0 ? g : a.naziv.compareTo(b.naziv);
@@ -41,8 +41,8 @@ class V2AdresaSupabaseService {
   }
 
   /// Stream svih adresa — emituje iz rm.adreseCache, nema DB upita
-  static Stream<List<Adresa>> streamSveAdrese() {
-    final controller = StreamController<List<Adresa>>.broadcast();
+  static Stream<List<V2Adresa>> streamSveAdrese() {
+    final controller = StreamController<List<V2Adresa>>.broadcast();
     final rm = V2MasterRealtimeManager.instance;
 
     void emit() {
@@ -60,27 +60,27 @@ class V2AdresaSupabaseService {
   }
 
   /// Batch učitavanje adresa po UUID-ovima — iz rm.adreseCache
-  static Map<String, Adresa> getAdreseByUuids(List<String> uuids) {
+  static Map<String, V2Adresa> getAdreseByUuids(List<String> uuids) {
     final rm = V2MasterRealtimeManager.instance;
-    final result = <String, Adresa>{};
+    final result = <String, V2Adresa>{};
     for (final uuid in uuids) {
       final row = rm.adreseCache[uuid];
-      if (row != null) result[uuid] = Adresa.fromMap(row);
+      if (row != null) result[uuid] = V2Adresa.fromMap(row);
     }
     return result;
   }
 
   /// Pronađi adresu po nazivu i gradu — iz rm.adreseCache
-  static Adresa? findAdresaByNazivAndGrad(String naziv, String grad) {
+  static V2Adresa? findAdresaByNazivAndGrad(String naziv, String grad) {
     final rm = V2MasterRealtimeManager.instance;
     final row = rm.adreseCache.values.where((r) => r['naziv'] == naziv && r['grad'] == grad).firstOrNull;
     if (row == null) return null;
-    return Adresa.fromMap(row);
+    return V2Adresa.fromMap(row);
   }
 
   /// Pronalazi postojeću adresu — ne kreira nove.
   /// Nove adrese može dodati samo admin direktno u bazi.
-  static Future<Adresa?> createOrGetAdresa({
+  static Future<V2Adresa?> createOrGetAdresa({
     required String naziv,
     required String grad,
     double? lat,
@@ -98,7 +98,7 @@ class V2AdresaSupabaseService {
   }
 
   /// Geocodira adresu i ažurira koordinate u bazi.
-  static Future<Adresa?> _geocodeAndUpdateAdresa(Adresa adresa, String grad) async {
+  static Future<V2Adresa?> _geocodeAndUpdateAdresa(V2Adresa adresa, String grad) async {
     try {
       final coordsString = await GeocodingService.getKoordinateZaAdresu(
         grad,
@@ -118,7 +118,7 @@ class V2AdresaSupabaseService {
                 .eq('id', adresa.id)
                 .select('id, naziv, grad, gps_lat, gps_lng')
                 .single();
-            return Adresa.fromMap(response);
+            return V2Adresa.fromMap(response);
           }
         }
       }

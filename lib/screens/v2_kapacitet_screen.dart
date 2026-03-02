@@ -5,15 +5,15 @@ import '../services/v2_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// 🎫 Admin ekran za podešavanje kapaciteta polazaka
-class KapacitetScreen extends StatefulWidget {
-  const KapacitetScreen({super.key});
+/// Admin ekran za podešavanje kapaciteta polazaka
+class V2KapacitetScreen extends StatefulWidget {
+  const V2KapacitetScreen({super.key});
 
   @override
-  State<KapacitetScreen> createState() => _KapacitetScreenState();
+  State<V2KapacitetScreen> createState() => _KapacitetScreenState();
 }
 
-class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProviderStateMixin {
+class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   late final Stream<Map<String, Map<String, int>>> _streamKapacitet;
 
@@ -61,7 +61,7 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 🎨 GLASSMORPHISM HEADER
+              // GLASSMORPHISM HEADER
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -117,7 +117,7 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
                   ],
                 ),
               ),
-              // 📝 CONTENT
+              // CONTENT
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -156,7 +156,7 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // 🎯 BUTTONS
+                    // BUTTONS
                     Row(
                       children: [
                         Expanded(

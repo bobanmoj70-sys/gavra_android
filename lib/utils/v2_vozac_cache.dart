@@ -184,7 +184,7 @@ class V2VozacCache {
     }
   }
 
-  /// Centralizovana odluka da li određeni vozač treba da koristi `VozacScreen`.
+  /// Centralizovana odluka da li određeni vozač treba da koristi `V2VozacScreen`.
   ///
   /// Trenutno sadrži samo istorijsku specijalnu proveru za vozača "Voja",
   /// ali je mesto gde se ta logika treba menjati (umesto širenja hardcode provera).

@@ -47,14 +47,14 @@ import 'v2_promena_sifre_screen.dart';
 import 'v2_vozac_screen.dart';
 import 'v2_welcome_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class V2HomeScreen extends StatefulWidget {
+  const V2HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<V2HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin {
   // Logging using dlog function from logging.dart
 
   bool _isLoading = true;
@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (mounted) {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute<void>(builder: (context) => const WelcomeScreen()),
+            MaterialPageRoute<void>(builder: (context) => const V2WelcomeScreen()),
             (route) => false,
           );
         }
@@ -907,7 +907,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Ako logout fail, pokreni navigaciju rucno
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
+            MaterialPageRoute<void>(builder: (_) => const V2WelcomeScreen()),
             (route) => false,
           );
         }
@@ -2030,7 +2030,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             targetDayAbbr: targetDayAbbr,
           );
 
-          // Uklonjen dupli sort - V2PutnikList sada sortira konzistentno sa VozacScreen
+          // Uklonjen dupli sort - V2PutnikList sada sortira konzistentno sa V2VozacScreen
           // Sortiranje se vrsi u V2PutnikList widgetu sa istom logikom za sva tri ekrana
           final putniciZaPrikaz = sviPutniciBezDuplikata;
 
@@ -2310,7 +2310,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               onTap: () {
                                 AnimatedNavigation.pushSmooth(
                                   context,
-                                  VozacScreen(previewAsDriver: _currentDriver),
+                                  V2VozacScreen(previewAsDriver: _currentDriver),
                                 );
                               },
                             ),
@@ -2382,7 +2382,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               onTap: () {
                                 AnimatedNavigation.pushSmooth(
                                   context,
-                                  const AdminScreen(),
+                                  const V2AdminScreen(),
                                 );
                               },
                             ),
@@ -2491,7 +2491,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (ctx) => PromenaSifreScreen(vozacIme: vozac),
+                                      builder: (ctx) => V2PromenaSifreScreen(vozacIme: vozac),
                                     ),
                                   );
                                 }
@@ -2737,9 +2737,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// AnimatedActionButton widget sa hover efektima
-class AnimatedActionButton extends StatefulWidget {
-  const AnimatedActionButton({
+// V2AnimatedActionButton widget sa hover efektima
+class V2AnimatedActionButton extends StatefulWidget {
+  const V2AnimatedActionButton({
     super.key,
     required this.child,
     required this.onTap,
@@ -2758,10 +2758,10 @@ class AnimatedActionButton extends StatefulWidget {
   final List<BoxShadow> boxShadow;
 
   @override
-  State<AnimatedActionButton> createState() => _AnimatedActionButtonState();
+  State<V2AnimatedActionButton> createState() => _AnimatedActionButtonState();
 }
 
-class _AnimatedActionButtonState extends State<AnimatedActionButton> with SingleTickerProviderStateMixin {
+class _AnimatedActionButtonState extends State<V2AnimatedActionButton> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _isPressed = false;

@@ -131,9 +131,9 @@ class BiometricService {
     final types = await getAvailableBiometrics();
 
     if (types.contains(BiometricType.face)) {
-      return '😊'; // Face ID
+      return ''; // Face ID
     } else if (types.contains(BiometricType.fingerprint)) {
-      return '👆'; // Fingerprint
+      return ''; // Fingerprint
     }
     return '🔐';
   }

@@ -8,16 +8,16 @@ import '../services/v2_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-///  VOZACI ADMIN SCREEN - Admin panel za upravljanje vozacima
+/// VOZACI ADMIN SCREEN - Admin panel za upravljanje vozacima
 /// Ovde dodajes/brises vozace, emailove, sifre, telefone, boje
-class VozaciAdminScreen extends StatefulWidget {
-  const VozaciAdminScreen({super.key});
+class V2VozaciAdminScreen extends StatefulWidget {
+  const V2VozaciAdminScreen({super.key});
 
   @override
-  State<VozaciAdminScreen> createState() => _VozaciAdminScreenState();
+  State<V2VozaciAdminScreen> createState() => _VozaciAdminScreenState();
 }
 
-class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
+class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   // Forma za novog vozaca
   final _formKey = GlobalKey<FormState>();
   final _imeController = TextEditingController();
@@ -42,7 +42,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
 
   final V2VozacService _vozacService = V2VozacService();
 
-  // 🔄 Master realtime stream — inicijalizovan jednom u initState()
+  // Master realtime stream — inicijalizovan jednom u initState()
   late final Stream<List<V2Vozac>> _streamVozaci;
   StreamSubscription? _vozaciSub;
   StreamController<List<V2Vozac>>? _vozaciCtrl;
@@ -367,7 +367,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
-                //  SEKCIJA VOZACA
+                // SEKCIJA VOZACA
                 Row(
                   children: [
                     const Text(

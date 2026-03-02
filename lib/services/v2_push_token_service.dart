@@ -85,7 +85,7 @@ class V2PushTokenService {
     } catch (e) {
       debugPrint('[PushToken] Greška pri registraciji (pokušaj ${retryCount + 1}): $e');
 
-      // 🔄 RETRY LOGIKA za 503/Timeout greške
+      // RETRY LOGIKA za 503/Timeout greške
       final errorStr = e.toString().toLowerCase();
       if ((errorStr.contains('503') || errorStr.contains('timeout') || errorStr.contains('upstream')) &&
           retryCount < 2) {

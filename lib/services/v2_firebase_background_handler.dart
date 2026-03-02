@@ -6,10 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'v2_local_notification_service.dart';
 
 // This file exposes two background handlers:
-//  - firebaseMessagingBackgroundHandler(RemoteMessage) which is registered
-//    with Firebase Messaging plugin for FCM background delivery.
-//  - backgroundNotificationHandler(Map<String,dynamic>) which is provider
-//    agnostic and can be used for Huawei or other push providers.
+// - firebaseMessagingBackgroundHandler(RemoteMessage) which is registered
+// with Firebase Messaging plugin for FCM background delivery.
+// - backgroundNotificationHandler(Map<String,dynamic>) which is provider
+// agnostic and can be used for Huawei or other push providers.
 
 // Top-level background handler required by Firebase Messaging plugin
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {

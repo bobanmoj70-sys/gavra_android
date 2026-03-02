@@ -54,7 +54,7 @@ class NotificationNavigationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const VozacScreen(),
+            builder: (context) => const V2VozacScreen(),
           ),
         );
       }
@@ -72,7 +72,7 @@ class NotificationNavigationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const PinZahteviScreen(),
+            builder: (context) => const V2PinZahteviScreen(),
           ),
         );
       }
@@ -194,7 +194,7 @@ class NotificationNavigationService {
   ) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => const HomeScreen(),
+        builder: (context) => const V2HomeScreen(),
       ),
     );
   }

@@ -8,14 +8,14 @@ import '../utils/v2_app_snack_bar.dart';
 
 /// > GORIVO SCREEN
 /// Kucna pumpa — stanje, punjenja, tocenja, statistike po vozilu
-class GorivoScreen extends StatefulWidget {
-  const GorivoScreen({super.key});
+class V2GorivoScreen extends StatefulWidget {
+  const V2GorivoScreen({super.key});
 
   @override
-  State<GorivoScreen> createState() => _GorivoScreenState();
+  State<V2GorivoScreen> createState() => _GorivoScreenState();
 }
 
-class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderStateMixin {
+class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
   static const Color _accent = Color(0xFFFF9800); // narandžasta = gorivo

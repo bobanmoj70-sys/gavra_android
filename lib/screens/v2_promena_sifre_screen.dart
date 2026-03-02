@@ -6,18 +6,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// 🔐 PROMENA ŠIFRE SCREEN
+/// PROMENA ŠIFRE SCREEN
 /// Vozač može da promeni svoju šifru nakon uspešnog logina
-class PromenaSifreScreen extends StatefulWidget {
+class V2PromenaSifreScreen extends StatefulWidget {
   final String vozacIme;
 
-  const PromenaSifreScreen({super.key, required this.vozacIme});
+  const V2PromenaSifreScreen({super.key, required this.vozacIme});
 
   @override
-  State<PromenaSifreScreen> createState() => _PromenaSifreScreenState();
+  State<V2PromenaSifreScreen> createState() => _PromenaSifreScreenState();
 }
 
-class _PromenaSifreScreenState extends State<PromenaSifreScreen> {
+class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
   final _formKey = GlobalKey<FormState>();
   final _staraSifraController = TextEditingController();
   final _novaSifraController = TextEditingController();

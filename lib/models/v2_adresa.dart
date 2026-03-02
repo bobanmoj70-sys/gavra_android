@@ -90,7 +90,7 @@ class V2Adresa {
     return earthRadius * c;
   }
 
-  // ✅ COPY AND MODIFICATION METHODS
+  // COPY AND MODIFICATION METHODS
 
   /// Create a copy with updated fields
   V2Adresa copyWith({

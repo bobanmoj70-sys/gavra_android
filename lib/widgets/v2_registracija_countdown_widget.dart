@@ -106,7 +106,7 @@ class _RegistracijaTablicaWidgetState extends State<V2RegistracijaTablicaWidget>
   void _openKolskaKnjiga() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const OdrzavanjeScreen()),
+      MaterialPageRoute(builder: (context) => const V2OdrzavanjeScreen()),
     ).then((_) => _RegistracijaData.load());
   }
 
@@ -169,7 +169,7 @@ class _RegistracijaBrojacWidgetState extends State<V2RegistracijaBrojacWidget> {
   void _openKolskaKnjiga() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const OdrzavanjeScreen()),
+      MaterialPageRoute(builder: (context) => const V2OdrzavanjeScreen()),
     ).then((_) => _RegistracijaData.load());
   }
 

@@ -44,9 +44,9 @@ class V2PolasciService {
       final status = isAdmin ? 'odobreno' : 'obrada';
 
       // 1. Ukloni sve ostale aktivne zahtjeve za isti grad+dan (drugačije vreme)
-      //    Putnik može imati samo jedan aktivan zahtjev po grad+dan.
-      //    isAdmin=true → 'bez_polaska' (tiho brisanje, ne utiče na statistiku)
-      //    isAdmin=false → 'cancelled' (putnik sam menja zahtev)
+      // Putnik može imati samo jedan aktivan zahtjev po grad+dan.
+      // isAdmin=true → 'bez_polaska' (tiho brisanje, ne utiče na statistiku)
+      // isAdmin=false → 'cancelled' (putnik sam menja zahtev)
       await _supabase
           .from('v2_polasci')
           .update({'status': isAdmin ? 'bez_polaska' : 'cancelled', 'updated_at': nowStr})
@@ -538,7 +538,7 @@ class V2PutnikStreamService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 🔧 INTERNI HELPERI
+  // INTERNI HELPERI
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<List<V2Putnik>> _fetchPutnici({String? isoDate, String? grad, String? vreme, String? vozacId}) async {

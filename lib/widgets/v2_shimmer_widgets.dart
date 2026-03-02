@@ -122,7 +122,7 @@ class V2ShimmerWidgets {
     );
   }
 
-  /// 📊 Shimmer za zaglavlje sa datumom i dugmičima (za vozac_screen)
+  /// Shimmer za zaglavlje sa datumom i dugmičima (za vozac_screen)
   static Widget vozacHeaderShimmer(BuildContext context) {
     return Shimmer.fromColors(
       baseColor: Theme.of(context).colorScheme.surfaceContainerHighest,

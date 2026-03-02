@@ -6,16 +6,16 @@ import '../services/v2_permission_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// 📖 O NAMA SCREEN
+/// O NAMA SCREEN
 /// Informacije o Gavra 013 timu i aplikaciji
-class ONamaScreen extends StatefulWidget {
-  const ONamaScreen({super.key});
+class V2ONamaScreen extends StatefulWidget {
+  const V2ONamaScreen({super.key});
 
   @override
-  State<ONamaScreen> createState() => _ONamaScreenState();
+  State<V2ONamaScreen> createState() => _ONamaScreenState();
 }
 
-class _ONamaScreenState extends State<ONamaScreen> {
+class _ONamaScreenState extends State<V2ONamaScreen> {
   String _appVersion = '';
 
   @override
@@ -40,7 +40,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
-    // 📞 HUAWEI KOMPATIBILNO - koristi centralizovanu proveru dozvola
+    // HUAWEI KOMPATIBILNO - koristi centralizovanu proveru dozvola
     final hasPermission = await PermissionService.ensurePhonePermissionHuawei();
     if (!hasPermission) {
       if (mounted) {
@@ -93,11 +93,11 @@ class _ONamaScreenState extends State<ONamaScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // 🚐 LOGO I NAZIV
+              // LOGO I NAZIV
               _buildHeader(),
               const SizedBox(height: 24),
 
-              // 📜 ISTORIJA
+              // ISTORIJA
               _buildGlassCard(
                 icon: Icons.history,
                 title: 'Naša priča',
@@ -135,7 +135,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 📍 KONTAKT INFORMACIJE
+              // KONTAKT INFORMACIJE
               _buildGlassCard(
                 icon: Icons.contact_phone,
                 title: 'Kontakt',
@@ -166,7 +166,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 📋 REGISTRACIONI PODACI
+              // REGISTRACIONI PODACI
               _buildGlassCard(
                 icon: Icons.business,
                 title: 'Podaci o firmi',
@@ -190,7 +190,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 📱 VERZIJA APLIKACIJE
+              // VERZIJA APLIKACIJE
               _buildGlassCard(
                 icon: Icons.phone_android,
                 title: 'Aplikacija',
@@ -212,7 +212,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 🙏 IN MEMORIAM
+              // IN MEMORIAM
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

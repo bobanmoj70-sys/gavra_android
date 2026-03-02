@@ -4,23 +4,23 @@ import '../models/v2_putnik.dart';
 
 /// Enum za stanja kartice putnika
 enum CardState {
-  odsustvo, // ✅ Godišnji/bolovanje
-  otkazano, // ❌ Otkazano
-  placeno, // 💰 Plaćeno/mesečno
-  pokupljeno, // 🚶 Pokupljeno neplaćeno
-  tudji, // 👥 Tuđi V2Putnik (dodeljen drugom vozaču)
-  nepokupljeno, // 🕒 Nepokupljeno (default)
+  odsustvo, // Godišnji/bolovanje
+  otkazano, // Otkazano
+  placeno, // Plaćeno/mesečno
+  pokupljeno, // Pokupljeno neplaćeno
+  tudji, // Tuđi V2Putnik (dodeljen drugom vozaču)
+  nepokupljeno, // Nepokupljeno (default)
 }
 
-/// 🎨 CARD COLOR HELPER - Centralizovana logika boja za kartice putnika
+/// CARD COLOR HELPER - Centralizovana logika boja za kartice putnika
 ///
 /// ## Prioritet boja (od najvišeg ka najnižem):
-/// 1. 🟡 ŽUTO - Odsustvo (godišnji/bolovanje) - `CardState.odsustvo`
-/// 2. 🔴 CRVENO - Otkazani putnici - `CardState.otkazano`
-/// 3. 🟢 ZELENO - Pokupljeni plaćeni/mesečni - `CardState.placeno`
-/// 4. 🔵 PLAVO - Pokupljeni neplaćeni - `CardState.pokupljeno`
-/// 5. ⚪ SIVO - Tuđi V2Putnik (dodeljen drugom vozaču) - `CardState.tudji`
-/// 6. ⚪ BELO - Nepokupljeni (default) - `CardState.nepokupljeno`
+/// 1.  ŽUTO - Odsustvo (godišnji/bolovanje) - `CardState.odsustvo`
+/// 2.  CRVENO - Otkazani putnici - `CardState.otkazano`
+/// 3.  ZELENO - Pokupljeni plaćeni/mesečni - `CardState.placeno`
+/// 4.  PLAVO - Pokupljeni neplaćeni - `CardState.pokupljeno`
+/// 5.  SIVO - Tuđi V2Putnik (dodeljen drugom vozaču) - `CardState.tudji`
+/// 6.  BELO - Nepokupljeni (default) - `CardState.nepokupljeno`
 ///
 /// ## Cheat Sheet Boja:
 ///
@@ -64,9 +64,9 @@ enum CardState {
 /// ```dart
 /// final decoration = CardColorHelper.getCardDecoration(V2Putnik);
 /// final textColor = CardColorHelper.getTextColorWithTheme(
-///   V2Putnik,
-///   context,
-///   successPrimary: Theme.of(context).colorScheme.successPrimary,
+/// V2Putnik,
+/// context,
+/// successPrimary: Theme.of(context).colorScheme.successPrimary,
 /// );
 /// ```
 class CardColorHelper {
@@ -74,31 +74,31 @@ class CardColorHelper {
   // KONSTANTE BOJA
   // ---------------------------------------------------------------------------
 
-  // 🟡 ODSUSTVO (godišnji/bolovanje) - NAJVEĆI PRIORITET
+  // ODSUSTVO (godišnji/bolovanje) - NAJVEĆI PRIORITET
   static const Color odsustvoBackground = Color(0xFFFFF59D);
   static const Color odsusuvoBorder = Color(0xFFFFC107);
   static const Color odsustvoText = Color(0xFFF57C00); // Colors.orange[700]
 
-  // 🔴 OTKAZANO - DRUGI PRIORITET
+  // OTKAZANO - DRUGI PRIORITET
   static const Color otkazanoBackground = Color(0xFFEF9A9A); // Red[200] - tamnija crvena
   static const Color otkazanoBorder = Colors.red;
   static const Color otkazanoText = Color(0xFFEF5350); // Colors.red[400]
 
-  // 🟢 PLACENO/MESECNO - TREĆI PRIORITET
+  // PLACENO/MESECNO - TREĆI PRIORITET
   static const Color placenoBackground = Color(0xFF388E3C);
   static const Color placenoBorder = Color(0xFF388E3C);
 
-  // 🔵 POKUPLJENO NEPLACENO - ČETVRTI PRIORITET
+  // POKUPLJENO NEPLACENO - ČETVRTI PRIORITET
   static const Color pokupljenoBackground = Color(0xFF7FB3D3);
   static const Color pokupljenoBorder = Color(0xFF7FB3D3);
   static const Color pokupljenoText = Color(0xFF0D47A1);
 
-  // ⚪ TUĐI V2Putnik (dodeljen drugom vozaču)
+  // TUĐI V2Putnik (dodeljen drugom vozaču)
   static const Color tudjiBackground = Color(0xFF9E9E9E); // Grey[500]
   static const Color tudjiBorder = Color(0xFF757575); // Grey[600]
   static const Color tudjiText = Color(0xFF424242); // Grey[800]
 
-  // ⚪ NEPOKUPLJENO - DEFAULT
+  // NEPOKUPLJENO - DEFAULT
   static const Color defaultBackground = Colors.white;
   static const Color defaultBorder = Colors.grey;
   static const Color defaultText = Colors.black;

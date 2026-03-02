@@ -1319,7 +1319,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                         ),
                                         // spacer removed to let Wrap spacing control gaps
                                       ],
-                                      // 💰 IKONA ZA PLACANJE - za sve korisnike (3. po redu)
+                                      // IKONA ZA PLACANJE - za sve korisnike (3. po redu)
                                       if (!_putnik.jeOtkazan &&
                                           (_putnik.mesecnaKarta == true ||
                                               (_putnik.iznosPlacanja == null || _putnik.iznosPlacanja == 0))) ...[

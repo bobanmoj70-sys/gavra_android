@@ -21,21 +21,21 @@ import 'v2_vozac_login_screen.dart';
 import 'v2_vozac_screen.dart';
 
 Widget _getScreenForDriver(String driverName) {
-  // Vozači koji koriste VozacScreen umesto HomeScreen
+  // Vozači koji koriste V2VozacScreen umesto V2HomeScreen
   if (V2VozacCache.prefersVozacScreen(driverName)) {
-    return const VozacScreen();
+    return const V2VozacScreen();
   }
-  return const HomeScreen();
+  return const V2HomeScreen();
 }
 
-class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({super.key});
+class V2WelcomeScreen extends StatefulWidget {
+  const V2WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
+  State<V2WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
   late final AnimationController _fadeController;
@@ -97,7 +97,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
         _checkAutoLogin();
       }
     } catch (e) {
-      if (kDebugMode) debugPrint(' [WelcomeScreen] Init failed: $e');
+      debugPrint(' [V2WelcomeScreen] Init failed: $e');
     }
   }
 
@@ -117,13 +117,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
 
   // "" AUTO-LOGIN BEZ PESME - Proveri da li je vozač ve logovan
   Future<void> _checkAutoLogin() async {
-    debugPrint('🚀 [WelcomeScreen] _checkAutoLogin POKRENUT | mounted=$mounted');
+    debugPrint('🚀 [V2WelcomeScreen] _checkAutoLogin POKRENUT | mounted=$mounted');
     // ZPREKINI PESMU ako se auto-login aktivira
     await _stopAudio();
 
     // "PRVO PROVERI REMEMBERED DEVICE
     final rememberedDevice = await AuthManager.getRememberedDevice();
-    debugPrint('🚀 [WelcomeScreen] rememberedDevice=$rememberedDevice');
+    debugPrint('🚀 [V2WelcomeScreen] rememberedDevice=$rememberedDevice');
     if (rememberedDevice != null) {
       // Auto-login sa zapamenim ureajem
       final email = rememberedDevice['email']!;
@@ -150,7 +150,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
         );
         return;
       } catch (e) {
-        debugPrint(' [WelcomeScreen] Auto-login failed: $e');
+        debugPrint(' [V2WelcomeScreen] Auto-login failed: $e');
         // Nastavi dalje bez auto-login-a
       }
     }
@@ -260,16 +260,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
 
       if (correctName == driverName) {
         // '? BIOMETRIJA: Traži samo ako sesija nije aktivna (vrati se posle dužeg vremena)
-        debugPrint('"[WelcomeScreen] Proveravam sesiju za $correctName...');
+        debugPrint('"[V2WelcomeScreen] Proveravam sesiju za $correctName...');
         final sessionActive = await AuthManager.isSessionActive();
-        debugPrint('"[WelcomeScreen] Sesija aktivna: $sessionActive');
+        debugPrint('"[V2WelcomeScreen] Sesija aktivna: $sessionActive');
 
         if (!sessionActive) {
           // Sesija je istekla - proveri biometriju ako je uključena
           final biometricAvailable = await BiometricService.isBiometricAvailable();
           final biometricEnabled = await BiometricService.isBiometricEnabled();
 
-          debugPrint('"[WelcomeScreen] Biometrija: available=$biometricAvailable, enabled=$biometricEnabled');
+          debugPrint('"[V2WelcomeScreen] Biometrija: available=$biometricAvailable, enabled=$biometricEnabled');
 
           if (biometricAvailable && biometricEnabled) {
             final authenticated = await BiometricService.authenticate(
@@ -282,7 +282,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
               Navigator.push(
                 context,
                 MaterialPageRoute<void>(
-                  builder: (context) => VozacLoginScreen(vozacIme: driverName),
+                  builder: (context) => V2VozacLoginScreen(vozacIme: driverName),
                 ),
               );
               return;
@@ -291,7 +291,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
         }
 
         // Ovaj vozač je zapamen na ovom ureaju - DIREKTNO AUTO-LOGIN
-        debugPrint('"[WelcomeScreen] Postavljam sesiju za $correctName');
+        debugPrint('"[V2WelcomeScreen] Postavljam sesiju za $correctName');
         await AuthManager.setCurrentDriver(correctName);
 
         if (!mounted) return;
@@ -312,7 +312,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (context) => VozacLoginScreen(vozacIme: driverName),
+        builder: (context) => V2VozacLoginScreen(vozacIme: driverName),
       ),
     );
   }
@@ -351,7 +351,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                             await _audioPlayer.play(AssetSource('kasno_je.mp3'));
                             _isAudioPlaying = true;
                           }
-                        } catch (_) {}
+                        } catch (e) {
+      debugPrint('[V2WelcomeScreen] Error: $e');
+    }
                       },
                       child: AnimatedBuilder(
                         animation: _pulseController,
@@ -501,7 +503,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const ONamaScreen()),
+                                MaterialPageRoute(builder: (_) => const V2ONamaScreen()),
                               );
                             },
                             child: Container(
@@ -772,7 +774,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(' [WelcomeScreen] Permission request failed: $e');
+        debugPrint(' [V2WelcomeScreen] Permission request failed: $e');
       }
     }
   }

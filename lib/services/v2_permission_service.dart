@@ -19,7 +19,7 @@ class PermissionService {
       return true; // Preskoči dialog u screenshot modu
     }
 
-    // 🔐 Proveri da li su dozvole već date - ako jesu, ne prikazuj dialog
+    // Proveri da li su dozvole već date - ako jesu, ne prikazuj dialog
     // Ovo radi i nakon hot restart jer se dozvole čuvaju na sistemu
     final areAllPermissionsGranted = await _checkIfAllPermissionsGranted();
 

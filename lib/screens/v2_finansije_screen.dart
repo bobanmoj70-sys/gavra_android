@@ -3,16 +3,16 @@ import 'package:intl/intl.dart';
 
 import '../services/v2_finansije_service.dart';
 
-/// 💰 FINANSIJE SCREEN
+/// FINANSIJE SCREEN
 /// Prikazuje prihode, troškove i neto zaradu
-class FinansijeScreen extends StatefulWidget {
-  const FinansijeScreen({super.key});
+class V2FinansijeScreen extends StatefulWidget {
+  const V2FinansijeScreen({super.key});
 
   @override
-  State<FinansijeScreen> createState() => _FinansijeScreenState();
+  State<V2FinansijeScreen> createState() => _FinansijeScreenState();
 }
 
-class _FinansijeScreenState extends State<FinansijeScreen> {
+class _FinansijeScreenState extends State<V2FinansijeScreen> {
   final _formatBroja = NumberFormat('#,###', 'sr');
 
   late final Stream<FinansijskiIzvestaj> _streamIzvestaj;

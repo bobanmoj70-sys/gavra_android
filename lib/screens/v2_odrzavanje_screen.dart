@@ -8,14 +8,14 @@ import '../utils/v2_app_snack_bar.dart';
 
 /// �Y"- KOLSKA KNJIGA
 /// Tehničko pra�?enje vozila - servisi, registracija, gume...
-class OdrzavanjeScreen extends StatefulWidget {
-  const OdrzavanjeScreen({super.key});
+class V2OdrzavanjeScreen extends StatefulWidget {
+  const V2OdrzavanjeScreen({super.key});
 
   @override
-  State<OdrzavanjeScreen> createState() => _OdrzavanjeScreenState();
+  State<V2OdrzavanjeScreen> createState() => _OdrzavanjeScreenState();
 }
 
-class _OdrzavanjeScreenState extends State<OdrzavanjeScreen> {
+class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
   List<Vozilo> _vozila = [];
   bool _isLoading = true;
   Vozilo? _selectedVozilo;

@@ -264,7 +264,7 @@ class BatteryOptimizationService {
     }
   }
 
-  /// 🔋 Zatraži sistemski popup za isključenje battery optimization
+  /// Zatraži sistemski popup za isključenje battery optimization
   /// Ovo prikazuje Android sistemski dijalog "Dozvoli/Odbij"
   /// Radi na svim Android uređajima, ali Huawei/Xiaomi mogu ignorisati
   static Future<bool> requestIgnoreBatteryOptimization() async {

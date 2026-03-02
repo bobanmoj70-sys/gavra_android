@@ -73,8 +73,8 @@ class VozacPutnikEntry {
 /// Jedan V2Putnik → jedna individualna dodjela vozača (UNIQUE putnik_id u tabeli).
 ///
 /// Arhitektura:
-///   vozac_putnik   — per-V2Putnik individualna dodjela (ovaj servis)
-///   vozac_raspored — per-termin raspored (VozacRasporedService)
+/// vozac_putnik   — per-V2Putnik individualna dodjela (ovaj servis)
+/// vozac_raspored — per-termin raspored (VozacRasporedService)
 class V2VozacPutnikService {
   static final V2VozacPutnikService _instance = V2VozacPutnikService._internal();
   factory V2VozacPutnikService() => _instance;
@@ -147,12 +147,12 @@ class V2VozacPutnikService {
   /// Kombinirani filter: per-V2Putnik individualna dodjela + per-termin raspored.
   ///
   /// Tačan prioritet:
-  ///   1. Per-V2Putnik individualna dodjela postoji:
-  ///      - dodeljen MENI   → prikaži (ignoriši termin-raspored)
-  ///      - dodeljen DRUGOM → sakrij  (ignoriši termin-raspored)
-  ///   2. Nema individualne dodjele → provjeri termin-raspored:
-  ///      - nema unosa za termin → vidljivo svima ✅
-  ///      - postoji unos → prikaži samo vozaču koji je dodeljen terminu
+  /// 1. Per-V2Putnik individualna dodjela postoji:
+  /// - dodeljen MENI   → prikaži (ignoriši termin-raspored)
+  /// - dodeljen DRUGOM → sakrij  (ignoriši termin-raspored)
+  /// 2. Nema individualne dodjele → provjeri termin-raspored:
+  /// - nema unosa za termin → vidljivo svima 
+  /// - postoji unos → prikaži samo vozaču koji je dodeljen terminu
   ///
   /// Filtrira putnike za datog vozača na osnovu termin rasporeda (vozac_raspored).
   /// V2Putnik je vidljiv vozaču samo ako postoji unos u rasporedu koji ga dodjeljuje tom vozaču.

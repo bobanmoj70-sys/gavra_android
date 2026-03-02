@@ -6,22 +6,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
-import '../helpers/v2_putnik_statistike_helper.dart'; // 📊 Zajednički dijalog za statistike
+import '../helpers/v2_putnik_statistike_helper.dart'; // Zajednički dijalog za statistike
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
-import '../services/v2_push_token_service.dart'; // 🔑 Push token čišćenje pri odjavi
-import '../services/v2_putnik_push_service.dart'; // 📱 Push notifikacije za putnike
+import '../services/v2_push_token_service.dart'; // Push token čišćenje pri odjavi
+import '../services/v2_putnik_push_service.dart'; // Push notifikacije za putnike
 import '../services/v2_theme_manager.dart';
-import '../services/v2_weather_service.dart'; // 🌤️ Vremenska prognoza
+import '../services/v2_weather_service.dart'; // Vremenska prognoza
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../widgets/v2_kombi_eta_widget.dart'; // 🆕 Jednostavan ETA widget
 import '../widgets/v2_time_picker_cell.dart';
 
-/// 📊 MESEČNI V2Putnik PROFIL SCREEN
+/// MESEČNI V2Putnik PROFIL SCREEN
 /// Prikazuje podatke o mesečnom putniku: raspored, vožnje, dugovanja
 class V2PutnikProfilScreen extends StatefulWidget {
   final Map<String, dynamic> putnikData;
@@ -35,24 +35,24 @@ class V2PutnikProfilScreen extends StatefulWidget {
 class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with WidgetsBindingObserver {
   Map<String, dynamic> _putnikData = {};
   bool _isLoading = false;
-  // 🔔 Status notifikacija
+  // Status notifikacija
   PermissionStatus _notificationStatus = PermissionStatus.granted;
 
   int _brojVoznji = 0;
   int _brojOtkazivanja = 0;
   List<Map<String, dynamic>> _istorijaPl = [];
 
-  // 📊 Statistike - detaljno po zapisima iz dnevnika
+  // Statistike - detaljno po zapisima iz dnevnika
   final Map<String, List<Map<String, dynamic>>> _voznjeDetaljno = {}; // mesec -> lista zapisa vožnji
   final Map<String, List<Map<String, dynamic>>> _otkazivanjaDetaljno = {}; // mesec -> lista zapisa otkazivanja
   double _ukupnoZaduzenje = 0.0; // ukupno zaduženje za celu godinu
-  double _cenaPoVoznji = 0.0; // 💰 Cena po vožnji/danu
+  double _cenaPoVoznji = 0.0; // Cena po vožnji/danu
   String? _adresaBC; // BC adresa
   String? _adresaVS; // VS adresa
 
   String? _sledecaVoznjaInfo; // 🆕 Format: "Ponedeljak, 7:00 BC"
 
-  // 🎯 Realtime subscription za status promene
+  // Realtime subscription za status promene
   StreamSubscription? _statusSubscription;
   // 🆕 Realtime subscription za seat request approvals
   StreamSubscription? _polasciSubscription;
@@ -60,24 +60,24 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // 🕵️ Prati lifecycle aplikacije
-    _checkNotificationPermission(); // 🔍 Proveri dozvolu za notifikacije
+    WidgetsBinding.instance.addObserver(this); // Prati lifecycle aplikacije
+    _checkNotificationPermission(); // Proveri dozvolu za notifikacije
 
-    // 🔔 Listen for season changes (auto/zimski/letnji)
+    // Listen for season changes (auto/zimski/letnji)
     navBarTypeNotifier.addListener(_onSeasonChanged);
 
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
-    _refreshPutnikData(); // 🔄 Učitaj sveže podatke iz baze — poziva _loadStatistike interno
-    _registerPushToken(); // 📱 Registruj push token (retry ako nije uspelo pri login-u)
-    // ❌ UKLONJENO: Client-side pending resolution - sada se radi putem Supabase cron jobs
+    _refreshPutnikData(); // Učitaj sveže podatke iz baze — poziva _loadStatistike interno
+    _registerPushToken(); // Registruj push token (retry ako nije uspelo pri login-u)
+    // UKLONJENO: Client-side pending resolution - sada se radi putem Supabase cron jobs
     // _checkAndResolvePendingRequests();
-    // ❌ UKLONJENO: _cleanupOldSeatRequests() - metoda je bila prazan stub
+    // UKLONJENO: _cleanupOldSeatRequests() - metoda je bila prazan stub
     V2WeatherService.refreshAll();
-    _setupRealtimeListener(); // 🎯 Sluša promene statusa u realtime
+    _setupRealtimeListener(); // Sluša promene statusa u realtime
     _loadActiveRequests();
   }
 
-  /// ❄️ Reaguje na promenu sezone
+  /// Reaguje na promenu sezone
   void _onSeasonChanged() {
     if (mounted) {
       setState(() {
@@ -90,20 +90,20 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     navBarTypeNotifier.removeListener(_onSeasonChanged);
-    _statusSubscription?.cancel(); // 🛑 Zatvori Realtime listener
-    _polasciSubscription?.cancel(); // 🛑 Zatvori Polasci listener
+    _statusSubscription?.cancel(); // Zatvori Realtime listener
+    _polasciSubscription?.cancel(); // Zatvori Polasci listener
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 🔄 Kada se korisnik vrati u aplikaciju, proveri notifikacije ponovo
+    // Kada se korisnik vrati u aplikaciju, proveri notifikacije ponovo
     if (state == AppLifecycleState.resumed) {
       _checkNotificationPermission();
     }
   }
 
-  /// 🔍 Proverava status notifikacija
+  /// Proverava status notifikacija
   Future<void> _checkNotificationPermission() async {
     final status = await Permission.notification.status;
     if (mounted) {
@@ -113,7 +113,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// 🔓 Traži dozvolu ili otvara podešavanja
+  /// Traži dozvolu ili otvara podešavanja
   Future<void> _requestNotificationPermission() async {
     final status = await Permission.notification.request();
     if (mounted) {
@@ -128,7 +128,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// 📱 Registruje push token za notifikacije (retry mehanizam)
+  /// Registruje push token za notifikacije (retry mehanizam)
   Future<void> _registerPushToken() async {
     final putnikId = _putnikData['id'];
     if (putnikId != null) {
@@ -137,7 +137,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// 🎯 Postavlja Realtime listener za status promene
+  /// Postavlja Realtime listener za status promene
   void _setupRealtimeListener() {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
@@ -166,7 +166,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
   List<Map<String, dynamic>> _polasci = [];
 
-  /// 📥 Učitava aktivne v2_polasci redove za ovog putnika
+  /// Učitava aktivne v2_polasci redove za ovog putnika
   Future<void> _loadActiveRequests() async {
     try {
       final putnikId = _putnikData['id']?.toString();
@@ -185,7 +185,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       if (mounted) {
         setState(() {
           _polasci = List<Map<String, dynamic>>.from(res);
-          _sledecaVoznjaInfo = _izracunajSledecuVoznju(); // 🔄 Reračunaj nakon učitavanja
+          _sledecaVoznjaInfo = _izracunajSledecuVoznju(); // Reračunaj nakon učitavanja
           debugPrint('📥 [Polasci] Učitano: ${_polasci.length} redova');
         });
       }
@@ -194,14 +194,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// 🔔 Hendluje promenu statusa — samo osvežava UI
+  /// Hendluje promenu statusa — samo osvežava UI
   Future<void> _handleStatusChange(PostgresChangePayload payload) async {
     try {
       debugPrint('🔄 [Realtime] Osvežavam podatke putnika...');
       await _refreshPutnikData();
       await _loadActiveRequests();
 
-      // ⚠️ FIX: Uklonjen snackbar odavde jer se aktivirao na svaku promenu profila
+      // FIX: Uklonjen snackbar odavde jer se aktivirao na svaku promenu profila
       // ako je globalni status putnika bio 'odobreno'
     } catch (e) {
       debugPrint('❌ [Realtime] Greška pri obradi: $e');
@@ -243,20 +243,20 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// 🛡️ HELPER: Merge-uje nove promene sa postojećim markerima u bazi
+  /// HELPER: Merge-uje nove promene sa postojećim markerima u bazi
   /// Čuva bc_pokupljeno, bc_placeno, vs_pokupljeno, vs_placeno i ostale markere
-  // ❌ UKLONJENO: _checkAndResolvePendingRequests() funkcija
+  // UKLONJENO: _checkAndResolvePendingRequests() funkcija
   // Razlog: Client-side pending resolution je konflikovao sa Supabase cron jobs
   // Sva pending logika se sada obrađuje server-side putem:
   // - Job #7: resolve-pending-main (svaki minut)
   // - Job #5: resolve-pending-20h-ucenici (u 20:00)
   // - Job #6: cleanup-expired-pending (svakih 5 minuta)
 
-  // ❌ _cleanupOldSeatRequests() uklonjen — metoda je bila prazan stub.
+  // _cleanupOldSeatRequests() uklonjen — metoda je bila prazan stub.
   // Brisanje v2_polasci redova nije dozvoljeno iz klijentskog koda (videti PRAVILA.md).
   // Cleanup se radi server-side putem Supabase cron job-ova.
 
-  /// 🔧 Helperi za sigurno parsiranje brojeva iz Supabase-a (koji mogu biti String)
+  /// Helperi za sigurno parsiranje brojeva iz Supabase-a (koji mogu biti String)
   static double _toDouble(dynamic v) {
     if (v == null) return 0.0;
     if (v is num) return v.toDouble();
@@ -264,7 +264,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     return 0.0;
   }
 
-  /// 📊 Učitava statistike za profil (vožnje i otkazivanja)
+  /// Učitava statistike za profil (vožnje i otkazivanja)
   Future<void> _loadStatistike() async {
     final now = DateTime.now();
     final pocetakGodine = DateTime(now.year, 1, 1);
@@ -321,7 +321,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
       final int brojOtkazivanjaTotal = jeDnevni ? otkazivanjaResponse.length : daniSaOtkazivanjem.length;
 
-      // 🏠 Učitaj obe adrese iz cache-a (nula DB upita)
+      // Učitaj obe adrese iz cache-a (nula DB upita)
       String? adresaBcNaziv;
       String? adresaVsNaziv;
       final adresaBcId = _putnikData['adresa_bela_crkva_id'] as String?;
@@ -338,8 +338,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         debugPrint('❌ [Adrese] Greška: $e');
       }
 
-      // 📊 Vožnje po mesecima iz već dohvaćenih sveZapisiGodina (nula dodatnih upita)
-      // 💰 Istorija plaćanja - grupiše uplate iz iste kolekcije
+      // Vožnje po mesecima iz već dohvaćenih sveZapisiGodina (nula dodatnih upita)
+      // Istorija plaćanja - grupiše uplate iz iste kolekcije
       final Map<String, List<Map<String, dynamic>>> voznjeDetaljnoMap = {};
       final Map<String, List<Map<String, dynamic>>> otkazivanjaDetaljnoMap = {};
 
@@ -359,7 +359,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         }
       }
 
-      // 💰 Obračun dugovanja — iz sveZapisiGodina (nema dodatnih DB upita)
+      // Obračun dugovanja — iz sveZapisiGodina (nema dodatnih DB upita)
       final putnikModel = V2RegistrovaniPutnik.fromMap(_putnikData);
       final cenaPoVoznji = CenaObracunService.getCenaPoDanu(putnikModel);
 
@@ -481,12 +481,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }).firstOrNull;
       if (req == null) return null;
       return (req['dodeljeno_vreme'] ?? '').toString().trim();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2PutnikProfilScreen] getVremePolaska error: $e');
       return null;
     }
   }
 
-  /// 💰 Izračunaj istoriju plaćanja iz već učitane kolekcije zapisa (nema DB upita)
+  /// Izračunaj istoriju plaćanja iz već učitane kolekcije zapisa (nema DB upita)
   static List<Map<String, dynamic>> _izracunajIstorijuIzKolekcije(List<dynamic> sviZapisi) {
     try {
       final Map<String, double> poMesecima = {};
@@ -519,7 +520,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         return dateB.compareTo(dateA);
       });
       return result;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2PutnikProfilScreen] _izracunajIstorijuIzKolekcije error: $e');
       return [];
     }
   }
@@ -561,7 +563,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// 🏖️ Dugme za postavljanje bolovanja/godišnjeg - SAMO za radnike
+  /// Dugme za postavljanje bolovanja/godišnjeg - SAMO za radnike
   Widget _buildOdsustvoButton() {
     final status = _putnikData['status']?.toString().toLowerCase() ?? 'aktivan';
     final jeNaOdsustvu = status == 'bolovanje' || status == 'godisnji';
@@ -596,7 +598,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     );
   }
 
-  /// 🏖️ Dialog za odabir tipa odsustva ili vraćanje na posao
+  /// Dialog za odabir tipa odsustva ili vraćanje na posao
   Future<void> _pokaziOdsustvoDialog(bool jeNaOdsustvu) async {
     if (jeNaOdsustvu) {
       // Vraćanje na posao
@@ -683,7 +685,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// 🔄 Postavi status putnika u bazu
+  /// Postavi status putnika u bazu
   Future<void> _postaviStatus(String noviStatus) async {
     try {
       final putnikId = _putnikData['id']?.toString();
@@ -717,7 +719,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  // 🌤️ KOMPAKTAN PRIKAZ TEMPERATURE ZA GRAD (isti kao na danas_screen)
+  // KOMPAKTAN PRIKAZ TEMPERATURE ZA GRAD (isti kao na danas_screen)
   Widget _buildWeatherCompact(String grad) {
     final stream = grad == 'BC' ? V2WeatherService.bcWeatherStream : V2WeatherService.vsWeatherStream;
 
@@ -769,7 +771,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     );
   }
 
-  // 🌤️ DIJALOG ZA DETALJNU VREMENSKU PROGNOZU
+  // DIJALOG ZA DETALJNU VREMENSKU PROGNOZU
   void _showWeatherDialog(String grad, V2WeatherData? data) {
     showDialog<void>(
       context: context,
@@ -998,7 +1000,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 🌤️ VREMENSKA PROGNOZA - BC levo, VS desno
+                    // VREMENSKA PROGNOZA - BC levo, VS desno
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Row(
@@ -1011,7 +1013,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                       ),
                     ),
 
-                    // ⚠️ NOTIFIKACIJE UPOZORENJE (ako su ugašene)
+                    // NOTIFIKACIJE UPOZORENJE (ako su ugašene)
                     if (_notificationStatus.isDenied || _notificationStatus.isPermanentlyDenied)
                       Container(
                         width: double.infinity,
@@ -1211,7 +1213,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                       child: Divider(color: Colors.white.withValues(alpha: 0.2), thickness: 1),
                     ),
 
-                    // 🚐 ETA Widget sa fazama:
+                    // ETA Widget sa fazama:
                     // 0. Nema dozvola: "Odobravanjem GPS i notifikacija ovde će vam biti prikazano vreme dolaska prevoza"
                     // 1. 30 min pre polaska: "Vozač će uskoro krenuti"
                     // 2. Vozač startovao rutu: Realtime ETA praćenje
@@ -1253,13 +1255,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                     ),
                     const SizedBox(height: 16),
 
-                    // 🏖️ Bolovanje/Godišnji dugme - SAMO za radnike
+                    // Bolovanje/Godišnji dugme - SAMO za radnike
                     if ((_putnikData['_tabela'] ?? _putnikData['putnik_tabela'] ?? '').toString() == 'v2_radnici') ...[
                       _buildOdsustvoButton(),
                       const SizedBox(height: 16),
                     ],
 
-                    // 💰 TRENUTNO ZADUŽENJE
+                    // TRENUTNO ZADUŽENJE
                     if (_putnikData['cena_po_danu'] != null) ...[
                       Container(
                         width: double.infinity,
@@ -1316,11 +1318,11 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                       const SizedBox(height: 16),
                     ],
 
-                    // 📊 Detaljne statistike - dugme za dijalog
+                    // Detaljne statistike - dugme za dijalog
                     _buildDetaljneStatistikeDugme(),
                     const SizedBox(height: 16),
 
-                    // 📅 Raspored polazaka
+                    // Raspored polazaka
                     _buildRasporedCard(),
                     const SizedBox(height: 16),
                   ],
@@ -1342,7 +1344,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   };
   static const _daniRedosled = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4};
 
-  /// 📅 Widget za prikaz rasporeda polazaka po danima
+  /// Widget za prikaz rasporeda polazaka po danima
   Widget _buildRasporedCard() {
     final tip = _v2TipIzTabele(_putnikData);
     final tipPrikazivanja = _putnikData['tip_prikazivanja'] as String? ?? 'standard';
@@ -1397,7 +1399,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           existing['${grad}_status'] = status;
           existing['${grad}_otkazano'] = status != 'bez_polaska';
           existing['${grad}_otkazano_vreme'] = vreme;
-          // ✅ bez_polaska: čuvamo vreme u grad ključu da TimePickerCell može prikazati
+          // bez_polaska: čuvamo vreme u grad ključu da TimePickerCell može prikazati
           // dugme "Bez polaska" kao aktivan izbor (value != null → onChanged se može pozvati)
           if (status == 'bez_polaska' && vreme.isNotEmpty) {
             existing[grad] = vreme;
@@ -1512,7 +1514,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     );
   }
 
-  /// 🕐 Ažurira polazak
+  /// Ažurira polazak
   Future<void> _updatePolazak(String dan, String tipGrad, String? novoVreme) async {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
@@ -1608,7 +1610,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     );
   }
 
-  /// 📊 Dugme za otvaranje detaljnih statistika
+  /// Dugme za otvaranje detaljnih statistika
   Widget _buildDetaljneStatistikeDugme() {
     return Card(
       color: Colors.transparent,
@@ -1655,7 +1657,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     );
   }
 
-  /// 🔧 v2 helper: čita tip putnika iz '_tabela' ključa (v2 sistem)
+  /// v2 helper: čita tip putnika iz '_tabela' ključa (v2 sistem)
   /// Fallback na stari 'tip' ključ radi kompatibilnosti
   static String _v2TipIzTabele(Map<String, dynamic> data) {
     final tabela = data['_tabela'] as String?;

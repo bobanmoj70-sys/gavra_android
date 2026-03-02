@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -59,7 +58,7 @@ void main() async {
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI
 Future<void> _doStartupTasks() async {
-  if (kDebugMode) debugPrint('[Main] Background tasks started');
+  debugPrint('[Main] Background tasks started');
 
   // Wakelock i edge-to-edge UI
   try {
@@ -123,7 +122,7 @@ Future<void> _initPushSystems() async {
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
-  if (kDebugMode) debugPrint('[Main] Starting app services...');
+  debugPrint('[Main] Starting app services...');
 
   // V2 Master Realtime Manager — jedini koji slusa Supabase.
   // On ucitava sve cache-ove (vozaci, kapacitet, settings...) i otvara WebSocket.
@@ -147,7 +146,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _initializeApp();
 
-    // Dozvole se pozivaju iz WelcomeScreen da izbegnu MaterialLocalizations gresku
+    // Dozvole se pozivaju iz V2WelcomeScreen da izbegnu MaterialLocalizations gresku
   }
 
   @override
@@ -216,7 +215,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Widget _buildHome() {
-    // Uvek idi direktno na WelcomeScreen - bez Loading ekrana
-    return const WelcomeScreen();
+    // Uvek idi direktno na V2WelcomeScreen - bez Loading ekrana
+    return const V2WelcomeScreen();
   }
 }

@@ -189,15 +189,15 @@ class AuthManager {
         debugPrint('[AuthManager] Greška pri dispose PinZahtevService: $e');
       }
 
-      // 5. Navigiraj na WelcomeScreen — koristi globalnu navigatorKey
+      // 5. Navigiraj na V2WelcomeScreen — koristi globalnu navigatorKey
       if (navigatorKey.currentState != null) {
         navigatorKey.currentState!.pushAndRemoveUntil(
-          MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
+          MaterialPageRoute<void>(builder: (_) => const V2WelcomeScreen()),
           (route) => false,
         );
       } else if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
+          MaterialPageRoute<void>(builder: (_) => const V2WelcomeScreen()),
           (route) => false,
         );
       }
@@ -206,7 +206,7 @@ class AuthManager {
       try {
         if (navigatorKey.currentState != null) {
           navigatorKey.currentState!.pushAndRemoveUntil(
-            MaterialPageRoute<void>(builder: (_) => const WelcomeScreen()),
+            MaterialPageRoute<void>(builder: (_) => const V2WelcomeScreen()),
             (route) => false,
           );
         }

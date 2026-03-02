@@ -6,16 +6,16 @@ import '../services/v2_pin_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// 📋 PIN ZAHTEVI SCREEN
+/// PIN ZAHTEVI SCREEN
 /// Admin vidi sve zahteve za PIN i može da odobri/odbije
-class PinZahteviScreen extends StatefulWidget {
-  const PinZahteviScreen({super.key});
+class V2PinZahteviScreen extends StatefulWidget {
+  const V2PinZahteviScreen({super.key});
 
   @override
-  State<PinZahteviScreen> createState() => _PinZahteviScreenState();
+  State<V2PinZahteviScreen> createState() => _PinZahteviScreenState();
 }
 
-class _PinZahteviScreenState extends State<PinZahteviScreen> {
+class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
   // Stream inicijalizovan jednom — ne kreira se ponovo na svakom rebuildu
   late final Stream<List<Map<String, dynamic>>> _stream;
 

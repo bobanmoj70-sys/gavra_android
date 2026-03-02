@@ -5,7 +5,7 @@ import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_polasci_service.dart';
 
-/// 📊 Helper za prikazivanje detaljnih statistika putnika
+/// Helper za prikazivanje detaljnih statistika putnika
 /// Koristi se i u admin ekranu i u profilu putnika
 class PutnikStatistikeHelper {
   PutnikStatistikeHelper._();
@@ -47,7 +47,7 @@ class PutnikStatistikeHelper {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 📅 DROPDOWN ZA PERIOD
+                    // DROPDOWN ZA PERIOD
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -84,7 +84,7 @@ class PutnikStatistikeHelper {
                             );
                           }).toList()
                             ..addAll([
-                              // 📊 CELA GODINA I UKUPNO
+                              // CELA GODINA I UKUPNO
                               DropdownMenuItem(
                                 value: 'Cela ${DateTime.now().year}',
                                 child: Row(
@@ -199,7 +199,7 @@ class PutnikStatistikeHelper {
     );
   }
 
-  // 💰 DOHVATI PLAĆENE MESECE ZA PUTNIKA
+  // DOHVATI PLAĆENE MESECE ZA PUTNIKA
   static Future<Set<String>> _getPlaceniMeseci(String putnikId) async {
     try {
       final svaPlacanja = await V2PutnikStatistikaService.dohvatiPlacanja(putnikId);
@@ -218,7 +218,7 @@ class PutnikStatistikeHelper {
     }
   }
 
-  // 📊 KREIRANJE SADRŽAJA STATISTIKA
+  // KREIRANJE SADRŽAJA STATISTIKA
   static Widget _buildStatistikeContent({
     required String putnikIme,
     required String tip,
@@ -244,7 +244,7 @@ class PutnikStatistikeHelper {
 
     return Column(
       children: [
-        // 🎯 OSNOVNE INFORMACIJE
+        // OSNOVNE INFORMACIJE
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
@@ -279,17 +279,17 @@ class PutnikStatistikeHelper {
 
         const SizedBox(height: 16),
 
-        // 💰 FINANSIJSKE INFORMACIJE
+        // FINANSIJSKE INFORMACIJE
         _buildFinancialSection(putnikId, tip, stats['cena_po_danu']),
 
         const SizedBox(height: 16),
 
-        // 💰 PLAĆENI MESECI
+        // PLAĆENI MESECI
         _buildPlaceniMeseciSection(tip, stats['placeniMeseci'] ?? {}),
 
         const SizedBox(height: 16),
 
-        // 📈 STATISTIKE PUTOVANJA - DINAMICKI PERIOD
+        // STATISTIKE PUTOVANJA - DINAMICKI PERIOD
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
@@ -334,7 +334,7 @@ class PutnikStatistikeHelper {
 
         const SizedBox(height: 16),
 
-        // 🕐 SISTEMSKE INFORMACIJE
+        // SISTEMSKE INFORMACIJE
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
@@ -386,7 +386,7 @@ class PutnikStatistikeHelper {
             ),
           ),
           const SizedBox(height: 8),
-          // 💰 PRIKAZ CENE PO DANU
+          // PRIKAZ CENE PO DANU
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -409,7 +409,7 @@ class PutnikStatistikeHelper {
             ],
           ),
           const Divider(),
-          // 💵 Datum, iznos i vozač poslednjeg plaćanja
+          // Datum, iznos i vozač poslednjeg plaćanja
           FutureBuilder<Map<String, dynamic>?>(
             future: V2PutnikStatistikaService.dohvatiPlacanja(putnikId).then((l) => l.isNotEmpty ? l.first : null),
             builder: (context, snapshot) {
@@ -493,7 +493,7 @@ class PutnikStatistikeHelper {
     );
   }
 
-  // 📊 HELPER METODA ZA KREIRANJE REDA STATISTIKE
+  // HELPER METODA ZA KREIRANJE REDA STATISTIKE
   static Widget _buildStatRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -789,7 +789,7 @@ class PutnikStatistikeHelper {
     };
   }
 
-  /// 📊 DOHVATI DETALJNE STATISTIKE ZA MESEC
+  /// DOHVATI DETALJNE STATISTIKE ZA MESEC
   static Future<Map<String, dynamic>> _getStatistikeZaMesec(
       String putnikId, int mesec, int godina, String tipPutnika) async {
     try {
@@ -879,7 +879,7 @@ class PutnikStatistikeHelper {
     }
   }
 
-  /// 🏥 DOHVATI MEDICINSKU POMOĆ LOGS - dodato kao fensi opcija
+  /// DOHVATI MEDICINSKU POMOĆ LOGS - dodato kao fensi opcija
   static Map<String, dynamic> _emptyStats() {
     return {
       'putovanja': 0,

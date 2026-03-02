@@ -43,11 +43,11 @@ class V2TimePickerCell extends StatelessWidget {
   // CENTRALNA LOGIKA ZAKLJUČAVANJA
   //
   // Pravilo: ćelija je zaključana ako je trenutno vreme >= vreme polaska
-  //          za taj dan u AKTIVNOJ nedelji.
+  // za taj dan u AKTIVNOJ nedelji.
   //
   // Aktivna nedelja:
-  //   - sub >= 02:00 ili ned → pon-pet su u SLEDEĆOJ kalendarskoj nedelji
-  //   - inače               → pon-pet su u TEKUĆOJ kalendarskoj nedelji
+  // - sub >= 02:00 ili ned → pon-pet su u SLEDEĆOJ kalendarskoj nedelji
+  // - inače               → pon-pet su u TEKUĆOJ kalendarskoj nedelji
   //
   // Jedna metoda (_resolvePolazakDateTime) vraća tačan DateTime polaska.
   // Sve ostale metode koriste samo nju.
@@ -144,13 +144,13 @@ class V2TimePickerCell extends StatelessWidget {
     Color bgColor = Colors.white;
     Color textColor = Colors.black87;
 
-    // 🔴 OTKAZANO - crvena (prioritet nad svim ostalim)
+    // OTKAZANO - crvena (prioritet nad svim ostalim)
     if (isOtkazano) {
       borderColor = Colors.red;
       bgColor = Colors.red.shade50;
       textColor = Colors.red.shade800;
     }
-    // 🔵 ODBIJENO - plava
+    // ODBIJENO - plava
     else if (isOdbijeno) {
       borderColor = Colors.blue;
       bgColor = Colors.blue.shade50;
@@ -162,19 +162,19 @@ class V2TimePickerCell extends StatelessWidget {
       bgColor = Colors.grey.shade200;
       textColor = Colors.grey.shade600;
     }
-    // 🟢 ODOBRENO - zelena
+    // ODOBRENO - zelena
     else if (isOdobreno) {
       borderColor = Colors.green;
       bgColor = Colors.green.shade50;
       textColor = Colors.green.shade800;
     }
-    // 🟠 OBRADA - narandžasta
+    // OBRADA - narandžasta
     else if (isObrada) {
       borderColor = Colors.orange;
       bgColor = Colors.orange.shade200;
       textColor = Colors.orange.shade900;
     }
-    // 🟢 IMA VREMENA - zelena
+    // IMA VREMENA - zelena
     else if (hasTime) {
       borderColor = Colors.green;
       bgColor = Colors.green.shade50;
@@ -186,7 +186,7 @@ class V2TimePickerCell extends StatelessWidget {
         // Omogućavamo otkazanim terminima da se ponovo aktiviraju ukoliko vreme nije prošlo
         if (isOtkazano && _isTimePassed()) return;
 
-        // 🔒 VREME POLASKA JE NASTUPILO
+        // VREME POLASKA JE NASTUPILO
         if (_isTimePassed()) {
           AppSnackBar.warning(context, '🔒 Vreme polaska je nastupilo. Izmene nisu moguće do subote.');
           return;
@@ -194,13 +194,13 @@ class V2TimePickerCell extends StatelessWidget {
 
         final now = DateTime.now();
 
-        // 🚫 BLOKADA ZA OBRADA STATUS
+        // BLOKADA ZA OBRADA STATUS
         if (isObrada && hasTime) {
           AppSnackBar.warning(context, '⏳ Vaš zahtev za ovo vreme je već u obradi. Molimo sačekajte odgovor.');
           return;
         }
 
-        // ❌ BLOKADA ZA ODBIJENO STATUS
+        // BLOKADA ZA ODBIJENO STATUS
         if (isOdbijeno) {
           AppSnackBar.error(context, '❌ Ovaj termin je popunjen. Izaberite neko drugo slobodno vreme.');
           return;
@@ -331,7 +331,7 @@ class V2TimePickerCell extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ⚠️ VREME PROŠLO INFO BANER
+                // VREME PROŠLO INFO BANER
                 if (timePassed)
                   Container(
                     width: double.infinity,
