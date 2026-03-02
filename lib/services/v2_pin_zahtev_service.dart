@@ -19,10 +19,15 @@ class V2PinZahtevService {
     required String putnikId,
     required String email,
     required String telefon,
+    String? putnikTabela,
   }) async {
     try {
-      final existing =
-          await _supabase.from('v2_pin_zahtevi').select().eq('putnik_id', putnikId).eq('status', 'ceka').maybeSingle();
+      final existing = await _supabase
+          .from('v2_pin_zahtevi')
+          .select('id')
+          .eq('putnik_id', putnikId)
+          .eq('status', 'ceka')
+          .maybeSingle();
 
       if (existing != null) {
         return true;
@@ -33,6 +38,7 @@ class V2PinZahtevService {
         'email': email,
         'telefon': telefon,
         'status': 'ceka',
+        if (putnikTabela != null) 'putnik_tabela': putnikTabela,
       });
 
       // 🔔 Pošalji notifikaciju adminima

@@ -99,7 +99,7 @@ class V2PolasciService {
         'dodeljeno_vreme': zeljenoVreme, // kopira zeljeno_vreme u dodeljeno_vreme
         'updated_at': nowStr,
         'processed_at': nowStr,
-        if (approvedBy != null) 'approved_by': approvedBy,
+        if (approvedBy != null) 'odobrio': approvedBy,
       }).eq('id', id);
 
       return true;
@@ -116,7 +116,7 @@ class V2PolasciService {
         'status': 'odbijeno',
         'updated_at': DateTime.now().toUtc().toIso8601String(),
         'processed_at': DateTime.now().toUtc().toIso8601String(),
-        if (rejectedBy != null) 'cancelled_by': rejectedBy,
+        if (rejectedBy != null) 'otkazao': rejectedBy,
       }).eq('id', id);
 
       return true;
@@ -464,7 +464,7 @@ class V2PutnikStreamService {
           .select('id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, status, '
               'created_at, updated_at, processed_at, broj_mesta, '
               'adresa_id, alternative_vreme_1, alternative_vreme_2, '
-              'cancelled_by, pokupljeno_by, dan')
+              'otkazao, pokupio, dan')
           .eq('dan', dan)
           .inFilter('status', ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen']);
       final vlRows = await supabase
@@ -645,7 +645,7 @@ class V2PutnikStreamService {
       ..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
     final String? logCreatedAt = logRows.isNotEmpty ? logRows.first['created_at']?.toString() : null;
 
-    final String? pokupioVozac = srRow['pokupljeno_by']?.toString();
+    final String? pokupioVozac = srRow['pokupio']?.toString();
     final String? naplatioVozac = uplataRows.isNotEmpty ? uplataRows.first['vozac_ime']?.toString() : null;
     final String? naplatioVozacId = uplataRows.isNotEmpty ? uplataRows.first['vozac_id']?.toString() : null;
     final String? vremeUplate = uplataRows.isNotEmpty ? uplataRows.first['created_at']?.toString() : null;
@@ -667,12 +667,6 @@ class V2PutnikStreamService {
     final adresaId = srRow['adresa_id']?.toString();
     if (adresaId != null && adresaId.isNotEmpty) {
       nazivAdrese = V2MasterRealtimeManager.instance.adreseCache[adresaId]?['naziv']?.toString();
-    }
-    if (nazivAdrese == null && rp != null) {
-      final fallbackAdresaId = srGrad == 'VS' ? rp['adresa_vs_id']?.toString() : rp['adresa_bc_id']?.toString();
-      if (fallbackAdresaId != null && fallbackAdresaId.isNotEmpty) {
-        nazivAdrese = V2MasterRealtimeManager.instance.adreseCache[fallbackAdresaId]?['naziv']?.toString();
-      }
     }
 
     final map = Map<String, dynamic>.from(srRow);
@@ -763,7 +757,7 @@ class V2PutnikStreamService {
           'status': 'pokupljen',
           'updated_at': nowToString(),
           'processed_at': nowToString(),
-          if (driver != null) 'pokupljeno_by': driver,
+          if (driver != null) 'pokupio': driver,
         }).eq('id', requestId);
       } else {
         final gradKey = grad != null ? GradAdresaValidator.normalizeGrad(grad) : null;
@@ -783,7 +777,7 @@ class V2PutnikStreamService {
                 'status': 'pokupljen',
                 'updated_at': nowToString(),
                 'processed_at': nowToString(),
-                if (driver != null) 'pokupljeno_by': driver,
+                if (driver != null) 'pokupio': driver,
               })
               .eq('putnik_id', id.toString())
               .eq('dan', danKey)
@@ -887,10 +881,10 @@ class V2PutnikStreamService {
               'status': status,
               'processed_at': nowToString(),
               'updated_at': nowToString(),
-              if (driver != null) 'cancelled_by': driver,
+              if (driver != null) 'otkazao': driver,
             })
             .eq('id', requestId)
-            .select();
+            .select('id');
         if (res.isNotEmpty) return;
       } catch (e) {
         debugPrint('⚠️ [PutnikService] v2OtkaziPutnika: Error matching by requestId: $e');
@@ -929,12 +923,12 @@ class V2PutnikStreamService {
               'status': status,
               'processed_at': nowToString(),
               'updated_at': nowToString(),
-              if (driver != null) 'cancelled_by': driver,
+              if (driver != null) 'otkazao': driver,
             })
             .match({'putnik_id': id.toString(), 'dan': danKey})
             .eq('grad', gradKey)
             .eq('zeljeno_vreme', normalizedTime)
-            .select();
+            .select('id');
 
         if (res.isNotEmpty) return;
 
@@ -944,12 +938,12 @@ class V2PutnikStreamService {
               'status': status,
               'processed_at': nowToString(),
               'updated_at': nowToString(),
-              if (driver != null) 'cancelled_by': driver,
+              if (driver != null) 'otkazao': driver,
             })
             .match({'putnik_id': id.toString(), 'dan': danKey})
             .eq('grad', gradKey)
             .eq('dodeljeno_vreme', normalizedTime)
-            .select();
+            .select('id');
 
         if (res.isNotEmpty) return;
       }
@@ -1020,7 +1014,7 @@ class V2PutnikStreamService {
         query = query.eq('zeljeno_vreme', '\${GradAdresaValidator.normalizeTime(vreme)}');
       }
 
-      final res = await query.select();
+      final res = await query.select('id');
       debugPrint('🚫 [PutnikService] globalniBezPolaska: updated \${res.length} rows');
       return res.length;
     } catch (e) {
@@ -1041,7 +1035,7 @@ class V2PutnikStatistikaService {
     try {
       final rows = await _db
           .from('v2_statistika_istorija')
-          .select()
+          .select('iznos,datum,created_at,vozac_ime,placeni_mesec,placena_godina,tip')
           .eq('putnik_id', putnikId)
           .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna']).order('datum', ascending: false);
       return rows

@@ -192,8 +192,7 @@ class VozacCache {
   /// ali je mesto gde se ta logika treba menjati (umesto širenja hardcode provera).
   static bool prefersVozacScreen(String? ime) {
     if (ime == null || ime.isEmpty) return false;
-    const vozacScreenVozaci = {'voja'};
-    return vozacScreenVozaci.contains(ime.toLowerCase());
+    return ime.toLowerCase() == 'voja';
   }
 
   /// Vrati ikonu koja predstavlja vozača u UI.

@@ -73,9 +73,9 @@ class V2Polazak {
       alternativeVreme2: json['alternative_vreme_2'] as String?,
       brojMesta: json['broj_mesta'] as int? ?? 1,
       customAdresaId: json['custom_adresa_id'] as String?,
-      cancelledBy: json['cancelled_by'] as String?,
-      pokupljenoBy: json['pokupljeno_by'] as String?,
-      approvedBy: json['approved_by'] as String?,
+      cancelledBy: json['otkazao'] as String?,
+      pokupljenoBy: json['pokupio'] as String?,
+      approvedBy: json['odobrio'] as String?,
       putnikIme: json['putnik_ime'] as String?, // enrichuje se u servisu
       brojTelefona: json['broj_telefona'] as String?, // enrichuje se u servisu
       tipPutnika: tipPutnika,

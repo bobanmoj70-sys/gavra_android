@@ -16,7 +16,11 @@ class V2GorivoService {
   /// Dohvati trenutno stanje pumpe
   static Future<PumpaStanje?> getStanje() async {
     try {
-      final response = await _db.from('v2_pumpa_stanje').select().single();
+      final response = await _db
+          .from('v2_pumpa_stanje')
+          .select(
+              'kapacitet_litri,alarm_nivo,pocetno_stanje,ukupno_punjeno,ukupno_utroseno,trenutno_stanje,procenat_pune')
+          .single();
       return PumpaStanje.fromJson(response);
     } catch (e) {
       debugPrint('❌ [Gorivo] getStanje error: $e');
@@ -55,7 +59,7 @@ class V2GorivoService {
     try {
       final response = await _db
           .from('v2_pumpa_punjenja')
-          .select()
+          .select('id,datum,litri,cena_po_litru,ukupno_cena,napomena,created_at')
           .order('datum', ascending: false)
           .order('created_at', ascending: false)
           .limit(limit);

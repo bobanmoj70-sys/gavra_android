@@ -80,7 +80,10 @@ class _KombiEtaWidgetState extends State<KombiEtaWidget> {
         // 🔁 FALLBACK: cache još nije popunjen (prva sekunda pri startu)
         // Radi jedan DB upit i popuni lokacijeCache
         debugPrint('⚠️ [KombiEta] lokacijeCache prazan — fallback DB upit');
-        final data = await supabase.from('v2_vozac_lokacije').select().eq('aktivan', true);
+        final data = await supabase
+            .from('v2_vozac_lokacije')
+            .select('id,vozac_id,lat,lng,grad,vreme_polaska,smer,putnici_eta,aktivan,updated_at')
+            .eq('aktivan', true);
         if (!mounted) return;
         // Ažuriraj cache sa svežim podacima
         for (final row in data as List<dynamic>) {

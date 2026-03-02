@@ -314,11 +314,13 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final putnikId = _putnikData!['id'] as String;
       final email = _putnikData!['email'] as String? ?? _emailController.text.trim();
       final telefon = _putnikData!['broj_telefona'] as String? ?? _telefonController.text.trim();
+      final putnikTabela = _putnikData!['_tabela'] as String?;
 
       final success = await V2PinZahtevService.posaljiZahtev(
         putnikId: putnikId,
         email: email,
         telefon: telefon,
+        putnikTabela: putnikTabela,
       );
 
       if (success) {
@@ -987,6 +989,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final putnikId = _putnikData!['id'] as String;
       final email = _putnikData!['email'] as String? ?? '';
       final telefon = _putnikData!['broj_telefona'] as String? ?? _telefonController.text.trim();
+      final putnikTabela = _putnikData!['_tabela'] as String?;
 
       // Proveri da li vec ima zahtev koji ceka
       final imaZahtev = await V2PinZahtevService.imaZahtevKojiCeka(putnikId);
@@ -1002,6 +1005,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         putnikId: putnikId,
         email: email,
         telefon: telefon,
+        putnikTabela: putnikTabela,
       );
 
       if (success) {

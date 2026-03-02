@@ -1584,7 +1584,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         final imePutnika = _putnikData['ime'] as String? ?? _putnikData['putnik_ime'] as String? ?? 'putnik';
         await supabase.from('v2_polasci').update({
           'status': 'otkazano',
-          'cancelled_by': imePutnika,
+          'otkazao': imePutnika,
           'processed_at': nowStr,
           'updated_at': nowStr,
         }).eq('id', existing['id'].toString());

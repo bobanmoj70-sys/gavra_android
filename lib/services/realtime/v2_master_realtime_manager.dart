@@ -186,7 +186,7 @@ class V2MasterRealtimeManager {
             'id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
             'status, created_at, updated_at, processed_at, broj_mesta, '
             'alternative_vreme_1, alternative_vreme_2, adresa_id, '
-            'cancelled_by, pokupljeno_by, dan',
+            'otkazao, pokupio, dan',
           )
           .eq('dan', dan)
           .inFilter('status', [
@@ -651,7 +651,12 @@ class V2MasterRealtimeManager {
 
   /// Dohvata putnika po PIN-u iz date tabele
   Future<Map<String, dynamic>?> getByPin(String pin, String tabela) async {
-    final row = await _db.from(tabela).select().eq('pin', pin).maybeSingle();
+    final row = await _db
+        .from(tabela)
+        .select(
+            'id,ime,status,telefon,telefon_2,telefon_oca,telefon_majke,adresa_bc_id,adresa_vs_id,pin,email,cena,cena_po_danu,treba_racun,broj_mesta,created_at,updated_at')
+        .eq('pin', pin)
+        .maybeSingle();
     if (row == null) return null;
     return {...row, '_tabela': tabela};
   }
@@ -661,7 +666,12 @@ class V2MasterRealtimeManager {
     final cached = getPutnikById(id);
     if (cached != null) return cached;
     for (final tabela in putnikTabele) {
-      final row = await _db.from(tabela).select().eq('id', id).maybeSingle();
+      final row = await _db
+          .from(tabela)
+          .select(
+              'id,ime,status,telefon,telefon_2,telefon_oca,telefon_majke,adresa_bc_id,adresa_vs_id,pin,email,cena,cena_po_danu,treba_racun,broj_mesta,created_at,updated_at')
+          .eq('id', id)
+          .maybeSingle();
       if (row != null) return {...row, '_tabela': tabela};
     }
     return null;
