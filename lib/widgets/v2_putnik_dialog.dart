@@ -114,30 +114,30 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
   void _loadDataFromExistingPutnik() async {
     if (widget.isEditing) {
-      final V2Putnik = widget.existingPutnik!;
+      final v2Putnik = widget.existingPutnik!;
 
       // Load basic info
-      _imeController.text = V2Putnik.ime;
-      _tip = switch (V2Putnik.v2Tabela) {
+      _imeController.text = v2Putnik.ime;
+      _tip = switch (v2Putnik.v2Tabela) {
         'v2_ucenici' => 'ucenik',
         'v2_dnevni' => 'dnevni',
         'v2_posiljke' => 'posiljka',
         _ => 'radnik',
       };
-      _brojMestaController.text = V2Putnik.brojMesta.toString();
+      _brojMestaController.text = v2Putnik.brojMesta.toString();
       _tipSkoleController.text = '';
-      _brojTelefonaController.text = V2Putnik.telefon ?? '';
-      _brojTelefona2Controller.text = V2Putnik.telefon2 ?? '';
-      _brojTelefonaOcaController.text = V2Putnik.telefonOca ?? '';
-      _brojTelefonaMajkeController.text = V2Putnik.telefonMajke ?? '';
+      _brojTelefonaController.text = v2Putnik.telefon ?? '';
+      _brojTelefona2Controller.text = v2Putnik.telefon2 ?? '';
+      _brojTelefonaOcaController.text = v2Putnik.telefonOca ?? '';
+      _brojTelefonaMajkeController.text = v2Putnik.telefonMajke ?? '';
 
-      if (V2Putnik.cena != null && V2Putnik.cena! > 0) {
-        _cenaPoDanuController.text = V2Putnik.cena!.toStringAsFixed(0);
+      if (v2Putnik.cena != null && v2Putnik.cena! > 0) {
+        _cenaPoDanuController.text = v2Putnik.cena!.toStringAsFixed(0);
       }
 
-      _emailController.text = V2Putnik.email ?? '';
+      _emailController.text = v2Putnik.email ?? '';
 
-      _trebaRacun = V2Putnik.trebaRacun;
+      _trebaRacun = v2Putnik.trebaRacun;
       _firmaNazivController.text = '';
       _firmaPibController.text = '';
       _firmaMbController.text = '';
@@ -154,36 +154,36 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
   Future<void> _loadAdreseForEditovanje() async {
     // Load existing address names for the edit dialog using the UUIDs
-    final V2Putnik = widget.existingPutnik;
-    if (V2Putnik == null) return;
+    final v2Putnik = widget.existingPutnik;
+    if (v2Putnik == null) return;
 
     // Try batch fetch for both ids
     try {
       final idsToFetch = <String>[];
-      if (V2Putnik.adresaBcId != null && V2Putnik.adresaBcId!.isNotEmpty) {
-        idsToFetch.add(V2Putnik.adresaBcId!);
+      if (v2Putnik.adresaBcId != null && v2Putnik.adresaBcId!.isNotEmpty) {
+        idsToFetch.add(v2Putnik.adresaBcId!);
       }
-      if (V2Putnik.adresaVsId != null && V2Putnik.adresaVsId!.isNotEmpty) {
-        idsToFetch.add(V2Putnik.adresaVsId!);
+      if (v2Putnik.adresaVsId != null && v2Putnik.adresaVsId!.isNotEmpty) {
+        idsToFetch.add(v2Putnik.adresaVsId!);
       }
 
       if (idsToFetch.isNotEmpty) {
         final fetched = V2AdresaSupabaseService.getAdreseByUuids(idsToFetch);
 
-        final bcNaziv = V2Putnik.adresaBcId != null
-            ? fetched[V2Putnik.adresaBcId!]?.naziv ?? V2AdresaSupabaseService.getNazivAdreseByUuid(V2Putnik.adresaBcId)
+        final bcNaziv = v2Putnik.adresaBcId != null
+            ? fetched[v2Putnik.adresaBcId!]?.naziv ?? V2AdresaSupabaseService.getNazivAdreseByUuid(v2Putnik.adresaBcId)
             : null;
 
-        final vsNaziv = V2Putnik.adresaVsId != null
-            ? fetched[V2Putnik.adresaVsId!]?.naziv ?? V2AdresaSupabaseService.getNazivAdreseByUuid(V2Putnik.adresaVsId)
+        final vsNaziv = v2Putnik.adresaVsId != null
+            ? fetched[v2Putnik.adresaVsId!]?.naziv ?? V2AdresaSupabaseService.getNazivAdreseByUuid(v2Putnik.adresaVsId)
             : null;
 
         if (mounted) {
           setState(() {
             _adresaBelaCrkvaController.text = bcNaziv ?? '';
             _adresaVrsacController.text = vsNaziv ?? '';
-            _adresaBelaCrkvaId = V2Putnik.adresaBcId;
-            _adresaVrsacId = V2Putnik.adresaVsId;
+            _adresaBelaCrkvaId = v2Putnik.adresaBcId;
+            _adresaVrsacId = v2Putnik.adresaVsId;
           });
         }
       } else {

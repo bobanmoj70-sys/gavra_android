@@ -14,16 +14,16 @@ class CenaObracunService {
   static SupabaseClient get _supabase => supabase;
 
   /// Dobija cenu po danu za putnika (SAMO custom cena)
-  static double getCenaPoDanu(RegistrovaniPutnik V2Putnik) {
+  static double getCenaPoDanu(RegistrovaniPutnik v2Putnik) {
     // 1. Ako ima postavljenu custom cenu - koristi je
-    if (V2Putnik.cena != null && V2Putnik.cena! > 0) {
-      return V2Putnik.cena!;
+    if (v2Putnik.cena != null && v2Putnik.cena! > 0) {
+      return v2Putnik.cena!;
     }
 
-    final imeLower = V2Putnik.ime.toLowerCase();
+    final imeLower = v2Putnik.ime.toLowerCase();
 
     // 2. STROGO FIKSNE CENE samo za specijalne slučajeve
-    if (V2Putnik.v2Tabela == 'v2_posiljke' && imeLower.contains('zubi')) {
+    if (v2Putnik.v2Tabela == 'v2_posiljke' && imeLower.contains('zubi')) {
       return 300.0;
     }
 

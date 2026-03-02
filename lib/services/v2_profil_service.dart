@@ -288,4 +288,138 @@ class V2ProfilService {
   static RegistrovaniPutnik _fromRow(Map<String, dynamic> r, String tabela) {
     return RegistrovaniPutnik.fromMap({...r, '_tabela': tabela});
   }
+
+  // ---------------------------------------------------------------------------
+  // 🔍 LOOKUP — svi cache-ovi objedinjeno
+  // ---------------------------------------------------------------------------
+
+  /// Vraća sve aktivne putnike iz sva 4 cache-a kao modele (0 DB upita)
+  static Future<List<RegistrovaniPutnik>> getAllAktivniKaoModel() async {
+    return _rm.getAllPutnici()
+        .where((r) => r['status'] == 'aktivan')
+        .map((r) => _fromRow(r, r['_tabela'] as String? ?? 'v2_radnici'))
+        .toList()
+      ..sort((a, b) => a.ime.compareTo(b.ime));
+  }
+
+  /// Traži putnika po ID-u kroz sva 4 cache-a, vraća raw Map (za RegistrovaniPutnik.fromMap)
+  static Future<Map<String, dynamic>?> findPutnikById(String id) async {
+    final row = _rm.getPutnikById(id);
+    if (row != null) return row;
+    // Fallback: direktan DB upit ako nije u cache-u
+    for (final tabela in ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke']) {
+      try {
+        final res = await _supabase.from(tabela).select().eq('id', id).maybeSingle();
+        if (res != null) return {...res, '_tabela': tabela};
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 📊 STATISTIKA — čita iz v2_statistika_istorija
+  // ---------------------------------------------------------------------------
+
+  /// Dohvata sva plaćanja (tip='uplata' ili 'uplata_dnevna') za putnika
+  static Future<List<Map<String, dynamic>>> dohvatiPlacanja(String putnikId) async {
+    try {
+      // Pokušaj iz cache-a prvo
+      final izCache = _rm.statistikaCache.values
+          .where((r) =>
+              r['putnik_id']?.toString() == putnikId &&
+              (r['tip'] == 'uplata' || r['tip'] == 'uplata_dnevna'))
+          .toList();
+      if (izCache.isNotEmpty) return izCache;
+      // Fallback: DB upit za sve datume
+      final res = await _supabase
+          .from('v2_statistika_istorija')
+          .select('id, putnik_id, datum, tip, iznos, vozac_id, vozac_ime, grad, vreme, created_at, placeni_mesec, placena_godina')
+          .eq('putnik_id', putnikId)
+          .inFilter('tip', ['uplata', 'uplata_dnevna'])
+          .order('datum', ascending: false);
+      return List<Map<String, dynamic>>.from(res);
+    } catch (e) {
+      debugPrint('❌ [V2ProfilService] dohvatiPlacanja error: $e');
+      return [];
+    }
+  }
+
+  /// Broji vožnje (tip='voznja') za putnika u tekućem mjesecu
+  static Future<int> izracunajBrojVoznji(String putnikId) async {
+    try {
+      final now = DateTime.now();
+      final mesecStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+      final res = await _supabase
+          .from('v2_statistika_istorija')
+          .select('id')
+          .eq('putnik_id', putnikId)
+          .eq('tip', 'voznja')
+          .gte('datum', mesecStart);
+      return res.length;
+    } catch (e) {
+      debugPrint('❌ [V2ProfilService] izracunajBrojVoznji error: $e');
+      return 0;
+    }
+  }
+
+  /// Broji otkazivanja (tip='otkazivanje') za putnika u tekućem mjesecu
+  static Future<int> izracunajBrojOtkazivanja(String putnikId) async {
+    try {
+      final now = DateTime.now();
+      final mesecStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+      final res = await _supabase
+          .from('v2_statistika_istorija')
+          .select('id')
+          .eq('putnik_id', putnikId)
+          .eq('tip', 'otkazivanje')
+          .gte('datum', mesecStart);
+      return res.length;
+    } catch (e) {
+      debugPrint('❌ [V2ProfilService] izracunajBrojOtkazivanja error: $e');
+      return 0;
+    }
+  }
+
+  /// Upisuje mesečno plaćanje u v2_statistika_istorija
+  static Future<bool> upisPlacanjaULog({
+    String? putnikId,
+    String? putnikIme,
+    String? putnikTabela,
+    double? iznos,
+    String? vozacIme,
+    DateTime? datum,
+    int? placeniMesec,
+    int? placenaGodina,
+  }) async {
+    if (putnikId == null || iznos == null) return false;
+    try {
+      final now = datum ?? DateTime.now();
+      final datumStr = now.toIso8601String().split('T')[0];
+      // Pronađi vozac_id po imenu ako je dato
+      String? vozacId;
+      if (vozacIme != null) {
+        vozacId = _rm.vozaciCache.values
+            .where((v) => v['ime']?.toString() == vozacIme)
+            .firstOrNull?['id']
+            ?.toString();
+      }
+      await _supabase.from('v2_statistika_istorija').insert({
+        'putnik_id': putnikId,
+        'putnik_ime': putnikIme,
+        'putnik_tabela': putnikTabela,
+        'tip': 'uplata',
+        'iznos': iznos,
+        'vozac_id': vozacId,
+        'vozac_ime': vozacIme,
+        'datum': datumStr,
+        if (placeniMesec != null) 'placeni_mesec': placeniMesec,
+        if (placenaGodina != null) 'placena_godina': placenaGodina,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+      return true;
+    } catch (e) {
+      debugPrint('❌ [V2ProfilService] upisPlacanjaULog error: $e');
+      return false;
+    }
+  }
 }

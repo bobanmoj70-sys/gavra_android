@@ -37,11 +37,11 @@ class OsrmService {
       coordsList.add('${startPosition.longitude},${startPosition.latitude}');
 
       final putniciWithCoords = <V2Putnik>[];
-      for (final V2Putnik in putnici) {
-        if (coordinates.containsKey(V2Putnik)) {
-          final pos = coordinates[V2Putnik]!;
+      for (final v2Putnik in putnici) {
+        if (coordinates.containsKey(v2Putnik)) {
+          final pos = coordinates[v2Putnik]!;
           coordsList.add('${pos.longitude},${pos.latitude}');
-          putniciWithCoords.add(V2Putnik);
+          putniciWithCoords.add(v2Putnik);
         }
       }
 
@@ -180,9 +180,9 @@ class OsrmService {
           final legDuration = (leg['duration'] as num?)?.toDouble() ?? 0;
           cumulativeDurationSec += legDuration;
 
-          final V2Putnik = orderedPutnici[i];
+          final v2Putnik = orderedPutnici[i];
           final etaMinutes = (cumulativeDurationSec / 60).round();
-          putniciEta[V2Putnik.ime] = etaMinutes;
+          putniciEta[v2Putnik.ime] = etaMinutes;
         }
       }
 

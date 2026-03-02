@@ -779,15 +779,15 @@ class _VozacScreenState extends State<VozacScreen> {
   Future<void> _sendVozacKrenulNotifikacije() async {
     if (_optimizedRoute.isEmpty || _currentDriver == null) return;
 
-    for (final V2Putnik in _optimizedRoute) {
-      final putnikId = V2Putnik.id?.toString();
+    for (final v2Putnik in _optimizedRoute) {
+      final putnikId = v2Putnik.id?.toString();
       if (putnikId == null) continue;
 
       // Ako V2Putnik nema ID ili je vec pokupljen/otkazan, preskoci
-      if (V2Putnik.jePokupljen || V2Putnik.jeOtkazan || V2Putnik.jeOdsustvo || V2Putnik.jeBezPolaska) continue;
+      if (v2Putnik.jePokupljen || v2Putnik.jeOtkazan || v2Putnik.jeOdsustvo || v2Putnik.jeBezPolaska) continue;
 
       // ETA za ovog putnika (po imenu)
-      final etaMinuta = _putniciEta?[V2Putnik.ime];
+      final etaMinuta = _putniciEta?[v2Putnik.ime];
       final etaTekst = etaMinuta != null ? 'Dolazak za oko $etaMinuta min.' : 'Vozac je krenuo po vas!';
 
       await RealtimeNotificationService.sendNotificationToPutnik(
@@ -1231,12 +1231,12 @@ class _VozacScreenState extends State<VozacScreen> {
     final dayStart = DateTime.parse('${_getWorkingDateIso()}T00:00:00');
     final dayEnd = DateTime.parse('${_getWorkingDateIso()}T23:59:59');
 
-    final filteredDuzniciRaw = sviPutnici.where((V2Putnik) {
-      final nijeMesecni = !V2Putnik.isMesecniTip;
+    final filteredDuzniciRaw = sviPutnici.where((v2Putnik) {
+      final nijeMesecni = !v2Putnik.isMesecniTip;
       if (!nijeMesecni) return false;
-      final nijePlatio = V2Putnik.placeno != true; // ? FIX: Koristi placeno flag iz voznje_log
-      final nijeOtkazan = !V2Putnik.jeOtkazan && !V2Putnik.jeBezPolaska;
-      final pokupljen = V2Putnik.jePokupljen;
+      final nijePlatio = v2Putnik.placeno != true; // ? FIX: Koristi placeno flag iz voznje_log
+      final nijeOtkazan = !v2Putnik.jeOtkazan && !v2Putnik.jeBezPolaska;
+      final pokupljen = v2Putnik.jePokupljen;
       return nijePlatio && nijeOtkazan && pokupljen;
     }).toList();
 

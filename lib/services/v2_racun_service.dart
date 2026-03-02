@@ -159,7 +159,7 @@ class V2RacunService {
       final mesecStr = DateFormat('MMMM yyyy', 'sr_Latn').format(obracunskiDatum);
 
       for (final podaci in racuniPodaci) {
-        final V2Putnik = podaci['V2Putnik'];
+        final v2Putnik = podaci['V2Putnik'];
         final brojDana = podaci['brojDana'] as int;
         final cenaPoDanu = podaci['cenaPoDanu'] as double;
         final ukupno = podaci['ukupno'] as double;
@@ -167,12 +167,12 @@ class V2RacunService {
 
         final stranica = await _kreirajRacunZaFirmuStranicu(
           brojRacuna: brojRacuna,
-          firmaNaziv: V2Putnik.ime,
+          firmaNaziv: v2Putnik.ime,
           firmaPib: '',
           firmaMb: '',
           firmaZiro: '',
           firmaAdresa: '',
-          putnikIme: V2Putnik.ime,
+          putnikIme: v2Putnik.ime,
           opisUsluge: 'Prevoz putnika za $mesecStr',
           cenaPoDanu: cenaPoDanu,
           brojDana: brojDana,

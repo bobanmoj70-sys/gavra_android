@@ -810,12 +810,10 @@ class _PutnikCardState extends State<PutnikCard> {
           throw Exception('V2Putnik nema valjan ID - ne može se naplatiti');
         }
 
-        // ? FIX: ?alji grad umesto place - oznaciPlaceno sada sam racuna place
-        // ISTO kao oznaciPokupljen - konzistentna logika!
         await V2PolasciService.v2OznaciPlaceno(
-          _putnik.id!,
-          iznos,
-          widget.currentDriver,
+          putnikId: _putnik.id!,
+          iznos: iznos,
+          vozacId: widget.currentDriver,
           grad: _putnik.grad,
           selectedVreme: _putnik.polazak,
           selectedDan: _putnik.dan,
@@ -856,10 +854,9 @@ class _PutnikCardState extends State<PutnikCard> {
       // ?? Haptic feedback
       HapticService.mediumImpact();
 
-      // Direktno oznaci kao pokupljen u bazi (v2_polasci)
       await V2PolasciService.v2OznaciPokupljen(
-        _putnik.id!,
-        true,
+        putnikId: _putnik.id!,
+        pokupljen: true,
         grad: _putnik.grad,
         vreme: _putnik.polazak,
         driver: widget.currentDriver,
@@ -1761,10 +1758,9 @@ class _PutnikCardState extends State<PutnikCard> {
 
     if (confirm == true) {
       try {
-        // Otkaži v2_polasci za ovaj termin - postavi status 'otkazano'
         await V2PolasciService.v2OtkaziPutnika(
-          _putnik.id!,
-          widget.currentDriver,
+          putnikId: _putnik.id!,
+          vozacId: widget.currentDriver,
           grad: _putnik.grad,
           vreme: _putnik.polazak,
           selectedDan: _putnik.dan,

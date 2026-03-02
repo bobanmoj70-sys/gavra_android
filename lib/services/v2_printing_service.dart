@@ -68,34 +68,34 @@ class PrintingService {
 
       final danBaza = getDayAbbreviation(selectedDay);
 
-      List<V2Putnik> putnici = sviPutnici.where((V2Putnik) {
-        final normalizedStatus = TextUtils.normalizeText(V2Putnik.status ?? '');
+      List<V2Putnik> putnici = sviPutnici.where((v2Putnik) {
+        final normalizedStatus = TextUtils.normalizeText(v2Putnik.status ?? '');
 
-        if (V2Putnik.mesecnaKarta == true) {
-          final normalizedPutnikGrad = TextUtils.normalizeText(V2Putnik.grad);
+        if (v2Putnik.mesecnaKarta == true) {
+          final normalizedPutnikGrad = TextUtils.normalizeText(v2Putnik.grad);
           final normalizedGrad = TextUtils.normalizeText(selectedGrad);
           final odgovarajuciGrad =
               normalizedPutnikGrad.contains(normalizedGrad) || normalizedGrad.contains(normalizedPutnikGrad);
 
-          final putnikPolazak = V2Putnik.polazak.toString().trim();
+          final putnikPolazak = v2Putnik.polazak.toString().trim();
           final selectedVremeStr = selectedVreme.trim();
           final odgovarajuciPolazak = normalizeTime(putnikPolazak) == normalizeTime(selectedVremeStr) ||
               (normalizeTime(putnikPolazak).startsWith(normalizeTime(selectedVremeStr)));
 
-          final odgovarajuciDan = V2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase());
+          final odgovarajuciDan = v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase());
 
           final result = odgovarajuciGrad && odgovarajuciPolazak && odgovarajuciDan && normalizedStatus != 'obrisan';
 
           return result;
         } else {
-          final normalizedPutnikGrad = TextUtils.normalizeText(V2Putnik.grad);
+          final normalizedPutnikGrad = TextUtils.normalizeText(v2Putnik.grad);
           final normalizedGrad = TextUtils.normalizeText(selectedGrad);
           final gradMatch =
               normalizedPutnikGrad.contains(normalizedGrad) || normalizedGrad.contains(normalizedPutnikGrad);
 
           final odgovara = gradMatch &&
-              normalizeTime(V2Putnik.polazak) == normalizeTime(selectedVreme) &&
-              V2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase()) &&
+              normalizeTime(v2Putnik.polazak) == normalizeTime(selectedVreme) &&
+              v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase()) &&
               normalizedStatus != 'obrisan';
 
           return odgovara;

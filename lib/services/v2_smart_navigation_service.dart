@@ -199,8 +199,8 @@ class SmartNavigationService {
     double totalDistance = 0.0;
     Position currentPos = start;
 
-    for (final V2Putnik in route) {
-      final nextPos = coordinates[V2Putnik]!;
+    for (final v2Putnik in route) {
+      final nextPos = coordinates[v2Putnik]!;
       totalDistance += _calculateDistance(currentPos, nextPos);
       currentPos = nextPos;
     }

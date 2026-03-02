@@ -173,15 +173,15 @@ class PutnikList extends StatelessWidget {
           return ListView.builder(
             itemCount: prikaz.length,
             itemBuilder: (context, index) {
-              final V2Putnik = prikaz[index];
+              final v2Putnik = prikaz[index];
               // Redni broj: računa sa brojem mesta svakog putnika
               int? redniBroj;
-              if (_imaRedniBroj(V2Putnik)) {
+              if (_imaRedniBroj(v2Putnik)) {
                 redniBroj = _pocetniRedniBroj(prikaz, index);
               }
 
               return PutnikCard(
-                putnik: V2Putnik,
+                putnik: v2Putnik,
                 showActions: showActions,
                 currentDriver: currentDriver,
                 redniBroj: redniBroj,
@@ -259,14 +259,14 @@ class PutnikList extends StatelessWidget {
         return ListView.builder(
           itemCount: prikaz.length,
           itemBuilder: (context, index) {
-            final V2Putnik = prikaz[index];
+            final v2Putnik = prikaz[index];
             // Redni broj: računa sa brojem mesta svakog putnika
             int? redniBroj;
-            if (_imaRedniBroj(V2Putnik)) {
+            if (_imaRedniBroj(v2Putnik)) {
               redniBroj = _pocetniRedniBroj(prikaz, index);
             }
             return PutnikCard(
-              putnik: V2Putnik,
+              putnik: v2Putnik,
               showActions: showActions,
               currentDriver: currentDriver,
               redniBroj: redniBroj,
@@ -300,14 +300,14 @@ class PutnikList extends StatelessWidget {
       return ListView.builder(
         itemCount: filteredPutnici.length,
         itemBuilder: (context, index) {
-          final V2Putnik = filteredPutnici[index];
+          final v2Putnik = filteredPutnici[index];
           // Redni broj: računa sa brojem mesta svakog putnika
           int? redniBroj;
-          if (_imaRedniBroj(V2Putnik)) {
+          if (_imaRedniBroj(v2Putnik)) {
             redniBroj = _pocetniRedniBroj(filteredPutnici, index);
           }
           return PutnikCard(
-            putnik: V2Putnik,
+            putnik: v2Putnik,
             showActions: showActions,
             currentDriver: currentDriver,
             redniBroj: redniBroj,
