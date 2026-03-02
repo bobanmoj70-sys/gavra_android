@@ -5,8 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v2_polazak.dart';
+import '../models/v2_putnik.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import 'realtime/v2_master_realtime_manager.dart';
+import 'v2_putnik_stream_service.dart';
 
 /// Servis za upravljanje aktivnim zahtevima za sedišta (v2_polasci tabela)
 class V2PolasciService {
@@ -236,5 +238,130 @@ class V2PolasciService {
       debugPrint('❌ [V2PolasciService] Error accepting alternative: $e');
       return false;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // DELEGATI — pozivaju V2PutnikStreamService (jedina stvarna implementacija)
+  // ---------------------------------------------------------------------------
+
+  static final V2PutnikStreamService _svc = V2PutnikStreamService();
+
+  static Stream<List<V2Putnik>> streamPutnici() => _svc.streamPutnici();
+
+  static Stream<List<V2Putnik>> streamKombinovaniPutniciFiltered({
+    String? isoDate,
+    String? grad,
+    String? vreme,
+    String? selectedVreme,
+    String? selectedDan,
+    String? datum,
+    String? requestId,
+    String? status,
+  }) =>
+      _svc.streamKombinovaniPutniciFiltered(
+        isoDate: isoDate,
+        grad: grad,
+        vreme: vreme ?? selectedVreme,
+      );
+
+  static void refreshAllActiveStreams() => _svc.refreshAllActiveStreams();
+
+  static Future<int> v2GlobalniBezPolaska({
+    String? dan,
+    String? grad,
+    String? vreme,
+  }) =>
+      _svc.v2GlobalniBezPolaska(
+        dan: dan ?? '',
+        grad: grad ?? '',
+        vreme: vreme ?? '',
+      );
+
+  static Future<void> v2DodajPutnika({
+    String? putnikId,
+    String? dan,
+    String? grad,
+    String? vreme,
+    String? putnikTabela,
+    String? adresaId,
+    int brojMesta = 1,
+  }) async {
+    if (putnikId == null) return;
+    // Traži tabelu iz cache-a ako nije proslijeđena
+    final rm = V2MasterRealtimeManager.instance;
+    final tabela = putnikTabela ?? rm.getPutnikById(putnikId)?['_tabela']?.toString();
+    await v2PoSaljiZahtev(
+      putnikId: putnikId,
+      dan: dan ?? '',
+      grad: grad ?? '',
+      vreme: vreme ?? '',
+      isAdmin: true,
+      putnikTabela: tabela,
+      customAdresaId: adresaId,
+      brojMesta: brojMesta,
+    );
+  }
+
+  static Future<void> v2OznaciPlaceno({
+    String? putnikId,
+    double? iznos,
+    String? vozacId,
+    String? grad,
+    String? selectedVreme,
+    String? selectedDan,
+  }) async {
+    if (putnikId == null) return;
+    await _svc.v2OznaciPlaceno(
+      putnikId,
+      iznos ?? 0,
+      vozacId,
+      grad: grad,
+      selectedVreme: selectedVreme,
+      selectedDan: selectedDan,
+    );
+  }
+
+  static Future<void> v2OznaciPokupljen({
+    String? putnikId,
+    bool? pokupljen,
+    String? grad,
+    String? vreme,
+    String? driver,
+    String? datum,
+    String? requestId,
+  }) async {
+    if (putnikId == null) return;
+    await _svc.v2OznaciPokupljen(
+      putnikId,
+      pokupljen ?? true,
+      grad: grad,
+      vreme: vreme,
+      driver: driver,
+      datum: datum,
+      requestId: requestId,
+    );
+  }
+
+  static Future<void> v2OtkaziPutnika({
+    String? putnikId,
+    String? vozacId,
+    String? grad,
+    String? vreme,
+    String? selectedDan,
+    String? datum,
+    String? requestId,
+    String? status,
+  }) async {
+    if (putnikId == null) return;
+    await _svc.v2OtkaziPutnika(
+      putnikId,
+      vozacId,
+      grad: grad,
+      vreme: vreme,
+      selectedDan: selectedDan,
+      datum: datum,
+      requestId: requestId,
+      status: status ?? 'otkazano',
+    );
   }
 }

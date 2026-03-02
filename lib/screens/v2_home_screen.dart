@@ -353,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final scaffoldMessenger = ScaffoldMessenger.of(ctx);
 
     // Ucitaj putnike kojima treba racun iz rm cache-a
-    final sviPutnici = V2ProfilService.getAllAktivniKaoModel();
+    final sviPutnici = await V2ProfilService.getAllAktivniKaoModel();
     final putnici = sviPutnici.where((p) => p.trebaRacun).toList();
 
     if (!mounted) return;
@@ -969,9 +969,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     List<Map<String, String>> dostupneAdrese = []; // ?? Lista adresa za dropdown
 
     // Povuci SVE registrovane putnike iz rm cache-a
-    final lista = V2ProfilService.getAllAktivniKaoModel();
+    final lista = await V2ProfilService.getAllAktivniKaoModel();
     // ?? Filtrirana lista aktivnih putnika za brzu pretragu
-    final aktivniPutnici = lista.where((RegistrovaniPutnik V2Putnik) => V2Putnik.aktivan).toList()
+    final aktivniPutnici = lista.where((RegistrovaniPutnik v2Putnik) => v2Putnik.aktivan).toList()
       ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase()));
 
     // ?? Ucitaj adrese za selektovani grad
@@ -1235,35 +1235,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ),
                                     ),
                                     searchMatchFn: (item, searchValue) {
-                                      final V2Putnik = item.value;
-                                      if (V2Putnik == null) return false;
-                                      return V2Putnik.ime.toLowerCase().contains(searchValue.toLowerCase());
+                                      final v2Putnik = item.value;
+                                      if (v2Putnik == null) return false;
+                                      return v2Putnik.ime.toLowerCase().contains(searchValue.toLowerCase());
                                     },
                                   ),
                                   items: aktivniPutnici
                                       .map(
-                                        (RegistrovaniPutnik V2Putnik) => DropdownMenuItem<RegistrovaniPutnik>(
-                                          value: V2Putnik,
+                                        (RegistrovaniPutnik v2Putnik) => DropdownMenuItem<RegistrovaniPutnik>(
+                                          value: v2Putnik,
                                           child: Row(
                                             children: [
                                               // Ikonica tipa putnika
                                               Icon(
-                                                V2Putnik.v2Tabela == 'v2_radnici'
+                                                v2Putnik.v2Tabela == 'v2_radnici'
                                                     ? Icons.engineering
-                                                    : V2Putnik.v2Tabela == 'v2_dnevni'
+                                                    : v2Putnik.v2Tabela == 'v2_dnevni'
                                                         ? Icons.today
                                                         : Icons.school,
                                                 size: 18,
-                                                color: V2Putnik.v2Tabela == 'v2_radnici'
+                                                color: v2Putnik.v2Tabela == 'v2_radnici'
                                                     ? Colors.blue.shade600
-                                                    : V2Putnik.v2Tabela == 'v2_dnevni'
+                                                    : v2Putnik.v2Tabela == 'v2_dnevni'
                                                         ? Colors.orange.shade600
                                                         : Colors.green.shade600,
                                               ),
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(
-                                                  V2Putnik.ime,
+                                                  v2Putnik.ime,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
@@ -1272,15 +1272,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                       )
                                       .toList(),
-                                  onChanged: (RegistrovaniPutnik? V2Putnik) async {
+                                  onChanged: (RegistrovaniPutnik? v2Putnik) async {
                                     setStateDialog(() {
-                                      selectedPutnik = V2Putnik;
-                                      telefonController.text = V2Putnik?.telefon ?? '';
+                                      selectedPutnik = v2Putnik;
+                                      telefonController.text = v2Putnik?.telefon ?? '';
                                       adresaController.text = 'Ucitavanje...';
                                     });
-                                    if (V2Putnik != null) {
+                                    if (v2Putnik != null) {
                                       // ?? AUTO-POPUNI adresu async - SAMO za selektovani grad
-                                      final adresa = V2Putnik.getAdresaZaSelektovaniGrad(_selectedGrad);
+                                      final adresa = v2Putnik.getAdresaZaSelektovaniGrad(_selectedGrad);
                                       setStateDialog(() {
                                         adresaController.text = adresa == 'Nema adresa' ? '' : adresa;
                                         // Ocisti "samo danas" opcije kad se promeni V2Putnik
@@ -1683,8 +1683,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           brojMesta: brojMesta, // ?? Prosledujemo broj rezervisanih mesta
                                         );
 
-                                        // Duplikat provera se Vrsi u PutnikService.v2DodajPutnika()
-                                        await V2PolasciService.v2DodajPutnika(noviPutnik);
+                                        // Duplikat provera se Vrsi u V2PolasciService.v2DodajPutnika()
+                                        await V2PolasciService.v2DodajPutnika(
+                                          putnikId: selectedPutnik!.id,
+                                          dan: noviPutnik.dan,
+                                          vreme: noviPutnik.polazak,
+                                          grad: noviPutnik.grad,
+                                          putnikTabela: selectedPutnik!.v2Tabela,
+                                          adresaId: adresaIdZaKoristiti,
+                                          brojMesta: brojMesta,
+                                        );
 
                                         // ?? Eksplicitan refresh stream-a da se V2Putnik odmah prikaže
                                         V2PolasciService.refreshAllActiveStreams();
@@ -2012,21 +2020,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
           // Additional filters for display (applies time/grad/status and is used
           // to build the visible list). This operates on the putniciZaDan list.
-          filtered = putniciZaDan.where((V2Putnik) {
-            final normalizedStatus = TextUtils.normalizeText(V2Putnik.status ?? '');
-            final imaVreme = V2Putnik.polazak.toString().trim().isNotEmpty;
-            final imaGrad = V2Putnik.grad.toString().trim().isNotEmpty;
-            final imaDan = V2Putnik.dan.toString().trim().isNotEmpty;
+          filtered = putniciZaDan.where((v2Putnik) {
+            final normalizedStatus = TextUtils.normalizeText(v2Putnik.status ?? '');
+            final imaVreme = v2Putnik.polazak.toString().trim().isNotEmpty;
+            final imaGrad = v2Putnik.grad.toString().trim().isNotEmpty;
+            final imaDan = v2Putnik.dan.toString().trim().isNotEmpty;
             final danBaza = _selectedDay;
-            final normalizedPutnikDan = GradAdresaValidator.normalizeString(V2Putnik.dan);
+            final normalizedPutnikDan = GradAdresaValidator.normalizeString(v2Putnik.dan);
             final normalizedDanBaza = GradAdresaValidator.normalizeString(_getDayAbbreviation(danBaza));
             final odgovarajuciDan = normalizedPutnikDan.contains(normalizedDanBaza);
             final odgovarajuciGrad = GradAdresaValidator.isGradMatch(
-              V2Putnik.grad,
-              V2Putnik.adresa,
+              v2Putnik.grad,
+              v2Putnik.adresa,
               _selectedGrad,
             );
-            final odgovarajuceVreme = GradAdresaValidator.normalizeTime(V2Putnik.polazak) ==
+            final odgovarajuceVreme = GradAdresaValidator.normalizeTime(v2Putnik.polazak) ==
                 GradAdresaValidator.normalizeTime(_selectedVreme);
             // Iskljuci bez_polaska i obrada - admin ih je eksplicitno uklonio
             // Otkazani ostaju u listi - prikazuju se crveni na dnu
