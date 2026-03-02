@@ -2344,7 +2344,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        if (_currentDriver != null && VozacCache.imenaVozaca.contains(_currentDriver))
+                        if (_currentDriver != null &&
+                            VozacCache.imenaVozaca.contains(_currentDriver) &&
+                            !AdminSecurityService.isAdmin(_currentDriver))
                           Expanded(
                             child: _HomeScreenButton(
                               label: 'Ja',
