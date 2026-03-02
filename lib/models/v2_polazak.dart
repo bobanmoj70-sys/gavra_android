@@ -127,4 +127,14 @@ class V2Polazak {
       tipPutnika: tipPutnika ?? this.tipPutnika,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is V2Polazak && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'V2Polazak(id: $id, putnik: $putnikIme, status: $status, dan: $dan, vreme: $zeljenoVreme)';
 }

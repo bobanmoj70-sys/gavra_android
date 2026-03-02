@@ -8,6 +8,8 @@ import 'v2_geocoding_service.dart';
 /// Servis za rad sa normalizovanim adresama iz Supabase tabele.
 /// Read metode čitaju iz rm.adreseCache — nema DB upita.
 class V2AdresaSupabaseService {
+  V2AdresaSupabaseService._();
+
   /// Dobija adresu po UUID-u — iz rm.adreseCache
   static Adresa? getAdresaByUuid(String uuid) {
     final row = V2MasterRealtimeManager.instance.adreseCache[uuid];
@@ -52,6 +54,7 @@ class V2AdresaSupabaseService {
     controller.onCancel = () {
       sub.cancel();
       rm.unsubscribe('v2_adrese');
+      controller.close();
     };
     return controller.stream;
   }
@@ -75,35 +78,26 @@ class V2AdresaSupabaseService {
     return Adresa.fromMap(row);
   }
 
-  /// Pronalazi postojeću adresu - NE KREIRA NOVE
-  /// 🚫 ZAKLJUČANO: Nove adrese može dodati samo admin direktno u bazi
+  /// Pronalazi postojeću adresu — ne kreira nove.
+  /// Nove adrese može dodati samo admin direktno u bazi.
   static Future<Adresa?> createOrGetAdresa({
     required String naziv,
     required String grad,
-    String? ulica,
-    String? broj,
     double? lat,
     double? lng,
   }) async {
-    // 🔒 Samo pronađi postojeću adresu - NE KREIRAJ NOVU
     final postojeca = findAdresaByNazivAndGrad(naziv, grad);
     if (postojeca != null) {
-      // Ako postojeća adresa NEMA koordinate ali imamo ih, ažuriraj
       if (!postojeca.hasValidCoordinates && lat != null && lng != null) {
-        final updatedAdresa = await _geocodeAndUpdateAdresa(postojeca, grad);
-        if (updatedAdresa != null) {
-          return updatedAdresa;
-        }
+        final updated = await _geocodeAndUpdateAdresa(postojeca, grad);
+        if (updated != null) return updated;
       }
       return postojeca;
     }
-
-    // 🚫 NE KREIRAJ NOVU ADRESU - vrati null
-    // Nove adrese može dodati samo admin direktno u Supabase
     return null;
   }
 
-  /// 🌍 Geocodira adresu i ažurira u bazi
+  /// Geocodira adresu i ažurira koordinate u bazi.
   static Future<Adresa?> _geocodeAndUpdateAdresa(Adresa adresa, String grad) async {
     try {
       final coordsString = await GeocodingService.getKoordinateZaAdresu(
@@ -118,41 +112,28 @@ class V2AdresaSupabaseService {
           final lng = double.tryParse(parts[1]);
 
           if (lat != null && lng != null) {
-            // Ažuriraj u bazi
             final response = await supabase
                 .from('v2_adrese')
-                .update({
-                  'gps_lat': lat, // Direct column
-                  'gps_lng': lng, // Direct column
-                })
+                .update({'gps_lat': lat, 'gps_lng': lng})
                 .eq('id', adresa.id)
                 .select('id, naziv, grad, gps_lat, gps_lng')
                 .single();
-
-            final updatedAdresa = Adresa.fromMap(response);
-            return updatedAdresa;
+            return Adresa.fromMap(response);
           }
         }
       }
-    } catch (_) {
-      // 🔇 Ignore
-    }
+    } catch (_) {}
     return null;
   }
 
-  /// 🎯 NOVO: Ažuriraj koordinate za postojeću adresu
-  /// Koristi se kada Nominatim pronađe koordinate za adresu koja ih nema u bazi
+  /// Ažurira GPS koordinate za postojeću adresu.
   static Future<bool> updateKoordinate(
     String uuid, {
     required double lat,
     required double lng,
   }) async {
     try {
-      await supabase.from('v2_adrese').update({
-        'gps_lat': lat, // Direct column
-        'gps_lng': lng, // Direct column
-      }).eq('id', uuid);
-
+      await supabase.from('v2_adrese').update({'gps_lat': lat, 'gps_lng': lng}).eq('id', uuid);
       return true;
     } catch (e) {
       return false;

@@ -13,6 +13,7 @@ import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_putnik_count_helper.dart';
 import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_bottom_nav_bar_letnji.dart';
@@ -33,6 +34,8 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   // Write-only servisi (DB mutacije)
   final _rasporedService = V2VozacRasporedService();
   final _vozacPutnikService = V2VozacPutnikService();
+  // Stream servis — jednom kreiran, ne ponovo na svakom rebuildu
+  final _putnikStreamService = V2PutnikStreamService();
 
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
@@ -92,7 +95,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
     for (final v in bcList) {
       final parts = v.split(':');
       if (parts.length < 2) continue;
-      final vMinutes = int.tryParse(parts[0])! * 60 + int.tryParse(parts[1])!;
+      final vMinutes = (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
       if (vMinutes >= nowMinutes) {
         najblize = v;
         break;
@@ -109,8 +112,6 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   void dispose() {
     _rasporedSub?.cancel();
     _vozacPutnikSub?.cancel();
-    V2MasterRealtimeManager.instance.unsubscribe('v2_vozac_raspored');
-    V2MasterRealtimeManager.instance.unsubscribe('v2_vozac_putnik');
     super.dispose();
   }
 
@@ -163,24 +164,23 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
       });
   }
 
+  /// 🔍 Helper: vraca VozacRasporedEntry za termin ili null (izbjegava dupliciranu logiku)
+  VozacRasporedEntry? _getRasporedEntry(String grad, String vreme) {
+    final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+    return _rasporedCache.where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme).firstOrNull;
+  }
+
   /// 🎨 Vraća boju vozača dodijeljenog terminu (grad+vreme) za selektovani dan
   Color? _getVozacColorForTermin(String grad, String vreme) {
-    final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
-    final entry = _rasporedCache
-        .where(
-          (r) => r.dan == dan && r.grad == grad && r.vreme == vreme,
-        )
-        .firstOrNull;
+    final entry = _getRasporedEntry(grad, vreme);
     if (entry == null) return null;
     return VozacCache.getColor(entry.vozacId);
   }
 
   /// 🚗 Naziv vozača dodijeljenog terminu
   String? _getVozacZaTermin(String grad, String vreme) {
-    final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
-    final entry = _rasporedCache.where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme).firstOrNull;
+    final entry = _getRasporedEntry(grad, vreme);
     if (entry == null) return null;
-    // Lookup vozac ime po vozacId
     return VozacCache.getImeByUuid(entry.vozacId);
   }
 
@@ -529,9 +529,12 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Izracunaj jednom - koristi se za stream, countHelper i filter
+    final isoDate = _getIsoDateForSelectedDay();
+
     return StreamBuilder<List<V2Putnik>>(
-      stream: V2PutnikStreamService().streamKombinovaniPutniciFiltered(
-        isoDate: _getIsoDateForSelectedDay(),
+      stream: _putnikStreamService.streamKombinovaniPutniciFiltered(
+        isoDate: isoDate,
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
@@ -543,7 +546,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 
         final countHelper = PutnikCountHelper.fromPutnici(
           putnici: allPutnici,
-          targetDateIso: _getIsoDateForSelectedDay(),
+          targetDateIso: isoDate,
           targetDayAbbr: targetDay,
         );
 
@@ -557,7 +560,7 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
 
         // Filtriraj po gradu, vremenu, danu i statusu (bez otkazanih/bez_polaska)
         final filteredByGradVreme = allPutnici.where((p) {
-          final gradMatch = _selectedGrad.isEmpty || p.grad == _selectedGrad;
+          final gradMatch = _selectedGrad.isEmpty || GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad);
           final vremeMatch = _selectedVreme.isEmpty || p.polazak == _selectedVreme;
           final danMatch = targetDay.isEmpty || p.dan == targetDay;
           final statusMatch = p.status != 'otkazano' && p.status != 'bez_polaska';
@@ -738,54 +741,44 @@ class _VozacRasporedScreenState extends State<VozacRasporedScreen> {
   }
 
   Widget _buildBottomNavBar(String navType, int Function(String, String) getPutnikCount, String targetDay) {
-    final commonParams = (
-      sviPolasci: _sviPolasci,
-      selectedGrad: _selectedGrad,
-      selectedVreme: _selectedVreme,
-      getPutnikCount: getPutnikCount,
-      getKapacitet: (String grad, String vreme) => V2KapacitetService.getKapacitetSync(grad, vreme),
-      onPolazakChanged: _onPolazakChanged,
-      selectedDan: targetDay,
-      showVozacBoja: true,
-      getVozacColor: _getVozacColorForTermin,
-    );
+    int getKapacitet(String grad, String vreme) => V2KapacitetService.getKapacitetSync(grad, vreme);
 
     switch (navType) {
       case 'praznici':
         return BottomNavBarPraznici(
-          sviPolasci: commonParams.sviPolasci,
-          selectedGrad: commonParams.selectedGrad,
-          selectedVreme: commonParams.selectedVreme,
-          getPutnikCount: commonParams.getPutnikCount,
-          getKapacitet: commonParams.getKapacitet,
-          onPolazakChanged: commonParams.onPolazakChanged,
-          selectedDan: commonParams.selectedDan,
-          showVozacBoja: commonParams.showVozacBoja,
-          getVozacColor: commonParams.getVozacColor,
+          sviPolasci: _sviPolasci,
+          selectedGrad: _selectedGrad,
+          selectedVreme: _selectedVreme,
+          getPutnikCount: getPutnikCount,
+          getKapacitet: getKapacitet,
+          onPolazakChanged: _onPolazakChanged,
+          selectedDan: targetDay,
+          showVozacBoja: true,
+          getVozacColor: _getVozacColorForTermin,
         );
       case 'zimski':
         return BottomNavBarZimski(
-          sviPolasci: commonParams.sviPolasci,
-          selectedGrad: commonParams.selectedGrad,
-          selectedVreme: commonParams.selectedVreme,
-          getPutnikCount: commonParams.getPutnikCount,
-          getKapacitet: commonParams.getKapacitet,
-          onPolazakChanged: commonParams.onPolazakChanged,
-          selectedDan: commonParams.selectedDan,
-          showVozacBoja: commonParams.showVozacBoja,
-          getVozacColor: commonParams.getVozacColor,
+          sviPolasci: _sviPolasci,
+          selectedGrad: _selectedGrad,
+          selectedVreme: _selectedVreme,
+          getPutnikCount: getPutnikCount,
+          getKapacitet: getKapacitet,
+          onPolazakChanged: _onPolazakChanged,
+          selectedDan: targetDay,
+          showVozacBoja: true,
+          getVozacColor: _getVozacColorForTermin,
         );
       default:
         return BottomNavBarLetnji(
-          sviPolasci: commonParams.sviPolasci,
-          selectedGrad: commonParams.selectedGrad,
-          selectedVreme: commonParams.selectedVreme,
-          getPutnikCount: commonParams.getPutnikCount,
-          getKapacitet: commonParams.getKapacitet,
-          onPolazakChanged: commonParams.onPolazakChanged,
-          selectedDan: commonParams.selectedDan,
-          showVozacBoja: commonParams.showVozacBoja,
-          getVozacColor: commonParams.getVozacColor,
+          sviPolasci: _sviPolasci,
+          selectedGrad: _selectedGrad,
+          selectedVreme: _selectedVreme,
+          getPutnikCount: getPutnikCount,
+          getKapacitet: getKapacitet,
+          onPolazakChanged: _onPolazakChanged,
+          selectedDan: targetDay,
+          showVozacBoja: true,
+          getVozacColor: _getVozacColorForTermin,
         );
     }
   }

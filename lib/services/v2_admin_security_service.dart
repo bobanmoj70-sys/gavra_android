@@ -1,26 +1,21 @@
-/// 🔐 ADMIN SECURITY SERVICE
-/// Centralizovani servis za upravljanje admin privilegijama
-/// Zamenjuje hard-coded admin logiku sa sigurnijim pristupom
+/// Centralizovani servis za upravljanje admin privilegijama.
 class AdminSecurityService {
-  // 🔐 SECURE ADMIN LIST - trebalo bi da bude iz backend-a ili encrypted config
+  AdminSecurityService._();
+
   static const Set<String> _adminUsers = {
     'Bojan',
   };
 
-  /// Javna lista admin korisnika (nemodifiable). Koristiti umesto lokalnih hardcode listi.
-  static List<String> get adminUsers => _adminUsers.toList();
+  /// Nemodifiable lista admin korisnika. Koristiti umesto lokalnih hardcode listi.
+  static List<String> get adminUsers => List.unmodifiable(_adminUsers);
 
-  /// 🔍 Proveri da li je vozač admin
+  /// Proveri da li je vozač admin.
   static bool isAdmin(String? driverName) {
-    if (driverName == null || driverName.isEmpty) {
-      return false;
-    }
-
-    final isAdminUser = _adminUsers.contains(driverName);
-    return isAdminUser;
+    if (driverName == null || driverName.isEmpty) return false;
+    return _adminUsers.contains(driverName);
   }
 
-  /// 🔒 Filtriraj pazar podatke na osnovu privilegija
+  /// Filtrira pazar podatke na osnovu privilegija vozača.
   static Map<String, double> filterPazarByPrivileges(
     String currentDriver,
     Map<String, double> pazarData,
@@ -40,7 +35,7 @@ class AdminSecurityService {
     };
   }
 
-  /// 🎯 Dobij vozače koji treba da se prikažu na osnovu privilegija
+  /// Vraća listu vozača vidljivih trenutnom korisniku na osnovu privilegija.
   static List<String> getVisibleDrivers(
     String currentDriver,
     List<String> allDrivers,

@@ -30,9 +30,9 @@ class V2Putnik {
     this.obrisan = false, // default vrednost
     this.brojTelefona, // broj telefona putnika
     this.datum,
-    this.brojMesta = 1, // ?? Broj rezervisanih mesta (default 1)
-    this.tipPutnika, // ?? Tip putnika: radnik, ucenik, dnevni
-    this.otkazanZaPolazak = false, // ?? Da li je otkazan za ovaj specificni polazak (grad)
+    this.brojMesta = 1,
+    this.tipPutnika,
+    this.otkazanZaPolazak = false,
     this.requestId, // ID konkretnog v2_polasci reda
     this.pokupioVozacId, // UUID vozaca koji je pokupljanje izVrsio
     this.naplatioVozacId, // UUID vozaca koji je naplatio
@@ -103,9 +103,9 @@ class V2Putnik {
   final bool obrisan; // NOVO - soft delete flag
   final String? brojTelefona; // NOVO - broj telefona putnika
   final String? datum; // ISO format
-  final int brojMesta; // ?? Broj rezervisanih mesta
-  final String? tipPutnika; // ?? Tip putnika: radnik, ucenik, dnevni
-  final bool otkazanZaPolazak; // ?? Da li je otkazan za ovaj polazak
+  final int brojMesta;
+  final String? tipPutnika; // Tip putnika: radnik, ucenik, dnevni, posiljka
+  final bool otkazanZaPolazak;
   final String? requestId; // ID konkretnog v2_polasci reda
   final String? pokupioVozacId; // UUID vozaca koji je pokupljanje izVrsio
   final String? naplatioVozacId; // UUID vozaca koji je naplatio
@@ -449,6 +449,9 @@ class V2Putnik {
     }
     return Object.hash(ime, grad, polazak);
   }
+
+  @override
+  String toString() => 'V2Putnik(id: $id, ime: $ime, grad: $grad, status: $status, dan: $dan, polazak: $polazak)';
 
   // ?? FALLBACK METODA: Ucitaj adresu iz rm cache-a ako je NULL
   String? getAdresaFallback() {

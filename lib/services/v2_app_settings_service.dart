@@ -21,23 +21,13 @@ class V2AppSettingsService {
   static Future<void> _loadSettings() async {
     try {
       final rm = V2MasterRealtimeManager.instance;
-      // settingsCache: Map<String, Map<String, dynamic>> — ključ je id reda
-      final rows = rm.settingsCache.values;
-      // Tražimo red sa id == 'global'
-      Map<String, dynamic>? response;
-      for (final row in rows) {
-        if (row['id'] == 'global') {
-          response = row;
-          break;
-        }
-      }
+      final response = rm.settingsCache['global'];
       if (response == null) return;
 
       final navBarType = response['nav_bar_type'] as String? ?? 'letnji';
       navBarTypeNotifier.value = navBarType;
       praznicniModNotifier.value = navBarType == 'praznici';
 
-      // 🔄 Provjeri verziju u pozadini (ne blokira)
       _checkForUpdates(
         minVersion: response['min_version'] as String?,
         latestVersion: response['latest_version'] as String?,
@@ -123,9 +113,8 @@ class V2AppSettingsService {
   static Future<void> setNavBarType(String type) async {
     await supabase
         .from('v2_app_settings')
-        .update({'nav_bar_type': type, 'updated_at': DateTime.now().toIso8601String()}).eq('id', 'global');
+        .update({'nav_bar_type': type, 'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', 'global');
 
-    // 📝 LOG U DNEVNIK
     try {
       await V2StatistikaIstorijaService.logGeneric(
           tip: 'admin_akcija', detalji: 'Promenjen red vožnje na: ${type.toUpperCase()}');

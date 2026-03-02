@@ -128,7 +128,10 @@ class V2PinZahtevService {
         await _supabase.from(putnikTabela).update({'pin': pin}).eq('id', putnikId);
       }
 
-      await _supabase.from('v2_pin_zahtevi').update({'status': 'odobren'}).eq('id', zahtevId);
+      await _supabase.from('v2_pin_zahtevi').update({
+        'status': 'odobren',
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', zahtevId);
 
       return true;
     } catch (e) {
@@ -138,12 +141,21 @@ class V2PinZahtevService {
 
   static Future<bool> odbijZahtev(String zahtevId) async {
     try {
-      await _supabase.from('v2_pin_zahtevi').update({'status': 'odbijen'}).eq('id', zahtevId);
+      await _supabase.from('v2_pin_zahtevi').update({
+        'status': 'odbijen',
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', zahtevId);
 
       return true;
     } catch (e) {
       return false;
     }
+  }
+
+  /// Generiši nasumičan 4-cifreni PIN (1000–9999)
+  static String generatePin() {
+    // ignore: avoid_js_rounded_ints
+    return (1000 + (DateTime.now().microsecondsSinceEpoch % 9000)).toString();
   }
 
   static bool imaZahtevKojiCeka(String putnikId) {

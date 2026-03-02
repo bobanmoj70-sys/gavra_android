@@ -14,12 +14,14 @@ class KapacitetScreen extends StatefulWidget {
 }
 
 class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabController;
+  late final Stream<Map<String, Map<String, int>>> _streamKapacitet;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _streamKapacitet = V2KapacitetService.streamKapacitet();
   }
 
   @override
@@ -49,7 +51,7 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 20,
                 spreadRadius: 2,
                 offset: const Offset(0, 10),
@@ -99,10 +101,10 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.2),
+                          color: Colors.red.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.red.withOpacity(0.4),
+                            color: Colors.red.withValues(alpha: 0.4),
                           ),
                         ),
                         child: const Icon(
@@ -165,7 +167,7 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
+                                  color: Colors.grey.withValues(alpha: 0.5),
                                 ),
                               ),
                             ),
@@ -210,13 +212,13 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
       ),
     );
 
+    controller.dispose();
+
     if (result != null && result != trenutni) {
       final success = await V2KapacitetService.setKapacitet(grad, vreme, result);
       if (!mounted) return;
       if (success) {
-        if (mounted) {
-          AppSnackBar.success(context, '✅ $grad $vreme = $result mesta');
-        }
+        AppSnackBar.success(context, '✅ $grad $vreme = $result mesta');
       } else {
         AppSnackBar.error(context, '❌ Greška pri čuvanju');
       }
@@ -347,7 +349,7 @@ class _KapacitetScreenState extends State<KapacitetScreen> with SingleTickerProv
           ),
         ),
         body: StreamBuilder<Map<String, Map<String, int>>>(
-          stream: V2KapacitetService.streamKapacitet(),
+          stream: _streamKapacitet,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());

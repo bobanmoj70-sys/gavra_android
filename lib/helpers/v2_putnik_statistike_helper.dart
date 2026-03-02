@@ -9,6 +9,8 @@ import '../services/v2_polasci_service.dart';
 /// 📊 Helper za prikazivanje detaljnih statistika putnika
 /// Koristi se i u admin ekranu i u profilu putnika
 class PutnikStatistikeHelper {
+  PutnikStatistikeHelper._();
+
   /// Prikaži dijalog sa detaljnim statistikama
   static Future<void> prikaziDetaljneStatistike({
     required BuildContext context,
@@ -125,8 +127,8 @@ class PutnikStatistikeHelper {
                     ),
                     const SizedBox(height: 16),
 
-                    StreamBuilder<Map<String, dynamic>>(
-                      stream: _streamStatistikeZaPeriod(putnikId, selectedPeriod, tip),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _getStatistikeForPeriod(putnikId, selectedPeriod, tip),
                       builder: (context, snapshot) {
                         // Loading state
                         if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
@@ -248,9 +250,9 @@ class PutnikStatistikeHelper {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue.withOpacity(0.3)),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,9 +295,9 @@ class PutnikStatistikeHelper {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: periodColor.withOpacity(0.1),
+            color: periodColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: periodColor.withOpacity(0.3)),
+            border: Border.all(color: periodColor.withValues(alpha: 0.3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,9 +340,9 @@ class PutnikStatistikeHelper {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,9 +371,9 @@ class PutnikStatistikeHelper {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
+        color: Colors.green.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,10 +408,9 @@ class PutnikStatistikeHelper {
             ],
           ),
           const Divider(),
-          // 🔥 REALTIME: Datum, iznos i vozač poslednjeg plaćanja
-          StreamBuilder<Map<String, dynamic>?>(
-            stream: Stream.fromFuture(V2PutnikStatistikaService.dohvatiPlacanja(putnikId))
-                .map((l) => l.isNotEmpty ? l.first : null),
+          // 💵 Datum, iznos i vozač poslednjeg plaćanja
+          FutureBuilder<Map<String, dynamic>?>(
+            future: V2PutnikStatistikaService.dohvatiPlacanja(putnikId).then((l) => l.isNotEmpty ? l.first : null),
             builder: (context, snapshot) {
               final placanje = snapshot.data;
               final datum = placanje?['datum'] as String?;
@@ -441,9 +442,9 @@ class PutnikStatistikeHelper {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
+          color: Colors.blue.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
         ),
         child: const Text(
           '💡 Dnevni putnici i pošiljke plaćaju po pokupljenju. Detalji su prikazani u istoriji ispod.',
@@ -456,9 +457,9 @@ class PutnikStatistikeHelper {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
+        color: Colors.green.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,11 +586,6 @@ class PutnikStatistikeHelper {
       }
     }
     return 0;
-  }
-
-  // 📊 STREAM STATISTIKA ZA PERIOD
-  static Stream<Map<String, dynamic>> _streamStatistikeZaPeriod(String putnikId, String period, String tipPutnika) {
-    return Stream.fromFuture(_getStatistikeForPeriod(putnikId, period, tipPutnika));
   }
 
   static Future<Map<String, dynamic>> _getStatistikeForPeriod(String putnikId, String period, String tipPutnika) async {

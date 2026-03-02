@@ -44,6 +44,8 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
 
   // 🔄 Master realtime stream — inicijalizovan jednom u initState()
   late final Stream<List<Vozac>> _streamVozaci;
+  StreamSubscription? _vozaciSub;
+  StreamController<List<Vozac>>? _vozaciCtrl;
 
   @override
   void initState() {
@@ -59,17 +61,15 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
     }
 
     Future.microtask(emit);
-    final sub = rm.subscribe('v2_vozaci').listen((_) => emit());
-    ctrl.onCancel = () {
-      sub.cancel();
-      rm.unsubscribe('v2_vozaci');
-    };
-
+    _vozaciSub = rm.subscribe('v2_vozaci').listen((_) => emit());
+    _vozaciCtrl = ctrl;
     _streamVozaci = ctrl.stream;
   }
 
   @override
   void dispose() {
+    _vozaciSub?.cancel();
+    _vozaciCtrl?.close();
     _imeController.dispose();
     _emailController.dispose();
     _sifraController.dispose();
@@ -90,8 +90,7 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
     );
 
     try {
-      final vozacSvc = V2VozacService();
-      await vozacSvc.addVozac(noviVozac);
+      await _vozacService.addVozac(noviVozac);
       if (!mounted) return;
       AppSnackBar.info(context, 'Vozac dodan');
     } catch (e) {
@@ -249,7 +248,8 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
                             color: isSelected ? Colors.white : Colors.transparent,
                             width: 3,
                           ),
-                          boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8)] : null,
+                          boxShadow:
+                              isSelected ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)] : null,
                         ),
                         child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
                       ),
@@ -284,17 +284,17 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
   InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
       prefixIcon: Icon(icon, color: Colors.blue),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.1),
+      fillColor: Colors.white.withValues(alpha: 0.1),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.blue.withOpacity(0.3)),
+        borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -406,17 +406,15 @@ class _VozaciAdminScreenState extends State<VozaciAdminScreen> {
                     ),
                   )
                 else
-                  ...vozaci.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final vozac = entry.value;
+                  ...vozaci.map((vozac) {
                     final boja = vozac.color ?? Colors.blue;
 
                     return Card(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       margin: const EdgeInsets.only(bottom: 10),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: boja.withOpacity(0.6), width: 1.5),
+                        side: BorderSide(color: boja.withValues(alpha: 0.6), width: 1.5),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

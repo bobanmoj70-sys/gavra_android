@@ -41,11 +41,6 @@ class Vozac {
     };
   }
 
-  /// Vraća puno ime vozača
-  String get punoIme {
-    return ime;
-  }
-
   /// Vraća boju vozača kao Color objekat
   /// Parsira hex string (npr. '#FF0000') u Color
   Color? get color {
@@ -112,9 +107,12 @@ class Vozac {
     );
   }
 
-  /// ToString metoda za debugging
   @override
-  String toString() {
-    return 'Vozac{id: $id, ime: $ime}';
-  }
+  bool operator ==(Object other) => identical(this, other) || (other is Vozac && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'Vozac(id: $id, ime: $ime)';
 }

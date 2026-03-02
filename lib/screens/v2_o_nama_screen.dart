@@ -55,14 +55,14 @@ class _ONamaScreenState extends State<ONamaScreen> {
     }
   }
 
-  Future<void> _sendEmail(String email) async {
+  static Future<void> _sendEmail(String email) async {
     final Uri launchUri = Uri(scheme: 'mailto', path: email);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     }
   }
 
-  Future<void> _openMaps() async {
+  static Future<void> _openMaps() async {
     // HERE WeGo - besplatno, radi na svim uređajima
     // Koordinate za Mihajla Pupina 74, Bela Crkva
     final Uri launchUri = Uri.parse(
@@ -107,7 +107,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
                     Text(
                       'Limo servis "Gavra 013" osnovan je 25. aprila 2003. godine u Beloj Crkvi.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -116,7 +116,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
                     Text(
                       'Firmu je osnovao Branislav Gavrilović, a danas je vodi njegov sin Bojan Gavrilović, nastavljajući porodičnu tradiciju kvalitetnog prevoza putnika.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -125,7 +125,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
                     Text(
                       'Više od 20 godina pružamo pouzdanu uslugu prevoza putnika.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -203,7 +203,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
                     Text(
                       '© 2024-2025 Gavra 013. Sva prava zadržana.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 12,
                       ),
                     ),
@@ -216,10 +216,10 @@ class _ONamaScreenState extends State<ONamaScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Column(
@@ -232,7 +232,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
                     Text(
                       'U sećanje na Branislava Gavrilovića',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -240,7 +240,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
                     Text(
                       'Osnivač Gavra 013',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
                       ),
@@ -256,7 +256,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  static Widget _buildHeader() {
     return Column(
       children: [
         // Logo
@@ -268,18 +268,18 @@ class _ONamaScreenState extends State<ONamaScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.3),
-                Colors.white.withOpacity(0.1),
+                Colors.white.withValues(alpha: 0.3),
+                Colors.white.withValues(alpha: 0.1),
               ],
             ),
             shape: BoxShape.circle,
             border: Border.all(
-              color: Colors.white.withOpacity(0.4),
+              color: Colors.white.withValues(alpha: 0.4),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -316,7 +316,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
         Text(
           'Limo servis',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontSize: 16,
             fontWeight: FontWeight.w400,
             letterSpacing: 0.5,
@@ -326,7 +326,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
         Text(
           'Iznajmljivanje putničkih vozila sa vozačem',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontSize: 16,
             fontWeight: FontWeight.w400,
             letterSpacing: 0.5,
@@ -336,10 +336,10 @@ class _ONamaScreenState extends State<ONamaScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.3),
+            color: Colors.green.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.green.withOpacity(0.5),
+              color: Colors.green.withValues(alpha: 0.5),
             ),
           ),
           child: const Row(
@@ -362,7 +362,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
     );
   }
 
-  Widget _buildGlassCard({
+  static Widget _buildGlassCard({
     required IconData icon,
     required String title,
     required Widget child,
@@ -375,17 +375,17 @@ class _ONamaScreenState extends State<ONamaScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withOpacity(0.15),
-            Colors.white.withOpacity(0.05),
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             spreadRadius: 1,
           ),
@@ -415,7 +415,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
     );
   }
 
-  Widget _buildContactRow({
+  static Widget _buildContactRow({
     required IconData icon,
     required String label,
     required String value,
@@ -437,7 +437,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
                   Text(
                     label,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 12,
                     ),
                   ),
@@ -455,7 +455,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
             if (onTap != null)
               Icon(
                 Icons.arrow_forward_ios,
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 size: 16,
               ),
           ],
@@ -464,7 +464,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  static Widget _buildInfoRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -473,7 +473,7 @@ class _ONamaScreenState extends State<ONamaScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               fontSize: 13,
             ),
           ),

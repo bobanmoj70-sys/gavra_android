@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,10 +16,23 @@ class PinZahteviScreen extends StatefulWidget {
 }
 
 class _PinZahteviScreenState extends State<PinZahteviScreen> {
+  // Stream inicijalizovan jednom — ne kreira se ponovo na svakom rebuildu
+  late final Stream<List<Map<String, dynamic>>> _stream;
+
+  @override
+  void initState() {
+    super.initState();
+    _stream = V2PinZahtevService.streamZahteviKojiCekaju();
+  }
+
+  /// Helper: čita telefon iz oba moguća ključa
+  static String _getTelefon(Map<String, dynamic> z, {String fallback = '-'}) =>
+      z['telefon'] as String? ?? z['broj_telefona'] as String? ?? fallback;
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: V2PinZahtevService.streamZahteviKojiCekaju(),
+      stream: _stream,
       builder: (context, snapshot) {
         final zahtevi = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting && zahtevi.isEmpty;
@@ -37,40 +48,28 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
           body: Container(
             decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
             child: SafeArea(
-              child: Column(
-                children: [
-                  Expanded(
-                    child: isLoading
-                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                        : zahtevi.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Nema zahteva na čekanju.',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: zahtevi.length,
-                                itemBuilder: (context, index) {
-                                  final zahtev = zahtevi[index];
-                                  return _buildZahtevCard(zahtev);
-                                },
-                              ),
-                  ),
-                ],
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : zahtevi.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Nema zahteva na čekanju.',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: zahtevi.length,
+                          itemBuilder: (context, index) {
+                            final zahtev = zahtevi[index];
+                            return _buildZahtevCard(zahtev);
+                          },
+                        ),
             ),
           ),
         );
       },
     );
-  }
-
-  /// Generiši random 4-cifreni PIN
-  String _generatePin() {
-    final random = Random();
-    return (1000 + random.nextInt(9000)).toString();
   }
 
   /// Pošalji PIN putem SMS-a
@@ -104,80 +103,85 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
   Future<void> _odobriZahtev(Map<String, dynamic> zahtev) async {
     final zahtevId = zahtev['id'] as String;
     final ime = zahtev['putnik_ime'] as String? ?? '';
-    final brojTelefona = zahtev['broj_telefona'] as String? ?? zahtev['telefon'] as String? ?? '';
+    final brojTelefona = _getTelefon(zahtev, fallback: '');
 
-    final generisaniPin = _generatePin();
+    final generisaniPin = V2PinZahtevService.generatePin();
     final pinController = TextEditingController(text: generisaniPin);
 
-    final rezultat = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.vpn_key, color: Colors.green),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Dodeli PIN za $ime', style: const TextStyle(color: Colors.white, fontSize: 16))),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: pinController,
-              style: const TextStyle(color: Colors.white, fontSize: 28, letterSpacing: 12),
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              maxLength: 4,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                hintText: '0000',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                counterText: '',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.green),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.green),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.green, width: 2),
+    String? rezultat;
+    try {
+      rezultat = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1a1a2e),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.vpn_key, color: Colors.green),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Dodeli PIN za $ime', style: const TextStyle(color: Colors.white, fontSize: 16))),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: pinController,
+                style: const TextStyle(color: Colors.white, fontSize: 28, letterSpacing: 12),
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 4,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  hintText: '0000',
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                  counterText: '',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.green),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.green),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.green, width: 2),
+                  ),
                 ),
               ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () {
+                  pinController.text = V2PinZahtevService.generatePin();
+                },
+                icon: const Icon(Icons.refresh, color: Colors.amber),
+                label: const Text('Generiši novi', style: TextStyle(color: Colors.amber)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
             ),
-            const SizedBox(height: 12),
-            TextButton.icon(
+            ElevatedButton(
               onPressed: () {
-                pinController.text = _generatePin();
+                if (pinController.text.length == 4) {
+                  Navigator.pop(context, pinController.text);
+                } else {
+                  AppSnackBar.warning(context, 'PIN mora imati 4 cifre');
+                }
               },
-              icon: const Icon(Icons.refresh, color: Colors.amber),
-              label: const Text('Generiši novi', style: TextStyle(color: Colors.amber)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('Dodeli PIN', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (pinController.text.length == 4) {
-                Navigator.pop(context, pinController.text);
-              } else {
-                AppSnackBar.warning(context, 'PIN mora imati 4 cifre');
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Dodeli PIN', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+      ); // showDialog
+    } finally {
+      pinController.dispose();
+    }
 
     if (rezultat != null) {
       final success = await V2PinZahtevService.odobriZahtev(
@@ -246,7 +250,7 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
 
   Widget _buildZahtevCard(Map<String, dynamic> zahtev) {
     final ime = zahtev['putnik_ime'] as String? ?? '';
-    final telefon = zahtev['telefon'] as String? ?? zahtev['broj_telefona'] as String? ?? '-';
+    final telefon = _getTelefon(zahtev);
     final email = zahtev['email'] as String? ?? '-';
     final tip = zahtev['tip'] as String? ?? '-';
     final createdAt = zahtev['created_at'] as String?;
@@ -255,7 +259,8 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
     if (createdAt != null) {
       final dt = DateTime.tryParse(createdAt);
       if (dt != null) {
-        vremeZahteva = '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+        vremeZahteva = '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
+            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       }
     }
 
@@ -272,7 +277,7 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.amber.withOpacity(0.2),
+                  backgroundColor: Colors.amber.withValues(alpha: 0.2),
                   child: Text(
                     ime.isNotEmpty ? ime[0].toUpperCase() : '?',
                     style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
@@ -297,7 +302,7 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
                             : tip == 'ucenik'
                                 ? '🎓 Učenik'
                                 : tip,
-                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
                       ),
                     ],
                   ),
@@ -305,7 +310,7 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
+                    color: Colors.orange.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
@@ -365,11 +370,11 @@ class _PinZahteviScreenState extends State<PinZahteviScreen> {
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: Colors.white.withOpacity(0.5), size: 18),
+        Icon(icon, color: Colors.white.withValues(alpha: 0.5), size: 18),
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
         ),
         Expanded(
           child: Text(

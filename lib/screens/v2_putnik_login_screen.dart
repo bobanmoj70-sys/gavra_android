@@ -94,7 +94,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   }
 
   /// ?? Normalizuje broj telefona za poredenje
-  String _normalizePhone(String telefon) {
+  static String _normalizePhone(String telefon) {
     var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
     if (cleaned.startsWith('+381')) {
       cleaned = '0${cleaned.substring(4)}';
@@ -523,7 +523,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
-          actions: [],
         ),
         body: SafeArea(
           child: SingleChildScrollView(
@@ -553,7 +552,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                 Text(
                   _getStepSubtitle(),
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.center,
@@ -569,9 +568,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
+                      color: Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.withOpacity(0.5)),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       children: [
@@ -599,9 +598,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
+                      color: Colors.red.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withOpacity(0.5)),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       children: [
@@ -675,7 +674,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -685,7 +684,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                       Expanded(
                         child: Text(
                           _getInfoText(),
-                          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
                         ),
                       ),
                     ],
@@ -718,7 +717,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       height: 12,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? Colors.amber : Colors.white.withOpacity(0.3),
+        color: active ? Colors.amber : Colors.white.withValues(alpha: 0.3),
       ),
     );
   }
@@ -727,7 +726,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     return Container(
       width: 40,
       height: 2,
-      color: active ? Colors.amber : Colors.white.withOpacity(0.3),
+      color: active ? Colors.amber : Colors.white.withValues(alpha: 0.3),
     );
   }
 
@@ -770,9 +769,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
@@ -794,7 +793,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                           ),
                           Text(
                             tip.toUpperCase(),
-                            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                           ),
                         ],
                       ),
@@ -813,9 +812,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   Widget _buildTelefonInput() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
       ),
       child: TextField(
         controller: _telefonController,
@@ -824,7 +823,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         textAlign: TextAlign.center,
         decoration: InputDecoration(
           hintText: '06x xxx xxxx',
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
           prefixIcon: const Icon(Icons.phone, color: Colors.amber),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -837,9 +836,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   Widget _buildEmailInput() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
       ),
       child: TextField(
         controller: _emailController,
@@ -848,7 +847,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         textAlign: TextAlign.center,
         decoration: InputDecoration(
           hintText: 'vašemail@example.com',
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
           prefixIcon: const Icon(Icons.email, color: Colors.amber),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -863,9 +862,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.amber.withOpacity(0.3)),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
           ),
           child: TextField(
             controller: _pinController,
@@ -876,7 +875,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
             obscureText: true,
             decoration: InputDecoration(
               hintText: 'š ž š š',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), letterSpacing: 8),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), letterSpacing: 8),
               prefixIcon: const Icon(Icons.lock, color: Colors.amber),
               border: InputBorder.none,
               counterText: '',
@@ -912,10 +911,10 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           child: Text(
             'Zaboravio/la sam PIN',
             style: TextStyle(
-              color: Colors.amber.withOpacity(0.9),
+              color: Colors.amber.withValues(alpha: 0.9),
               fontSize: 14,
               decoration: TextDecoration.underline,
-              decorationColor: Colors.amber.withOpacity(0.5),
+              decorationColor: Colors.amber.withValues(alpha: 0.5),
             ),
           ),
         ),
@@ -1031,9 +1030,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
+            color: Colors.green.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.green.withOpacity(0.3)),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [
@@ -1050,7 +1049,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               const SizedBox(height: 8),
               Text(
                 'Admin ce pregledati vaš zahtev i dodeliti vam PIN.\nBicete obavešteni kada PIN bude spreman.',
-                style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                 textAlign: TextAlign.center,
               ),
             ],

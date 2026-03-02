@@ -56,6 +56,9 @@ class _VozacScreenState extends State<VozacScreen> {
   StreamSubscription<Position>? _driverPositionSubscription;
   StreamSubscription<Map<String, dynamic>>? _notificationSubscription; // ? ZA AUTOMATSKI POPIS
   StreamSubscription<PostgresChangePayload>? _rasporedRealtimeSub; // ?? Realtime raspored
+  StreamSubscription<PostgresChangePayload>? _vozacPutnikRealtimeSub; // ?? Realtime vozac_putnik
+
+  late final Stream<Map<String, double>> _streamPazar;
 
   String _selectedGrad = 'BC';
   String _selectedVreme = ''; // Ce biti postavljen u _selectClosestDeparture()
@@ -63,9 +66,7 @@ class _VozacScreenState extends State<VozacScreen> {
   // ?? OPTIMIZACIJA RUTE - kopirano iz DanasScreen
   bool _isRouteOptimized = false;
   List<V2Putnik> _optimizedRoute = [];
-  List<V2Putnik> _mojiPutnici = []; // Cache za _buildOptimizeButton (iz glavnog streama)
   Map<String, int>? _putniciEta; // ETA po imenu putnika (minuti) nakon optimizacije
-  final bool _isLoading = false;
   bool _isOptimizing = false; // ? Loading state specificno za optimizaciju rute
 
   /// ?? HELPER: Vraca radni datum - vikendom vraca naredni ponedeljak
@@ -157,6 +158,7 @@ class _VozacScreenState extends State<VozacScreen> {
     // Sprjecava race condition gdje _rasporedCache ostaje prazan ? filterKombinovan vraca sve putnike
     _rasporedCache =
         V2MasterRealtimeManager.instance.rasporedCache.values.map((row) => VozacRasporedEntry.fromMap(row)).toList();
+    _streamPazar = StatistikaService.streamPazarIzCachea(isoDate: _getWorkingDateIso());
     _initAsync();
   }
 
@@ -188,12 +190,13 @@ class _VozacScreenState extends State<VozacScreen> {
   /// 🔄 Realtime: prati vozac_raspored i vozac_putnik i osvježava lokalne cache-ove
   void _subscribeRealtime() {
     _rasporedRealtimeSub?.cancel();
+    _vozacPutnikRealtimeSub?.cancel();
     final rm = V2MasterRealtimeManager.instance;
     _rasporedRealtimeSub = rm.subscribe('v2_vozac_raspored').listen((_) {
       final entries = rm.rasporedCache.values.map((row) => VozacRasporedEntry.fromMap(row)).toList();
       if (mounted) setState(() => _rasporedCache = entries);
     });
-    rm.subscribe('v2_vozac_putnik').listen((_) {
+    _vozacPutnikRealtimeSub = rm.subscribe('v2_vozac_putnik').listen((_) {
       final entries = rm.vozacPutnikCache.values.map((row) => VozacPutnikEntry.fromMap(row)).toList();
       if (mounted) setState(() => _vozacPutnikCache = entries);
     });
@@ -216,6 +219,7 @@ class _VozacScreenState extends State<VozacScreen> {
     _driverPositionSubscription?.cancel();
     _notificationSubscription?.cancel(); // ? CLEANUP
     _rasporedRealtimeSub?.cancel(); // ?? Realtime raspored
+    _vozacPutnikRealtimeSub?.cancel(); // ?? Realtime vozac_putnik
     super.dispose();
   }
 
@@ -570,7 +574,7 @@ class _VozacScreenState extends State<VozacScreen> {
     }).toList();
 
     final bool isDriverValid = _currentDriver != null && VozacCache.isValidIme(_currentDriver);
-    final bool canPress = !_isOptimizing && !_isLoading && isDriverValid;
+    final bool canPress = !_isOptimizing && isDriverValid;
 
     final baseColor = _isGpsTracking ? Colors.orange : (_isRouteOptimized ? Colors.green : Colors.white);
 
@@ -593,7 +597,7 @@ class _VozacScreenState extends State<VozacScreen> {
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: baseColor.withOpacity(0.2),
+            color: baseColor.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: _getBorderColor(baseColor)),
           ),
@@ -641,7 +645,7 @@ class _VozacScreenState extends State<VozacScreen> {
             height: 30,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: speedColor.withOpacity(0.2),
+              color: speedColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: _getBorderColor(speedColor)),
             ),
@@ -693,7 +697,7 @@ class _VozacScreenState extends State<VozacScreen> {
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: baseColor.withOpacity(0.2),
+            color: baseColor.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: _getBorderColor(baseColor)),
           ),
@@ -779,6 +783,8 @@ class _VozacScreenState extends State<VozacScreen> {
   Future<void> _sendVozacKrenulNotifikacije() async {
     if (_optimizedRoute.isEmpty || _currentDriver == null) return;
 
+    final futures = <Future<void>>[];
+
     for (final v2Putnik in _optimizedRoute) {
       final putnikId = v2Putnik.id?.toString();
       if (putnikId == null) continue;
@@ -790,19 +796,24 @@ class _VozacScreenState extends State<VozacScreen> {
       final etaMinuta = _putniciEta?[v2Putnik.ime];
       final etaTekst = etaMinuta != null ? 'Dolazak za oko $etaMinuta min.' : 'Vozac je krenuo po vas!';
 
-      await RealtimeNotificationService.sendNotificationToPutnik(
-        putnikId: putnikId,
-        title: '🚌 $_currentDriver krece!',
-        body: etaTekst,
-        data: {
-          'type': 'vozac_krenuo',
-          'vozac': _currentDriver!,
-          'eta_minuta': etaMinuta?.toString() ?? '',
-          'grad': _selectedGrad,
-          'vreme': _selectedVreme,
-        },
+      futures.add(
+        RealtimeNotificationService.sendNotificationToPutnik(
+          putnikId: putnikId,
+          title: '🚌 $_currentDriver krece!',
+          body: etaTekst,
+          data: {
+            'type': 'vozac_krenuo',
+            'vozac': _currentDriver!,
+            'eta_minuta': etaMinuta?.toString() ?? '',
+            'grad': _selectedGrad,
+            'vreme': _selectedVreme,
+          },
+        ),
       );
     }
+
+    // Salji sve notifikacije paralelno - Supabase edge funkcija prima svaki poziv neovisno
+    await Future.wait(futures, eagerError: false);
   }
 
   // ??? OTVORI HERE WeGo NAVIGACIJU SA OPTIMIZOVANIM REDOSLEDOM
@@ -834,15 +845,6 @@ class _VozacScreenState extends State<VozacScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ?? KORISTI RADNI DATUM (Vikendom prebacuje na ponedeljak)
-    final workingDateIso = _getWorkingDateIso();
-    final parts = workingDateIso.split('-');
-    final today =
-        parts.length == 3 ? DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2])) : DateTime.now();
-
-    final dayStart = DateTime(today.year, today.month, today.day);
-    final dayEnd = DateTime(today.year, today.month, today.day, 23, 59, 59);
-
     return Container(
       decoration: BoxDecoration(
         gradient: ThemeManager().currentGradient,
@@ -872,16 +874,6 @@ class _VozacScreenState extends State<VozacScreen> {
                   getGrad: (p) => p.grad,
                   getPolazak: (p) => p.polazak,
                 );
-
-          // Cache za optimizaciju (Start dugme)
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            final noviIds = mojiPutnici.map((p) => p.id).toList();
-            final stariIds = _mojiPutnici.map((p) => p.id).toList();
-            if (noviIds.length != stariIds.length || !noviIds.every((id) => stariIds.contains(id))) {
-              setState(() => _mojiPutnici = mojiPutnici);
-            }
-          });
 
           // -- Nav bar: samo dodeljena vremena vozaca ------------------------
           final dodeljenaVremena = _rasporedVozaca(sviPutnici: mojiPutnici);
@@ -957,7 +949,7 @@ class _VozacScreenState extends State<VozacScreen> {
                       Row(
                         children: [
                           // ?? RUTA DUGME
-                          Expanded(child: _buildOptimizeButton(_mojiPutnici)),
+                          Expanded(child: _buildOptimizeButton(mojiPutnici)),
                           const SizedBox(width: 4),
                           // ??? NAV DUGME
                           Expanded(child: _buildMapsButton()),
@@ -1076,13 +1068,13 @@ class _VozacScreenState extends State<VozacScreen> {
                                       Icon(
                                         Icons.inbox,
                                         size: 64,
-                                        color: Colors.white.withOpacity(0.5),
+                                        color: Colors.white.withValues(alpha: 0.5),
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
                                         'Nema putnika za izabrani polazak',
                                         style: TextStyle(
-                                          color: Colors.white.withOpacity(0.7),
+                                          color: Colors.white.withValues(alpha: 0.7),
                                           fontSize: 16,
                                         ),
                                         textAlign: TextAlign.center,
@@ -1097,7 +1089,7 @@ class _VozacScreenState extends State<VozacScreen> {
                                       _currentDriver!, // ? FIX: Koristi dinamicki _currentDriver umesto hardkodovanog _vozacIme
                                   selectedGrad: _selectedGrad,
                                   selectedVreme: _selectedVreme,
-                                  selectedDay: _isoDateToDayAbbr(_getWorkingDateIso()),
+                                  selectedDay: targetDan,
                                   onPutnikStatusChanged: _reoptimizeAfterStatusChange,
                                   bcVremena: _bcVremena,
                                   vsVremena: _vsVremena,
@@ -1182,7 +1174,7 @@ class _VozacScreenState extends State<VozacScreen> {
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: _getBorderColor(color)),
         ),
@@ -1208,7 +1200,7 @@ class _VozacScreenState extends State<VozacScreen> {
       height: 45,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _getBorderColor(color)),
       ),
@@ -1228,9 +1220,6 @@ class _VozacScreenState extends State<VozacScreen> {
 
   // ?? Stats row
   Widget _buildStatsRow(List<V2Putnik> sviPutnici, List<V2Putnik> mojiPutnici) {
-    final dayStart = DateTime.parse('${_getWorkingDateIso()}T00:00:00');
-    final dayEnd = DateTime.parse('${_getWorkingDateIso()}T23:59:59');
-
     final filteredDuzniciRaw = sviPutnici.where((v2Putnik) {
       final nijeMesecni = !v2Putnik.isMesecniTip;
       if (!nijeMesecni) return false;
@@ -1299,9 +1288,7 @@ class _VozacScreenState extends State<VozacScreen> {
         children: [
           Expanded(
             child: StreamBuilder<Map<String, double>>(
-              stream: StatistikaService.streamPazarIzCachea(
-                isoDate: _getWorkingDateIso(),
-              ),
+              stream: _streamPazar,
               builder: (context, snapshot) {
                 final pazar = snapshot.data?[_currentDriver!] ?? 0.0;
                 return InkWell(
@@ -1380,15 +1367,15 @@ class _VozacScreenState extends State<VozacScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF1A237E).withOpacity(0.9), // Tamno plava
-                Colors.black.withOpacity(0.95),
+                const Color(0xFF1A237E).withValues(alpha: 0.9), // Tamno plava
+                Colors.black.withValues(alpha: 0.95),
               ],
             ),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.blueAccent.withOpacity(0.5), width: 1.5),
+            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.blueAccent.withOpacity(0.2),
+                color: Colors.blueAccent.withValues(alpha: 0.2),
                 blurRadius: 20,
                 spreadRadius: 5,
               ),
@@ -1426,9 +1413,9 @@ class _VozacScreenState extends State<VozacScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
+                  color: Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.greenAccent.withOpacity(0.4)),
+                  border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1451,7 +1438,7 @@ class _VozacScreenState extends State<VozacScreen> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.1),
+                    backgroundColor: Colors.white.withValues(alpha: 0.1),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -1504,15 +1491,15 @@ class _VozacScreenState extends State<VozacScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                color.withOpacity(0.4),
-                Colors.black.withOpacity(0.8),
+                color.withValues(alpha: 0.4),
+                Colors.black.withValues(alpha: 0.8),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+            border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 blurRadius: 15,
                 spreadRadius: 2,
               ),
@@ -1589,7 +1576,7 @@ class _VozacScreenState extends State<VozacScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: color.withOpacity(0.3),
+                  backgroundColor: color.withValues(alpha: 0.3),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1613,12 +1600,12 @@ class _VozacScreenState extends State<VozacScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.25),
+            color: color.withValues(alpha: 0.25),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _getBorderColor(color)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 8,
                 spreadRadius: 1,
               ),
@@ -1674,6 +1661,6 @@ class _VozacScreenState extends State<VozacScreen> {
     if (color == Colors.purple) return Colors.purple[300]!;
     if (color == Colors.red) return Colors.red[300]!;
     if (color == Colors.orange) return Colors.orange[300]!;
-    return color.withOpacity(0.6);
+    return color.withValues(alpha: 0.6);
   }
 }

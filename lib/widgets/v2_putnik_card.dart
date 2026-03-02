@@ -910,19 +910,8 @@ class _PutnikCardState extends State<PutnikCard> {
     // Odredi ko je "vlasnik" ovog putnika za potrebe bojenja (siva vs bela)
     String displayDodeljenVozac = _putnik.dodeljenVozac ?? '';
 
-    // ?? BOJE KARTICE - koristi CardColorHelper sa procišcenim vozacem
+    // BOJE KARTICE - privremeni V2Putnik sa ispravnim vozacem za kalkulaciju boja
     final _colorHelper = CardColorHelper();
-    final BoxDecoration cardDecoration = _colorHelper.getCardDecorationWithDriver(
-      _putnik,
-      widget.currentDriver, // Ko gleda
-    );
-
-    // FIX: Ako V2Putnik nije moj (ni po slotu ni direktno), forsira sivu boju preko stanja
-    // Ali CardColorHelper to vec radi ako mu prosledimo ko je vlasnik putnika vs ko gleda.
-    // Medutim, CardColorHelper unutra gleda V2Putnik.dodeljenVozac.
-    // Moramo mu "podmetnuti" putnika sa ispravnim vozacem ili izmeniti CardColorHelper.
-
-    // Jednostavnije: Privremeni V2Putnik za kalkulaciju boja
     final displayPutnik = _putnik.copyWith(dodeljenVozac: displayDodeljenVozac);
 
     final BoxDecoration finalDecoration = _colorHelper.getCardDecorationWithDriver(

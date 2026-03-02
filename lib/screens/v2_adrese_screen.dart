@@ -19,10 +19,12 @@ class _AdreseScreenState extends State<AdreseScreen> {
   String _filterGrad = 'Svi';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  late final Stream<List<Adresa>> _streamAdrese;
 
   @override
   void initState() {
     super.initState();
+    _streamAdrese = V2AdresaSupabaseService.streamSveAdrese();
   }
 
   @override
@@ -45,7 +47,6 @@ class _AdreseScreenState extends State<AdreseScreen> {
 
   Future<void> _addAdresa() async {
     final result = await showDialog<Map<String, dynamic>>(
-      // Changed to Map<String, dynamic> to include doubles
       context: context,
       builder: (context) => _AdresaDialog(),
     );
@@ -119,7 +120,6 @@ class _AdreseScreenState extends State<AdreseScreen> {
   }
 
   Future<void> _deleteAdresa(Adresa adresa) async {
-    // Printers confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -143,17 +143,15 @@ class _AdreseScreenState extends State<AdreseScreen> {
 
     try {
       await supabase.from('v2_adrese').delete().eq('id', adresa.id);
-
-      // Čekaj malo da se baza ažurira prije nego što osvežavaš stream
-      await Future.delayed(const Duration(milliseconds: 300));
-
       if (mounted) {
-        // Osvežavanje će se desiti automatski kroz stream
         AppSnackBar.warning(context, '🗑️ Adresa obrisana');
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, '❌ Greška: $e');
+        final msg = e.toString().contains('23503') || e.toString().toLowerCase().contains('foreign key')
+            ? '❌ Adresa se koristi i ne može se obrisati'
+            : '❌ Greška: $e';
+        AppSnackBar.error(context, msg);
       }
     }
   }
@@ -161,7 +159,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Adresa>>(
-      stream: V2AdresaSupabaseService.streamSveAdrese(),
+      stream: _streamAdrese,
       builder: (context, snapshot) {
         final adrese = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting && adrese.isEmpty;
@@ -223,18 +221,18 @@ class _AdreseScreenState extends State<AdreseScreen> {
                                 : null,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: const BorderSide(color: Colors.blue, width: 2),
                             ),
                             filled: true,
-                            fillColor: Colors.black.withOpacity(0.3),
+                            fillColor: Colors.black.withValues(alpha: 0.3),
                           ),
                           style: const TextStyle(color: Colors.white, fontSize: 16),
                           onChanged: (value) => setState(() => _searchQuery = value),
@@ -294,7 +292,7 @@ class _AdreseScreenState extends State<AdreseScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color) {
+  static Widget _buildStatCard(String label, String value, Color color) {
     return Column(
       children: [
         Text(
@@ -320,11 +318,11 @@ class _AdreseScreenState extends State<AdreseScreen> {
       onSelected: (v) {
         setState(() => _filterGrad = value ?? label);
       },
-      backgroundColor: Colors.black.withOpacity(0.3),
-      selectedColor: Colors.blue.withOpacity(0.6),
+      backgroundColor: Colors.black.withValues(alpha: 0.3),
+      selectedColor: Colors.blue.withValues(alpha: 0.6),
       checkmarkColor: Colors.white,
       side: BorderSide(
-        color: selected ? Colors.blue : Colors.white.withOpacity(0.3),
+        color: selected ? Colors.blue : Colors.white.withValues(alpha: 0.3),
         width: selected ? 2 : 1,
       ),
       labelStyle: TextStyle(
@@ -339,14 +337,15 @@ class _AdreseScreenState extends State<AdreseScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: adresa.grad == 'BC' ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+          backgroundColor:
+              adresa.grad == 'BC' ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
           child: Icon(
             Icons.location_on,
             color: adresa.grad == 'BC' ? Colors.green : Colors.orange,
@@ -356,14 +355,9 @@ class _AdreseScreenState extends State<AdreseScreen> {
           adresa.naziv,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${adresa.grad}',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
-          ],
+        subtitle: Text(
+          adresa.grad ?? '',
+          style: TextStyle(color: Colors.grey[400], fontSize: 12),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -402,9 +396,9 @@ class _AdresaDialog extends StatefulWidget {
 }
 
 class _AdresaDialogState extends State<_AdresaDialog> {
-  late TextEditingController _nazivController;
-  late TextEditingController _latitudeController;
-  late TextEditingController _longitudeController;
+  late final TextEditingController _nazivController;
+  late final TextEditingController _latitudeController;
+  late final TextEditingController _longitudeController;
   String _selectedGrad = 'BC';
 
   @override
@@ -501,15 +495,15 @@ class _AdresaDialogState extends State<_AdresaDialog> {
             double? longitude;
             if (_latitudeController.text.trim().isNotEmpty) {
               latitude = double.tryParse(_latitudeController.text.trim());
-              if (latitude == null) {
-                AppSnackBar.error(context, 'Nevažeća latitude vrednost');
+              if (latitude == null || latitude < -90 || latitude > 90) {
+                AppSnackBar.error(context, 'Latitude mora biti između -90 i 90');
                 return;
               }
             }
             if (_longitudeController.text.trim().isNotEmpty) {
               longitude = double.tryParse(_longitudeController.text.trim());
-              if (longitude == null) {
-                AppSnackBar.error(context, 'Nevažeća longitude vrednost');
+              if (longitude == null || longitude < -180 || longitude > 180) {
+                AppSnackBar.error(context, 'Longitude mora biti između -180 i 180');
                 return;
               }
             }

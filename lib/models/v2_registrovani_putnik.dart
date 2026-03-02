@@ -149,7 +149,7 @@ class RegistrovaniPutnik {
       trebaRacun: trebaRacun ?? this.trebaRacun,
       brojMesta: brojMesta ?? this.brojMesta,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? DateTime.now(),
+      updatedAt: updatedAt ?? this.updatedAt,
       adresa: adresa ?? this.adresa,
       grad: grad ?? this.grad,
     );
@@ -157,6 +157,12 @@ class RegistrovaniPutnik {
 
   @override
   String toString() => 'RegistrovaniPutnik(id: $id, ime: $ime, v2Tabela: $v2Tabela, status: $status)';
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is RegistrovaniPutnik && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
 
   String? getAdresaBelaCrkvaNaziv() {
     if (adresaBcId == null) return null;

@@ -42,21 +42,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   // 🔄 Master realtime stream — inicijalizovan jednom u initState()
   late final Stream<List<RegistrovaniPutnik>> _streamPutnici;
 
-  // 🔄 Refresh key za forsiranje novog stream-a nakon izmjene putnika
-  int _streamRefreshKey = 0;
-
   // Mapa placenih meseci po putniku
   Map<String, Set<String>> _placeniMeseci = {};
-
-  // Controllers for new passenger (declared but initialized in _initializeControllers)
-  late TextEditingController _imeController;
-  late TextEditingController _tipSkoleController;
-  late TextEditingController _brojTelefonaController;
-  late TextEditingController _brojTelefonaOcaController;
-  late TextEditingController _brojTelefonaMajkeController;
-
-  // Services
-  final List<StreamSubscription> _subscriptions = [];
 
   // 🔢 BADGE COUNTERS
   int _brojRadnika = 0;
@@ -73,19 +60,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeControllers();
     _streamPutnici = _rm.streamAktivniPutnici();
     _searchController.addListener(() {
       if (mounted) setState(() {});
     });
-  }
-
-  void _initializeControllers() {
-    _imeController = TextEditingController();
-    _tipSkoleController = TextEditingController();
-    _brojTelefonaController = TextEditingController();
-    _brojTelefonaOcaController = TextEditingController();
-    _brojTelefonaMajkeController = TextEditingController();
   }
 
   // 🚀 BATCH UCITAVANJE
@@ -202,13 +180,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     // TEXTCONTROLLER CLEANUP
     try {
       _searchController.dispose();
-      _imeController.dispose();
-      _tipSkoleController.dispose();
-      _brojTelefonaController.dispose();
-      _brojTelefonaOcaController.dispose();
-      _brojTelefonaMajkeController.dispose();
-
-      _subscriptions.forEach((subscription) => subscription.cancel());
     } catch (e) {
       // ignore controller dispose errors
     }
@@ -428,10 +399,26 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                   final sviPutnici = snapshot.data ?? [];
 
-                  _brojRadnika = sviPutnici.where((p) => p.v2Tabela == 'v2_radnici').length;
-                  _brojUcenika = sviPutnici.where((p) => p.v2Tabela == 'v2_ucenici').length;
-                  _brojDnevnih = sviPutnici.where((p) => p.v2Tabela == 'v2_dnevni').length;
-                  _brojPosiljki = sviPutnici.where((p) => p.v2Tabela == 'v2_posiljke').length;
+                  // Badge counteri — lokalno izračunati, bez mutiranja State fielda
+                  final brojRadnika = sviPutnici.where((p) => p.v2Tabela == 'v2_radnici').length;
+                  final brojUcenika = sviPutnici.where((p) => p.v2Tabela == 'v2_ucenici').length;
+                  final brojDnevnih = sviPutnici.where((p) => p.v2Tabela == 'v2_dnevni').length;
+                  final brojPosiljki = sviPutnici.where((p) => p.v2Tabela == 'v2_posiljke').length;
+                  // Sinhrono ažuriranje State fielda ako su se promijenili
+                  if (_brojRadnika != brojRadnika ||
+                      _brojUcenika != brojUcenika ||
+                      _brojDnevnih != brojDnevnih ||
+                      _brojPosiljki != brojPosiljki) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted)
+                        setState(() {
+                          _brojRadnika = brojRadnika;
+                          _brojUcenika = brojUcenika;
+                          _brojDnevnih = brojDnevnih;
+                          _brojPosiljki = brojPosiljki;
+                        });
+                    });
+                  }
 
                   // Filtriraj lokalno
                   final filteredPutnici = _filterPutniciDirect(
@@ -453,10 +440,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       // Kreiraj novi timer - čekaj 2 sekunde pre nego što učitaš podatke
                       _paymentUpdateDebounceTimer = Timer(const Duration(seconds: 2), () {
                         if (mounted) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            // 🚀 BATCH UCITAVANJE - sve tri operacije odjednom za performanse
-                            _ucitajSvePodatke(filteredPutnici);
-                          });
+                          _ucitajSvePodatke(filteredPutnici);
                         }
                       });
                     }
@@ -996,10 +980,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       builder: (context) => V2PutnikDialog(
         existingPutnik: V2Putnik,
         onSaved: () {
-          // ?? REFRESH: Inkrementiraj key da forsira novi stream sa svježim podacima
           if (mounted) {
             setState(() {
-              _streamRefreshKey++;
               _selectedFilter = 'svi';
               _searchController.clear();
             });
@@ -1109,10 +1091,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     if (potvrda == true && mounted) {
       try {
         final success = await _rm.deletePutnik(v2Putnik.id, v2Putnik.v2Tabela);
-
-        if (success) {
-          // logic simplified slightly if not needing immediate mount check
-        }
 
         if (success && mounted) {
           AppSnackBar.success(context, '${v2Putnik.ime} je uspešno obrisan');
@@ -1246,6 +1224,18 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     if (!mounted) return;
 
     final TextEditingController iznosController = TextEditingController();
+    try {
+      await _prikaziPlacanjeDialog(v2Putnik, iznosController);
+    } finally {
+      iznosController.dispose();
+    }
+  }
+
+  Future<void> _prikaziPlacanjeDialog(
+    RegistrovaniPutnik v2Putnik,
+    TextEditingController iznosController,
+  ) async {
+    if (!mounted) return;
     String selectedMonth = _getCurrentMonthYear(); // Default current month
 
     // ?? FIX: Ucitaj stvarni ukupni iznos iz baze
@@ -1337,11 +1327,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                                           color: Colors.green.shade700,
                                         ),
                                       ),
-                                      // ?? REALTIME: Vozac i datum poslednjeg placanja iz voznje_log
-                                      StreamBuilder<Map<String, dynamic>?>(
-                                        stream:
-                                            Stream.fromFuture(V2PutnikStatistikaService.dohvatiPlacanja(v2Putnik.id))
-                                                .map((lista) => lista.isNotEmpty ? lista.first : null),
+                                      // ?? Posjednje plaćanje — FutureBuilder (jednom, ne na svakom rebuildu)
+                                      FutureBuilder<Map<String, dynamic>?>(
+                                        future: V2PutnikStatistikaService.dohvatiPlacanja(v2Putnik.id)
+                                            .then((lista) => lista.isNotEmpty ? lista.first : null),
                                         builder: (context, snapshot) {
                                           final placanje = snapshot.data;
                                           if (placanje == null) {

@@ -63,26 +63,13 @@ class V2KapacitetService {
     return svaVremenaBc; // default
   }
 
-  /// Admin: Promeni kapacitet za odredeni polazak
+  /// Admin: Promeni kapacitet za odredeni polazak (atomski upsert — nema race condition)
   static Future<bool> setKapacitet(String grad, String vreme, int maxMesta) async {
     try {
-      // Prvo probaj update ako postoji zapis
-      final updateResult = await supabase
-          .from('v2_kapacitet_polazaka')
-          .update({'max_mesta': maxMesta})
-          .eq('grad', grad)
-          .eq('vreme', vreme)
-          .select();
-
-      // Ako update nije promenio ništa, uradi insert
-      if (updateResult.isEmpty) {
-        await supabase.from('v2_kapacitet_polazaka').insert({
-          'grad': grad,
-          'vreme': vreme,
-          'max_mesta': maxMesta,
-        });
-      }
-
+      await supabase.from('v2_kapacitet_polazaka').upsert(
+        {'grad': grad, 'vreme': vreme, 'max_mesta': maxMesta},
+        onConflict: 'grad,vreme',
+      );
       return true;
     } catch (_) {
       return false;
@@ -114,7 +101,7 @@ class V2KapacitetService {
       if (!controller.isClosed) controller.add(getKapacitet());
     }
 
-    emit();
+    controller.onListen = emit; // emituj tek kad listener postoji
     final sub = rm.subscribe('v2_kapacitet_polazaka').listen((_) => emit());
     controller.onCancel = () {
       sub.cancel();

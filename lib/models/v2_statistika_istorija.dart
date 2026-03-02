@@ -51,8 +51,8 @@ class V2StatistikaIstorija {
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
       placeniMesec: json['placeni_mesec'] as int?,
       placenaGodina: json['placena_godina'] as int?,
-      satiPrePolaska: json['sati_pre_polaska'] as int?,
-      brojMesta: json['broj_mesta'] as int? ?? 1,
+      satiPrePolaska: (json['sati_pre_polaska'] as num?)?.toInt(),
+      brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
       detalji: json['detalji'] as String?,
       meta: json['meta'] as Map<String, dynamic>?,
       tipPlacanja: json['tip_placanja'] as String?,
@@ -104,4 +104,13 @@ class V2StatistikaIstorija {
       vozacIme: vozacIme ?? this.vozacIme,
     );
   }
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is V2StatistikaIstorija && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'V2StatistikaIstorija(id: $id, tip: $tip, iznos: $iznos, datum: $datum, putnikId: $putnikId)';
 }

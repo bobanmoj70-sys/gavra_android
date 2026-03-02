@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -47,10 +49,21 @@ class _AdminScreenState extends State<AdminScreen> {
     'Nedelja'
   ];
 
+  static const Map<String, String> _dayAbbrevMapping = {
+    'ponedeljak': 'Pon',
+    'utorak': 'Uto',
+    'sreda': 'Sre',
+    'cetvrtak': 'Cet',
+    'petak': 'Pet',
+  };
+
+  static const List<String> _defaultVozaciRedosled = ['Bruda', 'Bilevski', 'Bojan', 'Voja'];
+
   String? _currentDriver;
 
   // ?? PIN ZAHTEVI - broj zahteva koji cekaju
   int _brojPinZahteva = 0;
+  StreamSubscription<List<Map<String, dynamic>>>? _pinZahteviSubscription;
 
   // ?? Cache-based streamovi (kreirani jednom u initState)
   late final Stream<List<V2Putnik>> _streamPutnici;
@@ -69,7 +82,13 @@ class _AdminScreenState extends State<AdminScreen> {
     _streamPazar = StatistikaService.streamPazarIzCachea(isoDate: todayIso);
 
     _loadCurrentDriver();
-    _loadBrojPinZahteva();
+
+    // ?? PIN ZAHTEVI - prati automatski putem streama
+    _pinZahteviSubscription = V2PinZahtevService.streamZahteviKojiCekaju().listen((zahtevi) {
+      if (mounted) {
+        setState(() => _brojPinZahteva = zahtevi.length);
+      }
+    });
 
     try {
       LocalNotificationService.initialize(context);
@@ -80,7 +99,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   @override
   void dispose() {
-    // AdminScreen disposed
+    _pinZahteviSubscription?.cancel();
     super.dispose();
   }
 
@@ -152,6 +171,8 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   void _loadCurrentDriver() {
+    // FirebaseService.getCurrentDriver() interno provjerava AuthManager in-memory
+    // cache kao fast path (bez Supabase poziva ako je vec ulogovan)
     FirebaseService.getCurrentDriver().then((driver) {
       if (mounted) {
         setState(() {
@@ -165,14 +186,6 @@ class _AdminScreenState extends State<AdminScreen> {
         });
       }
     });
-  }
-
-  // ?? Ucitaj broj PIN zahteva koji cekaju
-  void _loadBrojPinZahteva() {
-    final broj = V2PinZahtevService.brojZahtevaKojiCekaju();
-    if (mounted) {
-      setState(() => _brojPinZahteva = broj);
-    }
   }
 
   /// ?? DIJALOG ZA GLOBALNO UKLANJANJE POLASKA
@@ -234,9 +247,7 @@ class _AdminScreenState extends State<AdminScreen> {
               DropdownButtonFormField<String>(
                 value: selectedDan,
                 decoration: const InputDecoration(labelText: 'Dan'),
-                items: const ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja']
-                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                    .toList(),
+                items: _dayNamesInternal.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                 onChanged: (val) {
                   if (val != null) setDialogState(() => selectedDan = val);
                 },
@@ -374,16 +385,9 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   // Mapiranje punih imena dana u skracice za filtriranje
-  String _getShortDayName(String fullDayName) {
-    final dayMapping = {
-      'ponedeljak': 'Pon',
-      'utorak': 'Uto',
-      'sreda': 'Sre',
-      'cetvrtak': 'Cet',
-      'petak': 'Pet',
-    };
+  static String _getShortDayName(String fullDayName) {
     final key = fullDayName.trim().toLowerCase();
-    return dayMapping[key] ?? (fullDayName.isNotEmpty ? fullDayName.trim() : 'Pon');
+    return _dayAbbrevMapping[key] ?? (fullDayName.isNotEmpty ? fullDayName.trim() : 'Pon');
   }
 
   @override
@@ -446,441 +450,413 @@ class _AdminScreenState extends State<AdminScreen> {
                           ),
                           const SizedBox(height: 4),
                           // DRUGI RED - Putnici, Adrese, NavBar, Dropdown (4 dugmeta)
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Row(
-                                children: [
-                                  // PUTNICI
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                          builder: (context) => const V2PutniciScreen(),
-                                        ),
-                                      ),
+                          Row(
+                            children: [
+                              // PUTNICI
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => const V2PutniciScreen(),
+                                    ),
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                        ),
-                                        child: const Center(
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(
-                                              'Putnici',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                                color: Colors.white,
-                                                shadows: [
-                                                  Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
-                                                ],
-                                              ),
-                                            ),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                    ),
+                                    child: const Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          'Putnici',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                            shadows: [
+                                              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                            ],
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
+                                ),
+                              ),
 
-                                  // ADRESE
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                          builder: (context) => const AdreseScreen(),
-                                        ),
-                                      ),
+                              // ADRESE
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => const AdreseScreen(),
+                                    ),
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                        ),
-                                        child: const Center(
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(
-                                              'Adrese',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                                color: Colors.white,
-                                                shadows: [
-                                                  Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
-                                                ],
-                                              ),
-                                            ),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                    ),
+                                    child: const Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          'Adrese',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                            shadows: [
+                                              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                            ],
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
+                                ),
+                              ),
 
-                                  // NAV BAR DROPDOWN
-                                  Expanded(
-                                    child: ValueListenableBuilder<String>(
-                                      valueListenable: navBarTypeNotifier,
-                                      builder: (context, navType, _) {
-                                        return Container(
-                                          height: 28,
-                                          margin: const EdgeInsets.symmetric(horizontal: 1),
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context).glassContainer,
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                          ),
-                                          child: DropdownButtonHideUnderline(
-                                            child: DropdownButton<String>(
-                                              value: navType,
-                                              isExpanded: true,
-                                              icon: const SizedBox.shrink(),
-                                              dropdownColor: Theme.of(context).colorScheme.primary,
-                                              style: const TextStyle(color: Colors.white, fontSize: 11),
-                                              selectedItemBuilder: (context) {
-                                                return ['zimski', 'letnji', 'praznici'].map((t) {
-                                                  String label;
-                                                  bool useEmoji = false;
-                                                  switch (t) {
-                                                    case 'zimski':
-                                                      label = '❄️';
-                                                      useEmoji = true;
-                                                      break;
-                                                    case 'letnji':
-                                                      label = '☀️';
-                                                      useEmoji = true;
-                                                      break;
-                                                    case 'praznici':
-                                                      label = '🎉';
-                                                      useEmoji = true;
-                                                      break;
-                                                    default:
-                                                      label = t;
-                                                  }
-                                                  return Center(
-                                                    child: Text(label,
-                                                        style: TextStyle(
-                                                            fontWeight: FontWeight.w600,
-                                                            fontSize: useEmoji ? 14 : 11,
-                                                            color: Colors.white)),
-                                                  );
-                                                }).toList();
-                                              },
-                                              items: const [
-                                                DropdownMenuItem(value: 'zimski', child: Center(child: Text('Zimski'))),
-                                                DropdownMenuItem(value: 'letnji', child: Center(child: Text('Letnji'))),
-                                                DropdownMenuItem(
-                                                    value: 'praznici', child: Center(child: Text('Praznici'))),
-                                              ],
-                                              onChanged: (value) {
-                                                if (value != null) {
-                                                  V2AppSettingsService.setNavBarType(value);
-                                                }
-                                              },
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
+                              // NAV BAR DROPDOWN
+                              Expanded(
+                                child: ValueListenableBuilder<String>(
+                                  valueListenable: navBarTypeNotifier,
+                                  builder: (context, navType, _) {
+                                    return Container(
+                                      height: 28,
+                                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).glassContainer,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                      ),
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<String>(
+                                          value: navType,
+                                          isExpanded: true,
+                                          icon: const SizedBox.shrink(),
+                                          dropdownColor: Theme.of(context).colorScheme.primary,
+                                          style: const TextStyle(color: Colors.white, fontSize: 11),
+                                          selectedItemBuilder: (context) {
+                                            return ['zimski', 'letnji', 'praznici'].map((t) {
+                                              String label;
+                                              bool useEmoji = false;
+                                              switch (t) {
+                                                case 'zimski':
+                                                  label = '❄️';
+                                                  useEmoji = true;
+                                                  break;
+                                                case 'letnji':
+                                                  label = '☀️';
+                                                  useEmoji = true;
+                                                  break;
+                                                case 'praznici':
+                                                  label = '🎉';
+                                                  useEmoji = true;
+                                                  break;
+                                                default:
+                                                  label = t;
+                                              }
+                                              return Center(
+                                                child: Text(label,
+                                                    style: TextStyle(
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: useEmoji ? 14 : 11,
+                                                        color: Colors.white)),
+                                              );
+                                            }).toList();
+                                          },
+                                          items: const [
+                                            DropdownMenuItem(value: 'zimski', child: Center(child: Text('Zimski'))),
+                                            DropdownMenuItem(value: 'letnji', child: Center(child: Text('Letnji'))),
+                                            DropdownMenuItem(value: 'praznici', child: Center(child: Text('Praznici'))),
+                                          ],
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              V2AppSettingsService.setNavBarType(value);
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           // TRECI RED - Auth, PIN, Statistike, Dodeli (4 dugmeta)
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Row(
-                                children: [
-                                  // AUTH
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => Navigator.push(context,
-                                          MaterialPageRoute<void>(builder: (context) => const VozaciAdminScreen())),
+                          Row(
+                            children: [
+                              // AUTH
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(context,
+                                      MaterialPageRoute<void>(builder: (context) => const VozaciAdminScreen())),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Container(
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                    ),
+                                    child: const Center(
+                                        child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Icon(Icons.lock, size: 20, color: Colors.white))),
+                                  ),
+                                ),
+                              ),
+
+                              // PIN
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    await Navigator.push(context,
+                                        MaterialPageRoute<void>(builder: (context) => const PinZahteviScreen()));
+                                    // Stream automatski osvjezava _brojPinZahteva
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Container(
                                         height: 28,
                                         margin: const EdgeInsets.symmetric(horizontal: 1),
                                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: Theme.of(context).glassContainer,
                                           borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                          border: Border.all(
+                                              color:
+                                                  _brojPinZahteva > 0 ? Colors.orange : Theme.of(context).glassBorder,
+                                              width: 1.5),
                                         ),
                                         child: const Center(
                                             child: FittedBox(
                                                 fit: BoxFit.scaleDown,
-                                                child: Icon(Icons.lock, size: 20, color: Colors.white))),
+                                                child: Text('PIN',
+                                                    style: TextStyle(
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: 14,
+                                                        color: Colors.white,
+                                                        shadows: [
+                                                          Shadow(
+                                                              offset: Offset(1, 1),
+                                                              blurRadius: 3,
+                                                              color: Colors.black54)
+                                                        ])))),
                                       ),
-                                    ),
-                                  ),
-
-                                  // PIN
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () async {
-                                        await Navigator.push(context,
-                                            MaterialPageRoute<void>(builder: (context) => const PinZahteviScreen()));
-                                        _loadBrojPinZahteva();
-                                      },
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Stack(
-                                        clipBehavior: Clip.none,
-                                        children: [
-                                          Container(
-                                            height: 28,
-                                            margin: const EdgeInsets.symmetric(horizontal: 1),
-                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context).glassContainer,
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(
-                                                  color: _brojPinZahteva > 0
-                                                      ? Colors.orange
-                                                      : Theme.of(context).glassBorder,
-                                                  width: 1.5),
-                                            ),
-                                            child: const Center(
-                                                child: FittedBox(
-                                                    fit: BoxFit.scaleDown,
-                                                    child: Text('PIN',
-                                                        style: TextStyle(
-                                                            fontWeight: FontWeight.w600,
-                                                            fontSize: 14,
-                                                            color: Colors.white,
-                                                            shadows: [
-                                                              Shadow(
-                                                                  offset: Offset(1, 1),
-                                                                  blurRadius: 3,
-                                                                  color: Colors.black54)
-                                                            ])))),
+                                      if (_brojPinZahteva > 0)
+                                        Positioned(
+                                          right: -4,
+                                          top: -4,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration:
+                                                const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                                            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                            child: Text('$_brojPinZahteva',
+                                                style: const TextStyle(
+                                                    color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                                textAlign: TextAlign.center),
                                           ),
-                                          if (_brojPinZahteva > 0)
-                                            Positioned(
-                                              right: -4,
-                                              top: -4,
-                                              child: Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration:
-                                                    const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-                                                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                                                child: Text('$_brojPinZahteva',
-                                                    style: const TextStyle(
-                                                        color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                                    textAlign: TextAlign.center),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                    ],
                                   ),
+                                ),
+                              ),
 
-                                  // STATISTIKE (otvara meni sa opcijama)
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => _showStatistikeMenu(context),
+                              // STATISTIKE (otvara meni sa opcijama)
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => _showStatistikeMenu(context),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('📊', style: TextStyle(fontSize: 14)))),
-                                      ),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
                                     ),
+                                    child: const Center(
+                                        child: FittedBox(
+                                            fit: BoxFit.scaleDown, child: Text('📊', style: TextStyle(fontSize: 14)))),
                                   ),
+                                ),
+                              ),
 
-                                  // RASPORED VOZACA
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                          builder: (context) => const VozacRasporedScreen(),
-                                        ),
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.blue.withOpacity(0.6), width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('📅', style: TextStyle(fontSize: 14)))),
-                                      ),
+                              // RASPORED VOZACA
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => const VozacRasporedScreen(),
                                     ),
                                   ),
-                                ],
-                              );
-                            },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.blue.withValues(alpha: 0.6), width: 1.5),
+                                    ),
+                                    child: const Center(
+                                        child: FittedBox(
+                                            fit: BoxFit.scaleDown, child: Text('📅', style: TextStyle(fontSize: 14)))),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           // CETVRTI RED - Vozac, Monitor, Mesta (3 dugmeta)
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Row(
-                                children: [
-                                  // VOZAC - Dropdown za admin preview
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => _showVozacPickerDialog(context),
+                          Row(
+                            children: [
+                              // VOZAC - Dropdown za admin preview
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => _showVozacPickerDialog(context),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                        ),
-                                        child: Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: const Text('Vozac',
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        shadows: [
-                                                          Shadow(
-                                                              offset: Offset(1, 1),
-                                                              blurRadius: 3,
-                                                              color: Colors.black54)
-                                                        ])))),
-                                      ),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
                                     ),
+                                    child: Center(
+                                        child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: const Text('Vozac',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    shadows: [
+                                                      Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                                    ])))),
                                   ),
+                                ),
+                              ),
 
-                                  // PUMPA GORIVA
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                          builder: (context) => const GorivoScreen(),
-                                        ),
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.orange.withOpacity(0.7), width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('⛽',
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        shadows: [
-                                                          Shadow(
-                                                              offset: Offset(1, 1),
-                                                              blurRadius: 3,
-                                                              color: Colors.black54)
-                                                        ])))),
-                                      ),
+                              // PUMPA GORIVA
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => const GorivoScreen(),
                                     ),
                                   ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.orange.withValues(alpha: 0.7), width: 1.5),
+                                    ),
+                                    child: const Center(
+                                        child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text('⛽',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    shadows: [
+                                                      Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                                    ])))),
+                                  ),
+                                ),
+                              ),
 
-                                  // GLOBAL BEZ POLASKA
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: _showGlobalniBezPolaskaDialog,
+                              // GLOBAL BEZ POLASKA
+                              Expanded(
+                                child: InkWell(
+                                  onTap: _showGlobalniBezPolaskaDialog,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.red.withOpacity(0.5), width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('Bez polaska',
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        shadows: [
-                                                          Shadow(
-                                                              offset: Offset(1, 1),
-                                                              blurRadius: 3,
-                                                              color: Colors.black54)
-                                                        ])))),
-                                      ),
+                                      border: Border.all(color: Colors.red.withValues(alpha: 0.5), width: 1.5),
                                     ),
+                                    child: const Center(
+                                        child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text('Bez polaska',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    shadows: [
+                                                      Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                                    ])))),
                                   ),
+                                ),
+                              ),
 
-                                  // MESTA
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => Navigator.push(context,
-                                          MaterialPageRoute<void>(builder: (context) => const KapacitetScreen())),
+                              // MESTA
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(
+                                      context, MaterialPageRoute<void>(builder: (context) => const KapacitetScreen())),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('Mesta',
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        shadows: [
-                                                          Shadow(
-                                                              offset: Offset(1, 1),
-                                                              blurRadius: 3,
-                                                              color: Colors.black54)
-                                                        ])))),
-                                      ),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
                                     ),
+                                    child: const Center(
+                                        child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text('Mesta',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    shadows: [
+                                                      Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                                    ])))),
                                   ),
-                                ],
-                              );
-                            },
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -951,26 +927,19 @@ class _AdminScreenState extends State<AdminScreen> {
                   _currentDriver!,
                   pazar,
                 );
+                final double mojUkupanPazar = filteredPazar.values.fold(0.0, (sum, val) => sum + val);
 
                 final Map<String, Color> vozacBoje = VozacCache.bojeSync;
-                const List<String> defaultRedosled = ['Bruda', 'Bilevski', 'Bojan', 'Voja'];
-
                 // Preferiraj dinamičku listu iz VozacCache, ali ako je cache prazan,
                 // koristimo legacy redosled kao fallback (ne menjamo UX neočekivano).
                 final List<String> vozaciRedosled =
-                    VozacCache.imenaVozaca.isNotEmpty ? VozacCache.imenaVozaca : defaultRedosled;
+                    VozacCache.imenaVozaca.isNotEmpty ? VozacCache.imenaVozaca : _defaultVozaciRedosled;
 
                 final List<String> prikazaniVozaci = AdminSecurityService.getVisibleDrivers(
                   _currentDriver!,
                   vozaciRedosled,
                 );
                 return SingleChildScrollView(
-                  // ensure we respect device safe area / system nav bar at the
-                  // bottom ? some devices (Samsung) have a system bar which can
-                  // cause a tiny overflow (2px on some screens). Add extra
-                  // bottom padding based on MediaQuery so the content can scroll
-                  // clear of system UI on all devices.
-                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 12),
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom + 12),
                     child: Column(
@@ -1109,7 +1078,7 @@ class _AdminScreenState extends State<AdminScreen> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2), // Glassmorphism
+                            color: Colors.white.withValues(alpha: 0.2), // Glassmorphism
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: Theme.of(context).glassBorder, // Transparentni border
@@ -1117,7 +1086,7 @@ class _AdminScreenState extends State<AdminScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.green.withOpacity(0.3),
+                                color: Colors.green.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -1147,7 +1116,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                   ),
                                   // ?? UKUPAN PAZAR (BEZ DEPOZITA)
                                   Text(
-                                    '${(isAdmin ? ukupno : filteredPazar.values.fold(0.0, (sum, val) => sum + val)).toStringAsFixed(0)} RSD',
+                                    '${(isAdmin ? ukupno : mojUkupanPazar).toStringAsFixed(0)} RSD',
                                     style: TextStyle(
                                       color: Colors.green[900],
                                       fontWeight: FontWeight.bold,
@@ -1159,8 +1128,6 @@ class _AdminScreenState extends State<AdminScreen> {
                             ],
                           ),
                         ),
-                        // ?? SMS TEST DUGME - samo za Bojan
-                        if (AdminSecurityService.isAdmin(_currentDriver)) ...[],
                       ],
                     ),
                   ),
@@ -1172,6 +1139,4 @@ class _AdminScreenState extends State<AdminScreen> {
       ), // Zatvaranje Scaffold
     ); // Zatvaranje Container
   }
-
-  // (Funkcija za dijalog sa du?nicima je uklonjena - sada se koristi DugoviScreen)
 }

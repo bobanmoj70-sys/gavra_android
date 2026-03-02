@@ -30,8 +30,8 @@ class Adresa {
       id: map['id'] as String,
       naziv: map['naziv'] as String,
       grad: _normalizeGrad(map['grad'] as String?),
-      gpsLat: map['gps_lat'] as double?, // Direct column
-      gpsLng: map['gps_lng'] as double?, // Direct column
+      gpsLat: (map['gps_lat'] as num?)?.toDouble(), // numeric → double
+      gpsLng: (map['gps_lng'] as num?)?.toDouble(), // numeric → double
       createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
       updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String) : DateTime.now(),
     );

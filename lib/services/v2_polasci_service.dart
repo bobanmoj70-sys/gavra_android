@@ -41,11 +41,13 @@ class V2PolasciService {
       final nowStr = DateTime.now().toUtc().toIso8601String();
       final status = isAdmin ? 'odobreno' : 'obrada';
 
-      // 1. Cancelluj sve ostale aktivne zahtjeve za isti grad+dan (drugačije vreme)
+      // 1. Ukloni sve ostale aktivne zahtjeve za isti grad+dan (drugačije vreme)
       //    Putnik može imati samo jedan aktivan zahtjev po grad+dan.
+      //    isAdmin=true → 'bez_polaska' (tiho brisanje, ne utiče na statistiku)
+      //    isAdmin=false → 'cancelled' (putnik sam menja zahtev)
       await _supabase
           .from('v2_polasci')
-          .update({'status': 'cancelled', 'updated_at': nowStr})
+          .update({'status': isAdmin ? 'bez_polaska' : 'cancelled', 'updated_at': nowStr})
           .eq('putnik_id', putnikId)
           .eq('grad', gradKey)
           .eq('dan', danKey)

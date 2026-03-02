@@ -76,7 +76,7 @@ class CardColorHelper {
 
   // 🟡 ODSUSTVO (godišnji/bolovanje) - NAJVEĆI PRIORITET
   static const Color odsustvoBackground = Color(0xFFFFF59D);
-  static const Color odsustueBorder = Color(0xFFFFC107);
+  static const Color odsustueBorder = Color(0xFFFFC107); // ignore: constant_identifier_names
   static const Color odsustvoText = Color(0xFFF57C00); // Colors.orange[700]
 
   // 🔴 OTKAZANO - DRUGI PRIORITET

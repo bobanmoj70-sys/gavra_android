@@ -133,9 +133,6 @@ class V2MasterRealtimeManager {
 
     _initialized = true;
 
-    // Odmah otvori WebSocket kanale za sve tabele — rm je jedini koji sluša Supabase
-    _subscribeAll();
-
     debugPrint(
       '✅ [V2MasterRealtimeManager] Inicijalizovano: '
       'polasci=${polasciCache.length}, '
@@ -147,15 +144,6 @@ class V2MasterRealtimeManager {
       'vozaci=${vozaciCache.length}, '
       'adrese=${adreseCache.length}',
     );
-  }
-
-  /// Otvori WebSocket kanal za sve poznate tabele odmah pri startu.
-  /// Od ovog trenutka rm prima sve promjene — niko drugi ne treba vlastiti kanal.
-  void _subscribeAll() {
-    for (final table in _tableToCache.keys) {
-      subscribe(table);
-    }
-    debugPrint('📡 [V2MasterRealtimeManager] Otvoreni kanali za ${_tableToCache.length} tabela');
   }
 
   /// Poziva se iz AppLifecycleObserver kad datum nije isti
@@ -308,7 +296,10 @@ class V2MasterRealtimeManager {
             .from('v2_vozac_lokacije')
             .select('id, vozac_id, lat, lng, grad, vreme_polaska, smer, putnici_eta, aktivan, updated_at')
             .eq('aktivan', true),
-        _db.from('v2_pin_zahtevi').select('id, putnik_id, putnik_tabela, email, telefon, status, created_at'),
+        _db
+            .from('v2_pin_zahtevi')
+            .select('id, putnik_id, putnik_tabela, email, telefon, status, created_at')
+            .eq('status', 'ceka'),
         _db.from('v2_app_settings').select(
             'id, min_version, latest_version, store_url_android, store_url_huawei, store_url_ios, nav_bar_type, updated_at'),
       ]);
@@ -459,6 +450,7 @@ class V2MasterRealtimeManager {
   void _closeChannel(String table) {
     _reconnectTimers[table]?.cancel();
     _reconnectTimers[table] = null;
+    _reconnectAttempts.remove(table);
     _channels[table]?.unsubscribe();
     _channels.remove(table);
     _controllers[table]?.close();
@@ -490,16 +482,22 @@ class V2MasterRealtimeManager {
     }
   }
 
+  final Map<String, int> _reconnectAttempts = {};
+
   void _scheduleReconnect(String table) {
     _reconnectTimers[table]?.cancel();
 
     final delays = [3, 6, 10];
-    final elapsed = (_reconnectTimers.length).clamp(0, delays.length - 1);
-    final delay = delays[elapsed];
+    final attempt = (_reconnectAttempts[table] ?? 0).clamp(0, delays.length - 1);
+    final delay = delays[attempt];
+    _reconnectAttempts[table] = (_reconnectAttempts[table] ?? 0) + 1;
 
     _reconnectTimers[table] = Timer(Duration(seconds: delay), () async {
       _reconnectTimers[table] = null;
-      if ((_listenerCount[table] ?? 0) <= 0) return;
+      if ((_listenerCount[table] ?? 0) <= 0) {
+        _reconnectAttempts.remove(table);
+        return;
+      }
 
       final existing = _channels[table];
       if (existing != null) {
@@ -512,7 +510,10 @@ class V2MasterRealtimeManager {
       // Kratka pauza da SDK završi čišćenje kanala
       await Future.delayed(const Duration(milliseconds: 200));
 
-      if ((_listenerCount[table] ?? 0) <= 0) return; // provjeri ponovo nakon pauze
+      if ((_listenerCount[table] ?? 0) <= 0) {
+        _reconnectAttempts.remove(table);
+        return;
+      }
       _createChannel(table);
     });
   }
@@ -606,8 +607,9 @@ class V2MasterRealtimeManager {
     String tabela,
   ) async {
     final d = Map<String, dynamic>.from(data);
-    d['created_at'] = DateTime.now().toUtc().toIso8601String();
-    d['updated_at'] = DateTime.now().toUtc().toIso8601String();
+    final now = DateTime.now().toUtc().toIso8601String();
+    d['created_at'] = now;
+    d['updated_at'] = now;
     d.remove('_tabela');
     d.remove('tip');
     if (d['id'] == null) d.remove('id');
@@ -678,8 +680,7 @@ class V2MasterRealtimeManager {
   Future<Map<String, dynamic>?> getByPin(String pin, String tabela) async {
     final row = await _db
         .from(tabela)
-        .select(
-            'id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
+        .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
         .eq('pin', pin)
         .maybeSingle();
     if (row == null) return null;
@@ -693,8 +694,7 @@ class V2MasterRealtimeManager {
     for (final tabela in putnikTabele) {
       final row = await _db
           .from(tabela)
-          .select(
-              'id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
+          .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
           .eq('id', id)
           .maybeSingle();
       if (row != null) return {...row, '_tabela': tabela};
@@ -702,10 +702,26 @@ class V2MasterRealtimeManager {
     return null;
   }
 
-  /// Dohvata putnika po telefonu (pretražuje sve tabele)
+  /// Dohvata putnika po telefonu (prvo pretražuje cache, pa DB ako nije nađen)
   Future<Map<String, dynamic>?> findByTelefon(String telefon) async {
     if (telefon.isEmpty) return null;
     final normalized = _normalizePhone(telefon);
+
+    // Prvo pretraži lokalni cache — 0 DB upita
+    for (final tabela in putnikTabele) {
+      final cache = _cacheForTable(tabela);
+      if (cache == null) continue;
+      for (final row in cache.values) {
+        final t = row['telefon'] as String? ?? '';
+        final t2 = row['telefon_2'] as String? ?? '';
+        if ((t.isNotEmpty && _normalizePhone(t) == normalized) ||
+            (t2.isNotEmpty && _normalizePhone(t2) == normalized)) {
+          return row;
+        }
+      }
+    }
+
+    // Fallback: DB upit (cache prazan ili putnik neaktivan)
     for (final tabela in putnikTabele) {
       final svi = await _db.from(tabela).select();
       for (final row in svi) {
@@ -760,6 +776,7 @@ class V2MasterRealtimeManager {
       t?.cancel();
     }
     _reconnectTimers.clear();
+    _reconnectAttempts.clear();
     for (final ch in _channels.values) {
       ch.unsubscribe();
     }

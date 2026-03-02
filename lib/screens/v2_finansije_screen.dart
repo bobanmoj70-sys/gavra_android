@@ -15,9 +15,12 @@ class FinansijeScreen extends StatefulWidget {
 class _FinansijeScreenState extends State<FinansijeScreen> {
   final _formatBroja = NumberFormat('#,###', 'sr');
 
+  late final Stream<FinansijskiIzvestaj> _streamIzvestaj;
+
   @override
   void initState() {
     super.initState();
+    _streamIzvestaj = V2FinansijeService.streamIzvestaj();
   }
 
   String _formatIznos(double iznos) {
@@ -27,7 +30,7 @@ class _FinansijeScreenState extends State<FinansijeScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<FinansijskiIzvestaj>(
-      stream: V2FinansijeService.streamIzvestaj(),
+      stream: _streamIzvestaj,
       builder: (context, snapshot) {
         final izvestaj = snapshot.data;
         final isLoading = snapshot.connectionState == ConnectionState.waiting && izvestaj == null;
@@ -150,7 +153,7 @@ class _FinansijeScreenState extends State<FinansijeScreen> {
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withOpacity(0.3), width: 2),
+        side: BorderSide(color: color.withValues(alpha: 0.3), width: 2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -186,7 +189,7 @@ class _FinansijeScreenState extends State<FinansijeScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -343,7 +346,7 @@ class _FinansijeScreenState extends State<FinansijeScreen> {
     );
   }
 
-  String _getMesecNaziv(int mesec) {
+  static String _getMesecNaziv(int mesec) {
     const meseci = [
       '',
       'Januar',
@@ -572,7 +575,7 @@ class _FinansijeScreenState extends State<FinansijeScreen> {
     await _addTrosakIfPositive('Ostalo', 'ostalo', ostalo);
   }
 
-  Future<void> _addTrosakIfPositive(String naziv, String tip, double iznos) async {
+  static Future<void> _addTrosakIfPositive(String naziv, String tip, double iznos) async {
     if (iznos != 0) {
       // Dozvoljava i negativne za ispravke
       await V2FinansijeService.addTrosak(naziv, tip, iznos);

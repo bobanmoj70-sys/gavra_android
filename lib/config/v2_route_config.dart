@@ -5,6 +5,8 @@
 library;
 
 class RouteConfig {
+  RouteConfig._();
+
   // 🏙️ BELA CRKVA - Zimski raspored (oktobar-mart) - FALLBACK
   static const List<String> bcVremenaZimski = [
     '05:00',

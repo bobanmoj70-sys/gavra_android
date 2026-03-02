@@ -11,6 +11,7 @@ import '../screens/v2_welcome_screen.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'v2_firebase_service.dart';
 import 'v2_huawei_push_service.dart';
+import 'v2_pin_zahtev_service.dart';
 import 'v2_push_token_service.dart';
 
 /// "CENTRALIZOVANI AUTH MANAGER
@@ -246,6 +247,13 @@ class AuthManager {
         debugPrint('. Firebase session cleared');
       } catch (e) {
         debugPrint(' Error clearing Firebase session: $e');
+      }
+
+      // 4. Očisti PIN zahtevi subscription
+      try {
+        V2PinZahtevService.dispose();
+      } catch (e) {
+        debugPrint(' Error disposing PinZahtevService: $e');
       }
 
       // 4. Navigiraj na WelcomeScreen sa punim refresh-om (uklanja sve rute)

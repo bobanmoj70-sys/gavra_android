@@ -75,16 +75,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ?? Cache-based stream (kreiran jednom u initState, ne unutar build())
   late final Stream<int> _streamBrojZahteva;
 
-  final List<String> _dani = const [
-    'Ponedeljak',
-    'Utorak',
-    'Sreda',
-    'Cetvrtak',
-    'Petak',
-    'Subota',
-    'Nedelja'
-  ]; // Svi dani (Pon-Ned)
-
   // ?? DINAMICKA VREMENA - prate navBarTypeNotifier (praznici/zimski/letnji)
   List<String> get bcVremena {
     final navType = navBarTypeNotifier.value;
@@ -116,25 +106,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Automatski selektuje najbliže vreme polaska za trenutni cas (BC grad).
-  void _autoSelectNajblizeVreme() {
-    final now = DateTime.now();
-    final nowMinutes = now.hour * 60 + now.minute;
-    final list = bcVremena;
-    String? najblize;
-    for (final v in list) {
-      final parts = v.split(':');
-      if (parts.length < 2) continue;
-      final vMin = (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
-      if (vMin >= nowMinutes) {
-        najblize = v;
-        break;
-      }
-    }
-    najblize ??= list.isNotEmpty ? list.last : '05:00';
-    _selectedGrad = 'BC';
-    _selectedVreme = najblize;
-  }
-
   static const List<String> _dayNamesInternal = [
     'Ponedeljak',
     'Utorak',
@@ -172,10 +143,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _selectedDay = _getTodayName();
-    _autoSelectNajblizeVreme();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
     _initializeData();
-    _setupRealtimeMonitoring(); // ?? Popravljeno ime metode
     // ?? Slušaj update notifikacije i prikaži dijalog
     updateInfoNotifier.addListener(_onUpdateInfo);
     // Provjeri odmah ako je update vec detektovan
@@ -198,10 +167,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return;
       }
 
-      // ?? Setup realtime monitoring
-      _setupRealtimeMonitoring();
       // StreamBuilder ce automatski ucitati data - ne treba eksplicitno _loadPutnici()
-      _setupRealtimeListener();
 
       // Inicijalizuj lokalne notifikacije za heads-up i zvuk
       if (mounted) {
@@ -251,22 +217,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _currentDriver = driver;
       });
     }
-  }
-
-  // ?? Setup realtime monitoring system
-  void _setupRealtimeMonitoring() {
-    try {
-      // No additional monitoring needed
-    } catch (e) {
-      // Silently ignore timer errors
-    }
-  }
-
-  void _setupRealtimeListener() {
-    // UKLONJEN - PutnikService vec ima realtime listener-e
-    // Ne treba dupli listener koji ništa ne radi
-    _realtimeSubscription?.cancel();
-    _realtimeSubscription = null;
   }
 
   /// ?? Bira polazak koji je najbliži trenutnom vremenu
@@ -436,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 15,
                     spreadRadius: 2,
                     offset: const Offset(0, 8),
@@ -497,7 +447,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
+                                color: Colors.white.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -539,15 +489,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             return Container(
                               margin: const EdgeInsets.symmetric(vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
+                                color: Colors.white.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.3),
                                   width: 1,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.white.withOpacity(0.1),
+                                    color: Colors.white.withValues(alpha: 0.1),
                                     blurRadius: 8,
                                     spreadRadius: 1,
                                   ),
@@ -584,12 +534,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 Shadow(
                                                   offset: const Offset(1, 1),
                                                   blurRadius: 2,
-                                                  color: Colors.black.withOpacity(0.5),
+                                                  color: Colors.black.withValues(alpha: 0.5),
                                                 ),
                                                 Shadow(
                                                   offset: const Offset(-0.5, -0.5),
                                                   blurRadius: 1,
-                                                  color: Colors.white.withOpacity(0.3),
+                                                  color: Colors.white.withValues(alpha: 0.3),
                                                 ),
                                               ],
                                             ),
@@ -678,7 +628,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           icon: const Icon(Icons.print),
                           label: const Text('štampaj sve'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundColor: Colors.white.withValues(alpha: 0.2),
                             foregroundColor: Colors.white,
                           ),
                           onPressed: () async {
@@ -719,7 +669,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           );
         },
       ),
-    );
+    ).then((_) {
+      for (final c in danaControllers.values) {
+        c.dispose();
+      }
+    });
   }
 
   void _showNoviRacunDialog(BuildContext context) {
@@ -861,7 +815,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           );
         },
       ),
-    );
+    ).then((_) {
+      imeController.dispose();
+      iznosController.dispose();
+      opisController.dispose();
+    });
   }
 
   Future<void> _logout() async {
@@ -873,7 +831,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
-            color: Theme.of(dialogContext).colorScheme.dangerPrimary.withOpacity(0.5),
+            color: Theme.of(dialogContext).colorScheme.dangerPrimary.withValues(alpha: 0.5),
             width: 2,
           ),
         ),
@@ -898,7 +856,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         content: Text(
           'Da li ste sigurni da se želite odjaviti?',
           style: TextStyle(
-            color: Theme.of(dialogContext).colorScheme.onSurface.withOpacity(0.8),
+            color: Theme.of(dialogContext).colorScheme.onSurface.withValues(alpha: 0.8),
             fontSize: 16,
           ),
         ),
@@ -1018,7 +976,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 15,
                     spreadRadius: 2,
                     offset: const Offset(0, 8),
@@ -1069,10 +1027,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.2),
+                              color: Colors.red.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(
-                                color: Colors.red.withOpacity(0.4),
+                                color: Colors.red.withValues(alpha: 0.4),
                               ),
                             ),
                             child: const Icon(
@@ -1105,7 +1063,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -1151,7 +1109,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -1476,17 +1434,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: selectedPutnik!.v2Tabela == 'v2_radnici'
-                                          ? Colors.blue.withOpacity(0.15)
+                                          ? Colors.blue.withValues(alpha: 0.15)
                                           : selectedPutnik!.v2Tabela == 'v2_dnevni'
-                                              ? Colors.orange.withOpacity(0.15)
-                                              : Colors.green.withOpacity(0.15),
+                                              ? Colors.orange.withValues(alpha: 0.15)
+                                              : Colors.green.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
                                         color: selectedPutnik!.v2Tabela == 'v2_radnici'
-                                            ? Colors.blue.withOpacity(0.4)
+                                            ? Colors.blue.withValues(alpha: 0.4)
                                             : selectedPutnik!.v2Tabela == 'v2_dnevni'
-                                                ? Colors.orange.withOpacity(0.4)
-                                                : Colors.green.withOpacity(0.4),
+                                                ? Colors.orange.withValues(alpha: 0.4)
+                                                : Colors.green.withValues(alpha: 0.4),
                                       ),
                                     ),
                                     child: Row(
@@ -1550,10 +1508,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           child: Container(
                             height: 40,
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.2),
+                              color: Colors.red.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(
-                                color: Colors.red.withOpacity(0.4),
+                                color: Colors.red.withValues(alpha: 0.4),
                               ),
                             ),
                             child: TextButton(
@@ -1584,14 +1542,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             duration: const Duration(milliseconds: 200),
                             height: 40,
                             decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.3),
+                              color: Colors.green.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(
-                                color: Colors.green.withOpacity(0.6),
+                                color: Colors.green.withValues(alpha: 0.6),
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -1801,7 +1759,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           );
         },
       ),
-    );
+    ).then((_) {
+      adresaController.dispose();
+      telefonController.dispose();
+      searchPutnikController.dispose();
+    });
   }
 
   @override
@@ -1870,7 +1832,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface.withOpacity(0.25),
+                            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: Row(
@@ -2005,22 +1967,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
           final targetDayAbbr = dayAbbrs[date.weekday - 1];
 
-          // Additional client-side filtering like danas_screen
-          Iterable<V2Putnik> filtered = allPutnici.where((p) {
+          // Filtriranje putnika za selektovani dan (za bottom-bar brojace - sva vremena)
+          // i za prikaz liste (sa grad/vreme filterima).
+          final putniciZaDan = allPutnici.where((p) {
             // Filtriraj po dan kraticama (v2_polasci nema datum kolonu, samo dan TEXT)
-            final dayMatch = p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase());
-
-            return dayMatch;
-          });
-          // Capture passengers for the selected day (but before applying the
-          // selected-time filter). We use this set for counting bottom-bar slots
-          // because the bottom counts should reflect the whole day (all times),
-          // not just the currently selected time.
-          final putniciZaDan = filtered.toList();
+            return p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase());
+          }).toList();
 
           // Additional filters for display (applies time/grad/status and is used
           // to build the visible list). This operates on the putniciZaDan list.
-          filtered = putniciZaDan.where((v2Putnik) {
+          final filtered = putniciZaDan.where((v2Putnik) {
             final normalizedStatus = TextUtils.normalizeText(v2Putnik.status ?? '');
             final imaVreme = v2Putnik.polazak.toString().trim().isNotEmpty;
             final imaGrad = v2Putnik.grad.toString().trim().isNotEmpty;
@@ -2292,7 +2248,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                         elevation: 8,
                                       ),
-                                      items: _dani
+                                      items: _dayNamesInternal
                                           .map(
                                             (dan) => DropdownMenuItem(
                                               value: dan,
@@ -2869,8 +2825,8 @@ class _AnimatedActionButtonState extends State<AnimatedActionButton> with Single
                 boxShadow: _isPressed
                     ? widget.boxShadow.map((shadow) {
                         return BoxShadow(
-                          color: shadow.color.withOpacity(
-                            (shadow.color.opacity * 1.5).clamp(0.0, 1.0),
+                          color: shadow.color.withValues(
+                            alpha: (shadow.color.a * 1.5).clamp(0.0, 1.0),
                           ),
                           blurRadius: shadow.blurRadius * 1.2,
                           offset: shadow.offset,

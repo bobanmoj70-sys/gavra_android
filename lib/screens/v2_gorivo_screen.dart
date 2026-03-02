@@ -16,17 +16,32 @@ class GorivoScreen extends StatefulWidget {
 }
 
 class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabController;
 
   static const Color _accent = Color(0xFFFF9800); // narandžasta = gorivo
 
   final _fmt = NumberFormat('#,##0.0', 'sr');
   final _fmtInt = NumberFormat('#,###', 'sr');
 
+  late Future<PumpaStanje?> _futureStanje;
+  late Future<List<VoziloStatistika>> _futureStatistike;
+  late Future<List<PumpaPunjenje>> _futurePunjenja;
+  late Future<List<PumpaTocenje>> _futureTocenja;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadAll();
+  }
+
+  void _loadAll() {
+    _futureStanje = V2GorivoService.getStanje();
+    _futureStatistike = V2GorivoService.getStatistikePoVozilu(
+      od: DateTime(DateTime.now().year, DateTime.now().month, 1),
+    );
+    _futurePunjenja = V2GorivoService.getPunjenja();
+    _futureTocenja = V2GorivoService.getTocenja();
   }
 
   @override
@@ -100,7 +115,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
   // "?"? TAB 1: STANJE "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildStanjeTab() {
     return FutureBuilder<PumpaStanje?>(
-      future: V2GorivoService.getStanje(),
+      future: _futureStanje,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: _accent));
@@ -110,7 +125,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
           return const Center(child: Text('Greška pri učitavanju stanja'));
         }
         return RefreshIndicator(
-          onRefresh: () async => setState(() {}),
+          onRefresh: () async => setState(_loadAll),
           color: _accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -145,7 +160,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
       elevation: 8,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: barColor.withOpacity(0.6), width: 2),
+        side: BorderSide(color: barColor.withValues(alpha: 0.6), width: 2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -164,7 +179,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.15),
+                      color: Colors.red.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.red),
                     ),
@@ -193,7 +208,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
             Text(
               'od ${_fmt.format(stanje.kapacitetLitri)} L kapaciteta',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
             ),
             const SizedBox(height: 20),
@@ -204,7 +219,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
               child: LinearProgressIndicator(
                 value: procenat,
                 minHeight: 24,
-                backgroundColor: Colors.grey.withOpacity(0.2),
+                backgroundColor: Colors.grey.withValues(alpha: 0.2),
                 valueColor: AlwaysStoppedAnimation<Color>(barColor),
               ),
             ),
@@ -214,7 +229,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
               children: [
                 Text('0 L',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                         )),
                 Text(
                   '${stanje.procenatPune.toStringAsFixed(0)}%',
@@ -225,7 +240,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                 ),
                 Text('${_fmt.format(stanje.kapacitetLitri)} L',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                         )),
               ],
             ),
@@ -274,7 +289,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
         children: [
           Text(label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   )),
           Text(value,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -288,9 +303,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
 
   Widget _buildStatistikePoVozilu() {
     return FutureBuilder<List<VoziloStatistika>>(
-      future: V2GorivoService.getStatistikePoVozilu(
-        od: DateTime(DateTime.now().year, DateTime.now().month, 1),
-      ),
+      future: _futureStatistike,
       builder: (context, snapshot) {
         final lista = snapshot.data ?? [];
         if (lista.isEmpty) return const SizedBox.shrink();
@@ -342,7 +355,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
             child: LinearProgressIndicator(
               value: ratio,
               minHeight: 6,
-              backgroundColor: Colors.grey.withOpacity(0.2),
+              backgroundColor: Colors.grey.withValues(alpha: 0.2),
               valueColor: const AlwaysStoppedAnimation<Color>(_accent),
             ),
           ),
@@ -354,7 +367,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
   // "?"? TAB 2: PUNJENJA "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildPunjenjaTab() {
     return FutureBuilder<List<PumpaPunjenje>>(
-      future: V2GorivoService.getPunjenja(),
+      future: _futurePunjenja,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: _accent));
@@ -365,7 +378,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.local_gas_station, size: 64, color: Colors.grey.withOpacity(0.3)),
+                Icon(Icons.local_gas_station, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
                 const SizedBox(height: 16),
                 Text('Nema zabeleženih punjenja',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -378,7 +391,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
           );
         }
         return RefreshIndicator(
-          onRefresh: () async => setState(() {}),
+          onRefresh: () async => setState(_loadAll),
           color: _accent,
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
@@ -396,11 +409,11 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.green.withOpacity(0.4), width: 1.5),
+        side: BorderSide(color: Colors.green.withValues(alpha: 0.4), width: 1.5),
       ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.green.withOpacity(0.15),
+          backgroundColor: Colors.green.withValues(alpha: 0.15),
           child: const Text('🛢️', style: TextStyle(fontSize: 20)),
         ),
         title: Text(
@@ -437,7 +450,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
   // "?"? TAB 3: TOOENJA "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildTocenjaTab() {
     return FutureBuilder<List<PumpaTocenje>>(
-      future: V2GorivoService.getTocenja(),
+      future: _futureTocenja,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: _accent));
@@ -448,7 +461,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.directions_car, size: 64, color: Colors.grey.withOpacity(0.3)),
+                Icon(Icons.directions_car, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
                 const SizedBox(height: 16),
                 Text('Nema zabeleženih točenja',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -461,7 +474,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
           );
         }
         return RefreshIndicator(
-          onRefresh: () async => setState(() {}),
+          onRefresh: () async => setState(_loadAll),
           color: _accent,
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
@@ -479,11 +492,11 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: _accent.withOpacity(0.4), width: 1.5),
+        side: BorderSide(color: _accent.withValues(alpha: 0.4), width: 1.5),
       ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: _accent.withOpacity(0.15),
+          backgroundColor: _accent.withValues(alpha: 0.15),
           child: const Text('>', style: TextStyle(fontSize: 20)),
         ),
         title: Row(
@@ -572,7 +585,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                   );
                   if (!context.mounted) return;
                   Navigator.pop(ctx);
-                  if (ok) setState(() {});
+                  if (ok) setState(_loadAll);
                   if (ok) {
                     AppSnackBar.success(context, '✅ Punjenje dodato: $litri L');
                   } else {
@@ -673,7 +686,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                   );
                   if (!context.mounted) return;
                   Navigator.pop(ctx);
-                  if (ok) setState(() {});
+                  if (ok) setState(_loadAll);
                   if (ok) {
                     AppSnackBar.success(context, '✅ Točenje zabeleženo: $litri L — ${selectedVozilo!.registarskiBroj}');
                   } else {
@@ -734,7 +747,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
                 );
                 if (!context.mounted) return;
                 Navigator.pop(ctx);
-                if (ok) setState(() {});
+                if (ok) setState(_loadAll);
                 if (ok) {
                   AppSnackBar.success(context, '✅ Podešavanja sačuvana');
                 } else {
@@ -859,7 +872,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
     );
   }
 
-  InputDecoration _inputDeco(String label, {String? suffixText}) {
+  static InputDecoration _inputDeco(String label, {String? suffixText}) {
     return InputDecoration(
       labelText: label,
       suffixText: suffixText,

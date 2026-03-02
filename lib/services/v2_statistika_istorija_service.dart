@@ -6,14 +6,14 @@ import '../models/v2_statistika_istorija.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 
-/// Servis za upravljanje istorijom vožnji
-/// MINIMALNA tabela: putnik_id, datum, tip (voznja/otkazivanje/uplata), iznos, vozac_id
-/// ? TRAJNO REŠENJE: Sve statistike se citaju iz ove tabele
+/// Servis za upravljanje istorijom vožnji.
+/// Tabela: putnik_id, datum, tip (voznja/otkazivanje/uplata), iznos, vozac_id
+/// Sve statistike se čitaju iz ove tabele.
 class V2StatistikaIstorijaService {
   static SupabaseClient get _supabase => supabase;
 
-  /// ?? STATISTIKE ZA POPIS - Broj vožnji, otkazivanja i uplata po vozacu za odredeni datum
-  /// Vraca mapu: {voznje: X, otkazivanja: X, uplate: X, pazar: X.X}
+  /// Statistike za popis — broj vožnji, otkazivanja i uplata po vozacu za odredeni datum.
+  /// Vraca mapu: {voznje: X, otkazivanja: X, uplate: X, mesecne: X, pazar: X.X}
   static Future<Map<String, dynamic>> getStatistikePoVozacu({required String vozacIme, required DateTime datum}) async {
     int voznje = 0;
     int otkazivanja = 0;
@@ -78,7 +78,7 @@ class V2StatistikaIstorijaService {
     };
   }
 
-  /// ?? DETALJI O AKTIVNOSTIMAG ZA PROVERU
+  /// Detalji o aktivnostima — provjera postojanja log zapisa.
   static Future<Map<String, dynamic>?> getLogEntry({
     required String putnikId,
     required String datum,
@@ -155,18 +155,17 @@ class V2StatistikaIstorijaService {
       debugPrint('⚠️ [dodajUplatu] vozacId je NULL ili prazan!');
     }
 
-    final datumObj = datum;
     await _supabase.from('v2_statistika_istorija').insert({
       'putnik_id': putnikId,
-      'datum': datumObj.toIso8601String().split('T')[0],
+      'datum': datum.toIso8601String().split('T')[0],
       'tip': tipUplate,
       'iznos': iznos,
       'vozac_id': vozacId,
       'vozac_ime': vozacIme,
       'grad': gradKod,
       'vreme': vremeNormalizovano,
-      'placeni_mesec': placeniMesec ?? datumObj.month,
-      'placena_godina': placenaGodina ?? datumObj.year,
+      'placeni_mesec': placeniMesec ?? datum.month,
+      'placena_godina': placenaGodina ?? datum.year,
     });
   }
 
@@ -228,7 +227,7 @@ class V2StatistikaIstorijaService {
     });
   }
 
-  /// ?? LOGOVANJE GENERICKE AKCIJE
+  /// Logovanje generičke akcije u statistika_istorija tabelu.
   static Future<void> logGeneric({
     required String tip,
     String? putnikId,
@@ -278,7 +277,7 @@ class V2StatistikaIstorijaService {
     }
   }
 
-  /// ?? LOGOVANJE POTVRDE ZAHTEVA (Kada sistem ili admin potvrdi pending zahtev)
+  /// Logovanje potvrde zahteva (kada sistem ili admin potvrdi pending zahtev).
   static Future<void> logPotvrda({
     required String putnikId,
     required String dan,
@@ -297,7 +296,7 @@ class V2StatistikaIstorijaService {
     );
   }
 
-  /// ? LOGOVANJE GREŠKE PRI OBRADI ZAHTEVA
+  /// Logovanje greške pri obradi zahteva.
   static Future<void> logGreska({
     String? putnikId, // ?? Može biti null za nove putnike koji nisu još sacuvani
     required String greska,
@@ -305,6 +304,6 @@ class V2StatistikaIstorijaService {
     return logGeneric(tip: 'greska_aplikacije', putnikId: putnikId, detalji: 'Greška: $greska');
   }
 
-  /// ?? Cisti realtime subscription
+  /// Placeholder — stream se automatski gasi, eksplicitno čišćenje nije potrebno.
   static void dispose() {}
 }

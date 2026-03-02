@@ -1,10 +1,9 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/realtime/v2_master_realtime_manager.dart';
+import '../services/v2_pin_zahtev_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 
 /// PIN DIALOG za mesečne putnike
@@ -37,12 +36,6 @@ class _V2PinDialogState extends State<V2PinDialog> {
   void initState() {
     super.initState();
     _pin = widget.trenutniPin;
-  }
-
-  /// Generiši nasumičan 4-cifreni PIN
-  String _generatePin() {
-    final random = Random();
-    return (1000 + random.nextInt(9000)).toString(); // 1000-9999
   }
 
   /// Sačuvaj PIN u bazu
@@ -182,7 +175,7 @@ class _V2PinDialogState extends State<V2PinDialog> {
                     onPressed: _isLoading
                         ? null
                         : () async {
-                            final newPin = _generatePin();
+                            final newPin = V2PinZahtevService.generatePin();
                             await _savePin(newPin);
                           },
                     icon: _isLoading

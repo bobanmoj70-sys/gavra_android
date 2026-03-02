@@ -22,9 +22,14 @@ class _DugoviScreenState extends State<DugoviScreen> {
   final String _selectedFilter = 'svi'; // 'svi', 'veliki_dug', 'mali_dug'
   final String _sortBy = 'vreme'; // 'iznos', 'vreme', 'ime', 'vozac' - default: najnoviji gore
 
+  late final Stream<List<V2Putnik>> _streamDugovi;
+
   @override
   void initState() {
     super.initState();
+    _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
+      isoDate: PutnikHelpers.getWorkingDateIso(),
+    );
     _setupDebouncedSearch();
   }
 
@@ -75,7 +80,7 @@ class _DugoviScreenState extends State<DugoviScreen> {
   }
 
   // 💰 CALCULATE DUG AMOUNT HELPER
-  double _calculateDugAmount(V2Putnik putnik) {
+  static double _calculateDugAmount(V2Putnik putnik) {
     // ✅ FIX: Koristi efektivnu cenu iz modela pomnoženu sa brojem mesta
     // Umesto hardkodovanih 500.0
     return putnik.effectivePrice * (putnik.brojMesta > 0 ? putnik.brojMesta : 1);
@@ -117,9 +122,7 @@ class _DugoviScreenState extends State<DugoviScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<V2Putnik>>(
-      stream: _putnikService.streamKombinovaniPutniciFiltered(
-        isoDate: PutnikHelpers.getWorkingDateIso(),
-      ),
+      stream: _streamDugovi,
       builder: (context, snapshot) {
         final putnici = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting && putnici.isEmpty;
@@ -162,7 +165,7 @@ class _DugoviScreenState extends State<DugoviScreen> {
                 ),
                 Text(
                   'Svi neplaćeni putnici (Plava kartica)',
-                  style: TextStyle(fontSize: 12, color: Colors.white70.withOpacity(0.8)),
+                  style: TextStyle(fontSize: 12, color: Colors.white70.withValues(alpha: 0.8)),
                 ),
               ],
             ),
