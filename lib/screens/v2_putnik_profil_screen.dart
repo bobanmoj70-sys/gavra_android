@@ -12,8 +12,8 @@ import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
-import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_putnik_push_service.dart'; // 📱 Push notifikacije za putnike
+import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_weather_service.dart'; // 🌤️ Vremenska prognoza
 import '../theme.dart';
@@ -1582,21 +1582,11 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         }
 
         final nowStr = DateTime.now().toUtc().toIso8601String();
-        final imePutnika = _putnikData['ime'] as String? ?? _putnikData['putnik_ime'] as String? ?? 'putnik';
         await supabase.from('v2_polasci').update({
-          'status': 'otkazano',
-          'otkazao': imePutnika,
+          'status': 'bez_polaska',
           'processed_at': nowStr,
           'updated_at': nowStr,
         }).eq('id', existing['id'].toString());
-        await V2StatistikaIstorijaService.logGeneric(
-          tip: 'otkazivanje',
-          putnikId: putnikId,
-          vozacImeOverride: imePutnika,
-          grad: gradKey,
-          vreme: (existing['dodeljeno_vreme'] ?? existing['zeljeno_vreme'])?.toString(),
-          datum: DateTime.now().toIso8601String().split('T')[0],
-        );
       } catch (e) {
         debugPrint('❌ _updatePolazak (bez_polaska): $e');
         if (mounted) AppSnackBar.error(context, 'Greška pri uklanjanju polaska.');
