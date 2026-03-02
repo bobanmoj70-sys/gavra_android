@@ -41,7 +41,18 @@ class V2PolasciService {
       final nowStr = DateTime.now().toUtc().toIso8601String();
       final status = isAdmin ? 'odobreno' : 'obrada';
 
-      // Upsert po (putnik_id, dan, grad, zeljeno_vreme) — svaka kombinacija je jedinstvena
+      // 1. Cancelluj sve ostale aktivne zahtjeve za isti grad+dan (drugačije vreme)
+      //    Putnik može imati samo jedan aktivan zahtjev po grad+dan.
+      await _supabase
+          .from('v2_polasci')
+          .update({'status': 'cancelled', 'updated_at': nowStr})
+          .eq('putnik_id', putnikId)
+          .eq('grad', gradKey)
+          .eq('dan', danKey)
+          .neq('zeljeno_vreme', normVreme)
+          .inFilter('status', ['obrada', 'odobreno', 'odbijeno']);
+
+      // 2. Upsert po (putnik_id, grad, dan, zeljeno_vreme) — uvijek ide ispočetka kroz obradu
       final existing = await _supabase
           .from('v2_polasci')
           .select('id')
@@ -55,9 +66,12 @@ class V2PolasciService {
         await _supabase.from('v2_polasci').update({
           'status': status,
           'broj_mesta': brojMesta,
+          'dodeljeno_vreme': isAdmin ? normVreme : null,
+          'processed_at': null,
+          'alternative_vreme_1': null,
+          'alternative_vreme_2': null,
           if (putnikTabela != null) 'putnik_tabela': putnikTabela,
           if (customAdresaId != null) 'adresa_id': customAdresaId,
-          if (isAdmin) 'dodeljeno_vreme': normVreme,
           'updated_at': nowStr,
         }).eq('id', existing['id']);
         debugPrint('✅ [V2PolasciService] v2PoSaljiZahtev UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
@@ -804,6 +818,12 @@ class V2PutnikStreamService {
             .eq('putnik_id', putnikId)
             .inFilter('dan', [danasKratica, sutraKratica])
             .inFilter('status', ['obrada', 'odobreno']);
+        await V2StatistikaIstorijaService.logGeneric(
+          tip: 'otkazivanje',
+          putnikId: putnikId,
+          detalji: 'Auto-otkazano zbog: $status',
+          datum: DateTime.now().toIso8601String().split('T')[0],
+        );
       }
     } catch (e) {
       debugPrint('❌ [PutnikService] Error setting bolovanje/godisnji: $e');
