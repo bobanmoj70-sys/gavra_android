@@ -11,8 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// These manufacturers have custom battery optimization that kills apps
 /// even when they're on Android's battery whitelist. Users must manually
 /// enable background running in device-specific settings.
-class BatteryOptimizationService {
-  BatteryOptimizationService._();
+class V2BatteryOptimizationService {
+  V2BatteryOptimizationService._();
 
   static const String _shownKey = 'battery_optimization_warning_shown';
   static const String _dismissedKey = 'battery_optimization_dismissed';

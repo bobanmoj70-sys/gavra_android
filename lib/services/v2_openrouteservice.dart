@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
-/// OpenRouteService - Za realtime ETA
-/// Koristi OpenRouteService Directions API za izračunavanje ETA tokom vožnje
+/// V2OpenRouteService - Za realtime ETA
+/// Koristi V2OpenRouteService Directions API za izračunavanje ETA tokom vožnje
 /// API Key se čita iz environment varijable
 ///
 /// Limit: 2000 zahteva/dan, 40/min
-class OpenRouteService {
-  OpenRouteService._();
+class V2OpenRouteService {
+  V2OpenRouteService._();
 
   static const String _baseUrl = 'https://api.openrouteservice.org/v2/directions/driving-car';
 
@@ -21,18 +21,18 @@ class OpenRouteService {
 
   /// Realtime ETA: Koristi Directions API za brzo osvežavanje ETA tokom vožnje
   /// Poziva se periodično (svakih 2 min) dok vozač vozi
-  static Future<RealtimeEtaResult> getRealtimeEta({
+  static Future<V2RealtimeEtaResult> getRealtimeEta({
     required Position currentPosition,
     required List<String> putnikImena,
     required Map<String, Position> putnikCoordinates,
   }) async {
     if (putnikImena.isEmpty) {
-      return RealtimeEtaResult.failure('Nema putnika');
+      return V2RealtimeEtaResult.failure('Nema putnika');
     }
 
     try {
       // Pripremi koordinate: vozač -> putnici u redosledu
-      // OpenRouteService POST format: [[lon, lat], [lon, lat], ...]
+      // V2OpenRouteService POST format: [[lon, lat], [lon, lat], ...]
       final coordinates = <List<double>>[];
       coordinates.add([currentPosition.longitude, currentPosition.latitude]);
 
@@ -46,7 +46,7 @@ class OpenRouteService {
       }
 
       if (validPutnici.isEmpty) {
-        return RealtimeEtaResult.failure('Nema putnika sa koordinatama');
+        return V2RealtimeEtaResult.failure('Nema putnika sa koordinatama');
       }
 
       // POST request sa JSON body
@@ -65,7 +65,7 @@ class OpenRouteService {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
-        return RealtimeEtaResult.failure('ORS error: ${response.statusCode}');
+        return V2RealtimeEtaResult.failure('ORS error: ${response.statusCode}');
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;
@@ -73,12 +73,12 @@ class OpenRouteService {
       // Parsiraj GeoJSON response
       final routes = data['routes'] as List?;
       if (routes == null || routes.isEmpty) {
-        return RealtimeEtaResult.failure('Nema rute');
+        return V2RealtimeEtaResult.failure('Nema rute');
       }
 
       final segments = routes[0]['segments'] as List?;
       if (segments == null || segments.isEmpty) {
-        return RealtimeEtaResult.failure('Nema segmenata');
+        return V2RealtimeEtaResult.failure('Nema segmenata');
       }
 
       // Izračunaj kumulativni ETA za svakog putnika
@@ -94,37 +94,37 @@ class OpenRouteService {
         putniciEta[validPutnici[i]] = (cumulativeSec / 60).round();
       }
 
-      return RealtimeEtaResult.success(putniciEta);
+      return V2RealtimeEtaResult.success(putniciEta);
     } catch (e) {
-      debugPrint('[OpenRouteService] getRealtimeEta error: $e');
-      return RealtimeEtaResult.failure('Greška: $e');
+      debugPrint('[V2OpenRouteService] getRealtimeEta error: $e');
+      return V2RealtimeEtaResult.failure('Greška: $e');
     }
   }
 }
 
 /// Rezultat realtime ETA poziva
-class RealtimeEtaResult {
+class V2RealtimeEtaResult {
   final bool success;
   final Map<String, int>? putniciEta; // ime -> ETA u minutama
   final String? error;
 
-  RealtimeEtaResult._({
+  V2RealtimeEtaResult._({
     required this.success,
     this.putniciEta,
     this.error,
   });
 
-  factory RealtimeEtaResult.success(Map<String, int> eta) {
-    return RealtimeEtaResult._(success: true, putniciEta: eta);
+  factory V2RealtimeEtaResult.success(Map<String, int> eta) {
+    return V2RealtimeEtaResult._(success: true, putniciEta: eta);
   }
 
-  factory RealtimeEtaResult.failure(String error) {
-    return RealtimeEtaResult._(success: false, error: error);
+  factory V2RealtimeEtaResult.failure(String error) {
+    return V2RealtimeEtaResult._(success: false, error: error);
   }
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is RealtimeEtaResult && success == other.success && error == other.error;
+      identical(this, other) || other is V2RealtimeEtaResult && success == other.success && error == other.error;
 
   @override
   int get hashCode => Object.hash(success, error);

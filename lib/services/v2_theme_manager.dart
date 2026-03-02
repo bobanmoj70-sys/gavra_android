@@ -7,15 +7,15 @@ import 'v2_theme_registry.dart';
 class ThemeManager extends ChangeNotifier {
   factory ThemeManager() => _instance;
   ThemeManager._internal() {
-    _currentTheme = ThemeRegistry.getTheme(_currentThemeId) ?? ThemeRegistry.defaultTheme;
+    _currentTheme = V2ThemeRegistry.getTheme(_currentThemeId) ?? V2ThemeRegistry.defaultTheme;
   }
   static final ThemeManager _instance = ThemeManager._internal();
 
   static const String _themePrefsKey = 'selected_theme_id';
 
   String _currentThemeId = 'triple_blue_fashion';
-  ThemeDefinition? _currentTheme;
-  final ValueNotifier<ThemeData> _themeNotifier = ValueNotifier(ThemeRegistry.defaultTheme.themeData);
+  V2ThemeDefinition? _currentTheme;
+  final ValueNotifier<ThemeData> _themeNotifier = ValueNotifier(V2ThemeRegistry.defaultTheme.themeData);
 
   /// Trenutna tema ID
   String get currentThemeId => _currentThemeId;
@@ -24,7 +24,7 @@ class ThemeManager extends ChangeNotifier {
   ValueNotifier<ThemeData> get themeNotifier => _themeNotifier;
 
   /// Trenutna tema definicija
-  ThemeDefinition get currentTheme => _currentTheme!;
+  V2ThemeDefinition get currentTheme => _currentTheme!;
 
   /// Trenutni ThemeData
   ThemeData get currentThemeData => currentTheme.themeData;
@@ -41,19 +41,19 @@ class ThemeManager extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final savedThemeId = prefs.getString(_themePrefsKey);
 
-      if (savedThemeId != null && ThemeRegistry.hasTheme(savedThemeId)) {
+      if (savedThemeId != null && V2ThemeRegistry.hasTheme(savedThemeId)) {
         // Učitaj sačuvanu temu
         _currentThemeId = savedThemeId;
-        _currentTheme = ThemeRegistry.getTheme(savedThemeId);
+        _currentTheme = V2ThemeRegistry.getTheme(savedThemeId);
       } else {
         // Fallback na default temu
-        final defaultTheme = ThemeRegistry.defaultTheme;
+        final defaultTheme = V2ThemeRegistry.defaultTheme;
         _currentThemeId = defaultTheme.id;
         _currentTheme = defaultTheme;
       }
     } catch (e) {
       debugPrint('[ThemeManager] Greška pri učitavanju teme, koristi default: $e');
-      final defaultTheme = ThemeRegistry.defaultTheme;
+      final defaultTheme = V2ThemeRegistry.defaultTheme;
       _currentThemeId = defaultTheme.id;
       _currentTheme = defaultTheme;
     }
@@ -64,7 +64,7 @@ class ThemeManager extends ChangeNotifier {
 
   /// Promeni temu
   Future<void> changeTheme(String themeId) async {
-    if (!ThemeRegistry.hasTheme(themeId)) {
+    if (!V2ThemeRegistry.hasTheme(themeId)) {
       throw Exception('Tema $themeId ne postoji!');
     }
 
@@ -77,7 +77,7 @@ class ThemeManager extends ChangeNotifier {
     }
 
     _currentThemeId = themeId;
-    _currentTheme = ThemeRegistry.getTheme(themeId);
+    _currentTheme = V2ThemeRegistry.getTheme(themeId);
 
     // Obavesti listenere
     _themeNotifier.value = currentThemeData;
@@ -86,7 +86,7 @@ class ThemeManager extends ChangeNotifier {
 
   /// Sledeća tema u listi (za cycling)
   Future<void> nextTheme() async {
-    final themeNames = ThemeRegistry.themeNames;
+    final themeNames = V2ThemeRegistry.themeNames;
     final currentIndex = themeNames.indexOf(_currentThemeId);
     final nextIndex = (currentIndex + 1) % themeNames.length;
     await changeTheme(themeNames[nextIndex]);

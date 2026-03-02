@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 
 /// Haptic feedback servis za tactile response
-class HapticService {
-  HapticService._();
+class V2HapticService {
+  V2HapticService._();
 
   /// Light impact - za obicne tap-ove
   static void lightImpact() {
@@ -75,8 +75,8 @@ class HapticService {
 }
 
 /// Elevated button sa haptic feedback-om
-class HapticElevatedButton extends StatelessWidget {
-  const HapticElevatedButton({
+class V2HapticElevatedButton extends StatelessWidget {
+  const V2HapticElevatedButton({
     super.key,
     required this.onPressed,
     required this.child,
@@ -97,17 +97,17 @@ class HapticElevatedButton extends StatelessWidget {
           : () {
               switch (hapticType) {
                 case HapticType.light:
-                  HapticService.lightImpact();
+                  V2HapticService.lightImpact();
                 case HapticType.medium:
-                  HapticService.mediumImpact();
+                  V2HapticService.mediumImpact();
                 case HapticType.heavy:
-                  HapticService.heavyImpact();
+                  V2HapticService.heavyImpact();
                 case HapticType.selection:
-                  HapticService.selectionClick();
+                  V2HapticService.selectionClick();
                 case HapticType.success:
-                  HapticService.success();
+                  V2HapticService.success();
                 case HapticType.error:
-                  HapticService.error();
+                  V2HapticService.error();
               }
               onPressed?.call();
             },

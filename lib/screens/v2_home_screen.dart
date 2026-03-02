@@ -867,7 +867,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
               style: TextStyle(color: Colors.grey),
             ),
           ),
-          HapticElevatedButton(
+          V2HapticElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(dialogContext).colorScheme.error,
               foregroundColor: Theme.of(dialogContext).colorScheme.onError,
@@ -1554,7 +1554,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                 ),
                               ],
                             ),
-                            child: HapticElevatedButton(
+                            child: V2HapticElevatedButton(
                               hapticType: HapticType.success,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
@@ -1595,7 +1595,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         // ?? SAMO ZA PUTNIKE - vozaci mogu dodavati bez ogranicenja
                                         final isVozac = V2VozacCache.isValidIme(_currentDriver);
                                         if (!isVozac) {
-                                          final imaMesta = await SlobodnaMestaService.imaSlobodnihMesta(
+                                          final imaMesta = await V2SlobodnaMestaService.imaSlobodnihMesta(
                                             _selectedGrad,
                                             _selectedVreme,
                                           );
@@ -2305,7 +2305,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                               label: 'Ja',
                               icon: Icons.person,
                               onTap: () {
-                                AnimatedNavigation.pushSmooth(
+                                V2AnimatedNavigation.pushSmooth(
                                   context,
                                   V2VozacScreen(previewAsDriver: _currentDriver),
                                 );
@@ -2326,7 +2326,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                       label: 'Zahtevi',
                                       icon: Icons.notifications_active,
                                       onTap: () {
-                                        AnimatedNavigation.pushSmooth(
+                                        V2AnimatedNavigation.pushSmooth(
                                           context,
                                           const V2PolasciScreen(),
                                         );
@@ -2377,7 +2377,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                               label: 'Admin',
                               icon: Icons.admin_panel_settings,
                               onTap: () {
-                                AnimatedNavigation.pushSmooth(
+                                V2AnimatedNavigation.pushSmooth(
                                   context,
                                   const V2AdminScreen(),
                                 );

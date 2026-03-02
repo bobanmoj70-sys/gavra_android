@@ -15,14 +15,14 @@ class V2GorivoService {
   // ─────────────────────────────────────────────────────────────
 
   /// Dohvati trenutno stanje pumpe
-  static Future<PumpaStanje?> getStanje() async {
+  static Future<V2PumpaStanje?> getStanje() async {
     try {
       final response = await _db
           .from('v2_pumpa_stanje')
           .select(
               'kapacitet_litri,alarm_nivo,pocetno_stanje,ukupno_punjeno,ukupno_utroseno,trenutno_stanje,procenat_pune')
           .single();
-      return PumpaStanje.fromJson(response);
+      return V2PumpaStanje.fromJson(response);
     } catch (e) {
       debugPrint('[GorivoService] getStanje error: $e');
       return null;
@@ -56,7 +56,7 @@ class V2GorivoService {
   // ─────────────────────────────────────────────────────────────
 
   /// Dohvati sva punjenja (najnovija prva)
-  static Future<List<PumpaPunjenje>> getPunjenja({int limit = 50}) async {
+  static Future<List<V2PumpaPunjenje>> getPunjenja({int limit = 50}) async {
     try {
       final response = await _db
           .from('v2_pumpa_punjenja')
@@ -64,7 +64,7 @@ class V2GorivoService {
           .order('datum', ascending: false)
           .order('created_at', ascending: false)
           .limit(limit);
-      return (response as List).map((r) => PumpaPunjenje.fromJson(r)).toList();
+      return (response as List).map((r) => V2PumpaPunjenje.fromJson(r)).toList();
     } catch (e) {
       debugPrint('[GorivoService] getPunjenja error: $e');
       return [];
@@ -110,7 +110,7 @@ class V2GorivoService {
   // ─────────────────────────────────────────────────────────────
 
   /// Dohvati sva točenja (najnovija prva)
-  static Future<List<PumpaTocenje>> getTocenja({
+  static Future<List<V2PumpaTocenje>> getTocenja({
     int limit = 100,
     String? voziloId,
   }) async {
@@ -121,7 +121,7 @@ class V2GorivoService {
           .order('datum', ascending: false)
           .order('created_at', ascending: false)
           .limit(limit);
-      return (response as List).map((r) => PumpaTocenje.fromJson(r)).toList();
+      return (response as List).map((r) => V2PumpaTocenje.fromJson(r)).toList();
     } catch (e) {
       debugPrint('[GorivoService] getTocenja error: $e');
       return [];
@@ -187,7 +187,7 @@ class V2GorivoService {
   // ─────────────────────────────────────────────────────────────
 
   /// Potrošnja po vozilu za period
-  static Future<List<VoziloStatistika>> getStatistikePoVozilu({
+  static Future<List<V2VoziloStatistika>> getStatistikePoVozilu({
     DateTime? od,
     DateTime? do_,
   }) async {
@@ -205,7 +205,7 @@ class V2GorivoService {
       final data = await query;
 
       // Agregiraj po vozilu
-      final Map<String, VoziloStatistika> mapa = {};
+      final Map<String, V2VoziloStatistika> mapa = {};
       for (final row in data) {
         final voziloId = row['vozilo_id'] as String? ?? '';
         final litri = (row['litri'] as num?)?.toDouble() ?? 0;
@@ -220,7 +220,7 @@ class V2GorivoService {
             brojTocenja: mapa[voziloId]!.brojTocenja + 1,
           );
         } else {
-          mapa[voziloId] = VoziloStatistika(
+          mapa[voziloId] = V2VoziloStatistika(
             voziloId: voziloId,
             registarskiBroj: regBroj,
             marka: marka,
@@ -264,7 +264,7 @@ class V2GorivoService {
 // MODELI
 // ─────────────────────────────────────────────────────────────────────────────
 
-class PumpaStanje {
+class V2PumpaStanje {
   final double kapacitetLitri;
   final double alarmNivo;
   final double pocetnoStanje;
@@ -273,7 +273,7 @@ class PumpaStanje {
   final double trenutnoStanje;
   final double procenatPune;
 
-  PumpaStanje({
+  V2PumpaStanje({
     required this.kapacitetLitri,
     required this.alarmNivo,
     required this.pocetnoStanje,
@@ -283,7 +283,7 @@ class PumpaStanje {
     required this.procenatPune,
   });
 
-  factory PumpaStanje.fromJson(Map<String, dynamic> j) => PumpaStanje(
+  factory V2PumpaStanje.fromJson(Map<String, dynamic> j) => V2PumpaStanje(
         kapacitetLitri: (j['kapacitet_litri'] as num?)?.toDouble() ?? 3000,
         alarmNivo: (j['alarm_nivo'] as num?)?.toDouble() ?? 500,
         pocetnoStanje: (j['pocetno_stanje'] as num?)?.toDouble() ?? 0,
@@ -299,7 +299,7 @@ class PumpaStanje {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PumpaStanje &&
+      other is V2PumpaStanje &&
           kapacitetLitri == other.kapacitetLitri &&
           alarmNivo == other.alarmNivo &&
           pocetnoStanje == other.pocetnoStanje &&
@@ -320,7 +320,7 @@ class PumpaStanje {
       );
 }
 
-class PumpaPunjenje {
+class V2PumpaPunjenje {
   final String id;
   final DateTime datum;
   final double litri;
@@ -329,7 +329,7 @@ class PumpaPunjenje {
   final String? napomena;
   final DateTime createdAt;
 
-  PumpaPunjenje({
+  V2PumpaPunjenje({
     required this.id,
     required this.datum,
     required this.litri,
@@ -339,7 +339,7 @@ class PumpaPunjenje {
     required this.createdAt,
   });
 
-  factory PumpaPunjenje.fromJson(Map<String, dynamic> j) => PumpaPunjenje(
+  factory V2PumpaPunjenje.fromJson(Map<String, dynamic> j) => V2PumpaPunjenje(
         id: j['id'] as String,
         datum: DateTime.parse(j['datum'] as String),
         litri: (j['litri'] as num).toDouble(),
@@ -350,13 +350,13 @@ class PumpaPunjenje {
       );
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is PumpaPunjenje && id == other.id;
+  bool operator ==(Object other) => identical(this, other) || other is V2PumpaPunjenje && id == other.id;
 
   @override
   int get hashCode => id.hashCode;
 }
 
-class PumpaTocenje {
+class V2PumpaTocenje {
   final String id;
   final DateTime datum;
   final String? voziloId;
@@ -368,7 +368,7 @@ class PumpaTocenje {
   final String? napomena;
   final DateTime createdAt;
 
-  PumpaTocenje({
+  V2PumpaTocenje({
     required this.id,
     required this.datum,
     this.voziloId,
@@ -381,9 +381,9 @@ class PumpaTocenje {
     required this.createdAt,
   });
 
-  factory PumpaTocenje.fromJson(Map<String, dynamic> j) {
+  factory V2PumpaTocenje.fromJson(Map<String, dynamic> j) {
     final vozilo = j['v2_vozila'] as Map<String, dynamic>?;
-    return PumpaTocenje(
+    return V2PumpaTocenje(
       id: j['id'] as String,
       datum: DateTime.parse(j['datum'] as String),
       voziloId: j['vozilo_id'] as String?,
@@ -405,13 +405,13 @@ class PumpaTocenje {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is PumpaTocenje && id == other.id;
+  bool operator ==(Object other) => identical(this, other) || other is V2PumpaTocenje && id == other.id;
 
   @override
   int get hashCode => id.hashCode;
 }
 
-class VoziloStatistika {
+class V2VoziloStatistika {
   final String voziloId;
   final String registarskiBroj;
   final String marka;
@@ -419,7 +419,7 @@ class VoziloStatistika {
   final double ukupnoLitri;
   final int brojTocenja;
 
-  VoziloStatistika({
+  V2VoziloStatistika({
     required this.voziloId,
     required this.registarskiBroj,
     required this.marka,
@@ -428,7 +428,7 @@ class VoziloStatistika {
     required this.brojTocenja,
   });
 
-  VoziloStatistika copyWith({double? ukupnoLitri, int? brojTocenja}) => VoziloStatistika(
+  V2VoziloStatistika copyWith({double? ukupnoLitri, int? brojTocenja}) => V2VoziloStatistika(
         voziloId: voziloId,
         registarskiBroj: registarskiBroj,
         marka: marka,
@@ -440,7 +440,7 @@ class VoziloStatistika {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is VoziloStatistika &&
+      other is V2VoziloStatistika &&
           voziloId == other.voziloId &&
           ukupnoLitri == other.ukupnoLitri &&
           brojTocenja == other.brojTocenja;

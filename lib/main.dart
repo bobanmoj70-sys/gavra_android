@@ -156,7 +156,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     V2WeatherService.dispose();
     RealtimeGpsService.dispose();
     V2StatistikaIstorijaService.dispose();
-    SlobodnaMestaService.dispose();
+    V2SlobodnaMestaService.dispose();
     super.dispose();
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class SmoothPageRoute<T> extends PageRouteBuilder<T> {
-  SmoothPageRoute({
+class V2SmoothPageRoute<T> extends PageRouteBuilder<T> {
+  V2SmoothPageRoute({
     required this.child,
     this.duration = const Duration(milliseconds: 300),
   }) : super(
@@ -36,8 +36,8 @@ class SmoothPageRoute<T> extends PageRouteBuilder<T> {
 }
 
 // Helper funkcije za lako korišćenje
-class AnimatedNavigation {
-  AnimatedNavigation._();
+class V2AnimatedNavigation {
+  V2AnimatedNavigation._();
 
   static Future<T?> pushSmooth<T extends Object?>(
     BuildContext context,
@@ -45,7 +45,7 @@ class AnimatedNavigation {
   ) {
     return Navigator.push<T>(
       context,
-      SmoothPageRoute(child: page),
+      V2SmoothPageRoute(child: page),
     );
   }
 
@@ -55,7 +55,7 @@ class AnimatedNavigation {
   ) {
     return Navigator.pushReplacement<T, TO>(
       context,
-      SmoothPageRoute(child: page),
+      V2SmoothPageRoute(child: page),
     );
   }
 }

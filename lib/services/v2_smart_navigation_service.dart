@@ -17,8 +17,8 @@ import 'v2_unified_geocoding_service.dart';
 /// - HERE WeGo (10 waypoints) - besplatno, radi na svim uredajima
 /// - Automatska segmentacija rute kada prelazi limit waypoinata
 /// - Offline mape, poštuje redosled putnika
-class SmartNavigationService {
-  SmartNavigationService._();
+class V2SmartNavigationService {
+  V2SmartNavigationService._();
 
   /// Vrati krajnju destinaciju na osnovu startCity
   /// startCity je grad ODAKLE putnici krecu (polazište putnika)
@@ -67,7 +67,7 @@ class SmartNavigationService {
   }
 
   /// SAMO OPTIMIZACIJA RUTE (bez otvaranja mape) - za "Pokreni" dugme
-  static Future<NavigationResult> optimizeRouteOnly({
+  static Future<V2NavigationResult> optimizeRouteOnly({
     required List<V2Putnik> putnici,
     required String startCity,
     bool optimizeForTime = true,
@@ -80,7 +80,7 @@ class SmartNavigationService {
       final endDestination = _getEndDestination(startCity);
 
       // KORISTI OSRM ZA PRAVU TSP OPTIMIZACIJU (sa fallback na lokalni algoritam)
-      final osrmResult = await OsrmService.optimizeRoute(
+      final osrmResult = await V2OsrmService.optimizeRoute(
         startPosition: currentPosition,
         putnici: putnici,
         endDestination: endDestination,
@@ -88,7 +88,7 @@ class SmartNavigationService {
 
       // OSRM neuspešan - vrati grešku
       if (!osrmResult.success || osrmResult.optimizedPutnici == null) {
-        return NavigationResult.error(osrmResult.message);
+        return V2NavigationResult.error(osrmResult.message);
       }
 
       // OSRM uspešan
@@ -99,7 +99,7 @@ class SmartNavigationService {
       final skipped = putnici.where((p) => !coordinates.containsKey(p)).toList();
 
       // 3. VRATI OPTIMIZOVANU RUTU
-      return NavigationResult.success(
+      return V2NavigationResult.success(
         message: 'Ruta optimizovana',
         optimizedPutnici: optimizedRoute,
         totalDistance:
@@ -108,7 +108,7 @@ class SmartNavigationService {
         putniciEta: osrmResult.putniciEta,
       );
     } catch (e) {
-      return NavigationResult.error('Greška pri optimizaciji: $e');
+      return V2NavigationResult.error('Greška pri optimizaciji: $e');
     }
   }
 
@@ -122,17 +122,17 @@ class SmartNavigationService {
   /// [context] - BuildContext za dijaloge
   /// [putnici] - Lista optimizovanih putnika
   /// [startCity] - Pocetni grad (za krajnju destinaciju)
-  static Future<NavigationResult> startMultiProviderNavigation({
+  static Future<V2NavigationResult> startMultiProviderNavigation({
     required BuildContext context,
     required List<V2Putnik> putnici,
     required String startCity,
   }) async {
     try {
       // 1. DOBIJ KOORDINATE
-      final coordinates = await UnifiedGeocodingService.getCoordinatesForPutnici(putnici);
+      final coordinates = await V2UnifiedGeocodingService.getCoordinatesForPutnici(putnici);
 
       if (coordinates.isEmpty) {
-        return NavigationResult.error('Nijedan putnik nema validnu adresu');
+        return V2NavigationResult.error('Nijedan putnik nema validnu adresu');
       }
 
       // 2. ODREDI KRAJNJU DESTINACIJU
@@ -140,9 +140,9 @@ class SmartNavigationService {
 
       // 3. POKRENI MULTI-PROVIDER NAVIGACIJU
       if (!context.mounted) {
-        return NavigationResult.error('Context nije više aktivan');
+        return V2NavigationResult.error('Context nije više aktivan');
       }
-      final result = await HereWeGoNavigationService.startNavigation(
+      final result = await V2HereWeGoNavigationService.startNavigation(
         context: context,
         putnici: putnici,
         coordinates: coordinates,
@@ -151,15 +151,15 @@ class SmartNavigationService {
 
       // 4. KONVERTUJ REZULTAT
       if (result.success) {
-        return NavigationResult.success(
+        return V2NavigationResult.success(
           message: result.message,
           optimizedPutnici: result.launchedPutnici ?? putnici,
         );
       } else {
-        return NavigationResult.error(result.message);
+        return V2NavigationResult.error(result.message);
       }
     } catch (e) {
-      return NavigationResult.error('Greška: $e');
+      return V2NavigationResult.error('Greška: $e');
     }
   }
 
@@ -212,8 +212,8 @@ class SmartNavigationService {
 }
 
 /// Rezultat navigacije
-class NavigationResult {
-  NavigationResult._({
+class V2NavigationResult {
+  V2NavigationResult._({
     required this.success,
     required this.message,
     this.optimizedPutnici,
@@ -222,14 +222,14 @@ class NavigationResult {
     this.putniciEta,
   });
 
-  factory NavigationResult.success({
+  factory V2NavigationResult.success({
     required String message,
     required List<V2Putnik> optimizedPutnici,
     double? totalDistance,
     List<V2Putnik>? skippedPutnici,
     Map<String, int>? putniciEta,
   }) {
-    return NavigationResult._(
+    return V2NavigationResult._(
       success: true,
       message: message,
       optimizedPutnici: optimizedPutnici,
@@ -239,8 +239,8 @@ class NavigationResult {
     );
   }
 
-  factory NavigationResult.error(String message) {
-    return NavigationResult._(
+  factory V2NavigationResult.error(String message) {
+    return V2NavigationResult._(
       success: false,
       message: message,
     );
@@ -255,7 +255,7 @@ class NavigationResult {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is NavigationResult &&
+      other is V2NavigationResult &&
           runtimeType == other.runtimeType &&
           success == other.success &&
           message == other.message;

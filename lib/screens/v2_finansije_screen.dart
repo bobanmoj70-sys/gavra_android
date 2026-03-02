@@ -15,7 +15,7 @@ class V2FinansijeScreen extends StatefulWidget {
 class _FinansijeScreenState extends State<V2FinansijeScreen> {
   final _formatBroja = NumberFormat('#,###', 'sr');
 
-  late final Stream<FinansijskiIzvestaj> _streamIzvestaj;
+  late final Stream<V2FinansijskiIzvestaj> _streamIzvestaj;
 
   @override
   void initState() {
@@ -29,7 +29,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<FinansijskiIzvestaj>(
+    return StreamBuilder<V2FinansijskiIzvestaj>(
       stream: _streamIzvestaj,
       builder: (context, snapshot) {
         final izvestaj = snapshot.data;

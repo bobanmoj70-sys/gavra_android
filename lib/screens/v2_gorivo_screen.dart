@@ -23,10 +23,10 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   final _fmt = NumberFormat('#,##0.0', 'sr');
   final _fmtInt = NumberFormat('#,###', 'sr');
 
-  late Future<PumpaStanje?> _futureStanje;
-  late Future<List<VoziloStatistika>> _futureStatistike;
-  late Future<List<PumpaPunjenje>> _futurePunjenja;
-  late Future<List<PumpaTocenje>> _futureTocenja;
+  late Future<V2PumpaStanje?> _futureStanje;
+  late Future<List<V2VoziloStatistika>> _futureStatistike;
+  late Future<List<V2PumpaPunjenje>> _futurePunjenja;
+  late Future<List<V2PumpaTocenje>> _futureTocenja;
 
   @override
   void initState() {
@@ -114,7 +114,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
 
   // "?"? TAB 1: STANJE "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildStanjeTab() {
-    return FutureBuilder<PumpaStanje?>(
+    return FutureBuilder<V2PumpaStanje?>(
       future: _futureStanje,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -146,7 +146,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   }
 
   /// Vizuelni brojčanik pumpe
-  Widget _buildBrojcanik(PumpaStanje stanje) {
+  Widget _buildBrojcanik(V2PumpaStanje stanje) {
     final procenat = (stanje.procenatPune / 100).clamp(0.0, 1.0);
     final Color barColor = stanje.prazna
         ? Colors.grey
@@ -250,7 +250,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildStanjeDetalji(PumpaStanje stanje) {
+  Widget _buildStanjeDetalji(V2PumpaStanje stanje) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -302,7 +302,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   }
 
   Widget _buildStatistikePoVozilu() {
-    return FutureBuilder<List<VoziloStatistika>>(
+    return FutureBuilder<List<V2VoziloStatistika>>(
       future: _futureStatistike,
       builder: (context, snapshot) {
         final lista = snapshot.data ?? [];
@@ -329,7 +329,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _statVoziloRow(VoziloStatistika v, double max) {
+  Widget _statVoziloRow(V2VoziloStatistika v, double max) {
     final ratio = max > 0 ? (v.ukupnoLitri / max).clamp(0.0, 1.0) : 0.0;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -366,7 +366,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
 
   // "?"? TAB 2: PUNJENJA "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildPunjenjaTab() {
-    return FutureBuilder<List<PumpaPunjenje>>(
+    return FutureBuilder<List<V2PumpaPunjenje>>(
       future: _futurePunjenja,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -403,7 +403,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildPunjenjeCard(PumpaPunjenje p) {
+  Widget _buildPunjenjeCard(V2PumpaPunjenje p) {
     final datumStr = DateFormat('dd.MM.yyyy', 'sr').format(p.datum);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -449,7 +449,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
 
   // "?"? TAB 3: TOOENJA "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildTocenjaTab() {
-    return FutureBuilder<List<PumpaTocenje>>(
+    return FutureBuilder<List<V2PumpaTocenje>>(
       future: _futureTocenja,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -486,7 +486,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildTocenjeCard(PumpaTocenje t) {
+  Widget _buildTocenjeCard(V2PumpaTocenje t) {
     final datumStr = DateFormat('dd.MM.yyyy', 'sr').format(t.datum);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),

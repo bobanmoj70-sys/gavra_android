@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 
 /// Registry svih dostupnih tema aplikacije.
-class ThemeRegistry {
-  ThemeRegistry._();
+class V2ThemeRegistry {
+  V2ThemeRegistry._();
 
-  static final Map<String, ThemeDefinition> _themes = {
-    'triple_blue_fashion': ThemeDefinition(
+  static final Map<String, V2ThemeDefinition> _themes = {
+    'triple_blue_fashion': V2ThemeDefinition(
       id: 'triple_blue_fashion',
       name: '⚡ Triple Blue Fashion',
       description: 'Electric + Ice + Neon kombinacija',
@@ -17,7 +17,7 @@ class ThemeRegistry {
       gradient: tripleBlueFashionGradient,
       isDefault: true,
     ),
-    'dark_steel_grey': ThemeDefinition(
+    'dark_steel_grey': V2ThemeDefinition(
       id: 'dark_steel_grey',
       name: '🖤 Dark Steel Grey',
       description: 'Triple Blue Fashion sa crno-sivim gradijentom',
@@ -26,7 +26,7 @@ class ThemeRegistry {
       styles: DarkSteelGreyStyles,
       gradient: darkSteelGreyGradient,
     ),
-    'passionate_rose': ThemeDefinition(
+    'passionate_rose': V2ThemeDefinition(
       id: 'passionate_rose',
       name: '❤️ Passionate Rose',
       description: 'Electric Red + Ruby + Crimson + Pink Ice kombinacija',
@@ -35,7 +35,7 @@ class ThemeRegistry {
       styles: PassionateRoseStyles,
       gradient: passionateRoseGradient,
     ),
-    'dark_pink': ThemeDefinition(
+    'dark_pink': V2ThemeDefinition(
       id: 'dark_pink',
       name: '💖 Dark Pink',
       description: 'Tamna tema sa neon pink akcentima',
@@ -47,20 +47,20 @@ class ThemeRegistry {
   };
 
   // Keširane vrijednosti — izracunavaju se jednom
-  static final ThemeDefinition _defaultTheme = _themes.values.firstWhere(
+  static final V2ThemeDefinition _defaultTheme = _themes.values.firstWhere(
     (t) => t.isDefault,
     orElse: () => _themes.values.first,
   );
   static final List<String> _themeNames = List.unmodifiable(_themes.keys);
 
   /// Vraća sve dostupne teme
-  static Map<String, ThemeDefinition> get allThemes => Map.unmodifiable(_themes);
+  static Map<String, V2ThemeDefinition> get allThemes => Map.unmodifiable(_themes);
 
   /// Vraća listu ID-eva tema (keširana, nealocira novu listu pri svakom pozivu)
   static List<String> get themeNames => _themeNames;
 
   /// Vraća temu po ID-u
-  static ThemeDefinition? getTheme(String themeId) => _themes[themeId];
+  static V2ThemeDefinition? getTheme(String themeId) => _themes[themeId];
 
   /// Vraća ThemeData po ID-u
   static ThemeData getThemeData(String themeId) {
@@ -68,15 +68,15 @@ class ThemeRegistry {
   }
 
   /// Vraća default temu (keširana)
-  static ThemeDefinition get defaultTheme => _defaultTheme;
+  static V2ThemeDefinition get defaultTheme => _defaultTheme;
 
   /// Proverava da li tema postoji
   static bool hasTheme(String themeId) => _themes.containsKey(themeId);
 }
 
 /// Definicija teme — sve sto treba za kompletnu temu.
-class ThemeDefinition {
-  const ThemeDefinition({
+class V2ThemeDefinition {
+  const V2ThemeDefinition({
     required this.id,
     required this.name,
     required this.description,
@@ -98,7 +98,7 @@ class ThemeDefinition {
   final List<String>? tags;
 
   /// Kreira kopiju sa izmenjenim vrednostima
-  ThemeDefinition copyWith({
+  V2ThemeDefinition copyWith({
     String? id,
     String? name,
     String? description,
@@ -109,7 +109,7 @@ class ThemeDefinition {
     bool? isDefault,
     List<String>? tags,
   }) {
-    return ThemeDefinition(
+    return V2ThemeDefinition(
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
@@ -124,7 +124,7 @@ class ThemeDefinition {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is ThemeDefinition && runtimeType == other.runtimeType && id == other.id;
+      identical(this, other) || other is V2ThemeDefinition && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;

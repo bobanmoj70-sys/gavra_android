@@ -392,7 +392,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     // Reoptimizuj rutu od trenutne GPS pozicije
     try {
-      final result = await SmartNavigationService.optimizeRouteOnly(
+      final result = await V2SmartNavigationService.optimizeRouteOnly(
         putnici: preostaliPutnici,
         startCity: _selectedGrad.isNotEmpty ? _selectedGrad : 'VS',
       );
@@ -489,7 +489,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
     }
 
     try {
-      final result = await SmartNavigationService.optimizeRouteOnly(
+      final result = await V2SmartNavigationService.optimizeRouteOnly(
         putnici: filtriraniPutnici,
         startCity: _selectedGrad.isNotEmpty ? _selectedGrad : 'VS',
       );
@@ -538,7 +538,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
           }
         }
       } else {
-        // ? OSRM/SmartNavigationService nije uspeo - NE koristi fallback, prika?i gre?ku
+        // ? OSRM/V2SmartNavigationService nije uspeo - NE koristi fallback, prika?i gre?ku
         if (mounted) {
           setState(() {
             _isOptimizing = false;
@@ -821,7 +821,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
     if (!_isRouteOptimized || _optimizedRoute.isEmpty) return;
 
     try {
-      final result = await SmartNavigationService.startMultiProviderNavigation(
+      final result = await V2SmartNavigationService.startMultiProviderNavigation(
         context: context,
         putnici: _optimizedRoute,
         startCity: _selectedGrad.isNotEmpty ? _selectedGrad : 'VS',

@@ -744,7 +744,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
         await _executePayment(iznos, isRegistrovani: false);
 
         // Haptic feedback za uspe?no placanje
-        HapticService.lightImpact();
+        V2HapticService.lightImpact();
       } catch (e) {
         if (mounted) {
           AppSnackBar.error(context, 'Greška pri placanju: $e');
@@ -852,7 +852,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
 
     try {
       // Haptic feedback
-      HapticService.mediumImpact();
+      V2HapticService.mediumImpact();
 
       await V2PolasciService.v2OznaciPokupljen(
         putnikId: _putnik.id!,
@@ -866,7 +866,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
 
       if (mounted) {
         // JACA VIBRACIJA
-        await HapticService.putnikPokupljen();
+        await V2HapticService.putnikPokupljen();
 
         if (widget.onChanged != null) {
           widget.onChanged!();
@@ -1780,8 +1780,8 @@ class _PutnikCardState extends State<V2PutnikCard> {
     if (adresa == null || adresa.isEmpty || adresa == 'Adresa nije definisana') return null;
 
     try {
-      // Koristi UnifiedGeocodingService koji ima saVrsenu logiku (Baza -> API)
-      final result = await UnifiedGeocodingService.getCoordinatesForPutnici(
+      // Koristi V2UnifiedGeocodingService koji ima saVrsenu logiku (Baza -> API)
+      final result = await V2UnifiedGeocodingService.getCoordinatesForPutnici(
         [_putnik],
         saveToDatabase: true, // Automatski sacuvaj u bazu ako nadež preko API-ja
       );
@@ -1850,7 +1850,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
     _isLongPressActive = true;
 
     // POCETNA VIBRACIJA - da vozac zna da je zapoceto cekanje
-    HapticService.selectionClick();
+    V2HapticService.selectionClick();
 
     // 1.5 sekundi long press - POKUPLJENJE PUTNIKA
     _longPressTimer = Timer(const Duration(milliseconds: 1500), () {

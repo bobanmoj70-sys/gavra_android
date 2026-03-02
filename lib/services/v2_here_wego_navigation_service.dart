@@ -9,8 +9,8 @@ import '../utils/v2_device_utils.dart';
 
 /// HERE WeGo navigacijski servis
 /// Koristi ISKLJUCIVO HERE WeGo za navigaciju - OBAVEZNA INSTALACIJA
-class HereWeGoNavigationService {
-  HereWeGoNavigationService._();
+class V2HereWeGoNavigationService {
+  V2HereWeGoNavigationService._();
 
   // HERE WeGo konstante
   static const String appScheme = 'here.directions';
@@ -18,7 +18,7 @@ class HereWeGoNavigationService {
   static const int maxWaypoints = 10;
 
   /// Pokreni navigaciju sa HERE WeGo
-  static Future<HereWeGoNavResult> startNavigation({
+  static Future<V2HereWeGoNavResult> startNavigation({
     required BuildContext context,
     required List<V2Putnik> putnici,
     required Map<V2Putnik, Position> coordinates,
@@ -29,21 +29,21 @@ class HereWeGoNavigationService {
       final isInstalled = await _isHereWeGoInstalled();
       if (!isInstalled) {
         if (!context.mounted) {
-          return HereWeGoNavResult.error('HERE WeGo nije instaliran.');
+          return V2HereWeGoNavResult.error('HERE WeGo nije instaliran.');
         }
 
         final shouldInstall = await _showInstallDialog(context);
         if (shouldInstall) {
           await _openStore();
         }
-        return HereWeGoNavResult.error('Molimo instalirajte HERE WeGo aplikaciju pre nastavka.');
+        return V2HereWeGoNavResult.error('Molimo instalirajte HERE WeGo aplikaciju pre nastavka.');
       }
 
       // FILTRIRAJ PUTNIKE SA VALIDNIM KOORDINATAMA
       final validPutnici = putnici.where((p) => coordinates.containsKey(p)).toList();
 
       if (validPutnici.isEmpty) {
-        return HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
+        return V2HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
       }
 
       // SEGMENTACIJA AKO IMA VIŠE OD 10 PUTNIKA
@@ -55,7 +55,7 @@ class HereWeGoNavigationService {
         );
       } else {
         if (!context.mounted) {
-          return HereWeGoNavResult.error('Context nije više aktivan');
+          return V2HereWeGoNavResult.error('Context nije više aktivan');
         }
         return await _launchSegmentedNavigation(
           context: context,
@@ -65,7 +65,7 @@ class HereWeGoNavigationService {
         );
       }
     } catch (e) {
-      return HereWeGoNavResult.error('Greška: $e');
+      return V2HereWeGoNavResult.error('Greška: $e');
     }
   }
 
@@ -169,7 +169,7 @@ class HereWeGoNavigationService {
   }
 
   /// Pokreni HERE WeGo navigaciju
-  static Future<HereWeGoNavResult> _launchNavigation({
+  static Future<V2HereWeGoNavResult> _launchNavigation({
     required List<V2Putnik> putnici,
     required Map<V2Putnik, Position> coordinates,
     Position? endDestination,
@@ -177,7 +177,7 @@ class HereWeGoNavigationService {
     final validPutnici = putnici.where((p) => coordinates.containsKey(p)).toList();
 
     if (validPutnici.isEmpty) {
-      return HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
+      return V2HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
     }
 
     final List<Position> waypoints;
@@ -198,21 +198,21 @@ class HereWeGoNavigationService {
       if (await canLaunchUrl(uri)) {
         final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (success) {
-          return HereWeGoNavResult.success(
+          return V2HereWeGoNavResult.success(
             message: 'HERE WeGo: ${putnici.length} putnika',
             launchedPutnici: putnici,
             remainingPutnici: [],
           );
         }
       }
-      return HereWeGoNavResult.error('Greška pri otvaranju HERE WeGo');
+      return V2HereWeGoNavResult.error('Greška pri otvaranju HERE WeGo');
     } catch (e) {
-      return HereWeGoNavResult.error('Greška: $e');
+      return V2HereWeGoNavResult.error('Greška: $e');
     }
   }
 
   /// Segmentirana navigacija (vise od 10 putnika)
-  static Future<HereWeGoNavResult> _launchSegmentedNavigation({
+  static Future<V2HereWeGoNavResult> _launchSegmentedNavigation({
     required BuildContext context,
     required List<V2Putnik> putnici,
     required Map<V2Putnik, Position> coordinates,
@@ -242,7 +242,7 @@ class HereWeGoNavigationService {
       );
 
       if (!result.success) {
-        return HereWeGoNavResult.partial(
+        return V2HereWeGoNavResult.partial(
           message: 'Greška pri segmentu ${currentSegment + 1}',
           launchedPutnici: launchedPutnici,
           remainingPutnici: segments.skip(currentSegment).expand((s) => s).toList(),
@@ -274,7 +274,7 @@ class HereWeGoNavigationService {
         );
 
         if (shouldContinue != true) {
-          return HereWeGoNavResult.partial(
+          return V2HereWeGoNavResult.partial(
             message: 'Navigacija završena posle segmenta $currentSegment',
             launchedPutnici: launchedPutnici,
             remainingPutnici: segments.skip(currentSegment).expand((s) => s).toList(),
@@ -283,7 +283,7 @@ class HereWeGoNavigationService {
       }
     }
 
-    return HereWeGoNavResult.success(
+    return V2HereWeGoNavResult.success(
       message: 'HERE WeGo: svih ${launchedPutnici.length} putnika',
       launchedPutnici: launchedPutnici,
       remainingPutnici: [],
@@ -292,8 +292,8 @@ class HereWeGoNavigationService {
 }
 
 /// Rezultat HERE WeGo navigacije
-class HereWeGoNavResult {
-  HereWeGoNavResult._({
+class V2HereWeGoNavResult {
+  V2HereWeGoNavResult._({
     required this.success,
     required this.message,
     this.launchedPutnici,
@@ -301,24 +301,24 @@ class HereWeGoNavResult {
     this.isPartial = false,
   });
 
-  factory HereWeGoNavResult.success({
+  factory V2HereWeGoNavResult.success({
     required String message,
     required List<V2Putnik> launchedPutnici,
     required List<V2Putnik> remainingPutnici,
   }) =>
-      HereWeGoNavResult._(
+      V2HereWeGoNavResult._(
         success: true,
         message: message,
         launchedPutnici: launchedPutnici,
         remainingPutnici: remainingPutnici,
       );
 
-  factory HereWeGoNavResult.partial({
+  factory V2HereWeGoNavResult.partial({
     required String message,
     required List<V2Putnik> launchedPutnici,
     required List<V2Putnik> remainingPutnici,
   }) =>
-      HereWeGoNavResult._(
+      V2HereWeGoNavResult._(
         success: true,
         message: message,
         launchedPutnici: launchedPutnici,
@@ -326,7 +326,7 @@ class HereWeGoNavResult {
         isPartial: true,
       );
 
-  factory HereWeGoNavResult.error(String message) => HereWeGoNavResult._(success: false, message: message);
+  factory V2HereWeGoNavResult.error(String message) => V2HereWeGoNavResult._(success: false, message: message);
 
   final bool success;
   final String message;

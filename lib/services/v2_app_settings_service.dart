@@ -69,7 +69,7 @@ class V2AppSettingsService {
       final hasUpdate = _isOlderThan(current, latest);
 
       if (hasUpdate || isForced) {
-        updateInfoNotifier.value = UpdateInfo(
+        updateInfoNotifier.value = V2UpdateInfo(
           latestVersion: latestVersion,
           storeUrl: storeUrl,
           isForced: isForced,

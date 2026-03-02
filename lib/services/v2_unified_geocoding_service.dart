@@ -23,8 +23,8 @@ typedef GeocodingProgressCallback = void Function(
 );
 
 /// Rezultat geocodinga za jednog putnika
-class GeocodingResult {
-  const GeocodingResult({
+class V2GeocodingResult {
+  const V2GeocodingResult({
     required this.putnik,
     this.position,
     this.source,
@@ -41,15 +41,15 @@ class GeocodingResult {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GeocodingResult && runtimeType == other.runtimeType && putnik == other.putnik && source == other.source;
+      other is V2GeocodingResult && runtimeType == other.runtimeType && putnik == other.putnik && source == other.source;
 
   @override
   int get hashCode => Object.hash(putnik, source);
 }
 
 /// UNIFIED GEOCODING SERVICE
-class UnifiedGeocodingService {
-  UnifiedGeocodingService._();
+class V2UnifiedGeocodingService {
+  V2UnifiedGeocodingService._();
 
   // -----------------------------------------------------------------------
   // GLAVNA FUNKCIJA - Dobij koordinate za više putnika (PARALELNO)
@@ -70,7 +70,7 @@ class UnifiedGeocodingService {
       return coordinates;
     }
 
-    final List<Future<GeocodingResult> Function()> tasks = [];
+    final List<Future<V2GeocodingResult> Function()> tasks = [];
     int completed = 0;
     final int total = putniciSaAdresama.length;
 
@@ -98,7 +98,7 @@ class UnifiedGeocodingService {
   }
 
   /// Dobij koordinate za jednog putnika
-  static Future<GeocodingResult> _getCoordinatesForPutnik(
+  static Future<V2GeocodingResult> _getCoordinatesForPutnik(
     V2Putnik putnik,
     bool saveToDatabase,
   ) async {
@@ -129,7 +129,7 @@ class UnifiedGeocodingService {
       if (position == null) {
         final addressToGeocode = realAddressName ?? putnik.adresa ?? '';
         if (addressToGeocode.isEmpty) {
-          return GeocodingResult(
+          return V2GeocodingResult(
             putnik: putnik,
             error: 'Nema adrese za geocodiranje',
           );
@@ -155,14 +155,14 @@ class UnifiedGeocodingService {
         }
       }
 
-      return GeocodingResult(
+      return V2GeocodingResult(
         putnik: putnik,
         position: position,
         source: source,
         error: position == null ? 'Koordinate nisu pronadene' : null,
       );
     } catch (e) {
-      return GeocodingResult(
+      return V2GeocodingResult(
         putnik: putnik,
         error: e.toString(),
       );
@@ -203,7 +203,7 @@ class UnifiedGeocodingService {
 
       return _createPosition(lat, lng);
     } catch (e) {
-      debugPrint('[UnifiedGeocodingService] Greška pri parsiranju koordinata "$coords": $e');
+      debugPrint('[V2UnifiedGeocodingService] Greška pri parsiranju koordinata "$coords": $e');
       return null;
     }
   }
@@ -245,12 +245,12 @@ class UnifiedGeocodingService {
         );
       }
     } catch (e) {
-      debugPrint('[UnifiedGeocodingService] Greška pri snimanju koordinata: $e');
+      debugPrint('[V2UnifiedGeocodingService] Greška pri snimanju koordinata: $e');
     }
   }
 
-  static Future<List<GeocodingResult>> _executeWithRateLimit(
-    List<Future<GeocodingResult> Function()> tasks, {
+  static Future<List<V2GeocodingResult>> _executeWithRateLimit(
+    List<Future<V2GeocodingResult> Function()> tasks, {
     required Duration delay,
   }) async {
     // Paralelizuj geocodiranje sa rate limiting.
@@ -259,7 +259,7 @@ class UnifiedGeocodingService {
     if (tasks.isEmpty) return [];
 
     const maxConcurrent = 5;
-    final List<GeocodingResult> allResults = [];
+    final List<V2GeocodingResult> allResults = [];
 
     for (int batchStart = 0; batchStart < tasks.length; batchStart += maxConcurrent) {
       final batchEnd = (batchStart + maxConcurrent).clamp(0, tasks.length);

@@ -169,7 +169,7 @@ class V2DriverLocationService {
 
     if (aktivniPutnici.isEmpty) return;
 
-    final result = await OpenRouteService.getRealtimeEta(
+    final result = await V2OpenRouteService.getRealtimeEta(
       currentPosition: _lastPosition!,
       putnikImena: aktivniPutnici,
       putnikCoordinates: _putniciCoordinates!,

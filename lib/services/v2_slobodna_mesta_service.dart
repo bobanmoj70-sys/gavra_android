@@ -7,7 +7,7 @@ import 'v2_kapacitet_service.dart';
 import 'v2_polasci_service.dart';
 
 /// Model za slobodna mesta po polasku
-class SlobodnaMesta {
+class V2SlobodnaMesta {
   final String grad;
   final String vreme;
   final int maxMesta;
@@ -15,7 +15,7 @@ class SlobodnaMesta {
   final int uceniciCount;
   final bool aktivan;
 
-  SlobodnaMesta({
+  V2SlobodnaMesta({
     required this.grad,
     required this.vreme,
     required this.maxMesta,
@@ -31,7 +31,7 @@ class SlobodnaMesta {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is SlobodnaMesta &&
+      other is V2SlobodnaMesta &&
           grad == other.grad &&
           vreme == other.vreme &&
           maxMesta == other.maxMesta &&
@@ -43,8 +43,8 @@ class SlobodnaMesta {
   int get hashCode => Object.hash(grad, vreme, maxMesta, zauzetaMesta, uceniciCount, aktivan);
 }
 
-class SlobodnaMestaService {
-  SlobodnaMestaService._();
+class V2SlobodnaMestaService {
+  V2SlobodnaMestaService._();
 
   static final _putnikService = V2PutnikStreamService();
 
@@ -126,11 +126,11 @@ class SlobodnaMestaService {
   }
 
   /// Dohvati slobodna mesta po gradu za odredeni datum
-  static Future<Map<String, List<SlobodnaMesta>>> getSlobodnaMesta({String? datum, String? excludeId}) async {
+  static Future<Map<String, List<V2SlobodnaMesta>>> getSlobodnaMesta({String? datum, String? excludeId}) async {
     final isoDate = datum ?? DateTime.now().toIso8601String().split('T')[0];
     final excludePutnikId = excludeId;
 
-    final result = <String, List<SlobodnaMesta>>{
+    final result = <String, List<V2SlobodnaMesta>>{
       'BC': [],
       'VS': [],
     };
@@ -141,7 +141,7 @@ class SlobodnaMestaService {
       putnici = await _putnikService.getPutniciByDayIso(isoDate);
       kapacitet = V2KapacitetService.getKapacitet();
     } catch (e) {
-      debugPrint('[SlobodnaMestaService] getSlobodnaMesta: greska pri ucitavanju podataka: $e');
+      debugPrint('[V2SlobodnaMestaService] getSlobodnaMesta: greska pri ucitavanju podataka: $e');
       return result;
     }
 
@@ -156,7 +156,7 @@ class SlobodnaMestaService {
         final ucenici = _countUceniciZaPolazak(putnici, 'BC', vreme, isoDate, excludePutnikId: excludePutnikId);
 
         result['BC']!.add(
-          SlobodnaMesta(
+          V2SlobodnaMesta(
             grad: 'BC',
             vreme: vreme,
             maxMesta: maxMesta,
@@ -167,7 +167,7 @@ class SlobodnaMestaService {
         );
       }
     } catch (e) {
-      debugPrint('[SlobodnaMestaService] getSlobodnaMesta BC error: $e');
+      debugPrint('[V2SlobodnaMestaService] getSlobodnaMesta BC error: $e');
     }
 
     try {
@@ -181,7 +181,7 @@ class SlobodnaMestaService {
         final ucenici = _countUceniciZaPolazak(putnici, 'VS', vreme, isoDate, excludePutnikId: excludePutnikId);
 
         result['VS']!.add(
-          SlobodnaMesta(
+          V2SlobodnaMesta(
             grad: 'VS',
             vreme: vreme,
             maxMesta: maxMesta,
@@ -192,7 +192,7 @@ class SlobodnaMestaService {
         );
       }
     } catch (e) {
-      debugPrint('[SlobodnaMestaService] getSlobodnaMesta VS error: $e');
+      debugPrint('[V2SlobodnaMestaService] getSlobodnaMesta VS error: $e');
     }
 
     return result;

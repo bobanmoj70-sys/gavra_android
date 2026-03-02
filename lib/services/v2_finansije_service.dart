@@ -10,7 +10,7 @@ class V2FinansijeService {
   static SupabaseClient get _supabase => supabase;
 
   /// Dohvati sve aktivne troškove za određeni mesec/godinu
-  static Future<List<Trosak>> getTroskovi({int? mesec, int? godina}) async {
+  static Future<List<V2Trosak>> getTroskovi({int? mesec, int? godina}) async {
     try {
       var query = _supabase.from('v2_finansije_troskovi').select('*, v2_vozaci(ime)').eq('aktivan', true);
 
@@ -22,7 +22,7 @@ class V2FinansijeService {
       }
 
       final response = await query.order('tip');
-      return (response as List).map((row) => Trosak.fromJson(row)).toList();
+      return (response as List).map((row) => V2Trosak.fromJson(row)).toList();
     } catch (e) {
       debugPrint('[Finansije] getTroskovi greška: $e');
       return [];
@@ -170,7 +170,7 @@ class V2FinansijeService {
   }
 
   /// Dohvati kompletan finansijski izveštaj (direktni SQL upiti, bez RPC)
-  static Future<FinansijskiIzvestaj> getIzvestaj() async {
+  static Future<V2FinansijskiIzvestaj> getIzvestaj() async {
     try {
       final now = DateTime.now();
       final weekday = now.weekday;
@@ -244,7 +244,7 @@ class V2FinansijeService {
       // Potraživanja (frontend calculation)
       final potrazivanja = await getPotrazivanja();
 
-      return FinansijskiIzvestaj(
+      return V2FinansijskiIzvestaj(
         prihodNedelja: prihodNedelja,
         troskoviNedelja: troskoviNedelja,
         netoNedelja: prihodNedelja - troskoviNedelja,
@@ -294,9 +294,9 @@ class V2FinansijeService {
     return (val is num) ? val.toDouble() : double.tryParse(val.toString()) ?? 0;
   }
 
-  static FinansijskiIzvestaj _getEmptyIzvestaj() {
+  static V2FinansijskiIzvestaj _getEmptyIzvestaj() {
     final now = DateTime.now();
-    return FinansijskiIzvestaj(
+    return V2FinansijskiIzvestaj(
       prihodNedelja: 0,
       troskoviNedelja: 0,
       netoNedelja: 0,
@@ -360,7 +360,7 @@ class V2FinansijeService {
   }
 
   /// REALTIME STREAMati promene u relevantnim tabelama i osvežava izveštaj
-  static Stream<FinansijskiIzvestaj> streamIzvestaj() async* {
+  static Stream<V2FinansijskiIzvestaj> streamIzvestaj() async* {
     // Emituj inicijalne podatke
     yield await getIzvestaj();
 
@@ -377,7 +377,7 @@ class V2FinansijeService {
 }
 
 /// Model za jedan trošak
-class Trosak {
+class V2Trosak {
   final String id;
   final String naziv;
   final String tip;
@@ -389,7 +389,7 @@ class Trosak {
   final int? mesec;
   final int? godina;
 
-  Trosak({
+  V2Trosak({
     required this.id,
     required this.naziv,
     required this.tip,
@@ -402,14 +402,14 @@ class Trosak {
     this.godina,
   });
 
-  factory Trosak.fromJson(Map<String, dynamic> json) {
+  factory V2Trosak.fromJson(Map<String, dynamic> json) {
     // Izvuci ime vozača iz join-a
     String? vozacIme;
     if (json['v2_vozaci'] != null && json['v2_vozaci'] is Map) {
       vozacIme = json['v2_vozaci']['ime'] as String?;
     }
 
-    return Trosak(
+    return V2Trosak(
       id: json['id']?.toString() ?? '',
       naziv: json['naziv'] as String? ?? '',
       tip: json['tip'] as String? ?? 'ostalo',
@@ -434,7 +434,7 @@ class Trosak {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is Trosak && other.id == id);
+  bool operator ==(Object other) => identical(this, other) || (other is V2Trosak && other.id == id);
 
   @override
   int get hashCode => id.hashCode;
@@ -471,7 +471,7 @@ class Trosak {
 }
 
 /// Model za finansijski izveštaj
-class FinansijskiIzvestaj {
+class V2FinansijskiIzvestaj {
   // Nedelja
   final double prihodNedelja;
   final double troskoviNedelja;
@@ -506,7 +506,7 @@ class FinansijskiIzvestaj {
   final DateTime startNedelja;
   final DateTime endNedelja;
 
-  FinansijskiIzvestaj({
+  V2FinansijskiIzvestaj({
     required this.prihodNedelja,
     required this.troskoviNedelja,
     required this.netoNedelja,
@@ -539,7 +539,7 @@ class FinansijskiIzvestaj {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    if (other is! FinansijskiIzvestaj) return false;
+    if (other is! V2FinansijskiIzvestaj) return false;
     return prihodMesec == other.prihodMesec &&
         troskoviMesec == other.troskoviMesec &&
         prihodGodina == other.prihodGodina &&

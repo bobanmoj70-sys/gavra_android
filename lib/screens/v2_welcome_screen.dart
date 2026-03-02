@@ -780,9 +780,9 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   /// "< Show battery optimization warning for Huawei/Xiaomi phones
   Future<void> _checkBatteryOptimization() async {
     try {
-      final shouldShow = await BatteryOptimizationService.shouldShowWarning();
+      final shouldShow = await V2BatteryOptimizationService.shouldShowWarning();
       if (shouldShow && mounted) {
-        await BatteryOptimizationService.showWarningDialog(context);
+        await V2BatteryOptimizationService.showWarningDialog(context);
       }
     } catch (_) {
       // Battery optimization check failed - silent

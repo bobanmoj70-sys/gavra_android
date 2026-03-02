@@ -9,28 +9,28 @@ import '../models/v2_putnik.dart';
 import 'v2_unified_geocoding_service.dart';
 
 /// OSRM SERVICE - OpenStreetMap Routing Machine
-class OsrmService {
-  OsrmService._();
+class V2OsrmService {
+  V2OsrmService._();
 
   /// Optimizuj rutu pomocu OSRM Trip API
-  static Future<OsrmResult> optimizeRoute({
+  static Future<V2OsrmResult> optimizeRoute({
     required Position startPosition,
     required List<V2Putnik> putnici,
     Position? endDestination,
     GeocodingProgressCallback? onGeocodingProgress,
   }) async {
     if (putnici.isEmpty) {
-      return OsrmResult.error('Nema putnika za optimizaciju');
+      return V2OsrmResult.error('Nema putnika za optimizaciju');
     }
 
     try {
-      final coordinates = await UnifiedGeocodingService.getCoordinatesForPutnici(
+      final coordinates = await V2UnifiedGeocodingService.getCoordinatesForPutnici(
         putnici,
         onProgress: onGeocodingProgress,
       );
 
       if (coordinates.isEmpty) {
-        return OsrmResult.error('Nijedan V2Putnik nema validne koordinate');
+        return V2OsrmResult.error('Nijedan V2Putnik nema validne koordinate');
       }
 
       final coordsList = <String>[];
@@ -47,7 +47,7 @@ class OsrmService {
       }
 
       if (putniciWithCoords.isEmpty) {
-        return OsrmResult.error('Nema putnika sa validnim koordinatama');
+        return V2OsrmResult.error('Nema putnika sa validnim koordinatama');
       }
 
       // ?? Dodaj krajnju destinaciju ako je zadata (Vrsac ili Bela Crkva)
@@ -61,7 +61,7 @@ class OsrmService {
       final osrmResponse = await _callOsrmWithRetry(coordsString, hasEndDestination: hasEndDestination);
 
       if (osrmResponse == null) {
-        return OsrmResult.error('OSRM server nije dostupan. Proverite internet konekciju.');
+        return V2OsrmResult.error('OSRM server nije dostupan. Proverite internet konekciju.');
       }
 
       final parseResult = _parseOsrmResponse(
@@ -72,10 +72,10 @@ class OsrmService {
       );
 
       if (parseResult == null) {
-        return OsrmResult.error('Greška pri parsiranju OSRM odgovora');
+        return V2OsrmResult.error('Greška pri parsiranju OSRM odgovora');
       }
 
-      return OsrmResult.success(
+      return V2OsrmResult.success(
         optimizedPutnici: parseResult.orderedPutnici,
         totalDistanceKm: parseResult.distanceKm,
         totalDurationMin: parseResult.durationMin,
@@ -83,8 +83,8 @@ class OsrmService {
         putniciEta: parseResult.putniciEta, // ETA za svakog putnika
       );
     } catch (e) {
-      debugPrint('[OsrmService] optimizeRoute error: $e');
-      return OsrmResult.error('Greška pri optimizaciji: $e');
+      debugPrint('[V2OsrmService] optimizeRoute error: $e');
+      return V2OsrmResult.error('Greška pri optimizaciji: $e');
     }
   }
 
@@ -118,7 +118,7 @@ class OsrmService {
           }
         }
       } catch (e) {
-        debugPrint('[OsrmService] _callOsrmWithRetry attempt $attempt error: $e');
+        debugPrint('[V2OsrmService] _callOsrmWithRetry attempt $attempt error: $e');
       }
 
       if (attempt < RouteConfig.osrmMaxRetries) {
@@ -198,7 +198,7 @@ class OsrmService {
         putniciEta: putniciEta,
       );
     } catch (e) {
-      debugPrint('[OsrmService] _parseOsrmResponse error: $e');
+      debugPrint('[V2OsrmService] _parseOsrmResponse error: $e');
       return null;
     }
   }
@@ -219,8 +219,8 @@ class _OsrmParseResult {
 }
 
 /// Rezultat OSRM optimizacije
-class OsrmResult {
-  OsrmResult._({
+class V2OsrmResult {
+  V2OsrmResult._({
     required this.success,
     required this.message,
     this.optimizedPutnici,
@@ -230,14 +230,14 @@ class OsrmResult {
     this.putniciEta,
   });
 
-  factory OsrmResult.success({
+  factory V2OsrmResult.success({
     required List<V2Putnik> optimizedPutnici,
     required double totalDistanceKm,
     required double totalDurationMin,
     Map<V2Putnik, Position>? coordinates,
     Map<String, int>? putniciEta,
   }) {
-    return OsrmResult._(
+    return V2OsrmResult._(
       success: true,
       message: 'Ruta optimizovana (OSRM)',
       optimizedPutnici: optimizedPutnici,
@@ -248,8 +248,8 @@ class OsrmResult {
     );
   }
 
-  factory OsrmResult.error(String message) {
-    return OsrmResult._(
+  factory V2OsrmResult.error(String message) {
+    return V2OsrmResult._(
       success: false,
       message: message,
     );
@@ -265,7 +265,7 @@ class OsrmResult {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is OsrmResult && success == other.success && message == other.message;
+      identical(this, other) || other is V2OsrmResult && success == other.success && message == other.message;
 
   @override
   int get hashCode => Object.hash(success, message);
