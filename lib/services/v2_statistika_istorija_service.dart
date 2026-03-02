@@ -155,15 +155,18 @@ class V2StatistikaIstorijaService {
       debugPrint('⚠️ [dodajUplatu] vozacId je NULL ili prazan!');
     }
 
+    final datumObj = datum;
     await _supabase.from('v2_statistika_istorija').insert({
       'putnik_id': putnikId,
-      'datum': datum.toIso8601String().split('T')[0],
+      'datum': datumObj.toIso8601String().split('T')[0],
       'tip': tipUplate,
       'iznos': iznos,
       'vozac_id': vozacId,
       'vozac_ime': vozacIme,
       'grad': gradKod,
       'vreme': vremeNormalizovano,
+      'placeni_mesec': placeniMesec ?? datumObj.month,
+      'placena_godina': placenaGodina ?? datumObj.year,
     });
   }
 
@@ -256,6 +259,7 @@ class V2StatistikaIstorijaService {
         vozacIme = VozacCache.getImeByUuid(vozacId);
       }
 
+      final datumParsed = DateTime.tryParse(datumStr);
       await _supabase.from('v2_statistika_istorija').insert({
         'tip': tip,
         'putnik_id': putnikId,
@@ -266,6 +270,8 @@ class V2StatistikaIstorijaService {
         'detalji': detalji,
         'grad': gradKod,
         'vreme': vremeNormalizovano,
+        if (datumParsed != null) 'placeni_mesec': datumParsed.month,
+        if (datumParsed != null) 'placena_godina': datumParsed.year,
       });
     } catch (e, stack) {
       debugPrint('❌ Greška pri logovanju akcije ($tip): $e\n$stack');
