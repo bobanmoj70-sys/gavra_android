@@ -22,7 +22,7 @@ import 'v2_vozac_screen.dart';
 
 Widget _getScreenForDriver(String driverName) {
   // Vozači koji koriste VozacScreen umesto HomeScreen
-  if (driverName == 'Voja') {
+  if (VozacCache.prefersVozacScreen(driverName)) {
     return const VozacScreen();
   }
   return const HomeScreen();
@@ -703,20 +703,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                   const CircularProgressIndicator(color: Colors.white)
                 else
                   ..._drivers.map((driver) {
-                    // Odredi ikonu na osnovu imena vozača
-                    IconData getIconForDriver(String name) {
-                      switch (name.toLowerCase()) {
-                        case 'bruda':
-                          return Icons.local_taxi;
-                        case 'bilevski':
-                          return Icons.directions_car;
-                        case 'bojan':
-                          return Icons.airport_shuttle;
-                        default:
-                          return Icons.person;
-                      }
-                    }
-
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: GestureDetector(
@@ -746,7 +732,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                getIconForDriver(driver.ime),
+                                VozacCache.getIconForDriver(driver.ime),
                                 color: Colors.white,
                                 size: 22,
                               ),

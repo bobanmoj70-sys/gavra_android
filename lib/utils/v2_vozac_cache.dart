@@ -186,6 +186,32 @@ class VozacCache {
     }
   }
 
+  /// Centralizovana odluka da li određeni vozač treba da koristi `VozacScreen`.
+  ///
+  /// Trenutno sadrži samo istorijsku specijalnu proveru za vozača "Voja",
+  /// ali je mesto gde se ta logika treba menjati (umesto širenja hardcode provera).
+  static bool prefersVozacScreen(String? ime) {
+    if (ime == null || ime.isEmpty) return false;
+    return ime.toLowerCase() == 'voja';
+  }
+
+  /// Vrati ikonu koja predstavlja vozača u UI.
+  /// Mapiranje je najmanje privilegovano mesto za hardcode koje centralizuje
+  /// sve specijalne slučajeve (može se proširiti iz baze kasnije).
+  static IconData getIconForDriver(String? ime) {
+    if (ime == null || ime.isEmpty) return Icons.person;
+    switch (ime.toLowerCase()) {
+      case 'bruda':
+        return Icons.local_taxi;
+      case 'bilevski':
+        return Icons.directions_car;
+      case 'bojan':
+        return Icons.airport_shuttle;
+      default:
+        return Icons.person;
+    }
+  }
+
   /// Vraća ime vozača za dati email (case-insensitive).
   static String? getImeByEmail(String? email) {
     if (email == null || email.isEmpty) return null;

@@ -7,6 +7,9 @@ class AdminSecurityService {
     'Bojan',
   };
 
+  /// Javna lista admin korisnika (nemodifiable). Koristiti umesto lokalnih hardcode listi.
+  static List<String> get adminUsers => _adminUsers.toList();
+
   /// 🔍 Proveri da li je vozač admin
   static bool isAdmin(String? driverName) {
     if (driverName == null || driverName.isEmpty) {

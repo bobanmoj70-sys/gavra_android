@@ -8,6 +8,7 @@ import '../services/v2_biometric_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_service.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_vozac_cache.dart';
 import 'v2_home_screen.dart';
 import 'v2_vozac_screen.dart';
 
@@ -257,7 +258,7 @@ class _VozacLoginScreenState extends State<VozacLoginScreen> {
 
   Widget _getScreenForDriver(String driverName) {
     // Vozači koji koriste VozacScreen umesto HomeScreen
-    if (driverName == 'Voja') {
+    if (VozacCache.prefersVozacScreen(driverName)) {
       return const VozacScreen();
     }
     return const HomeScreen();

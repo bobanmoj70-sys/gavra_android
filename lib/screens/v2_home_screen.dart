@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../config/v2_route_config.dart';
-import '../constants/v2_day_constants.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
@@ -23,8 +22,7 @@ import '../services/v2_kapacitet_service.dart'; // ?? Kapacitet za bottom nav ba
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_printing_service.dart';
-import '../services/v2_putnik_service.dart';
-import '../services/v2_putnik_stream_service.dart';
+import '../services/v2_profil_service.dart';
 import '../services/v2_racun_service.dart';
 import '../services/v2_realtime_notification_service.dart';
 import '../services/v2_slobodna_mesta_service.dart'; // ?? Provera kapaciteta
@@ -32,7 +30,6 @@ import '../services/v2_theme_manager.dart'; // ?? Tema sistem
 import '../services/v2_vozac_raspored_service.dart';
 import '../theme.dart'; // ?? Import za prelepe gradijente
 import '../utils/v2_app_snack_bar.dart';
-import '../utils/v2_date_utils.dart' as app_date_utils;
 import '../utils/v2_grad_adresa_validator.dart'; // ??? NOVO za validaciju
 import '../utils/v2_page_transitions.dart';
 import '../utils/v2_putnik_count_helper.dart'; // ?? Za brojanje putnika po gradu
@@ -59,7 +56,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Logging using dlog function from logging.dart
-  final V2PutnikStreamService _putnikService = V2PutnikStreamService();
 
   bool _isLoading = true;
   // bool _isAddingPutnik = false; // previously used loading state; now handled local to dialog
@@ -79,7 +75,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ?? Cache-based stream (kreiran jednom u initState, ne unutar build())
   late final Stream<int> _streamBrojZahteva;
 
-  final List<String> _dani = DayConstants.dayNamesInternal; // Svi dani (Pon-Ned)
+  final List<String> _dani = const [
+    'Ponedeljak',
+    'Utorak',
+    'Sreda',
+    'Cetvrtak',
+    'Petak',
+    'Subota',
+    'Nedelja'
+  ]; // Svi dani (Pon-Ned)
 
   // ?? DINAMICKA VREMENA - prate navBarTypeNotifier (praznici/zimski/letnji)
   List<String> get bcVremena {
@@ -131,46 +135,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _selectedVreme = najblize;
   }
 
-  // ? KORISTI UTILS FUNKCIJU ZA DROPDOWN DAN
+  static const List<String> _dayNamesInternal = [
+    'Ponedeljak',
+    'Utorak',
+    'Sreda',
+    'Cetvrtak',
+    'Petak',
+    'Subota',
+    'Nedelja'
+  ];
+  static const List<String> _dayAbbreviations = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+
   String _getTodayName() {
-    return app_date_utils.DateUtils.getTodayFullName();
+    return _dayNamesInternal[DateTime.now().weekday - 1];
   }
 
-  // target date calculation handled elsewhere
-
-  // Convert selected full day name (Ponedeljak) into ISO date string for target week
-  // ?? FIX: Uvek idi u buducnost - ako je dan prošao ove nedelje, koristi sledecu nedelju
-  // Ovo je konzistentno sa V2Putnik._getDateForDay() koji se koristi za upis u bazu
   String _getTargetDateIsoFromSelectedDay(String fullDay) {
     final now = DateTime.now();
-
-    // Normalizuj dan korišćenjem DayConstants
-    final normalizedDay = DayConstants.normalize(fullDay);
-    final targetDayIndex = DayConstants.getIndexByName(normalizedDay);
-
+    final targetDayIndex = _dayNamesInternal.indexOf(fullDay);
+    if (targetDayIndex < 0) throw ArgumentError('Nepoznat dan: $fullDay');
     final currentDayIndex = now.weekday - 1;
-
-    // ?? FIX: Ako je odabrani dan isto što i današnji dan, koristi današnji datum
-    if (targetDayIndex == currentDayIndex) {
-      return now.toIso8601String().split('T')[0];
-    }
-
+    if (targetDayIndex == currentDayIndex) return now.toIso8601String().split('T')[0];
     int daysToAdd = targetDayIndex - currentDayIndex;
-
-    // ?? UVEK U BUDUCNOST: Ako je dan vec prošao ove nedelje, idi na sledecu nedelju
-    // Ovo je konzistentno sa V2Putnik._getDateForDay() koji se koristi za upis u bazu
-    if (daysToAdd < 0) {
-      daysToAdd += 7;
-    }
-
+    if (daysToAdd < 0) daysToAdd += 7;
     final targetDate = now.add(Duration(days: daysToAdd));
     return targetDate.toIso8601String().split('T')[0];
   }
 
-  // Konvertuj pun naziv dana u kraticu za poredenje sa bazom
-  // ? KORISTI CENTRALNU FUNKCIJU IZ DateUtils
   String _getDayAbbreviation(String fullDayName) {
-    return app_date_utils.DateUtils.getDayAbbreviation(fullDayName);
+    final i = _dayNamesInternal.indexOf(fullDayName);
+    if (i < 0) throw ArgumentError('Nepoznat dan: $fullDayName');
+    return _dayAbbreviations[i];
   }
 
   @override
@@ -358,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final scaffoldMessenger = ScaffoldMessenger.of(ctx);
 
     // Ucitaj putnike kojima treba racun iz rm cache-a
-    final sviPutnici = V2PutnikService().getAllAktivniKaoModel();
+    final sviPutnici = V2ProfilService.getAllAktivniKaoModel();
     final putnici = sviPutnici.where((p) => p.trebaRacun).toList();
 
     if (!mounted) return;
@@ -974,7 +969,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     List<Map<String, String>> dostupneAdrese = []; // ?? Lista adresa za dropdown
 
     // Povuci SVE registrovane putnike iz rm cache-a
-    final lista = V2PutnikService().getAllAktivniKaoModel();
+    final lista = V2ProfilService.getAllAktivniKaoModel();
     // ?? Filtrirana lista aktivnih putnika za brzu pretragu
     final aktivniPutnici = lista.where((RegistrovaniPutnik V2Putnik) => V2Putnik.aktivan).toList()
       ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase()));
@@ -1689,10 +1684,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         );
 
                                         // Duplikat provera se Vrsi u PutnikService.v2DodajPutnika()
-                                        await _putnikService.v2DodajPutnika(noviPutnik);
+                                        await V2PolasciService.v2DodajPutnika(noviPutnik);
 
                                         // ?? Eksplicitan refresh stream-a da se V2Putnik odmah prikaže
-                                        _putnikService.refreshAllActiveStreams();
+                                        V2PolasciService.refreshAllActiveStreams();
 
                                         if (!dialogCtx.mounted) return;
 
@@ -1941,7 +1936,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V2Putnik>>(
-        stream: _putnikService.streamKombinovaniPutniciFiltered(
+        stream: V2PolasciService.streamKombinovaniPutniciFiltered(
           isoDate: _getTargetDateIsoFromSelectedDay(_selectedDay),
           // grad i vreme NAMERNO IZOSTAVLJENI - treba nam SVA vremena za bottom nav bar
         ),
@@ -2033,18 +2028,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             );
             final odgovarajuceVreme = GradAdresaValidator.normalizeTime(V2Putnik.polazak) ==
                 GradAdresaValidator.normalizeTime(_selectedVreme);
-            // ?? FIX: Dopusti otkazane putnike - PutnikList ce ih sortirati na dno sa crvenom bojom
-            // Iskljuci bez_polaska, otkazano - admin ih je eksplicitno uklonio
+            // Iskljuci bez_polaska i obrada - admin ih je eksplicitno uklonio
+            // Otkazani ostaju u listi - prikazuju se crveni na dnu
             final prikazi = imaVreme &&
                 imaGrad &&
                 imaDan &&
                 odgovarajuciDan &&
                 odgovarajuciGrad &&
                 odgovarajuceVreme &&
-                normalizedStatus != 'obrisan' &&
                 normalizedStatus != 'obrada' &&
-                normalizedStatus != 'bez_polaska' &&
-                normalizedStatus != 'otkazano';
+                normalizedStatus != 'bez_polaska';
             return prikazi;
           });
           final sviPutnici = filtered.toList();
@@ -2343,7 +2336,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        if (_currentDriver == 'Bruda' || _currentDriver == 'Bilevski' || _currentDriver == 'Voja')
+                        if (_currentDriver != null && VozacCache.imenaVozaca.contains(_currentDriver))
                           Expanded(
                             child: _HomeScreenButton(
                               label: 'Ja',

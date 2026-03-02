@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart'; // ?? RASPORED VREMENA
-import '../constants/v2_day_constants.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../services/v2_admin_security_service.dart'; // ??? ADMIN SECURITY
@@ -10,13 +9,12 @@ import '../services/v2_app_settings_service.dart'; // ?? NAV BAR SETTINGS
 import '../services/v2_firebase_service.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_pin_zahtev_service.dart'; // ?? PIN ZAHTEVI
-import '../services/v2_putnik_stream_service.dart';
+import '../services/v2_polasci_service.dart';
 import '../services/v2_statistika_service.dart'; // ?? STATISTIKA
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_service.dart'; // ??? VOZAC SERVIS
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
-import '../utils/v2_date_utils.dart' as app_date_utils;
 import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_dug_button.dart';
 import 'v2_adrese_screen.dart'; // ??? Upravljanje adresama
@@ -26,9 +24,7 @@ import 'v2_gorivo_screen.dart'; // ? Pumpa goriva
 import 'v2_kapacitet_screen.dart'; // DODANO za kapacitet polazaka
 import 'v2_odrzavanje_screen.dart'; // ?? Kolska knjiga - vozila
 import 'v2_pin_zahtevi_screen.dart'; // ?? PIN ZAHTEVI
-import 'v2_polasci_log_screen.dart'; // ?? Log svih zahteva
 import 'v2_putnici_screen.dart';
-import 'v2_vozac_action_log_screen.dart'; // ?? Dnevnik akcija vozaca
 import 'v2_vozac_raspored_screen.dart'; // ??? Raspored vozaca
 import 'v2_vozac_screen.dart';
 import 'v2_vozaci_admin_screen.dart'; // Admin panel za upravljanje vozacima
@@ -41,8 +37,17 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
+  static const List<String> _dayNamesInternal = [
+    'Ponedeljak',
+    'Utorak',
+    'Sreda',
+    'Cetvrtak',
+    'Petak',
+    'Subota',
+    'Nedelja'
+  ];
+
   String? _currentDriver;
-  final V2PutnikStreamService _putnikService = V2PutnikStreamService();
 
   // ?? PIN ZAHTEVI - broj zahteva koji cekaju
   int _brojPinZahteva = 0;
@@ -60,7 +65,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
     // ?? Kreiraj streamove jednom — direktno na master cache
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
-    _streamPutnici = _putnikService.streamPutnici();
+    _streamPutnici = V2PolasciService.streamPutnici();
     _streamPazar = StatistikaService.streamPazarIzCachea(isoDate: todayIso);
 
     _loadCurrentDriver();
@@ -77,74 +82,6 @@ class _AdminScreenState extends State<AdminScreen> {
   void dispose() {
     // AdminScreen disposed
     super.dispose();
-  }
-
-  /// ?? ACTION LOG PICKER DIALOG - Admin bira vozaca za pregled dnevnika akcija
-  void _showActionLogDialog(BuildContext context) {
-    try {
-      final vozacService = V2VozacService();
-      final vozaci = vozacService.getAllVozaci();
-
-      if (!mounted) return;
-
-      if (vozaci.isEmpty) {
-        AppSnackBar.error(context, '⚠️ Nema ucitanih vozaca');
-        return;
-      }
-
-      if (!mounted) return;
-
-      showDialog<void>(
-        context: context,
-        builder: (BuildContext dialogContext) {
-          return AlertDialog(
-            title: const Text('Izaberi vozaca za dnevnik'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: vozaci.length,
-                itemBuilder: (context, index) {
-                  final vozac = vozaci[index];
-                  final boja = vozac.color ?? const Color(0xFFBDBDBD);
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: boja,
-                      child: Text(
-                        vozac.ime[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    title: Text(vozac.ime),
-                    onTap: () {
-                      Navigator.of(dialogContext).pop();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => VozacActionLogScreen(
-                            vozacIme: vozac.ime,
-                            datum: DateTime.now(),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Otkaži'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackBar.error(context, 'Greška: $e');
-    }
   }
 
   /// ?? VOZAC PICKER DIALOG - Admin može da vidi ekran bilo kog vozaca
@@ -246,7 +183,7 @@ class _AdminScreenState extends State<AdminScreen> {
   void _showGlobalniBezPolaskaDialog() {
     String selectedGrad = 'BC';
     String selectedVreme = '05:00';
-    String selectedDan = app_date_utils.DateUtils.getTodayFullName();
+    String selectedDan = _dayNamesInternal[DateTime.now().weekday - 1];
     bool isProcessing = false;
 
     showDialog(
@@ -301,7 +238,9 @@ class _AdminScreenState extends State<AdminScreen> {
               DropdownButtonFormField<String>(
                 value: selectedDan,
                 decoration: const InputDecoration(labelText: 'Dan'),
-                items: DayConstants.dayNamesInternal.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                items: const ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja']
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                    .toList(),
                 onChanged: (val) {
                   if (val != null) setDialogState(() => selectedDan = val);
                 },
@@ -339,7 +278,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   : () async {
                       setDialogState(() => isProcessing = true);
 
-                      final count = await _putnikService.v2GlobalniBezPolaska(
+                      final count = await V2PolasciService.v2GlobalniBezPolaska(
                         dan: selectedDan,
                         grad: selectedGrad,
                         vreme: selectedVreme,
@@ -842,38 +781,6 @@ class _AdminScreenState extends State<AdminScreen> {
                                     ),
                                   ),
 
-                                  // DNEVNIK AKCIJA VOZACA
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => _showActionLogDialog(context),
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('📋',
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        shadows: [
-                                                          Shadow(
-                                                              offset: Offset(1, 1),
-                                                              blurRadius: 3,
-                                                              color: Colors.black54)
-                                                        ])))),
-                                      ),
-                                    ),
-                                  ),
-
                                   // PUMPA GORIVA
                                   Expanded(
                                     child: InkWell(
@@ -975,41 +882,6 @@ class _AdminScreenState extends State<AdminScreen> {
                                       ),
                                     ),
                                   ),
-
-                                  // LOG ZAHTEVA
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(builder: (context) => const V2PolasciLogScreen()),
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.blue.withOpacity(0.6), width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('Log',
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        shadows: [
-                                                          Shadow(
-                                                              offset: Offset(1, 1),
-                                                              blurRadius: 3,
-                                                              color: Colors.black54)
-                                                        ])))),
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               );
                             },
@@ -1053,7 +925,7 @@ class _AdminScreenState extends State<AdminScreen> {
             final allPutnici = snapshot.data ?? [];
 
             // Filter po današnjem danu
-            final todayKratica = _getShortDayName(app_date_utils.DateUtils.getTodayFullName()).toLowerCase();
+            final todayKratica = _getShortDayName(_dayNamesInternal[DateTime.now().weekday - 1]).toLowerCase();
             final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == todayKratica).toList();
 
             // Dužnici — pokupljeni, neplaćeni, nisu mesečni, nisu otkazani
@@ -1085,7 +957,12 @@ class _AdminScreenState extends State<AdminScreen> {
                 );
 
                 final Map<String, Color> vozacBoje = VozacCache.bojeSync;
-                const List<String> vozaciRedosled = ['Bruda', 'Bilevski', 'Bojan', 'Voja'];
+                const List<String> defaultRedosled = ['Bruda', 'Bilevski', 'Bojan', 'Voja'];
+
+                // Preferiraj dinamičku listu iz VozacCache, ali ako je cache prazan,
+                // koristimo legacy redosled kao fallback (ne menjamo UX neočekivano).
+                final List<String> vozaciRedosled =
+                    VozacCache.imenaVozaca.isNotEmpty ? VozacCache.imenaVozaca : defaultRedosled;
 
                 final List<String> prikazaniVozaci = AdminSecurityService.getVisibleDrivers(
                   _currentDriver!,
@@ -1287,7 +1164,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           ),
                         ),
                         // ?? SMS TEST DUGME - samo za Bojan
-                        if (_currentDriver?.toLowerCase() == 'bojan') ...[],
+                        if (AdminSecurityService.isAdmin(_currentDriver)) ...[],
                       ],
                     ),
                   ),

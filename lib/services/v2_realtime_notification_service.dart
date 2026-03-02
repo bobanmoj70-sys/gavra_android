@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import 'v2_admin_security_service.dart';
 import 'v2_notification_navigation_service.dart';
 import 'v2_vozac_service.dart';
 
@@ -71,8 +72,8 @@ class RealtimeNotificationService {
     Map<String, dynamic>? data,
   }) async {
     try {
-      // Dinamičko učitavanje admin vozača po imenu, filter po vozac_id (UUID)
-      const adminNames = ['Bojan'];
+      // Dinamičko učitavanje admin vozača po imenu iz centralizovanog servisa
+      final adminNames = AdminSecurityService.adminUsers;
       final vozacService = V2VozacService();
       final allVozaci = vozacService.getAllVozaci();
       final adminVozacIds = allVozaci.where((v) => adminNames.contains(v.ime)).map((v) => v.id).toList();
