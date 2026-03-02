@@ -1599,14 +1599,14 @@ class _PutnikCardState extends State<PutnikCard> {
       // ?? FIX: Prosleduj IME vozaca, ne UUID - konverzija se radi u servisu
       // Ime vozaca se koristi za validaciju placanja u voznje_log
 
-      // Koristi metodu koja postavlja vreme placanja na trenutni datum
+      // datum = danas (kad je uplata izvršena), placeniMesec/placenaGodina = izabrani mesec
       final uspeh = await V2ProfilService.upisPlacanjaULog(
         putnikId: putnikId,
         putnikIme: putnikIme,
         putnikTabela: putnikTabela,
         iznos: iznos,
         vozacIme: vozacIme,
-        datum: pocetakMeseca,
+        datum: DateTime.now(),
         placeniMesec: pocetakMeseca.month,
         placenaGodina: pocetakMeseca.year,
       );

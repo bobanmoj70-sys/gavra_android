@@ -1577,7 +1577,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         putnikTabela: v2Putnik.v2Tabela,
         iznos: iznos,
         vozacIme: currentDriverName,
-        datum: datumi['pocetakMeseca'] as DateTime,
+        datum: DateTime.now(),
         placeniMesec: (datumi['pocetakMeseca'] as DateTime).month,
         placenaGodina: (datumi['pocetakMeseca'] as DateTime).year,
       );
