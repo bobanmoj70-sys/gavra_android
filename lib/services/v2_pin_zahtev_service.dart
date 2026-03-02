@@ -66,45 +66,38 @@ class V2PinZahtevService {
 
   /// Pokreni realtime listener koristeći RealtimeManager
   static void _startRealtimeListener() {
-    _pinZahteviSubscription = V2MasterRealtimeManager.instance.subscribe('v2_pin_zahtevi').listen((payload) async {
+    _pinZahteviSubscription = V2MasterRealtimeManager.instance.subscribe('v2_pin_zahtevi').listen((payload) {
       debugPrint('🔔 [PinZahtevService] Primljena realtime promena: ${payload.eventType}');
-      // Učitaj sve zahteve koji čekaju
-      await _fetchAndEmitZahtevi();
+      _fetchAndEmitZahtevi();
     });
 
     // Učitaj početne podatke
     _fetchAndEmitZahtevi();
   }
 
-  /// Dohvati zahteve iz baze i emituj na stream
-  /// V2Putnik podaci se čitaju iz V2MasterRealtimeManager cache-a
-  static Future<void> _fetchAndEmitZahtevi() async {
-    try {
-      final data = await _supabase
-          .from('v2_pin_zahtevi')
-          .select('id, putnik_id, putnik_tabela, email, telefon, status, created_at')
-          .eq('status', 'ceka')
-          .order('created_at');
+  /// Emituj zahteve koji čekaju iz pinCache — nema DB upita
+  static void _fetchAndEmitZahtevi() {
+    final rm = V2MasterRealtimeManager.instance;
+    final zahtevi = rm.pinCache.values.where((z) => z['status'] == 'ceka').toList()
+      ..sort((a, b) {
+        final ca = a['created_at'] as String? ?? '';
+        final cb = b['created_at'] as String? ?? '';
+        return ca.compareTo(cb);
+      });
 
-      // Obogati svaki zahtev sa podacima putnika iz cache-a
-      final enriched = (data as List).map((z) {
-        final putnikId = z['putnik_id'] as String?;
-        final putnikData = putnikId != null ? V2MasterRealtimeManager.instance.getPutnikById(putnikId) : null;
-        return <String, dynamic>{
-          ...Map<String, dynamic>.from(z as Map),
-          'putnik_ime': putnikData?['ime'],
-          'broj_telefona': putnikData?['telefon'],
-          'tip': _tabelaToTip(z['putnik_tabela'] as String? ?? ''),
-        };
-      }).toList();
+    final enriched = zahtevi.map((z) {
+      final putnikId = z['putnik_id'] as String?;
+      final putnikData = putnikId != null ? rm.getPutnikById(putnikId) : null;
+      return <String, dynamic>{
+        ...Map<String, dynamic>.from(z),
+        'putnik_ime': putnikData?['ime'],
+        'broj_telefona': putnikData?['telefon'],
+        'tip': _tabelaToTip(z['putnik_tabela'] as String? ?? ''),
+      };
+    }).toList();
 
-      if (!_zahteviController.isClosed) {
-        _zahteviController.add(List<Map<String, dynamic>>.from(enriched));
-      }
-    } catch (e) {
-      if (!_zahteviController.isClosed) {
-        _zahteviController.addError(e);
-      }
+    if (!_zahteviController.isClosed) {
+      _zahteviController.add(enriched);
     }
   }
 
@@ -115,14 +108,8 @@ class V2PinZahtevService {
     V2MasterRealtimeManager.instance.unsubscribe('v2_pin_zahtevi');
   }
 
-  static Future<int> brojZahtevaKojiCekaju() async {
-    try {
-      final response = await _supabase.from('v2_pin_zahtevi').select('id').eq('status', 'ceka');
-
-      return (response as List).length;
-    } catch (e) {
-      return 0;
-    }
+  static int brojZahtevaKojiCekaju() {
+    return V2MasterRealtimeManager.instance.pinCache.values.where((z) => z['status'] == 'ceka').length;
   }
 
   static Future<bool> odobriZahtev({
@@ -130,8 +117,8 @@ class V2PinZahtevService {
     required String pin,
   }) async {
     try {
-      final zahtev =
-          await _supabase.from('v2_pin_zahtevi').select('putnik_id, putnik_tabela').eq('id', zahtevId).single();
+      final zahtev = V2MasterRealtimeManager.instance.pinCache[zahtevId];
+      if (zahtev == null) return false;
 
       final putnikId = zahtev['putnik_id'] as String;
       final putnikTabela = zahtev['putnik_tabela'] as String? ?? '';
@@ -159,19 +146,9 @@ class V2PinZahtevService {
     }
   }
 
-  static Future<bool> imaZahtevKojiCeka(String putnikId) async {
-    try {
-      final response = await _supabase
-          .from('v2_pin_zahtevi')
-          .select('id')
-          .eq('putnik_id', putnikId)
-          .eq('status', 'ceka')
-          .maybeSingle();
-
-      return response != null;
-    } catch (e) {
-      return false;
-    }
+  static bool imaZahtevKojiCeka(String putnikId) {
+    return V2MasterRealtimeManager.instance.pinCache.values
+        .any((z) => z['putnik_id'] == putnikId && z['status'] == 'ceka');
   }
 
   static Future<bool> azurirajEmail({

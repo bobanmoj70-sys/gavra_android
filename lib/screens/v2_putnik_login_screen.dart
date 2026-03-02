@@ -146,7 +146,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         } else if (pin == null || pin.isEmpty) {
           // Ima email ali nema PIN
           // Proveri da li je vec poslao zahtev
-          final imaZahtev = await V2PinZahtevService.imaZahtevKojiCeka(response['id']);
+          final imaZahtev = V2PinZahtevService.imaZahtevKojiCeka(response['id']);
           if (imaZahtev) {
             setState(() {
               _currentStep = _LoginStep.zahtevPoslat;
@@ -992,7 +992,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final putnikTabela = _putnikData!['_tabela'] as String?;
 
       // Proveri da li vec ima zahtev koji ceka
-      final imaZahtev = await V2PinZahtevService.imaZahtevKojiCeka(putnikId);
+      final imaZahtev = V2PinZahtevService.imaZahtevKojiCeka(putnikId);
       if (imaZahtev) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;

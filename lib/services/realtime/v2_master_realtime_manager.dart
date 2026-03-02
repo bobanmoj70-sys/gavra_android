@@ -186,7 +186,7 @@ class V2MasterRealtimeManager {
             'id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
             'status, created_at, updated_at, processed_at, broj_mesta, '
             'alternative_vreme_1, alternative_vreme_2, adresa_id, '
-            'otkazao, pokupio, dan',
+            'otkazao, odobrio, pokupio, dan',
           )
           .eq('dan', dan)
           .inFilter('status', [
@@ -246,14 +246,14 @@ class V2MasterRealtimeManager {
             .from('v2_dnevni')
             .select(
               'id, ime, status, telefon, telefon_2, adresa_bc_id, adresa_vs_id, '
-              'pin, cena, broj_mesta, treba_racun, created_at, updated_at',
+              'pin, email, cena, broj_mesta, treba_racun, created_at, updated_at',
             )
             .eq('status', 'aktivan'),
         _db
             .from('v2_posiljke')
             .select(
               'id, ime, status, telefon, adresa_bc_id, adresa_vs_id, '
-              'cena, treba_racun, created_at, updated_at',
+              'pin, email, cena, treba_racun, created_at, updated_at',
             )
             .eq('status', 'aktivan'),
       ]);
@@ -287,17 +287,28 @@ class V2MasterRealtimeManager {
     try {
       final results = await Future.wait([
         _db.from('v2_vozaci').select('id, ime, email, telefon, sifra, boja'),
-        _db.from('v2_vozila').select('id, registarski_broj, marka, model, godina_proizvodnje, kilometraza, napomena'),
+        _db.from('v2_vozila').select(
+            'id, registarski_broj, marka, model, godina_proizvodnje, kilometraza, napomena, '
+            'broj_sasije, registracija_vazi_do, '
+            'mali_servis_datum, mali_servis_km, veliki_servis_datum, veliki_servis_km, '
+            'alternator_datum, alternator_km, akumulator_datum, akumulator_km, '
+            'gume_datum, gume_opis, gume_prednje_datum, gume_prednje_opis, gume_prednje_km, '
+            'gume_zadnje_datum, gume_zadnje_opis, gume_zadnje_km, '
+            'plocice_datum, plocice_km, plocice_prednje_datum, plocice_prednje_km, '
+            'plocice_zadnje_datum, plocice_zadnje_km, trap_datum, trap_km, radio'),
         _db.from('v2_kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
         _db.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng'),
         _db.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id'),
         _db.from('v2_vozac_putnik').select('id, putnik_id, vozac_id, dan, grad, vreme'),
         _db
             .from('v2_finansije_troskovi')
-            .select('id, naziv, iznos, tip, aktivan, vozac_id, created_at')
+            .select('id, naziv, iznos, tip, aktivan, vozac_id, mesec, godina, created_at')
             .eq('aktivan', true),
         _db.from('v2_pumpa_config').select('id, kapacitet_litri, alarm_nivo, pocetno_stanje, updated_at'),
-        _db.from('v2_vozac_lokacije').select('id, vozac_id, lat, lng, aktivan, updated_at').eq('aktivan', true),
+        _db
+            .from('v2_vozac_lokacije')
+            .select('id, vozac_id, lat, lng, grad, vreme_polaska, smer, putnici_eta, aktivan, updated_at')
+            .eq('aktivan', true),
         _db.from('v2_pin_zahtevi').select('id, putnik_id, putnik_tabela, email, telefon, status, created_at'),
         _db.from('v2_app_settings').select(
             'id, min_version, latest_version, store_url_android, store_url_huawei, store_url_ios, nav_bar_type, updated_at'),

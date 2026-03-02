@@ -386,8 +386,8 @@ class Trosak {
   factory Trosak.fromJson(Map<String, dynamic> json) {
     // Izvuci ime vozača iz join-a
     String? vozacIme;
-    if (json['vozaci'] != null && json['vozaci'] is Map) {
-      vozacIme = json['vozaci']['ime'] as String?;
+    if (json['v2_vozaci'] != null && json['v2_vozaci'] is Map) {
+      vozacIme = json['v2_vozaci']['ime'] as String?;
     }
 
     return Trosak(

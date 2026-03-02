@@ -82,6 +82,7 @@ class V2GorivoService {
         'datum': datum.toIso8601String().split('T')[0],
         'litri': litri,
         'cena_po_litru': cenaPoPLitru,
+        'ukupno_cena': (cenaPoPLitru != null) ? litri * cenaPoPLitru : null,
         'napomena': napomena,
       });
       debugPrint('✅ [Gorivo] Punjenje dodato: $litri L');
@@ -208,7 +209,7 @@ class V2GorivoService {
       for (final row in data) {
         final voziloId = row['vozilo_id'] as String? ?? '';
         final litri = (row['litri'] as num?)?.toDouble() ?? 0;
-        final vozilo = row['vozila'] as Map<String, dynamic>?;
+        final vozilo = row['v2_vozila'] as Map<String, dynamic>?;
         final regBroj = vozilo?['registarski_broj'] as String? ?? voziloId;
         final marka = vozilo?['marka'] as String? ?? '';
         final model = vozilo?['model'] as String? ?? '';
@@ -351,7 +352,7 @@ class PumpaTocenje {
   });
 
   factory PumpaTocenje.fromJson(Map<String, dynamic> j) {
-    final vozilo = j['vozila'] as Map<String, dynamic>?;
+    final vozilo = j['v2_vozila'] as Map<String, dynamic>?;
     return PumpaTocenje(
       id: j['id'] as String,
       datum: DateTime.parse(j['datum'] as String),

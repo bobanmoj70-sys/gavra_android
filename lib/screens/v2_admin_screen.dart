@@ -168,14 +168,10 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   // ?? Ucitaj broj PIN zahteva koji cekaju
-  Future<void> _loadBrojPinZahteva() async {
-    try {
-      final broj = await V2PinZahtevService.brojZahtevaKojiCekaju();
-      if (mounted) {
-        setState(() => _brojPinZahteva = broj);
-      }
-    } catch (e) {
-      // Ignorišemo grešku, badge jednostavno nece prikazati broj
+  void _loadBrojPinZahteva() {
+    final broj = V2PinZahtevService.brojZahtevaKojiCekaju();
+    if (mounted) {
+      setState(() => _brojPinZahteva = broj);
     }
   }
 

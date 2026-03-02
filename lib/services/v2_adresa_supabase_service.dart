@@ -67,23 +67,12 @@ class V2AdresaSupabaseService {
     return result;
   }
 
-  /// Pronađi adresu po nazivu i gradu
-  static Future<Adresa?> findAdresaByNazivAndGrad(String naziv, String grad) async {
-    try {
-      final response = await supabase
-          .from('v2_adrese')
-          .select('id, naziv, grad, gps_lat, gps_lng')
-          .eq('naziv', naziv)
-          .eq('grad', grad)
-          .maybeSingle();
-      if (response != null) {
-        final adresa = Adresa.fromMap(response);
-        return adresa;
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
+  /// Pronađi adresu po nazivu i gradu — iz rm.adreseCache
+  static Adresa? findAdresaByNazivAndGrad(String naziv, String grad) {
+    final rm = V2MasterRealtimeManager.instance;
+    final row = rm.adreseCache.values.where((r) => r['naziv'] == naziv && r['grad'] == grad).firstOrNull;
+    if (row == null) return null;
+    return Adresa.fromMap(row);
   }
 
   /// Pronalazi postojeću adresu - NE KREIRA NOVE
@@ -97,20 +86,16 @@ class V2AdresaSupabaseService {
     double? lng,
   }) async {
     // 🔒 Samo pronađi postojeću adresu - NE KREIRAJ NOVU
-    try {
-      final postojeca = await findAdresaByNazivAndGrad(naziv, grad);
-      if (postojeca != null) {
-        // Ako postojeća adresa NEMA koordinate ali imamo ih, ažuriraj
-        if (!postojeca.hasValidCoordinates && lat != null && lng != null) {
-          final updatedAdresa = await _geocodeAndUpdateAdresa(postojeca, grad);
-          if (updatedAdresa != null) {
-            return updatedAdresa;
-          }
+    final postojeca = findAdresaByNazivAndGrad(naziv, grad);
+    if (postojeca != null) {
+      // Ako postojeća adresa NEMA koordinate ali imamo ih, ažuriraj
+      if (!postojeca.hasValidCoordinates && lat != null && lng != null) {
+        final updatedAdresa = await _geocodeAndUpdateAdresa(postojeca, grad);
+        if (updatedAdresa != null) {
+          return updatedAdresa;
         }
-        return postojeca;
       }
-    } catch (_) {
-      // 🔇 Ignore
+      return postojeca;
     }
 
     // 🚫 NE KREIRAJ NOVU ADRESU - vrati null

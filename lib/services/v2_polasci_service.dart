@@ -162,7 +162,7 @@ class V2PolasciService {
                 'v2_ucenici' => rm.uceniciCache[putnikId],
                 'v2_dnevni' => rm.dnevniCache[putnikId],
                 'v2_posiljke' => rm.posiljkeCache[putnikId],
-                _ => rm.getPutnikById(putnikId),
+                _ => null,
               };
 
         final enriched = putnikRow == null
@@ -171,7 +171,6 @@ class V2PolasciService {
                 ...row,
                 'putnik_ime': putnikRow['ime'],
                 'broj_telefona': putnikRow['broj_telefona'],
-                if (putnikTabela == null) 'putnik_tabela': putnikRow['_tabela'],
               };
 
         return V2Polazak.fromJson(enriched);

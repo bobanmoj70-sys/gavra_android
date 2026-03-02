@@ -547,25 +547,23 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
                   style: const TextStyle(color: Colors.black),
                 ),
                 const SizedBox(height: 16),
-                // ?? EMAIL POLJE - samo radnik i ucenik
-                if (_tip != 'dnevni' && _tip != 'posiljka') ...[
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email (opciono)',
-                      hintText: 'npr. V2Putnik@email.com',
-                      prefixIcon: const Icon(Icons.email),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                // ?? EMAIL POLJE - sve tabele
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email (opciono)',
+                    hintText: 'npr. V2Putnik@email.com',
+                    prefixIcon: const Icon(Icons.email),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    style: const TextStyle(color: Colors.black),
                   ),
-                  const SizedBox(height: 16),
-                ],
+                  style: const TextStyle(color: Colors.black),
+                ),
+                const SizedBox(height: 16),
                 // ?? CHECKBOX ZA RACUN
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -1445,11 +1443,14 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
     // v2_dnevni - specificne kolone
     if (_tip == 'dnevni') {
       data['telefon_2'] = _brojTelefona2Controller.text.isEmpty ? null : _brojTelefona2Controller.text.trim();
+      data['email'] = _emailController.text.isEmpty ? null : _emailController.text.trim();
       data['cena'] = _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text);
+      data['broj_mesta'] = int.tryParse(_brojMestaController.text) ?? 1;
     }
 
     // v2_posiljke - specificne kolone
     if (_tip == 'posiljka') {
+      data['email'] = _emailController.text.isEmpty ? null : _emailController.text.trim();
       data['cena'] = _cenaPoDanuController.text.isEmpty ? null : double.tryParse(_cenaPoDanuController.text);
     }
 

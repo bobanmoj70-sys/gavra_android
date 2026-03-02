@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_gorivo_service.dart';
 import '../services/v2_vozila_service.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -412,7 +413,7 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
             Text(datumStr),
             if (p.cenaPoPLitru != null)
               Text(
-                '${_fmt.format(p.cenaPoPLitru!)} din/L  ?  ${_fmtInt.format(p.ukupnoCena ?? 0)} din',
+                '${_fmt.format(p.cenaPoPLitru!)} din/L  ?  ${_fmtInt.format(p.ukupnoCena ?? (p.litri * p.cenaPoPLitru!))} din',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             if (p.napomena != null) Text(p.napomena!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
@@ -694,13 +695,13 @@ class _GorivoScreenState extends State<GorivoScreen> with SingleTickerProviderSt
     );
   }
 
-  void _showConfigDialog() async {
-    final stanje = await V2GorivoService.getStanje();
-    if (!mounted) return;
+  void _showConfigDialog() {
+    final config = V2MasterRealtimeManager.instance.pumpaCache.values.firstOrNull;
 
-    final kapacitetCtrl = TextEditingController(text: stanje?.kapacitetLitri.toStringAsFixed(0) ?? '3000');
-    final alarmCtrl = TextEditingController(text: stanje?.alarmNivo.toStringAsFixed(0) ?? '500');
-    final pocetnoCtrl = TextEditingController(text: stanje?.pocetnoStanje.toStringAsFixed(0) ?? '0');
+    final kapacitetCtrl =
+        TextEditingController(text: ((config?['kapacitet_litri'] as num?)?.toStringAsFixed(0)) ?? '3000');
+    final alarmCtrl = TextEditingController(text: ((config?['alarm_nivo'] as num?)?.toStringAsFixed(0)) ?? '500');
+    final pocetnoCtrl = TextEditingController(text: ((config?['pocetno_stanje'] as num?)?.toStringAsFixed(0)) ?? '0');
 
     showModalBottomSheet(
       context: context,
