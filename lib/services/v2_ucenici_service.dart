@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -31,9 +29,7 @@ class V2UceniciService {
   }
 
   static List<V2RegistrovaniPutnik> getSve() {
-    return _cache.values
-        .map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': tabela}))
-        .toList()
+    return _cache.values.map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': tabela})).toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
@@ -72,28 +68,7 @@ class V2UceniciService {
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  // ---------------------------------------------------------------------------
-  // STREAM — emituje iz RM cache-a (realtime, 0 DB upita)
-  // ---------------------------------------------------------------------------
-
-  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() {
-    final controller = StreamController<List<V2RegistrovaniPutnik>>.broadcast();
-
-    void emit() {
-      if (!controller.isClosed) controller.add(getAktivne());
-    }
-
-    Future.microtask(emit);
-    final sub = _rm.onCacheChanged
-        .where((t) => t == tabela)
-        .listen((_) => emit());
-    controller.onCancel = () {
-      sub.cancel();
-      controller.close();
-    };
-
-    return controller.stream;
-  }
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.streamFromCache(tables: [tabela], build: getAktivne);
 
   // ---------------------------------------------------------------------------
   // CREATE
@@ -157,8 +132,7 @@ class V2UceniciService {
     }
   }
 
-  static Future<bool> setStatus(String id, String status) =>
-      update(id, {'status': status});
+  static Future<bool> setStatus(String id, String status) => update(id, {'status': status});
 
   static Future<bool> delete(String id) async {
     try {

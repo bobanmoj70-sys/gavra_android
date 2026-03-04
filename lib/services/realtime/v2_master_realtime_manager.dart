@@ -850,6 +850,31 @@ class V2MasterRealtimeManager {
     return null;
   }
 
+  /// Generički stream iz cache-a — jedna logika za sve tabele.
+  ///
+  /// [tables] — lista tabela čije promjene aktiviraju osvježavanje.
+  /// [build]  — sinhron builder koji čita iz cache-a i vraća vrijednost.
+  ///
+  /// Koristi se u svim servisima umjesto ponovljenog StreamController boilerplatea.
+  /// Emituje odmah (Future.microtask) i zatim na svaku promjenu odgovarajućih tabela.
+  Stream<T> streamFromCache<T>({
+    required List<String> tables,
+    required T Function() build,
+  }) {
+    final controller = StreamController<T>.broadcast();
+    void emit() {
+      if (!controller.isClosed) controller.add(build());
+    }
+
+    Future.microtask(emit);
+    final sub = onCacheChanged.where(tables.contains).listen((_) => emit());
+    controller.onCancel = () {
+      sub.cancel();
+      controller.close();
+    };
+    return controller.stream;
+  }
+
   /// Stream aktivnih putnika iz cache-a — 0 DB upita
   Stream<List<V2RegistrovaniPutnik>> streamAktivniPutnici() {
     final controller = StreamController<List<V2RegistrovaniPutnik>>.broadcast();

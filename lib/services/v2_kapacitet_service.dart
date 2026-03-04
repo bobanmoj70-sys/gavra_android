@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import '../config/v2_route_config.dart';
@@ -97,23 +95,8 @@ class V2KapacitetService {
     return result;
   }
 
-  /// Stream kapaciteta — emituje iz rm.kapacitetCache, nema DB upita
-  static Stream<Map<String, Map<String, int>>> streamKapacitet() {
-    final rm = V2MasterRealtimeManager.instance;
-    final controller = StreamController<Map<String, Map<String, int>>>.broadcast();
-
-    void emit() {
-      if (!controller.isClosed) controller.add(getKapacitet());
-    }
-
-    controller.onListen = emit; // emituj tek kad listener postoji
-    final sub = rm.onCacheChanged.where((t) => t == 'v2_kapacitet_polazaka').listen((_) => emit());
-    controller.onCancel = () {
-      sub.cancel();
-      controller.close();
-    };
-    return controller.stream;
-  }
+  static Stream<Map<String, Map<String, int>>> streamKapacitet() =>
+      V2MasterRealtimeManager.instance.streamFromCache(tables: ['v2_kapacitet_polazaka'], build: getKapacitet);
 
   /// Dohvati kapacitet za grad/vreme (čita iz rm.kapacitetCache — nema DB upita).
   /// Vraca default 8 ako nije dostupno.

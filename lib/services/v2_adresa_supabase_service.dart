@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
@@ -42,24 +40,8 @@ class V2AdresaSupabaseService {
       });
   }
 
-  /// Stream svih adresa — emituje iz rm.adreseCache, nema DB upita.
-  /// Reaktivan: osvježava se kad god upsertToCache/removeFromCache promijeni v2_adrese.
-  static Stream<List<V2Adresa>> streamSveAdrese() {
-    final rm = V2MasterRealtimeManager.instance;
-    final controller = StreamController<List<V2Adresa>>.broadcast();
-    void emit() {
-      if (!controller.isClosed) controller.add(getSveAdrese());
-    }
-
-    Future.microtask(emit);
-
-    final cacheSub = rm.onCacheChanged.where((t) => t == 'v2_adrese').listen((_) => emit());
-    controller.onCancel = () {
-      cacheSub.cancel();
-      controller.close();
-    };
-    return controller.stream;
-  }
+  static Stream<List<V2Adresa>> streamSveAdrese() =>
+      V2MasterRealtimeManager.instance.streamFromCache(tables: ['v2_adrese'], build: getSveAdrese);
 
   /// Batch učitavanje adresa po UUID-ovima — iz rm.adreseCache
   static Map<String, V2Adresa> getAdreseByUuids(List<String> uuids) {

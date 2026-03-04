@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,22 +19,7 @@ class V2VozilaService {
       ..sort((a, b) => a.registarskiBroj.compareTo(b.registarskiBroj));
   }
 
-  /// Stream vozila sa realtime osvežavanjem — emituje direktno iz cache-a
-  static Stream<List<V2Vozilo>> streamVozila() {
-    final controller = StreamController<List<V2Vozilo>>.broadcast();
-    void emit() {
-      if (!controller.isClosed) controller.add(getVozila());
-    }
-
-    Future.microtask(emit);
-    // Reaguje na Realtime promjene v2_vozila (static kanal drži initialize())
-    final cacheSub = _rm.onCacheChanged.where((t) => t == 'v2_vozila').listen((_) => emit());
-    controller.onCancel = () {
-      cacheSub.cancel();
-      controller.close();
-    };
-    return controller.stream;
-  }
+  static Stream<List<V2Vozilo>> streamVozila() => _rm.streamFromCache(tables: ['v2_vozila'], build: getVozila);
 
   /// Ažuriraj kolsku knjigu vozila
   static Future<bool> updateKolskaKnjiga(String id, Map<String, dynamic> podaci) async {
