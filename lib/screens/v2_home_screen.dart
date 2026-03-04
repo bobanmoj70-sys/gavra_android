@@ -137,6 +137,13 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     return _dayAbbreviations[i];
   }
 
+  /// Kreira/zamjenjuje _streamPutnici za zadani dan. Poziva se iz initState i kad se dan promjeni.
+  void _updatePutniciStream(String day) {
+    final isoDate = _getTargetDateIsoFromSelectedDay(day);
+    _cachedPutniciDay = day;
+    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(isoDate: isoDate);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -144,6 +151,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'Ponedeljak' : _getTodayName();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
+    _updatePutniciStream(_selectedDay);
     _initializeData();
   }
 
@@ -1904,18 +1912,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V2Putnik>>(
-        // Kreira stream samo kad se promeni dan (ne na svakom rebuildu)
-        stream: () {
-          final isoDate = _getTargetDateIsoFromSelectedDay(_selectedDay);
-          if (_streamPutnici == null || _cachedPutniciDay != _selectedDay) {
-            _cachedPutniciDay = _selectedDay;
-            _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(
-              isoDate: isoDate,
-              // grad i vreme NAMERNO IZOSTAVLJENI - treba nam SVA vremena za bottom nav bar
-            );
-          }
-          return _streamPutnici!;
-        }(),
+        stream: _streamPutnici,
         builder: (context, snapshot) {
           // ?? DEBUG: Log state information
           // ?? NOVO: Error handling sa specialized widgets
@@ -1973,61 +1970,30 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
           const dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
           final targetDayAbbr = dayAbbrs[date.weekday - 1];
 
-          // Filtriranje putnika za selektovani dan (za bottom-bar brojace - sva vremena)
-          // i za prikaz liste (sa grad/vreme filterima).
-          final putniciZaDan = allPutnici.where((p) {
-            // Filtriraj po dan kraticama (v2_polasci nema datum kolonu, samo dan TEXT)
-            return p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase());
-          }).toList();
+          // Jedan prolaz: dedup + split na prikaz vs. bottom-bar brojaci
+          final Map<String, V2Putnik> uniqueZaDan = {};
+          final Map<String, V2Putnik> uniqueZaPrikaz = {};
+          final normalizedDanBaza = V2GradAdresaValidator.normalizeString(_getDayAbbreviation(_selectedDay));
+          final normalizedVreme = V2GradAdresaValidator.normalizeTime(_selectedVreme);
 
-          // Additional filters for display (applies time/grad/status and is used
-          // to build the visible list). This operates on the putniciZaDan list.
-          final filtered = putniciZaDan.where((v2Putnik) {
-            final normalizedStatus = V2TextUtils.normalizeText(v2Putnik.status ?? '');
-            final imaVreme = v2Putnik.polazak.toString().trim().isNotEmpty;
-            final imaGrad = v2Putnik.grad.toString().trim().isNotEmpty;
-            final imaDan = v2Putnik.dan.toString().trim().isNotEmpty;
-            final danBaza = _selectedDay;
-            final normalizedPutnikDan = V2GradAdresaValidator.normalizeString(v2Putnik.dan);
-            final normalizedDanBaza = V2GradAdresaValidator.normalizeString(_getDayAbbreviation(danBaza));
-            final odgovarajuciDan = normalizedPutnikDan.contains(normalizedDanBaza);
-            final odgovarajuciGrad = V2GradAdresaValidator.isGradMatch(
-              v2Putnik.grad,
-              v2Putnik.adresa,
-              _selectedGrad,
-            );
-            final odgovarajuceVreme = V2GradAdresaValidator.normalizeTime(v2Putnik.polazak) ==
-                V2GradAdresaValidator.normalizeTime(_selectedVreme);
-            // Iskljuci bez_polaska i obrada - admin ih je eksplicitno uklonio
-            // Otkazani ostaju u listi - prikazuju se crveni na dnu
-            final prikazi = imaVreme &&
-                imaGrad &&
-                imaDan &&
-                odgovarajuciDan &&
-                odgovarajuciGrad &&
-                odgovarajuceVreme &&
-                normalizedStatus != 'obrada' &&
-                normalizedStatus != 'bez_polaska';
-            return prikazi;
-          });
-          final sviPutnici = filtered.toList();
-
-          // DEDUPLIKACIJA PO COMPOSITE KLJUCU: id + polazak + dan
-          final Map<String, V2Putnik> uniquePutnici = {};
-          for (final p in sviPutnici) {
+          for (final p in allPutnici) {
+            if (!p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase())) continue;
             final key = '${p.id}_${p.polazak}_${p.dan}';
-            uniquePutnici[key] = p;
+            // Za bottom-bar brojace: samo dedup po danu
+            uniqueZaDan[key] = p;
+            // Za prikaz liste: dodatni filteri
+            final normalizedStatus = V2TextUtils.normalizeText(p.status ?? '');
+            if (normalizedStatus == 'obrada' || normalizedStatus == 'bez_polaska') continue;
+            if (p.polazak.toString().trim().isEmpty) continue;
+            if (p.grad.toString().trim().isEmpty) continue;
+            if (!V2GradAdresaValidator.normalizeString(p.dan).contains(normalizedDanBaza)) continue;
+            if (!V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad)) continue;
+            if (V2GradAdresaValidator.normalizeTime(p.polazak) != normalizedVreme) continue;
+            uniqueZaPrikaz[key] = p;
           }
-          final sviPutniciBezDuplikata = uniquePutnici.values.toList();
 
-          // ?? BROJAC PUTNIKA - koristi SVE putnice za SELEKTOVANI DAN (deduplikovane)
-          // DEDUPLICIRAJ za racunanje brojaca (id + polazak + dan)
-          final Map<String, V2Putnik> uniqueForCounts = {};
-          for (final p in putniciZaDan) {
-            final key = '${p.id}_${p.polazak}_${p.dan}';
-            uniqueForCounts[key] = p;
-          }
-          final countCandidates = uniqueForCounts.values.toList();
+          final sviPutniciBezDuplikata = uniqueZaPrikaz.values.toList();
+          final countCandidates = uniqueZaDan.values.toList();
 
           // REFAKTORISANO: Koristi V2PutnikCountHelper za centralizovano brojanje
           final countHelper = V2PutnikCountHelper.fromPutnici(
@@ -2274,7 +2240,10 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           .toList(),
                                       onChanged: (value) {
                                         if (mounted) {
-                                          setState(() => _selectedDay = value!);
+                                          setState(() {
+                                            _selectedDay = value!;
+                                            _updatePutniciStream(_selectedDay);
+                                          });
                                         }
                                       },
                                     ),
@@ -2596,9 +2565,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             selectedGrad: _selectedGrad,
                             selectedVreme: _selectedVreme,
                             selectedDay: _getDayAbbreviation(_selectedDay),
-                            onPutnikStatusChanged: () {
-                              if (mounted) setState(() {});
-                            },
                             bcVremena: bcVremena,
                             vsVremena: vsVremena,
                           ),
@@ -2691,119 +2657,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       // Silently ignore
     }
     super.dispose();
-  }
-}
-
-// V2AnimatedActionButton widget sa hover efektima
-class V2AnimatedActionButton extends StatefulWidget {
-  const V2AnimatedActionButton({
-    super.key,
-    required this.child,
-    required this.onTap,
-    required this.width,
-    required this.height,
-    required this.margin,
-    required this.gradientColors,
-    required this.boxShadow,
-  });
-  final Widget child;
-  final VoidCallback onTap;
-  final double width;
-  final double height;
-  final EdgeInsets margin;
-  final List<Color> gradientColors;
-  final List<BoxShadow> boxShadow;
-
-  @override
-  State<V2AnimatedActionButton> createState() => _AnimatedActionButtonState();
-}
-
-class _AnimatedActionButtonState extends State<V2AnimatedActionButton> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  bool _isPressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.95,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) {
-        if (mounted) setState(() => _isPressed = true);
-        _controller.forward();
-      },
-      onTapUp: (_) {
-        if (mounted) setState(() => _isPressed = false);
-        _controller.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () {
-        if (mounted) setState(() => _isPressed = false);
-        _controller.reverse();
-      },
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Container(
-              width: widget.width,
-              height: widget.height,
-              margin: widget.margin,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: widget.gradientColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: _isPressed
-                    ? widget.boxShadow.map((shadow) {
-                        return BoxShadow(
-                          color: shadow.color.withValues(
-                            alpha: (shadow.color.a * 1.5).clamp(0.0, 1.0),
-                          ),
-                          blurRadius: shadow.blurRadius * 1.2,
-                          offset: shadow.offset,
-                        );
-                      }).toList()
-                    : widget.boxShadow,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: () {}, // Handled by GestureDetector
-                  child: widget.child,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 }
 
