@@ -326,12 +326,12 @@ class V2ProfilService {
   // STATISTIKA — cita iz v2_statistika_istorija
   // ---------------------------------------------------------------------------
 
-  /// Dohvata sva placanja (tip='uplata_dnevna') za putnika
+  /// Dohvata sva placanja (tip='uplata') za putnika
   static Future<List<Map<String, dynamic>>> dohvatiPlacanja(String putnikId) async {
     try {
       // Pokusaj iz cache-a prvo
       final izCache = _rm.statistikaCache.values
-          .where((r) => r['putnik_id']?.toString() == putnikId && (r['tip'] == 'uplata' || r['tip'] == 'uplata_dnevna'))
+          .where((r) => r['putnik_id']?.toString() == putnikId && r['tip'] == 'uplata')
           .toList();
       if (izCache.isNotEmpty) return izCache;
       // Fallback: DB upit za sve datume
@@ -340,7 +340,8 @@ class V2ProfilService {
           .select(
               'id, putnik_id, datum, tip, iznos, vozac_id, vozac_ime, grad, vreme, created_at, placeni_mesec, placena_godina')
           .eq('putnik_id', putnikId)
-          .inFilter('tip', ['uplata', 'uplata_dnevna']).order('datum', ascending: false);
+          .eq('tip', 'uplata')
+          .order('datum', ascending: false);
       return List<Map<String, dynamic>>.from(res);
     } catch (e) {
       debugPrint('[V2ProfilService] dohvatiPlacanja error: $e');
@@ -409,7 +410,7 @@ class V2ProfilService {
         'putnik_id': putnikId,
         'putnik_ime': putnikIme,
         'putnik_tabela': putnikTabela,
-        'tip': 'uplata_mesecna',
+        'tip': 'uplata',
         'iznos': iznos,
         'vozac_id': vozacId,
         'vozac_ime': vozacIme,
@@ -427,7 +428,13 @@ class V2ProfilService {
           if (vozacId != null) 'placen_vozac_id': vozacId,
           if (vozacIme != null) 'placen_vozac_ime': vozacIme,
           'datum_akcije': datumStr,
-          'placen_tip': 'mesecna',
+          'placen_tip': const {
+                'v2_radnici': 'radnik',
+                'v2_ucenici': 'ucenik',
+                'v2_dnevni': 'dnevni',
+                'v2_posiljke': 'posiljka',
+              }[putnikTabela] ??
+              'radnik',
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', srRow['id'].toString());
       }

@@ -145,6 +145,9 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
         if (!mounted) return;
 
+        // Ako je obavezno ažuriranje aktivno — ostani na Welcome da se prikaže dialog
+        if (updateInfoNotifier.value?.isForced == true) return;
+
         // Direktno na Home Screen bez daily check-in
         Navigator.pushReplacement(
           context,
@@ -165,6 +168,9 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     if (activeDriver != null && activeDriver.isNotEmpty) {
       // Vozač je ve logovan - direktno na odgovarajui ekran
       if (!mounted) return;
+
+      // Ako je obavezno ažuriranje aktivno — ostani na Welcome da se prikaže dialog
+      if (updateInfoNotifier.value?.isForced == true) return;
 
       Navigator.pushReplacement(
         context,

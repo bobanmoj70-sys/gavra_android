@@ -131,7 +131,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
         final duzniciRaw = putnici
             .where(
               (p) =>
-                  (!p.isMesecniTip) && // FIX: Plava kartica = nije mesečni tip
+                  (p.isDnevni || p.isPosiljka) && // Duznici su samo dnevni i posiljke (nije radnik/ucenik)
                   (p.placeno != true) && // placeno flag iz v2_polasci srRow
                   (p.jePokupljen) &&
                   (p.status == null || (p.status != 'Otkazano' && p.status != 'otkazan')),

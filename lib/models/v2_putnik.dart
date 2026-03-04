@@ -14,7 +14,6 @@ class V2Putnik {
     required this.polazak,
     this.pokupljen,
     this.vremeDodavanja,
-    this.mesecnaKarta,
     required this.dan,
     this.status,
     this.statusVreme,
@@ -67,7 +66,6 @@ class V2Putnik {
       polazak: '---',
       pokupljen: false,
       vremeDodavanja: map['created_at'] != null ? DateTime.parse(map['created_at'] as String).toLocal() : null,
-      mesecnaKarta: !isDnevni,
       dan: '',
       status: map['status'] as String? ?? 'aktivan',
       statusVreme: map['updated_at'] as String?,
@@ -86,7 +84,6 @@ class V2Putnik {
   final String polazak;
   final bool? pokupljen;
   final DateTime? vremeDodavanja; // ? DateTime
-  final bool? mesecnaKarta;
   final String dan;
   final String? status;
   final String? statusVreme;
@@ -201,7 +198,6 @@ class V2Putnik {
       placeno: isPaid,
       datum: datumStr,
       tipPutnika: tip,
-      mesecnaKarta: !isDnevni,
       brojMesta: req['broj_mesta'] ?? p['broj_mesta'] ?? 1,
       adresa: ((req['adrese'] as Map?)?['naziv'] as String?) ??
           (grad == 'VS'
@@ -262,15 +258,14 @@ class V2Putnik {
     }
   }
 
-  // Helper getter za proveru da li je dnevni tip
-  bool get isDnevniTip => tipPutnika?.toLowerCase() == 'dnevni' || mesecnaKarta == false;
+  // Helper getter za proveru da li je dnevni tip (v2_dnevni ili v2_posiljke)
+  bool get isDnevniTip => tipPutnika?.toLowerCase() == 'dnevni' || tipPutnika?.toLowerCase() == 'posiljka';
 
-  // Helper getter za proveru da li je radnik ili ucenik (prikazuje MESECNA badge)
-  // Fallback: ako tipPutnika nije poznat, koristi mesecnaKarta kao indikator
-  bool get isMesecniTip =>
-      tipPutnika?.toLowerCase() == 'radnik' ||
-      tipPutnika?.toLowerCase() == 'ucenik' ||
-      (tipPutnika == null && mesecnaKarta == true);
+  // Getteri po konkretnom tipu
+  bool get isRadnik => tipPutnika?.toLowerCase() == 'radnik';
+  bool get isUcenik => tipPutnika?.toLowerCase() == 'ucenik';
+  bool get isPosiljka => tipPutnika?.toLowerCase() == 'posiljka';
+  bool get isDnevni => tipPutnika?.toLowerCase() == 'dnevni';
 
   // Getter-i za kompatibilnost
   String get destinacija => grad;
@@ -388,7 +383,6 @@ class V2Putnik {
     String? polazak,
     bool? pokupljen,
     DateTime? vremeDodavanja,
-    bool? mesecnaKarta,
     String? dan,
     String? status,
     String? statusVreme,
@@ -422,7 +416,6 @@ class V2Putnik {
       polazak: polazak ?? this.polazak,
       pokupljen: pokupljen ?? this.pokupljen,
       vremeDodavanja: vremeDodavanja ?? this.vremeDodavanja,
-      mesecnaKarta: mesecnaKarta ?? this.mesecnaKarta,
       dan: dan ?? this.dan,
       status: status ?? this.status,
       statusVreme: statusVreme ?? this.statusVreme,

@@ -53,11 +53,10 @@ class V2PutnikList extends StatelessWidget {
 
     // Pokupljeni putnici (plavi/zeleni ostaju normalno)
     if (p.jePokupljen) {
-      // ZELENE - Plaćeni ili mesečni
-      // 🆕 FIX: Koristi `placeno` umesto iznosa
+      // ZELENE - Plaćeni, radnici ili ucenici
       final bool isPlaceno = p.placeno == true;
-      final bool isMesecniTip = p.isMesecniTip;
-      if (isPlaceno || isMesecniTip) {
+      final bool isRadnikIliUcenik = p.isRadnik || p.isUcenik;
+      if (isPlaceno || isRadnikIliUcenik) {
         return 5; // zelene
       }
       // PLAVE - Pokupljeni neplaćeni (dnevni tip)

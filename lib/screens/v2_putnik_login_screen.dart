@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_biometric_service.dart';
 import '../services/v2_pin_zahtev_service.dart';
@@ -71,6 +72,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         );
 
         if (authenticated && mounted) {
+          // Ako je obavezno ažuriranje aktivno — ne raditi auto-login
+          if (updateInfoNotifier.value?.isForced == true) return;
           _telefonController.text = credentials['phone']!;
           _pinController.text = credentials['pin']!;
           await _loginWithPin(showBiometricPrompt: false);
@@ -85,6 +88,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     final savedPin = prefs.getString('registrovani_putnik_pin');
 
     if (savedPhone != null && savedPhone.isNotEmpty && savedPin != null && savedPin.isNotEmpty) {
+      // Ako je obavezno ažuriranje aktivno — ne raditi auto-login
+      if (updateInfoNotifier.value?.isForced == true) return;
       // Automatski probaj login
       _telefonController.text = savedPhone;
       _pinController.text = savedPin;

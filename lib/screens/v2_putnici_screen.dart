@@ -100,7 +100,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         final putnikId = row['putnik_id'] as String?;
         if (putnikId == null || !placanja.containsKey(putnikId)) continue;
         final tip = row['tip'] as String?;
-        if (!['uplata', 'uplata_mesecna', 'uplata_dnevna'].contains(tip)) continue;
+        if (tip != 'uplata') continue;
         final mesec = row['placeni_mesec'];
         final godina = row['placena_godina'];
         if (mesec != null && godina != null) {
@@ -260,7 +260,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           right: 0,
                           top: 0,
                           child:
-                              _buildBadge(_brojRadnika, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
+                              _buildBadge(_brojRadnika, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
                     ]),
                     // Učenici
                     Stack(children: [
@@ -292,7 +292,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           right: 0,
                           top: 0,
                           child:
-                              _buildBadge(_brojDnevnih, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
+                              _buildBadge(_brojDnevnih, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
                     ]),
                     // Pošiljke
                     Stack(children: [
@@ -633,10 +633,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           },
                           size: 14,
                           color: switch (v2Putnik.v2Tabela) {
-                            'v2_radnici' => Colors.blue.shade600,
-                            'v2_ucenici' => Colors.green.shade600,
-                            'v2_dnevni' => Colors.orange.shade600,
-                            'v2_posiljke' => Colors.deepOrange.shade600,
+                            'v2_radnici' => const Color(0xFF3B7DD8),
+                            'v2_ucenici' => const Color(0xFF44A08D),
+                            'v2_dnevni' => const Color(0xFFFF6B6B),
+                            'v2_posiljke' => const Color(0xFFE65C00),
                             _ => Colors.grey.shade600,
                           },
                         ),
@@ -651,10 +651,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           },
                           style: TextStyle(
                             color: switch (v2Putnik.v2Tabela) {
-                              'v2_radnici' => Colors.blue.shade700,
-                              'v2_ucenici' => Colors.green.shade700,
-                              'v2_dnevni' => Colors.orange.shade700,
-                              'v2_posiljke' => Colors.deepOrange.shade700,
+                              'v2_radnici' => const Color(0xFF3B7DD8),
+                              'v2_ucenici' => const Color(0xFF44A08D),
+                              'v2_dnevni' => const Color(0xFFFF6B6B),
+                              'v2_posiljke' => const Color(0xFFE65C00),
                               _ => Colors.grey.shade700,
                             },
                             fontWeight: FontWeight.w600,

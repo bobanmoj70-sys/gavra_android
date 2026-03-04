@@ -907,9 +907,9 @@ class _AdminScreenState extends State<V2AdminScreen> {
             final todayKratica = _getShortDayName(_dayNamesInternal[DateTime.now().weekday - 1]).toLowerCase();
             final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == todayKratica).toList();
 
-            // Dužnici — pokupljeni, neplaćeni, nisu mesečni, nisu otkazani
+            // Dužnici — pokupljeni, neplaćeni, samo dnevni i posiljke (ne radnici/ucenici)
             final filteredDuznici = filteredPutnici.where((p) {
-              if (p.isMesecniTip) return false;
+              if (p.isRadnik || p.isUcenik) return false;
               return p.placeno != true && p.status != 'otkazan' && p.status != 'Otkazano' && p.jePokupljen;
             }).toList();
 

@@ -57,7 +57,7 @@ class V2StatistikaIstorijaService {
     String? vozacImeParam, // direktan fallback ako UUID lookup ne uspe
     int? placeniMesec,
     int? placenaGodina,
-    String tipUplate = 'uplata_dnevna',
+    String tipUplate = 'uplata',
     String? tipPlacanja,
     String? status,
     String? grad,
@@ -216,7 +216,7 @@ class V2StatistikaIstorijaService {
     double ukupno = 0;
     for (final row in rows) {
       final tip = row['tip'] as String?;
-      if (tip != 'uplata' && tip != 'uplata_dnevna' && tip != 'uplata_mesecna' && tip != 'placanje') continue;
+      if (tip != 'uplata' && tip != 'placanje') continue; // backward compat
       final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
       if (iznos <= 0) continue;
       String vozacIme = (row['vozac_ime'] as String?) ?? '';
@@ -293,7 +293,7 @@ class V2StatistikaIstorijaService {
           .from('v2_statistika_istorija')
           .select('putnik_id, iznos, placeni_mesec, placena_godina')
           .inFilter('putnik_id', putnikIds)
-          .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna'])
+          .inFilter('tip', ['uplata'])
           .not('placeni_mesec', 'is', null)
           .not('placena_godina', 'is', null)
           .gte('datum', '$thisYear-01-01')

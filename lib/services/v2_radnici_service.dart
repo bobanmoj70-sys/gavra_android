@@ -13,27 +13,21 @@ class V2RadniciService {
   // CITANJE — iz RM cache-a (sync, 0 DB upita)
   // ---------------------------------------------------------------------------
 
-  static List<V2RegistrovaniPutnik> getAktivne() =>
-      V2ProfilService.getAktivne(_tabela);
+  static List<V2RegistrovaniPutnik> getAktivne() => V2ProfilService.getAktivne(_tabela);
 
-  static List<V2RegistrovaniPutnik> getSve() =>
-      V2ProfilService.getSve(_tabela);
+  static List<V2RegistrovaniPutnik> getSve() => V2ProfilService.getSve(_tabela);
 
-  static V2RegistrovaniPutnik? getById(String id) =>
-      V2ProfilService.getById(id, _tabela);
+  static V2RegistrovaniPutnik? getById(String id) => V2ProfilService.getById(id, _tabela);
 
-  static String? getImeById(String id) =>
-      V2ProfilService.getImeById(id, _tabela);
+  static String? getImeById(String id) => V2ProfilService.getImeById(id, _tabela);
 
-  static V2RegistrovaniPutnik? getByPin(String pin) =>
-      V2ProfilService.getByPin(pin, _tabela);
+  static V2RegistrovaniPutnik? getByPin(String pin) => V2ProfilService.getByPin(pin, _tabela);
 
   // ---------------------------------------------------------------------------
   // STREAM
   // ---------------------------------------------------------------------------
 
-  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() =>
-      V2ProfilService.streamAktivne(_tabela);
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => V2ProfilService.streamAktivne(_tabela);
 
   // ---------------------------------------------------------------------------
   // CREATE
@@ -68,14 +62,11 @@ class V2RadniciService {
   // UPDATE / DELETE
   // ---------------------------------------------------------------------------
 
-  static Future<bool> update(String id, Map<String, dynamic> updates) =>
-      V2ProfilService.update(id, _tabela, updates);
+  static Future<bool> update(String id, Map<String, dynamic> updates) => V2ProfilService.update(id, _tabela, updates);
 
-  static Future<bool> setStatus(String id, String status) =>
-      V2ProfilService.setStatus(id, _tabela, status);
+  static Future<bool> setStatus(String id, String status) => V2ProfilService.setStatus(id, _tabela, status);
 
-  static Future<bool> delete(String id) =>
-      V2ProfilService.delete(id, _tabela);
+  static Future<bool> delete(String id) => V2ProfilService.delete(id, _tabela);
 
   // ---------------------------------------------------------------------------
   // KONVERZIJA — V2RegistrovaniPutnik → V2Radnik (typed model)
@@ -89,6 +80,5 @@ class V2RadniciService {
   }
 
   /// Vraca sve aktivne radnike kao typed modele
-  static List<V2Radnik> getAktivneKaoModele() =>
-      getAktivne().map((r) => V2Radnik.fromJson(r.toMap())).toList();
+  static List<V2Radnik> getAktivneKaoModele() => getAktivne().map((r) => V2Radnik.fromJson(r.toMap())).toList();
 }

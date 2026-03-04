@@ -46,6 +46,13 @@ class V2PutnikHelpers {
 
   /// Vraća radni ISO datum (yyyy-MM-dd)
   static String getWorkingDateIso() {
-    return DateTime.now().toIso8601String().split('T')[0];
+    final now = DateTime.now();
+    // Vikend (sub=6, ned=7) → naredni ponedeljak
+    if (now.weekday == DateTime.saturday) {
+      return now.add(const Duration(days: 2)).toIso8601String().split('T')[0];
+    } else if (now.weekday == DateTime.sunday) {
+      return now.add(const Duration(days: 1)).toIso8601String().split('T')[0];
+    }
+    return now.toIso8601String().split('T')[0];
   }
 }

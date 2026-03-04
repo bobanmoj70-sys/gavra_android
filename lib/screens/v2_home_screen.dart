@@ -140,7 +140,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _selectedDay = _getTodayName();
+    final today = DateTime.now().weekday;
+    // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
+    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'Ponedeljak' : _getTodayName();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
     _initializeData();
   }
@@ -1611,10 +1613,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         });
 
                                         // ?? KORISTI SELEKTOVANO VREME SA HOME SCREEN-A
-                                        // ? SADA: Mesecna karta = true za SVE tipove (radnik, ucenik, dnevni)
-                                        // Svi tipovi koriste istu logiku i registrovani_putnici tabelu
-                                        const isMesecnaKarta = true;
-
                                         // ?? Koristi "samo danas" adresu ako je postavljena, inace stalnu
                                         final adresaZaKoristiti = promeniAdresuSamoDanas && samoDanasAdresa != null
                                             ? samoDanasAdresa
@@ -1629,7 +1627,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           polazak: _selectedVreme,
                                           grad: _selectedGrad,
                                           dan: _getDayAbbreviation(_selectedDay),
-                                          mesecnaKarta: isMesecnaKarta,
                                           vremeDodavanja: DateTime.now(),
                                           dodeljenVozac: _currentDriver!, // Safe non-null assertion nakon validacije
                                           adresa: adresaZaKoristiti,

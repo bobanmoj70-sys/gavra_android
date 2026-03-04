@@ -70,6 +70,7 @@ class V2PolasciService {
         await _supabase.from('v2_polasci').update({
           'status': status,
           'broj_mesta': brojMesta,
+          if (isAdmin) 'zeljeno_vreme': normVreme,
           'dodeljeno_vreme': isAdmin ? normVreme : null,
           'processed_at': null,
           'alternativno_vreme_1': null,
@@ -327,6 +328,7 @@ class V2PolasciService {
     String? grad,
     String? selectedVreme,
     String? selectedDan,
+    String? tipPutnika,
   }) async {
     if (putnikId == null) return;
     await _svc.v2OznaciPlaceno(
@@ -336,6 +338,7 @@ class V2PolasciService {
       grad: grad,
       selectedVreme: selectedVreme,
       selectedDan: selectedDan,
+      tipPutnika: tipPutnika,
     );
   }
 
@@ -923,6 +926,7 @@ class V2PutnikStreamService {
     String? selectedVreme,
     String? selectedDan,
     String? requestId,
+    String? tipPutnika,
   }) async {
     final dateStr = DateTime.now().toIso8601String().split('T')[0];
 
@@ -940,8 +944,8 @@ class V2PutnikStreamService {
         'placen_iznos': iznos.toDouble(),
         if (vozacId != null) 'placen_vozac_id': vozacId,
         if (driver != null) 'placen_vozac_ime': driver,
-        'datum_akcije': dateStr,
-        'placen_tip': 'dnevna',
+        'datum_akcije': nowToString(),
+        'placen_tip': tipPutnika ?? 'dnevni',
         'updated_at': nowToString(),
       }).eq('id', requestId);
     } else if (selectedDan != null && selectedVreme != null && grad != null) {
@@ -964,8 +968,8 @@ class V2PutnikStreamService {
             'placen_iznos': iznos.toDouble(),
             if (vozacId != null) 'placen_vozac_id': vozacId,
             if (driver != null) 'placen_vozac_ime': driver,
-            'datum_akcije': dateStr,
-            'placen_tip': 'dnevna',
+            'datum_akcije': nowToString(),
+            'placen_tip': tipPutnika ?? 'dnevni',
             'updated_at': nowToString(),
           })
           .eq('putnik_id', id.toString())
@@ -1039,7 +1043,7 @@ class V2PutnikStatistikaService {
           .from('v2_statistika_istorija')
           .select('iznos,datum,created_at,vozac_ime,placeni_mesec,placena_godina,tip')
           .eq('putnik_id', putnikId)
-          .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna']).order('datum', ascending: false);
+          .inFilter('tip', ['uplata']).order('datum', ascending: false);
       return rows
           .map<Map<String, dynamic>>((row) => {
                 'iznos': row['iznos'],
@@ -1064,7 +1068,7 @@ class V2PutnikStatistikaService {
           .from('v2_statistika_istorija')
           .select('iznos')
           .eq('putnik_id', putnikId)
-          .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna']);
+          .inFilter('tip', ['uplata']);
       double ukupno = 0.0;
       for (final row in rows) {
         ukupno += (row['iznos'] as num?)?.toDouble() ?? 0.0;
@@ -1104,7 +1108,7 @@ class V2PutnikStatistikaService {
         vozacImeParam: vozacIme,
         placeniMesec: placeniMesec ?? datum.month,
         placenaGodina: placenaGodina ?? datum.year,
-        tipUplate: 'uplata_mesecna',
+        tipUplate: 'uplata',
       );
 
       // Operativna — pazar tekuceg dana
@@ -1117,7 +1121,13 @@ class V2PutnikStatistikaService {
           if (vozacId != null) 'placen_vozac_id': vozacId,
           if (vozacIme.isNotEmpty) 'placen_vozac_ime': vozacIme,
           'datum_akcije': datumStr,
-          'placen_tip': 'mesecna',
+          'placen_tip': const {
+                'v2_radnici': 'radnik',
+                'v2_ucenici': 'ucenik',
+                'v2_dnevni': 'dnevni',
+                'v2_posiljke': 'posiljka',
+              }[putnikTabela] ??
+              'radnik',
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', srRow['id'].toString());
       }

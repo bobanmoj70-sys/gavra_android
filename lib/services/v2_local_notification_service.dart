@@ -508,8 +508,7 @@ class V2LocalNotificationService {
       // Traži putnika po imenu iz cache-a — 0 DB querija
       String? putnikId;
       final rm = V2MasterRealtimeManager.instance;
-      final cached = rm.getAllPutnici().where((p) =>
-          p['ime'] == putnikIme && p['status'] != 'neaktivan').firstOrNull;
+      final cached = rm.getAllPutnici().where((p) => p['ime'] == putnikIme && p['status'] != 'neaktivan').firstOrNull;
       putnikId = cached?['id'] as String?;
       if (putnikId == null) return null;
 

@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart'; // ??? Za GPS poziciju
-import 'package:supabase_flutter/supabase_flutter.dart'; // Za PostgresChangePayload
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
@@ -1225,8 +1224,8 @@ class _VozacScreenState extends State<V2VozacScreen> {
   // ?? Stats row
   Widget _buildStatsRow(List<V2Putnik> sviPutnici, List<V2Putnik> mojiPutnici) {
     final filteredDuzniciRaw = sviPutnici.where((v2Putnik) {
-      final nijeMesecni = !v2Putnik.isMesecniTip;
-      if (!nijeMesecni) return false;
+      // Duznici su samo dnevni i posiljke (radnici i ucenici ne duguju po voznji)
+      if (v2Putnik.isRadnik || v2Putnik.isUcenik) return false;
       final nijePlatio = v2Putnik.placeno != true; // placeno flag iz v2_polasci srRow
       final nijeOtkazan = !v2Putnik.jeOtkazan && !v2Putnik.jeBezPolaska;
       final pokupljen = v2Putnik.jePokupljen;

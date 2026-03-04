@@ -91,7 +91,7 @@ class V2NotificationNavigationService {
     try {
       final putnikIme = putnikData['ime'] ?? '';
       final putnikDan = putnikData['dan'] ?? '';
-      final mesecnaKarta = putnikData['mesecnaKarta'] ?? false;
+      final tipPutnika = putnikData['tipPutnika'] as String?;
 
       await showDialog<void>(
         context: context,
@@ -142,10 +142,10 @@ class V2NotificationNavigationService {
                     '🏘️ Destinacija: ${putnikData['grad']}',
                     style: const TextStyle(fontSize: 14),
                   ),
-                if (mesecnaKarta == true)
-                  const Text(
-                    '💳 Mesečna karta',
-                    style: TextStyle(
+                if (tipPutnika != null && tipPutnika.isNotEmpty)
+                  Text(
+                    '🏷️ Tip: ${tipPutnika[0].toUpperCase()}${tipPutnika.substring(1)}',
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Colors.blue,
@@ -166,12 +166,7 @@ class V2NotificationNavigationService {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  _navigateToAppropriateScreen(
-                    context,
-                    type,
-                    putnikData,
-                    mesecnaKarta,
-                  );
+                  _navigateToAppropriateScreen(context);
                 },
                 child: const Text('Otvori'),
               ),
@@ -186,12 +181,7 @@ class V2NotificationNavigationService {
     }
   }
 
-  static void _navigateToAppropriateScreen(
-    BuildContext context,
-    String type,
-    Map<String, dynamic> putnikData,
-    bool mesecnaKarta,
-  ) {
+  static void _navigateToAppropriateScreen(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => const V2HomeScreen(),

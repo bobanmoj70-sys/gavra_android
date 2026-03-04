@@ -58,7 +58,7 @@ class V2PrintingService {
       List<V2Putnik> putnici = sviPutnici.where((v2Putnik) {
         final normalizedStatus = V2TextUtils.normalizeText(v2Putnik.status ?? '');
 
-        if (v2Putnik.mesecnaKarta == true) {
+        if (v2Putnik.isRadnik || v2Putnik.isUcenik) {
           final normalizedPutnikGrad = V2TextUtils.normalizeText(v2Putnik.grad);
           final normalizedGrad = V2TextUtils.normalizeText(selectedGrad);
           final odgovarajuciGrad =
@@ -66,10 +66,10 @@ class V2PrintingService {
 
           final putnikPolazak = v2Putnik.polazak.toString().trim();
           final selectedVremeStr = selectedVreme.trim();
-          final odgovarajuciPolazak =
-              V2GradAdresaValidator.normalizeTime(putnikPolazak) == V2GradAdresaValidator.normalizeTime(selectedVremeStr) ||
-                  V2GradAdresaValidator.normalizeTime(putnikPolazak)
-                      .startsWith(V2GradAdresaValidator.normalizeTime(selectedVremeStr));
+          final odgovarajuciPolazak = V2GradAdresaValidator.normalizeTime(putnikPolazak) ==
+                  V2GradAdresaValidator.normalizeTime(selectedVremeStr) ||
+              V2GradAdresaValidator.normalizeTime(putnikPolazak)
+                  .startsWith(V2GradAdresaValidator.normalizeTime(selectedVremeStr));
 
           final odgovarajuciDan = v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase());
 
@@ -83,7 +83,8 @@ class V2PrintingService {
               normalizedPutnikGrad.contains(normalizedGrad) || normalizedGrad.contains(normalizedPutnikGrad);
 
           final odgovara = gradMatch &&
-              V2GradAdresaValidator.normalizeTime(v2Putnik.polazak) == V2GradAdresaValidator.normalizeTime(selectedVreme) &&
+              V2GradAdresaValidator.normalizeTime(v2Putnik.polazak) ==
+                  V2GradAdresaValidator.normalizeTime(selectedVreme) &&
               v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase()) &&
               normalizedStatus != 'obrisan';
 

@@ -9,9 +9,9 @@ import '../helpers/v2_putnik_statistike_helper.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
+import '../services/v2_auth_manager.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
-import '../services/v2_auth_manager.dart';
 import '../services/v2_push_token_service.dart'; // Push token čišćenje pri odjavi
 import '../services/v2_putnik_push_service.dart'; // Push notifikacije za putnike
 import '../services/v2_statistika_istorija_service.dart';
@@ -342,8 +342,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         ukupnoZaplacanje = daniSet.length * cenaPoVoznji;
       }
 
-      final uplateGodina =
-          sveZapisiGodina.where((r) => const ['uplata', 'uplata_mesecna', 'uplata_dnevna'].contains(r['tip']));
+      final uplateGodina = sveZapisiGodina.where((r) => r['tip'] == 'uplata');
       double ukupnoUplaceno = 0;
       for (final u in uplateGodina) {
         ukupnoUplaceno += _toDouble(u['iznos']);
@@ -460,7 +459,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final Map<String, DateTime> poslednjeDatum = {};
       for (final p in sviZapisi) {
         final tip = p['tip'] as String?;
-        if (!const ['uplata', 'uplata_mesecna', 'uplata_dnevna'].contains(tip)) continue;
+        if (tip != 'uplata') continue;
         final datumStr = p['datum'] as String?;
         if (datumStr == null) continue;
         final datum = DateTime.tryParse(datumStr);

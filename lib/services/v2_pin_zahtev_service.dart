@@ -64,7 +64,25 @@ class V2PinZahtevService {
       _startRealtimeListener();
     }
 
-    return _zahteviController.stream;
+    // Emituj trenutne podatke odmah za novog subscribera, pa nastavi sa broadcast streamom
+    final StreamController<List<Map<String, dynamic>>> sc = StreamController<List<Map<String, dynamic>>>();
+    sc.add(_buildEnrichedList());
+    final sub = _zahteviController.stream.listen(
+      (data) {
+        if (!sc.isClosed) sc.add(data);
+      },
+      onError: (e) {
+        if (!sc.isClosed) sc.addError(e);
+      },
+      onDone: () {
+        sc.close();
+      },
+    );
+    sc.onCancel = () {
+      sub.cancel();
+      sc.close();
+    };
+    return sc.stream;
   }
 
   /// Pokreni realtime listener koristeći RealtimeManager
@@ -81,6 +99,13 @@ class V2PinZahtevService {
 
   /// Emituj zahteve koji čekaju iz pinCache — nema DB upita
   static void _fetchAndEmitZahtevi() {
+    if (!_zahteviController.isClosed) {
+      _zahteviController.add(_buildEnrichedList());
+    }
+  }
+
+  /// Izgradi enriched listu iz pinCache
+  static List<Map<String, dynamic>> _buildEnrichedList() {
     final rm = V2MasterRealtimeManager.instance;
     final zahtevi = rm.pinCache.values.where((z) => z['status'] == 'ceka').toList()
       ..sort((a, b) {
@@ -89,7 +114,7 @@ class V2PinZahtevService {
         return ca.compareTo(cb);
       });
 
-    final enriched = zahtevi.map((z) {
+    return zahtevi.map((z) {
       final putnikId = z['putnik_id'] as String?;
       final putnikData = putnikId != null ? rm.getPutnikById(putnikId) : null;
       return <String, dynamic>{
@@ -99,10 +124,6 @@ class V2PinZahtevService {
         'tip': _tabelaToTip(z['putnik_tabela'] as String? ?? ''),
       };
     }).toList();
-
-    if (!_zahteviController.isClosed) {
-      _zahteviController.add(enriched);
-    }
   }
 
   /// Cleanup subscription

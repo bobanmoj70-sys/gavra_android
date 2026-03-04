@@ -106,7 +106,7 @@ class V2FinansijeService {
       final uplateResp = await _supabase
           .from('v2_statistika_istorija')
           .select('putnik_id')
-          .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna'])
+          .inFilter('tip', ['uplata'])
           .filter('datum', 'gte', mesecOd)
           .filter('datum', 'lte', mesecDo);
 
@@ -274,9 +274,9 @@ class V2FinansijeService {
     }
   }
 
-  /// Sumira iznose uplata (tip IN uplata/uplata_dnevna/uplata_mesecna)
+  /// Sumira iznose uplata (tip = 'uplata')
   static double _sumirajPrihode(List<Map<String, dynamic>> rows) {
-    const prihodTipovi = {'uplata', 'uplata_dnevna', 'uplata_mesecna'};
+    const prihodTipovi = {'uplata'};
     return rows
         .where((r) => prihodTipovi.contains(r['tip'] as String?))
         .fold<double>(0, (s, r) => s + _toDouble(r['iznos']));

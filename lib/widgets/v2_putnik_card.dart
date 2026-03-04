@@ -108,20 +108,20 @@ class _PutnikCardState extends State<V2PutnikCard> {
       return;
     }
 
-    if (_putnik.mesecnaKarta == true) {
-      // MESECNI V2Putnik - CUSTOM CENA umesto fiksne
+    if (_putnik.isRadnik || _putnik.isUcenik) {
+      // RADNIK / UCENIK - CUSTOM CENA umesto fiksne
       await _handleRegistrovaniPayment();
     } else if (_putnik.isDnevniTip) {
-      // DNEVNI V2Putnik - obracun na osnovu cene iz baze
-      await _handleDnevniPayment();
+      // DNEVNI / POSILJKA - obracun na osnovu cene iz baze
+      await _handleDnevniPosiljkaPayment();
     } else {
-      // OBICNI V2Putnik - unos custom iznosa
+      // FALLBACK - unos custom iznosa
       await _handleObicniPayment();
     }
   }
 
   // PLACANJE DNEVNOG PUTNIKA - ukupna suma odjednom
-  Future<void> _handleDnevniPayment() async {
+  Future<void> _handleDnevniPosiljkaPayment() async {
     // Koristi centralizovanu logiku cena iz modela
     final double cenaPoMestu = _putnik.effectivePrice;
 
@@ -144,14 +144,14 @@ class _PutnikCardState extends State<V2PutnikCard> {
           title: Row(
             children: [
               Icon(
-                Icons.today,
+                _putnik.isPosiljka ? Icons.inventory_2 : Icons.today,
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Dnevna karta',
-                  style: TextStyle(
+                  'Naplata — ${_putnik.isPosiljka ? 'Pošiljka' : 'Dnevni'}',
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -356,7 +356,14 @@ class _PutnikCardState extends State<V2PutnikCard> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  jeFiksna ? 'Naplata (FIKSNO)' : 'Mesecna karta',
+                  jeFiksna
+                      ? 'Naplata (FIKSNO)'
+                      : 'Naplata — ${const {
+                            'v2_radnici': 'Radnik',
+                            'v2_ucenici': 'Ucenik',
+                            'v2_dnevni': 'Dnevni',
+                            'v2_posiljke': 'Posiljka'
+                          }[registrovaniPutnik.v2Tabela] ?? 'Putnik'}',
                   style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
               ],
@@ -817,6 +824,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
           grad: _putnik.grad,
           selectedVreme: _putnik.polazak,
           selectedDan: _putnik.dan,
+          tipPutnika: _putnik.tipPutnika,
         );
       }
 
@@ -1057,23 +1065,63 @@ class _PutnikCardState extends State<V2PutnikCard> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // MESECNA BADGE ž prikazuj samo za radnik i ucenik tipove
-                              if (_putnik.isMesecniTip)
+                              // TABELA BADGE - prikazuj tip putnika iz koje tabele dolazi
+                              // Boje uskladjene sa filterima na putnici ekranu
+                              if (_putnik.tipPutnika != null)
                                 Align(
                                   alignment: Alignment.topRight,
                                   child: Container(
                                     margin: const EdgeInsets.only(bottom: 6),
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.successPrimary.withOpacity(0.10),
+                                      color: () {
+                                        switch (_putnik.tipPutnika?.toLowerCase()) {
+                                          case 'radnik':
+                                            return const Color(0xFF3B7DD8).withOpacity(0.20);
+                                          case 'ucenik':
+                                            return const Color(0xFF4ECDC4).withOpacity(0.20);
+                                          case 'posiljka':
+                                            return const Color(0xFFFF8C00).withOpacity(0.20);
+                                          case 'dnevni':
+                                            return const Color(0xFFFF6B6B).withOpacity(0.20);
+                                          default:
+                                            return Theme.of(context).colorScheme.successPrimary.withOpacity(0.10);
+                                        }
+                                      }(),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      '💳 MESECNA',
+                                      () {
+                                        switch (_putnik.tipPutnika?.toLowerCase()) {
+                                          case 'radnik':
+                                            return '👷 RADNIK';
+                                          case 'ucenik':
+                                            return '🎒 UCENIK';
+                                          case 'posiljka':
+                                            return '📦 POSILJKA';
+                                          case 'dnevni':
+                                            return '🎫 DNEVNI';
+                                          default:
+                                            return '🧍 PUTNIK';
+                                        }
+                                      }(),
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).colorScheme.successPrimary,
+                                        color: () {
+                                          switch (_putnik.tipPutnika?.toLowerCase()) {
+                                            case 'radnik':
+                                              return const Color(0xFF3B7DD8);
+                                            case 'ucenik':
+                                              return const Color(0xFF44A08D);
+                                            case 'posiljka':
+                                              return const Color(0xFFE65C00);
+                                            case 'dnevni':
+                                              return const Color(0xFFFF6B6B);
+                                            default:
+                                              return Theme.of(context).colorScheme.successPrimary;
+                                          }
+                                        }(),
                                         letterSpacing: 0.3,
                                       ),
                                     ),
@@ -1110,8 +1158,8 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
-                                      // GPS IKONA ZA NAVIGACIJU - ako postoji adresa (mesecni ili dnevni V2Putnik)
-                                      if ((_putnik.mesecnaKarta == true) ||
+                                      // GPS IKONA ZA NAVIGACIJU - ako postoji adresa (radnik/ucenik ili ima adresu)
+                                      if ((_putnik.isRadnik || _putnik.isUcenik) ||
                                           (_putnik.adresa != null && _putnik.adresa!.isNotEmpty)) ...[
                                         GestureDetector(
                                           onTap: () {
@@ -1321,7 +1369,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                       ],
                                       // IKONA ZA PLACANJE - za sve korisnike (3. po redu)
                                       if (!_putnik.jeOtkazan &&
-                                          (_putnik.mesecnaKarta == true ||
+                                          ((_putnik.isRadnik || _putnik.isUcenik) ||
                                               (_putnik.iznosPlacanja == null || _putnik.iznosPlacanja == 0))) ...[
                                         GestureDetector(
                                           onTap: () => _handlePayment(),
@@ -1364,7 +1412,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                       // IKS DUGME - za sve korisnike (4. po redu)
                                       // Vozaci: direktno otkazivanje | Admini: popup sa opcijama
                                       if (!_putnik.jeOtkazan &&
-                                          (_putnik.mesecnaKarta == true ||
+                                          ((_putnik.isRadnik || _putnik.isUcenik) ||
                                               _putnik.isDnevniTip ||
                                               (_putnik.vremePokupljenja == null &&
                                                   (_putnik.iznosPlacanja == null || _putnik.iznosPlacanja == 0))))
