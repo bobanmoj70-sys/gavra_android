@@ -832,7 +832,8 @@ class _VozacScreenState extends State<V2VozacScreen> {
           final targetDan = _isoDateToDayAbbr(_getWorkingDateIso()); // jednom, dijeli se svuda
           final currentVozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
           // Pamtimo svježe putnike za _reoptimizeAfterStatusChange
-          if (snapshot.hasData) _latestPutnici = sviPutnici;          final mojiPutnici = _currentDriver == null
+          if (snapshot.hasData) _latestPutnici = sviPutnici;
+          final mojiPutnici = _currentDriver == null
               ? sviPutnici
               : V2VozacPutnikService.filterKombinovan<V2Putnik>(
                   sviPutnici: sviPutnici,

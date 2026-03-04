@@ -86,10 +86,8 @@ class _AdminScreenState extends State<V2AdminScreen> {
     _streamPutnici = V2PolasciService.streamPutnici();
     _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: todayIso);
     _streamZahteviObradaShared = V2PolasciService.v2StreamZahteviObrada().asBroadcastStream();
-    _streamRadniciObrada =
-        _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
-    _streamUceniciObrada =
-        _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
+    _streamRadniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
+    _streamUceniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
 
     _loadCurrentDriver();
 
