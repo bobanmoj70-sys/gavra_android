@@ -145,6 +145,9 @@ class V2MasterRealtimeManager {
       'v2_vozaci', 'v2_vozila', 'v2_adrese',
       'v2_finansije_troskovi', 'v2_pumpa_config', 'v2_app_settings',
       'v2_statistika_istorija',
+      // Raspored / putnik mapping / lokacije / kapacitet / pin
+      'v2_kapacitet_polazaka', 'v2_vozac_raspored', 'v2_vozac_putnik',
+      'v2_vozac_lokacije', 'v2_pin_zahtevi',
     ];
     for (final tabela in staticTabele) {
       _staticSubscriptions.add(subscribe(tabela).listen((_) {}));
@@ -797,6 +800,9 @@ class V2MasterRealtimeManager {
     controller.onCancel = () {
       for (final s in subs) {
         s.cancel();
+      }
+      for (final t in putnikTabele) {
+        unsubscribe(t);
       }
       cacheSub.cancel();
     };

@@ -435,6 +435,9 @@ class V2PutnikStreamService {
       for (final s in subs) {
         s.cancel();
       }
+      rm.unsubscribe('v2_polasci');
+      rm.unsubscribe('v2_vozac_raspored');
+      rm.unsubscribe('v2_vozac_putnik');
     };
 
     return controller.stream;
