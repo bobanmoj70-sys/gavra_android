@@ -1,9 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../models/v2_vozac.dart';
-import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -44,32 +41,15 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
 
   // Master realtime stream — inicijalizovan jednom u initState()
   late final Stream<List<V2Vozac>> _streamVozaci;
-  StreamController<List<V2Vozac>>? _vozaciCtrl;
-  StreamSubscription<String>? _cacheChangeSub;
 
   @override
   void initState() {
     super.initState();
-    final rm = V2MasterRealtimeManager.instance;
-    final ctrl = StreamController<List<V2Vozac>>.broadcast();
-
-    void emit() {
-      if (ctrl.isClosed) return;
-      final vozaci = rm.vozaciCache.values.map((row) => V2Vozac.fromMap(row)).toList()
-        ..sort((a, b) => a.ime.compareTo(b.ime));
-      ctrl.add(vozaci);
-    }
-
-    Future.microtask(emit);
-    _cacheChangeSub = rm.onCacheChanged.where((t) => t == 'v2_vozaci').listen((_) => emit());
-    _vozaciCtrl = ctrl;
-    _streamVozaci = ctrl.stream;
+    _streamVozaci = _vozacService.streamAllVozaci();
   }
 
   @override
   void dispose() {
-    _cacheChangeSub?.cancel();
-    _vozaciCtrl?.close();
     _imeController.dispose();
     _emailController.dispose();
     _sifraController.dispose();
