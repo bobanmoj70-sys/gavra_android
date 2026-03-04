@@ -265,12 +265,9 @@ class V2StatistikaIstorijaService {
     }
 
     Future.microtask(emit);
-    // Osvježi polasciCache odmah (dohvati svježe podatke iz DB-a, uklj. placen kolone)
-    Future.microtask(() async {
-      await rm.refreshPolasciCache();
-      emit();
-    });
-    final sub = rm.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) => emit());
+    // Prati i polasci (pokupljen/plaćen flag) i statistika (nova uplata)
+    final sub =
+        rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_statistika_istorija').listen((_) => emit());
     controller.onCancel = () {
       sub.cancel();
       controller.close();

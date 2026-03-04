@@ -57,12 +57,29 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   Set<String> _lastPutnikIds = {};
   Timer? _paymentUpdateDebounceTimer; // ⏱ DEBOUNCE TIMER za payment updates
 
+  StreamSubscription<String>? _statistikaCacheSub;
+
   @override
   void initState() {
     super.initState();
     _streamPutnici = _rm.streamAktivniPutnici();
     _searchController.addListener(() {
       if (mounted) setState(() {});
+    });
+    // Osvježi plaćanja kad se upiše nova uplata u statistikaCache
+    _statistikaCacheSub = _rm.onCacheChanged.where((t) => t == 'v2_statistika_istorija').listen((_) {
+      _paymentUpdateDebounceTimer?.cancel();
+      _paymentUpdateDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+        if (mounted && _lastPutnikIds.isNotEmpty) {
+          // Sync — 0 DB upita, čita direktno iz RM cache-a
+          final putnici = _rm
+              .getAllPutnici()
+              .map((r) => V2RegistrovaniPutnik.fromMap(r))
+              .where((p) => _lastPutnikIds.contains(p.id))
+              .toList();
+          if (putnici.isNotEmpty) _ucitajStvarnaPlacanja(putnici);
+        }
+      });
     });
   }
 
@@ -176,6 +193,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   @override
   void dispose() {
     _paymentUpdateDebounceTimer?.cancel();
+    _statistikaCacheSub?.cancel();
 
     // TEXTCONTROLLER CLEANUP
     try {

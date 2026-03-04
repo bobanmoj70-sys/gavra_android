@@ -179,9 +179,13 @@ class V2MasterRealtimeManager {
     debugPrint('🔄 [V2MasterRealtimeManager] Novi dan ($today) — osvežavam dnevne cache-ove...');
     _loadedDate = today;
     polasciCache.clear();
-    await _loadPolasciCache();
+    statistikaCache.clear();
+    await Future.wait([
+      _loadPolasciCache(),
+      loadStatistikaCache(),
+    ]);
     debugPrint(
-      '✅ [V2MasterRealtimeManager] Dnevni cache osvežen: polasci=${polasciCache.length}',
+      '✅ [V2MasterRealtimeManager] Dnevni cache osvežen: polasci=${polasciCache.length}, statistika=${statistikaCache.length}',
     );
   }
 
@@ -367,6 +371,13 @@ class V2MasterRealtimeManager {
     if (id == null) return;
     final target = _cacheForTable(table);
     if (target == null) return;
+
+    // statistikaCache je dnevni — prihvati samo zapise za _loadedDate
+    if (table == 'v2_statistika_istorija') {
+      final datum = record['datum']?.toString();
+      if (datum != null && datum != _loadedDate) return;
+    }
+
     // Sačuvaj postojeći _tabela tag — realtime payload ne sadrži _tabela
     final existingTabela = target[id]?['_tabela'] ?? table;
     target[id] = {...record, '_tabela': existingTabela};
