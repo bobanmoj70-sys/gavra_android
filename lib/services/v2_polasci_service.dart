@@ -1162,15 +1162,11 @@ class V2PutnikStatistikaService {
       }
       final datumStr = datum.toIso8601String().split('T')[0];
 
-      // Operativna — pazar tekuceg dana (PRVO v2_polasci)
+      // Operativna — pazar tekuceg dana (opcionalno - samo ako postoji polazak danas)
       final rm = V2MasterRealtimeManager.instance;
       final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
-      if (srRow == null) {
-        debugPrint('[upisPlacanjaULog] Nema srRow u cache-u za putnikId=$putnikId — uplata se ne upisuje');
-        return false;
-      }
-
-      await _db.from('v2_polasci').update({
+      if (srRow != null) {
+        await _db.from('v2_polasci').update({
         'placen': true,
         'placen_iznos': iznos,
         if (vozacId != null) 'placen_vozac_id': vozacId,
@@ -1183,10 +1179,11 @@ class V2PutnikStatistikaService {
               'v2_posiljke': 'posiljka',
             }[putnikTabela] ??
             'radnik',
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', srRow['id'].toString());
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', srRow['id'].toString());
+      }
 
-      // Arhiva — SAMO nakon uspješnog v2_polasci update-a
+      // Arhiva — uvijek se upisuje (i retroaktivna plaćanja bez polaska danas)
       await V2StatistikaIstorijaService.dodajUplatu(
         putnikId: putnikId,
         datum: datum,

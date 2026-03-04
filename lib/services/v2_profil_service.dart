@@ -405,13 +405,10 @@ class V2ProfilService {
       if (vozacIme != null) {
         vozacId = _rm.vozaciCache.values.where((v) => v['ime']?.toString() == vozacIme).firstOrNull?['id']?.toString();
       }
-      // Upisi u v2_polasci (operativna — PRVO)
+      // Upisi u v2_polasci (operativna — opcionalno, samo ako postoji polazak danas)
       final srRow = _rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
-      if (srRow == null) {
-        debugPrint('[V2ProfilService] upisPlacanjaULog: nema srRow za putnikId=$putnikId — uplata se ne upisuje');
-        return false;
-      }
-      await _supabase.from('v2_polasci').update({
+      if (srRow != null) {
+        await _supabase.from('v2_polasci').update({
         'placen': true,
         'placen_iznos': iznos,
         if (vozacId != null) 'placen_vozac_id': vozacId,
@@ -424,10 +421,11 @@ class V2ProfilService {
               'v2_posiljke': 'posiljka',
             }[putnikTabela] ??
             'radnik',
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', srRow['id'].toString());
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', srRow['id'].toString());
+      }
 
-      // Upisi u v2_statistika_istorija (arhiva — SAMO nakon uspješnog v2_polasci update-a)
+      // Upisi u v2_statistika_istorija (arhiva — uvijek, i retroaktivna plaćanja)
       await _supabase.from('v2_statistika_istorija').insert({
         'putnik_id': putnikId,
         'putnik_ime': putnikIme,
