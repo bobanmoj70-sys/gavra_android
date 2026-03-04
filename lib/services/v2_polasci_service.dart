@@ -238,7 +238,6 @@ class V2PolasciService {
     // Emituj odmah (cache je već popunjen pri initialize())
     Future.microtask(emit);
 
-    // v2_polasci je statička tabela — onCacheChanged je dovoljan, subscribe višak
     final cacheSub = rm.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) => emit());
     controller.onCancel = () {
       cacheSub.cancel();

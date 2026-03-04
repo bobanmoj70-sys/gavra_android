@@ -690,7 +690,6 @@ class V2MasterRealtimeManager {
     data.remove('tip');
     final row = await _db.from(tabela).update(data).eq('id', id).select().single();
     final result = {...row, '_tabela': tabela};
-    // Realtime je isključen na putnik tabelama — ručno ažuriraj cache
     upsertToCache(tabela, result);
     return result;
   }
@@ -709,7 +708,6 @@ class V2MasterRealtimeManager {
     if (d['id'] == null) d.remove('id');
     final row = await _db.from(tabela).insert(d).select().single();
     final result = {...row, '_tabela': tabela};
-    // Realtime je isključen na putnik tabelama — ručno dodaj u cache
     upsertToCache(tabela, result);
     return result;
   }
@@ -721,7 +719,6 @@ class V2MasterRealtimeManager {
       await _db.from('v2_polasci').delete().eq('putnik_id', id);
       await _db.from('v2_vozac_putnik').delete().eq('putnik_id', id);
       await _db.from(tabela).delete().eq('id', id);
-      // Realtime je isključen na putnik tabelama — ručno ukloni iz cache-a
       removeFromCache(tabela, id);
       return true;
     } catch (e) {
@@ -851,7 +848,6 @@ class V2MasterRealtimeManager {
 
     Future.microtask(emit);
 
-    // putnikTabele su statičke — kanali su uvijek otvoreni, onCacheChanged je dovoljan
     final cacheSub = _onCacheChanged.where((t) => putnikTabele.contains(t)).listen((_) => emit());
     controller.onCancel = () {
       cacheSub.cancel();
