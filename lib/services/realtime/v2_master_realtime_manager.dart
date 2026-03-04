@@ -215,7 +215,8 @@ class V2MasterRealtimeManager {
           .from('v2_statistika_istorija')
           .select(
             'id, putnik_id, putnik_ime, putnik_tabela, datum, dan, '
-            'grad, vreme, tip, iznos, vozac_id, vozac_ime, detalji, created_at',
+            'grad, vreme, tip, iznos, vozac_id, vozac_ime, detalji, created_at, '
+            'placeni_mesec, placena_godina',
           )
           .eq('datum', _loadedDate!);
       for (final row in rows) {
@@ -299,9 +300,9 @@ class V2MasterRealtimeManager {
             'plocice_datum, plocice_km, plocice_prednje_datum, plocice_prednje_km, '
             'plocice_zadnje_datum, plocice_zadnje_km, trap_datum, trap_km, radio'),
         _db.from('v2_kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
-        _db.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng'),
-        _db.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id'),
-        _db.from('v2_vozac_putnik').select('id, putnik_id, vozac_id, dan, grad, vreme'),
+        _db.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at'),
+        _db.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id, created_at, updated_at'),
+        _db.from('v2_vozac_putnik').select('id, putnik_id, putnik_tabela, vozac_id, dan, grad, vreme, created_at, updated_at'),
         _db
             .from('v2_finansije_troskovi')
             .select('id, naziv, iznos, tip, aktivan, mesecno, vozac_id, mesec, godina, created_at')
@@ -313,7 +314,7 @@ class V2MasterRealtimeManager {
             .eq('aktivan', true),
         _db
             .from('v2_pin_zahtevi')
-            .select('id, putnik_id, putnik_tabela, email, telefon, status, created_at')
+            .select('id, putnik_id, putnik_tabela, email, telefon, status, created_at, updated_at')
             .eq('status', 'ceka'),
         _db.from('v2_app_settings').select(
             'id, min_version, latest_version, store_url_android, store_url_huawei, store_url_ios, nav_bar_type, updated_at'),
