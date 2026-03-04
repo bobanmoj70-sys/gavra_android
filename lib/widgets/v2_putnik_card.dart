@@ -1788,8 +1788,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
       final krajMeseca = DateTime(year, monthNumber + 1, 0, 23, 59, 59);
 
       // FIX: Prosleduj IME vozaca, ne UUID - konverzija se radi u servisu
-      // Ime vozaca se koristi za validaciju placanja u voznje_log
-
       // datum = danas (kad je uplata izvršena), placeniMesec/placenaGodina = izabrani mesec
       final uspeh = await V2StatistikaService.upisPlacanjaULog(
         putnikId: putnikId,

@@ -200,8 +200,8 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
         if (r['status'] != 'pokupljen') return false;
         if (r['dan']?.toString() != danasKratica) return false;
         if (gradNorm != null && r['grad']?.toString() != gradNorm) return false;
-        if (normVreme != null &&
-            V2GradAdresaValidator.normalizeTime(r['dodeljeno_vreme']?.toString()) != normVreme) return false;
+        if (normVreme != null && V2GradAdresaValidator.normalizeTime(r['dodeljeno_vreme']?.toString()) != normVreme)
+          return false;
         return true;
       }).fold<Map<String, dynamic>?>(
         null,

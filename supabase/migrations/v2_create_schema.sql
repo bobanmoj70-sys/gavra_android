@@ -165,26 +165,6 @@ CREATE TABLE public.v2_polasci (
 );
 
 -- ─────────────────────────────────────────────
--- v2_voznje_log  (samo INSERT, nikad UPDATE/DELETE)
--- ─────────────────────────────────────────────
-CREATE TABLE public.v2_voznje_log (
-  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  putnik_id      uuid,
-  putnik_ime     text,
-  putnik_tabela  text,
-  datum          date,
-  dan            text,
-  grad           text,
-  vreme          time,
-  tip            text,
-  iznos          numeric,
-  vozac_id       uuid REFERENCES public.v2_vozaci(id),
-  vozac_ime      text,
-  detalji        text,
-  created_at     timestamptz DEFAULT now()
-);
-
--- ─────────────────────────────────────────────
 -- v2_vozac_raspored
 -- ─────────────────────────────────────────────
 CREATE TABLE public.v2_vozac_raspored (
@@ -399,7 +379,7 @@ DECLARE
   t text;
   tables text[] := ARRAY[
     'v2_adrese','v2_vozaci','v2_vozila','v2_radnici','v2_ucenici','v2_dnevni','v2_posiljke',
-    'v2_polasci','v2_voznje_log','v2_vozac_raspored','v2_vozac_putnik','v2_kapacitet_polazaka',
+    'v2_polasci','v2_vozac_raspored','v2_vozac_putnik','v2_kapacitet_polazaka',
     'v2_push_tokens','v2_vozila_servis','v2_pumpa_punjenja','v2_pumpa_tocenja','v2_pumpa_config',
     'v2_finansije_troskovi','v2_app_settings','v2_pin_zahtevi','v2_vozac_lokacije',
     'v2_racun_sequence','v2_weather_alerts_log'

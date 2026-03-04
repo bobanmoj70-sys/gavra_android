@@ -12,7 +12,7 @@ import '../../utils/v2_vozac_cache.dart';
 /// V2MasterRealtimeManager — čist, novi singleton za v2_ tabele
 ///
 /// PRAVILA:
-/// 1. Samo v2_ tabele — nikad stare (registrovani_putnici, voznje_log, itd.)
+/// 1. Samo v2_ tabele — nikad stare (registrovani_putnici, itd.)
 /// 2. Cache ime = tačno ime tabele bez prefiksa: polasci, putnici, vozaci...
 /// 3. subscribe/unsubscribe ostaje isti pattern kao RealtimeManager
 /// 4. Inicijalizuje se JEDNOM iz main.dart — ne iz servisa
@@ -540,7 +540,11 @@ class V2MasterRealtimeManager {
         if (targetCache == null) return;
         // Primijeni iste filtere kao pri inicijalnom učitavanju
         final query = switch (table) {
-          'v2_radnici' || 'v2_ucenici' || 'v2_dnevni' || 'v2_posiljke' => _db.from(table).select().eq('status', 'aktivan'),
+          'v2_radnici' ||
+          'v2_ucenici' ||
+          'v2_dnevni' ||
+          'v2_posiljke' =>
+            _db.from(table).select().eq('status', 'aktivan'),
           'v2_kapacitet_polazaka' => _db.from(table).select().eq('aktivan', true),
           'v2_vozac_lokacije' => _db.from(table).select().eq('aktivan', true),
           'v2_finansije_troskovi' => _db.from(table).select().eq('aktivan', true),
