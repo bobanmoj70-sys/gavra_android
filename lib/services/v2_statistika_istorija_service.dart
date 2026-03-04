@@ -195,11 +195,13 @@ class V2StatistikaIstorijaService {
     final Map<String, double> pazar = {};
     double ukupno = 0;
     for (final row in rows) {
-      if (row['placen'] != true) continue;
+      // placen može biti bool true ili string 'true' (Supabase realtime vs REST)
+      final placen = row['placen'];
+      if (placen != true && placen.toString() != 'true') continue;
       final datumAkcije = row['datum_akcije']?.toString();
       // datum_akcije moze doci kao "2026-03-04" ili "2026-03-04T00:00:00.000Z" — uzmi samo datum
       if (datumAkcije == null || !datumAkcije.startsWith(today)) continue;
-      final iznos = (row['placen_iznos'] as num?)?.toDouble() ?? 0;
+      final iznos = (row['placen_iznos'] as num?)?.toDouble() ?? (double.tryParse(row['placen_iznos']?.toString() ?? '') ?? 0);
       if (iznos <= 0) continue;
       final vozacIme = row['placen_vozac_ime']?.toString() ?? 'Nepoznat';
       pazar[vozacIme] = (pazar[vozacIme] ?? 0) + iznos;
@@ -267,6 +269,11 @@ class V2StatistikaIstorijaService {
     }
 
     Future.microtask(emit);
+    // Osvježi polasciCache odmah (dohvati svježe podatke iz DB-a, uklj. placen kolone)
+    Future.microtask(() async {
+      await rm.refreshPolasciCache();
+      emit();
+    });
     final sub = rm.subscribe('v2_polasci').listen((_) => emit());
     controller.onCancel = () => sub.cancel();
     return controller.stream;
