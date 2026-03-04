@@ -891,17 +891,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     if (shouldLogout == true && mounted) {
       // ?? Prikaži loading spinner
       if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(ctx).colorScheme.primary,
-            ),
-          ),
-        ),
-      );
 
       // ?? IzVrsi logout
       try {
