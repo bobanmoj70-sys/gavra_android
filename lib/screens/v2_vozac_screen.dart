@@ -119,6 +119,9 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   // ?? LOCK ZA KONKURENTNE REOPTIMIZACIJE
 
+  Stream<List<V2Putnik>>? _streamPutnici; // Inicijalizuje se u _initializeCurrentDriver()
+  List<V2Putnik> _latestPutnici = []; // Poslednji podaci iz StreamBuilder-a — koristi _reoptimizeAfterStatusChange
+
   // ?? DINAMICKA VREMENA - prate navBarTypeNotifier (praznici/zimski/letnji)
   List<String> get _bcVremena {
     final navType = navBarTypeNotifier.value;
@@ -151,10 +154,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
   @override
   void initState() {
     super.initState();
-    // ? ODMAH inicijalizuj iz V2MasterRealtimeManager cache-a (vec ucitan pri startu app-a)
-    // Sprjecava race condition gdje _rasporedCache ostaje prazan ? filterKombinovan vraca sve putnike
-    _rasporedCache =
-        V2MasterRealtimeManager.instance.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
     _initAsync();
   }
 
@@ -178,6 +177,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   Future<void> _loadRaspored() async {
     final rm = V2MasterRealtimeManager.instance;
+    // Čita direktno iz RM in-memory cache — 0 DB querija
     final raspored = rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
     final vozacPutnik = rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
     if (mounted) {
@@ -230,6 +230,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
       if (mounted) {
         setState(() {
           _streamPazar ??= V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: _getWorkingDateIso());
+          _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
+            isoDate: _getWorkingDateIso(),
+            vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
+          );
         });
         _selectClosestDeparture();
       }
@@ -240,8 +244,11 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     if (mounted) {
       setState(() {
-        // Kreira stream tek nakon sto je _currentDriver poznat
         _streamPazar ??= V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: _getWorkingDateIso());
+        _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
+          isoDate: _getWorkingDateIso(),
+          vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
+        );
       });
       // ?? Nakon što je vozac inicijalizovan, izaberi najbliži polazak
       _selectClosestDeparture();
@@ -329,10 +336,9 @@ class _VozacScreenState extends State<V2VozacScreen> {
   Future<void> _reoptimizeAfterStatusChange() async {
     if (!_isRouteOptimized || _optimizedRoute.isEmpty) return;
 
-    // ?? BATCH DOHVATI SVEžE PODATKE IZ BAZE - efikasnije od pojedinacnih poziva
-    final ids = _optimizedRoute.where((p) => p.id != null).map((p) => p.id!).toList();
-    final targetDan = _isoDateToDayAbbr(_getWorkingDateIso());
-    final sveziPutnici = await _putnikService.getPutniciByIds(ids, targetDan: targetDan);
+    // Koristi podatke iz poslednjeg StreamBuilder snapshot-a (0 DB querija)
+    final ids = _optimizedRoute.where((p) => p.id != null).map((p) => p.id).toSet();
+    final sveziPutnici = _latestPutnici.where((p) => ids.contains(p.id)).toList();
 
     // Razdvoji pokupljene/otkazane od preostalih
     // Ekran je vec filtriran po vozacu - nema potrebe za dodeljenVozac filterom
@@ -699,9 +705,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
     try {
       final smer = _selectedGrad.toLowerCase().contains('bela') ? 'BC_VS' : 'VS_BC';
 
-      // Konvertuj koordinate: Map<V2Putnik, Position> -> Map<String, Position>
-      Map<String, Position>? coordsByName;
-
       // Izvuci redosled imena putnika
       final putniciRedosled = _optimizedRoute.map((p) => p.ime).toList();
 
@@ -712,7 +715,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
         vremePolaska: _selectedVreme,
         smer: smer,
         putniciEta: _putniciEta,
-        putniciCoordinates: coordsByName,
+        putniciCoordinates: null,
         putniciRedosled: putniciRedosled,
         onAllPassengersPickedUp: () {
           if (mounted) {
@@ -822,18 +825,14 @@ class _VozacScreenState extends State<V2VozacScreen> {
       ),
       child: StreamBuilder<List<V2Putnik>>(
         // ?? EGRESS OPT: JEDAN stream ž body i nav bar koriste iste podatke
-        stream: _currentDriver == null
-            ? const Stream.empty()
-            : _putnikService.streamKombinovaniPutniciFiltered(
-                isoDate: _getWorkingDateIso(),
-                vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
-              ),
+        stream: _streamPutnici,
         builder: (context, snapshot) {
           // -- Zajednicki podaci za body i nav bar --------------------------
           final sviPutnici = snapshot.data ?? <V2Putnik>[];
-          final targetDan = _isoDateToDayAbbr(_getWorkingDateIso());
+          final targetDan = _isoDateToDayAbbr(_getWorkingDateIso()); // jednom, dijeli se svuda
           final currentVozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
-          final mojiPutnici = _currentDriver == null
+          // Pamtimo svježe putnike za _reoptimizeAfterStatusChange
+          if (snapshot.hasData) _latestPutnici = sviPutnici;          final mojiPutnici = _currentDriver == null
               ? sviPutnici
               : V2VozacPutnikService.filterKombinovan<V2Putnik>(
                   sviPutnici: sviPutnici,
@@ -1176,14 +1175,28 @@ class _VozacScreenState extends State<V2VozacScreen> {
         border: Border.all(color: _getBorderColor(color)),
       ),
       child: Center(
-        child: Text(
-          label.isEmpty ? value : label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-          textAlign: TextAlign.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (label.isNotEmpty)
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: color.withValues(alpha: 0.8),
+                ),
+              ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: label.isEmpty ? 14 : 13,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
