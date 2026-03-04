@@ -125,6 +125,7 @@ class V2ProfilService {
     final sub = _rm.subscribe(tabela).listen((_) => emit());
     controller.onCancel = () {
       sub.cancel();
+      _rm.unsubscribe(tabela);
       controller.close();
     };
 

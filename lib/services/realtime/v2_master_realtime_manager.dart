@@ -112,6 +112,10 @@ class V2MasterRealtimeManager {
   bool _initialized = false;
   bool get isInitialized => _initialized;
 
+  /// Subscriptions za statičke tabele iz initialize() — drže _listenerCount >= 1
+  /// tako da vanjski unsubscribe() nikad ne može zatvoriti te kanale.
+  final List<StreamSubscription<PostgresChangePayload>> _staticSubscriptions = [];
+
   // ──────────────────────────────────────────────────────────────────────────
   // INICIJALIZACIJA — poziva se jednom iz main.dart
   // ──────────────────────────────────────────────────────────────────────────
@@ -143,7 +147,7 @@ class V2MasterRealtimeManager {
       'v2_statistika_istorija',
     ];
     for (final tabela in staticTabele) {
-      subscribe(tabela).listen((_) {});
+      _staticSubscriptions.add(subscribe(tabela).listen((_) {}));
     }
 
     debugPrint(
@@ -302,7 +306,9 @@ class V2MasterRealtimeManager {
         _db.from('v2_kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
         _db.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at'),
         _db.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id, created_at, updated_at'),
-        _db.from('v2_vozac_putnik').select('id, putnik_id, putnik_tabela, vozac_id, dan, grad, vreme, created_at, updated_at'),
+        _db
+            .from('v2_vozac_putnik')
+            .select('id, putnik_id, putnik_tabela, vozac_id, dan, grad, vreme, created_at, updated_at'),
         _db
             .from('v2_finansije_troskovi')
             .select('id, naziv, iznos, tip, aktivan, mesecno, vozac_id, mesec, godina, created_at')
@@ -812,6 +818,10 @@ class V2MasterRealtimeManager {
   // ──────────────────────────────────────────────────────────────────────────
 
   void dispose() {
+    for (final sub in _staticSubscriptions) {
+      sub.cancel();
+    }
+    _staticSubscriptions.clear();
     for (final t in _reconnectTimers.values) {
       t?.cancel();
     }

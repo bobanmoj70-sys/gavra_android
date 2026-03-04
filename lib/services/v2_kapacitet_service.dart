@@ -38,11 +38,13 @@ class V2KapacitetService {
 
   /// Sva moguca vremena (zimska + letnja + praznicna) - za kapacitet tabelu
   static List<String> get svaVremenaBc {
-    return {...V2RouteConfig.bcVremenaZimski, ...V2RouteConfig.bcVremenaLetnji, ...V2RouteConfig.bcVremenaPraznici}.toList();
+    return {...V2RouteConfig.bcVremenaZimski, ...V2RouteConfig.bcVremenaLetnji, ...V2RouteConfig.bcVremenaPraznici}
+        .toList();
   }
 
   static List<String> get svaVremenaVs {
-    return {...V2RouteConfig.vsVremenaZimski, ...V2RouteConfig.vsVremenaLetnji, ...V2RouteConfig.vsVremenaPraznici}.toList();
+    return {...V2RouteConfig.vsVremenaZimski, ...V2RouteConfig.vsVremenaLetnji, ...V2RouteConfig.vsVremenaPraznici}
+        .toList();
   }
 
   /// Dohvati vremena za grad (sezonski)
@@ -108,7 +110,8 @@ class V2KapacitetService {
     final sub = rm.subscribe('v2_kapacitet_polazaka').listen((_) => emit());
     controller.onCancel = () {
       sub.cancel();
-      rm.unsubscribe('v2_kapacitet_polazaka');
+      // Ne pozivamo rm.unsubscribe — v2_kapacitet_polazaka je statička tabela
+      // čiji kanal drži initialize() trajno otvoren.
     };
     return controller.stream;
   }

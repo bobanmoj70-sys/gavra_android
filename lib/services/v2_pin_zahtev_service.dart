@@ -108,7 +108,8 @@ class V2PinZahtevService {
   static void dispose() {
     _pinZahteviSubscription?.cancel();
     _pinZahteviSubscription = null;
-    V2MasterRealtimeManager.instance.unsubscribe('v2_pin_zahtevi');
+    // Ne pozivamo rm.unsubscribe — v2_pin_zahtevi je statička tabela
+    // čiji kanal drži initialize() trajno otvoren.
   }
 
   static int brojZahtevaKojiCekaju() {
