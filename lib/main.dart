@@ -162,8 +162,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // When app is resumed, try registering pending tokens (if any)
     if (state == AppLifecycleState.resumed) {
+      // Kada app izadje iz backgrounda, provjeri da li je novi dan i osvjezi cache
+      V2MasterRealtimeManager.instance.refreshForNewDay().catchError((Object e) {
+        debugPrint('[Main] refreshForNewDay failed: $e');
+      });
+
+      // When app is resumed, try registering pending tokens (if any)
       try {
         V2HuaweiPushService().tryRegisterPendingToken();
       } catch (e) {

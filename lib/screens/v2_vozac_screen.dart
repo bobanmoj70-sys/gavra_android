@@ -223,8 +223,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
     super.dispose();
   }
 
-
-
   Future<void> _initializeCurrentDriver() async {
     // ?? ADMIN PREVIEW MODE: Ako je prosleden previewAsDriver, koristi ga
     if (widget.previewAsDriver != null && widget.previewAsDriver!.isNotEmpty) {

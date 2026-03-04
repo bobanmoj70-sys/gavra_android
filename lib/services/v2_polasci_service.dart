@@ -459,9 +459,16 @@ class V2PutnikStreamService {
       await emit();
     });
 
-    // sve 3 tabele su statičke — onCacheChanged je dovoljan, subscribe višak
+    // Sve relevantne tabele — polasci + raspored + putnik tabele (status promjena)
     final cacheSub = rm.onCacheChanged
-        .where((t) => t == 'v2_polasci' || t == 'v2_vozac_raspored' || t == 'v2_vozac_putnik')
+        .where((t) =>
+            t == 'v2_polasci' ||
+            t == 'v2_vozac_raspored' ||
+            t == 'v2_vozac_putnik' ||
+            t == 'v2_dnevni' ||
+            t == 'v2_radnici' ||
+            t == 'v2_ucenici' ||
+            t == 'v2_posiljke')
         .listen((_) => emit());
 
     controller.onCancel = () {

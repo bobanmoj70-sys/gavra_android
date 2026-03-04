@@ -1127,12 +1127,12 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: _putnik.brojMesta > 1
-                                          ? Theme.of(context).colorScheme.primary.withOpacity(0.18)
+                                          ? textColor.withOpacity(0.18)
                                           : textColor.withOpacity(0.08),
                                       borderRadius: BorderRadius.circular(4),
                                       border: _putnik.brojMesta > 1
                                           ? Border.all(
-                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                                              color: textColor.withOpacity(0.45),
                                               width: 1,
                                             )
                                           : null,
@@ -1146,9 +1146,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: _putnik.brojMesta > 1
-                                            ? Theme.of(context).colorScheme.primary
-                                            : textColor.withOpacity(0.5),
+                                        color: _putnik.brojMesta > 1 ? textColor : textColor.withOpacity(0.45),
                                       ),
                                     ),
                                   ),

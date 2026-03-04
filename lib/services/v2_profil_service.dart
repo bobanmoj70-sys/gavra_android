@@ -405,7 +405,29 @@ class V2ProfilService {
       if (vozacIme != null) {
         vozacId = _rm.vozaciCache.values.where((v) => v['ime']?.toString() == vozacIme).firstOrNull?['id']?.toString();
       }
-      // Upisi u v2_statistika_istorija (arhiva)
+      // Upisi u v2_polasci (operativna — PRVO)
+      final srRow = _rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
+      if (srRow == null) {
+        debugPrint('[V2ProfilService] upisPlacanjaULog: nema srRow za putnikId=$putnikId — uplata se ne upisuje');
+        return false;
+      }
+      await _supabase.from('v2_polasci').update({
+        'placen': true,
+        'placen_iznos': iznos,
+        if (vozacId != null) 'placen_vozac_id': vozacId,
+        if (vozacIme != null) 'placen_vozac_ime': vozacIme,
+        'datum_akcije': datumStr,
+        'placen_tip': const {
+              'v2_radnici': 'radnik',
+              'v2_ucenici': 'ucenik',
+              'v2_dnevni': 'dnevni',
+              'v2_posiljke': 'posiljka',
+            }[putnikTabela] ??
+            'radnik',
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', srRow['id'].toString());
+
+      // Upisi u v2_statistika_istorija (arhiva — SAMO nakon uspješnog v2_polasci update-a)
       await _supabase.from('v2_statistika_istorija').insert({
         'putnik_id': putnikId,
         'putnik_ime': putnikIme,
@@ -419,25 +441,6 @@ class V2ProfilService {
         'placena_godina': placenaGodina ?? now.year,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
-      // Upisi u v2_polasci (operativna — pazar tekuceg dana)
-      final srRow = _rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
-      if (srRow != null) {
-        await _supabase.from('v2_polasci').update({
-          'placen': true,
-          'placen_iznos': iznos,
-          if (vozacId != null) 'placen_vozac_id': vozacId,
-          if (vozacIme != null) 'placen_vozac_ime': vozacIme,
-          'datum_akcije': datumStr,
-          'placen_tip': const {
-                'v2_radnici': 'radnik',
-                'v2_ucenici': 'ucenik',
-                'v2_dnevni': 'dnevni',
-                'v2_posiljke': 'posiljka',
-              }[putnikTabela] ??
-              'radnik',
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        }).eq('id', srRow['id'].toString());
-      }
       return true;
     } catch (e) {
       debugPrint('[V2ProfilService] upisPlacanjaULog error: $e');
