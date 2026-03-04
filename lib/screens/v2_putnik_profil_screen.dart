@@ -13,6 +13,7 @@ import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_push_token_service.dart'; // Push token čišćenje pri odjavi
 import '../services/v2_putnik_push_service.dart'; // Push notifikacije za putnike
+import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_weather_service.dart'; // Vremenska prognoza
 import '../theme.dart';
@@ -252,12 +253,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final datumKrajMeseca = DateTime(now.year, now.month + 1, 0).toIso8601String().split('T')[0];
 
       // Jedan upit: sve voznje+otkazivanja+uplate od poč. godine
-      final sveZapisiGodina = await supabase
-          .from('v2_statistika_istorija')
-          .select('datum, tip, iznos, placeni_mesec, placena_godina, created_at')
-          .eq('putnik_id', putnikId)
-          .gte('datum', pocetakGodine.toIso8601String().split('T')[0])
-          .order('datum', ascending: false);
+      final sveZapisiGodina = await V2StatistikaIstorijaService.getSveZapisiGodina(
+        putnikId: putnikId,
+        pocetakGodineIso: pocetakGodine.toIso8601String().split('T')[0],
+      );
 
       // Filtriraj vožnje i otkazivanja ovog meseca iz već dohvaćenih podataka
       final voznjeResponse = sveZapisiGodina.where((r) {

@@ -31,6 +31,7 @@ class V2VozacService {
   Future<V2Vozac> addVozac(V2Vozac vozac) async {
     try {
       final response = await _supabase.from('v2_vozaci').insert(vozac.toMap()).select().single();
+      _rm.upsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
       debugPrint('[V2VozacService] Greška u addVozac(): $e');
@@ -42,6 +43,7 @@ class V2VozacService {
   Future<V2Vozac> updateVozac(V2Vozac vozac) async {
     try {
       final response = await _supabase.from('v2_vozaci').update(vozac.toMap()).eq('id', vozac.id).select().single();
+      _rm.upsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
       debugPrint('[V2VozacService] Greška u updateVozac(): $e');
@@ -50,12 +52,20 @@ class V2VozacService {
   }
 
   /// Realtime stream: dohvata sve vozače u realnom vremenu.
-  /// Emituje direktno iz rm cache-a, bez DB fetcha na svaki event.
+  /// Reaktivan: osvježava se kad god addVozac/updateVozac/delete promijeni cache.
   Stream<List<V2Vozac>> streamAllVozaci() {
     final controller = StreamController<List<V2Vozac>>.broadcast();
-    // v2_vozaci nema RT — emituje jednom iz cache-a
-    controller.add(getAllVozaci());
-    controller.onCancel = () => controller.close();
+    void emit() {
+      if (!controller.isClosed) controller.add(getAllVozaci());
+    }
+
+    Future.microtask(emit);
+
+    final cacheSub = _rm.onCacheChanged.where((t) => t == 'v2_vozaci').listen((_) => emit());
+    controller.onCancel = () {
+      cacheSub.cancel();
+      controller.close();
+    };
     return controller.stream;
   }
 }

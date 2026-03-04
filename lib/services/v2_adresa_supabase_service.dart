@@ -143,4 +143,64 @@ class V2AdresaSupabaseService {
       return false;
     }
   }
+
+  /// Dodaje novu adresu, osvježava cache, vraća kreiranu adresu.
+  static Future<V2Adresa> addAdresa({
+    required String naziv,
+    required String grad,
+    double? lat,
+    double? lng,
+  }) async {
+    final insertData = <String, dynamic>{
+      'naziv': naziv,
+      'grad': grad,
+    };
+    if (lat != null) insertData['gps_lat'] = lat;
+    if (lng != null) insertData['gps_lng'] = lng;
+
+    await supabase.from('v2_adrese').insert(insertData);
+
+    // v2_adrese nema Realtime — ručno dohvati novi red i upiši u cache
+    final row = await supabase
+        .from('v2_adrese')
+        .select('id, naziv, grad, gps_lat, gps_lng')
+        .eq('naziv', naziv)
+        .eq('grad', grad)
+        .order('id', ascending: false)
+        .limit(1)
+        .single();
+    V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', row);
+    return V2Adresa.fromMap(row);
+  }
+
+  /// Ažurira adresu, osvježava cache, vraća ažuriranu adresu.
+  static Future<V2Adresa> updateAdresa(
+    V2Adresa adresa, {
+    required String naziv,
+    required String grad,
+    double? lat,
+    double? lng,
+  }) async {
+    final updateData = <String, dynamic>{
+      'naziv': naziv,
+      'grad': grad,
+    };
+    if (lat != null) updateData['gps_lat'] = lat;
+    if (lng != null) updateData['gps_lng'] = lng;
+
+    await supabase.from('v2_adrese').update(updateData).eq('id', adresa.id);
+
+    final updatedRow = <String, dynamic>{
+      'id': adresa.id,
+      ...updateData,
+    };
+    V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', updatedRow);
+    return V2Adresa.fromMap(updatedRow);
+  }
+
+  /// Briše adresu i uklanja je iz cache-a.
+  static Future<void> deleteAdresa(V2Adresa adresa) async {
+    await supabase.from('v2_adrese').delete().eq('id', adresa.id);
+    V2MasterRealtimeManager.instance.removeFromCache('v2_adrese', adresa.id);
+  }
 }

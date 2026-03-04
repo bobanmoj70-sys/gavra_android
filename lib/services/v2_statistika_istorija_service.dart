@@ -277,4 +277,55 @@ class V2StatistikaIstorijaService {
     };
     return controller.stream;
   }
+
+  // ---------------------------------------------------------------------------
+  // BATCH QUERY — za prikaz stanja plaćanja za listu putnika (v2_putnici_screen)
+  // ---------------------------------------------------------------------------
+
+  /// Dohvata istorijska plaćanja za batch putnika iz tekuće godine.
+  /// Vraća listu redova sa kolonama: putnik_id, iznos, placeni_mesec, placena_godina.
+  static Future<List<Map<String, dynamic>>> getPlacanjaBatch({
+    required List<String> putnikIds,
+    required String thisYear,
+  }) async {
+    try {
+      final rows = await _supabase
+          .from('v2_statistika_istorija')
+          .select('putnik_id, iznos, placeni_mesec, placena_godina')
+          .inFilter('putnik_id', putnikIds)
+          .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna'])
+          .not('placeni_mesec', 'is', null)
+          .not('placena_godina', 'is', null)
+          .gte('datum', '$thisYear-01-01')
+          .order('datum', ascending: false);
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (e) {
+      debugPrint('[V2StatistikaIstorijaService] getPlacanjaBatch greška: $e');
+      return [];
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // SINGLE PUTNIK — svi zapisi od početka godine (v2_putnik_profil_screen)
+  // ---------------------------------------------------------------------------
+
+  /// Dohvata sve zapise za jednog putnika od početka date godine.
+  /// Vraća listu redova sa kolonama: datum, tip, iznos, placeni_mesec, placena_godina, created_at.
+  static Future<List<Map<String, dynamic>>> getSveZapisiGodina({
+    required String putnikId,
+    required String pocetakGodineIso,
+  }) async {
+    try {
+      final rows = await _supabase
+          .from('v2_statistika_istorija')
+          .select('datum, tip, iznos, placeni_mesec, placena_godina, created_at')
+          .eq('putnik_id', putnikId)
+          .gte('datum', pocetakGodineIso)
+          .order('datum', ascending: false);
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (e) {
+      debugPrint('[V2StatistikaIstorijaService] getSveZapisiGodina greška: $e');
+      rethrow;
+    }
+  }
 }

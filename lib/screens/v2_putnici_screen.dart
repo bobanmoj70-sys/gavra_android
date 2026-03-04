@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../globals.dart';
 import '../helpers/v2_putnik_statistike_helper.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
@@ -11,6 +10,7 @@ import '../services/v2_auth_manager.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_permission_service.dart';
 import '../services/v2_polasci_service.dart';
+import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_vozac_cache.dart';
@@ -113,15 +113,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       // 2 Jedan batch DB upit za historijska plaćanja (svi putnici odjednom)
       try {
         final thisYear = DateTime.now().year.toString();
-        final histRows = await supabase
-            .from('v2_statistika_istorija')
-            .select('putnik_id, iznos, placeni_mesec, placena_godina')
-            .inFilter('putnik_id', putnikIds)
-            .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna'])
-            .not('placeni_mesec', 'is', null)
-            .not('placena_godina', 'is', null)
-            .gte('datum', '$thisYear-01-01')
-            .order('datum', ascending: false);
+        final histRows = await V2StatistikaIstorijaService.getPlacanjaBatch(
+          putnikIds: putnikIds,
+          thisYear: thisYear,
+        );
 
         for (final row in histRows) {
           final putnikId = row['putnik_id'] as String?;
@@ -1262,8 +1257,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     if (!mounted) return;
 
     // Future se kreira jednom pre showDialog — ne ponovo na svakom rebuildu StatefulBuilder-a
-    final futurePoslednjePlacanje = V2PutnikStatistikaService.dohvatiPlacanja(v2Putnik.id)
-        .then((lista) => lista.isNotEmpty ? lista.first : null);
+    final futurePoslednjePlacanje =
+        V2PutnikStatistikaService.dohvatiPlacanja(v2Putnik.id).then((lista) => lista.isNotEmpty ? lista.first : null);
 
     showDialog<void>(
       context: context,

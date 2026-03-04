@@ -45,6 +45,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   // Master realtime stream — inicijalizovan jednom u initState()
   late final Stream<List<V2Vozac>> _streamVozaci;
   StreamController<List<V2Vozac>>? _vozaciCtrl;
+  StreamSubscription<String>? _cacheChangeSub;
 
   @override
   void initState() {
@@ -60,14 +61,14 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     }
 
     Future.microtask(emit);
-    // v2_vozaci nema RT — lista vozaca se osvezava samo nakon write operacija
-    // (create/update/delete) koje direktno azuriraju vozaciCache pre emit()
+    _cacheChangeSub = rm.onCacheChanged.where((t) => t == 'v2_vozaci').listen((_) => emit());
     _vozaciCtrl = ctrl;
     _streamVozaci = ctrl.stream;
   }
 
   @override
   void dispose() {
+    _cacheChangeSub?.cancel();
     _vozaciCtrl?.close();
     _imeController.dispose();
     _emailController.dispose();
