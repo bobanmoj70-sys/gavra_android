@@ -141,6 +141,8 @@ class V2MasterRealtimeManager {
     const staticTabele = [
       // Putnici
       'v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke',
+      // Polasci — glavna dnevna tabela, mora biti permanentno subscribe-ovana
+      'v2_polasci',
       // Infrastruktura
       'v2_vozaci', 'v2_vozila', 'v2_adrese',
       'v2_finansije_troskovi', 'v2_pumpa_config', 'v2_app_settings',
