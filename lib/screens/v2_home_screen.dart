@@ -67,10 +67,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   String? _currentDriver;
 
-  // Real-time subscription variables
-  StreamSubscription<dynamic>? _realtimeSubscription;
-  StreamSubscription<dynamic>? _networkStatusSubscription;
-
   // ?? Cache-based stream (kreiran jednom u initState, ne unutar build())
   late final Stream<int> _streamBrojZahteva;
 
@@ -2682,14 +2678,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   @override
   void dispose() {
-    // ?? CLEANUP REAL-TIME SUBSCRIPTIONS
-    try {
-      _realtimeSubscription?.cancel();
-      _networkStatusSubscription?.cancel();
-    } catch (e) {
-      // Silently ignore
-    }
-
     // ?? Update listener cleanup
     updateInfoNotifier.removeListener(_onUpdateInfo);
 

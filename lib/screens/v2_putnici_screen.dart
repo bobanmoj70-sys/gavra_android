@@ -95,6 +95,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
       // 1 Iz statistikaCache (danas, 0 DB) — dopuni plaćanja tekućeg dana
       final rm = V2MasterRealtimeManager.instance;
+      if (rm.statistikaCache.isEmpty) await rm.loadStatistikaCache();
       for (final row in rm.statistikaCache.values) {
         final putnikId = row['putnik_id'] as String?;
         if (putnikId == null || !placanja.containsKey(putnikId)) continue;
@@ -111,6 +112,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
       // 2 Jedan batch DB upit za historijska plaćanja (svi putnici odjednom)
       try {
+        final thisYear = DateTime.now().year.toString();
         final histRows = await supabase
             .from('v2_statistika_istorija')
             .select('putnik_id, iznos, placeni_mesec, placena_godina')
@@ -118,6 +120,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
             .inFilter('tip', ['uplata', 'uplata_mesecna', 'uplata_dnevna'])
             .not('placeni_mesec', 'is', null)
             .not('placena_godina', 'is', null)
+            .gte('datum', '$thisYear-01-01')
             .order('datum', ascending: false);
 
         for (final row in histRows) {

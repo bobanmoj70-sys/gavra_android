@@ -18,7 +18,7 @@ import '../services/v2_polasci_service.dart';
 import '../services/v2_realtime_gps_service.dart'; // ??? Za GPS tracking
 import '../services/v2_realtime_notification_service.dart'; // ?? Za realtime notifikacije
 import '../services/v2_smart_navigation_service.dart';
-import '../services/v2_statistika_service.dart';
+import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
@@ -158,7 +158,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
     // Sprjecava race condition gdje _rasporedCache ostaje prazan ? filterKombinovan vraca sve putnike
     _rasporedCache =
         V2MasterRealtimeManager.instance.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
-    _streamPazar = V2StatistikaService.streamPazarIzCachea(isoDate: _getWorkingDateIso());
+    _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: _getWorkingDateIso());
     _initAsync();
   }
 
@@ -1223,7 +1223,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
     final filteredDuzniciRaw = sviPutnici.where((v2Putnik) {
       final nijeMesecni = !v2Putnik.isMesecniTip;
       if (!nijeMesecni) return false;
-      final nijePlatio = v2Putnik.placeno != true; // ? FIX: Koristi placeno flag iz voznje_log
+      final nijePlatio = v2Putnik.placeno != true; // placeno flag iz v2_polasci srRow
       final nijeOtkazan = !v2Putnik.jeOtkazan && !v2Putnik.jeBezPolaska;
       final pokupljen = v2Putnik.jePokupljen;
       return nijePlatio && nijeOtkazan && pokupljen;

@@ -188,7 +188,7 @@ class V2PolasciService {
             : {
                 ...row,
                 'putnik_ime': putnikRow['ime'],
-                'broj_telefona': putnikRow['broj_telefona'],
+                'broj_telefona': putnikRow['telefon'], // DB kolona je 'telefon', ne 'broj_telefona'
               };
 
         return V2Polazak.fromJson(enriched);
@@ -215,8 +215,9 @@ class V2PolasciService {
     return controller.stream;
   }
 
-  /// Broj zahteva u statusu `'obrada'` — za bedž na Home ekranu.
-  static Stream<int> v2StreamBrojZahteva() => v2StreamZahteviObrada().map((list) => list.length);
+  /// Broj zahteva u statusu `'obrada'` samo za dnevne putnike — za bedž na Home ekranu.
+  static Stream<int> v2StreamBrojZahteva() =>
+      v2StreamZahteviObrada().map((list) => list.where((z) => z.tipPutnika == 'dnevni').length);
 
   /// Prihvata alternativni termin - ODMAH ODOBRAVA
   static Future<bool> v2PrihvatiAlternativu({
@@ -426,7 +427,6 @@ class V2PutnikStreamService {
 
     final subs = <StreamSubscription>[
       rm.subscribe('v2_polasci').listen((_) => emit()),
-      rm.subscribe('v2_statistika_istorija').listen((_) => emit()),
       rm.subscribe('v2_vozac_raspored').listen((_) => emit()),
       rm.subscribe('v2_vozac_putnik').listen((_) => emit()),
     ];
@@ -466,11 +466,8 @@ class V2PutnikStreamService {
           .where((sr) => sr['dan']?.toString() == targetDan)
           .map((sr) {
             final putnikId = sr['putnik_id']?.toString();
-            final vlRows = putnikId != null
-                ? rm.statistikaCache.values.where((vl) => vl['putnik_id']?.toString() == putnikId).toList()
-                : <Map<String, dynamic>>[];
             final rp = putnikId != null ? rm.getPutnikById(putnikId) : null;
-            return _buildPutnik(sr, vlRows, rp, todayDate);
+            return _buildPutnik(sr, rp, todayDate);
           })
           .where((p) => p.status != 'bez_polaska')
           .toList();
@@ -491,8 +488,7 @@ class V2PutnikStreamService {
 
     final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
     if (srRow != null) {
-      final vlRows = rm.statistikaCache.values.where((vl) => vl['putnik_id']?.toString() == putnikId).toList();
-      return _buildPutnik(srRow, vlRows, rpEntry, todayStr);
+      return _buildPutnik(srRow, rpEntry, todayStr);
     }
     return V2Putnik.v2FromProfil(rpEntry);
   }
@@ -507,8 +503,7 @@ class V2PutnikStreamService {
       final rp = rm.getPutnikById(idStr);
 
       if (srRow != null) {
-        final vlRows = rm.statistikaCache.values.where((vl) => vl['putnik_id']?.toString() == idStr).toList();
-        return _buildPutnik(srRow, vlRows, rp, todayStr);
+        return _buildPutnik(srRow, rp, todayStr);
       }
       if (rp != null) return V2Putnik.v2FromProfil(rp);
       return null;
@@ -567,23 +562,31 @@ class V2PutnikStreamService {
       }
       if (vozacId != null) {
         final putnikIdStr = p.id?.toString() ?? '';
-        final individualnaDodjela = rm.vozacPutnikCache.values
+        final gradNormP = V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
+        final vremeNormP = V2GradAdresaValidator.normalizeTime(p.polazak);
+
+        // Provjeri ima li ovaj putnik individualnu dodjelu za OVAJ dan+grad+vreme
+        final sveDodjele = rm.vozacPutnikCache.values
             .where((vp) =>
                 vp['putnik_id']?.toString() == putnikIdStr &&
                 vp['dan']?.toString() == danKratica &&
-                vp['grad']?.toString().toUpperCase() == V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase() &&
-                V2GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) ==
-                    V2GradAdresaValidator.normalizeTime(p.polazak))
+                vp['grad']?.toString().toUpperCase() == gradNormP &&
+                V2GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) == vremeNormP)
             .toList();
-        if (individualnaDodjela.isNotEmpty) {
-          return individualnaDodjela.any((vp) => vp['vozac_id']?.toString() == vozacId);
+
+        if (sveDodjele.isNotEmpty) {
+          // Individualna dodjela postoji za ovaj dan+grad+vreme — prikaži samo ako je dodeljen OVOM vozaču
+          return sveDodjele.any((vp) => vp['vozac_id']?.toString() == vozacId);
         }
+
+        // Nema individualne dodjele — provjeri raspored za ovaj termin
         final rasporedZaTermin = rm.rasporedCache.values
             .where((vr) =>
                 vr['dan']?.toString() == danKratica &&
-                vr['grad']?.toString().toUpperCase() == V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase() &&
-                vr['vreme']?.toString() == V2GradAdresaValidator.normalizeTime(p.polazak))
+                vr['grad']?.toString().toUpperCase() == gradNormP &&
+                V2GradAdresaValidator.normalizeTime(vr['vreme']?.toString()) == vremeNormP)
             .toList();
+        // Nema rasporeda za termin → vozač ne vidi ove putnike (termin nije dodeljen njemu)
         if (rasporedZaTermin.isEmpty) return false;
         return rasporedZaTermin.any((vr) => vr['vozac_id']?.toString() == vozacId);
       }
@@ -598,60 +601,25 @@ class V2PutnikStreamService {
 
   static V2Putnik _buildPutnik(
     Map<String, dynamic> srRow,
-    List<Map<String, dynamic>> vlRows,
     Map<String, dynamic>? rp,
     String isoDate,
   ) {
-    final srGrad = (srRow['grad'] ?? '').toString().toUpperCase();
-    final srVreme = (srRow['dodeljeno_vreme'] ?? srRow['zeljeno_vreme'])?.toString();
-
-    final matchedVl = vlRows.where((vl) {
-      final vlGrad = (vl['grad'] ?? '').toString().toUpperCase();
-      final vlVreme = vl['vreme']?.toString();
-      final gradOk = vlGrad.isEmpty || vlGrad == srGrad;
-      final vremeOk = vlVreme == null || srVreme == null || vlVreme == srVreme;
-      return gradOk && vremeOk;
-    }).toList();
-
     final bool jePokupljen = srRow['status'] == 'pokupljen';
     final bool jeOtkazan = srRow['status'] == 'otkazano';
 
-    final uplataRows = matchedVl.where((vl) => vl['tip'] == 'uplata' || vl['tip'] == 'uplata_dnevna').toList();
-    final bool jePlacen = uplataRows.isNotEmpty;
-    final double? iznos = uplataRows.isNotEmpty ? (uplataRows.first['iznos'] as num?)?.toDouble() : null;
+    // Čita direktno sa v2_polasci reda — nove kolone (Faza 2)
+    final bool jePlacen = srRow['placen'] == true;
+    final double? iznos = (srRow['placen_iznos'] as num?)?.toDouble();
+    final String? naplatioVozac = srRow['placen_vozac_ime']?.toString();
+    final String? naplatioVozacId = srRow['placen_vozac_id']?.toString();
+    final String? datumAkcije = srRow['datum_akcije']?.toString();
+    final String? vremeUplate = jePlacen ? datumAkcije : null;
 
-    final tipPriority = ['uplata', 'uplata_dnevna', 'voznja'];
-    Map<String, dynamic>? mainVl;
-    for (final tip in tipPriority) {
-      mainVl = matchedVl.where((vl) => vl['tip'] == tip).firstOrNull;
-      if (mainVl != null) break;
-    }
-    final String? vozacId = mainVl?['vozac_id']?.toString();
-    final String? vozacIme = mainVl?['vozac_ime']?.toString();
-
-    final logRows = matchedVl
-        .where((vl) => ['voznja', 'otkazivanje', 'uplata', 'uplata_dnevna'].contains(vl['tip']))
-        .toList()
-      ..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
-    final String? logCreatedAt = logRows.isNotEmpty ? logRows.first['created_at']?.toString() : null;
+    final String? vozacId = naplatioVozacId ?? (jePokupljen ? _vozacIdZaIme(srRow['pokupio']?.toString()) : null);
+    final String? vozacIme = naplatioVozac ?? (jePokupljen ? srRow['pokupio']?.toString() : null);
 
     final String? pokupioVozac = srRow['pokupio']?.toString();
-    final String? naplatioVozac = uplataRows.isNotEmpty ? uplataRows.first['vozac_ime']?.toString() : null;
-    final String? naplatioVozacId = uplataRows.isNotEmpty ? uplataRows.first['vozac_id']?.toString() : null;
-    final String? vremeUplate = uplataRows.isNotEmpty ? uplataRows.first['created_at']?.toString() : null;
-
-    final otkazRows = matchedVl.where((vl) => vl['tip'] == 'otkazivanje').toList();
-    final String? otkazaoVozac = otkazRows.isNotEmpty ? otkazRows.first['vozac_ime']?.toString() : null;
-    final String? otkazaoVozacId = otkazRows.isNotEmpty ? otkazRows.first['vozac_id']?.toString() : null;
-    final String? vremeOtkazivanja = otkazRows.isNotEmpty ? otkazRows.first['created_at']?.toString() : null;
-
-    String? pokupioVozacId;
-    if (pokupioVozac != null && pokupioVozac.isNotEmpty) {
-      pokupioVozacId = V2MasterRealtimeManager.instance.vozaciCache.values
-          .where((v) => v['ime']?.toString() == pokupioVozac)
-          .firstOrNull?['id']
-          ?.toString();
-    }
+    final String? pokupioVozacId = _vozacIdZaIme(pokupioVozac);
 
     String? nazivAdrese;
     final adresaId = srRow['adresa_id']?.toString();
@@ -668,18 +636,23 @@ class V2PutnikStreamService {
     if (iznos != null) map['iznos_placanja'] = iznos;
     if (vozacId != null) map['vozac_id'] = vozacId;
     if (vozacIme != null) map['vozac_ime'] = vozacIme;
-    if (logCreatedAt != null) map['log_created_at'] = logCreatedAt;
     if (pokupioVozac != null) map['pokupioVozac'] = pokupioVozac;
     if (pokupioVozacId != null) map['pokupioVozacId'] = pokupioVozacId;
     if (naplatioVozac != null) map['naplatioVozac'] = naplatioVozac;
     if (naplatioVozacId != null) map['naplatioVozacId'] = naplatioVozacId;
-    if (otkazaoVozac != null) map['otkazaoVozac'] = otkazaoVozac;
-    if (otkazaoVozacId != null) map['otkazaoVozacId'] = otkazaoVozacId;
-    if (vremeOtkazivanja != null) map['vreme_otkazivanja'] = vremeOtkazivanja;
     if (vremeUplate != null) map['vreme_placanja'] = vremeUplate;
     if (nazivAdrese != null) map['adrese'] = {'naziv': nazivAdrese};
     if (rp != null) map['registrovani_putnici'] = rp;
     return V2Putnik.v2FromPolazak(map);
+  }
+
+  /// Pomoćna: traži vozac_id po imenu iz vozaciCache
+  static String? _vozacIdZaIme(String? ime) {
+    if (ime == null || ime.isEmpty) return null;
+    return V2MasterRealtimeManager.instance.vozaciCache.values
+        .where((v) => v['ime']?.toString() == ime)
+        .firstOrNull?['id']
+        ?.toString();
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -742,13 +715,17 @@ class V2PutnikStreamService {
     }
 
     try {
+      final payload = {
+        'status': 'pokupljen',
+        'updated_at': nowToString(),
+        'processed_at': nowToString(),
+        if (driver != null) 'pokupio': driver,
+        'pokupljen_datum': targetDatum,
+        'datum_akcije': targetDatum,
+      };
+
       if (requestId != null && requestId.isNotEmpty) {
-        await supabase.from('v2_polasci').update({
-          'status': 'pokupljen',
-          'updated_at': nowToString(),
-          'processed_at': nowToString(),
-          if (driver != null) 'pokupio': driver,
-        }).eq('id', requestId);
+        await supabase.from('v2_polasci').update(payload).eq('id', requestId);
       } else {
         final gradKey = grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null;
         final vremeKey = vreme != null ? V2GradAdresaValidator.normalizeTime(vreme) : null;
@@ -760,20 +737,15 @@ class V2PutnikStreamService {
         } catch (_) {}
         if (gradKey == null || vremeKey == null || danKey == null) {
           debugPrint('[PutnikService] v2OznaciPokupljen: Nedostaje grad, vreme ili dan!');
-        } else {
-          await supabase
-              .from('v2_polasci')
-              .update({
-                'status': 'pokupljen',
-                'updated_at': nowToString(),
-                'processed_at': nowToString(),
-                if (driver != null) 'pokupio': driver,
-              })
-              .eq('putnik_id', id.toString())
-              .eq('dan', danKey)
-              .eq('grad', gradKey)
-              .eq('zeljeno_vreme', vremeKey);
+          return;
         }
+        await supabase
+            .from('v2_polasci')
+            .update(payload)
+            .eq('putnik_id', id.toString())
+            .eq('dan', danKey)
+            .eq('grad', gradKey)
+            .eq('zeljeno_vreme', vremeKey);
       }
     } catch (e) {
       debugPrint('[PutnikService] v2OznaciPokupljen: Greška pri update v2_polasci: $e');
@@ -970,6 +942,47 @@ class V2PutnikStreamService {
       }
     }
 
+    // Upiši direktno u v2_polasci (nove kolone Faza 2)
+    if (requestId != null && requestId.isNotEmpty) {
+      await supabase.from('v2_polasci').update({
+        'placen': true,
+        'placen_iznos': iznos.toDouble(),
+        if (vozacId != null) 'placen_vozac_id': vozacId,
+        if (driver != null) 'placen_vozac_ime': driver,
+        'datum_akcije': dateStr,
+        'placen_tip': 'dnevna',
+        'updated_at': nowToString(),
+      }).eq('id', requestId);
+    } else if (selectedDan != null && selectedVreme != null && grad != null) {
+      final gradKey = V2GradAdresaValidator.normalizeGrad(grad);
+      final vremeKey = V2GradAdresaValidator.normalizeTime(selectedVreme);
+      const daniMap = {
+        'ponedeljak': 'pon',
+        'utorak': 'uto',
+        'sreda': 'sre',
+        'cetvrtak': 'cet',
+        'petak': 'pet',
+        'subota': 'sub',
+        'nedelja': 'ned',
+      };
+      final danKey = daniMap[selectedDan.toLowerCase()] ?? selectedDan.toLowerCase();
+      await supabase
+          .from('v2_polasci')
+          .update({
+            'placen': true,
+            'placen_iznos': iznos.toDouble(),
+            if (vozacId != null) 'placen_vozac_id': vozacId,
+            if (driver != null) 'placen_vozac_ime': driver,
+            'datum_akcije': dateStr,
+            'placen_tip': 'dnevna',
+            'updated_at': nowToString(),
+          })
+          .eq('putnik_id', id.toString())
+          .eq('dan', danKey)
+          .eq('grad', gradKey)
+          .eq('zeljeno_vreme', vremeKey);
+    }
+
     await V2StatistikaIstorijaService.dodajUplatu(
       putnikId: id.toString(),
       datum: DateTime.parse(dateStr),
@@ -1072,7 +1085,7 @@ class V2PutnikStatistikaService {
     }
   }
 
-  /// Upisuje uplatu u v2_statistika_istorija
+  /// Upisuje mesečnu uplatu u v2_statistika_istorija (arhiva) + v2_polasci (operativna)
   static Future<bool> upisPlacanjaULog({
     required String putnikId,
     required String putnikIme,
@@ -1089,6 +1102,9 @@ class V2PutnikStatistikaService {
         vozacId = V2VozacCache.getUuidByIme(vozacIme);
         vozacId ??= await V2VozacCache.getUuidByImeAsync(vozacIme);
       }
+      final datumStr = datum.toIso8601String().split('T')[0];
+
+      // Arhiva
       await V2StatistikaIstorijaService.dodajUplatu(
         putnikId: putnikId,
         datum: datum,
@@ -1099,6 +1115,22 @@ class V2PutnikStatistikaService {
         placenaGodina: placenaGodina ?? datum.year,
         tipUplate: 'uplata_mesecna',
       );
+
+      // Operativna — pazar tekuceg dana
+      final rm = V2MasterRealtimeManager.instance;
+      final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
+      if (srRow != null) {
+        await _db.from('v2_polasci').update({
+          'placen': true,
+          'placen_iznos': iznos,
+          if (vozacId != null) 'placen_vozac_id': vozacId,
+          if (vozacIme.isNotEmpty) 'placen_vozac_ime': vozacIme,
+          'datum_akcije': datumStr,
+          'placen_tip': 'mesecna',
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', srRow['id'].toString());
+      }
+
       return true;
     } catch (e) {
       debugPrint('[V2PutnikStatistikaService] upisPlacanjaULog: $e');

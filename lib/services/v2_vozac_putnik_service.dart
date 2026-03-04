@@ -70,7 +70,7 @@ class V2VozacPutnikEntry {
 
 /// Servis za upravljanje per-V2Putnik individualnom dodjelom vozača.
 ///
-/// Jedan V2Putnik → jedna individualna dodjela vozača (UNIQUE putnik_id u tabeli).
+/// Jedan V2Putnik može imati više dodjela — jednu per (dan+grad+vreme).
 ///
 /// Arhitektura:
 /// vozac_putnik   — per-V2Putnik individualna dodjela (ovaj servis)
@@ -116,7 +116,7 @@ class V2VozacPutnikService {
           'vreme': vreme,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
-        onConflict: 'putnik_id', // UNIQUE constraint
+        onConflict: 'putnik_id,dan,grad,vreme', // UNIQUE (putnik_id, dan, grad, vreme)
       );
       return true;
     } catch (e) {
@@ -125,10 +125,14 @@ class V2VozacPutnikService {
     }
   }
 
-  /// Briše individualnu dodjelu za putnika (V2Putnik se vraća na termin-level vozača).
-  Future<bool> delete({required String putnikId}) async {
+  /// Briše individualnu dodjelu za putnika za konkretni dan+grad+vreme.
+  Future<bool> delete({required String putnikId, String? dan, String? grad, String? vreme}) async {
     try {
-      await _supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId);
+      var q = _supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId);
+      if (dan != null) q = q.eq('dan', dan);
+      if (grad != null) q = q.eq('grad', grad);
+      if (vreme != null) q = q.eq('vreme', vreme);
+      await q;
       return true;
     } catch (e) {
       debugPrint('[V2VozacPutnikService] Greška u delete(): $e');
@@ -144,18 +148,16 @@ class V2VozacPutnikService {
     }
   }
 
-  /// Kombinirani filter: per-V2Putnik individualna dodjela + per-termin raspored.
+  /// Kombinirani filter za VOZAČ ekran (strict mode — samo eksplicitno raspoređeni).
   ///
-  /// Tačan prioritet:
-  /// 1. Per-V2Putnik individualna dodjela postoji:
-  /// - dodeljen MENI   → prikaži (ignoriši termin-raspored)
-  /// - dodeljen DRUGOM → sakrij  (ignoriši termin-raspored)
-  /// 2. Nema individualne dodjele → provjeri termin-raspored:
-  /// - nema unosa za termin → vidljivo svima 
-  /// - postoji unos → prikaži samo vozaču koji je dodeljen terminu
-  ///
-  /// Filtrira putnike za datog vozača na osnovu termin rasporeda (vozac_raspored).
-  /// V2Putnik je vidljiv vozaču samo ako postoji unos u rasporedu koji ga dodjeljuje tom vozaču.
+  /// Prioritet:
+  /// 1. Per-V2Putnik individualna dodjela (vozac_putnik):
+  ///    - dodeljen MENI   → prikaži
+  ///    - dodeljen DRUGOM → sakrij
+  /// 2. Nema individualne dodjele → provjeri termin-raspored (vozac_raspored):
+  ///    - termin dodeljen MENI   → prikaži sve putnike tog termina
+  ///    - termin dodeljen DRUGOM → sakrij
+  ///    - termin NIJE raspoređen → sakrij (vozač vidi samo SVOJE termine)
   ///
   /// [vozacId] = UUID vozača
   static List<T> filterKombinovan<T>({
@@ -204,7 +206,8 @@ class V2VozacPutnikService {
               r.grad.toUpperCase() == grad.toUpperCase() &&
               V2GradAdresaValidator.normalizeTime(r.vreme) == vreme)
           .toList();
-      if (terminEntries.isEmpty) return true; // nema rasporeda za termin → vidljivo svima
+      // Nema rasporeda za termin → vozač ne vidi ove putnike (termin nije dodeljen njemu)
+      if (terminEntries.isEmpty) return false;
       return terminEntries.any(jeTerminVozacov);
     }).toList();
   }

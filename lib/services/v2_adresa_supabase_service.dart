@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../globals.dart';
 import '../models/v2_adresa.dart';
 import 'realtime/v2_master_realtime_manager.dart';
-import 'v2_geocoding_service.dart';
+import 'v2_unified_geocoding_service.dart';
 
 /// Servis za rad sa normalizovanim adresama iz Supabase tabele.
 /// Read metode čitaju iz rm.adreseCache — nema DB upita.
@@ -42,20 +42,20 @@ class V2AdresaSupabaseService {
       });
   }
 
-  /// Stream svih adresa — emituje iz rm.adreseCache, nema DB upita
+  /// Stream svih adresa — emituje iz rm.adreseCache, nema DB upita.
+  /// Reaktivan: osvježava se kad god upsertToCache/removeFromCache promijeni v2_adrese.
   static Stream<List<V2Adresa>> streamSveAdrese() {
-    final controller = StreamController<List<V2Adresa>>.broadcast();
     final rm = V2MasterRealtimeManager.instance;
-
+    final controller = StreamController<List<V2Adresa>>.broadcast();
     void emit() {
       if (!controller.isClosed) controller.add(getSveAdrese());
     }
 
-    emit();
-    final sub = rm.subscribe('v2_adrese').listen((_) => emit());
+    Future.microtask(emit);
+
+    final cacheSub = rm.onCacheChanged.where((t) => t == 'v2_adrese').listen((_) => emit());
     controller.onCancel = () {
-      sub.cancel();
-      rm.unsubscribe('v2_adrese');
+      cacheSub.cancel();
       controller.close();
     };
     return controller.stream;
@@ -102,7 +102,7 @@ class V2AdresaSupabaseService {
   /// Geocodira adresu i ažurira koordinate u bazi.
   static Future<V2Adresa?> _geocodeAndUpdateAdresa(V2Adresa adresa, String grad) async {
     try {
-      final coordsString = await V2GeocodingService.getKoordinateZaAdresu(
+      final coordsString = await V2UnifiedGeocodingService.getKoordinateZaAdresu(
         grad,
         adresa.naziv,
       );

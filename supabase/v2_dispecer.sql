@@ -21,8 +21,8 @@ DECLARE
   v_zauzeto     int;
   v_max_mesta   int;
   v_novi_status text;
-  v_alt1        text;
-  v_alt2        text;
+  v_alt1        text;  -- alternativno_vreme_1
+  v_alt2        text;  -- alternativno_vreme_2
   v_processed   int := 0;
   v_now         timestamptz := now();
 BEGIN
@@ -185,8 +185,8 @@ BEGIN
            processed_at     = v_now,
            updated_at       = v_now,
            dodeljeno_vreme  = CASE WHEN v_novi_status = 'odobreno' THEN v_req.zeljeno_vreme ELSE dodeljeno_vreme END,
-           alternative_vreme_1 = v_alt1,
-           alternative_vreme_2 = v_alt2
+           alternativno_vreme_1 = v_alt1,
+           alternativno_vreme_2 = v_alt2
      WHERE id = v_req.id;
 
     v_processed := v_processed + 1;

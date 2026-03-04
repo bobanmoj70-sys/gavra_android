@@ -119,9 +119,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     });
 
     try {
-      // Normalizuj uneti broj
-      final normalizedInput = _normalizePhone(telefon);
-
       // Traži putnika po telefonu kroz sve v2_ tabele
       final found = await V2MasterRealtimeManager.instance.findByTelefon(telefon);
 
@@ -144,8 +141,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           });
         } else if (pin == null || pin.isEmpty) {
           // Ima email ali nema PIN
-          // Proveri da li je vec poslao zahtev
-          final imaZahtev = V2PinZahtevService.imaZahtevKojiCeka(response['id']);
+          // Proveri da li je vec poslao zahtev (async — fallback na DB ako cache prazan)
+          final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekuAsync(response['id']);
           if (imaZahtev) {
             setState(() {
               _currentStep = _LoginStep.zahtevPoslat;
@@ -312,7 +309,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     try {
       final putnikId = _putnikData!['id'] as String;
       final email = _putnikData!['email'] as String? ?? _emailController.text.trim();
-      final telefon = _putnikData!['broj_telefona'] as String? ?? _telefonController.text.trim();
+      final telefon = _putnikData!['telefon'] as String? ?? _telefonController.text.trim();
       final putnikTabela = _putnikData!['_tabela'] as String?;
 
       final success = await V2PinZahtevService.posaljiZahtev(
@@ -986,11 +983,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     try {
       final putnikId = _putnikData!['id'] as String;
       final email = _putnikData!['email'] as String? ?? '';
-      final telefon = _putnikData!['broj_telefona'] as String? ?? _telefonController.text.trim();
+      final telefon = _putnikData!['telefon'] as String? ?? _telefonController.text.trim();
       final putnikTabela = _putnikData!['_tabela'] as String?;
 
       // Proveri da li vec ima zahtev koji ceka
-      final imaZahtev = V2PinZahtevService.imaZahtevKojiCeka(putnikId);
+      final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekuAsync(putnikId);
       if (imaZahtev) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;

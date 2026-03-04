@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../config/v2_route_config.dart';
 import '../globals.dart';
-import '../services/v2_route_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../utils/v2_app_snack_bar.dart';
 
@@ -314,7 +314,7 @@ class V2TimePickerCell extends StatelessWidget {
     }
 
     final gradCode = isBC ? 'BC' : 'VS';
-    vremena = await V2RouteService.getVremenaPolazaka(grad: gradCode, sezona: sezona);
+    vremena = V2RouteConfig.getVremenaPolazaka(grad: gradCode, sezona: sezona);
 
     showDialog(
       context: context,

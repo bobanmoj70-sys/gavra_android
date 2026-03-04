@@ -403,11 +403,12 @@ class V2ProfilService {
       if (vozacIme != null) {
         vozacId = _rm.vozaciCache.values.where((v) => v['ime']?.toString() == vozacIme).firstOrNull?['id']?.toString();
       }
+      // Upisi u v2_statistika_istorija (arhiva)
       await _supabase.from('v2_statistika_istorija').insert({
         'putnik_id': putnikId,
         'putnik_ime': putnikIme,
         'putnik_tabela': putnikTabela,
-        'tip': 'uplata_dnevna',
+        'tip': 'uplata_mesecna',
         'iznos': iznos,
         'vozac_id': vozacId,
         'vozac_ime': vozacIme,
@@ -416,6 +417,19 @@ class V2ProfilService {
         'placena_godina': placenaGodina ?? now.year,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
+      // Upisi u v2_polasci (operativna — pazar tekuceg dana)
+      final srRow = _rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
+      if (srRow != null) {
+        await _supabase.from('v2_polasci').update({
+          'placen': true,
+          'placen_iznos': iznos,
+          if (vozacId != null) 'placen_vozac_id': vozacId,
+          if (vozacIme != null) 'placen_vozac_ime': vozacIme,
+          'datum_akcije': datumStr,
+          'placen_tip': 'mesecna',
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', srRow['id'].toString());
+      }
       return true;
     } catch (e) {
       debugPrint('[V2ProfilService] upisPlacanjaULog error: $e');

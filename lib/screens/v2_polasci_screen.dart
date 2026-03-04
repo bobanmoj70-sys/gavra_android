@@ -13,9 +13,8 @@ class V2PolasciScreen extends StatefulWidget {
   State<V2PolasciScreen> createState() => _V2PolasciScreenState();
 }
 
-class _V2PolasciScreenState extends State<V2PolasciScreen> with SingleTickerProviderStateMixin {
+class _V2PolasciScreenState extends State<V2PolasciScreen> {
   bool _isLoading = false;
-  late final TabController _tabController;
 
   // Streamovi se kreiraju jednom — ne smiju biti unutar build()
   late final Stream<List<V2Polazak>> _streamDnevni;
@@ -23,14 +22,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 1, vsync: this);
     _streamDnevni = V2PolasciService.v2StreamZahteviObrada();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   @override
@@ -49,7 +41,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> with SingleTickerProv
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(110),
+              preferredSize: const Size.fromHeight(70),
               child: Container(
                 decoration: BoxDecoration(
                   color: Theme.of(context).glassContainer,
@@ -62,95 +54,32 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> with SingleTickerProv
                   ),
                 ),
                 child: SafeArea(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                            const Expanded(
-                              child: Text(
-                                'Zahtevi Rezervacija',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                  child: Center(
+                    child: const Text(
+                      'Zahtevi Rezervacija',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54),
+                        ],
                       ),
-                      _buildTabBar(zahtevi.length),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                // Tab 0: Dnevni — ručna obrada admina (samo 'obrada' status)
-                snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                    : _buildDnevniLista(zahtevi),
-              ],
-            ),
+            body: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                : _buildDnevniLista(zahtevi),
           ),
         );
       },
     );
   }
 
-  // TabBar — badge broji samo 'obrada' zahteve (oni koji čekaju akciju)
-  Widget _buildTabBar(int dnevniCount) {
-    return TabBar(
-      controller: _tabController,
-      indicatorColor: Colors.white,
-      indicatorWeight: 3,
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white54,
-      labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-      tabs: [
-        _buildTab('🎟️ Dnevni', dnevniCount, Colors.blue),
-      ],
-    );
-  }
-
-  Tab _buildTab(String label, int count, Color color) {
-    return Tab(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label),
-          if (count > 0) ...[
-            const SizedBox(width: 5),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ─── DNEVNI TAB: admin odobrava/odbija ────────────────────────────────────
+  // ─── DNEVNI: admin odobrava/odbija ────────────────────────────────────
 
   Widget _buildDnevniLista(List<V2Polazak> zahtevi) {
     if (zahtevi.isEmpty) {

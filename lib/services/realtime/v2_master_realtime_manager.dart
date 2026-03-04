@@ -126,7 +126,6 @@ class V2MasterRealtimeManager {
 
     await Future.wait([
       _loadPolasciCache(),
-      _loadStatistikaCache(),
       _loadPutniciCaches(),
       _loadInfraCache(),
     ]);
@@ -136,7 +135,6 @@ class V2MasterRealtimeManager {
     debugPrint(
       '✅ [V2MasterRealtimeManager] Inicijalizovano: '
       'polasci=${polasciCache.length}, '
-      'statistika=${statistikaCache.length}, '
       'radnici=${radniciCache.length}, '
       'ucenici=${uceniciCache.length}, '
       'dnevni=${dnevniCache.length}, '
@@ -160,11 +158,9 @@ class V2MasterRealtimeManager {
     debugPrint('🔄 [V2MasterRealtimeManager] Novi dan ($today) — osvežavam dnevne cache-ove...');
     _loadedDate = today;
     polasciCache.clear();
-    statistikaCache.clear();
-    await Future.wait([_loadPolasciCache(), _loadStatistikaCache()]);
+    await _loadPolasciCache();
     debugPrint(
-      '✅ [V2MasterRealtimeManager] Dnevni cache osvežen: '
-      'polasci=${polasciCache.length}, statistika=${statistikaCache.length}',
+      '✅ [V2MasterRealtimeManager] Dnevni cache osvežen: polasci=${polasciCache.length}',
     );
   }
 
@@ -176,12 +172,11 @@ class V2MasterRealtimeManager {
     try {
       final rows = await _db
           .from('v2_polasci')
-          .select(
-            'id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
-            'status, created_at, updated_at, processed_at, broj_mesta, '
-            'alternativno_vreme_1, alternativno_vreme_2, adresa_id, '
-            'otkazao, odobrio, pokupio, dan',
-          )
+          .select('id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
+              'status, created_at, updated_at, processed_at, broj_mesta, '
+              'alternativno_vreme_1, alternativno_vreme_2, adresa_id, '
+              'otkazao, odobrio, pokupio, dan, '
+              'placen, placen_iznos, placen_vozac_id, placen_vozac_ime, pokupljen_datum, datum_akcije, placen_tip')
           .inFilter('status', [
         'obrada',
         'odobreno',
@@ -199,7 +194,8 @@ class V2MasterRealtimeManager {
     }
   }
 
-  Future<void> _loadStatistikaCache() async {
+  /// Puni/osvežava statistikaCache za tekući dan — poziva se on-demand (pazar, profil, lista)
+  Future<void> loadStatistikaCache() async {
     try {
       final rows = await _db
           .from('v2_statistika_istorija')
@@ -294,7 +290,7 @@ class V2MasterRealtimeManager {
         _db.from('v2_vozac_putnik').select('id, putnik_id, vozac_id, dan, grad, vreme'),
         _db
             .from('v2_finansije_troskovi')
-            .select('id, naziv, iznos, tip, aktivan, vozac_id, mesec, godina, created_at')
+            .select('id, naziv, iznos, tip, aktivan, mesecno, vozac_id, mesec, godina, created_at')
             .eq('aktivan', true),
         _db.from('v2_pumpa_config').select('id, kapacitet_litri, alarm_nivo, pocetno_stanje, updated_at'),
         _db
@@ -350,11 +346,13 @@ class V2MasterRealtimeManager {
     // Sačuvaj postojeći _tabela tag — realtime payload ne sadrži _tabela
     final existingTabela = target[id]?['_tabela'] ?? table;
     target[id] = {...record, '_tabela': existingTabela};
+    if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
   }
 
   /// Uklanja red iz cache-a na DELETE event
   void removeFromCache(String table, String id) {
     _cacheForTable(table)?.remove(id);
+    if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
   }
 
   /// O(1) lookup: ime tabele → odgovarajući cache map
@@ -393,6 +391,12 @@ class V2MasterRealtimeManager {
   final Map<String, StreamController<PostgresChangePayload>> _controllers = {};
   final Map<String, int> _listenerCount = {};
   final Map<String, Timer?> _reconnectTimers = {};
+
+  /// Broadcast stream koji se emituje svaki put kad se cache manuelno promijeni.
+  /// Listeneri (streamAktivniPutnici, streamSveAdrese...) reaguju bez Realtime-a.
+  final StreamController<String> _cacheChangeController = StreamController<String>.broadcast();
+  Stream<String> get _onCacheChanged => _cacheChangeController.stream;
+  Stream<String> get onCacheChanged => _cacheChangeController.stream;
 
   /// Pretplati se na promene u tabeli.
   /// Više listenera može deliti isti channel.
@@ -598,7 +602,10 @@ class V2MasterRealtimeManager {
     data.remove('_tabela');
     data.remove('tip');
     final row = await _db.from(tabela).update(data).eq('id', id).select().single();
-    return {...row, '_tabela': tabela};
+    final result = {...row, '_tabela': tabela};
+    // Realtime je isključen na putnik tabelama — ručno ažuriraj cache
+    upsertToCache(tabela, result);
+    return result;
   }
 
   /// Kreira novog putnika u datoj tabeli
@@ -614,7 +621,10 @@ class V2MasterRealtimeManager {
     d.remove('tip');
     if (d['id'] == null) d.remove('id');
     final row = await _db.from(tabela).insert(d).select().single();
-    return {...row, '_tabela': tabela};
+    final result = {...row, '_tabela': tabela};
+    // Realtime je isključen na putnik tabelama — ručno dodaj u cache
+    upsertToCache(tabela, result);
+    return result;
   }
 
   /// Briše putnika i sve vezane podatke (trajno)
@@ -624,6 +634,8 @@ class V2MasterRealtimeManager {
       await _db.from('v2_polasci').delete().eq('putnik_id', id);
       await _db.from('v2_vozac_putnik').delete().eq('putnik_id', id);
       await _db.from(tabela).delete().eq('id', id);
+      // Realtime je isključen na putnik tabelama — ručno ukloni iz cache-a
+      removeFromCache(tabela, id);
       return true;
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] deletePutnik error: $e');
@@ -716,14 +728,18 @@ class V2MasterRealtimeManager {
         final t2 = row['telefon_2'] as String? ?? '';
         if ((t.isNotEmpty && _normalizePhone(t) == normalized) ||
             (t2.isNotEmpty && _normalizePhone(t2) == normalized)) {
-          return row;
+          return {...row, '_tabela': tabela};
         }
       }
     }
 
     // Fallback: DB upit (cache prazan ili putnik neaktivan)
     for (final tabela in putnikTabele) {
-      final svi = await _db.from(tabela).select();
+      final svi = await _db
+          .from(tabela)
+          .select(
+              'id, ime, telefon, telefon_2, adresa_bc_id, adresa_vs_id, status, pin, email, treba_racun, created_at, updated_at')
+          .or('telefon.ilike.%${normalized.replaceAll('+', '')},telefon_2.ilike.%${normalized.replaceAll('+', '')}');
       for (final row in svi) {
         final t = row['telefon'] as String? ?? '';
         final t2 = row['telefon_2'] as String? ?? '';
@@ -749,10 +765,12 @@ class V2MasterRealtimeManager {
     Future.microtask(emit);
 
     final subs = putnikTabele.map((t) => subscribe(t).listen((_) => emit())).toList();
+    final cacheSub = _onCacheChanged.where((t) => putnikTabele.contains(t)).listen((_) => emit());
     controller.onCancel = () {
       for (final s in subs) {
         s.cancel();
       }
+      cacheSub.cancel();
     };
     return controller.stream;
   }
@@ -786,5 +804,6 @@ class V2MasterRealtimeManager {
     _channels.clear();
     _controllers.clear();
     _listenerCount.clear();
+    _cacheChangeController.close();
   }
 }

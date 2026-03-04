@@ -331,10 +331,14 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   /// Samo dostupno kada termin NEMA vozača u vozac_raspored.
   Future<void> _showPutnikAssignDialog(V2Putnik putnik) async {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
-    // Pronađi trenutnu individualnu dodjelu za ovog putnika
+    // Pronađi trenutnu individualnu dodjelu za ovog putnika, SAMO za ovaj dan+grad+vreme
     final trenutniEntry = _vozacPutnikCache
         .where(
-          (e) => e.putnikId == putnik.id?.toString(),
+          (e) =>
+              e.putnikId == putnik.id?.toString() &&
+              e.dan == dan &&
+              e.grad.toUpperCase() == _selectedGrad.toUpperCase() &&
+              V2GradAdresaValidator.normalizeTime(e.vreme) == V2GradAdresaValidator.normalizeTime(_selectedVreme),
         )
         .firstOrNull;
     final trenutni = trenutniEntry != null ? V2VozacCache.getImeByUuid(trenutniEntry.vozacId) : null;
@@ -442,7 +446,12 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 TextButton.icon(
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    final ok = await _vozacPutnikService.delete(putnikId: putnik.id!.toString());
+                    final ok = await _vozacPutnikService.delete(
+                      putnikId: putnik.id!.toString(),
+                      dan: dan,
+                      grad: _selectedGrad,
+                      vreme: _selectedVreme,
+                    );
                     if (ok) {
                       if (mounted) V2AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
                     } else {
@@ -665,9 +674,15 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                               final p = filteredByGradVreme[i];
                               // Da li je termin dodeljen (vozac_raspored)?
                               final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
-                              // Individualna dodjela putnika (vozac_putnik)?
-                              final individualnaEntry =
-                                  _vozacPutnikCache.where((e) => e.putnikId == p.id?.toString()).firstOrNull;
+                              // Individualna dodjela putnika za OVAJ dan+grad+vreme (vozac_putnik)
+                              final dan = targetDay;
+                              final individualnaEntry = _vozacPutnikCache.where((e) {
+                                return e.putnikId == p.id?.toString() &&
+                                    e.dan == dan &&
+                                    e.grad.toUpperCase() == _selectedGrad.toUpperCase() &&
+                                    V2GradAdresaValidator.normalizeTime(e.vreme) ==
+                                        V2GradAdresaValidator.normalizeTime(_selectedVreme);
+                              }).firstOrNull;
                               // Boja: individualna dodjela ima prioritet nad termin bojom
                               final vozacColor = individualnaEntry != null
                                   ? V2VozacCache.getColorByUuid(individualnaEntry.vozacId)
@@ -815,9 +830,10 @@ class _PutnikRasporedTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = vozacColor ?? Colors.white12;
+    final hasIndividualna = vozacPutnikIme != null;
 
     return GestureDetector(
-      onTap: terminJeDodeljen ? null : onTap,
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),
         decoration: BoxDecoration(
@@ -848,8 +864,29 @@ class _PutnikRasporedTile extends StatelessWidget {
                   ],
                 ),
               ),
-              // Desna strana: ikona za dodjelu (samo kad termin nema vozača)
-              if (!terminJeDodeljen) const Icon(Icons.person_add_outlined, color: Colors.white38, size: 18),
+              // Desna strana: badge vozača (individualna dodjela) ili ikona za dodjelu
+              if (hasIndividualna)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withOpacity(0.5), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person, color: color, size: 13),
+                      const SizedBox(width: 4),
+                      Text(
+                        vozacPutnikIme!,
+                        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                )
+              else if (!terminJeDodeljen)
+                const Icon(Icons.person_add_outlined, color: Colors.white38, size: 18),
             ],
           ),
         ),

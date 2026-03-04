@@ -102,4 +102,19 @@ class V2RouteConfig {
     // 1s, 2s, 4s, 8s...
     return Duration(seconds: 1 << (attempt - 1));
   }
+
+  /// Vraća listu vremena polazaka za grad i sezonu
+  static List<String> getVremenaPolazaka({
+    required String grad,
+    required String sezona,
+  }) {
+    final isBc = grad == 'BC';
+    if (sezona == 'praznici') {
+      return isBc ? bcVremenaPraznici : vsVremenaPraznici;
+    } else if (sezona == 'zimski') {
+      return isBc ? bcVremenaZimski : vsVremenaZimski;
+    } else {
+      return isBc ? bcVremenaLetnji : vsVremenaLetnji;
+    }
+  }
 }

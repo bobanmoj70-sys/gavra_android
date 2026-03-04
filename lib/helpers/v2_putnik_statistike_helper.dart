@@ -635,7 +635,7 @@ class V2PutnikStatistikeHelper {
 
     final response = await supabase
         .from('v2_statistika_istorija')
-        .select()
+        .select('id, tip, datum, iznos, broj_mesta, created_at')
         .eq('putnik_id', putnikId)
         .gte('datum', startOfYearStr)
         .lte('datum', endOfYearStr)
@@ -714,7 +714,7 @@ class V2PutnikStatistikeHelper {
   static Future<Map<String, dynamic>> _getUkupneStatistike(String putnikId, String tipPutnika) async {
     final response = await supabase
         .from('v2_statistika_istorija')
-        .select()
+        .select('id, tip, datum, iznos, broj_mesta, created_at')
         .eq('putnik_id', putnikId)
         .order('datum', ascending: false);
 
@@ -802,7 +802,7 @@ class V2PutnikStatistikeHelper {
 
       final response = await supabase
           .from('v2_statistika_istorija')
-          .select()
+          .select('id, tip, datum, iznos, broj_mesta, created_at')
           .eq('putnik_id', putnikId)
           .gte('datum', startOfMonthStr)
           .lte('datum', endOfMonthStr)

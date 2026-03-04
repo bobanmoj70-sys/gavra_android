@@ -8,10 +8,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/v2_vozac_cache.dart';
 import 'v2_auth_manager.dart';
-import 'v2_firebase_background_handler.dart';
 import 'v2_local_notification_service.dart';
 import 'v2_push_token_service.dart';
 import 'v2_realtime_notification_service.dart';
+
+/// Top-level background handler — registruje se sa Firebase Messaging pluginom
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    final payload = Map<String, dynamic>.from(message.data);
+    await backgroundNotificationHandler(payload);
+  } catch (e) {
+    debugPrint('[FirebaseBackground] Error in background handler: $e');
+  }
+}
+
+/// Provider-agnostic background notification handler
+Future<void> backgroundNotificationHandler(Map<String, dynamic> payload) async {
+  try {
+    final title = payload['title'] as String? ?? 'Gavra Notification';
+    final body = payload['body'] as String? ?? (payload['message'] as String?) ?? 'Nova notifikacija';
+    await V2LocalNotificationService.showNotificationFromBackground(
+      title: title,
+      body: body,
+      payload: jsonEncode(payload),
+    );
+  } catch (e) {
+    debugPrint('[FirebaseBackground] Error handling background notification: $e');
+  }
+}
 
 class V2FirebaseService {
   static String? _currentDriver;

@@ -6,14 +6,15 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 
 import '../config/v2_route_config.dart';
 import '../models/v2_putnik.dart';
 import 'v2_adresa_supabase_service.dart';
-import 'v2_geocoding_service.dart';
 
 /// Callback za pracenje progresa geocodinga
 typedef GeocodingProgressCallback = void Function(
@@ -41,7 +42,10 @@ class V2GeocodingResult {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is V2GeocodingResult && runtimeType == other.runtimeType && putnik == other.putnik && source == other.source;
+      other is V2GeocodingResult &&
+          runtimeType == other.runtimeType &&
+          putnik == other.putnik &&
+          source == other.source;
 
   @override
   int get hashCode => Object.hash(putnik, source);
@@ -134,7 +138,7 @@ class V2UnifiedGeocodingService {
             error: 'Nema adrese za geocodiranje',
           );
         }
-        final coordsString = await V2GeocodingService.getKoordinateZaAdresu(
+        final coordsString = await _getKoordinateZaAdresu(
           putnik.grad,
           addressToGeocode,
         );
@@ -279,5 +283,143 @@ class V2UnifiedGeocodingService {
     }
 
     return allResults;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GEOCODING IMPLEMENTACIJA (preseljeno iz V2GeocodingService)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  static final Map<String, Completer<String?>> _pendingRequests = {};
+  static final Set<String> _processingRequests = {};
+
+  /// Dobij koordinate za adresu (Photon primarno, Nominatim fallback)
+  static Future<String?> getKoordinateZaAdresu(
+    String grad,
+    String adresa,
+  ) async {
+    return _getKoordinateZaAdresu(grad, adresa);
+  }
+
+  static Future<String?> _getKoordinateZaAdresu(
+    String grad,
+    String adresa,
+  ) async {
+    if (_isCityBlocked(grad)) return null;
+
+    final requestKey = '${grad}_$adresa';
+
+    if (_processingRequests.contains(requestKey)) {
+      return await (_pendingRequests[requestKey]?.future ?? Future.value(null));
+    }
+
+    final completer = Completer<String?>();
+    _pendingRequests[requestKey] = completer;
+    _processingRequests.add(requestKey);
+
+    try {
+      String? coords = await _fetchFromPhoton(grad, adresa);
+      coords ??= await _fetchFromNominatim(grad, adresa);
+      _completeGeoRequest(requestKey, coords);
+    } catch (e) {
+      _completeGeoRequest(requestKey, null);
+    }
+
+    return completer.future;
+  }
+
+  static void _completeGeoRequest(String requestKey, String? result) {
+    final completer = _pendingRequests.remove(requestKey);
+    _processingRequests.remove(requestKey);
+    completer?.complete(result);
+  }
+
+  static Future<String?> _fetchFromNominatim(String grad, String adresa) async {
+    const String baseUrl = 'https://nominatim.openstreetmap.org/search';
+    const int maxRetries = 3;
+    const Duration timeout = Duration(seconds: 10);
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final query = '$adresa, $grad, Serbia';
+        final encodedQuery = Uri.encodeComponent(query);
+        final url = '$baseUrl?q=$encodedQuery&format=json&limit=1&countrycodes=rs';
+
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {'User-Agent': 'GavraAndroidApp/1.0 (transport app)'},
+        ).timeout(timeout);
+
+        if (response.statusCode == 200) {
+          final List<dynamic> results = json.decode(response.body) as List<dynamic>;
+          if (results.isNotEmpty) {
+            final result = results[0] as Map<String, dynamic>;
+            final lat = result['lat'] as String?;
+            final lon = result['lon'] as String?;
+            if (lat != null && lon != null) return '$lat,$lon';
+          }
+        }
+      } catch (e) {
+        if (attempt < maxRetries) {
+          await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
+        }
+      }
+    }
+    return null;
+  }
+
+  static Future<String?> _fetchFromPhoton(String grad, String adresa) async {
+    try {
+      final query = '$adresa, $grad';
+      final encodedQuery = Uri.encodeComponent(query);
+      const String bbox = '&bbox=18.82,41.85,23.01,46.19';
+      final url = 'https://photon.komoot.io/api/?q=$encodedQuery&limit=1$bbox';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'GavraAndroid/1.0'},
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final features = data['features'] as List<dynamic>?;
+        if (features != null && features.isNotEmpty) {
+          final feature = features[0] as Map<String, dynamic>;
+          final geometry = feature['geometry'] as Map<String, dynamic>?;
+          final coordinates = geometry?['coordinates'] as List<dynamic>?;
+          if (coordinates != null && coordinates.length >= 2) {
+            final lon = coordinates[0];
+            final lat = coordinates[1];
+            if (lat != null && lon != null) return '$lat,$lon';
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[V2UnifiedGeocodingService] Photon error: $e');
+    }
+    return null;
+  }
+
+  static bool _isCityBlocked(String grad) {
+    final normalizedGrad = grad.toLowerCase().trim();
+    const allowedCities = [
+      'vrsac',
+      'straza',
+      'straža',
+      'vojvodinci',
+      'potporanj',
+      'oresac',
+      'orešac',
+      'bela crkva',
+      'vracev gaj',
+      'vraćev gaj',
+      'dupljaja',
+      'jasenovo',
+      'kruscica',
+      'kruščica',
+      'kusic',
+      'kusić',
+      'crvena crkva',
+    ];
+    return !allowedCities.any((allowed) => normalizedGrad.contains(allowed));
   }
 }

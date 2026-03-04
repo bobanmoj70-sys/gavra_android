@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../helpers/v2_putnik_statistike_helper.dart'; // Zajednički dijalog za statistike
@@ -52,8 +51,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
   String? _sledecaVoznjaInfo; // 🆕 Format: "Ponedeljak, 7:00 BC"
 
-  // Realtime subscription za status promene
-  StreamSubscription? _statusSubscription;
   // 🆕 Realtime subscription za seat request approvals
   StreamSubscription? _polasciSubscription;
 
@@ -90,7 +87,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     navBarTypeNotifier.removeListener(_onSeasonChanged);
-    _statusSubscription?.cancel(); // Zatvori Realtime listener
     _polasciSubscription?.cancel(); // Zatvori Polasci listener
     super.dispose();
   }
@@ -142,23 +138,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
 
-    // Koristi V2MasterRealtimeManager za centralizovanu pretplatu
-    _statusSubscription = V2MasterRealtimeManager.instance.subscribe('v2_radnici').where((payload) {
-      // Filtriraj samo ako je ažuriran ovaj V2Putnik
-      return payload.newRecord['id'].toString() == putnikId;
-    }).listen((payload) {
-      debugPrint('🎯 [Realtime] Status promena detektovana za putnika $putnikId');
-      _handleStatusChange(payload);
-    });
-
-    // 🆕 Dodaj listener za v2_polasci promene za ovog putnika
+    // Jedan subscriber na v2_polasci — jedina RT tabela relevantna za profil putnika
     _polasciSubscription = V2MasterRealtimeManager.instance.subscribe('v2_polasci').where((payload) {
-      // Filtriraj samo za ovog putnika
       final record = payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;
-      return record['putnik_id'].toString() == putnikId;
+      return record['putnik_id']?.toString() == putnikId;
     }).listen((payload) {
-      debugPrint('🆕 [Realtime] v2_polasci promena detektovana: ${payload.eventType}');
-      _loadActiveRequests(); // Osveži
+      debugPrint('🆕 [Realtime] v2_polasci promena za putnika $putnikId: ${payload.eventType}');
+      _loadActiveRequests();
+      _refreshPutnikData();
     });
 
     debugPrint('🎯 [Realtime] Listener aktivan za putnika $putnikId');
@@ -166,45 +153,27 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
   List<Map<String, dynamic>> _polasci = [];
 
-  /// Učitava aktivne v2_polasci redove za ovog putnika
+  /// Učitava aktivne v2_polasci redove za ovog putnika — iz cache-a, 0 DB upita
   Future<void> _loadActiveRequests() async {
     try {
       final putnikId = _putnikData['id']?.toString();
       if (putnikId == null) return;
 
-      // v2_polasci filtrira po 'dan' kraticama (svi dani)
-      const radniDani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+      const aktivniStatusi = ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen'];
 
-      final res = await supabase
-          .from('v2_polasci')
-          .select()
-          .eq('putnik_id', putnikId)
-          .inFilter('dan', radniDani)
-          .inFilter('status', ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen']);
+      final res = V2MasterRealtimeManager.instance.polasciCache.values
+          .where((r) => r['putnik_id']?.toString() == putnikId && aktivniStatusi.contains(r['status'] as String?))
+          .toList();
 
       if (mounted) {
         setState(() {
-          _polasci = List<Map<String, dynamic>>.from(res);
-          _sledecaVoznjaInfo = _izracunajSledecuVoznju(); // Reračunaj nakon učitavanja
-          debugPrint('📥 [Polasci] Učitano: ${_polasci.length} redova');
+          _polasci = res;
+          _sledecaVoznjaInfo = _izracunajSledecuVoznju();
+          debugPrint('📥 [Polasci] Iz cache-a: ${_polasci.length} redova');
         });
       }
     } catch (e) {
       debugPrint('❌ [Polasci] Greška: $e');
-    }
-  }
-
-  /// Hendluje promenu statusa — samo osvežava UI
-  Future<void> _handleStatusChange(PostgresChangePayload payload) async {
-    try {
-      debugPrint('🔄 [Realtime] Osvežavam podatke putnika...');
-      await _refreshPutnikData();
-      await _loadActiveRequests();
-
-      // FIX: Uklonjen snackbar odavde jer se aktivirao na svaku promenu profila
-      // ako je globalni status putnika bio 'odobreno'
-    } catch (e) {
-      debugPrint('❌ [Realtime] Greška pri obradi: $e');
     }
   }
 
@@ -284,7 +253,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       // Jedan upit: sve voznje+otkazivanja+uplate od poč. godine
       final sveZapisiGodina = await supabase
           .from('v2_statistika_istorija')
-          .select('datum, tip, iznos, created_at')
+          .select('datum, tip, iznos, placeni_mesec, placena_godina, created_at')
           .eq('putnik_id', putnikId)
           .gte('datum', pocetakGodine.toIso8601String().split('T')[0])
           .order('datum', ascending: false);

@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
-import '../models/v2_statistika_istorija.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
+import 'realtime/v2_master_realtime_manager.dart';
 
 /// Servis za upravljanje istorijom vožnji.
 /// Tabela: putnik_id, datum, tip (voznja/otkazivanje/uplata), iznos, vozac_id
@@ -13,63 +15,6 @@ class V2StatistikaIstorijaService {
   V2StatistikaIstorijaService._();
 
   static SupabaseClient get _supabase => supabase;
-
-  /// Statistike za popis — broj vožnji, otkazivanja i uplata po vozacu za odredeni datum.
-  /// Vraca mapu: {voznje: X, otkazivanja: X, uplate: X, mesecne: X, pazar: X.X}
-  static Future<Map<String, dynamic>> getStatistikePoVozacu({required String vozacIme, required DateTime datum}) async {
-    int voznje = 0;
-    int otkazivanja = 0;
-    int naplaceniDnevni = 0;
-    int naplaceniMesecni = 0;
-    double pazar = 0.0;
-
-    try {
-      // Dohvati UUID vozaca
-      final vozacUuid = V2VozacCache.getUuidByIme(vozacIme);
-      if (vozacUuid == null || vozacUuid.isEmpty) {
-        return {'voznje': 0, 'otkazivanja': 0, 'uplate': 0, 'mesecne': 0, 'pazar': 0.0};
-      }
-
-      final datumStr = datum.toIso8601String().split('T')[0];
-
-      final response = await _supabase
-          .from('v2_statistika_istorija')
-          .select('tip, iznos')
-          .eq('vozac_id', vozacUuid)
-          .eq('datum', datumStr)
-          .limit(100);
-
-      for (final record in response) {
-        final tip = record['tip'] as String?;
-        final iznos = (record['iznos'] as num?)?.toDouble() ?? 0;
-
-        switch (tip) {
-          case 'voznja':
-            voznje++;
-          case 'otkazivanje':
-            otkazivanja++;
-          // Stari tip pre migracije - tretiramo kao dnevnu uplatu
-          case 'uplata':
-          case 'uplata_dnevna':
-            naplaceniDnevni++;
-            pazar += iznos;
-          case 'uplata_mesecna':
-            naplaceniMesecni++;
-            pazar += iznos;
-        }
-      }
-    } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] Greška u getStatistikePoVozacu: $e');
-    }
-
-    return {
-      'voznje': voznje,
-      'otkazivanja': otkazivanja,
-      'uplate': naplaceniDnevni, // Dnevne naplate
-      'mesecne': naplaceniMesecni, // Mesecne naplate
-      'pazar': pazar,
-    };
-  }
 
   /// Detalji o aktivnostima — provjera postojanja log zapisa.
   static Future<Map<String, dynamic>?> getLogEntry({
@@ -161,63 +106,6 @@ class V2StatistikaIstorijaService {
     });
   }
 
-  /// Stream pazara po vozacima (realtime)
-  static Stream<Map<String, double>> streamPazarPoVozacima({required DateTime from, required DateTime to}) {
-    final fromStr = from.toIso8601String().split('T')[0];
-    final toStr = to.toIso8601String().split('T')[0];
-
-    Stream<List<Map<String, dynamic>>> query;
-    if (fromStr == toStr) {
-      // Isti dan - koristi eq filter
-      query = _supabase.from('v2_statistika_istorija').stream(primaryKey: ['id']).eq('datum', fromStr).limit(500);
-    } else {
-      // Razliciti dani - ucitaj sve i filtriraj u kodu
-      // NOTE: Supabase stream ne podržava gte/lte, trebajmo filter u map()
-      query = _supabase
-          .from('v2_statistika_istorija')
-          .stream(primaryKey: ['id'])
-          .order('datum', ascending: false)
-          .limit(500);
-    }
-
-    return query.map((records) {
-      final Map<String, double> pazar = {};
-      double ukupno = 0;
-
-      for (final record in records) {
-        final log = V2StatistikaIstorija.fromJson(record);
-
-        // Filtriraj po tipu i datumu
-        if (log.tip != 'uplata' && log.tip != 'uplata_mesecna' && log.tip != 'uplata_dnevna' && log.tip != 'placanje') {
-          continue;
-        }
-
-        final logDatumStr = log.datum?.toIso8601String().split('T')[0];
-        if (logDatumStr == null) continue;
-        if (logDatumStr.compareTo(fromStr) < 0 || logDatumStr.compareTo(toStr) > 0) continue;
-
-        final vozacId = log.vozacId;
-        final iznos = log.iznos;
-
-        if (iznos <= 0) continue;
-
-        // Konvertuj UUID u ime vozaca - PRVO iz vozac_ime kolone, pa iz cache-a
-        // Nikad ne preskacemo uplatu ako postoji vozac_id - koristimo UUID kao fallback kljuc
-        String vozacIme = record['vozac_ime'] as String? ?? '';
-        if (vozacIme.isEmpty && vozacId != null && vozacId.isNotEmpty) {
-          vozacIme = V2VozacCache.getImeByUuid(vozacId) ?? vozacId;
-        }
-        if (vozacIme.isEmpty) continue;
-
-        pazar[vozacIme] = (pazar[vozacIme] ?? 0) + iznos;
-        ukupno += iznos;
-      }
-
-      pazar['_ukupno'] = ukupno;
-      return pazar;
-    });
-  }
-
   /// Logovanje generičke akcije u statistika_istorija tabelu.
   static Future<void> logGeneric({
     required String tip,
@@ -300,4 +188,86 @@ class V2StatistikaIstorijaService {
 
   /// Placeholder — stream se automatski gasi, eksplicitno čišćenje nije potrebno.
   static void dispose() {}
+
+  // ──────────────────────────────────────────────────────────────────────────
+  /// Agregira pazar iz polasciCache za tekuci dan (0 DB upita, realtime)
+  static Map<String, double> _pazarIzPolasciCache(Iterable<Map<String, dynamic>> rows, String today) {
+    final Map<String, double> pazar = {};
+    double ukupno = 0;
+    for (final row in rows) {
+      if (row['placen'] != true) continue;
+      final datumAkcije = row['datum_akcije']?.toString();
+      if (datumAkcije != today) continue;
+      final iznos = (row['placen_iznos'] as num?)?.toDouble() ?? 0;
+      if (iznos <= 0) continue;
+      final vozacIme = row['placen_vozac_ime']?.toString() ?? 'Nepoznat';
+      pazar[vozacIme] = (pazar[vozacIme] ?? 0) + iznos;
+      ukupno += iznos;
+    }
+    pazar['_ukupno'] = ukupno;
+    return pazar;
+  }
+
+  // PAZAR STREAM
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Pretvori listu redova u mapu {vozacIme: iznos, '_ukupno': ukupno}.
+  static Map<String, double> _mapRowsToPazar(Iterable<Map<String, dynamic>> rows) {
+    final Map<String, double> pazar = {};
+    double ukupno = 0;
+    for (final row in rows) {
+      final tip = row['tip'] as String?;
+      if (tip != 'uplata' && tip != 'uplata_dnevna' && tip != 'uplata_mesecna' && tip != 'placanje') continue;
+      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
+      if (iznos <= 0) continue;
+      String vozacIme = (row['vozac_ime'] as String?) ?? '';
+      if (vozacIme.isEmpty) {
+        final vozacId = row['vozac_id']?.toString() ?? '';
+        if (vozacId.isNotEmpty) vozacIme = V2VozacCache.getImeByUuid(vozacId) ?? vozacId;
+      }
+      if (vozacIme.isEmpty) continue;
+      pazar[vozacIme] = (pazar[vozacIme] ?? 0) + iznos;
+      ukupno += iznos;
+    }
+    pazar['_ukupno'] = ukupno;
+    return pazar;
+  }
+
+  /// Stream pazara direktno iz master cache-a (0 DB upita za današnji dan).
+  /// Za ostale datume radi jednokratni DB fetch.
+  /// Vraća mapu {vozacIme: iznos, '_ukupno': ukupno}
+  static Stream<Map<String, double>> streamPazarIzCachea({
+    required String isoDate,
+  }) {
+    final rm = V2MasterRealtimeManager.instance;
+    final controller = StreamController<Map<String, double>>.broadcast();
+
+    Future<void> emit() async {
+      if (controller.isClosed) return;
+      try {
+        final today = DateTime.now().toIso8601String().split('T')[0];
+        final Map<String, double> result;
+        if (isoDate == today && rm.isInitialized) {
+          // Tekuci dan — citaj direktno iz polasciCache (realtime, 0 DB upita)
+          result = _pazarIzPolasciCache(rm.polasciCache.values, today);
+        } else {
+          final rows = await supabase
+              .from('v2_statistika_istorija')
+              .select('tip, iznos, vozac_id, vozac_ime')
+              .eq('datum', isoDate)
+              .limit(500);
+          result = _mapRowsToPazar(rows);
+        }
+        if (!controller.isClosed) controller.add(result);
+      } catch (e) {
+        debugPrint('[V2StatistikaIstorijaService] streamPazar greška: $e');
+        if (!controller.isClosed) controller.add({'_ukupno': 0});
+      }
+    }
+
+    Future.microtask(emit);
+    final sub = rm.subscribe('v2_polasci').listen((_) => emit());
+    controller.onCancel = () => sub.cancel();
+    return controller.stream;
+  }
 }

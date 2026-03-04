@@ -53,16 +53,9 @@ class V2VozacService {
   /// Emituje direktno iz rm cache-a, bez DB fetcha na svaki event.
   Stream<List<V2Vozac>> streamAllVozaci() {
     final controller = StreamController<List<V2Vozac>>.broadcast();
-    // Inicijalno emitovanje
+    // v2_vozaci nema RT — emituje jednom iz cache-a
     controller.add(getAllVozaci());
-    // Svaki rm event → emit iz cache
-    final sub = _rm.subscribe('v2_vozaci').listen((_) {
-      if (!controller.isClosed) controller.add(getAllVozaci());
-    });
-    controller.onCancel = () {
-      sub.cancel();
-      controller.close();
-    };
+    controller.onCancel = () => controller.close();
     return controller.stream;
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
-import '../utils/v2_grad_adresa_validator.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
 /// Model za jedan red iz vozac_raspored tabele.
@@ -95,42 +94,5 @@ class V2VozacRasporedService {
     } catch (e) {
       debugPrint('[V2VozacRasporedService] Greška u deleteTermin(): $e');
     }
-  }
-
-  /// Filter logika: koji putnici pripadaju vozaču?
-  ///
-  /// Filtrira putnike po per-termin rasporedu.
-  ///
-  /// Logika:
-  /// - Ako nema unosa za termin → V2Putnik je vidljiv svima
-  /// - Ako postoji unos → prikaži samo vozaču koji je dodeljen tom terminu
-  ///
-  /// [vozacId] = UUID vozača
-  static List<T> filterPutniciZaVozaca<T>({
-    required List<T> sviPutnici,
-    required String vozacId,
-    required String targetDan, // 'pon', 'uto', ...
-    required List<V2VozacRasporedEntry> raspored,
-    required String Function(T) getId,
-    required String Function(T) getGrad,
-    required String Function(T) getPolazak,
-  }) {
-    if (raspored.isEmpty) return sviPutnici;
-
-    bool jeVozacov(V2VozacRasporedEntry r) => r.vozacId == vozacId;
-
-    return sviPutnici.where((p) {
-      final grad = getGrad(p).toUpperCase();
-      final vreme = V2GradAdresaValidator.normalizeTime(getPolazak(p));
-
-      final terminEntries = raspored
-          .where((r) =>
-              r.dan == targetDan && r.grad.toUpperCase() == grad && V2GradAdresaValidator.normalizeTime(r.vreme) == vreme)
-          .toList();
-
-      if (terminEntries.isEmpty) return true; // nema unosa → vidljivo svima
-
-      return terminEntries.any(jeVozacov);
-    }).toList();
   }
 }

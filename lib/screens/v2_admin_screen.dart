@@ -11,7 +11,7 @@ import '../services/v2_firebase_service.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_pin_zahtev_service.dart'; // ?? PIN ZAHTEVI
 import '../services/v2_polasci_service.dart';
-import '../services/v2_statistika_service.dart'; // ?? STATISTIKA
+import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_service.dart'; // ??? VOZAC SERVIS
 import '../theme.dart';
@@ -26,6 +26,8 @@ import 'v2_kapacitet_screen.dart'; // DODANO za kapacitet polazaka
 import 'v2_odrzavanje_screen.dart'; // ?? Kolska knjiga - vozila
 import 'v2_pin_zahtevi_screen.dart'; // ?? PIN ZAHTEVI
 import 'v2_putnici_screen.dart';
+import 'v2_radnici_zahtevi_screen.dart';
+import 'v2_ucenici_zahtevi_screen.dart';
 import 'v2_vozac_raspored_screen.dart'; // ??? Raspored vozaca
 import 'v2_vozac_screen.dart';
 import 'v2_vozaci_admin_screen.dart'; // Admin panel za upravljanje vozacima
@@ -67,6 +69,8 @@ class _AdminScreenState extends State<V2AdminScreen> {
   // ?? Cache-based streamovi (kreirani jednom u initState)
   late final Stream<List<V2Putnik>> _streamPutnici;
   late final Stream<Map<String, double>> _streamPazar;
+  late final Stream<int> _streamRadniciObrada;
+  late final Stream<int> _streamUceniciObrada;
 
   @override
   void initState() {
@@ -78,7 +82,11 @@ class _AdminScreenState extends State<V2AdminScreen> {
     // ?? Kreiraj streamove jednom — direktno na master cache
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
     _streamPutnici = V2PolasciService.streamPutnici();
-    _streamPazar = V2StatistikaService.streamPazarIzCachea(isoDate: todayIso);
+    _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: todayIso);
+    _streamRadniciObrada =
+        V2PolasciService.v2StreamZahteviObrada().map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
+    _streamUceniciObrada =
+        V2PolasciService.v2StreamZahteviObrada().map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
 
     _loadCurrentDriver();
 
@@ -1127,6 +1135,132 @@ class _AdminScreenState extends State<V2AdminScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        // RADNICI + UCENICI ZAHTEVI
+                        if (isAdmin)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: StreamBuilder<int>(
+                                  stream: _streamRadniciObrada,
+                                  builder: (context, snapshot) {
+                                    final count = snapshot.data ?? 0;
+                                    return Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        InkWell(
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute<void>(
+                                              builder: (context) => const V2RadniciZahteviScreen(),
+                                            ),
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Container(
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border:
+                                                  Border.all(color: Colors.green.withValues(alpha: 0.6), width: 1.5),
+                                            ),
+                                            child: const Center(
+                                              child: Text(
+                                                'Radnici zahtevi',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                  color: Colors.white,
+                                                  shadows: [
+                                                    Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        if (count > 0)
+                                          Positioned(
+                                            right: 6,
+                                            top: 6,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(5),
+                                              decoration:
+                                                  const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                              child: Text('$count',
+                                                  style: const TextStyle(
+                                                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                                  textAlign: TextAlign.center),
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: StreamBuilder<int>(
+                                  stream: _streamUceniciObrada,
+                                  builder: (context, snapshot) {
+                                    final count = snapshot.data ?? 0;
+                                    return Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        InkWell(
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute<void>(
+                                              builder: (context) => const V2UceniciZahteviScreen(),
+                                            ),
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Container(
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                  color: Colors.lightBlue.withValues(alpha: 0.6), width: 1.5),
+                                            ),
+                                            child: const Center(
+                                              child: Text(
+                                                'Učenici zahtevi',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                  color: Colors.white,
+                                                  shadows: [
+                                                    Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        if (count > 0)
+                                          Positioned(
+                                            right: 6,
+                                            top: 6,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(5),
+                                              decoration:
+                                                  const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                              child: Text('$count',
+                                                  style: const TextStyle(
+                                                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                                  textAlign: TextAlign.center),
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),

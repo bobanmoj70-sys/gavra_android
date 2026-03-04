@@ -1,0 +1,240 @@
+import 'package:flutter/material.dart';
+
+import '../models/v2_polazak.dart';
+import '../services/v2_polasci_service.dart';
+import '../theme.dart';
+
+class V2UceniciZahteviScreen extends StatefulWidget {
+  const V2UceniciZahteviScreen({super.key});
+
+  @override
+  State<V2UceniciZahteviScreen> createState() => _V2UceniciZahteviScreenState();
+}
+
+class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
+  late final Stream<List<V2Polazak>> _stream;
+
+  @override
+  void initState() {
+    super.initState();
+    _stream = V2PolasciService.v2StreamZahteviObrada(
+      statusFilter: const ['obrada', 'odobreno', 'odbijeno'],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<V2Polazak>>(
+      stream: _stream,
+      builder: (context, snapshot) {
+        final svi = snapshot.data ?? [];
+
+        // Tekuća sedmica: od ponedjeljka do nedjelje
+        final now = DateTime.now();
+        final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
+        final pocetak = DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day);
+        final kraj = pocetak.add(const Duration(days: 7));
+
+        final zahtevi = svi.where((z) {
+          if ((z.tipPutnika ?? '').toLowerCase() != 'ucenik') return false;
+          // Samo putnik sam poslao (processed_at != null znači dispečer obradio)
+          if (z.processedAt == null) return false;
+          // Samo tekuća sedmica po created_at
+          final ca = z.createdAt;
+          if (ca == null) return false;
+          final caLocal = ca.toLocal();
+          return caLocal.isAfter(pocetak) && caLocal.isBefore(kraj);
+        }).toList();
+
+        final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
+        final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
+        final brOdbijeno = zahtevi.where((z) => z.status == 'odbijeno').length;
+
+        return Container(
+          decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(80),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).glassContainer,
+                  border: Border(
+                    bottom: BorderSide(color: Theme.of(context).glassBorder, width: 1.5),
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(25),
+                    bottomRight: Radius.circular(25),
+                  ),
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Monitoring Učenika',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (brObrada > 0) _summaryBadge('🟡 $brObrada obrada', Colors.amber),
+                            if (brObrada > 0) const SizedBox(width: 8),
+                            if (brOdobreno > 0) _summaryBadge('🟢 $brOdobreno odobreno', Colors.green),
+                            if (brOdobreno > 0) const SizedBox(width: 8),
+                            if (brOdbijeno > 0) _summaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
+                            if (zahtevi.isEmpty)
+                              Text('Nema aktivnih zahtjeva',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            body: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                : _buildLista(zahtevi),
+          ),
+        );
+      },
+    );
+  }
+
+  static Widget _summaryBadge(String label, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+        ),
+        child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+      );
+
+  Widget _buildLista(List<V2Polazak> zahtevi) {
+    if (zahtevi.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 72, color: Colors.white.withValues(alpha: 0.4)),
+            const SizedBox(height: 14),
+            Text(
+              'Nema zahteva učenika',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 17, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      itemCount: zahtevi.length,
+      itemBuilder: (context, index) => _buildKartica(zahtevi[index]),
+    );
+  }
+
+  Widget _buildKartica(V2Polazak z) {
+    final ime = z.putnikIme ?? 'Nepoznat';
+    final grad = z.grad ?? 'BC';
+    final dan = z.dan ?? '';
+    final zeljeno = z.zeljenoVreme ?? '—';
+    final dodeljeno = z.dodeljenoVreme;
+    final alt1 = z.alternativeVreme1;
+    final alt2 = z.alternativeVreme2;
+    final status = z.status;
+
+    final (statusColor, statusLabel) = switch (status) {
+      'obrada' => (Colors.amber, 'OBRADA'),
+      'odobreno' => (Colors.green, 'ODOBRENO'),
+      'odbijeno' => (Colors.red, 'ODBIJENO'),
+      _ => (Colors.grey, status.toUpperCase()),
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).glassContainer.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withValues(alpha: 0.4), width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(ime, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.calendar_today, size: 12, color: Colors.amber.withValues(alpha: 0.8)),
+                      const SizedBox(width: 3),
+                      Text(dan, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+                    ],
+                  ),
+                ),
+                _gradBadge(grad),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                  ),
+                  child: Text(statusLabel,
+                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Wrap(
+              spacing: 14,
+              runSpacing: 2,
+              children: [
+                _vremeChip('Željeno', zeljeno, Colors.white70),
+                if (dodeljeno != null && dodeljeno.isNotEmpty) _vremeChip('', dodeljeno, Colors.green),
+                if (alt1 != null && alt1.isNotEmpty) _vremeChip('Alt 1', alt1, Colors.lightBlue),
+                if (alt2 != null && alt2.isNotEmpty) _vremeChip('Alt 2', alt2, Colors.lightBlue),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _vremeChip(String label, String vreme, Color color) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (label.isNotEmpty)
+            Text('$label: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
+          Text(vreme, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      );
+
+  static Widget _gradBadge(String grad) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue.withValues(alpha: 0.5)),
+        ),
+        child: Text(grad,
+            style: const TextStyle(color: Colors.lightBlueAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+      );
+}

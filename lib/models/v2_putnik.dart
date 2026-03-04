@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart'; // DODATO za fallback ucitavanje adrese
 import '../utils/v2_registrovani_helpers.dart';
+import '../utils/v2_vozac_cache.dart';
 
 class V2Putnik {
   // NOVO - originalni datum za dnevne putnike (ISO yyyy-MM-dd)
@@ -131,11 +133,11 @@ class V2Putnik {
     // PRIORITET: Dodeljeno vreme (ako je vozac pomerio termin), inace zeljeno
     final vremeRaw = (req['dodeljeno_vreme'] ?? req['zeljeno_vreme'])?.toString() ?? '';
 
-    // Provera da li je pokupljen (iz voznje_log ili statusa)
+    // Provera da li je pokupljen (iz v2_polasci srRow ili statusa)
     final bool isPickedUp = req['pokupljen_iz_loga'] == true || req['status']?.toString().toLowerCase() == 'pokupljen';
 
     // Provera da li je placeno (za dnevne putnike)
-    // SAMO iz voznje_log (uplata/uplata_dnevna), ne iz statusa!
+    // Čita se iz v2_polasci srRow (placen kolona), ne iz statusa
     final bool isPaid = req['placeno_iz_loga'] == true;
 
     // Koristi centralizovanu normalizaciju vremena
@@ -154,8 +156,39 @@ class V2Putnik {
       finalStatus = profileStatus;
     }
 
-    // Dodeljeni vozac je uvek null (tabele vreme_vozac i putnik_vozac su uklonjene)
+    // Dodeljeni vozac — traži individualnu dodjelu (v2_vozac_putnik), pa termin-raspored (v2_vozac_raspored)
     String? dodeljenVozacFinal;
+    try {
+      final rm = V2MasterRealtimeManager.instance;
+      final putnikIdStr = (p['id'] ?? req['putnik_id'])?.toString() ?? '';
+      final gradNorm = grad.toUpperCase(); // već je 'BC' ili 'VS'
+      final vremeNorm = V2RegistrovaniHelpers.normalizeTime(vreme) ?? '';
+
+      // 1. Individualna dodjela za ovaj dan+grad+vreme
+      final indDodjela = rm.vozacPutnikCache.values.where((vp) {
+        return vp['putnik_id']?.toString() == putnikIdStr &&
+            vp['dan']?.toString().toLowerCase() == danStr &&
+            vp['grad']?.toString().toUpperCase() == gradNorm &&
+            (V2RegistrovaniHelpers.normalizeTime(vp['vreme']?.toString()) ?? '') == vremeNorm;
+      }).firstOrNull;
+
+      if (indDodjela != null) {
+        dodeljenVozacFinal = V2VozacCache.getImeByUuid(indDodjela['vozac_id']?.toString() ?? '');
+      } else {
+        // 2. Termin-raspored (v2_vozac_raspored) za ovaj dan+grad+vreme
+        final terminRaspored = rm.rasporedCache.values.where((vr) {
+          return vr['dan']?.toString().toLowerCase() == danStr &&
+              vr['grad']?.toString().toUpperCase() == gradNorm &&
+              (V2RegistrovaniHelpers.normalizeTime(vr['vreme']?.toString()) ?? '') == vremeNorm;
+        }).firstOrNull;
+
+        if (terminRaspored != null) {
+          dodeljenVozacFinal = V2VozacCache.getImeByUuid(terminRaspored['vozac_id']?.toString() ?? '');
+        }
+      }
+    } catch (e) {
+      debugPrint('[V2Putnik.v2FromPolazak] dodeljenVozac lookup failed: $e');
+    }
 
     return V2Putnik(
       id: p['id'] ?? req['putnik_id'],
@@ -285,7 +318,7 @@ class V2Putnik {
   bool get jeOdsustvo => jeBolovanje || jeGodisnji;
 
   bool get jePokupljen {
-    // 1. Ako je eksplicitno prosleden flag (iz voznje_log preko _enrichWithLogData) - NAJVECI PRIORITET
+    // 1. Ako je eksplicitno prosleden flag (iz v2_polasci srRow) - NAJVECI PRIORITET
     if (pokupljen == true) return true;
 
     // STATUS 'odobreno' NIJE POKUPLJEN (to je samo odobrena rezervacija)

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../models/v2_adresa.dart';
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -68,6 +69,17 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
 
         await supabase.from('v2_adrese').insert(insertData);
 
+        // Realtime je isključen na v2_adrese — ručno osvježi cache
+        final novaAdresa = await supabase
+            .from('v2_adrese')
+            .select('id, naziv, grad, gps_lat, gps_lng')
+            .eq('naziv', result['naziv'] as String)
+            .eq('grad', result['grad'] as String)
+            .order('id', ascending: false)
+            .limit(1)
+            .single();
+        V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', novaAdresa);
+
         if (mounted) {
           V2AppSnackBar.success(context, '✅ V2Adresa dodana');
         }
@@ -108,6 +120,13 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
 
         await supabase.from('v2_adrese').update(updateData).eq('id', adresa.id);
 
+        // Realtime je isključen na v2_adrese — ručno osvježi cache
+        final azuriranaAdresa = <String, dynamic>{
+          'id': adresa.id,
+          ...updateData,
+        };
+        V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', azuriranaAdresa);
+
         if (mounted) {
           V2AppSnackBar.success(context, '✅ V2Adresa ažurirana');
         }
@@ -143,6 +162,8 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
 
     try {
       await supabase.from('v2_adrese').delete().eq('id', adresa.id);
+      // Realtime je isključen na v2_adrese — ručno ukloni iz cache-a
+      V2MasterRealtimeManager.instance.removeFromCache('v2_adrese', adresa.id);
       if (mounted) {
         V2AppSnackBar.warning(context, '🗑️ V2Adresa obrisana');
       }

@@ -168,6 +168,29 @@ class V2PinZahtevService {
         .any((z) => z['putnik_id'] == putnikId && z['status'] == 'ceka');
   }
 
+  /// Async verzija — provjerava cache, a ako je prazan pada na DB.
+  /// Koristi se pri loginovanju da ne prikaže dialog ako je zahtev već poslat.
+  static Future<bool> imaZahtevKojiCekuAsync(String putnikId) async {
+    // Provjeri lokalni cache prvo (0 DB upita)
+    final izCachea = V2MasterRealtimeManager.instance.pinCache.values
+        .any((z) => z['putnik_id'] == putnikId && z['status'] == 'ceka');
+    if (izCachea) return true;
+
+    // Cache može biti prazan (cold start) — provjeri DB
+    try {
+      final row = await _supabase
+          .from('v2_pin_zahtevi')
+          .select('id')
+          .eq('putnik_id', putnikId)
+          .eq('status', 'ceka')
+          .maybeSingle();
+      return row != null;
+    } catch (e) {
+      debugPrint('[V2PinZahtevService] imaZahtevKojiCekuAsync error: $e');
+      return false;
+    }
+  }
+
   static Future<bool> azurirajEmail({
     required String putnikId,
     required String putnikTabela,

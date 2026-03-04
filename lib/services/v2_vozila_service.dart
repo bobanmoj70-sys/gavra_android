@@ -23,14 +23,9 @@ class V2VozilaService {
   /// Stream vozila sa realtime osvežavanjem — emituje direktno iz cache-a
   static Stream<List<V2Vozilo>> streamVozila() {
     final controller = StreamController<List<V2Vozilo>>.broadcast();
+    // v2_vozila nema RT — emituje jednom iz cache-a
     controller.add(getVozila());
-    final sub = _rm.subscribe('v2_vozila').listen((_) {
-      if (!controller.isClosed) controller.add(getVozila());
-    });
-    controller.onCancel = () {
-      sub.cancel();
-      controller.close();
-    };
+    controller.onCancel = () => controller.close();
     return controller.stream;
   }
 

@@ -1,4 +1,3 @@
-import 'package:async/async.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -9,20 +8,27 @@ import 'realtime/v2_master_realtime_manager.dart';
 class V2FinansijeService {
   static SupabaseClient get _supabase => supabase;
 
-  /// Dohvati sve aktivne troškove za određeni mesec/godinu
+  /// Dohvati sve aktivne troškove za određeni mesec/godinu (čita iz cache-a)
   static Future<List<V2Trosak>> getTroskovi({int? mesec, int? godina}) async {
     try {
-      var query = _supabase.from('v2_finansije_troskovi').select('*, v2_vozaci(ime)').eq('aktivan', true);
+      final rm = V2MasterRealtimeManager.instance;
+      var rows = rm.troskoviCache.values.where((r) => r['aktivan'] == true);
+      if (mesec != null) rows = rows.where((r) => r['mesec'] == mesec);
+      if (godina != null) rows = rows.where((r) => r['godina'] == godina);
 
-      if (mesec != null) {
-        query = query.eq('mesec', mesec);
-      }
-      if (godina != null) {
-        query = query.eq('godina', godina);
-      }
-
-      final response = await query.order('tip');
-      return (response as List).map((row) => V2Trosak.fromJson(row)).toList();
+      return rows.map((row) {
+        // Resolviraj ime vozača iz vozaciCache (umjesto PostgREST join-a)
+        String? vozacIme;
+        final vozacId = row['vozac_id']?.toString();
+        if (vozacId != null) {
+          vozacIme = rm.vozaciCache[vozacId]?['ime'] as String?;
+        }
+        return V2Trosak.fromJson({
+          ...row,
+          if (vozacIme != null) 'v2_vozaci': {'ime': vozacIme}
+        });
+      }).toList()
+        ..sort((a, b) => a.tip.compareTo(b.tip));
     } catch (e) {
       debugPrint('[Finansije] getTroskovi greška: $e');
       return [];
@@ -187,38 +193,32 @@ class V2FinansijeService {
       final proslaFrom = '${now.year - 1}-01-01';
       final proslaTo = '${now.year - 1}-12-31';
 
-      // Paralelni upiti: voznje_log za sve periode + troskovi za mesec
+      // Paralelni upiti iz v2_statistika_istorija (trošovi se čitaju iz troskoviCache)
       final results = await Future.wait([
-        // 0: nedelja voznje_log
+        // 0: nedelja
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', nedFrom).lte('datum', nedTo),
-        // 1: mesec voznje_log
+        // 1: mesec
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', mesFrom).lte('datum', mesTo),
-        // 2: godina voznje_log
+        // 2: godina
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', godFrom).lte('datum', godTo),
-        // 3: prosla godina voznje_log
+        // 3: prosla godina
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', proslaFrom).lte('datum', proslaTo),
-        // 4: mesec troskovi (aktivan=true)
-        _supabase
-            .from('v2_finansije_troskovi')
-            .select('tip, iznos')
-            .eq('aktivan', true)
-            .eq('mesec', now.month)
-            .eq('godina', now.year),
-        // 5: godina troskovi (aktivan=true)
-        _supabase.from('v2_finansije_troskovi').select('iznos').eq('aktivan', true).eq('godina', now.year),
-        // 6: prosla godina troskovi
-        _supabase.from('v2_finansije_troskovi').select('iznos').eq('aktivan', true).eq('godina', now.year - 1),
       ]);
 
       final nedRows = (results[0] as List).cast<Map<String, dynamic>>();
       final mesRows = (results[1] as List).cast<Map<String, dynamic>>();
       final godRows = (results[2] as List).cast<Map<String, dynamic>>();
       final proslaRows = (results[3] as List).cast<Map<String, dynamic>>();
-      final mesTroskRows = (results[4] as List).cast<Map<String, dynamic>>();
-      final godTroskRows = (results[5] as List).cast<Map<String, dynamic>>();
-      final proslaTroskRows = (results[6] as List).cast<Map<String, dynamic>>();
 
-      // Agregati iz voznje_log
+      // Troškovi iz troskoviCache (0 DB upita)
+      final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values.toList();
+      final mesTroskRows = troskoviRows
+          .where((r) => r['aktivan'] == true && r['mesec'] == now.month && r['godina'] == now.year)
+          .toList();
+      final godTroskRows = troskoviRows.where((r) => r['aktivan'] == true && r['godina'] == now.year).toList();
+      final proslaTroskRows = troskoviRows.where((r) => r['aktivan'] == true && r['godina'] == now.year - 1).toList();
+
+      // Agregati iz v2_statistika_istorija
       final prihodNedelja = _sumirajPrihode(nedRows);
       final voznjiNedelja = _broji(nedRows, 'voznja');
       final prihodMesec = _sumirajPrihode(mesRows);
@@ -329,19 +329,17 @@ class V2FinansijeService {
       final toStr = _fmtDate(to);
 
       final results = await Future.wait([
-        // voznje_log za period
+        // v2_statistika_istorija za period
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', fromStr).lte('datum', toStr),
-        // troskovi za period (po mesec/godina pokrivenost — meseci koji se preklapaju)
-        _supabase
-            .from('v2_finansije_troskovi')
-            .select('iznos')
-            .eq('aktivan', true)
-            .gte('godina', from.year)
-            .lte('godina', to.year),
       ]);
 
       final voznjeRows = (results[0] as List).cast<Map<String, dynamic>>();
-      final troskoviRows = (results[1] as List).cast<Map<String, dynamic>>();
+
+      // Troškovi za period iz cache-a (aktivan=true, godina u opsegu from..to)
+      final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values
+          .where((r) =>
+              r['aktivan'] == true && (r['godina'] as int? ?? 0) >= from.year && (r['godina'] as int? ?? 0) <= to.year)
+          .toList();
 
       final prihod = _sumirajPrihode(voznjeRows);
       final voznje = _broji(voznjeRows, 'voznja');
@@ -364,13 +362,10 @@ class V2FinansijeService {
     // Emituj inicijalne podatke
     yield await getIzvestaj();
 
-    // Listen na promene u voznje_log i finansije_troskovi
+    // Sluša promene u v2_statistika_istorija (troskovi se čitaju iz cache-a)
     final voznjeStream = supabase.from('v2_statistika_istorija').stream(primaryKey: ['id']);
-    final troskoviStream = supabase.from('v2_finansije_troskovi').stream(primaryKey: ['id']);
 
-    // Svaki put kada se bilo koja tabela promeni, osveži ceo izveštaj
-    // (Ovo je malo "skuplje", ali admin panelu je bitna tačnost)
-    await for (final _ in StreamGroup.merge([voznjeStream, troskoviStream])) {
+    await for (final _ in voznjeStream) {
       yield await getIzvestaj();
     }
   }

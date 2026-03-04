@@ -132,7 +132,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
             .where(
               (p) =>
                   (!p.isMesecniTip) && // FIX: Plava kartica = nije mesečni tip
-                  (p.placeno != true) && // FIX: Koristi placeno flag iz voznje_log
+                  (p.placeno != true) && // placeno flag iz v2_polasci srRow
                   (p.jePokupljen) &&
                   (p.status == null || (p.status != 'Otkazano' && p.status != 'otkazan')),
               // IZMENA: Uklonjen filter po vozaču da bi se prikazali SVI dužnici (zahtev 26.01.2026)
