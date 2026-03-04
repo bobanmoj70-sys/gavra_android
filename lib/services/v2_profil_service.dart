@@ -121,11 +121,11 @@ class V2ProfilService {
       if (!controller.isClosed) controller.add(getAktivne(tabela));
     }
 
-    emit();
-    final sub = _rm.subscribe(tabela).listen((_) => emit());
+    Future.microtask(emit);
+    // tabela je statička — kanal je uvijek otvoren, onCacheChanged je dovoljan
+    final cacheSub = _rm.onCacheChanged.where((t) => t == tabela).listen((_) => emit());
     controller.onCancel = () {
-      sub.cancel();
-      _rm.unsubscribe(tabela);
+      cacheSub.cancel();
       controller.close();
     };
 

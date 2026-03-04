@@ -205,12 +205,11 @@ class V2PolasciService {
     // Emituj odmah (cache je već popunjen pri initialize())
     Future.microtask(emit);
 
-    // Svakim realtime eventom na v2_polasci master ažurira polasciCache,
-    // a mi samo ponovo čitamo iz tog cache-a
-    final sub = rm.subscribe('v2_polasci').listen((_) => emit());
+    // v2_polasci je statička tabela — onCacheChanged je dovoljan, subscribe višak
+    final cacheSub = rm.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) => emit());
     controller.onCancel = () {
-      sub.cancel();
-      rm.unsubscribe('v2_polasci');
+      cacheSub.cancel();
+      controller.close();
     };
     return controller.stream;
   }
@@ -425,19 +424,14 @@ class V2PutnikStreamService {
       await emit();
     });
 
-    final subs = <StreamSubscription>[
-      rm.subscribe('v2_polasci').listen((_) => emit()),
-      rm.subscribe('v2_vozac_raspored').listen((_) => emit()),
-      rm.subscribe('v2_vozac_putnik').listen((_) => emit()),
-    ];
+    // sve 3 tabele su statičke — onCacheChanged je dovoljan, subscribe višak
+    final cacheSub = rm.onCacheChanged
+        .where((t) => t == 'v2_polasci' || t == 'v2_vozac_raspored' || t == 'v2_vozac_putnik')
+        .listen((_) => emit());
 
     controller.onCancel = () {
-      for (final s in subs) {
-        s.cancel();
-      }
-      rm.unsubscribe('v2_polasci');
-      rm.unsubscribe('v2_vozac_raspored');
-      rm.unsubscribe('v2_vozac_putnik');
+      cacheSub.cancel();
+      controller.close();
     };
 
     return controller.stream;
