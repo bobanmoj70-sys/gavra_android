@@ -397,6 +397,17 @@ class V2MasterRealtimeManager {
     if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
   }
 
+  /// Optimistički patch — ažurira samo određena polja postojećeg cache reda i odmah emituje onCacheChanged.
+  /// Koristi se nakon lokalnog DB write-a da se UI odmah osvježi bez čekanja WebSocket event-a.
+  void patchCache(String table, String id, Map<String, dynamic> fields) {
+    final target = _cacheForTable(table);
+    if (target == null) return;
+    final existing = target[id];
+    if (existing == null) return; // red ne postoji u cache-u — WebSocket će ga dodati
+    target[id] = {...existing, ...fields};
+    if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+  }
+
   /// O(1) lookup: ime tabele → odgovarajući cache map
   late final Map<String, Map<String, Map<String, dynamic>>> _tableToCache = {
     'v2_polasci': polasciCache,

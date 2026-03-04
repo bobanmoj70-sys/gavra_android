@@ -744,9 +744,9 @@ class V2PutnikStreamService {
     final targetDatum = datum ?? DateTime.now().toIso8601String().split('T')[0];
 
     String? vozacId;
+    final rm = V2MasterRealtimeManager.instance;
     if (driver != null) {
       // Čitaj iz cache-a — 0 DB querija
-      final rm = V2MasterRealtimeManager.instance;
       vozacId = rm.vozaciCache.values.firstWhere((v) => v['ime'] == driver, orElse: () => {})['id'] as String?;
     }
 
@@ -761,9 +761,11 @@ class V2PutnikStreamService {
       };
 
       bool polasciUpdated = false;
+      String? updatedId;
       if (requestId != null && requestId.isNotEmpty) {
         final res = await supabase.from('v2_polasci').update(payload).eq('id', requestId).select('id');
         polasciUpdated = res.isNotEmpty;
+        if (polasciUpdated) updatedId = requestId;
       } else {
         final gradKey = grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null;
         final vremeKey = vreme != null ? V2GradAdresaValidator.normalizeTime(vreme) : null;
@@ -786,10 +788,16 @@ class V2PutnikStreamService {
             .eq('zeljeno_vreme', vremeKey)
             .select('id');
         polasciUpdated = res.isNotEmpty;
+        if (polasciUpdated) updatedId = res.first['id']?.toString();
       }
       if (!polasciUpdated) {
         debugPrint('[PutnikService] v2OznaciPokupljen: v2_polasci update nije pronašao red, preskačem statistiku.');
         return;
+      }
+
+      // Optimistički cache patch — UI se osvježava odmah, bez čekanja WebSocket event-a
+      if (updatedId != null) {
+        rm.patchCache('v2_polasci', updatedId, payload);
       }
     } catch (e) {
       debugPrint('[PutnikService] v2OznaciPokupljen: Greška pri update v2_polasci: $e');
@@ -881,11 +889,13 @@ class V2PutnikStreamService {
     };
 
     bool polasciUpdated = false;
+    String? updatedId;
 
     if (requestId != null && requestId.isNotEmpty) {
       try {
         final res = await supabase.from('v2_polasci').update(updatePayload).eq('id', requestId).select('id');
         polasciUpdated = res.isNotEmpty;
+        if (polasciUpdated) updatedId = requestId;
       } catch (e) {
         debugPrint('[PutnikService] v2OtkaziPutnika: Error matching by requestId: $e');
       }
@@ -928,6 +938,7 @@ class V2PutnikStreamService {
 
           if (res.isNotEmpty) {
             polasciUpdated = true;
+            updatedId = res.first['id']?.toString();
           } else {
             res = await supabase
                 .from('v2_polasci')
@@ -937,6 +948,7 @@ class V2PutnikStreamService {
                 .eq('dodeljeno_vreme', normalizedTime)
                 .select('id');
             polasciUpdated = res.isNotEmpty;
+            if (polasciUpdated) updatedId = res.first['id']?.toString();
           }
         }
       } catch (e) {
@@ -948,6 +960,11 @@ class V2PutnikStreamService {
     if (!polasciUpdated) {
       debugPrint('[PutnikService] v2OtkaziPutnika: v2_polasci update nije pronašao red, preskačem statistiku.');
       return;
+    }
+
+    // Optimistički cache patch — UI se osvježava odmah, bez čekanja WebSocket event-a
+    if (updatedId != null) {
+      V2MasterRealtimeManager.instance.patchCache('v2_polasci', updatedId, updatePayload);
     }
 
     try {
