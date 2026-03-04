@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart'; // ??? Za GPS poziciju
@@ -53,7 +52,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
   final V2PutnikStreamService _putnikService = V2PutnikStreamService();
 
   StreamSubscription<Position>? _driverPositionSubscription;
-  StreamSubscription<Map<String, dynamic>>? _notificationSubscription; // ? ZA AUTOMATSKI POPIS
   StreamSubscription<String>? _rasporedRealtimeSub; // ?? Realtime raspored
   StreamSubscription<String>? _vozacPutnikRealtimeSub; // ?? Realtime vozac_putnik
 
@@ -169,8 +167,13 @@ class _VozacScreenState extends State<V2VozacScreen> {
     _subscribeRealtime();
 
     // 3. Ostalo
-    _initializeNotifications();
     _initializeGpsTracking();
+    V2LocalNotificationService.initialize(context);
+    V2FirebaseService.getCurrentDriver().then((driver) {
+      if (driver != null && driver.isNotEmpty) {
+        V2RealtimeNotificationService.initialize();
+      }
+    });
   }
 
   Future<void> _loadRaspored() async {
@@ -215,45 +218,12 @@ class _VozacScreenState extends State<V2VozacScreen> {
   @override
   void dispose() {
     _driverPositionSubscription?.cancel();
-    _notificationSubscription?.cancel(); // ? CLEANUP
     _rasporedRealtimeSub?.cancel(); // ?? Realtime raspored
     _vozacPutnikRealtimeSub?.cancel(); // ?? Realtime vozac_putnik
     super.dispose();
   }
 
-  // ?? INICIJALIZACIJA NOTIFIKACIJA - IDENTICNO KAO DANAS SCREEN
-  void _initializeNotifications() {
-    // Inicijalizuj heads-up i zvuk notifikacije
-    V2LocalNotificationService.initialize(context);
 
-    // ? LISTEN ZA IN-APP DOGAĐAJE (Automatski Popis)
-    _notificationSubscription?.cancel();
-    _notificationSubscription = V2RealtimeNotificationService.notificationStream.listen((data) {
-      if (data['type'] == 'automated_popis' && mounted) {
-        var stats = data['stats'];
-        if (stats != null) {
-          if (stats is String) {
-            try {
-              stats = jsonDecode(stats);
-            } catch (e) {
-              debugPrint('Greška pri dekodiranju statistike: $e');
-              return;
-            }
-          }
-          if (stats is Map) {
-            _showAutomatedPopisPopup(Map<String, dynamic>.from(stats));
-          }
-        }
-      }
-    });
-
-    // Inicijalizuj realtime notifikacije za vozaca
-    V2FirebaseService.getCurrentDriver().then((driver) {
-      if (driver != null && driver.isNotEmpty) {
-        V2RealtimeNotificationService.initialize();
-      }
-    });
-  }
 
   Future<void> _initializeCurrentDriver() async {
     // ?? ADMIN PREVIEW MODE: Ako je prosleden previewAsDriver, koristi ga
@@ -1349,125 +1319,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
                 Colors.orange,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ?? POPUP ZA AUTOMATIZOVANI POPIS (21:00)
-  void _showAutomatedPopisPopup(Map<String, dynamic> stats) {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Mora da klikne Zatvori
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF1A237E).withValues(alpha: 0.9), // Tamno plava
-                Colors.black.withValues(alpha: 0.95),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blueAccent.withValues(alpha: 0.2),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.analytics_outlined, color: Colors.blueAccent, size: 48),
-              const SizedBox(height: 12),
-              const Text(
-                'DNEVNI POPIS',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const Text(
-                'Automatski izveštaj (21:00h)',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-              const SizedBox(height: 20),
-              _buildPopisItem('Dodati putnici', '${stats['dodati_putnici'] ?? 0}', Colors.greenAccent),
-              _buildPopisItem('Otkazani putnici', '${stats['otkazani_putnici'] ?? 0}', Colors.redAccent),
-              _buildPopisItem('Pokupljeni putnici', '${stats['pokupljeni_putnici'] ?? 0}', Colors.blueAccent),
-              _buildPopisItem('Pošiljke', '${stats['broj_posiljki'] ?? 0}', Colors.orangeAccent),
-              const Divider(color: Colors.white12, height: 24),
-              _buildPopisItem('Naplaceni dnevni', '${stats['naplaceni_dnevni'] ?? 0} RSD', Colors.white),
-              _buildPopisItem('Naplaceni mesecni', '${stats['naplaceni_mesecni'] ?? 0} RSD', Colors.white),
-              _buildPopisItem('Broj dužnika', '${stats['broj_duznika'] ?? 0}',
-                  stats['broj_duznika'] != 0 ? Colors.red : Colors.white70),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'UKUPNO:',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    Text(
-                      '${stats['ukupan_pazar'] ?? 0} RSD',
-                      style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.w900, fontSize: 20),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: const BorderSide(color: Colors.white24),
-                    ),
-                  ),
-                  child: const Text('ZATVORI', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPopisItem(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          Text(
-            value,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ],
       ),
