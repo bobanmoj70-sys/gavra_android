@@ -409,18 +409,18 @@ class V2ProfilService {
       final srRow = _rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
       if (srRow != null) {
         await _supabase.from('v2_polasci').update({
-        'placen': true,
-        'placen_iznos': iznos,
-        if (vozacId != null) 'placen_vozac_id': vozacId,
-        if (vozacIme != null) 'placen_vozac_ime': vozacIme,
-        'datum_akcije': datumStr,
-        'placen_tip': const {
-              'v2_radnici': 'radnik',
-              'v2_ucenici': 'ucenik',
-              'v2_dnevni': 'dnevni',
-              'v2_posiljke': 'posiljka',
-            }[putnikTabela] ??
-            'radnik',
+          'placen': true,
+          'placen_iznos': iznos,
+          if (vozacId != null) 'placen_vozac_id': vozacId,
+          if (vozacIme != null) 'placen_vozac_ime': vozacIme,
+          'datum_akcije': datumStr,
+          'placen_tip': const {
+                'v2_radnici': 'radnik',
+                'v2_ucenici': 'ucenik',
+                'v2_dnevni': 'dnevni',
+                'v2_posiljke': 'posiljka',
+              }[putnikTabela] ??
+              'radnik',
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', srRow['id'].toString());
       }
