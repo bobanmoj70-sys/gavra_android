@@ -509,9 +509,41 @@ class V2MasterRealtimeManager {
     _listenerCount.remove(table);
   }
 
+  /// Reload cache za datu tabelu nakon reconnecta — pokriva stale podatke iz perioda disconnecta.
+  /// Za polasci/statistika koristi posebne load metode; za infra tabele radi direktan DB upit.
+  Future<void> _reloadCacheForTable(String table) async {
+    try {
+      if (table == 'v2_polasci') {
+        polasciCache.clear();
+        await _loadPolasciCache();
+        _cacheChangeController.add('v2_polasci');
+      } else if (table == 'v2_statistika_istorija') {
+        statistikaCache.clear();
+        await loadStatistikaCache();
+        _cacheChangeController.add('v2_statistika_istorija');
+      } else {
+        // Generički infra reload — direktan upit, fill u odgovarajući cache
+        final targetCache = _cacheForTable(table);
+        if (targetCache == null) return;
+        final rows = await _db.from(table).select();
+        _fillCache(targetCache, rows);
+        _cacheChangeController.add(table);
+        debugPrint('✅ [V2MasterRealtimeManager] Reconnect reload "$table": ${targetCache.length} redova');
+      }
+    } catch (e) {
+      debugPrint('❌ [V2MasterRealtimeManager] _reloadCacheForTable "$table": $e');
+    }
+  }
+
   void _handleStatus(String table, RealtimeSubscribeStatus status, dynamic error) {
     switch (status) {
       case RealtimeSubscribeStatus.subscribed:
+        // Ako je ovo reconnect (ne prvi subscribe), reload cache da popunimo stale podatke
+        if ((_reconnectAttempts[table] ?? 0) > 0) {
+          _reconnectAttempts.remove(table);
+          debugPrint('🔄 [V2MasterRealtimeManager] Reconnect "$table" — osvježavam cache...');
+          _reloadCacheForTable(table);
+        }
         break;
 
       case RealtimeSubscribeStatus.channelError:

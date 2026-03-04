@@ -141,10 +141,12 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     if (putnikId == null) return;
 
     // Jedan subscriber na v2_polasci — jedina RT tabela relevantna za profil putnika
+    // _refreshPutnikData() se ne poziva ovdje — putnik profil podaci se ne mijenjaju
+    // kad se status polaska promijeni; _loadStatistike() radi DB upit i ne treba
+    // se pokretati na svaki polasci event (pokupljen, otkazano, itd.)
     _polasciSubscription = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
       debugPrint('🆕 [Realtime] v2_polasci cache promena za putnika $putnikId');
-      _loadActiveRequests();
-      _refreshPutnikData();
+      _loadActiveRequests(); // Sync iz cache-a — 0 DB upita
     });
 
     debugPrint('🎯 [Realtime] Listener aktivan za putnika $putnikId');

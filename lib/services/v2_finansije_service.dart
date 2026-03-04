@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -358,16 +360,38 @@ class V2FinansijeService {
   }
 
   /// REALTIME STREAMati promene u relevantnim tabelama i osvežava izveštaj
-  static Stream<V2FinansijskiIzvestaj> streamIzvestaj() async* {
-    // Emituj inicijalne podatke
-    yield await getIzvestaj();
+  static Stream<V2FinansijskiIzvestaj> streamIzvestaj() {
+    final rm = V2MasterRealtimeManager.instance;
+    final controller = StreamController<V2FinansijskiIzvestaj>.broadcast();
+    Timer? debounce;
 
-    // Sluša promene u v2_statistika_istorija (troskovi se čitaju iz cache-a)
-    final voznjeStream = supabase.from('v2_statistika_istorija').stream(primaryKey: ['id']);
-
-    await for (final _ in voznjeStream) {
-      yield await getIzvestaj();
+    Future<void> emit() async {
+      if (controller.isClosed) return;
+      try {
+        final izvestaj = await getIzvestaj();
+        if (!controller.isClosed) controller.add(izvestaj);
+      } catch (e) {
+        debugPrint('[Finansije] streamIzvestaj greška: $e');
+      }
     }
+
+    // Inicijalna emisija
+    Future.microtask(emit);
+
+    // Debounce 1s — finansije se ne moraju ažurirati svaki event (radi 4 DB upita)
+    final sub =
+        rm.onCacheChanged.where((t) => t == 'v2_statistika_istorija' || t == 'v2_finansije_troskovi').listen((_) {
+      debounce?.cancel();
+      debounce = Timer(const Duration(seconds: 1), emit);
+    });
+
+    controller.onCancel = () {
+      debounce?.cancel();
+      sub.cancel();
+      controller.close();
+    };
+
+    return controller.stream;
   }
 }
 
