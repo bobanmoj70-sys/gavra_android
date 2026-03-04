@@ -71,6 +71,8 @@ class _AdminScreenState extends State<V2AdminScreen> {
   late final Stream<Map<String, double>> _streamPazar;
   late final Stream<int> _streamRadniciObrada;
   late final Stream<int> _streamUceniciObrada;
+  // Shared broadcast stream za zahteve — jedan poziv, dvije pretplate
+  late final Stream<List<dynamic>> _streamZahteviObradaShared;
 
   @override
   void initState() {
@@ -83,10 +85,11 @@ class _AdminScreenState extends State<V2AdminScreen> {
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
     _streamPutnici = V2PolasciService.streamPutnici();
     _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: todayIso);
+    _streamZahteviObradaShared = V2PolasciService.v2StreamZahteviObrada().asBroadcastStream();
     _streamRadniciObrada =
-        V2PolasciService.v2StreamZahteviObrada().map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
+        _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
     _streamUceniciObrada =
-        V2PolasciService.v2StreamZahteviObrada().map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
+        _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
 
     _loadCurrentDriver();
 
@@ -903,8 +906,9 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
             final allPutnici = snapshot.data ?? [];
 
-            // Filter po današnjem danu
-            final todayKratica = _getShortDayName(_dayNamesInternal[DateTime.now().weekday - 1]).toLowerCase();
+            // Filter po današnjem danu — izračunato jednom ovde (ne u svakom rebuildu)
+            final now = DateTime.now();
+            final todayKratica = _getShortDayName(_dayNamesInternal[now.weekday - 1]).toLowerCase();
             final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == todayKratica).toList();
 
             // Dužnici — pokupljeni, neplaćeni, samo dnevni i posiljke (ne radnici/ucenici)
