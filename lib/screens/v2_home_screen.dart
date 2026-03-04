@@ -12,7 +12,6 @@ import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_admin_security_service.dart';
 import '../services/v2_adresa_supabase_service.dart';
-import '../services/v2_app_settings_service.dart'; // ?? Update check
 import '../services/v2_auth_manager.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_firebase_service.dart';
@@ -140,10 +139,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     _selectedDay = _getTodayName();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
     _initializeData();
-    // ?? Slušaj update notifikacije i prikaži dijalog
-    updateInfoNotifier.addListener(_onUpdateInfo);
-    // Provjeri odmah ako je update vec detektovan
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
   }
 
   void _initializeData() async {
@@ -2678,9 +2673,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   @override
   void dispose() {
-    // ?? Update listener cleanup
-    updateInfoNotifier.removeListener(_onUpdateInfo);
-
     // No overlay cleanup needed currently
 
     // ?? SAFE DISPOSAL ValueNotifier-a
@@ -2690,42 +2682,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       // Silently ignore
     }
     super.dispose();
-  }
-
-  /// ?? Pokrece se kada updateInfoNotifier dobije novu vrednost
-  void _onUpdateInfo() {
-    final info = updateInfoNotifier.value;
-    if (info == null || !mounted) return;
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: !info.isForced,
-      builder: (ctx) => PopScope(
-        canPop: !info.isForced,
-        child: AlertDialog(
-          title: Text(info.isForced ? '🔴 Obavezno ažuriranje' : '🆕 Dostupna nova verzija'),
-          content: Text(
-            info.isForced
-                ? 'Ova verzija aplikacije više nije podržana.\nMolimo ažurirajte na verziju ${info.latestVersion} da biste nastavili sa korišćenjem.'
-                : 'Dostupna je nova verzija ${info.latestVersion}.\nPreporucujemo da ažurirate aplikaciju.',
-          ),
-          actions: [
-            if (!info.isForced)
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Kasnije'),
-              ),
-            ElevatedButton(
-              onPressed: () {
-                V2AppSettingsService.openStore();
-                if (!info.isForced) Navigator.of(ctx).pop();
-              },
-              child: const Text('Ažuriraj'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

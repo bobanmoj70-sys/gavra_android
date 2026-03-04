@@ -5,8 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../globals.dart';
 import '../models/v2_vozac.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
+import '../services/v2_app_settings_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_battery_optimization_service.dart';
 import '../services/v2_biometric_service.dart';
@@ -54,6 +56,8 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
     _setupAnimations();
     _loadDrivers();
+    updateInfoNotifier.addListener(_onUpdateInfo);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
 
     // Inicijalizacija bez blokiranja - dajemo aplikaciji vremena da "udahne"
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -199,11 +203,48 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this); // Uklanjamo observer
+    updateInfoNotifier.removeListener(_onUpdateInfo);
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  /// Prikazuje dialog za obavezno ažuriranje
+  void _onUpdateInfo() {
+    final info = updateInfoNotifier.value;
+    if (info == null || !mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: !info.isForced,
+      builder: (ctx) => PopScope(
+        canPop: !info.isForced,
+        child: AlertDialog(
+          title: Text(info.isForced ? '🔴 Obavezno ažuriranje' : '🆕 Dostupna nova verzija'),
+          content: Text(
+            info.isForced
+                ? 'Ova verzija aplikacije više nije podržana.\nMolimo ažurirajte na verziju ${info.latestVersion} da biste nastavili sa korišćenjem.'
+                : 'Dostupna je nova verzija ${info.latestVersion}.\nPreporucujemo da ažurirate aplikaciju.',
+          ),
+          actions: [
+            if (!info.isForced)
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Kasnije'),
+              ),
+            ElevatedButton(
+              onPressed: () {
+                V2AppSettingsService.openStore();
+                if (!info.isForced) Navigator.of(ctx).pop();
+              },
+              child: const Text('Ažuriraj'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // Dodano za praenje lifecycle-a aplikacije

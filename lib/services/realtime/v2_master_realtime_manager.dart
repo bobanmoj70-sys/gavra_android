@@ -132,6 +132,20 @@ class V2MasterRealtimeManager {
 
     _initialized = true;
 
+    // Trajna Realtime pretplata na sve statičke tabele — WebSocket only, 0 DB querija.
+    // Svaka promena u bazi → Realtime event → upsertToCache → onCacheChanged → svi ekrani se osvežavaju.
+    const staticTabele = [
+      // Putnici
+      'v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke',
+      // Infrastruktura
+      'v2_vozaci', 'v2_vozila', 'v2_adrese',
+      'v2_finansije_troskovi', 'v2_pumpa_config', 'v2_app_settings',
+      'v2_statistika_istorija',
+    ];
+    for (final tabela in staticTabele) {
+      subscribe(tabela).listen((_) {});
+    }
+
     debugPrint(
       '✅ [V2MasterRealtimeManager] Inicijalizovano: '
       'polasci=${polasciCache.length}, '
@@ -347,6 +361,13 @@ class V2MasterRealtimeManager {
     final existingTabela = target[id]?['_tabela'] ?? table;
     target[id] = {...record, '_tabela': existingTabela};
     if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+
+    // Osvježi derived services kada se promjene njihove tabele
+    if (table == 'v2_app_settings') {
+      V2AppSettingsService.initialize();
+    } else if (table == 'v2_vozaci') {
+      V2VozacCache.initialize();
+    }
   }
 
   /// Uklanja red iz cache-a na DELETE event
