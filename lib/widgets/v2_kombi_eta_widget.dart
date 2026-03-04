@@ -191,33 +191,35 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
       const dani = ['ned', 'pon', 'uto', 'sre', 'cet', 'pet', 'sub'];
       final danasKratica = dani[DateTime.now().weekday % 7];
       final normVreme = widget.vreme != null ? V2GradAdresaValidator.normalizeTime(widget.vreme!) : null;
+      final gradNorm = widget.grad.isNotEmpty ? V2GradAdresaValidator.normalizeGrad(widget.grad) : null;
 
-      var query = supabase
-          .from('v2_polasci')
-          .select('status, updated_at')
-          .eq('putnik_id', widget.putnikId!)
-          .eq('status', 'pokupljen')
-          .eq('dan', danasKratica);
-
-      // Filtriraj po gradu ako je poznat
-      if (widget.grad.isNotEmpty) {
-        query = query.eq('grad', V2GradAdresaValidator.normalizeGrad(widget.grad));
-      }
-      // Filtriraj po terminu polaska ako je poznat — sprečava lažni "pokupljen" iz druge vožnje
-      if (normVreme != null) {
-        query = query.eq('dodeljeno_vreme', '$normVreme:00');
-      }
-
-      final response = await query.order('updated_at', ascending: false).limit(1).maybeSingle();
+      // Čita direktno iz polasciCache — 0 DB upita
+      final rm = V2MasterRealtimeManager.instance;
+      final row = rm.polasciCache.values.where((r) {
+        if (r['putnik_id']?.toString() != widget.putnikId) return false;
+        if (r['status'] != 'pokupljen') return false;
+        if (r['dan']?.toString() != danasKratica) return false;
+        if (gradNorm != null && r['grad']?.toString() != gradNorm) return false;
+        if (normVreme != null &&
+            V2GradAdresaValidator.normalizeTime(r['dodeljeno_vreme']?.toString()) != normVreme) return false;
+        return true;
+      }).fold<Map<String, dynamic>?>(
+        null,
+        (best, r) {
+          if (best == null) return r;
+          final a = DateTime.tryParse(r['updated_at']?.toString() ?? '') ?? DateTime(0);
+          final b = DateTime.tryParse(best['updated_at']?.toString() ?? '') ?? DateTime(0);
+          return a.isAfter(b) ? r : best;
+        },
+      );
 
       if (!mounted) return;
 
-      if (response != null) {
-        final updatedAt = response['updated_at'] as String?;
-        final parsedTime = updatedAt != null ? DateTime.tryParse(updatedAt) : null;
+      if (row != null) {
+        final parsedTime = DateTime.tryParse(row['updated_at']?.toString() ?? '')?.toLocal();
         setState(() {
           _jePokupljenIzBaze = true;
-          _vremePokupljenja = parsedTime?.toLocal() ?? DateTime.now();
+          _vremePokupljenja = parsedTime ?? DateTime.now();
         });
       } else if (_jePokupljenIzBaze) {
         setState(() {

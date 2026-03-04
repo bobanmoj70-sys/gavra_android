@@ -538,7 +538,17 @@ class V2MasterRealtimeManager {
         // Generički infra reload — direktan upit, fill u odgovarajući cache
         final targetCache = _cacheForTable(table);
         if (targetCache == null) return;
-        final rows = await _db.from(table).select();
+        // Primijeni iste filtere kao pri inicijalnom učitavanju
+        final query = switch (table) {
+          'v2_radnici' || 'v2_ucenici' || 'v2_dnevni' || 'v2_posiljke' => _db.from(table).select().eq('status', 'aktivan'),
+          'v2_kapacitet_polazaka' => _db.from(table).select().eq('aktivan', true),
+          'v2_vozac_lokacije' => _db.from(table).select().eq('aktivan', true),
+          'v2_finansije_troskovi' => _db.from(table).select().eq('aktivan', true),
+          'v2_pin_zahtevi' => _db.from(table).select().eq('status', 'ceka'),
+          _ => _db.from(table).select(),
+        };
+        final rows = await query;
+        targetCache.clear();
         _fillCache(targetCache, rows);
         _cacheChangeController.add(table);
         debugPrint('✅ [V2MasterRealtimeManager] Reconnect reload "$table": ${targetCache.length} redova');
