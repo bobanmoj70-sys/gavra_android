@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../models/v2_pumpa_punjenje.dart';
+import '../models/v2_pumpa_stanje.dart';
+import '../models/v2_pumpa_tocenje.dart';
+import '../models/v2_vozilo_statistika.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_gorivo_service.dart';
 import '../services/v2_vozila_service.dart';
@@ -688,7 +692,8 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                   Navigator.pop(ctx);
                   if (ok) setState(_loadAll);
                   if (ok) {
-                    V2AppSnackBar.success(context, '✅ Točenje zabeleženo: $litri L — ${selectedVozilo!.registarskiBroj}');
+                    V2AppSnackBar.success(
+                        context, '✅ Točenje zabeleženo: $litri L — ${selectedVozilo!.registarskiBroj}');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }

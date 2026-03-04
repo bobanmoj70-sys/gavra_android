@@ -2,43 +2,54 @@
 class V2PumpaTocenje {
   final String id;
   final DateTime datum;
-  final String voziloId;
+  final String? voziloId;
+  final String? registarskiBroj;
+  final String? marka;
+  final String? model;
   final double litri;
   final int? kmVozila;
   final String? napomena;
-  final DateTime? createdAt;
+  final DateTime createdAt;
 
   V2PumpaTocenje({
     required this.id,
     required this.datum,
-    required this.voziloId,
+    this.voziloId,
+    this.registarskiBroj,
+    this.marka,
+    this.model,
     required this.litri,
     this.kmVozila,
     this.napomena,
-    this.createdAt,
+    required this.createdAt,
   });
 
-  factory V2PumpaTocenje.fromJson(Map<String, dynamic> json) {
+  factory V2PumpaTocenje.fromJson(Map<String, dynamic> j) {
+    final vozilo = j['v2_vozila'] as Map<String, dynamic>?;
     return V2PumpaTocenje(
-      id: json['id'] as String? ?? '',
-      datum: json['datum'] != null ? DateTime.tryParse(json['datum'] as String) ?? DateTime.now() : DateTime.now(),
-      voziloId: json['vozilo_id'] as String? ?? '',
-      litri: (json['litri'] as num?)?.toDouble() ?? 0.0,
-      kmVozila: json['km_vozila'] as int?,
-      napomena: json['napomena'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      id: j['id'] as String,
+      datum: DateTime.parse(j['datum'] as String),
+      voziloId: j['vozilo_id'] as String?,
+      registarskiBroj: vozilo?['registarski_broj'] as String?,
+      marka: vozilo?['marka'] as String?,
+      model: vozilo?['model'] as String?,
+      litri: (j['litri'] as num).toDouble(),
+      kmVozila: j['km_vozila'] as int?,
+      napomena: j['napomena'] as String?,
+      createdAt: DateTime.parse(j['created_at'] as String).toLocal(),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'datum': datum.toIso8601String(),
-      'vozilo_id': voziloId,
-      'litri': litri,
-      'km_vozila': kmVozila,
-      'napomena': napomena,
-      'created_at': createdAt?.toIso8601String(),
-    };
+  String get voziloNaziv {
+    if (registarskiBroj != null) {
+      return '$registarskiBroj${marka != null ? ' ($marka)' : ''}';
+    }
+    return 'Nepoznato vozilo';
   }
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || other is V2PumpaTocenje && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

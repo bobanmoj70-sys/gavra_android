@@ -18,7 +18,9 @@ class V2PumpaTocenjaService {
     String? voziloId,
   }) async {
     try {
-      var query = _db.from(tabela).select('id,datum,vozilo_id,litri,km_vozila,napomena,created_at');
+      var query = _db
+          .from(tabela)
+          .select('id,datum,vozilo_id,litri,km_vozila,napomena,created_at,v2_vozila(registarski_broj,marka,model)');
 
       final response = await (voziloId != null ? query.eq('vozilo_id', voziloId) : query)
           .order('datum', ascending: false)
