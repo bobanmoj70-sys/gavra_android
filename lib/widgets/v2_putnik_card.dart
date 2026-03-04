@@ -851,6 +851,127 @@ class _PutnikCardState extends State<V2PutnikCard> {
     }
   }
 
+  // Metoda za promenu broja mesta — vozač označava da putnik povede više osoba
+  Future<void> _handleSetBrojMesta() async {
+    int trenutni = _putnik.brojMesta;
+    int novi = trenutni;
+
+    final potvrda = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setS) {
+            return AlertDialog(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outline,
+                  width: 2,
+                ),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.event_seat, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  const Text('Broj mesta', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _putnik.ime,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: novi > 1 ? () => setS(() => novi--) : null,
+                        icon: const Icon(Icons.remove_circle_outline, size: 32),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 60,
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$novi',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: novi < 9 ? () => setS(() => novi++) : null,
+                        icon: const Icon(Icons.add_circle_outline, size: 32),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    novi == 1 ? '1 sede\u0161te' : '$novi sedi\u0161ta/mesta',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(null),
+                  child: const Text('Odustani'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(novi),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Potvrdi'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (potvrda == null || potvrda == trenutni) return;
+
+    try {
+      final ok = await V2PolasciService.v2SetBrojMesta(
+        putnikId: _putnik.id!,
+        grad: _putnik.grad,
+        vreme: _putnik.polazak,
+        dan: _putnik.dan,
+        brojMesta: potvrda,
+      );
+
+      if (ok && mounted) {
+        setState(() {
+          _putnik = _putnik.copyWith(brojMesta: potvrda);
+        });
+        V2AppSnackBar.success(
+          context,
+          potvrda == 1 ? '${_putnik.ime} — 1 sedi\u0161te' : '${_putnik.ime} — $potvrda mesta',
+        );
+        widget.onChanged?.call();
+      } else if (mounted) {
+        V2AppSnackBar.error(context, 'Greška: nije pronaden aktivan zahtev');
+      }
+    } catch (e) {
+      if (mounted) V2AppSnackBar.error(context, 'Greška: $e');
+    }
+  }
+
   // Metoda za pokupljenje putnika
   Future<void> _handlePickup() async {
     if (_globalProcessingLock || _isProcessing) return;
@@ -996,8 +1117,44 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                 maxLines: 1,
                               ),
                             ),
-                            // Prikaži oznaku broja mesta ako je više od 1
-                            if (_putnik.brojMesta > 1)
+                            // Broj mesta badge — tap otvara dijalog za promenu
+                            if ((isAdmin || isVozac) && widget.showActions && !_putnik.jeOtkazan)
+                              GestureDetector(
+                                onTap: _handleSetBrojMesta,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: _putnik.brojMesta > 1
+                                          ? Theme.of(context).colorScheme.primary.withOpacity(0.18)
+                                          : textColor.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: _putnik.brojMesta > 1
+                                          ? Border.all(
+                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                                              width: 1,
+                                            )
+                                          : null,
+                                    ),
+                                    child: Text(
+                                      _putnik.brojMesta > 1
+                                          ? ((_putnik.cena != null && (_putnik.cena ?? 0) > 0)
+                                              ? 'x${_putnik.brojMesta} (${_putnik.cena!.toStringAsFixed(0)} RSD)'
+                                              : 'x${_putnik.brojMesta} (${(_putnik.effectivePrice * _putnik.brojMesta).toStringAsFixed(0)} RSD)')
+                                          : '🪑',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: _putnik.brojMesta > 1
+                                            ? Theme.of(context).colorScheme.primary
+                                            : textColor.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else if (_putnik.brojMesta > 1)
                               Padding(
                                 padding: const EdgeInsets.only(left: 4),
                                 child: Container(
@@ -1007,7 +1164,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    // Ako je placeno, prikaži placeni iznos; inace prikaži cenu po mestu
                                     (_putnik.cena != null && (_putnik.cena ?? 0) > 0)
                                         ? 'x${_putnik.brojMesta} (${_putnik.cena!.toStringAsFixed(0)} RSD)'
                                         : 'x${_putnik.brojMesta} (${(_putnik.effectivePrice * _putnik.brojMesta).toStringAsFixed(0)} RSD)',

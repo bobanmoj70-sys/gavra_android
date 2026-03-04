@@ -102,6 +102,38 @@ class V2PolasciService {
     }
   }
 
+  /// Ažurira broj_mesta za postojeći polazak (vozač označava da putnik povede više osoba)
+  static Future<bool> v2SetBrojMesta({
+    required String putnikId,
+    required String grad,
+    required String vreme,
+    required String dan,
+    required int brojMesta,
+  }) async {
+    try {
+      final gradKey = V2GradAdresaValidator.normalizeGrad(grad);
+      final normVreme = V2GradAdresaValidator.normalizeTime(vreme);
+      final danKey = dan.toLowerCase();
+      final nowStr = DateTime.now().toUtc().toIso8601String();
+
+      final res = await _supabase
+          .from('v2_polasci')
+          .update({'broj_mesta': brojMesta, 'updated_at': nowStr})
+          .eq('putnik_id', putnikId)
+          .eq('grad', gradKey)
+          .eq('dan', danKey)
+          .eq('zeljeno_vreme', normVreme)
+          .inFilter('status', ['obrada', 'odobreno'])
+          .select('id');
+
+      debugPrint('[V2PolasciService] v2SetBrojMesta: updated ${res.length} rows → $brojMesta mesta');
+      return res.isNotEmpty;
+    } catch (e) {
+      debugPrint('[V2PolasciService] v2SetBrojMesta error: $e');
+      return false;
+    }
+  }
+
   /// Odobrava zahtev — kopira zeljeno_vreme u dodeljeno_vreme
   static Future<bool> v2OdobriZahtev(String id, {String? approvedBy}) async {
     try {
@@ -845,11 +877,7 @@ class V2PutnikStreamService {
 
     if (requestId != null && requestId.isNotEmpty) {
       try {
-        final res = await supabase
-            .from('v2_polasci')
-            .update(updatePayload)
-            .eq('id', requestId)
-            .select('id');
+        final res = await supabase.from('v2_polasci').update(updatePayload).eq('id', requestId).select('id');
         polasciUpdated = res.isNotEmpty;
       } catch (e) {
         debugPrint('[PutnikService] v2OtkaziPutnika: Error matching by requestId: $e');
