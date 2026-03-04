@@ -27,10 +27,10 @@ env:
 jobs:
   build-and-upload-huawei:
     name: 🚀 Build & Upload to Huawei
-    runs-on: self-hosted # Use your local Windows Runner
+    runs-on: ubuntu-latest
     defaults:
       run:
-        shell: powershell
+        shell: bash
 
     steps:
       - name: Checkout
@@ -78,22 +78,20 @@ jobs:
       - name: Get version info
         id: version
         run: |
-          if ($env:version_name) {
-            $verName = $env:version_name
-          } else {
-             $pubspec = Get-Content pubspec.yaml
-             $verLine = $pubspec | Where-Object { $_ -match "^version:" }
-             $verName = $verLine -replace "version: (\d+\.\d+\.\d+).*", '$1'
-          }
-          echo "VERSION=$verName" >> $env:GITHUB_OUTPUT
-          Write-Host "[INFO] Version: $verName"
+          if [ -n "${{ github.event.inputs.version_name }}" ]; then
+            VER_NAME="${{ github.event.inputs.version_name }}"
+          else
+            VER_NAME=$(grep "^version:" pubspec.yaml | sed 's/version: \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')
+          fi
+          echo "VERSION=$VER_NAME" >> $GITHUB_OUTPUT
+          echo "[INFO] Version: $VER_NAME"
 
       - name: Build Release APK
         run: |
           flutter build apk --release
-          Write-Host "[OK] APK built successfully"
+          echo "[OK] APK built successfully"
 
-      - name: Upload to Huawei AppGallery (PowerShell)
+      - name: Upload to Huawei AppGallery
         id: upload
         env:
           HUAWEI_CLIENT_ID: ${{ secrets.AGC_CLIENT_ID }}
@@ -102,74 +100,60 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
           SUBMIT: ${{ github.event.inputs.submit_for_review }}
         run: |
-          $clientId = $env:HUAWEI_CLIENT_ID
-          $clientSecret = $env:HUAWEI_CLIENT_SECRET
-          $appId = $env:HUAWEI_APP_ID
-
-          Write-Host "[INFO] Uploading to Huawei..."
+          echo "[INFO] Uploading to Huawei..."
 
           # 1. Get Token
-          $tokenBody = @{
-            client_id = $clientId
-            client_secret = $clientSecret
-            grant_type = "client_credentials"
-          } | ConvertTo-Json
-          $tokenResponse = Invoke-RestMethod -Uri "https://connect-api.cloud.huawei.com/api/oauth2/v1/token" -Method Post -Body $tokenBody -ContentType "application/json"
-          $accessToken = $tokenResponse.access_token
-
-          if (-not $accessToken) { Write-Error "Failed to get Access Token"; exit 1 }
-          Write-Host "✅ Got Access Token"
+          TOKEN_RESP=$(curl -s -X POST "https://connect-api.cloud.huawei.com/api/oauth2/v1/token" \
+            -H "Content-Type: application/json" \
+            -d "{\"client_id\":\"$HUAWEI_CLIENT_ID\",\"client_secret\":\"$HUAWEI_CLIENT_SECRET\",\"grant_type\":\"client_credentials\"}")
+          ACCESS_TOKEN=$(echo "$TOKEN_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+          if [ -z "$ACCESS_TOKEN" ]; then echo "Failed to get Access Token"; exit 1; fi
+          echo "✅ Got Access Token"
 
           # 2. Get Upload URL
-          $uploadUrlHeaders = @{ Authorization = "Bearer $accessToken"; client_id = $clientId }
-          $uploadUrlResponse = Invoke-RestMethod -Uri "https://connect-api.cloud.huawei.com/api/publish/v2/upload-url?appId=$appId&suffix=apk" -Headers $uploadUrlHeaders -Method Get
-          $uploadUrl = $uploadUrlResponse.uploadUrl
-          $authCode = $uploadUrlResponse.authCode
-          
-          if (-not $uploadUrl) { Write-Error "Failed to get Upload URL"; exit 1 }
+          UPLOAD_URL_RESP=$(curl -s -X GET \
+            "https://connect-api.cloud.huawei.com/api/publish/v2/upload-url?appId=$HUAWEI_APP_ID&suffix=apk" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "client_id: $HUAWEI_CLIENT_ID")
+          UPLOAD_URL=$(echo "$UPLOAD_URL_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['uploadUrl'])")
+          AUTH_CODE=$(echo "$UPLOAD_URL_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['authCode'])")
+          if [ -z "$UPLOAD_URL" ]; then echo "Failed to get Upload URL"; exit 1; fi
 
-          # 3. Upload APK (Using curl.exe because Invoke-RestMethod multipart is tricky without .NET classes)
-          $apkPath = "build\app\outputs\flutter-apk\app-release.apk"
-          
-          Write-Host "🚀 Uploading file via curl.exe..."
-          $curlArgs = @("-k", "-s", "-X", "POST", "$uploadUrl", "-F", "file=@$apkPath", "-F", "authCode=$authCode", "-F", "fileCount=1")
-          $uploadResult = & curl.exe @curlArgs
-          
-          # Parse result (it is JSON string)
-          $uploadJson = $uploadResult | ConvertFrom-Json
-          $fileDestUrl = $uploadJson.result.UploadFileRsp.fileInfoList[0].fileDestUlr
-
-          if (-not $fileDestUrl) { Write-Error "Failed to upload APK: $uploadResult"; exit 1 }
-          Write-Host "✅ Uploaded. Dest URL: $fileDestUrl"
+          # 3. Upload APK
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          echo "🚀 Uploading APK..."
+          UPLOAD_RESULT=$(curl -s -X POST "$UPLOAD_URL" \
+            -F "file=@$APK_PATH" \
+            -F "authCode=$AUTH_CODE" \
+            -F "fileCount=1")
+          FILE_DEST_URL=$(echo "$UPLOAD_RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['UploadFileRsp']['fileInfoList'][0]['fileDestUlr'])")
+          if [ -z "$FILE_DEST_URL" ]; then echo "Failed to upload APK: $UPLOAD_RESULT"; exit 1; fi
+          echo "✅ Uploaded. Dest URL: $FILE_DEST_URL"
 
           # 4. Update App File Info
-          $updateBody = @{
-            appId = $appId
-            fileType = 5 # 5=APK
-            files = @( @{ fileName = "app-release.apk"; fileDestUrl = $fileDestUrl } )
-          } | ConvertTo-Json -Depth 10
-
-          Invoke-RestMethod -Uri "https://connect-api.cloud.huawei.com/api/publish/v2/app-file-info?appId=$appId" -Method Put -Headers $uploadUrlHeaders -Body $updateBody -ContentType "application/json"
-          Write-Host "✅ App File Info Updated"
+          UPDATE_BODY="{\"appId\":\"$HUAWEI_APP_ID\",\"fileType\":5,\"files\":[{\"fileName\":\"app-release.apk\",\"fileDestUrl\":\"$FILE_DEST_URL\"}]}"
+          curl -s -X PUT "https://connect-api.cloud.huawei.com/api/publish/v2/app-file-info?appId=$HUAWEI_APP_ID" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "client_id: $HUAWEI_CLIENT_ID" \
+            -H "Content-Type: application/json" \
+            -d "$UPDATE_BODY"
+          echo "✅ App File Info Updated"
 
           # 5. Submit for Review
-          if ($env:SUBMIT -eq 'true') {
-             Write-Host "📤 Submitting for Review..."
-             $submitBody = @{ appId = $appId } | ConvertTo-Json
-             try {
-                Invoke-RestMethod -Uri "https://connect-api.cloud.huawei.com/api/publish/v2/app-submit?appId=$appId" -Method Post -Headers $uploadUrlHeaders -Body $submitBody -ContentType "application/json"
-                Write-Host "✅ App submitted successfully!"
-             } catch {
-                Write-Warning "Submit failed. It might be already in review."
-                Write-Host $_.Exception.Response
-                Write-Host "Please check AppGallery Connect manually."
-             }
-          }
+          if [ "$SUBMIT" = "true" ]; then
+            echo "📤 Submitting for Review..."
+            curl -s -X POST "https://connect-api.cloud.huawei.com/api/publish/v2/app-submit?appId=$HUAWEI_APP_ID" \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "client_id: $HUAWEI_CLIENT_ID" \
+              -H "Content-Type: application/json" \
+              -d "{\"appId\":\"$HUAWEI_APP_ID\"}" || echo "Submit failed - check AppGallery Connect manually."
+            echo "✅ App submitted!"
+          fi
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: huawei-apk-v${{ steps.version.outputs.VERSION }}
-          path: build\app\outputs\flutter-apk\app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
 
