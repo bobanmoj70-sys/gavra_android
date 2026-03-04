@@ -37,15 +37,13 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     const Color(0xFF9C27B0), // tamno ljubicasta
   ];
 
-  final V2VozacService _vozacService = V2VozacService();
-
   // Master realtime stream — inicijalizovan jednom u initState()
   late final Stream<List<V2Vozac>> _streamVozaci;
 
   @override
   void initState() {
     super.initState();
-    _streamVozaci = _vozacService.streamAllVozaci();
+    _streamVozaci = V2VozacService.streamAllVozaci();
   }
 
   @override
@@ -70,7 +68,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     );
 
     try {
-      await _vozacService.addVozac(noviVozac);
+      await V2VozacService.addVozac(noviVozac);
       if (!mounted) return;
       V2AppSnackBar.info(context, 'V2Vozac dodan');
     } catch (e) {
@@ -138,7 +136,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
           );
 
           try {
-            await _vozacService.updateVozac(updatedVozac);
+            await V2VozacService.updateVozac(updatedVozac);
             if (!mounted) return;
             Navigator.pop(context);
             V2AppSnackBar.info(context, 'V2Vozac azuriran');

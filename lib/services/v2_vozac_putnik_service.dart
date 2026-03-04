@@ -76,15 +76,13 @@ class V2VozacPutnikEntry {
 /// vozac_putnik   — per-V2Putnik individualna dodjela (ovaj servis)
 /// vozac_raspored — per-termin raspored (VozacRasporedService)
 class V2VozacPutnikService {
-  static final V2VozacPutnikService _instance = V2VozacPutnikService._internal();
-  factory V2VozacPutnikService() => _instance;
-  V2VozacPutnikService._internal();
+  V2VozacPutnikService._();
 
-  SupabaseClient get _supabase => supabase;
-  V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
+  static SupabaseClient get _supabase => supabase;
+  static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
   /// Učitaj sve individualne dodjele iz rm cache-a (sync)
-  List<V2VozacPutnikEntry> loadAll() {
+  static List<V2VozacPutnikEntry> loadAll() {
     return _rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
   }
 
@@ -92,7 +90,7 @@ class V2VozacPutnikService {
   ///
   /// Ako [vozacIme] je prazan string → briše dodjelu (vidi [delete]).
   /// Vraća `true` ako uspješno.
-  Future<bool> set({
+  static Future<bool> set({
     required String putnikId,
     required String vozacIme,
     required String dan,
@@ -126,7 +124,7 @@ class V2VozacPutnikService {
   }
 
   /// Briše individualnu dodjelu za putnika za konkretni dan+grad+vreme.
-  Future<bool> delete({required String putnikId, String? dan, String? grad, String? vreme}) async {
+  static Future<bool> delete({required String putnikId, String? dan, String? grad, String? vreme}) async {
     try {
       var q = _supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId);
       if (dan != null) q = q.eq('dan', dan);
@@ -140,7 +138,7 @@ class V2VozacPutnikService {
     }
   }
 
-  Future<void> deleteForVozac({required String vozacId}) async {
+  static Future<void> deleteForVozac({required String vozacId}) async {
     try {
       await _supabase.from('v2_vozac_putnik').delete().eq('vozac_id', vozacId);
     } catch (e) {

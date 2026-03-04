@@ -32,7 +32,6 @@ class V2VozacRasporedScreen extends StatefulWidget {
 class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   // Write-only servisi (DB mutacije)
   final _rasporedService = V2VozacRasporedService();
-  final _vozacPutnikService = V2VozacPutnikService();
   // Stream servis — jednom kreiran, ne ponovo na svakom rebuildu
   final _putnikStreamService = V2PutnikStreamService();
 
@@ -449,7 +448,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 TextButton.icon(
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    final ok = await _vozacPutnikService.delete(
+                    final ok = await V2VozacPutnikService.delete(
                       putnikId: putnik.id!.toString(),
                       dan: dan,
                       grad: _selectedGrad,
@@ -479,7 +478,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                       ? null
                       : () async {
                           Navigator.pop(ctx);
-                          final ok = await _vozacPutnikService.set(
+                          final ok = await V2VozacPutnikService.set(
                             putnikId: putnik.id!.toString(),
                             vozacIme: odabranVozac!,
                             dan: dan,
