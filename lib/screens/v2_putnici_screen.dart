@@ -480,7 +480,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            _searchController.text.isNotEmpty ? 'Nema rezultata pretrage' : 'Nema mesecnih putnika',
+                            _searchController.text.isNotEmpty ? 'Nema rezultata pretrage' : 'Nema putnika',
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey.shade600,

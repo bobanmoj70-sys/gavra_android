@@ -20,7 +20,7 @@ import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_card_color_helper.dart';
 import '../utils/v2_vozac_cache.dart';
 
-/// Widget za prikaz V2Putnik kartice sa podrškom za mesecne i dnevne putnike
+/// Widget za prikaz V2Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke
 
 class V2PutnikCard extends StatefulWidget {
   const V2PutnikCard({
@@ -262,16 +262,16 @@ class _PutnikCardState extends State<V2PutnikCard> {
     }
   }
 
-  // PLACANJE MESECNE KARTE - CUSTOM CENA (korisnik unosi iznos)
+  // PLACANJE RADNIK/UCENIK - CUSTOM CENA (korisnik unosi iznos)
   Future<void> _handleRegistrovaniPayment() async {
-    // Dohvati mesecnog putnika iz baze po ID-u
+    // Dohvati putnika iz baze po ID-u
     final putnikId = _putnik.id?.toString() ?? '';
     final putnikMap = putnikId.isNotEmpty ? await V2ProfilService.findPutnikById(putnikId) : null;
     final registrovaniPutnik = putnikMap != null ? V2RegistrovaniPutnik.fromMap(putnikMap) : null;
 
     if (registrovaniPutnik == null) {
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: Mesecni V2Putnik "${_putnik.ime}" nije pronaden');
+        V2AppSnackBar.error(context, 'Greška: V2Putnik "${_putnik.ime}" nije pronaden');
       }
       return;
     }
@@ -794,12 +794,12 @@ class _PutnikCardState extends State<V2PutnikCard> {
           throw Exception('Ime putnika je prazno - ne može se pronaci u bazi');
         }
 
-        // Za mesecne putnike koristi funkciju iz registrovani_putnici_screen.dart
+        // Za radnike/učenike koristi funkciju za mesecno placanje
         final existingId = _putnik.id?.toString() ?? '';
         final existingMap = existingId.isNotEmpty ? await V2ProfilService.findPutnikById(existingId) : null;
         if (existingMap != null) {
           final tabela = existingMap['_tabela'] as String? ?? 'v2_radnici';
-          // Koristi static funkciju kao u registrovani_putnici_screen.dart
+          // Koristi static funkciju za cuvanje placanja
           await _sacuvajPlacanjeStatic(
             putnikId: existingId,
             putnikIme: _putnik.ime,
@@ -809,7 +809,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
             vozacIme: widget.currentDriver,
           );
         } else {
-          throw Exception('Mesecni V2Putnik "${_putnik.ime}" nije pronaden u bazi');
+          throw Exception('V2Putnik "${_putnik.ime}" nije pronaden u bazi');
         }
       } else {
         // Za obicne putnike koristi postojeci servis
@@ -1700,12 +1700,12 @@ class _PutnikCardState extends State<V2PutnikCard> {
     ); // kraj GestureDetector
   }
 
-  // Helper metode za mesecno placanje
+  // Helper metode za placanje radnik/ucenik
   String _formatDate(DateTime date) {
     return '${date.day}.${date.month}.${date.year}';
   }
 
-  // HELPER FUNKCIJE - ISTO kao u registrovani_putnici_screen.dart
+  // HELPER FUNKCIJE za mesecno placanje
   String _getMonthNameStatic(int month) {
     const months = [
       '',
@@ -1756,7 +1756,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
     return options;
   }
 
-  // CUVANJE PLACANJA - KOPIJA iz registrovani_putnici_screen.dart
+  // CUVANJE PLACANJA
   Future<void> _sacuvajPlacanjeStatic({
     required String putnikId,
     required String putnikIme,
