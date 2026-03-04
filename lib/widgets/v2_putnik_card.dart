@@ -13,7 +13,7 @@ import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v2_permission_service.dart';
 import '../services/v2_polasci_service.dart';
-import '../services/v2_profil_service.dart';
+import '../services/v2_statistika_service.dart';
 import '../services/v2_unified_geocoding_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -266,7 +266,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
   Future<void> _handleRegistrovaniPayment() async {
     // Dohvati putnika iz baze po ID-u
     final putnikId = _putnik.id?.toString() ?? '';
-    final putnikMap = putnikId.isNotEmpty ? await V2ProfilService.findPutnikById(putnikId) : null;
+    final putnikMap = putnikId.isNotEmpty ? await V2StatistikaService.findPutnikById(putnikId) : null;
     final registrovaniPutnik = putnikMap != null ? V2RegistrovaniPutnik.fromMap(putnikMap) : null;
 
     if (registrovaniPutnik == null) {
@@ -279,7 +279,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
     // UCITAJ SVA PLACANJA IZ BAZE za ovog putnika
     Set<String> placeniMeseci = {};
     try {
-      final svaPlacanja = await V2ProfilService.dohvatiPlacanja(putnikId);
+      final svaPlacanja = await V2StatistikaService.dohvatiPlacanja(putnikId);
       for (var placanje in svaPlacanja) {
         final mesec = placanje['placeni_mesec'];
         final godina = placanje['placena_godina'];
@@ -305,11 +305,11 @@ class _PutnikCardState extends State<V2PutnikCard> {
     int brojPutovanja = 0;
     int brojOtkazivanja = 0;
     try {
-      brojPutovanja = await V2ProfilService.izracunajBrojVoznji(
+      brojPutovanja = await V2StatistikaService.izracunajBrojVoznji(
         _putnik.id! as String,
       );
       // Racunaj otkazivanja iz stvarne istorije
-      brojOtkazivanja = await V2ProfilService.izracunajBrojOtkazivanja(
+      brojOtkazivanja = await V2StatistikaService.izracunajBrojOtkazivanja(
         _putnik.id! as String,
       );
     } catch (e) {
@@ -796,7 +796,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
 
         // Za radnike/učenike koristi funkciju za mesecno placanje
         final existingId = _putnik.id?.toString() ?? '';
-        final existingMap = existingId.isNotEmpty ? await V2ProfilService.findPutnikById(existingId) : null;
+        final existingMap = existingId.isNotEmpty ? await V2StatistikaService.findPutnikById(existingId) : null;
         if (existingMap != null) {
           final tabela = existingMap['_tabela'] as String? ?? 'v2_radnici';
           // Koristi static funkciju za cuvanje placanja
@@ -1791,7 +1791,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
       // Ime vozaca se koristi za validaciju placanja u voznje_log
 
       // datum = danas (kad je uplata izvršena), placeniMesec/placenaGodina = izabrani mesec
-      final uspeh = await V2ProfilService.upisPlacanjaULog(
+      final uspeh = await V2StatistikaService.upisPlacanjaULog(
         putnikId: putnikId,
         putnikIme: putnikIme,
         putnikTabela: putnikTabela,

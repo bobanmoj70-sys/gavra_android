@@ -20,7 +20,7 @@ import '../services/v2_kapacitet_service.dart'; // ?? Kapacitet za bottom nav ba
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_printing_service.dart';
-import '../services/v2_profil_service.dart';
+import '../services/v2_statistika_service.dart';
 import '../services/v2_racun_service.dart';
 import '../services/v2_realtime_notification_service.dart';
 import '../services/v2_slobodna_mesta_service.dart'; // ?? Provera kapaciteta
@@ -307,7 +307,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     final scaffoldMessenger = ScaffoldMessenger.of(ctx);
 
     // Ucitaj putnike kojima treba racun iz rm cache-a
-    final sviPutnici = V2ProfilService.getAllAktivniKaoModel();
+    final sviPutnici = V2StatistikaService.getAllAktivniKaoModel();
     final putnici = sviPutnici.where((p) => p.trebaRacun).toList();
 
     if (!mounted) return;
@@ -921,7 +921,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     List<Map<String, String>> dostupneAdrese = []; // ?? Lista adresa za dropdown
 
     // Povuci SVE registrovane putnike iz rm cache-a
-    final lista = V2ProfilService.getAllAktivniKaoModel();
+    final lista = V2StatistikaService.getAllAktivniKaoModel();
     // Filtrirana lista aktivnih putnika za brzu pretragu
     final aktivniPutnici = lista.where((V2RegistrovaniPutnik v2Putnik) => v2Putnik.aktivan).toList()
       ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase()));

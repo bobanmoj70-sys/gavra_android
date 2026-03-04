@@ -1,33 +1,95 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../globals.dart';
 import '../models/v2_radnik.dart';
 import '../models/v2_registrovani_putnik.dart';
-import 'v2_profil_service.dart';
+import 'realtime/v2_master_realtime_manager.dart';
 
-/// Servis za radnike (v2_radnici tabela).
-/// Delegira na V2ProfilService sa fiksnom tabelom 'v2_radnici'.
+/// Servis za radnike — jedina klasa koja radi sa v2_radnici tabelom.
 class V2RadniciService {
   V2RadniciService._();
 
-  static const String _tabela = 'v2_radnici';
+  static const String tabela = 'v2_radnici';
+
+  static SupabaseClient get _db => supabase;
+  static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
+  static Map<String, dynamic> get _cache => _rm.radniciCache;
 
   // ---------------------------------------------------------------------------
   // CITANJE — iz RM cache-a (sync, 0 DB upita)
   // ---------------------------------------------------------------------------
 
-  static List<V2RegistrovaniPutnik> getAktivne() => V2ProfilService.getAktivne(_tabela);
+  static List<V2RegistrovaniPutnik> getAktivne() {
+    return _cache.values
+        .where((r) => r['status'] == 'aktivan')
+        .map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': tabela}))
+        .toList()
+      ..sort((a, b) => a.ime.compareTo(b.ime));
+  }
 
-  static List<V2RegistrovaniPutnik> getSve() => V2ProfilService.getSve(_tabela);
+  static List<V2RegistrovaniPutnik> getSve() {
+    return _cache.values.map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': tabela})).toList()
+      ..sort((a, b) => a.ime.compareTo(b.ime));
+  }
 
-  static V2RegistrovaniPutnik? getById(String id) => V2ProfilService.getById(id, _tabela);
+  static V2RegistrovaniPutnik? getById(String id) {
+    final row = _cache[id];
+    if (row == null) return null;
+    return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
+  }
 
-  static String? getImeById(String id) => V2ProfilService.getImeById(id, _tabela);
+  static String? getImeById(String id) => _cache[id]?['ime']?.toString();
 
-  static V2RegistrovaniPutnik? getByPin(String pin) => V2ProfilService.getByPin(pin, _tabela);
+  static V2RegistrovaniPutnik? getByPin(String pin) {
+    try {
+      final row = _cache.values.firstWhere(
+        (r) => r['pin'] == pin && r['status'] == 'aktivan',
+      );
+      return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Typed model iz cache-a
+  static V2Radnik? getRadnikById(String id) {
+    final row = _cache[id];
+    if (row == null) return null;
+    return V2Radnik.fromJson(Map<String, dynamic>.from(row));
+  }
+
+  /// Sve aktivne kao typed modeli
+  static List<V2Radnik> getAktivneKaoModele() {
+    return _cache.values
+        .where((r) => r['status'] == 'aktivan')
+        .map((r) => V2Radnik.fromJson(Map<String, dynamic>.from(r)))
+        .toList()
+      ..sort((a, b) => a.ime.compareTo(b.ime));
+  }
 
   // ---------------------------------------------------------------------------
-  // STREAM
+  // STREAM — emituje iz RM cache-a (realtime, 0 DB upita)
   // ---------------------------------------------------------------------------
 
-  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => V2ProfilService.streamAktivne(_tabela);
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() {
+    final controller = StreamController<List<V2RegistrovaniPutnik>>.broadcast();
+
+    void emit() {
+      if (!controller.isClosed) controller.add(getAktivne());
+    }
+
+    Future.microtask(emit);
+    final sub = _rm.onCacheChanged.where((t) => t == tabela).listen((_) => emit());
+    controller.onCancel = () {
+      sub.cancel();
+      controller.close();
+    };
+
+    return controller.stream;
+  }
 
   // ---------------------------------------------------------------------------
   // CREATE
@@ -43,42 +105,61 @@ class V2RadniciService {
     String? email,
     double? cenaPoDanu,
     int? brojMesta,
+    bool trebaRacun = false,
     String status = 'aktivan',
-  }) =>
-      V2ProfilService.createRadnik(
-        ime: ime,
-        telefon: telefon,
-        telefon2: telefon2,
-        adresaBcId: adresaBcId,
-        adresaVsId: adresaVsId,
-        pin: pin,
-        email: email,
-        cenaPosDanu: cenaPoDanu,
-        brojMesta: brojMesta,
-        status: status,
-      );
+  }) async {
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      final row = await _db
+          .from(tabela)
+          .insert({
+            'ime': ime,
+            'telefon': telefon,
+            'telefon_2': telefon2,
+            'adresa_bc_id': adresaBcId,
+            'adresa_vs_id': adresaVsId,
+            'pin': pin,
+            'email': email,
+            'cena_po_danu': cenaPoDanu,
+            'broj_mesta': brojMesta,
+            'treba_racun': trebaRacun,
+            'status': status,
+            'created_at': now,
+            'updated_at': now,
+          })
+          .select()
+          .single();
+      return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
+    } catch (e) {
+      debugPrint('[V2RadniciService] create error: $e');
+      return null;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // UPDATE / DELETE
   // ---------------------------------------------------------------------------
 
-  static Future<bool> update(String id, Map<String, dynamic> updates) => V2ProfilService.update(id, _tabela, updates);
-
-  static Future<bool> setStatus(String id, String status) => V2ProfilService.setStatus(id, _tabela, status);
-
-  static Future<bool> delete(String id) => V2ProfilService.delete(id, _tabela);
-
-  // ---------------------------------------------------------------------------
-  // KONVERZIJA — V2RegistrovaniPutnik → V2Radnik (typed model)
-  // ---------------------------------------------------------------------------
-
-  /// Vraca typed V2Radnik model iz cache-a
-  static V2Radnik? getRadnikById(String id) {
-    final row = V2ProfilService.getById(id, _tabela);
-    if (row == null) return null;
-    return V2Radnik.fromJson(row.toMap());
+  static Future<bool> update(String id, Map<String, dynamic> updates) async {
+    try {
+      updates['updated_at'] = DateTime.now().toUtc().toIso8601String();
+      await _db.from(tabela).update(updates).eq('id', id);
+      return true;
+    } catch (e) {
+      debugPrint('[V2RadniciService] update error: $e');
+      return false;
+    }
   }
 
-  /// Vraca sve aktivne radnike kao typed modele
-  static List<V2Radnik> getAktivneKaoModele() => getAktivne().map((r) => V2Radnik.fromJson(r.toMap())).toList();
+  static Future<bool> setStatus(String id, String status) => update(id, {'status': status});
+
+  static Future<bool> delete(String id) async {
+    try {
+      await _db.from(tabela).delete().eq('id', id);
+      return true;
+    } catch (e) {
+      debugPrint('[V2RadniciService] delete error: $e');
+      return false;
+    }
+  }
 }
