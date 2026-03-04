@@ -11,6 +11,7 @@ import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
+import '../services/v2_auth_manager.dart';
 import '../services/v2_push_token_service.dart'; // Push token čišćenje pri odjavi
 import '../services/v2_putnik_push_service.dart'; // Push notifikacije za putnike
 import '../services/v2_statistika_istorija_service.dart';
@@ -140,9 +141,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     if (putnikId == null) return;
 
     // Jedan subscriber na v2_polasci — jedina RT tabela relevantna za profil putnika
-    _polasciSubscription = V2MasterRealtimeManager.instance.onCacheChanged
-        .where((t) => t == 'v2_polasci')
-        .listen((_) {
+    _polasciSubscription = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
       debugPrint('🆕 [Realtime] v2_polasci cache promena za putnika $putnikId');
       _loadActiveRequests();
       _refreshPutnikData();
@@ -513,7 +512,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
     if (confirm == true) {
       final putnikId = _putnikData['id']?.toString();
-      final tabela = _putnikData['_tabela'] as String? ?? _putnikData['putnik_tabela'] as String?;
       if (putnikId != null) {
         try {
           await V2PushTokenService.clearToken(putnikId: putnikId);
@@ -525,7 +523,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       await prefs.remove('registrovani_putnik_telefon');
 
       if (mounted) {
-        Navigator.pop(context);
+        await V2AuthManager.logout(context);
       }
     }
   }
