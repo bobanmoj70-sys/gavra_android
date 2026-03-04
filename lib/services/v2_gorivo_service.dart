@@ -3,15 +3,22 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import 'v2_finansije_service.dart';
+import 'v2_pumpa_config_service.dart';
+import 'v2_pumpa_punjenja_service.dart';
+import 'v2_pumpa_tocenja_service.dart';
 
-/// Upravljanje kucnom pumpom goriva: punjenja, tocenja, stanje, statistike
+/// Orchestrator za gorivo: stanje pumpe (VIEW) + statistike + koordinacija
+/// Direktni CRUD delegiran na:
+///   - V2PumpaConfigService  (v2_pumpa_config)
+///   - V2PumpaPunjenjaService (v2_pumpa_punjenja)
+///   - V2PumpaTocenjaService  (v2_pumpa_tocenja)
 class V2GorivoService {
   V2GorivoService._();
 
   static SupabaseClient get _db => supabase;
 
   // ─────────────────────────────────────────────────────────────
-  // STANJE PUMPE
+  // STANJE PUMPE (v2_pumpa_stanje VIEW)
   // ─────────────────────────────────────────────────────────────
 
   /// Dohvati trenutno stanje pumpe
@@ -29,104 +36,56 @@ class V2GorivoService {
     }
   }
 
-  /// Ažuriraj konfiguraciju pumpe (kapacitet, alarm nivo, početno stanje)
+  // ─────────────────────────────────────────────────────────────
+  // DELEGIRANO na V2PumpaConfigService
+  // ─────────────────────────────────────────────────────────────
+
   static Future<bool> updateConfig({
     double? kapacitet,
     double? alarmNivo,
     double? pocetnoStanje,
-  }) async {
-    try {
-      final Map<String, dynamic> data = {
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      };
-      if (kapacitet != null) data['kapacitet_litri'] = kapacitet;
-      if (alarmNivo != null) data['alarm_nivo'] = alarmNivo;
-      if (pocetnoStanje != null) data['pocetno_stanje'] = pocetnoStanje;
-
-      await _db.from('v2_pumpa_config').update(data);
-      return true;
-    } catch (e) {
-      debugPrint('[GorivoService] updateConfig error: $e');
-      return false;
-    }
-  }
+  }) =>
+      V2PumpaConfigService.updateConfig(
+        kapacitet: kapacitet,
+        alarmNivo: alarmNivo,
+        pocetnoStanje: pocetnoStanje,
+      );
 
   // ─────────────────────────────────────────────────────────────
-  // PUNJENJA (nabavka goriva)
+  // DELEGIRANO na V2PumpaPunjenjaService
   // ─────────────────────────────────────────────────────────────
 
-  /// Dohvati sva punjenja (najnovija prva)
-  static Future<List<V2PumpaPunjenje>> getPunjenja({int limit = 50}) async {
-    try {
-      final response = await _db
-          .from('v2_pumpa_punjenja')
-          .select('id,datum,litri,cena_po_litru,ukupno_cena,napomena,created_at')
-          .order('datum', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return (response as List).map((r) => V2PumpaPunjenje.fromJson(r)).toList();
-    } catch (e) {
-      debugPrint('[GorivoService] getPunjenja error: $e');
-      return [];
-    }
-  }
+  static Future<List<V2PumpaPunjenje>> getPunjenja({int limit = 50}) =>
+      V2PumpaPunjenjaService.getPunjenja(limit: limit);
 
-  /// Dodaj punjenje pumpe
   static Future<bool> addPunjenje({
     required DateTime datum,
     required double litri,
     double? cenaPoPLitru,
     String? napomena,
-  }) async {
-    try {
-      await _db.from('v2_pumpa_punjenja').insert({
-        'datum': datum.toIso8601String().split('T')[0],
-        'litri': litri,
-        'cena_po_litru': cenaPoPLitru,
-        'ukupno_cena': (cenaPoPLitru != null) ? litri * cenaPoPLitru : null,
-        'napomena': napomena,
-      });
-      debugPrint('[GorivoService] Punjenje dodato: $litri L');
-      return true;
-    } catch (e) {
-      debugPrint('[GorivoService] addPunjenje error: $e');
-      return false;
-    }
-  }
+  }) =>
+      V2PumpaPunjenjaService.addPunjenje(
+        datum: datum,
+        litri: litri,
+        cenaPoPLitru: cenaPoPLitru,
+        napomena: napomena,
+      );
 
-  /// Obriši punjenje
-  static Future<bool> deletePunjenje(String id) async {
-    try {
-      await _db.from('v2_pumpa_punjenja').delete().eq('id', id);
-      return true;
-    } catch (e) {
-      debugPrint('[GorivoService] deletePunjenje error: $e');
-      return false;
-    }
-  }
+  static Future<bool> deletePunjenje(String id) =>
+      V2PumpaPunjenjaService.deletePunjenje(id);
+
+  static Future<double?> getPoslednaCenaPoPLitru() =>
+      V2PumpaPunjenjaService.getPoslednaCenaPoPLitru();
 
   // ─────────────────────────────────────────────────────────────
-  // TOČENJA (po vozilu)
+  // DELEGIRANO na V2PumpaTocenjaService
   // ─────────────────────────────────────────────────────────────
 
-  /// Dohvati sva točenja (najnovija prva)
   static Future<List<V2PumpaTocenje>> getTocenja({
     int limit = 100,
     String? voziloId,
-  }) async {
-    try {
-      var selectQuery = _db.from('v2_pumpa_tocenja').select('*, v2_vozila(registarski_broj, marka, model)');
-
-      final response = await (voziloId != null ? selectQuery.eq('vozilo_id', voziloId) : selectQuery)
-          .order('datum', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return (response as List).map((r) => V2PumpaTocenje.fromJson(r)).toList();
-    } catch (e) {
-      debugPrint('[GorivoService] getTocenja error: $e');
-      return [];
-    }
-  }
+  }) =>
+      V2PumpaTocenjaService.getTocenja(limit: limit, voziloId: voziloId);
 
   /// Dodaj točenje — i automatski kreira trošak u finansijama
   static Future<bool> addTocenje({
@@ -135,16 +94,16 @@ class V2GorivoService {
     required double litri,
     int? kmVozila,
     String? napomena,
-    double? cenaPoPLitru, // za obračun troška
+    double? cenaPoPLitru,
   }) async {
     try {
-      await _db.from('v2_pumpa_tocenja').insert({
-        'datum': datum.toIso8601String().split('T')[0],
-        'vozilo_id': voziloId,
-        'litri': litri,
-        'km_vozila': kmVozila,
-        'napomena': napomena,
-      });
+      await V2PumpaTocenjaService.addTocenje(
+        datum: datum,
+        voziloId: voziloId,
+        litri: litri,
+        kmVozila: kmVozila,
+        napomena: napomena,
+      );
 
       // Ažuriraj kilometražu vozila ako je unesena
       if (kmVozila != null) {
@@ -171,19 +130,11 @@ class V2GorivoService {
     }
   }
 
-  /// Obriši točenje
-  static Future<bool> deleteTocenje(String id) async {
-    try {
-      await _db.from('v2_pumpa_tocenja').delete().eq('id', id);
-      return true;
-    } catch (e) {
-      debugPrint('[GorivoService] deleteTocenje error: $e');
-      return false;
-    }
-  }
+  static Future<bool> deleteTocenje(String id) =>
+      V2PumpaTocenjaService.deleteTocenje(id);
 
   // ─────────────────────────────────────────────────────────────
-  // STATISTIKE
+  // STATISTIKE (orchestrator — agregira podatke iz V2PumpaTocenjaService)
   // ─────────────────────────────────────────────────────────────
 
   /// Potrošnja po vozilu za period
@@ -192,17 +143,7 @@ class V2GorivoService {
     DateTime? do_,
   }) async {
     try {
-      var query =
-          _db.from('v2_pumpa_tocenja').select('vozilo_id, litri, km_vozila, v2_vozila(registarski_broj, marka, model)');
-
-      if (od != null) {
-        query = query.gte('datum', od.toIso8601String().split('T')[0]);
-      }
-      if (do_ != null) {
-        query = query.lte('datum', do_.toIso8601String().split('T')[0]);
-      }
-
-      final data = await query;
+      final data = await V2PumpaTocenjaService.getTocenjaZaStatistike(od: od, do_: do_);
 
       // Agregiraj po vozilu
       final Map<String, V2VoziloStatistika> mapa = {};

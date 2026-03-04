@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import 'realtime/v2_master_realtime_manager.dart';
+import 'v2_vozila_servis_service.dart';
 
 /// Servis za upravljanje vozilima — kolska knjiga i tehničko stanje.
 class V2VozilaService {
@@ -48,9 +49,9 @@ class V2VozilaService {
     }
   }
 
-  // ==================== ISTORIJA SERVISA ====================
+  // ==================== SERVISNA ISTORIJA (delegirano na V2VozilaServisService) ====================
 
-  /// Dodaj zapis u istoriju vozila
+  /// Dodaj zapis u servisnu istoriju — delegira na V2VozilaServisService
   static Future<bool> addIstorijuServisa({
     required String voziloId,
     required String tip,
@@ -59,23 +60,16 @@ class V2VozilaService {
     String? opis,
     double? cena,
     String? pozicija,
-  }) async {
-    try {
-      await _supabase.from('v2_vozila_servis').insert({
-        'vozilo_id': voziloId,
-        'tip': tip,
-        'datum': datum?.toIso8601String().split('T')[0],
-        'km': km,
-        'opis': opis,
-        'cena': cena,
-        'pozicija': pozicija,
-      });
-      return true;
-    } catch (e) {
-      debugPrint('[V2VozilaService] Greška u addIstorijuServisa(): $e');
-      return false;
-    }
-  }
+  }) =>
+      V2VozilaServisService.addIstorijuServisa(
+        voziloId: voziloId,
+        tip: tip,
+        datum: datum,
+        km: km,
+        opis: opis,
+        cena: cena,
+        pozicija: pozicija,
+      );
 }
 
 /// Model za vozilo - Kolska knjiga
