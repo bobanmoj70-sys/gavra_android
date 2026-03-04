@@ -651,8 +651,8 @@ class V2PutnikStreamService {
     final double? iznos = (srRow['placen_iznos'] as num?)?.toDouble();
     final String? naplatioVozac = srRow['placen_vozac_ime']?.toString();
     final String? naplatioVozacId = srRow['placen_vozac_id']?.toString();
-    final String? datumAkcije = srRow['datum_akcije']?.toString();
-    final String? vremeUplate = jePlacen ? datumAkcije : null;
+    // updated_at je timestamptz — ima puno vrijeme; datum_akcije je date tip (samo datum, bez sata)
+    final String? vremeUplate = jePlacen ? (srRow['updated_at']?.toString() ?? srRow['datum_akcije']?.toString()) : null;
 
     final String? vozacId = naplatioVozacId ?? (jePokupljen ? _vozacIdZaIme(srRow['pokupio']?.toString()) : null);
     final String? vozacIme = naplatioVozac ?? (jePokupljen ? srRow['pokupio']?.toString() : null);

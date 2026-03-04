@@ -828,10 +828,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
         );
       }
 
-      // OSVEŽI STANJE PUTNIKA - postavi placeno na true
+      // OSVEŽI STANJE PUTNIKA - postavi placeno na true + vreme placanja
       if (mounted) {
         setState(() {
-          _putnik = _putnik.copyWith(placeno: true);
+          _putnik = _putnik.copyWith(placeno: true, vremePlacanja: DateTime.now());
         });
 
         V2AppSnackBar.payment(context, 'Placanje uspešno evidentirano: $iznos RSD');
