@@ -924,6 +924,25 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     dostupneAdrese = adreseZaGrad.map((a) => {'id': a.id, 'naziv': a.naziv}).toList()
       ..sort((a, b) => (a['naziv'] ?? '').compareTo(b['naziv'] ?? ''));
 
+    // Predracunaj items liste jednom - ne kreirati na svakom StatefulBuilder rebuildu
+    final adresaDropdownItems = dostupneAdrese.map((adresa) {
+      return DropdownMenuItem<String>(
+        value: adresa['id'],
+        child: Text(
+          adresa['naziv'] ?? '',
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.black),
+        ),
+      );
+    }).toList();
+    const brojMestaDropdownItems = [
+      DropdownMenuItem<int>(value: 1, child: Text('1 mesto', style: TextStyle(fontSize: 16))),
+      DropdownMenuItem<int>(value: 2, child: Text('2 mesta', style: TextStyle(fontSize: 16))),
+      DropdownMenuItem<int>(value: 3, child: Text('3 mesta', style: TextStyle(fontSize: 16))),
+      DropdownMenuItem<int>(value: 4, child: Text('4 mesta', style: TextStyle(fontSize: 16))),
+      DropdownMenuItem<int>(value: 5, child: Text('5 mesta', style: TextStyle(fontSize: 16))),
+    ];
+
     if (!mounted) return;
 
     final rootContext = context; // ?? Cuvamo home screen context pre otvaranja dijaloga
@@ -1125,9 +1144,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                 // ?? DROPDOWN ZA IZBOR PUTNIKA IZ LISTE
                                 DropdownButtonFormField2<V2RegistrovaniPutnik>(
                                   isExpanded: true,
-                                  value: aktivniPutnici
-                                      .cast<V2RegistrovaniPutnik?>()
-                                      .firstWhere((p) => p?.id == selectedPutnik?.id, orElse: () => null),
+                                  value: selectedPutnik,
                                   decoration: InputDecoration(
                                     labelText: 'Izaberi putnika',
                                     hintText: 'Pretraži i izaberi...',
@@ -1301,7 +1318,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                 if (promeniAdresuSamoDanas) ...[
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    // ignore: deprecated_member_use
                                     value: samoDanasAdresaId,
                                     isExpanded: true, // ? Sprecava overflow
                                     decoration: InputDecoration(
@@ -1325,16 +1341,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                     ),
                                     dropdownColor: Colors.white, // Bela pozadina dropdown-a
                                     style: const TextStyle(color: Colors.black), // Crni tekst
-                                    items: dostupneAdrese.map((adresa) {
-                                      return DropdownMenuItem<String>(
-                                        value: adresa['id'], // Cuvamo ID kao value
-                                        child: Text(
-                                          adresa['naziv'] ?? '',
-                                          overflow: TextOverflow.ellipsis, // ? Skracuje dugacak tekst
-                                          style: const TextStyle(color: Colors.black),
-                                        ),
-                                      );
-                                    }).toList(),
+                                    items: adresaDropdownItems,
                                     onChanged: (value) {
                                       setStateDialog(() {
                                         samoDanasAdresaId = value;
@@ -1395,15 +1402,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         value: brojMesta,
                                         underline: const SizedBox(),
                                         isDense: true,
-                                        items: [1, 2, 3, 4, 5].map((int value) {
-                                          return DropdownMenuItem<int>(
-                                            value: value,
-                                            child: Text(
-                                              value == 1 ? '1 mesto' : '$value mesta',
-                                              style: const TextStyle(fontSize: 16),
-                                            ),
-                                          );
-                                        }).toList(),
+                                        items: brojMestaDropdownItems,
                                         onChanged: (int? newValue) {
                                           if (newValue != null) {
                                             setStateDialog(() {
@@ -2225,12 +2224,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           )
                                           .toList(),
                                       onChanged: (value) {
-                                        if (mounted) {
-                                          setState(() {
-                                            _selectedDay = value!;
-                                            _updatePutniciStream(_selectedDay);
-                                          });
-                                        }
+                                        if (value == null || !mounted) return;
+                                        setState(() {
+                                          _selectedDay = value;
+                                          _updatePutniciStream(_selectedDay);
+                                        });
                                       },
                                     ),
                                   ),
