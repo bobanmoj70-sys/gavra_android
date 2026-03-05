@@ -373,9 +373,8 @@ class V2MasterRealtimeManager {
   /// Učitava sve v2_racuni zapise u racuniCache (keyed by putnik_id)
   Future<void> _loadRacuniCache() async {
     try {
-      final rows = await _db
-          .from('v2_racuni')
-          .select('id, putnik_id, putnik_tabela, firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa, updated_at');
+      final rows = await _db.from('v2_racuni').select(
+          'id, putnik_id, putnik_tabela, firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa, updated_at');
       racuniCache.clear();
       for (final row in (rows as List)) {
         final putnikId = row['putnik_id']?.toString();
@@ -415,6 +414,17 @@ class V2MasterRealtimeManager {
       if (datum != null && datum != _loadedDate) return;
     }
 
+    // polasciCache drži samo aktivne statuse — ukloni zapis ako dobijemo status koji nije u inicijalnoj listi
+    if (table == 'v2_polasci') {
+      const aktivniStatusi = {'obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen'};
+      final status = record['status']?.toString();
+      if (status != null && !aktivniStatusi.contains(status)) {
+        target.remove(id);
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+        return;
+      }
+    }
+
     // pinCache sadrži samo zahtjeve sa status='ceka' — ako status nije 'ceka', ukloni iz cache-a
     if (table == 'v2_pin_zahtevi') {
       final status = record['status']?.toString();
@@ -440,10 +450,17 @@ class V2MasterRealtimeManager {
 
   /// Uklanja red iz cache-a na DELETE event
   void removeFromCache(String table, String id) {
-    // v2_racuni: id je putnik_id
+    // v2_racuni: keyed by putnik_id, ali Realtime DELETE payload šalje record 'id' (UUID reda)
+    // Trebamo pronaći putnik_id koji odgovara tom id-u
     if (table == 'v2_racuni') {
-      racuniCache.remove(id);
-      if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+      final key = racuniCache.entries.firstWhere(
+        (e) => e.value['id']?.toString() == id,
+        orElse: () => const MapEntry('', {}),
+      ).key;
+      if (key.isNotEmpty) {
+        racuniCache.remove(key);
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+      }
       return;
     }
     _cacheForTable(table)?.remove(id);
@@ -943,7 +960,9 @@ class V2MasterRealtimeManager {
 
   /// Stream aktivnih putnika iz cache-a — 0 DB upita
   Stream<List<V2RegistrovaniPutnik>> streamAktivniPutnici() {
-    final controller = StreamController<List<V2RegistrovaniPutnik>>.broadcast();
+    StreamSubscription<String>? cacheSub;
+    late StreamController<List<V2RegistrovaniPutnik>> controller;
+
     void emit() {
       if (controller.isClosed) return;
       final putnici = getAllPutnici().map((row) => V2RegistrovaniPutnik.fromMap(row)).toList()
@@ -951,13 +970,17 @@ class V2MasterRealtimeManager {
       controller.add(putnici);
     }
 
-    Future.microtask(emit);
-
-    final cacheSub = _onCacheChanged.where((t) => putnikTabele.contains(t)).listen((_) => emit());
-    controller.onCancel = () {
-      cacheSub.cancel();
-      controller.close();
-    };
+    controller = StreamController<List<V2RegistrovaniPutnik>>.broadcast(
+      onListen: () {
+        emit();
+        cacheSub = _onCacheChanged.where((t) => putnikTabele.contains(t)).listen((_) => emit());
+      },
+      onCancel: () {
+        cacheSub?.cancel();
+        cacheSub = null;
+        controller.close();
+      },
+    );
     return controller.stream;
   }
 

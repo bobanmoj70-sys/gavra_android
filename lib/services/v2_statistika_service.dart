@@ -53,14 +53,9 @@ class V2StatistikaService {
   // ---------------------------------------------------------------------------
 
   /// Dohvata sva plaćanja (tip='uplata') za putnika
+  /// Uvijek ide na DB — statistikaCache drži samo tekući dan, ne punu historiju plaćanja.
   static Future<List<Map<String, dynamic>>> dohvatiPlacanja(String putnikId) async {
     try {
-      // Pokušaj iz cache-a prvo
-      final izCache = _rm.statistikaCache.values
-          .where((r) => r['putnik_id']?.toString() == putnikId && r['tip'] == 'uplata')
-          .toList();
-      if (izCache.isNotEmpty) return izCache;
-      // Fallback: DB upit
       final res = await _db
           .from('v2_statistika_istorija')
           .select(
