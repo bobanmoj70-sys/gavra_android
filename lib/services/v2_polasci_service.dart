@@ -43,18 +43,25 @@ class V2PolasciService {
       final nowStr = DateTime.now().toUtc().toIso8601String();
       final status = isAdmin ? 'odobreno' : 'obrada';
 
+      final rm = V2MasterRealtimeManager.instance;
+
       // 1. Ukloni sve ostale aktivne zahtjeve za isti grad+dan (drugačije vreme)
       // Putnik može imati samo jedan aktivan zahtjev po grad+dan.
       // isAdmin=true → 'bez_polaska' (tiho brisanje, ne utiče na statistiku)
       // isAdmin=false → 'cancelled' (putnik sam menja zahtev)
-      await _supabase
+      final cancelledStatus = isAdmin ? 'bez_polaska' : 'cancelled';
+      final cancelledRows = await _supabase
           .from('v2_polasci')
-          .update({'status': isAdmin ? 'bez_polaska' : 'cancelled', 'updated_at': nowStr})
+          .update({'status': cancelledStatus, 'updated_at': nowStr})
           .eq('putnik_id', putnikId)
           .eq('grad', gradKey)
           .eq('dan', danKey)
           .neq('zeljeno_vreme', normVreme)
-          .inFilter('status', ['obrada', 'odobreno', 'odbijeno']);
+          .inFilter('status', ['obrada', 'odobreno', 'odbijeno'])
+          .select('id');
+      for (final row in cancelledRows) {
+        rm.patchCache('v2_polasci', row['id'].toString(), {'status': cancelledStatus, 'updated_at': nowStr});
+      }
 
       // 2. Upsert po (putnik_id, grad, dan, zeljeno_vreme) — uvijek ide ispočetka kroz obradu
       final existing = await _supabase
@@ -67,7 +74,7 @@ class V2PolasciService {
           .maybeSingle();
 
       if (existing != null) {
-        await _supabase.from('v2_polasci').update({
+        final updatePayload = {
           'status': status,
           'broj_mesta': brojMesta,
           if (isAdmin) 'zeljeno_vreme': normVreme,
@@ -78,22 +85,34 @@ class V2PolasciService {
           if (putnikTabela != null) 'putnik_tabela': putnikTabela,
           if (customAdresaId != null) 'adresa_id': customAdresaId,
           'updated_at': nowStr,
-        }).eq('id', existing['id']);
+        };
+        final updated = await _supabase
+            .from('v2_polasci')
+            .update(updatePayload)
+            .eq('id', existing['id'])
+            .select()
+            .single();
+        rm.upsertToCache('v2_polasci', updated);
         debugPrint('[V2PolasciService] v2PoSaljiZahtev UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
       } else {
-        await _supabase.from('v2_polasci').insert({
-          'putnik_id': putnikId,
-          'grad': gradKey,
-          'dan': danKey,
-          'zeljeno_vreme': normVreme,
-          if (isAdmin) 'dodeljeno_vreme': normVreme,
-          'status': status,
-          'broj_mesta': brojMesta,
-          if (putnikTabela != null) 'putnik_tabela': putnikTabela,
-          if (customAdresaId != null) 'adresa_id': customAdresaId,
-          'created_at': nowStr,
-          'updated_at': nowStr,
-        });
+        final inserted = await _supabase
+            .from('v2_polasci')
+            .insert({
+              'putnik_id': putnikId,
+              'grad': gradKey,
+              'dan': danKey,
+              'zeljeno_vreme': normVreme,
+              if (isAdmin) 'dodeljeno_vreme': normVreme,
+              'status': status,
+              'broj_mesta': brojMesta,
+              if (putnikTabela != null) 'putnik_tabela': putnikTabela,
+              if (customAdresaId != null) 'adresa_id': customAdresaId,
+              'created_at': nowStr,
+              'updated_at': nowStr,
+            })
+            .select()
+            .single();
+        rm.upsertToCache('v2_polasci', inserted);
         debugPrint('[V2PolasciService] v2PoSaljiZahtev INSERT $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
       }
     } catch (e) {
@@ -1111,6 +1130,15 @@ class V2PutnikStreamService {
 
       final res = await query.select('id');
       debugPrint('[PutnikService] globalniBezPolaska: updated ${res.length} rows');
+      final rm = V2MasterRealtimeManager.instance;
+      final patchPayload = {
+        'status': 'bez_polaska',
+        'processed_at': nowToString(),
+        'updated_at': nowToString(),
+      };
+      for (final row in res) {
+        rm.patchCache('v2_polasci', row['id'].toString(), patchPayload);
+      }
       return res.length;
     } catch (e) {
       debugPrint('[PutnikService] globalniBezPolaska ERROR: $e');
