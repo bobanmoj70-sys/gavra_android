@@ -142,11 +142,8 @@ class V2AdresaSupabaseService {
     if (lng != null) insertData['gps_lng'] = lng;
 
     // INSERT + SELECT u jednom pozivu — nema race conditiona
-    final row = await supabase
-        .from('v2_adrese')
-        .insert(insertData)
-        .select('id, naziv, grad, gps_lat, gps_lng')
-        .single();
+    final row =
+        await supabase.from('v2_adrese').insert(insertData).select('id, naziv, grad, gps_lat, gps_lng').single();
     V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', row);
     return V2Adresa.fromMap(row);
   }

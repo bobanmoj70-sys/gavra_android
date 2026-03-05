@@ -15,7 +15,6 @@ import 'services/realtime/v2_master_realtime_manager.dart';
 import 'services/v2_firebase_service.dart';
 import 'services/v2_huawei_push_service.dart';
 import 'services/v2_realtime_gps_service.dart';
-import 'services/v2_slobodna_mesta_service.dart';
 import 'services/v2_statistika_istorija_service.dart';
 import 'services/v2_theme_manager.dart';
 import 'services/v2_weather_alert_service.dart';
@@ -157,7 +156,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     V2WeatherService.dispose();
     V2RealtimeGpsService.dispose();
     V2StatistikaIstorijaService.dispose();
-    V2SlobodnaMestaService.dispose();
     super.dispose();
   }
 
@@ -180,7 +178,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       V2WeatherService.dispose();
       V2RealtimeGpsService.dispose();
       V2StatistikaIstorijaService.dispose();
-      V2SlobodnaMestaService.dispose();
     }
   }
 

@@ -19,8 +19,8 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
   final TextEditingController _searchController = TextEditingController();
   final _putnikService = V2PutnikStreamService();
 
-  String _selectedFilter = 'svi'; // 'svi', 'veliki_dug', 'mali_dug'
-  String _sortBy = 'vreme'; // 'iznos', 'vreme', 'ime', 'vozac' - default: najnoviji gore
+  final String _selectedFilter = 'svi'; // 'svi', 'veliki_dug', 'mali_dug'
+  final String _sortBy = 'vreme'; // 'iznos', 'vreme', 'ime', 'vozac' - default: najnoviji gore
 
   late final Stream<List<V2Putnik>> _streamDugovi;
 
