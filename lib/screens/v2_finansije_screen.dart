@@ -14,8 +14,9 @@ class V2FinansijeScreen extends StatefulWidget {
 
 class _FinansijeScreenState extends State<V2FinansijeScreen> {
   final _formatBroja = NumberFormat('#,###', 'sr');
+  final _refreshKey = GlobalKey<RefreshIndicatorState>();
 
-  late final Stream<V2FinansijskiIzvestaj> _streamIzvestaj;
+  late Stream<V2FinansijskiIzvestaj> _streamIzvestaj;
 
   @override
   void initState() {
@@ -58,8 +59,11 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
               : izvestaj == null
                   ? const Center(child: Text('Greška pri učitavanju'))
                   : RefreshIndicator(
+                      key: _refreshKey,
                       onRefresh: () async {
-                        setState(() {});
+                        setState(() {
+                          _streamIzvestaj = V2FinansijeService.streamIzvestaj();
+                        });
                       },
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -90,7 +94,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                             _buildPeriodCard(
                               icon: '🗓️',
                               naslov: 'Ovaj mesec',
-                              podnaslov: _getMesecNaziv(DateTime.now().month),
+                              podnaslov: _getMesecNaziv(izvestaj.startNedelja.month),
                               prihod: izvestaj.prihodMesec,
                               troskovi: izvestaj.troskoviMesec,
                               neto: izvestaj.netoMesec,
@@ -366,146 +370,20 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   }
 
   void _showTroskoviDialog(Map<String, double> poTipu) {
-    // Kontroleri za svaku kategoriju - NE POPUNJAVAJ POSTOJEĆE (SABIRANJE)
-    final plateController = TextEditingController();
-    final kreditController = TextEditingController();
-    final gorivoController = TextEditingController();
-    final amortizacijaController = TextEditingController();
-    final registracijaController = TextEditingController();
-    final yuAutoController = TextEditingController();
-    final majstoriController = TextEditingController();
-    final ostaloController = TextEditingController();
-    final porezController = TextEditingController();
-    final alimentacijaController = TextEditingController();
-    final racuniController = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: SafeArea(
-          top: false,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Handle
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '⚙️ Dodaj troškove',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Unesi iznos koji želiš da DODAŠ na trenutni trošak.',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Plate
-                  _buildTrosakInputRow('💰', 'Plate', plateController, currentTotal: poTipu['plata']),
-                  const SizedBox(height: 12),
-
-                  // Kredit
-                  _buildTrosakInputRow('🏦', 'Kredit', kreditController, currentTotal: poTipu['kredit']),
-                  const SizedBox(height: 12),
-
-                  // Gorivo
-                  _buildTrosakInputRow('⛽', 'Gorivo', gorivoController, currentTotal: poTipu['gorivo']),
-                  const SizedBox(height: 12),
-
-                  // Amortizacija
-                  _buildTrosakInputRow('🔧', 'Amortizacija', amortizacijaController,
-                      currentTotal: poTipu['amortizacija']),
-                  const SizedBox(height: 12),
-
-                  // Registracija
-                  _buildTrosakInputRow('📋', 'Registracija', registracijaController,
-                      currentTotal: poTipu['registracija']),
-                  const SizedBox(height: 12),
-
-                  // YU auto
-                  _buildTrosakInputRow('🚗', 'YU auto', yuAutoController, currentTotal: poTipu['yu_auto']),
-                  const SizedBox(height: 12),
-
-                  // Majstori
-                  _buildTrosakInputRow('🛠️', 'Majstori', majstoriController, currentTotal: poTipu['majstori']),
-                  const SizedBox(height: 12),
-
-                  // Porez
-                  _buildTrosakInputRow('🏛️', 'Porez', porezController, currentTotal: poTipu['porez']),
-                  const SizedBox(height: 12),
-
-                  // Alimentacija
-                  _buildTrosakInputRow('👶', 'Alimentacija', alimentacijaController,
-                      currentTotal: poTipu['alimentacija']),
-                  const SizedBox(height: 12),
-
-                  // Računi
-                  _buildTrosakInputRow('🧾', 'Računi', racuniController, currentTotal: poTipu['racuni']),
-                  const SizedBox(height: 12),
-
-                  // Ostalo
-                  _buildTrosakInputRow('📋', 'Ostalo', ostaloController, currentTotal: poTipu['ostalo']),
-                  const SizedBox(height: 24),
-
-                  // Sačuvaj dugme
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        await _saveTroskovi(
-                          plate: double.tryParse(plateController.text) ?? 0,
-                          kredit: double.tryParse(kreditController.text) ?? 0,
-                          gorivo: double.tryParse(gorivoController.text) ?? 0,
-                          amortizacija: double.tryParse(amortizacijaController.text) ?? 0,
-                          registracija: double.tryParse(registracijaController.text) ?? 0,
-                          yuAuto: double.tryParse(yuAutoController.text) ?? 0,
-                          majstori: double.tryParse(majstoriController.text) ?? 0,
-                          ostalo: double.tryParse(ostaloController.text) ?? 0,
-                          porez: double.tryParse(porezController.text) ?? 0,
-                          alimentacija: double.tryParse(alimentacijaController.text) ?? 0,
-                          racuni: double.tryParse(racuniController.text) ?? 0,
-                        );
-                        if (!context.mounted) return;
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.add_circle),
-                      label: const Text('Dodaj troškove'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: Colors.green, // Visual cue for Adding
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-        ),
+      builder: (context) => _TroskoviBottomSheet(
+        poTipu: poTipu,
+        formatBroja: _formatBroja,
+        onSave: _saveTroskovi,
       ),
     );
   }
 
-  Widget _buildTrosakInputRow(String emoji, String label, TextEditingController controller, {double? currentTotal}) {
+  static Widget _buildTrosakInputRow(String emoji, String label, TextEditingController controller,
+      {double? currentTotal, required NumberFormat formatBroja}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -520,7 +398,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                 children: [
                   Text(label, style: const TextStyle(fontSize: 16)),
                   if (currentTotal != null && currentTotal > 0)
-                    Text('Trenutno: ${_formatBroja.format(currentTotal)}',
+                    Text('Trenutno: ${formatBroja.format(currentTotal)}',
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
                 ],
               ),
@@ -561,18 +439,20 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
     required double alimentacija,
     required double racuni,
   }) async {
-    // Dodaj NOVI trošak samo ako je iznos > 0
-    await _addTrosakIfPositive('Plate', 'plata', plate);
-    await _addTrosakIfPositive('Kredit', 'kredit', kredit);
-    await _addTrosakIfPositive('Gorivo', 'gorivo', gorivo);
-    await _addTrosakIfPositive('Amortizacija', 'amortizacija', amortizacija);
-    await _addTrosakIfPositive('Registracija', 'registracija', registracija);
-    await _addTrosakIfPositive('YU auto', 'yu_auto', yuAuto);
-    await _addTrosakIfPositive('Majstori', 'majstori', majstori);
-    await _addTrosakIfPositive('Porez', 'porez', porez);
-    await _addTrosakIfPositive('Alimentacija', 'alimentacija', alimentacija);
-    await _addTrosakIfPositive('Računi', 'racuni', racuni);
-    await _addTrosakIfPositive('Ostalo', 'ostalo', ostalo);
+    // Paralelni INSERT-i za sve kategorije sa iznosom != 0
+    await Future.wait([
+      _addTrosakIfPositive('Plate', 'plata', plate),
+      _addTrosakIfPositive('Kredit', 'kredit', kredit),
+      _addTrosakIfPositive('Gorivo', 'gorivo', gorivo),
+      _addTrosakIfPositive('Amortizacija', 'amortizacija', amortizacija),
+      _addTrosakIfPositive('Registracija', 'registracija', registracija),
+      _addTrosakIfPositive('YU auto', 'yu_auto', yuAuto),
+      _addTrosakIfPositive('Majstori', 'majstori', majstori),
+      _addTrosakIfPositive('Porez', 'porez', porez),
+      _addTrosakIfPositive('Alimentacija', 'alimentacija', alimentacija),
+      _addTrosakIfPositive('Računi', 'racuni', racuni),
+      _addTrosakIfPositive('Ostalo', 'ostalo', ostalo),
+    ]);
   }
 
   static Future<void> _addTrosakIfPositive(String naziv, String tip, double iznos) async {
@@ -719,6 +599,193 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zasebni StatefulWidget za bottom sheet unosa troškova → proper dispose()
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TroskoviBottomSheet extends StatefulWidget {
+  final Map<String, double> poTipu;
+  final NumberFormat formatBroja;
+  final Future<void> Function({
+    required double plate,
+    required double kredit,
+    required double gorivo,
+    required double amortizacija,
+    required double registracija,
+    required double yuAuto,
+    required double majstori,
+    required double ostalo,
+    required double porez,
+    required double alimentacija,
+    required double racuni,
+  }) onSave;
+
+  const _TroskoviBottomSheet({
+    required this.poTipu,
+    required this.formatBroja,
+    required this.onSave,
+  });
+
+  @override
+  State<_TroskoviBottomSheet> createState() => _TroskoviBottomSheetState();
+}
+
+class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
+  late final TextEditingController _plateController;
+  late final TextEditingController _kreditController;
+  late final TextEditingController _gorivoController;
+  late final TextEditingController _amortizacijaController;
+  late final TextEditingController _registracijaController;
+  late final TextEditingController _yuAutoController;
+  late final TextEditingController _majstoriController;
+  late final TextEditingController _ostaloController;
+  late final TextEditingController _porezController;
+  late final TextEditingController _alimentacijaController;
+  late final TextEditingController _racuniController;
+
+  @override
+  void initState() {
+    super.initState();
+    _plateController = TextEditingController();
+    _kreditController = TextEditingController();
+    _gorivoController = TextEditingController();
+    _amortizacijaController = TextEditingController();
+    _registracijaController = TextEditingController();
+    _yuAutoController = TextEditingController();
+    _majstoriController = TextEditingController();
+    _ostaloController = TextEditingController();
+    _porezController = TextEditingController();
+    _alimentacijaController = TextEditingController();
+    _racuniController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _plateController.dispose();
+    _kreditController.dispose();
+    _gorivoController.dispose();
+    _amortizacijaController.dispose();
+    _registracijaController.dispose();
+    _yuAutoController.dispose();
+    _majstoriController.dispose();
+    _ostaloController.dispose();
+    _porezController.dispose();
+    _alimentacijaController.dispose();
+    _racuniController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = widget.poTipu;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '⚙️ Dodaj troškove',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Unesi iznos koji želiš da DODAŠ na trenutni trošak.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+
+                _FinansijeScreenState._buildTrosakInputRow('💰', 'Plate', _plateController,
+                    currentTotal: pt['plata'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('🏦', 'Kredit', _kreditController,
+                    currentTotal: pt['kredit'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('⛽', 'Gorivo', _gorivoController,
+                    currentTotal: pt['gorivo'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('🔧', 'Amortizacija', _amortizacijaController,
+                    currentTotal: pt['amortizacija'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('📋', 'Registracija', _registracijaController,
+                    currentTotal: pt['registracija'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('🚗', 'YU auto', _yuAutoController,
+                    currentTotal: pt['yu_auto'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('🛠️', 'Majstori', _majstoriController,
+                    currentTotal: pt['majstori'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('🏛️', 'Porez', _porezController,
+                    currentTotal: pt['porez'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('👶', 'Alimentacija', _alimentacijaController,
+                    currentTotal: pt['alimentacija'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('🧾', 'Računi', _racuniController,
+                    currentTotal: pt['racuni'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 12),
+                _FinansijeScreenState._buildTrosakInputRow('📋', 'Ostalo', _ostaloController,
+                    currentTotal: pt['ostalo'], formatBroja: widget.formatBroja),
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await widget.onSave(
+                        plate: double.tryParse(_plateController.text) ?? 0,
+                        kredit: double.tryParse(_kreditController.text) ?? 0,
+                        gorivo: double.tryParse(_gorivoController.text) ?? 0,
+                        amortizacija: double.tryParse(_amortizacijaController.text) ?? 0,
+                        registracija: double.tryParse(_registracijaController.text) ?? 0,
+                        yuAuto: double.tryParse(_yuAutoController.text) ?? 0,
+                        majstori: double.tryParse(_majstoriController.text) ?? 0,
+                        ostalo: double.tryParse(_ostaloController.text) ?? 0,
+                        porez: double.tryParse(_porezController.text) ?? 0,
+                        alimentacija: double.tryParse(_alimentacijaController.text) ?? 0,
+                        racuni: double.tryParse(_racuniController.text) ?? 0,
+                      );
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.add_circle),
+                    label: const Text('Dodaj troškove'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

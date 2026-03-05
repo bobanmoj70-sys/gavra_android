@@ -98,26 +98,26 @@ class V2FinansijeService {
       final mesecOd = '$godina-${mesec.toString().padLeft(2, '0')}-01';
       final mesecDo = _fmtDate(DateTime(godina, mesec + 1, 0)); // zadnji dan meseca
 
-      // Dohvati sve putnike koji su imali vožnje ovaj mesec
-      final voznjeResp = await _supabase
-          .from('v2_statistika_istorija')
-          .select('putnik_id')
-          .eq('tip', 'voznja')
-          .filter('datum', 'gte', mesecOd)
-          .filter('datum', 'lte', mesecDo);
+      // Paralelno dohvati vožnje i uplate za ovaj mesec
+      final [voznjeResp, uplateResp] = await Future.wait([
+        _supabase
+            .from('v2_statistika_istorija')
+            .select('putnik_id')
+            .eq('tip', 'voznja')
+            .filter('datum', 'gte', mesecOd)
+            .filter('datum', 'lte', mesecDo),
+        _supabase
+            .from('v2_statistika_istorija')
+            .select('putnik_id')
+            .inFilter('tip', ['uplata'])
+            .filter('datum', 'gte', mesecOd)
+            .filter('datum', 'lte', mesecDo),
+      ]);
 
       final putnikIds =
           (voznjeResp as List).map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet().toList();
 
       if (putnikIds.isEmpty) return 0;
-
-      // Od tih putnika, koji su platili ovaj mesec
-      final uplateResp = await _supabase
-          .from('v2_statistika_istorija')
-          .select('putnik_id')
-          .inFilter('tip', ['uplata'])
-          .filter('datum', 'gte', mesecOd)
-          .filter('datum', 'lte', mesecDo);
 
       final placeniIds = (uplateResp as List).map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet();
 
@@ -197,8 +197,6 @@ class V2FinansijeService {
       final nedTo = _fmtDate(sundayThisWeek);
       final mesFrom = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
       final mesTo = _fmtDate(DateTime(now.year, now.month + 1, 0)); // zadnji dan meseca
-      final godFrom = '${now.year}-01-01';
-      final godTo = '${now.year}-12-31';
       final proslaFrom = '${now.year - 1}-01-01';
       final proslaTo = '${now.year - 1}-12-31';
 
@@ -208,23 +206,19 @@ class V2FinansijeService {
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', nedFrom).lte('datum', nedTo),
         // 1: mesec
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', mesFrom).lte('datum', mesTo),
-        // 2: godina
-        _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', godFrom).lte('datum', godTo),
-        // 3: prosla godina
+        // 2: prosla godina
         _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', proslaFrom).lte('datum', proslaTo),
       ]);
 
       final nedRows = (results[0] as List).cast<Map<String, dynamic>>();
       final mesRows = (results[1] as List).cast<Map<String, dynamic>>();
-      final godRows = (results[2] as List).cast<Map<String, dynamic>>();
-      final proslaRows = (results[3] as List).cast<Map<String, dynamic>>();
+      final proslaRows = (results[2] as List).cast<Map<String, dynamic>>();
 
       // Troškovi iz troskoviCache (0 DB upita)
       final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values.toList();
       final mesTroskRows = troskoviRows
           .where((r) => r['aktivan'] == true && r['mesec'] == now.month && r['godina'] == now.year)
           .toList();
-      final godTroskRows = troskoviRows.where((r) => r['aktivan'] == true && r['godina'] == now.year).toList();
       final proslaTroskRows = troskoviRows.where((r) => r['aktivan'] == true && r['godina'] == now.year - 1).toList();
 
       // Agregati iz v2_statistika_istorija
@@ -232,15 +226,12 @@ class V2FinansijeService {
       final voznjiNedelja = _broji(nedRows, 'voznja');
       final prihodMesec = _sumirajPrihode(mesRows);
       final voznjiMesec = _broji(mesRows, 'voznja');
-      final prihodGodina = _sumirajPrihode(godRows);
-      final voznjiGodina = _broji(godRows, 'voznja');
       final prihodProsla = _sumirajPrihode(proslaRows);
       final voznjiProsla = _broji(proslaRows, 'voznja');
 
       // Troškovi iz finansije_troskovi
       final troskoviNedelja = 0.0; // troškovi nemaju dnevnu granularnost
       final troskoviMesec = mesTroskRows.fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
-      final troskoviGodina = godTroskRows.fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
       final troskoviProsla = proslaTroskRows.fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
 
       // Troškovi po tipu (za tekući mesec)
@@ -262,10 +253,10 @@ class V2FinansijeService {
         troskoviMesec: troskoviMesec,
         netoMesec: prihodMesec - troskoviMesec,
         voznjiMesec: voznjiMesec,
-        prihodGodina: prihodGodina,
-        troskoviGodina: troskoviGodina,
-        netoGodina: prihodGodina - troskoviGodina,
-        voznjiGodina: voznjiGodina,
+        prihodGodina: 0,
+        troskoviGodina: 0,
+        netoGodina: 0,
+        voznjiGodina: 0,
         prihodProslaGodina: prihodProsla,
         troskoviProslaGodina: troskoviProsla,
         netoProslaGodina: prihodProsla - troskoviProsla,
