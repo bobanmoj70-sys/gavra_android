@@ -154,10 +154,11 @@ class V2PolasciService {
     try {
       final nowStr = DateTime.now().toUtc().toIso8601String();
 
-      // 1. Dohvati zeljeno_vreme za ovaj zahtev
-      final row = await _supabase.from('v2_polasci').select('zeljeno_vreme').eq('id', id).single();
-
-      final zeljenoVreme = row['zeljeno_vreme'];
+      // Dohvati zeljeno_vreme iz cache-a — 0 DB querija
+      // Fallback: DB upit ako iz nekog razloga nije u cache-u
+      final cachedRow = V2MasterRealtimeManager.instance.polasciCache[id];
+      final zeljenoVreme = cachedRow?['zeljeno_vreme'] ??
+          (await _supabase.from('v2_polasci').select('zeljeno_vreme').eq('id', id).single())['zeljeno_vreme'];
 
       // 2. Odobri i upisi dodeljeno_vreme = zeljeno_vreme
       final approvePayload = {
@@ -481,7 +482,7 @@ class V2PutnikStreamService {
         if (!controller.isClosed) controller.add([]);
       } finally {
         isEmitting = false;
-        if (pendingEmit) emit(); // ako je stigla nova promjena, odmah emituj
+        if (pendingEmit) unawaited(emit()); // ako je stigla nova promjena, odmah emituj
       }
     }
 

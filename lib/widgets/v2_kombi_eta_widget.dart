@@ -61,6 +61,7 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   /// Fallback DB upit se radi samo ako je cache prazan (npr. odmah pri startu
   /// pre nego sto se RealtimeManager inicijalizovao).
   Future<void> _loadGpsData() async {
+    if (!mounted) return;
     try {
       final normalizedGrad = V2GradAdresaValidator.normalizeGrad(widget.grad);
       final normVreme = widget.vreme != null ? V2GradAdresaValidator.normalizeTime(widget.vreme!) : null;
@@ -80,12 +81,11 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
             .select('id,vozac_id,lat,lng,grad,vreme_polaska,smer,putnici_eta,aktivan,updated_at')
             .eq('aktivan', true);
         if (!mounted) return;
-        // Ažuriraj cache sa svežim podacima
+        // Ažuriraj cache kroz upsertToCache — emituje onCacheChanged i prolazi kroz validaciju
         for (final row in data as List<dynamic>) {
-          final id = (row as Map<String, dynamic>)['id']?.toString();
-          if (id != null) V2MasterRealtimeManager.instance.lokacijeCache[id] = Map<String, dynamic>.from(row);
+          V2MasterRealtimeManager.instance.upsertToCache('v2_vozac_lokacije', Map<String, dynamic>.from(row as Map));
         }
-        list = data;
+        list = V2MasterRealtimeManager.instance.lokacijeCache.values.toList();
       }
 
       if (!mounted) return;

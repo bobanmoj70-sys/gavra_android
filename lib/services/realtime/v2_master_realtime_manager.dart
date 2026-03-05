@@ -147,18 +147,8 @@ class V2MasterRealtimeManager {
     _loadedDate = _today();
     debugPrint('🚀 [V2MasterRealtimeManager] Inicijalizacija za datum=$_loadedDate ...');
 
-    await Future.wait([
-      _loadPolasciCache(),
-      loadStatistikaCache(),
-      _loadPutniciCaches(),
-      _loadInfraCache(),
-      _loadRacuniCache(),
-    ]);
-
-    _initialized = true;
-
-    // Trajna Realtime pretplata na sve statičke tabele — WebSocket only, 0 DB querija.
-    // Svaka promena u bazi → Realtime event → upsertToCache → onCacheChanged → svi ekrani se osvežavaju.
+    // Pretplati se na sve tabele PRE nego što počne DB fetch — eliminise "mrtvu zonu"
+    // od ~100-500ms u kojoj Realtime event može stići a kanal još ne postoji.
     const staticTabele = [
       // Putnici
       'v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke',
@@ -176,6 +166,16 @@ class V2MasterRealtimeManager {
     for (final tabela in staticTabele) {
       _staticSubscriptions.add(subscribe(tabela).listen((_) {}));
     }
+
+    await Future.wait([
+      _loadPolasciCache(),
+      loadStatistikaCache(),
+      _loadPutniciCaches(),
+      _loadInfraCache(),
+      _loadRacuniCache(),
+    ]);
+
+    _initialized = true;
 
     debugPrint(
       '✅ [V2MasterRealtimeManager] Inicijalizovano: '
@@ -209,6 +209,10 @@ class V2MasterRealtimeManager {
       _loadPolasciCache(),
       loadStatistikaCache(),
     ]);
+    if (!_cacheChangeController.isClosed) {
+      _cacheChangeController.add('v2_polasci');
+      _cacheChangeController.add('v2_statistika_istorija');
+    }
     debugPrint(
       '✅ [V2MasterRealtimeManager] Dnevni cache osvežen: polasci=${polasciCache.length}, statistika=${statistikaCache.length}',
     );
@@ -255,6 +259,7 @@ class V2MasterRealtimeManager {
             'placeni_mesec, placena_godina',
           )
           .eq('datum', _loadedDate!);
+      statistikaCache.clear();
       for (final row in rows) {
         statistikaCache[row['id'].toString()] = Map<String, dynamic>.from(row);
       }
@@ -851,6 +856,10 @@ class V2MasterRealtimeManager {
       polasciCache.removeWhere((_, v) => v['putnik_id']?.toString() == id);
       vozacPutnikCache.removeWhere((_, v) => v['putnik_id']?.toString() == id);
       pinCache.removeWhere((_, v) => v['putnik_id']?.toString() == id);
+      // Očisti i racuniCache — keyed by putnik_id, plus reverse map
+      final racunId = racuniCache[id]?['id']?.toString();
+      racuniCache.remove(id);
+      if (racunId != null) _racuniIdToPutnikId.remove(racunId);
       if (!_cacheChangeController.isClosed) {
         _cacheChangeController.add('v2_polasci');
         _cacheChangeController.add('v2_vozac_putnik');
@@ -1000,8 +1009,8 @@ class V2MasterRealtimeManager {
         emit();
         sub = onCacheChanged.where(tables.contains).listen((_) => emit());
       },
-      onCancel: () {
-        sub?.cancel();
+      onCancel: () async {
+        await sub?.cancel();
         sub = null;
         controller.close();
       },
