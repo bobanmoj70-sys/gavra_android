@@ -13,7 +13,6 @@ import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
 import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import '../services/v2_cena_obracun_service.dart'; // V2AdminSecurityService je dostupan kroz v2_auth_manager.dart
-import '../services/v2_firebase_service.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v2_kapacitet_service.dart'; // ?? Kapacitet za bottom nav bar
 import '../services/v2_local_notification_service.dart';
@@ -182,17 +181,16 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       // ?? Auto-update removed per request
 
       // Inicijalizuj realtime notifikacije za aktivnog vozaca
-      V2FirebaseService.getCurrentDriver().then((driver) {
-        if (driver != null && driver.isNotEmpty) {
-          // First request notification permissions
-          V2RealtimeNotificationService.requestNotificationPermissions().then((hasPermissions) {
-            V2RealtimeNotificationService.initialize().then((_) {
-              // Subscribe to Firebase topics for this driver
-              V2RealtimeNotificationService.subscribeToDriverTopics(driver);
-            });
-          });
+      final notifDriver = await V2AuthManager.getCurrentDriver();
+      if (mounted && notifDriver != null && notifDriver.isNotEmpty) {
+        await V2RealtimeNotificationService.requestNotificationPermissions();
+        if (mounted) {
+          await V2RealtimeNotificationService.initialize();
+          if (mounted) {
+            V2RealtimeNotificationService.subscribeToDriverTopics(notifDriver);
+          }
         }
-      });
+      }
 
       // ?? KONACNO UKLONI LOADING STATE
       if (mounted) {
@@ -212,11 +210,10 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   }
 
   Future<void> _initializeCurrentDriver() async {
-    final driver = await V2FirebaseService.getCurrentDriver();
+    final driver = await V2AuthManager.getCurrentDriver();
 
     if (mounted) {
       setState(() {
-        // Inicijalizacija driver-a
         _currentDriver = driver;
       });
     }
@@ -1935,8 +1932,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                   ),
                 ),
               ),
-              body: const Center(
-                child: CircularProgressIndicator(),
+              body: Center(
+                child: Text(
+                  'Greška pri učitavanju: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
               ),
             );
           }
@@ -2546,7 +2547,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                           )
                         : V2PutnikList(
                             putnici: putniciZaPrikaz,
-                            currentDriver: _currentDriver!,
+                            currentDriver: _currentDriver ?? '',
                             selectedGrad: _selectedGrad,
                             selectedVreme: _selectedVreme,
                             selectedDay: _getDayAbbreviation(_selectedDay),
@@ -2629,19 +2630,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
           getVozacColor: _getVozacColorForTermin,
         );
     }
-  }
-
-  @override
-  void dispose() {
-    // No overlay cleanup needed currently
-
-    // ?? SAFE DISPOSAL ValueNotifier-a
-    try {
-      // No additional disposals needed
-    } catch (e) {
-      // Silently ignore
-    }
-    super.dispose();
   }
 }
 
