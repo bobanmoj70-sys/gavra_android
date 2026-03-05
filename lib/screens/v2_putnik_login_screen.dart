@@ -33,7 +33,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   // Lista mogucih putnika (kod deljenih brojeva/pina)
   List<Map<String, dynamic>>? _putnikCandidates;
 
-  // ?? Biometrija
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
   String _biometricTypeText = 'otisak prsta';
@@ -62,7 +61,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
   /// Proveri da li je V2Putnik vec ulogovan
   Future<void> _checkSavedLogin() async {
-    // ?? Prvo proveri biometrijsku prijavu
     if (_biometricAvailable && _biometricEnabled) {
       final credentials = await V2BiometricService.getSavedCredentials();
       if (credentials != null) {
@@ -146,7 +144,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           });
         } else if (pin == null || pin.isEmpty) {
           // Ima email ali nema PIN
-          // Proveri da li je vec poslao zahtev (async — fallback na DB ako cache prazan)
           final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekuAsync(response['id']);
           if (imaZahtev) {
             setState(() {
@@ -362,7 +359,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     });
 
     try {
-      // ?? Normalizuj uneti broj za poredenje (isti kao u _checkTelefon)
       final normalizedInput = _normalizePhone(telefon);
 
       // Traži putnika po PIN-u kroz sve v2_ tabele, pa filtriraj po telefonu
@@ -418,7 +414,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       await prefs.setString('registrovani_putnik_telefon', telefon);
       await prefs.setString('registrovani_putnik_pin', pin);
 
-      // ?? FIX: Sacuvaj ID i Ime za Firebase/Push token osvežavanje
       final putnikId = response['id'];
       final putnikIme = response['putnik_ime'] ?? response['ime_prezime'] ?? 'V2Putnik';
 
@@ -427,11 +422,10 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         await prefs.setString('registrovani_putnik_ime', putnikIme.toString());
       }
 
-      // ?? Registruj push token za notifikacije
       if (putnikId != null) {
         final tabela = response['_tabela'] as String? ?? response['putnik_tabela'] as String?;
         await V2PutnikPushService.registerPutnikToken(putnikId, putnikTabela: tabela);
-      } // ?? Ponudi biometrijsku prijavu ako je dostupna i nije vec ukljucena
+      }
       if (showBiometricPrompt && _biometricAvailable && !_biometricEnabled && mounted) {
         await _showBiometricSetupDialog(telefon, pin);
       }
@@ -887,7 +881,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         ),
         const SizedBox(height: 16),
 
-        // ?? Dugme za biometrijsku prijavu
         if (_biometricAvailable && _biometricEnabled)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -906,7 +899,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
             ),
           ),
 
-        // ?? Link za zaboravljen PIN
         GestureDetector(
           onTap: _showForgotPinDialog,
           child: Text(
@@ -991,7 +983,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final telefon = _putnikData!['telefon'] as String? ?? _telefonController.text.trim();
       final putnikTabela = _putnikData!['_tabela'] as String?;
 
-      // Proveri da li vec ima zahtev koji ceka
       final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekuAsync(putnikId);
       if (imaZahtev) {
         setState(() {

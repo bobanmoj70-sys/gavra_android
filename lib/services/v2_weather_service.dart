@@ -91,7 +91,6 @@ class V2WeatherService {
     'VS': {'lat': 45.1167, 'lon': 21.3036}, // Vrsac
   };
 
-  // Stream controlleri za real-time temperature
   static final _bcController = StreamController<V2WeatherData?>.broadcast();
   static final _vsController = StreamController<V2WeatherData?>.broadcast();
 
@@ -163,7 +162,6 @@ class V2WeatherService {
 
           for (int i = 0; i < hourlyCodes.length && i < hourlyTimes.length; i++) {
             final hourCode = (hourlyCodes[i] as num?)?.toInt() ?? 0;
-            // Proveri da li je padavina (kiša ili sneg)
             final isPrecip = (hourCode >= 51 && hourCode <= 82) || (hourCode >= 85 && hourCode <= 86);
             if (isPrecip) {
               // Parsiraj vreme i proveri da li je u budućnosti

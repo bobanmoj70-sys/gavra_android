@@ -41,7 +41,6 @@ class V2VozacCache {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // INICIJALIZACIJA
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Inicijalizuj cache pri startu (poziva se iz main.dart, jednom).

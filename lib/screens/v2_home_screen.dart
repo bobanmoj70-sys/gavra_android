@@ -14,21 +14,21 @@ import '../services/v2_adresa_supabase_service.dart';
 import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import '../services/v2_cena_obracun_service.dart'; // V2AdminSecurityService je dostupan kroz v2_auth_manager.dart
 import '../services/v2_haptic_service.dart';
-import '../services/v2_kapacitet_service.dart'; // ?? Kapacitet za bottom nav bar
+import '../services/v2_kapacitet_service.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_printing_service.dart';
 import '../services/v2_racun_service.dart';
 import '../services/v2_realtime_notification_service.dart';
 import '../services/v2_statistika_istorija_service.dart';
-import '../services/v2_theme_manager.dart'; // ?? Tema sistem
+import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_raspored_service.dart';
-import '../theme.dart'; // ?? Import za prelepe gradijente
+import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
-import '../utils/v2_grad_adresa_validator.dart'; // ??? NOVO za validaciju
+import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_page_transitions.dart';
-import '../utils/v2_putnik_count_helper.dart'; // ?? Za brojanje putnika po gradu
+import '../utils/v2_putnik_count_helper.dart';
 import '../utils/v2_text_utils.dart';
 import '../utils/v2_vozac_cache.dart'; // Dodato za centralizovane boje vozaca
 import '../widgets/v2_bottom_nav_bar_letnji.dart';
@@ -64,14 +64,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   String? _currentDriver;
 
-  // ?? Cache-based stream (kreiran jednom u initState, ne unutar build())
   late final Stream<int> _streamBrojZahteva;
 
-  // ?? putnici stream — kreira se samo kad se promeni _selectedDay (ne na svakom rebuildu)
   Stream<List<V2Putnik>>? _streamPutnici;
   String? _cachedPutniciDay;
 
-  // ?? DINAMICKA VREMENA - prate navBarTypeNotifier (praznici/zimski/letnji)
   List<String> get bcVremena {
     final navType = navBarTypeNotifier.value;
     if (navType == 'praznici') {
@@ -94,7 +91,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     }
   }
 
-  // ?? DINAMICKA LISTA POLAZAKA za BottomNavBar
   List<String> get _sviPolasci {
     final bcList = bcVremena.map((v) => '$v BC').toList();
     final vsList = vsVremena.map((v) => '$v VS').toList();
@@ -126,7 +122,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   void _initializeData() async {
     try {
       await _initializeCurrentDriver();
-      // ?? If the current driver is missing or invalid, redirect to welcome/login
       // Preskočiti redirect ako V2VozacCache još nije inicijalizovan (race condition)
       if (_currentDriver == null || (V2VozacCache.isInitialized && !V2VozacCache.isValidIme(_currentDriver))) {
         if (mounted) {
@@ -139,16 +134,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
         return;
       }
 
-      // StreamBuilder ce automatski ucitati data - ne treba eksplicitno _loadPutnici()
-
       // Inicijalizuj lokalne notifikacije za heads-up i zvuk
       if (mounted) {
         V2LocalNotificationService.initialize(context);
-        // ?? UKLONJENO: listener se sada registruje globalno u main.dart
         // V2RealtimeNotificationService.listenForForegroundNotifications(context);
       }
-
-      // ?? Auto-update removed per request
 
       // Inicijalizuj realtime notifikacije za aktivnog vozaca.
       // Koristimo _currentDriver (vec ucitan) umjesto ponovnog getCurrentDriver() poziva.
@@ -269,7 +259,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   /// Prikazuje dijalog sa listom putnika kojima treba racun
   Future<void> _showRacunDialog(BuildContext ctx) async {
-    // Ucitaj putnike kojima treba racun iz rm cache-a
     final sviPutnici = V2StatistikaIstorijaService.getAllAktivniKaoModel();
     final putnici = sviPutnici.where((p) => p.trebaRacun).toList();
 
@@ -280,7 +269,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       return;
     }
 
-    // ?? AUTOMATSKI OBRACUN (Inicijalno za tekuci mesec)
     DateTime selectedDate = DateTime.now();
     Map<String, int> counts = await V2CenaObracunService.prebrojJediniceMasovno(
       putnici: putnici,
@@ -761,7 +749,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                   // Dohvati sledeci broj racuna (uvecava sekvencu)
                   final brojRacuna = await V2RacunService.getNextBrojRacuna();
 
-                  // Proveri mounted pre korišćenja context-a
                   if (!ctx.mounted) return;
 
                   // štampaj racun
@@ -870,15 +857,15 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   void _showAddPutnikDialog() async {
     final adresaController = TextEditingController();
-    final telefonController = TextEditingController(); // ?? OPCIONO: Broj telefona
-    final searchPutnikController = TextEditingController(); // ?? Za pretragu putnika
+    final telefonController = TextEditingController();
+    final searchPutnikController = TextEditingController();
     bool dialogActive = true; // guard: false nakon dispose
-    V2RegistrovaniPutnik? selectedPutnik; // ?? Izabrani V2Putnik iz liste
-    int brojMesta = 1; // ?? Broj rezervisanih mesta (default 1)
-    bool promeniAdresuSamoDanas = false; // ?? Opcija za promenu adrese samo za danas
-    String? samoDanasAdresa; // ?? Adresa samo za danas
-    String? samoDanasAdresaId; // ?? ID adrese samo za danas (za brži geocoding)
-    List<Map<String, String>> dostupneAdrese = []; // ?? Lista adresa za dropdown
+    V2RegistrovaniPutnik? selectedPutnik;
+    int brojMesta = 1;
+    bool promeniAdresuSamoDanas = false;
+    String? samoDanasAdresa;
+    String? samoDanasAdresaId;
+    List<Map<String, String>> dostupneAdrese = [];
 
     // Povuci SVE registrovane putnike iz rm cache-a
     final lista = V2StatistikaIstorijaService.getAllAktivniKaoModel();
@@ -886,7 +873,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     final aktivniPutnici = lista.where((V2RegistrovaniPutnik v2Putnik) => v2Putnik.aktivan).toList()
       ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase()));
 
-    // ?? Ucitaj adrese za selektovani grad
     final adreseZaGrad = V2AdresaSupabaseService.getAdreseZaGrad(_selectedGrad);
     dostupneAdrese = adreseZaGrad.map((a) => {'id': a.id, 'naziv': a.naziv}).toList()
       ..sort((a, b) => (a['naziv'] ?? '').compareTo(b['naziv'] ?? ''));
@@ -912,14 +898,13 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
     if (!mounted) return;
 
-    final rootContext = context; // ?? Cuvamo home screen context pre otvaranja dijaloga
+    final rootContext = context;
     bool isDialogLoading = false;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setStateDialog) {
-          // ?? Dinamicki racunaj dostupnu visinu (oduzmi tastatur?)
           final keyboardHeight = MediaQuery.of(dialogCtx).viewInsets.bottom;
           final screenHeight = MediaQuery.of(dialogCtx).size.height;
           final availableHeight = screenHeight - keyboardHeight;
@@ -959,7 +944,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ?? GLASSMORPHISM HEADER
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -1016,7 +1000,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                       ],
                     ),
                   ),
-                  // ?? SCROLLABLE CONTENT
                   Flexible(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
@@ -1024,7 +1007,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ?? GLASSMORPHISM INFORMACIJE O RUTI
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
@@ -1070,7 +1052,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
                           const SizedBox(height: 20),
 
-                          // ?? GLASSMORPHISM PODACI O PUTNIKU
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
@@ -1108,7 +1089,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                 ),
                                 const SizedBox(height: 16),
 
-                                // ?? DROPDOWN ZA IZBOR PUTNIKA IZ LISTE
                                 DropdownButtonFormField2<V2RegistrovaniPutnik>(
                                   isExpanded: true,
                                   value: selectedPutnik,
@@ -1209,7 +1189,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                       adresaController.text = 'Ucitavanje...';
                                     });
                                     if (v2Putnik != null) {
-                                      // ?? AUTO-POPUNI adresu async - SAMO za selektovani grad
                                       final adresa = v2Putnik.getAdresaZaSelektovaniGrad(_selectedGrad);
                                       if (!dialogActive) return;
                                       setStateDialog(() {
@@ -1240,7 +1219,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                   ),
                                 ),
 
-                                // ?? OPCIJA ZA PROMENU ADRESE SAMO ZA DANAS
                                 const SizedBox(height: 8),
                                 InkWell(
                                   onTap: () {
@@ -1281,7 +1259,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                   ),
                                 ),
 
-                                // ?? DROPDOWN ZA IZBOR ADRESE SAMO ZA DANAS
                                 if (promeniAdresuSamoDanas) ...[
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
@@ -1326,7 +1303,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
                                 const SizedBox(height: 12),
 
-                                // ?? TELEFON FIELD (readonly - popunjava se automatski)
                                 TextField(
                                   controller: telefonController,
                                   readOnly: true,
@@ -1345,7 +1321,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
                                 const SizedBox(height: 12),
 
-                                // ?? BROJ MESTA - dropdown za izbor broja rezervisanih mesta
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                   decoration: BoxDecoration(
@@ -1382,7 +1357,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                   ),
                                 ),
 
-                                // ??? PRIKAZ TIPA PUTNIKA (ako je izabran)
                                 if (selectedPutnik != null)
                                   Container(
                                     margin: const EdgeInsets.only(top: 12),
@@ -1440,7 +1414,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                     ),
                   ),
 
-                  // ?? GLASSMORPHISM ACTIONS
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -1458,7 +1431,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                     ),
                     child: Row(
                       children: [
-                        // Cancel button
                         Expanded(
                           child: Container(
                             height: 40,
@@ -1552,12 +1524,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           isDialogLoading = true;
                                         });
 
-                                        // ?? KORISTI SELEKTOVANO VREME SA HOME SCREEN-A
-                                        // ?? Koristi "samo danas" adresu ako je postavljena, inace stalnu
                                         final adresaZaKoristiti = promeniAdresuSamoDanas && samoDanasAdresa != null
                                             ? samoDanasAdresa
                                             : (adresaController.text.isEmpty ? null : adresaController.text);
-                                        // ?? Koristi "samo danas" adresaId ako je postavljen
                                         final adresaIdZaKoristiti = promeniAdresuSamoDanas && samoDanasAdresaId != null
                                             ? samoDanasAdresaId
                                             : null; // Stalna adresa ima adresaId u registrovani_putnici
@@ -1570,9 +1539,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           vremeDodavanja: DateTime.now(),
                                           dodeljenVozac: _currentDriver!, // Safe non-null assertion nakon validacije
                                           adresa: adresaZaKoristiti,
-                                          adresaId: adresaIdZaKoristiti, // ?? Za brži geocoding
+                                          adresaId: adresaIdZaKoristiti,
                                           brojTelefona: selectedPutnik!.telefon,
-                                          brojMesta: brojMesta, // ?? Prosledujemo broj rezervisanih mesta
+                                          brojMesta: brojMesta,
                                         );
 
                                         // Duplikat provera se Vrsi u V2PolasciService.v2DodajPutnika()
@@ -1586,7 +1555,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           brojMesta: brojMesta,
                                         );
 
-                                        // ?? Eksplicitan refresh stream-a da se V2Putnik odmah prikaže
                                         V2PolasciService.v2RefreshStreams();
 
                                         if (!dialogCtx.mounted) return;
@@ -1598,7 +1566,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
                                         Navigator.pop(dialogCtx);
 
-                                        // ?? PREBACI NA VREME PUTNIKA DA BI BIO VIDLJIV - mora posle pop()
                                         // Koristimo rootContext (home screen) - dijalog context je vec zatvoren
                                         if (mounted) {
                                           setState(() {
@@ -1760,7 +1727,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                         ),
                       ),
 
-                      // LOADING - sredina
                       Expanded(
                         flex: 2,
                         child: Container(
@@ -1819,11 +1785,10 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
           ),
           body: Container(
             decoration: BoxDecoration(
-              gradient: V2ThemeManager().currentGradient, // ?? Dinamicki gradijent iz tema
+              gradient: V2ThemeManager().currentGradient,
             ),
             child: V2ShimmerWidgets.putnikListShimmer(itemCount: 8),
           ),
-          // ?? DODAJ BOTTOM NAVIGATION BAR I U LOADING STANJU!
           bottomNavigationBar: ValueListenableBuilder<String>(
             valueListenable: navBarTypeNotifier,
             builder: (context, navType, _) {
@@ -1834,10 +1799,8 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       );
     }
 
-    // ?? SUPABASE REALTIME STREAM: streamKombinovaniPutnici()
     // Auto-refresh kada se promeni status putnika (pokupljen/naplacen/otkazan)
     // Use a parametric stream filtered to the currently selected day
-    // so monthly passengers (registrovani_putnici) are created for that day
     // and will appear in the list/counts for arbitrary selected day.
     // ? FIX: Ne prosledujemo vreme da bismo dobili SVE putnike za dan (za bottom nav bar brojace)
     // Filtriranje po gradu/vremenu se radi client-side za prikaz liste
@@ -1846,8 +1809,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       child: StreamBuilder<List<V2Putnik>>(
         stream: _streamPutnici,
         builder: (context, snapshot) {
-          // ?? DEBUG: Log state information
-          // ?? NOVO: Error handling sa specialized widgets
           if (snapshot.hasError) {
             return Scaffold(
               appBar: PreferredSize(
@@ -1892,10 +1853,8 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
             );
           }
 
-          // ?? POPRAVLJENO: Prikažemo prazan UI umesto beskonacnog loading-a
           if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
             // Umesto beskonacnog cekanja, nastavi sa praznom listom
-            // StreamBuilder ce se ažurirati kada podaci stignu
           }
 
           final allPutnici = snapshot.data ?? [];

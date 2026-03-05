@@ -16,7 +16,6 @@ class V2PolasciScreen extends StatefulWidget {
 class _V2PolasciScreenState extends State<V2PolasciScreen> {
   bool _isLoading = false;
 
-  // Streamovi se kreiraju jednom — ne smiju biti unutar build()
   late final Stream<List<V2Polazak>> _streamDnevni;
 
   @override

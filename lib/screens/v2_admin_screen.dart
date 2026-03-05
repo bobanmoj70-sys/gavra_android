@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 
-import '../config/v2_route_config.dart'; // ?? RASPORED VREMENA
+import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
-import '../services/v2_app_settings_service.dart'; // ?? NAV BAR SETTINGS
+import '../services/v2_app_settings_service.dart';
 import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import '../services/v2_local_notification_service.dart';
-import '../services/v2_pin_zahtev_service.dart'; // ?? PIN ZAHTEVI
+import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_theme_manager.dart';
-import '../services/v2_vozac_service.dart'; // ??? VOZAC SERVIS
+import '../services/v2_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_dug_button.dart';
-import 'v2_adrese_screen.dart'; // ??? Upravljanje adresama
+import 'v2_adrese_screen.dart';
 import 'v2_dugovi_screen.dart';
-import 'v2_finansije_screen.dart'; // ?? Finansijski izveštaj
+import 'v2_finansije_screen.dart';
 import 'v2_gorivo_screen.dart'; // ? Pumpa goriva
 import 'v2_kapacitet_screen.dart'; // DODANO za kapacitet polazaka
-import 'v2_odrzavanje_screen.dart'; // ?? Kolska knjiga - vozila
-import 'v2_pin_zahtevi_screen.dart'; // ?? PIN ZAHTEVI
+import 'v2_odrzavanje_screen.dart';
+import 'v2_pin_zahtevi_screen.dart';
 import 'v2_putnici_screen.dart';
 import 'v2_radnici_zahtevi_screen.dart';
 import 'v2_ucenici_zahtevi_screen.dart';
-import 'v2_vozac_raspored_screen.dart'; // ??? Raspored vozaca
+import 'v2_vozac_raspored_screen.dart';
 import 'v2_vozac_screen.dart';
 import 'v2_vozaci_admin_screen.dart'; // Admin panel za upravljanje vozacima
 
@@ -78,7 +78,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
     // Dan ne mijenja za života screena — izračunaj jednom ovde
     _todayKratica = _getShortDayName(_dayNamesInternal[DateTime.now().weekday - 1]).toLowerCase();
 
-    // ?? Kreiraj streamove jednom — direktno na master cache
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
     _streamPutnici = V2PolasciService.v2StreamPutnici();
     _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: todayIso);
@@ -104,7 +103,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
   /// ?? VOZAC PICKER DIALOG - Admin može da vidi ekran bilo kog vozaca
   void _showVozacPickerDialog(BuildContext context) {
-    // Ucitaj vozace iz rm cache-a
     try {
       final vozaci = V2VozacService.getAllVozaci();
 
@@ -299,7 +297,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
     );
   }
 
-  // ?? STATISTIKE MENI - otvara BottomSheet sa opcijama
   void _showStatistikeMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -950,7 +947,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
                             ),
                           ),
                         const SizedBox(height: 12),
-                        // ?? VOZACI PAZAR (BEZ DEPOZITA)
                         Column(
                           children: prikazaniVozaci
                               .map(
@@ -1086,7 +1082,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
                                       letterSpacing: 1,
                                     ),
                                   ),
-                                  // ?? UKUPAN PAZAR (BEZ DEPOZITA)
                                   Text(
                                     '${(isAdmin ? ukupno : mojUkupanPazar).toStringAsFixed(0)} RSD',
                                     style: TextStyle(

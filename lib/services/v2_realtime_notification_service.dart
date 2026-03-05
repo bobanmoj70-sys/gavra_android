@@ -13,7 +13,6 @@ import 'v2_vozac_service.dart';
 class V2RealtimeNotificationService {
   V2RealtimeNotificationService._();
 
-  // Stream za in-app notifikacije
   static final StreamController<Map<String, dynamic>> _notificationStreamController =
       StreamController<Map<String, dynamic>>.broadcast();
 
@@ -56,7 +55,6 @@ class V2RealtimeNotificationService {
       if (response.data != null && response.data['success'] == true) {
         return true;
       } else {
-        // ?? UKLONJENO: Fallback na lokalnu notifikaciju (korisnik želi iskljucivo Supabase/Push)
         // await V2LocalNotificationService.showRealtimeNotification(
         // title: title, body: body, payload: jsonEncode(data ?? {}));
         return false;

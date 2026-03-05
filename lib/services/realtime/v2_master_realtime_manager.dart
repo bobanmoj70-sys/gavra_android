@@ -132,7 +132,6 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // INICIJALIZACIJA — poziva se jednom iz main.dart
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
@@ -201,7 +200,6 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // LOAD metode — jedna po grupi tabela
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<void> _loadPolasciCache() async {
@@ -377,7 +375,6 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // CACHE UPDATE — poziva se iz realtime callback-a
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Ažurira odgovarajući cache na INSERT/UPDATE event
@@ -1000,7 +997,6 @@ class V2MasterRealtimeManager {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // DISPOSE
   // ──────────────────────────────────────────────────────────────────────────
 
   void dispose() {

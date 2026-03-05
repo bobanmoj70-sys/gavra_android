@@ -140,7 +140,6 @@ class V2AdresaSupabaseService {
     if (lat != null) insertData['gps_lat'] = lat;
     if (lng != null) insertData['gps_lng'] = lng;
 
-    // INSERT + SELECT u jednom pozivu — nema race conditiona
     final row =
         await supabase.from('v2_adrese').insert(insertData).select('id, naziv, grad, gps_lat, gps_lng').single();
     V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', row);

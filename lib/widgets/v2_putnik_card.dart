@@ -242,7 +242,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
     );
 
     if (confirmed == true) {
-      // Provjeri da li V2Putnik ima valjan ID
       if (_putnik.id == null || _putnik.id.toString().isEmpty) {
         if (mounted) {
           V2AppSnackBar.error(context, 'V2Putnik nema valjan ID - ne može se naplatiti');
@@ -276,7 +275,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
       return;
     }
 
-    // UCITAJ SVA PLACANJA IZ BAZE za ovog putnika
     Set<String> placeniMeseci = {};
     try {
       final svaPlacanja = await V2StatistikaIstorijaService.dohvatiPlacanja(putnikId);
@@ -524,7 +522,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                         items: _getMonthOptionsStatic().map((monthYear) {
-                          // Proveri da li je mesec placen - KORISTI PODATKE IZ BAZE
                           final parts = monthYear.split(' ');
                           final monthNumber = _getMonthNumberStatic(parts[0]);
                           final year = int.tryParse(parts[1]) ?? 0;
@@ -739,7 +736,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
     );
 
     if (iznos != null && iznos > 0) {
-      // Provjeri da li V2Putnik ima valjan ID
       if (_putnik.id == null || _putnik.id.toString().isEmpty) {
         if (mounted) {
           V2AppSnackBar.error(context, 'V2Putnik nema valjan ID - ne može se naplatiti');
@@ -787,7 +783,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
         return;
       }
 
-      // Pozovi odgovarajuci service za placanje
       if (isRegistrovani && mesec != null) {
         // Validacija da V2Putnik ime nije prazno
         if (_putnik.ime.trim().isEmpty) {
@@ -1388,7 +1383,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                                         return;
                                                       }
 
-                                                      // Proveri internetsku konekciju i dozvole
                                                       try {
                                                         // Pokaži loading sa dušim timeout-om
                                                         if (mounted && context.mounted) {
@@ -1963,7 +1957,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
             _putnik = _putnik.copyWith(status: 'otkazano');
           });
           V2AppSnackBar.error(context, 'V2Putnik oznacen kao otkazan.');
-          // Pozovi callback da parent zna da se lista promenila
           widget.onChanged?.call();
         }
       } catch (e) {

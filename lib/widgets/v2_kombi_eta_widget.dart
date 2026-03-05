@@ -70,7 +70,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
       final cacheValues = V2MasterRealtimeManager.instance.lokacijeCache.values.toList();
       List<dynamic> list;
       if (cacheValues.isNotEmpty) {
-        // Cache je popunjen — filtriraj direktno iz memorije
         list = cacheValues.where((row) => row['aktivan'] == true).toList();
       } else {
         // FALLBACK: cache jos nije popunjen (prva sekunda pri startu)
@@ -171,7 +170,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
     _loadGpsData();
     _loadPokupljenjeIzBaze();
     // Polling je sada samo fallback ako realtime padne.
-    // Realtime event → _loadGpsData() cita iz cache-a (0 DB upita).
     // Interval produžen: 30s → 5min jer nema potrebe za cestim upitima.
     _pollingTimer = Timer.periodic(const Duration(minutes: 5), (_) => _loadGpsData());
     _subscription = V2MasterRealtimeManager.instance.onCacheChanged
@@ -230,7 +228,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
     }
   }
 
-  // Faza 1 — uvek vidljiv default info widget
   Widget _buildFaza1() {
     // Prikazi sledecu voznju ako je poznata (umesto genericke poruke)
     if (widget.sledecaVoznja != null && widget.sledecaVoznja!.isNotEmpty) {
@@ -282,7 +279,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
       return _buildFaza1();
     }
 
-    // Faza 2 — Vozač aktivan i ima ETA za ovog putnika
     if (_isActive && _etaMinutes != null && _etaMinutes! >= 0) {
       return _buildContainer(
         Colors.blue.shade700,
@@ -294,7 +290,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
       );
     }
 
-    // Faza 2 — Vozač aktivan ali ETA još nije izračunat
     if (_isActive) {
       return _buildContainer(
         Colors.orange.shade700,
@@ -304,7 +299,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
       );
     }
 
-    // Faza 1 — nema aktivnog vozača
     return _buildFaza1();
   }
 

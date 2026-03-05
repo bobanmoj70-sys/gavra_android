@@ -120,7 +120,6 @@ class V2FinansijeService {
 
       if (duznici.isEmpty) return 0;
 
-      // Čitaj podatke putnika iz V2MasterRealtimeManager cache-a (nema DB upita)
       // Odvoji mesečne od dnevnih — dnevni trebaju broj vožnji iz DB-a
       double ukupnoDug = 0;
       final List<String> dnevniDuznici = [];

@@ -199,13 +199,11 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
       final telefon = _telefonController.text.trim();
       final sifra = _sifraController.text;
 
-      // Proveri email
       if (vozac['email'].toString().toLowerCase() != email) {
         _showError('Pogrešan email.');
         return;
       }
 
-      // Proveri telefon (sa normalizacijom)
       final normalizedInput = _normalizePhone(telefon);
       final normalizedStored = _normalizePhone(vozac['telefon'].toString());
       if (normalizedInput != normalizedStored) {
@@ -213,7 +211,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
         return;
       }
 
-      // Proveri šifru (ako postoji)
       final vozacSifra = vozac['sifra']?.toString() ?? '';
       if (vozacSifra.isNotEmpty && vozacSifra != sifra) {
         _showError('Pogrešna šifra.');

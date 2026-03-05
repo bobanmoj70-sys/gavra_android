@@ -66,7 +66,6 @@ class V2RacunService {
             .select('poslednji_broj');
 
         if ((updateResp as List).isNotEmpty) {
-          // UPDATE uspio — novi broj je naš
           return '$novi/$godina';
         }
         // Drugi je stigao prvi — kratka pauza pa retry

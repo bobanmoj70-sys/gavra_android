@@ -89,7 +89,6 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
         return;
       }
 
-      // Proveri staru šifru
       final staraSifra = _staraSifraController.text;
       if (_trenutnaSifra != null && _trenutnaSifra!.isNotEmpty && _trenutnaSifra != staraSifra) {
         _showError('Pogrešna trenutna šifra.');

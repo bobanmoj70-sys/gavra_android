@@ -37,7 +37,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
   late final Stream<void> _cacheStream;
 
-  // Stream za putnike — kreira se jednom i reciklira dok isoDate ne promeni
   Stream<List<V2Putnik>>? _putnikStream;
   String? _cachedDan;
 
@@ -492,7 +491,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     // Izracunaj jednom - koristi se za stream, countHelper i filter
     final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
 
-    // Kreira stream samo kad se promeni dan (ne na svakom rebuildu)
     if (_putnikStream == null || _cachedDan != dan) {
       _cachedDan = dan;
       _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(

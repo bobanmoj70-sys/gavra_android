@@ -87,7 +87,6 @@ class V2HuaweiPushService {
     _initializing = true;
 
     try {
-      // Subscribe for token stream — the plugin emits tokens when available or after
       // a successful registration with Huawei HMS. The plugin APIs vary across
       // versions, so the stream-based approach is resilient.
       _tokenSub?.cancel();
@@ -104,7 +103,6 @@ class V2HuaweiPushService {
         },
       );
 
-      // Subscribe to message stream - slušaj dolazne push notifikacije
       _setupMessageListener();
 
       // The plugin can return a token synchronously via `Push.getToken()` or
@@ -127,7 +125,6 @@ class V2HuaweiPushService {
         // parameter and does not return the token; the token is emitted on
         // Push.getTokenStream. Requesting the token explicitly increases the
         // chance of getting a token quickly.
-        // Poziva se samo jednom pri prvoj inicijalizaciji
         try {
           Push.getToken('HCM');
         } catch (e) {
@@ -185,7 +182,6 @@ class V2HuaweiPushService {
     _messageListenerRegistered = true;
 
     try {
-      // Listen for data messages (foreground + background when app is running)
       _messageSub?.cancel();
       _messageSub = Push.onMessageReceivedStream.listen((RemoteMessage message) async {
         try {

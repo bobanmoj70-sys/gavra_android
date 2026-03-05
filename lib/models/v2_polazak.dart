@@ -47,7 +47,6 @@ class V2Polazak {
   });
 
   factory V2Polazak.fromJson(Map<String, dynamic> json) {
-    // v2 sistem: nema JOIN-a sa registrovani_putnici (tabela obrisana)
     // putnikIme, brojTelefona, tipPutnika se enrichuju u servisu iz v2_* cache-a
     final putnikTabela = json['putnik_tabela'] as String?;
     final tipPutnika = switch (putnikTabela) {

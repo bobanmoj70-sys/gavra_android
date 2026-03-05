@@ -16,7 +16,6 @@ class V2PinZahteviScreen extends StatefulWidget {
 }
 
 class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
-  // Stream inicijalizovan jednom — ne kreira se ponovo na svakom rebuildu
   late final Stream<List<Map<String, dynamic>>> _stream;
 
   @override

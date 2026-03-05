@@ -26,7 +26,6 @@ class V2GradAdresaValidator {
     String? putnikAdresa,
     String selectedGrad,
   ) {
-    // PROVERI DA LI SE GRAD PUTNIKA POKLAPA SA SELEKTOVANIM GRADOM
     if (isBelaCrkva(selectedGrad) && isBelaCrkva(putnikGrad)) {
       return true; // V2Putnik je iz Bele Crkve i selektovana je Bela Crkva
     }

@@ -192,7 +192,6 @@ class V2PolasciService {
   }
 
   // ---------------------------------------------------------------------------
-  // JAVNI STREAMOVI — čitaju direktno iz V2MasterRealtimeManager cache-a
   // ---------------------------------------------------------------------------
 
   /// Čita polasciCache iz mastera, enrichuje iz putnici cacheova — 0 DB upita.
@@ -451,7 +450,6 @@ class V2PutnikStreamService {
   SupabaseClient get supabase => globals_file.supabase;
 
   // ──────────────────────────────────────────────────────────────────────────
-  // STREAM METODE — emituju direktno iz RM cache-a
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Stream kombinovanih putnika sa opcionim filterima (isoDate, grad, vreme, vozacId).
@@ -649,7 +647,6 @@ class V2PutnikStreamService {
         final gradNormP = V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
         final vremeNormP = V2GradAdresaValidator.normalizeTime(p.polazak);
 
-        // Provjeri ima li ovaj putnik individualnu dodjelu za OVAJ dan+grad+vreme
         final sveDodjele = rm.vozacPutnikCache.values
             .where((vp) =>
                 vp['putnik_id']?.toString() == putnikIdStr &&
@@ -686,12 +683,10 @@ class V2PutnikStreamService {
     final bool jePokupljen = srRow['status'] == 'pokupljen';
     final bool jeOtkazan = srRow['status'] == 'otkazano';
 
-    // Čita direktno sa v2_polasci reda — nove kolone (Faza 2)
     final bool jePlacen = srRow['placen'] == true;
     final double? iznos = (srRow['placen_iznos'] as num?)?.toDouble();
     final String? naplatioVozac = srRow['placen_vozac_ime']?.toString();
     final String? naplatioVozacId = srRow['placen_vozac_id']?.toString();
-    // updated_at je timestamptz — ima puno vrijeme; datum_akcije je date tip (samo datum, bez sata)
     final String? vremeUplate =
         jePlacen ? (srRow['updated_at']?.toString() ?? srRow['datum_akcije']?.toString()) : null;
 
@@ -1026,7 +1021,6 @@ class V2PutnikStreamService {
       vozacId = rm.vozaciCache.values.firstWhere((v) => v['ime'] == driver, orElse: () => {})['id'] as String?;
     }
 
-    // Upiši direktno u v2_polasci (nove kolone Faza 2)
     bool polasciUpdated = false;
 
     if (requestId != null && requestId.isNotEmpty) {

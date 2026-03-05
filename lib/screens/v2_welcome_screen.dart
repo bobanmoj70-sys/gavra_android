@@ -63,7 +63,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     updateInfoNotifier.addListener(_onUpdateInfo);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
 
-    // Inicijalizacija bez blokiranja - dajemo aplikaciji vremena da "udahne"
     Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
       _initServicesRecursively();
@@ -233,7 +232,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
-    // Start animations
     _fadeController.forward();
   }
 
@@ -406,7 +404,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
         ),
       ),
     ).whenComplete(() {
-      // Reset uvijek — ako stignu 2+ update eventi, drugi ne smije biti izgubljen
       _updateDialogShown = false;
     });
   }

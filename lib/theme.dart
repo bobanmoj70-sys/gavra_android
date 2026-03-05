@@ -6,22 +6,17 @@ import 'services/v2_theme_manager.dart';
 
 // GLOBALNO REŠENJE ZA SRPSKU DJAKRITIKU (š, đ, č, ć, ž)
 // Unicode normalizacija i font fallback-ovi
-//
 // KORIŠĆENJE:
-//
 // 1. AUTOMATSKI - Svi Text widget-i u app-u koriste srpsku dijakritiku
 // textTheme: createSerbianTextTheme() - već primenjeno u temi
-//
 // 2. EXTENSION - Dodavanje dijakritike postojećem TextStyle-u:
 // TextStyle().withSerbianSupport()
-//
 // FONT FALLBACK-OVI:
 // - Inter (primarni)
 // - Roboto
 // - NotoSans
 // - Arial Unicode MS
 // - sans-serif (sistemski)
-//
 // OVO OSIGURAVA da se srpska slova uvek pravilno prikazuju!
 
 /// Globalni TextStyle sa srpskom dijakritikom

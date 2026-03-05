@@ -24,17 +24,14 @@ class V2BatteryOptimizationService {
 
     final prefs = await SharedPreferences.getInstance();
 
-    // Check if user has permanently dismissed the warning
     if (prefs.getBool(_dismissedKey) ?? false) {
       return false;
     }
 
-    // Check if already shown in this session
     if (prefs.getBool(_shownKey) ?? false) {
       return false;
     }
 
-    // Check device manufacturer
     final deviceInfo = DeviceInfoPlugin();
     final androidInfo = await deviceInfo.androidInfo;
     final manufacturer = androidInfo.manufacturer.toLowerCase();

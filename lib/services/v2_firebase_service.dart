@@ -105,7 +105,6 @@ class V2FirebaseService {
       if (token != null && token.isNotEmpty) {
         await _registerTokenWithServer(token);
 
-        // Listen for token refresh — subscription stored so it can be cancelled if needed
         await _tokenRefreshSubscription?.cancel();
         _tokenRefreshSubscription = messaging.onTokenRefresh.listen(
           (newToken) async {

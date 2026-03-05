@@ -116,7 +116,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
     if (widget.isEditing) {
       final v2Putnik = widget.existingPutnik!;
 
-      // Load basic info
       _imeController.text = v2Putnik.ime;
       _tip = switch (v2Putnik.v2Tabela) {
         'v2_ucenici' => 'ucenik',
@@ -144,7 +143,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
       _firmaZiroController.text = '';
       _firmaAdresaController.text = '';
 
-      // Load addresses asynchronously
       _loadAdreseForEditovanje();
       // Učitaj firma podatke iz v2_racuni ako treba račun
       if (v2Putnik.trebaRacun) {
@@ -172,7 +170,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
   }
 
   Future<void> _loadAdreseForEditovanje() async {
-    // Load existing address names for the edit dialog using the UUIDs
     final v2Putnik = widget.existingPutnik;
     if (v2Putnik == null) return;
 
@@ -844,7 +841,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
       ),
       child: Row(
         children: [
-          // Cancel button
           Expanded(
             child: Container(
               height: 40,
@@ -876,7 +872,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
             ),
           ),
           const SizedBox(width: 15),
-          // Save/Add button
           Expanded(
             flex: 2,
             child: AnimatedContainer(
@@ -1289,7 +1284,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
       return 'Broj mora pocinjati sa 06, +381 ili 00381';
     }
 
-    // Proveri da su sve ostale cifre
     final digitsOnly = cleaned.replaceAll('+', '');
     if (!RegExp(r'^\d+$').hasMatch(digitsOnly)) {
       return 'Broj telefona može sadržati samo cifre';

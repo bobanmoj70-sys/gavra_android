@@ -48,7 +48,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   String? _adresaVS; // VS adresa
   String? _sledecaVoznjaInfo; // Format: "Ponedeljak BC - 7:00" ili null
 
-  // Realtime cache stream — triggera rebuild kad se v2_polasci promijeni
   late final Stream<void> _cacheStream;
 
   @override
@@ -57,7 +56,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     WidgetsBinding.instance.addObserver(this); // Prati lifecycle aplikacije
     _checkNotificationPermission(); // Proveri dozvolu za notifikacije
 
-    // Listen for season changes (auto/zimski/letnji)
     navBarTypeNotifier.addListener(_onSeasonChanged);
 
     _putnikData = Map<String, dynamic>.from(widget.putnikData);

@@ -25,7 +25,6 @@ class V2HereWeGoNavigationService {
     Position? endDestination,
   }) async {
     try {
-      // ?? OBAVEZNA PROVERA - Mora biti instaliran HERE WeGo
       final isInstalled = await _isHereWeGoInstalled();
       if (!isInstalled) {
         if (!context.mounted) {

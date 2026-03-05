@@ -114,8 +114,6 @@ class V2Putnik {
   final String? otkazaoVozacId; // UUID vozaca koji je otkazao
 
   factory V2Putnik.v2FromPolazak(Map<String, dynamic> req, {Map<String, dynamic>? profile}) {
-    // Profil je prosleđen direktno ili ugnezden u mapi pod kljucem 'registrovani_putnici'
-    // (taj ključ stavlja _buildPutnik iz v2_putnik_stream_service.dart)
     final Map<String, dynamic> p = profile ?? (req['registrovani_putnici'] as Map<String, dynamic>? ?? {});
 
     final danStr = (req['dan']?.toString() ?? '').toLowerCase();
@@ -268,7 +266,7 @@ class V2Putnik {
           otkazanZaPolazak ||
           status?.toLowerCase() == 'otkazano' ||
           status?.toLowerCase() == 'otkazan' ||
-          status?.toLowerCase() == 'cancelled'); // legacy backward compat
+          status?.toLowerCase() == 'cancelled');
 
   bool get jeBezPolaska => status?.toLowerCase() == 'bez_polaska';
 
@@ -304,7 +302,6 @@ class V2Putnik {
     // Odredi grad na osnovu AKTIVNOG polaska za danas
     final danKratica = V2DanUtils.odDatuma(DateTime.now());
 
-    // Proveri koji polazak postoji za danas
     final bcPolazak = V2RegistrovaniHelpers.getPolazakForDay(map, danKratica, 'bc');
     final vsPolazak = V2RegistrovaniHelpers.getPolazakForDay(map, danKratica, 'vs');
 
@@ -469,5 +466,4 @@ class V2Putnik {
     return adresa;
   }
 
-  // ?? Helper za parsiranje radnih dana (iz kolone ili JSON-a)
 }

@@ -3,30 +3,25 @@ import 'package:flutter/material.dart';
 // ==========================================
 // APP SNACK BAR - CENTRALIZOVANE PORUKE
 // ==========================================
-//
 // NE MIJENJATI - ZACEMENTIRANI STILOVI 
 // Sve SnackBar poruke u aplikaciji moraju koristiti ovu klasu.
 // Zabranjeno je direktno kreiranje SnackBar(...) ili pozivanje
 // ScaffoldMessenger.of(context).showSnackBar(...) van ove klase.
 // Potvrđeno i zacementirano 21.02.2026.
-//
 // TIPOVI PORUKA:
 // success  → zelena  (#4CAF50) — uspješna akcija
 // error    → crvena  (#F44336) — greška / neuspjeh
 // warning  → narandžasta (#FF9800) — upozorenje / blokada
 // info     → plava   (#2196F3) — informacija / neutralna poruka
-//
 // TRAJANJE:
 // kratko  (short)  → 2 sekunde — potvrda akcije
 // srednje (medium) → 3 sekunde — default
 // dugo    (long)   → 5 sekundi — objašnjenje / blokada
-//
 // UPOTREBA:
 // V2AppSnackBar.success(context, ' Sačuvano!');
 // V2AppSnackBar.error(context, 'Greška: $e');
 // V2AppSnackBar.warning(context, '⏳ Zahtev je u obradi...');
 // V2AppSnackBar.info(context, 'ℹ Rezervacije su moguće samo za danas i sutra.');
-//
 // KRAJ SPECIFIKACIJE 
 
 class V2AppSnackBar {

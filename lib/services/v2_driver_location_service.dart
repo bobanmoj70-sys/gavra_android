@@ -143,7 +143,6 @@ class V2DriverLocationService {
     _currentPutniciEta = Map.from(newPutniciEta);
     await _sendCurrentLocation();
 
-    // Provjeri jesu li svi putnici završeni
     final activeCount = _currentPutniciEta!.values.where((v) => v >= 0).length;
     if (activeCount == 0 && _isTracking) {
       _onAllPassengersPickedUp?.call();
@@ -170,7 +169,6 @@ class V2DriverLocationService {
       putnikCoordinates: _putniciCoordinates!,
     );
 
-    // Provjeri da tracking nije zaustavljen tokom await-a
     if (!_isTracking || _currentPutniciEta == null) return;
 
     if (result.success && result.putniciEta != null) {

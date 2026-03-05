@@ -41,14 +41,11 @@ class V2TimePickerCell extends StatelessWidget {
 
   // ─────────────────────────────────────────────────────────────────
   // CENTRALNA LOGIKA ZAKLJUČAVANJA
-  //
   // Pravilo: ćelija je zaključana ako je trenutno vreme >= vreme polaska
   // za taj dan u AKTIVNOJ nedelji.
-  //
   // Aktivna nedelja:
   // - sub >= 02:00 ili ned → pon-pet su u SLEDEĆOJ kalendarskoj nedelji
   // - inače               → pon-pet su u TEKUĆOJ kalendarskoj nedelji
-  //
   // Jedna metoda (_resolvePolazakDateTime) vraća tačan DateTime polaska.
   // Sve ostale metode koriste samo nju.
   // ─────────────────────────────────────────────────────────────────

@@ -50,7 +50,6 @@ class V2OsrmService {
         return V2OsrmResult.error('Nema putnika sa validnim koordinatama');
       }
 
-      // ?? Dodaj krajnju destinaciju ako je zadata (Vrsac ili Bela Crkva)
       final hasEndDestination = endDestination != null;
       if (hasEndDestination) {
         coordsList.add('${endDestination.longitude},${endDestination.latitude}');

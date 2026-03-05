@@ -45,7 +45,6 @@ class V2Adresa {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  // Legacy properties for backward compatibility
   dynamic get koordinate => gpsLat != null && gpsLng != null ? {'lat': gpsLat, 'lng': gpsLng} : null;
 
   // Virtuelna polja za latitude/longitude iz direktnih kolona

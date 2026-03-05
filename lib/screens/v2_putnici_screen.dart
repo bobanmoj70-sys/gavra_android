@@ -35,7 +35,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'svi';
 
-  // V2 servis - koristi V2MasterRealtimeManager za write ops, V2PutnikStatistikaService za placanja
   final _rm = V2MasterRealtimeManager.instance;
 
   // Master realtime stream — inicijalizovan jednom u initState()
@@ -85,7 +84,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     }
   }
 
-  // UCITAJ STVARNA PLACANJA — batch query (1 DB upit) + dopuna iz statistikaCache
   Future<void> _ucitajStvarnaPlacanja(List<V2RegistrovaniPutnik> putnici) async {
     try {
       if (putnici.isEmpty) return;
@@ -140,13 +138,11 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       } catch (e) {
       }
       if (mounted) {
-        // ?? ANTI-REBUILD OPTIMIZATION: Samo update ako su se podaci stvarno promenili
         final existingKeys = _stvarnaPlacanja.keys.toSet();
         final newKeys = placanja.keys.toSet();
 
         bool hasChanges = !existingKeys.isEqualTo(newKeys);
         if (!hasChanges) {
-          // Proveri vrednosti za postojece kljuceve
           for (final key in existingKeys) {
             if (_stvarnaPlacanja[key] != placanja[key]) {
               hasChanges = true;
@@ -155,7 +151,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
           }
         }
 
-        // Proveri i placene mesece
         final existingMeseciKeys = _placeniMeseci.keys.toSet();
         final newMeseciKeys = placeniMeseciMap.keys.toSet();
         bool meseciChanged = !existingMeseciKeys.isEqualTo(newMeseciKeys);
@@ -171,7 +166,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         if (hasChanges || meseciChanged) {
           _stvarnaPlacanja = placanja;
           _placeniMeseci = placeniMeseciMap;
-          // ?? SAMO JEDNOM setState() umesto kontinuiranih rebuild-a
           if (mounted) setState(() {});
         }
       }
@@ -214,7 +208,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       }).toList();
     }
 
-    // ?? BINARYBITCH SORTING BLADE: A Ž (Serbian alphabet), neaktivni/godisnji/bolovanje na dno
     filtered.sort((a, b) {
       final aAktivan = a.status == 'aktivan';
       final bAktivan = b.status == 'aktivan';
@@ -413,11 +406,9 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                     _searchController.text,
                   );
 
-                  // ??? UCITAJ STVARNA PLACANJA kada se dobiju novi podaci - DEBOUNCED
                   if (filteredPutnici.isNotEmpty) {
                     final currentIds = filteredPutnici.map((p) => p.id).toSet();
 
-                    // ?? PRAVI DEBOUNCE: Ako se putnici promenili, ponovo pokreni timer
                     if (!_lastPutnikIds.isEqualTo(currentIds)) {
                       _lastPutnikIds = currentIds;
 
@@ -573,7 +564,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ?? HEADER - Ime, broj, tip
                 Row(
                   children: [
                     // Redni broj i ime
@@ -651,7 +641,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                 const SizedBox(height: 12),
 
-                // ?? OSNOVNE INFORMACIJE - adresa
                 if (v2Putnik.adresa != null) ...[
                   Row(
                     children: [
@@ -676,11 +665,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                   const SizedBox(height: 8),
                 ],
 
-                // ??? PLACANJE I STATISTIKE - jednaki elementi u redu
-
                 Row(
                   children: [
-                    // ?? DUGME ZA PLACANJE
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _prikaziPlacanje(v2Putnik),
@@ -696,7 +682,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                     const SizedBox(width: 6),
 
-                    // ?? TOGGLE AKTIVNOST
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _toggleAktivnost(v2Putnik),
@@ -726,7 +711,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                     const SizedBox(width: 6),
 
-                    // ?? DUGME ZA DETALJE
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _prikaziDetaljneStatistike(v2Putnik),
@@ -740,10 +724,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                 const SizedBox(height: 8),
 
-                // ??? ACTION BUTTONS - samo najvažnije
                 Row(
                   children: [
-                    // Pozovi (ako ima bilo koji telefon)
                     if (v2Putnik.telefon != null || v2Putnik.telefonOca != null || v2Putnik.telefonMajke != null) ...[
                       Expanded(
                         child: _buildCompactActionButton(
@@ -768,7 +750,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                     const SizedBox(width: 6),
 
-                    // ?? PIN
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _showPinDialog(v2Putnik),
@@ -1089,7 +1070,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   // Helper funkcija za brojanje kontakata
-  // ??????????? NOVA FUNKCIJA - Prikazuje sve dostupne kontakte
   Future<void> _pokaziKontaktOpcije(V2RegistrovaniPutnik v2Putnik) async {
     final List<Widget> opcije = [];
 
@@ -1178,7 +1158,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
   Future<void> _pozovi(String brojTelefona) async {
     try {
-      // ?? HUAWEI KOMPATIBILNO - koristi Huawei specificnu logiku (konzistentno sa putnik_card)
       final hasPermission = await V2PermissionService.ensurePhonePermissionHuawei();
       if (!hasPermission) {
         if (mounted) {
@@ -1202,7 +1181,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     }
   }
 
-  // ?? PRIKAZ DIJALOGA ZA PLACANJE
   Future<void> _prikaziPlacanje(V2RegistrovaniPutnik v2Putnik) async {
     if (!mounted) return;
 
@@ -1221,7 +1199,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     if (!mounted) return;
     String selectedMonth = _getCurrentMonthYear(); // Default current month
 
-    // ?? FIX: Ucitaj stvarni ukupni iznos iz baze
     final ukupnoPlaceno = await V2StatistikaIstorijaService.dohvatiUkupnoPlaceno(v2Putnik.id);
 
     // Default cena po danu za input field
@@ -1231,7 +1208,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     final tipLower = v2Putnik.v2Tabela;
     final imeLower = v2Putnik.ime.toLowerCase();
 
-    // ?? FIKSNE CENE (Vozaci/Admini prate isti standard)
     final jeZubi = tipLower == 'v2_posiljke' && imeLower.contains('zubi');
     final jePosiljka = tipLower == 'v2_posiljke';
     final jeDnevni = tipLower == 'v2_dnevni';
@@ -1390,7 +1366,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       const SizedBox(height: 16),
                     ],
 
-                    // ?? IZBOR MESECA
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -1432,11 +1407,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
                     const SizedBox(height: 16),
 
-                    // ?? IZNOS
                     TextField(
                       controller: iznosController,
-                      enabled: !jeFiksna, // ?? Onemoguci izmenu za fiksne cene
-                      readOnly: jeFiksna, // ?? Read only
+                      enabled: !jeFiksna,
+                      readOnly: jeFiksna,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: jeFiksna ? 'Fiksni iznos (dinari)' : 'Iznos (dinari)',
@@ -1468,7 +1442,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Otkaži'),
                 ),
-                // ?? DUGME ZA DETALJNE STATISTIKE
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.of(context).pop(); // Zatvori trenutni dialog
@@ -1504,9 +1477,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         );
       },
     );
-  } // ?? CUVANJE PLACANJA
+  }
 
-  // ?? PRIKAŽI DETALJNE STATISTIKE PUTNIKA
   Future<void> _prikaziDetaljneStatistike(V2RegistrovaniPutnik v2Putnik) async {
     await V2PutnikStatistikeHelper.prikaziDetaljneStatistike(
       context: context,
@@ -1527,10 +1499,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     String mesec,
   ) async {
     try {
-      // ?? FIX: Koristi IME vozaca, ne UUID
       final currentDriverName = await _getCurrentDriverName();
 
-      // ?? Konvertuj string meseca u datume
       final Map<String, dynamic> datumi = _konvertujMesecUDatume(mesec);
 
       final uspeh = await V2StatistikaIstorijaService.upisPlacanjaULog(

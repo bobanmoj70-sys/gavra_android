@@ -129,7 +129,6 @@ class V2PutnikStatistikeHelper {
                     FutureBuilder<Map<String, dynamic>>(
                       future: _getStatistikeForPeriod(putnikId, selectedPeriod, tip),
                       builder: (context, snapshot) {
-                        // Loading state
                         if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
                           return const SizedBox(
                             height: 200,

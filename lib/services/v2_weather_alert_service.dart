@@ -21,7 +21,6 @@ class V2WeatherAlertService {
   /// Poziva se na app startup (main.dart)
   static Future<void> checkAndSendWeatherAlerts() async {
     try {
-      // Proveri da li je vec poslato danas
       if (await _isAlertAlreadySentToday()) {
         return;
       }
@@ -30,16 +29,13 @@ class V2WeatherAlertService {
       final bcWeather = await V2WeatherService.getWeatherData('BC');
       final vsWeather = await V2WeatherService.getWeatherData('VS');
 
-      // Proveri da li ima opasnih uslova
       final alerts = <String>[];
 
-      // Proveri Bela Crkva
       if (bcWeather != null) {
         final bcAlerts = _checkForDangerousWeather(bcWeather, 'Bela Crkva');
         alerts.addAll(bcAlerts);
       }
 
-      // Proveri Vrsac
       if (vsWeather != null) {
         final vsAlerts = _checkForDangerousWeather(vsWeather, 'Vrsac');
         alerts.addAll(vsAlerts);

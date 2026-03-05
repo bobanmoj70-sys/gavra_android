@@ -96,7 +96,6 @@ class V2PinZahtevService {
       if (putnikId == null) return false;
       final putnikTabela = zahtev['putnik_tabela'] as String? ?? '';
 
-      // UPDATE pin na pravoj v2_ tabeli
       if (putnikTabela.isNotEmpty) {
         await _supabase.from(putnikTabela).update({'pin': pin}).eq('id', putnikId);
       }
@@ -142,12 +141,10 @@ class V2PinZahtevService {
   /// Async verzija — provjerava cache, a ako je prazan pada na DB.
   /// Koristi se pri loginovanju da ne prikaže dialog ako je zahtev već poslat.
   static Future<bool> imaZahtevKojiCekuAsync(String putnikId) async {
-    // Provjeri lokalni cache prvo (0 DB upita)
     final izCachea = V2MasterRealtimeManager.instance.pinCache.values
         .any((z) => z['putnik_id'] == putnikId && z['status'] == 'ceka');
     if (izCachea) return true;
 
-    // Cache može biti prazan (cold start) — provjeri DB
     try {
       final row = await _supabase
           .from('v2_pin_zahtevi')

@@ -149,7 +149,6 @@ class V2PutnikList extends StatelessWidget {
           var filteredPutnici = snapshot.data!.where(prikaziPutnika).toList();
           filteredPutnici = deduplicatePutnici(filteredPutnici);
 
-          // Proveri da li ima sivih kartica
           final imaSivih = _imaSivihKartica(filteredPutnici, currentDriver);
 
           // SORTIRANJE: Ako ima sivih: Moji → Nedodeljeni → Sivi → ostali
@@ -280,7 +279,6 @@ class V2PutnikList extends StatelessWidget {
         );
       }
 
-      // Proveri da li ima sivih kartica
       final imaSivih = _imaSivihKartica(filteredPutnici, currentDriver);
 
       // SORTIRAJ: Ako ima sivih: Moji → Nedodeljeni → Sivi → ostali

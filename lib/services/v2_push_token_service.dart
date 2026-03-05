@@ -40,7 +40,6 @@ class V2PushTokenService {
         return false;
       }
 
-      // Proveri da li je Supabase spreman - ako nije, preskaci
       if (!_isSupabaseReady) {
         return false;
       }

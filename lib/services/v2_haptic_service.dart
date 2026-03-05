@@ -56,7 +56,6 @@ class V2HapticService {
   /// Jaca vibracija kad se V2Putnik pokupi — dva kratka pulsa (150ms + 150ms)
   static Future<void> putnikPokupljen() async {
     try {
-      // Proveri da li uredaj podržava vibraciju
       final hasVibrator = await Vibration.hasVibrator();
       if (hasVibrator == true) {
         // Dva kratka pulsa - "bip-bip" efekat
