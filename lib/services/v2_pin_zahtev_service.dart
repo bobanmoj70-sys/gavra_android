@@ -106,6 +106,9 @@ class V2PinZahtevService {
         'status': 'odobren',
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
+      // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
+      V2MasterRealtimeManager.instance
+          .patchCache('v2_pin_zahtevi', zahtevId, {'status': 'odobren'});
 
       return true;
     } catch (e) {
@@ -120,6 +123,9 @@ class V2PinZahtevService {
         'status': 'odbijen',
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
+      // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
+      V2MasterRealtimeManager.instance
+          .patchCache('v2_pin_zahtevi', zahtevId, {'status': 'odbijen'});
 
       return true;
     } catch (e) {

@@ -120,6 +120,7 @@ class V2AdresaSupabaseService {
   }) async {
     try {
       await supabase.from('v2_adrese').update({'gps_lat': lat, 'gps_lng': lng}).eq('id', uuid);
+      V2MasterRealtimeManager.instance.patchCache('v2_adrese', uuid, {'gps_lat': lat, 'gps_lng': lng});
       return true;
     } catch (e) {
       return false;

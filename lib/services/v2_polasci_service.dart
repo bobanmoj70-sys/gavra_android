@@ -86,12 +86,8 @@ class V2PolasciService {
           if (customAdresaId != null) 'adresa_id': customAdresaId,
           'updated_at': nowStr,
         };
-        final updated = await _supabase
-            .from('v2_polasci')
-            .update(updatePayload)
-            .eq('id', existing['id'])
-            .select()
-            .single();
+        final updated =
+            await _supabase.from('v2_polasci').update(updatePayload).eq('id', existing['id']).select().single();
         rm.upsertToCache('v2_polasci', updated);
         debugPrint('[V2PolasciService] v2PoSaljiZahtev UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
       } else {
@@ -164,13 +160,15 @@ class V2PolasciService {
       final zeljenoVreme = row['zeljeno_vreme'];
 
       // 2. Odobri i upisi dodeljeno_vreme = zeljeno_vreme
-      await _supabase.from('v2_polasci').update({
+      final approvePayload = {
         'status': 'odobreno',
         'dodeljeno_vreme': zeljenoVreme, // kopira zeljeno_vreme u dodeljeno_vreme
         'updated_at': nowStr,
         'processed_at': nowStr,
         if (approvedBy != null) 'odobrio': approvedBy,
-      }).eq('id', id);
+      };
+      await _supabase.from('v2_polasci').update(approvePayload).eq('id', id);
+      V2MasterRealtimeManager.instance.patchCache('v2_polasci', id, approvePayload);
 
       return true;
     } catch (e) {
@@ -182,12 +180,15 @@ class V2PolasciService {
   /// Odbija zahtev
   static Future<bool> v2OdbijZahtev(String id, {String? rejectedBy}) async {
     try {
-      await _supabase.from('v2_polasci').update({
+      final nowStr = DateTime.now().toUtc().toIso8601String();
+      final rejectPayload = {
         'status': 'odbijeno',
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-        'processed_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': nowStr,
+        'processed_at': nowStr,
         if (rejectedBy != null) 'otkazao': rejectedBy,
-      }).eq('id', id);
+      };
+      await _supabase.from('v2_polasci').update(rejectPayload).eq('id', id);
+      V2MasterRealtimeManager.instance.patchCache('v2_polasci', id, rejectPayload);
 
       return true;
     } catch (e) {
@@ -282,26 +283,34 @@ class V2PolasciService {
       final danKey = dan.toLowerCase();
       final nowStr = DateTime.now().toUtc().toIso8601String();
 
+      final rm = V2MasterRealtimeManager.instance;
       // Atomski UPDATE — direktno postavi novo vreme bez međukoraka 'cancelled'
       if (requestId != null && requestId.isNotEmpty) {
-        await _supabase.from('v2_polasci').update({
+        final altPayload = {
           'zeljeno_vreme': novoVreme, // cekaonica → premestamo na novi termin
           'dodeljeno_vreme': novoVreme, // stvarni termin putovanja → novi termin
           'status': 'odobreno',
           'processed_at': nowStr,
           'updated_at': nowStr,
-        }).eq('id', requestId);
+        };
+        await _supabase.from('v2_polasci').update(altPayload).eq('id', requestId);
+        rm.patchCache('v2_polasci', requestId, altPayload);
       } else {
         // Ako nema requestId, kreiraj novi zahtev (fallback)
-        await _supabase.from('v2_polasci').insert({
-          'putnik_id': putnikId,
-          'grad': gradKey,
-          'dan': danKey,
-          'zeljeno_vreme': novoVreme, // cekaonica
-          'dodeljeno_vreme': novoVreme, // stvarni termin putovanja
-          'status': 'odobreno',
-          'processed_at': nowStr,
-        });
+        final inserted = await _supabase
+            .from('v2_polasci')
+            .insert({
+              'putnik_id': putnikId,
+              'grad': gradKey,
+              'dan': danKey,
+              'zeljeno_vreme': novoVreme, // cekaonica
+              'dodeljeno_vreme': novoVreme, // stvarni termin putovanja
+              'status': 'odobreno',
+              'processed_at': nowStr,
+            })
+            .select()
+            .single();
+        rm.upsertToCache('v2_polasci', inserted);
       }
       return true;
     } catch (e) {
