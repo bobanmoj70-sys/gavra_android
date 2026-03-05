@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../globals.dart';
@@ -41,13 +42,14 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
   late final AnimationController _fadeController;
-  late final AnimationController _slideController;
   late final AnimationController _pulseController;
   late final Animation<double> _fadeAnimation;
+  bool _updateDialogShown = false;
 
   // Lista vozača učitana iz baze
   List<V2Vozac> _drivers = [];
   bool _isLoadingDrivers = true;
+  String _appVersion = '';
 
   @override
   void initState() {
@@ -56,6 +58,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
     _setupAnimations();
     _loadDrivers();
+    _loadAppVersion();
     updateInfoNotifier.addListener(_onUpdateInfo);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
 
@@ -87,6 +90,15 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       _drivers = vozaci;
       _isLoadingDrivers = false;
     });
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = 'v${info.version}');
+    } catch (_) {
+      // Fallback - ostavi prazno
+    }
   }
 
   /// > Inicijalizacija servisa jedan po jedan, bez agresivnih await-ova
@@ -128,6 +140,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     // "PRVO PROVERI REMEMBERED DEVICE
     final rememberedDevice = await V2AuthManager.getRememberedDevice();
     debugPrint('🚀 [V2WelcomeScreen] rememberedDevice=$rememberedDevice');
+    if (!mounted) return;
     if (rememberedDevice != null) {
       // Auto-login sa zapamenim ureajem
       final email = rememberedDevice['email']!;
@@ -185,11 +198,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       vsync: this,
     );
 
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2500),
       vsync: this,
@@ -201,9 +209,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
     // Start animations
     _fadeController.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _slideController.forward();
-    });
   }
 
   @override
@@ -211,7 +216,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     WidgetsBinding.instance.removeObserver(this); // Uklanjamo observer
     updateInfoNotifier.removeListener(_onUpdateInfo);
     _fadeController.dispose();
-    _slideController.dispose();
     _pulseController.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -221,6 +225,8 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   void _onUpdateInfo() {
     final info = updateInfoNotifier.value;
     if (info == null || !mounted) return;
+    if (_updateDialogShown) return;
+    _updateDialogShown = true;
 
     showDialog<void>(
       context: context,
@@ -372,10 +378,11 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      if (!info.isForced) _updateDialogShown = false;
+    });
   }
 
-  // Dodano za praenje lifecycle-a aplikacije
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -524,30 +531,32 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                           debugPrint('[V2WelcomeScreen] Error: $e');
                         }
                       },
-                      child: AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, child) {
-                          return ShaderMask(
-                            shaderCallback: (bounds) {
-                              return LinearGradient(
-                                begin: Alignment(-1.5 + 3 * _pulseController.value, 0),
-                                end: Alignment(-0.5 + 3 * _pulseController.value, 0),
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.6),
-                                  Colors.white,
-                                  Colors.white.withValues(alpha: 0.6),
-                                ],
-                                stops: const [0.0, 0.5, 1.0],
-                              ).createShader(bounds);
-                            },
-                            blendMode: BlendMode.srcATop,
-                            child: child,
-                          );
-                        },
-                        child: Image.asset(
-                          'assets/logo_transparent.png',
-                          height: 180,
-                          fit: BoxFit.contain,
+                      child: RepaintBoundary(
+                        child: AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (context, child) {
+                            return ShaderMask(
+                              shaderCallback: (bounds) {
+                                return LinearGradient(
+                                  begin: Alignment(-1.5 + 3 * _pulseController.value, 0),
+                                  end: Alignment(-0.5 + 3 * _pulseController.value, 0),
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.6),
+                                    Colors.white,
+                                    Colors.white.withValues(alpha: 0.6),
+                                  ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                ).createShader(bounds);
+                              },
+                              blendMode: BlendMode.srcATop,
+                              child: child,
+                            );
+                          },
+                          child: Image.asset(
+                            'assets/logo_transparent.png',
+                            height: 180,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
@@ -798,7 +807,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'v6.0.15 2025-2026',
+                            '$_appVersion 2025-2026',
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.white.withValues(alpha: 0.5),
