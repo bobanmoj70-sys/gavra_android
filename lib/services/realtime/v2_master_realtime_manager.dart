@@ -102,6 +102,9 @@ class V2MasterRealtimeManager {
   /// v2_app_settings
   final Map<String, Map<String, dynamic>> settingsCache = {};
 
+  /// v2_racuni — firma podaci po putnik_id (keyed by putnik_id)
+  final Map<String, Map<String, dynamic>> racuniCache = {};
+
   // ──────────────────────────────────────────────────────────────────────────
   // State
   // ──────────────────────────────────────────────────────────────────────────
@@ -130,8 +133,10 @@ class V2MasterRealtimeManager {
 
     await Future.wait([
       _loadPolasciCache(),
+      loadStatistikaCache(),
       _loadPutniciCaches(),
       _loadInfraCache(),
+      _loadRacuniCache(),
     ]);
 
     _initialized = true;
@@ -150,6 +155,7 @@ class V2MasterRealtimeManager {
       // Raspored / putnik mapping / lokacije / kapacitet / pin
       'v2_kapacitet_polazaka', 'v2_vozac_raspored', 'v2_vozac_putnik',
       'v2_vozac_lokacije', 'v2_pin_zahtevi',
+      'v2_racuni',
     ];
     for (final tabela in staticTabele) {
       _staticSubscriptions.add(subscribe(tabela).listen((_) {}));
@@ -158,6 +164,7 @@ class V2MasterRealtimeManager {
     debugPrint(
       '✅ [V2MasterRealtimeManager] Inicijalizovano: '
       'polasci=${polasciCache.length}, '
+      'statistika=${statistikaCache.length}, '
       'radnici=${radniciCache.length}, '
       'ucenici=${uceniciCache.length}, '
       'dnevni=${dnevniCache.length}, '
@@ -363,6 +370,23 @@ class V2MasterRealtimeManager {
     }
   }
 
+  /// Učitava sve v2_racuni zapise u racuniCache (keyed by putnik_id)
+  Future<void> _loadRacuniCache() async {
+    try {
+      final rows = await _db
+          .from('v2_racuni')
+          .select('id, putnik_id, putnik_tabela, firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa, updated_at');
+      racuniCache.clear();
+      for (final row in (rows as List)) {
+        final putnikId = row['putnik_id']?.toString();
+        if (putnikId != null) racuniCache[putnikId] = Map<String, dynamic>.from(row as Map);
+      }
+      debugPrint('📦 [V2MasterRealtimeManager] racuniCache=${racuniCache.length}');
+    } catch (e) {
+      debugPrint('❌ [V2MasterRealtimeManager] _loadRacuniCache: $e');
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // CACHE UPDATE — poziva se iz realtime callback-a
   // ──────────────────────────────────────────────────────────────────────────
@@ -371,6 +395,17 @@ class V2MasterRealtimeManager {
   void upsertToCache(String table, Map<String, dynamic> record) {
     final id = record['id']?.toString();
     if (id == null) return;
+
+    // v2_racuni je keyed by putnik_id (ne id) — poseban handling
+    if (table == 'v2_racuni') {
+      final putnikId = record['putnik_id']?.toString();
+      if (putnikId != null) {
+        racuniCache[putnikId] = Map<String, dynamic>.from(record);
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+      }
+      return;
+    }
+
     final target = _cacheForTable(table);
     if (target == null) return;
 
@@ -378,6 +413,16 @@ class V2MasterRealtimeManager {
     if (table == 'v2_statistika_istorija') {
       final datum = record['datum']?.toString();
       if (datum != null && datum != _loadedDate) return;
+    }
+
+    // pinCache sadrži samo zahtjeve sa status='ceka' — ako status nije 'ceka', ukloni iz cache-a
+    if (table == 'v2_pin_zahtevi') {
+      final status = record['status']?.toString();
+      if (status != null && status != 'ceka') {
+        target.remove(id);
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+        return;
+      }
     }
 
     // Sačuvaj postojeći _tabela tag — realtime payload ne sadrži _tabela
@@ -395,6 +440,12 @@ class V2MasterRealtimeManager {
 
   /// Uklanja red iz cache-a na DELETE event
   void removeFromCache(String table, String id) {
+    // v2_racuni: id je putnik_id
+    if (table == 'v2_racuni') {
+      racuniCache.remove(id);
+      if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+      return;
+    }
     _cacheForTable(table)?.remove(id);
     if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
   }
@@ -429,6 +480,7 @@ class V2MasterRealtimeManager {
     'v2_pumpa_config': pumpaCache,
     'v2_pin_zahtevi': pinCache,
     'v2_app_settings': settingsCache,
+    // v2_racuni intentionally excluded — keyed by putnik_id, handled separately in upsertToCache
   };
 
   /// Vraća odgovarajući cache map po imenu tabele — O(1)
@@ -750,13 +802,19 @@ class V2MasterRealtimeManager {
   }
 
   /// Dohvata podatke firme iz v2_racuni po putnik_id
+  /// Prvo provjeri cache, pa udari DB samo ako nema
   Future<Map<String, dynamic>?> getFirma(String putnikId) async {
+    final cached = racuniCache[putnikId];
+    if (cached != null) return cached;
     try {
       final row = await _db
           .from('v2_racuni')
           .select('firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa')
           .eq('putnik_id', putnikId)
           .maybeSingle();
+      if (row != null) {
+        racuniCache[putnikId] = Map<String, dynamic>.from(row as Map);
+      }
       return row;
     } catch (e) {
       debugPrint('❌ [RM] getFirma error: $e');
@@ -861,17 +919,25 @@ class V2MasterRealtimeManager {
     required List<String> tables,
     required T Function() build,
   }) {
-    final controller = StreamController<T>.broadcast();
+    StreamSubscription<String>? sub;
+    late StreamController<T> controller;
+
     void emit() {
       if (!controller.isClosed) controller.add(build());
     }
 
-    Future.microtask(emit);
-    final sub = onCacheChanged.where(tables.contains).listen((_) => emit());
-    controller.onCancel = () {
-      sub.cancel();
-      controller.close();
-    };
+    controller = StreamController<T>.broadcast(
+      onListen: () {
+        emit();
+        sub = onCacheChanged.where(tables.contains).listen((_) => emit());
+      },
+      onCancel: () {
+        sub?.cancel();
+        sub = null;
+        controller.close();
+      },
+    );
+
     return controller.stream;
   }
 
