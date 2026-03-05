@@ -141,16 +141,11 @@ class V2AdresaSupabaseService {
     if (lat != null) insertData['gps_lat'] = lat;
     if (lng != null) insertData['gps_lng'] = lng;
 
-    await supabase.from('v2_adrese').insert(insertData);
-
-    // v2_adrese nema Realtime — ručno dohvati novi red i upiši u cache
+    // INSERT + SELECT u jednom pozivu — nema race conditiona
     final row = await supabase
         .from('v2_adrese')
+        .insert(insertData)
         .select('id, naziv, grad, gps_lat, gps_lng')
-        .eq('naziv', naziv)
-        .eq('grad', grad)
-        .order('id', ascending: false)
-        .limit(1)
         .single();
     V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', row);
     return V2Adresa.fromMap(row);
@@ -173,9 +168,12 @@ class V2AdresaSupabaseService {
 
     await supabase.from('v2_adrese').update(updateData).eq('id', adresa.id);
 
+    // Spread starog reda pa override sa novim — ne gube se gps_lat/gps_lng kad se ne salju
     final updatedRow = <String, dynamic>{
-      'id': adresa.id,
+      if (adresa.gpsLat != null) 'gps_lat': adresa.gpsLat,
+      if (adresa.gpsLng != null) 'gps_lng': adresa.gpsLng,
       ...updateData,
+      'id': adresa.id,
     };
     V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', updatedRow);
     return V2Adresa.fromMap(updatedRow);

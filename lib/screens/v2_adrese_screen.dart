@@ -60,7 +60,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         );
 
         if (mounted) {
-          V2AppSnackBar.success(context, '✅ V2Adresa dodana');
+          V2AppSnackBar.success(context, '✅ Adresa dodana');
         }
       } catch (e) {
         if (mounted) {
@@ -93,7 +93,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         );
 
         if (mounted) {
-          V2AppSnackBar.success(context, '✅ V2Adresa ažurirana');
+          V2AppSnackBar.success(context, '✅ Adresa ažurirana');
         }
       } catch (e) {
         if (mounted) {
@@ -128,13 +128,13 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
     try {
       await V2AdresaSupabaseService.deleteAdresa(adresa);
       if (mounted) {
-        V2AppSnackBar.warning(context, '\uD83D\uDDD1\uFE0F V2Adresa obrisana');
+        V2AppSnackBar.warning(context, '🗑️ Adresa obrisana');
       }
     } catch (e) {
       if (mounted) {
         final msg = e.toString().contains('23503') || e.toString().toLowerCase().contains('foreign key')
-            ? '\u274C V2Adresa se koristi i ne može se obrisati'
-            : '\u274C Greška: $e';
+            ? '❌ Adresa se koristi i ne može se obrisati'
+            : '❌ Greška: $e';
         V2AppSnackBar.error(context, msg);
       }
     }
@@ -226,7 +226,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildFilterChip('Svi', _filterGrad == 'Svi'),
+                            _buildFilterChip('Svi', _filterGrad == 'Svi', value: 'Svi'),
                             const SizedBox(width: 8),
                             _buildFilterChip('Bela Crkva', _filterGrad == 'BC', value: 'BC'),
                             const SizedBox(width: 8),
