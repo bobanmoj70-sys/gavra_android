@@ -50,6 +50,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   List<V2Vozac> _drivers = [];
   bool _isLoadingDrivers = true;
   String _appVersion = '';
+  StreamSubscription<String>? _cacheReadySub;
 
   @override
   void initState() {
@@ -107,14 +108,35 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       // 1. Notifikacije
       unawaited(V2LocalNotificationService.initialize(context));
 
-      // 2. Auto-login (dozvole su ve tražene pri prvom startu aplikacije)
+      // 2. Auto-login — tek kada je V2VozacCache spreman (izbjegava race condition)
       if (mounted) {
         _ensureNotificationPermissions();
-        _checkAutoLogin();
+        _checkAutoLoginWhenReady();
       }
     } catch (e) {
       debugPrint(' [V2WelcomeScreen] Init failed: $e');
     }
+  }
+
+  /// Pokreće auto-login čim V2VozacCache bude inicijalizovan.
+  /// Ako je već spreman — odmah poziva. Ako nije — čeka prvi v2_vozaci event.
+  void _checkAutoLoginWhenReady() {
+    if (V2VozacCache.isInitialized) {
+      _checkAutoLogin();
+      return;
+    }
+    // Cache još nije spreman — čekaj prvi signal da su vozači učitani
+    _cacheReadySub = V2MasterRealtimeManager.instance.onCacheChanged
+        .where((table) => table == 'v2_vozaci')
+        .first
+        .asStream()
+        .listen((_) {
+      _cacheReadySub = null;
+      if (mounted) {
+        _loadDrivers(); // osvježi listu vozača na welcome screenu
+        _checkAutoLogin();
+      }
+    });
   }
 
   Future<void> _ensureNotificationPermissions() async {
@@ -215,6 +237,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   void dispose() {
     WidgetsBinding.instance.removeObserver(this); // Uklanjamo observer
     updateInfoNotifier.removeListener(_onUpdateInfo);
+    _cacheReadySub?.cancel();
     _fadeController.dispose();
     _pulseController.dispose();
     _audioPlayer.dispose();
