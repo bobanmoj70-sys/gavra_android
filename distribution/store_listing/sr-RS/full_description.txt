@@ -1,0 +1,15 @@
+Gavra 013 je aplikacija zatvorenog tipa namenjena isključivo vozačima i putnicima prevozničke firme Gavra 013.
+
+PUTNICI:
+• Prijavite polazak za željeni termin jednim klikom
+• Pratite lokaciju vozača u realnom vremenu
+• Pregledajte raspored vožnji i sledećih polazaka
+• Upravljajte svojim rezervacijama
+
+VOZAČI:
+• Pregledajte listu putnika za svaki termin
+• Optimizovana ruta pokupljanja po adresama
+• GPS navigacija do svakog putnika
+• Označite pokupljene putnike tokom vožnje
+
+Aplikacija nije javna — dostupna je samo registrovanim korisnicima firme Gavra 013.
