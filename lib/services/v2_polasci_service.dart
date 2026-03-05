@@ -6,6 +6,7 @@ import '../globals.dart' as globals_file;
 import '../globals.dart';
 import '../models/v2_polazak.dart';
 import '../models/v2_putnik.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
@@ -529,7 +530,7 @@ class V2PutnikStreamService {
   Future<List<V2Putnik>> getPutniciByDayIso(String isoDate) async {
     try {
       final todayDate = isoDate.split('T')[0];
-      final targetDan = _isoToDanKratica(todayDate);
+      final targetDan = V2DanUtils.odIso(todayDate);
       final rm = V2MasterRealtimeManager.instance;
 
       return rm.polasciCache.values
@@ -618,10 +619,19 @@ class V2PutnikStreamService {
     final List<V2Putnik> sviPutnici;
     if (dan != null) {
       danKratica = dan;
-      sviPutnici = rm.polasciCache.values.map((row) => V2Putnik.fromMap(row)).where((p) => p.dan == dan).toList();
+      final isoZaDan = V2DanUtils.isoZaDan(dan);
+      sviPutnici = rm.polasciCache.values
+          .where((sr) => sr['dan']?.toString() == dan)
+          .map((sr) {
+            final putnikId = sr['putnik_id']?.toString();
+            final rp = putnikId != null ? rm.v2GetPutnikById(putnikId) : null;
+            return _buildPutnik(sr, rp, isoZaDan);
+          })
+          .where((p) => p.status != 'bez_polaska')
+          .toList();
     } else {
       final todayDate = (isoDate ?? DateTime.now().toIso8601String()).split('T')[0];
-      danKratica = _isoToDanKratica(todayDate);
+      danKratica = V2DanUtils.odIso(todayDate);
       sviPutnici = await getPutniciByDayIso(todayDate);
     }
     final gradNorm = grad == null ? null : V2GradAdresaValidator.normalizeGrad(grad).toUpperCase();
@@ -666,11 +676,6 @@ class V2PutnikStreamService {
       }
       return true;
     }).toList();
-  }
-
-  static String _isoToDanKratica(String iso) {
-    const map = {1: 'pon', 2: 'uto', 3: 'sre', 4: 'cet', 5: 'pet', 6: 'sub', 7: 'ned'};
-    return map[DateTime.tryParse(iso)?.weekday ?? 1]!;
   }
 
   static V2Putnik _buildPutnik(
