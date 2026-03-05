@@ -47,14 +47,13 @@ class V2PinZahtevService {
 
       return true;
     } catch (e) {
-      debugPrint('[V2PinZahtevService] posaljiZahtev error: $e');
       return false;
     }
   }
 
   /// Realtime stream: Prati nove zahteve za PIN — direktno iz pinCache, 0 DB upita
   static Stream<List<Map<String, dynamic>>> streamZahteviKojiCekaju() =>
-      V2MasterRealtimeManager.instance.streamFromCache(
+      V2MasterRealtimeManager.instance.v2StreamFromCache(
         tables: ['v2_pin_zahtevi'],
         build: _buildEnrichedList,
       );
@@ -71,7 +70,7 @@ class V2PinZahtevService {
 
     return zahtevi.map((z) {
       final putnikId = z['putnik_id'] as String?;
-      final putnikData = putnikId != null ? rm.getPutnikById(putnikId) : null;
+      final putnikData = putnikId != null ? rm.v2GetPutnikById(putnikId) : null;
       return <String, dynamic>{
         ...Map<String, dynamic>.from(z),
         'putnik_ime': putnikData?['ime'],
@@ -107,11 +106,10 @@ class V2PinZahtevService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
       // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
-      V2MasterRealtimeManager.instance.patchCache('v2_pin_zahtevi', zahtevId, {'status': 'odobren'});
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': 'odobren'});
 
       return true;
     } catch (e) {
-      debugPrint('[V2PinZahtevService] odobriZahtev error: $e');
       return false;
     }
   }
@@ -123,11 +121,10 @@ class V2PinZahtevService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
       // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
-      V2MasterRealtimeManager.instance.patchCache('v2_pin_zahtevi', zahtevId, {'status': 'odbijen'});
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': 'odbijen'});
 
       return true;
     } catch (e) {
-      debugPrint('[V2PinZahtevService] odbijZahtev error: $e');
       return false;
     }
   }
@@ -160,7 +157,6 @@ class V2PinZahtevService {
           .maybeSingle();
       return row != null;
     } catch (e) {
-      debugPrint('[V2PinZahtevService] imaZahtevKojiCekuAsync error: $e');
       return false;
     }
   }
@@ -176,7 +172,6 @@ class V2PinZahtevService {
       }
       return true;
     } catch (e) {
-      debugPrint('[V2PinZahtevService] azurirajEmail error: $e');
       return false;
     }
   }

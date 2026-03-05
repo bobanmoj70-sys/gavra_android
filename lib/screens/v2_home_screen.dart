@@ -25,6 +25,7 @@ import '../services/v2_theme_manager.dart'; // ?? Tema sistem
 import '../services/v2_vozac_raspored_service.dart';
 import '../theme.dart'; // ?? Import za prelepe gradijente
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart'; // ??? NOVO za validaciju
 import '../utils/v2_page_transitions.dart';
 import '../utils/v2_putnik_count_helper.dart'; // ?? Za brojanje putnika po gradu
@@ -101,44 +102,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   }
 
   /// Automatski selektuje najbliže vreme polaska za trenutni cas (BC grad).
-  static const List<String> _dayNamesInternal = [
-    'Ponedeljak',
-    'Utorak',
-    'Sreda',
-    'Cetvrtak',
-    'Petak',
-    'Subota',
-    'Nedelja'
-  ];
-  static const List<String> _dayAbbreviations = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-
-  String _getTodayName() {
-    return _dayNamesInternal[DateTime.now().weekday - 1];
-  }
-
-  String _getTargetDateIsoFromSelectedDay(String fullDay) {
-    final now = DateTime.now();
-    final targetDayIndex = _dayNamesInternal.indexOf(fullDay);
-    if (targetDayIndex < 0) throw ArgumentError('Nepoznat dan: $fullDay');
-    final currentDayIndex = now.weekday - 1;
-    if (targetDayIndex == currentDayIndex) return now.toIso8601String().split('T')[0];
-    int daysToAdd = targetDayIndex - currentDayIndex;
-    if (daysToAdd < 0) daysToAdd += 7;
-    final targetDate = now.add(Duration(days: daysToAdd));
-    return targetDate.toIso8601String().split('T')[0];
-  }
-
-  String _getDayAbbreviation(String fullDayName) {
-    final i = _dayNamesInternal.indexOf(fullDayName);
-    if (i < 0) throw ArgumentError('Nepoznat dan: $fullDayName');
-    return _dayAbbreviations[i];
-  }
 
   /// Kreira/zamjenjuje _streamPutnici za zadani dan. Poziva se iz initState i kad se dan promjeni.
   void _updatePutniciStream(String day) {
-    final isoDate = _getTargetDateIsoFromSelectedDay(day);
+    final kratica = V2DanUtils.odPunogNaziva(day);
     _cachedPutniciDay = day;
-    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(isoDate: isoDate);
+    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: kratica);
   }
 
   @override
@@ -146,7 +115,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     super.initState();
     final today = DateTime.now().weekday;
     // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
-    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'Ponedeljak' : _getTodayName();
+    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday)
+        ? 'Ponedeljak'
+        : V2DanUtils.puniNaziv(V2DanUtils.danas());
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
     _updatePutniciStream(_selectedDay);
     _initializeData();
@@ -1595,7 +1566,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           ime: selectedPutnik!.ime,
                                           polazak: _selectedVreme,
                                           grad: _selectedGrad,
-                                          dan: _getDayAbbreviation(_selectedDay),
+                                          dan: V2DanUtils.odPunogNaziva(_selectedDay),
                                           vremeDodavanja: DateTime.now(),
                                           dodeljenVozac: _currentDriver!, // Safe non-null assertion nakon validacije
                                           adresa: adresaZaKoristiti,
@@ -1616,7 +1587,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         );
 
                                         // ?? Eksplicitan refresh stream-a da se V2Putnik odmah prikaže
-                                        V2PolasciService.refreshAllActiveStreams();
+                                        V2PolasciService.v2RefreshStreams();
 
                                         if (!dialogCtx.mounted) return;
 
@@ -1929,20 +1900,14 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
           final allPutnici = snapshot.data ?? [];
 
-          // Get target day abbreviation for additional filtering
-          final targetDateIso = _getTargetDateIsoFromSelectedDay(_selectedDay);
-          final date = DateTime.parse(targetDateIso);
-          const dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-          final targetDayAbbr = dayAbbrs[date.weekday - 1];
-
           // Jedan prolaz: dedup + split na prikaz vs. bottom-bar brojaci
+          final String danKratica = V2DanUtils.odPunogNaziva(_selectedDay);
           final Map<String, V2Putnik> uniqueZaDan = {};
           final Map<String, V2Putnik> uniqueZaPrikaz = {};
-          final normalizedDanBaza = V2GradAdresaValidator.normalizeString(_getDayAbbreviation(_selectedDay));
           final normalizedVreme = V2GradAdresaValidator.normalizeTime(_selectedVreme);
 
           for (final p in allPutnici) {
-            if (!p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase())) continue;
+            if (!p.dan.toLowerCase().contains(danKratica)) continue;
             final key = '${p.id}_${p.polazak}_${p.dan}';
             // Za bottom-bar brojace: samo dedup po danu
             uniqueZaDan[key] = p;
@@ -1951,7 +1916,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
             if (normalizedStatus == 'obrada' || normalizedStatus == 'bez_polaska') continue;
             if (p.polazak.toString().trim().isEmpty) continue;
             if (p.grad.toString().trim().isEmpty) continue;
-            if (!V2GradAdresaValidator.normalizeString(p.dan).contains(normalizedDanBaza)) continue;
             if (!V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad)) continue;
             if (V2GradAdresaValidator.normalizeTime(p.polazak) != normalizedVreme) continue;
             uniqueZaPrikaz[key] = p;
@@ -1963,8 +1927,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
           // REFAKTORISANO: Koristi V2PutnikCountHelper za centralizovano brojanje
           final countHelper = V2PutnikCountHelper.fromPutnici(
             putnici: countCandidates,
-            targetDateIso: targetDateIso,
-            targetDayAbbr: targetDayAbbr,
+            targetDayAbbr: danKratica,
           );
 
           // Uklonjen dupli sort - V2PutnikList sada sortira konzistentno sa V2VozacScreen
@@ -1976,7 +1939,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
             try {
               return countHelper.getCount(grad, vreme);
             } catch (e) {
-              debugPrint('[V2HomeScreen] getPutnikCount error: $e');
               return 0;
             }
           }
@@ -2183,7 +2145,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         ),
                                         elevation: 8,
                                       ),
-                                      items: _dayNamesInternal
+                                      items: V2DanUtils.puniNazivi
                                           .map(
                                             (dan) => DropdownMenuItem(
                                               value: dan,
@@ -2528,7 +2490,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             currentDriver: _currentDriver ?? '',
                             selectedGrad: _selectedGrad,
                             selectedVreme: _selectedVreme,
-                            selectedDay: _getDayAbbreviation(_selectedDay),
+                            selectedDay: V2DanUtils.odPunogNaziva(_selectedDay),
                             bcVremena: bcVremena,
                             vsVremena: vsVremena,
                           ),
@@ -2551,7 +2513,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   /// Helper metoda za kreiranje bottom nav bar-a prema tipu
   /// ?? Boja vozaca za termin (za bottom nav bar border)
   Color? _getVozacColorForTermin(String grad, String vreme) {
-    final dan = _getDayAbbreviation(_selectedDay);
+    final dan = V2DanUtils.odPunogNaziva(_selectedDay);
     final entry = V2MasterRealtimeManager.instance.rasporedCache.values
         .map((row) => V2VozacRasporedEntry.fromMap(row))
         .where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme)

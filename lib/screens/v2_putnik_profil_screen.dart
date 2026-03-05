@@ -61,7 +61,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     navBarTypeNotifier.addListener(_onSeasonChanged);
 
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
-    _cacheStream = V2MasterRealtimeManager.instance.streamFromCache(
+    _cacheStream = V2MasterRealtimeManager.instance.v2StreamFromCache(
       tables: ['v2_polasci'],
       build: () {},
     );
@@ -74,7 +74,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   void _onSeasonChanged() {
     if (mounted) {
       setState(() {
-        debugPrint('❄️ [Season] Sezona promenjena na: ${navBarTypeNotifier.value}. Osvežavam UI profil ekrana.');
       });
     }
   }
@@ -134,7 +133,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       if (putnikId == null) return;
 
       // Prvo pokušaj iz v2 cache-a
-      final cached = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+      final cached = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
       if (cached != null && mounted) {
         setState(() {
           _putnikData = Map<String, dynamic>.from(cached);
@@ -145,7 +144,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
 
       // Fallback: pretraži sve v2 tabele
-      final response = await V2MasterRealtimeManager.instance.findPutnikById(putnikId);
+      final response = await V2MasterRealtimeManager.instance.v2FindPutnikById(putnikId);
 
       if (response != null && mounted) {
         setState(() {
@@ -409,7 +408,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       if (req == null) return null;
       return (req['dodeljeno_vreme'] ?? '').toString().trim();
     } catch (e) {
-      debugPrint('[V2PutnikProfilScreen] getVremePolaska error: $e');
       return null;
     }
   }
@@ -448,7 +446,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       });
       return result;
     } catch (e) {
-      debugPrint('[V2PutnikProfilScreen] _izracunajIstorijuIzKolekcije error: $e');
       return [];
     }
   }
@@ -477,7 +474,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         try {
           await V2PushTokenService.clearToken(putnikId: putnikId);
         } catch (e) {
-          debugPrint('⚠️ [Logout] Greška pri brisanju push tokena: $e');
         }
       }
       if (mounted) {
@@ -615,7 +611,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       if (putnikId == null) return;
 
       final tabela = _putnikData['_tabela'] as String? ?? 'v2_radnici';
-      await V2MasterRealtimeManager.instance.updatePutnik(
+      await V2MasterRealtimeManager.instance.v2UpdatePutnik(
         putnikId,
         {'status': noviStatus},
         tabela,
@@ -1345,7 +1341,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           existing['${grad}_otkazano_vreme'] = null;
         }
       } catch (e) {
-        debugPrint('⚠️ [MergeRequests] Greška: $e');
       }
     }
 
@@ -1471,7 +1466,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     } else {
       // dan + grad + zeljeno_vreme → pending (V2Putnik šalje zahtev)
       try {
-        final rpRow = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+        final rpRow = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
         final brojMesta = (rpRow?['broj_mesta'] as int?) ?? 1;
         // _tabela iz cache-a → npr. 'v2_radnici'
         final putnikTabela = (_putnikData['_tabela'] as String?) ??

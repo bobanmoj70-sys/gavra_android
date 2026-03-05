@@ -32,7 +32,6 @@ class V2FinansijeService {
       }).toList()
         ..sort((a, b) => a.tip.compareTo(b.tip));
     } catch (e) {
-      debugPrint('[Finansije] getTroskovi greška: $e');
       return [];
     }
   }
@@ -41,10 +40,9 @@ class V2FinansijeService {
   static Future<bool> updateTrosak(String id, double noviIznos) async {
     try {
       await _supabase.from('v2_finansije_troskovi').update({'iznos': noviIznos}).eq('id', id);
-      V2MasterRealtimeManager.instance.patchCache('v2_finansije_troskovi', id, {'iznos': noviIznos});
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_finansije_troskovi', id, {'iznos': noviIznos});
       return true;
     } catch (e) {
-      debugPrint('[Finansije] updateTrosak greška: $e');
       return false;
     }
   }
@@ -53,7 +51,6 @@ class V2FinansijeService {
   static Future<bool> addTrosak(String naziv, String tip, double iznos, {int? mesec, int? godina}) async {
     try {
       final now = DateTime.now();
-      debugPrint('[Finansije] Dodajem trošak: $naziv ($tip) = $iznos za ${mesec ?? now.month}/${godina ?? now.year}');
       final row = await _supabase
           .from('v2_finansije_troskovi')
           .insert({
@@ -67,12 +64,10 @@ class V2FinansijeService {
           })
           .select()
           .single();
-      V2MasterRealtimeManager.instance.upsertToCache('v2_finansije_troskovi', row);
-      debugPrint('[Finansije] Trošak dodat uspešno: $naziv');
+      V2MasterRealtimeManager.instance.v2UpsertToCache('v2_finansije_troskovi', row);
 
       return true;
     } catch (e) {
-      debugPrint('[Finansije] Greška pri dodavanju troška $naziv: $e');
       return false;
     }
   }
@@ -81,10 +76,9 @@ class V2FinansijeService {
   static Future<bool> deleteTrosak(String id) async {
     try {
       await _supabase.from('v2_finansije_troskovi').update({'aktivan': false}).eq('id', id);
-      V2MasterRealtimeManager.instance.patchCache('v2_finansije_troskovi', id, {'aktivan': false});
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_finansije_troskovi', id, {'aktivan': false});
       return true;
     } catch (e) {
-      debugPrint('[Finansije] deleteTrosak greška: $e');
       return false;
     }
   }
@@ -132,7 +126,7 @@ class V2FinansijeService {
       final List<String> dnevniDuznici = [];
 
       for (final id in duznici) {
-        final p = V2MasterRealtimeManager.instance.getPutnikById(id);
+        final p = V2MasterRealtimeManager.instance.v2GetPutnikById(id);
         if (p == null) continue;
         final String tabela = (p['_tabela'] as String? ?? '');
         final tip = tabela == 'v2_radnici'
@@ -169,7 +163,7 @@ class V2FinansijeService {
         }
 
         for (final id in dnevniDuznici) {
-          final p = V2MasterRealtimeManager.instance.getPutnikById(id);
+          final p = V2MasterRealtimeManager.instance.v2GetPutnikById(id);
           if (p == null) continue;
           final cenaPoDanu = (p['cena_po_danu'] as num?)?.toDouble() ?? (p['cena'] as num?)?.toDouble();
           final brojVoznji = voznjePoId[id] ?? 0;
@@ -179,7 +173,6 @@ class V2FinansijeService {
 
       return ukupnoDug;
     } catch (e) {
-      debugPrint('[Finansije] Greška pri računanju potraživanja: $e');
       return 0;
     }
   }
@@ -269,7 +262,6 @@ class V2FinansijeService {
         endNedelja: sundayThisWeek,
       );
     } catch (e) {
-      debugPrint('[Finansije] Greška pri dohvatanju izveštaja: $e');
       return _getEmptyIzvestaj();
     }
   }
@@ -352,7 +344,6 @@ class V2FinansijeService {
         'neto': prihod - troskovi,
       };
     } catch (e) {
-      debugPrint('[Finansije] Greška custom report: $e');
       return {'prihod': 0, 'voznje': 0, 'troskovi': 0, 'neto': 0};
     }
   }
@@ -369,7 +360,6 @@ class V2FinansijeService {
         final izvestaj = await getIzvestaj();
         if (!controller.isClosed) controller.add(izvestaj);
       } catch (e) {
-        debugPrint('[Finansije] streamIzvestaj greška: $e');
       }
     }
 

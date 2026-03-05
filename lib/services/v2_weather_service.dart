@@ -175,7 +175,6 @@ class V2WeatherService {
                   break;
                 }
               } catch (e) {
-                debugPrint('[V2WeatherService] Greška pri parsiranju hourly vremena: $e');
               }
             }
           }
@@ -204,7 +203,6 @@ class V2WeatherService {
         return weatherData;
       }
     } catch (e) {
-      debugPrint('[V2WeatherService] Greška u getWeatherData($grad): $e');
       return null;
     }
 

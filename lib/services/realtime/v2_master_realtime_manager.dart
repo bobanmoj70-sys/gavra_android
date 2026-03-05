@@ -137,7 +137,6 @@ class V2MasterRealtimeManager {
 
   Future<void> initialize() async {
     if (_initialized) {
-      debugPrint('⚠️ [V2MasterRealtimeManager] initialize() pozvan drugi put — preskačem');
       return;
     }
     if (!isSupabaseReady) {
@@ -145,7 +144,6 @@ class V2MasterRealtimeManager {
       return;
     }
     _loadedDate = _today();
-    debugPrint('🚀 [V2MasterRealtimeManager] Inicijalizacija za datum=$_loadedDate ...');
 
     // Pretplati se na sve tabele PRE nego što počne DB fetch — eliminise "mrtvu zonu"
     // od ~100-500ms u kojoj Realtime event može stići a kanal još ne postoji.
@@ -169,7 +167,7 @@ class V2MasterRealtimeManager {
 
     await Future.wait([
       _loadPolasciCache(),
-      loadStatistikaCache(),
+      v2LoadStatistikaCache(),
       _loadPutniciCaches(),
       _loadInfraCache(),
       _loadRacuniCache(),
@@ -177,45 +175,29 @@ class V2MasterRealtimeManager {
 
     _initialized = true;
 
-    debugPrint(
-      '✅ [V2MasterRealtimeManager] Inicijalizovano: '
-      'polasci=${polasciCache.length}, '
-      'statistika=${statistikaCache.length}, '
-      'radnici=${radniciCache.length}, '
-      'ucenici=${uceniciCache.length}, '
-      'dnevni=${dnevniCache.length}, '
-      'posiljke=${posiljkeCache.length}, '
-      'vozaci=${vozaciCache.length}, '
-      'adrese=${adreseCache.length}',
-    );
   }
 
   /// Forsira refresh polasciCache bez promjene dana (npr. nakon ručnog dodavanja termina)
-  Future<void> refreshPolasciCache() async {
+  Future<void> v2RefreshPolasciCache() async {
     polasciCache.clear();
     await _loadPolasciCache();
-    debugPrint('🔄 [V2MasterRealtimeManager] polasciCache osvežen: ${polasciCache.length}');
   }
 
   /// Poziva se iz AppLifecycleObserver kad datum nije isti
-  Future<void> refreshForNewDay() async {
+  Future<void> v2RefreshForNewDay() async {
     final today = _today();
     if (_loadedDate == today) return;
-    debugPrint('🔄 [V2MasterRealtimeManager] Novi dan ($today) — osvežavam dnevne cache-ove...');
     _loadedDate = today;
     polasciCache.clear();
     statistikaCache.clear();
     await Future.wait([
       _loadPolasciCache(),
-      loadStatistikaCache(),
+      v2LoadStatistikaCache(),
     ]);
     if (!_cacheChangeController.isClosed) {
       _cacheChangeController.add('v2_polasci');
       _cacheChangeController.add('v2_statistika_istorija');
     }
-    debugPrint(
-      '✅ [V2MasterRealtimeManager] Dnevni cache osvežen: polasci=${polasciCache.length}, statistika=${statistikaCache.length}',
-    );
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -242,14 +224,13 @@ class V2MasterRealtimeManager {
       for (final row in rows) {
         polasciCache[row['id'].toString()] = Map<String, dynamic>.from(row);
       }
-      debugPrint('📦 [V2MasterRealtimeManager] polasciCache: ${polasciCache.length} (svi dani)');
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadPolasciCache: $e');
     }
   }
 
   /// Puni/osvežava statistikaCache za tekući dan — poziva se on-demand (pazar, profil, lista)
-  Future<void> loadStatistikaCache() async {
+  Future<void> v2LoadStatistikaCache() async {
     try {
       final rows = await _db
           .from('v2_statistika_istorija')
@@ -263,7 +244,6 @@ class V2MasterRealtimeManager {
       for (final row in rows) {
         statistikaCache[row['id'].toString()] = Map<String, dynamic>.from(row);
       }
-      debugPrint('📦 [V2MasterRealtimeManager] statistikaCache: ${statistikaCache.length}');
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadStatistikaCache: $e');
     }
@@ -316,13 +296,6 @@ class V2MasterRealtimeManager {
         posiljkeCache[row['id'].toString()] = _tagRow(row, 'v2_posiljke');
       }
 
-      debugPrint(
-        '📦 [V2MasterRealtimeManager] putnici: '
-        'radnici=${radniciCache.length}, '
-        'ucenici=${uceniciCache.length}, '
-        'dnevni=${dnevniCache.length}, '
-        'posiljke=${posiljkeCache.length}',
-      );
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadPutniciCaches: $e');
     }
@@ -378,13 +351,6 @@ class V2MasterRealtimeManager {
       // Osvježi V2VozacCache i AppSettings paralelno — oba čitaju iz već popunjenih cache-ova
       await Future.wait([V2VozacCache.initialize(), V2AppSettingsService.initialize()]);
 
-      debugPrint(
-        '📦 [V2MasterRealtimeManager] infra: '
-        'vozaci=${vozaciCache.length}, '
-        'vozila=${vozilaCache.length}, '
-        'adrese=${adreseCache.length}, '
-        'lokacije=${lokacijeCache.length}',
-      );
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadInfraCache: $e');
     }
@@ -405,7 +371,6 @@ class V2MasterRealtimeManager {
           if (rowId != null) _racuniIdToPutnikId[rowId] = putnikId;
         }
       }
-      debugPrint('📦 [V2MasterRealtimeManager] racuniCache=${racuniCache.length}');
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadRacuniCache: $e');
     }
@@ -416,7 +381,7 @@ class V2MasterRealtimeManager {
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Ažurira odgovarajući cache na INSERT/UPDATE event
-  void upsertToCache(String table, Map<String, dynamic> record) {
+  void v2UpsertToCache(String table, Map<String, dynamic> record) {
     final id = record['id']?.toString();
     if (id == null) return;
 
@@ -478,7 +443,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Uklanja red iz cache-a na DELETE event
-  void removeFromCache(String table, String id) {
+  void v2RemoveFromCache(String table, String id) {
     // v2_racuni: keyed by putnik_id, ali Realtime DELETE payload šalje record 'id' (UUID reda)
     // Trebamo pronaći putnik_id koji odgovara tom id-u
     if (table == 'v2_racuni') {
@@ -496,7 +461,7 @@ class V2MasterRealtimeManager {
 
   /// Optimistički patch — ažurira samo određena polja postojećeg cache reda i odmah emituje onCacheChanged.
   /// Koristi se nakon lokalnog DB write-a da se UI odmah osvježi bez čekanja WebSocket event-a.
-  void patchCache(String table, String id, Map<String, dynamic> fields) {
+  void v2PatchCache(String table, String id, Map<String, dynamic> fields) {
     final target = _cacheForTable(table);
     if (target == null) return;
     final existing = target[id];
@@ -590,10 +555,10 @@ class V2MasterRealtimeManager {
           callback: (payload) {
             if (payload.eventType == PostgresChangeEvent.delete) {
               final id = payload.oldRecord['id']?.toString();
-              if (id != null) removeFromCache(table, id);
+              if (id != null) v2RemoveFromCache(table, id);
             } else {
               final rec = payload.newRecord;
-              if (rec.isNotEmpty) upsertToCache(table, rec);
+              if (rec.isNotEmpty) v2UpsertToCache(table, rec);
             }
 
             if (_controllers[table] != null && !_controllers[table]!.isClosed) {
@@ -627,7 +592,7 @@ class V2MasterRealtimeManager {
         _cacheChangeController.add('v2_polasci');
       } else if (table == 'v2_statistika_istorija') {
         statistikaCache.clear();
-        await loadStatistikaCache();
+        await v2LoadStatistikaCache();
         _cacheChangeController.add('v2_statistika_istorija');
       } else if (table == 'v2_racuni') {
         racuniCache.clear();
@@ -663,7 +628,6 @@ class V2MasterRealtimeManager {
           _fillCache(targetCache, rows);
         }
         _cacheChangeController.add(table);
-        debugPrint('✅ [V2MasterRealtimeManager] Reconnect reload "$table": ${targetCache.length} redova');
       }
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _reloadCacheForTable "$table": $e');
@@ -676,7 +640,6 @@ class V2MasterRealtimeManager {
         // Ako je ovo reconnect (ne prvi subscribe), reload cache da popunimo stale podatke
         if ((_reconnectAttempts[table] ?? 0) > 0) {
           _reconnectAttempts.remove(table);
-          debugPrint('🔄 [V2MasterRealtimeManager] Reconnect "$table" — osvježavam cache...');
           _reloadCacheForTable(table);
         }
         break;
@@ -755,7 +718,7 @@ class V2MasterRealtimeManager {
   void _invalidatePutniciCache() => _allPutniciCache = null;
 
   /// Vraća sve aktivne putnike iz sva 4 cache-a objedinjeno — O(1) za ponovljene pozive
-  List<Map<String, dynamic>> getAllPutnici() {
+  List<Map<String, dynamic>> v2GetAllPutnici() {
     return _allPutniciCache ??= [
       ...radniciCache.values,
       ...uceniciCache.values,
@@ -765,7 +728,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Vraća putnika po ID-u pretražujući sva 4 cache-a
-  Map<String, dynamic>? getPutnikById(String id) {
+  Map<String, dynamic>? v2GetPutnikById(String id) {
     return radniciCache[id] ?? uceniciCache[id] ?? dnevniCache[id] ?? posiljkeCache[id];
   }
 
@@ -809,7 +772,7 @@ class V2MasterRealtimeManager {
   static const List<String> putnikTabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
 
   /// Ažurira putnika u datoj tabeli
-  Future<Map<String, dynamic>> updatePutnik(
+  Future<Map<String, dynamic>> v2UpdatePutnik(
     String id,
     Map<String, dynamic> updates,
     String tabela,
@@ -820,12 +783,12 @@ class V2MasterRealtimeManager {
     data.remove('tip');
     final row = await _db.from(tabela).update(data).eq('id', id).select().single();
     final result = {...row, '_tabela': tabela};
-    upsertToCache(tabela, result);
+    v2UpsertToCache(tabela, result);
     return result;
   }
 
   /// Kreira novog putnika u datoj tabeli
-  Future<Map<String, dynamic>> createPutnik(
+  Future<Map<String, dynamic>> v2CreatePutnik(
     Map<String, dynamic> data,
     String tabela,
   ) async {
@@ -838,19 +801,19 @@ class V2MasterRealtimeManager {
     if (d['id'] == null) d.remove('id');
     final row = await _db.from(tabela).insert(d).select().single();
     final result = {...row, '_tabela': tabela};
-    upsertToCache(tabela, result);
+    v2UpsertToCache(tabela, result);
     return result;
   }
 
   /// Briše putnika i sve vezane podatke (trajno)
-  Future<bool> deletePutnik(String id, String tabela) async {
+  Future<bool> v2DeletePutnik(String id, String tabela) async {
     try {
       await _db.from('v2_pin_zahtevi').delete().eq('putnik_id', id);
       await _db.from('v2_polasci').delete().eq('putnik_id', id);
       await _db.from('v2_vozac_putnik').delete().eq('putnik_id', id);
       await _db.from(tabela).delete().eq('id', id);
       // Ukloni putnika iz glavnog cache-a
-      removeFromCache(tabela, id);
+      v2RemoveFromCache(tabela, id);
       // Odmah očisti sve vezane redove iz polasciCache i vozacPutnikCache
       // (Realtime DELETE eventi bi stigli jedan po jedan — ovo ih preduhitruje)
       polasciCache.removeWhere((_, v) => v['putnik_id']?.toString() == id);
@@ -872,7 +835,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Ažurira PIN putnika
-  Future<void> updatePin(String id, String noviPin, String tabela) async {
+  Future<void> v2UpdatePin(String id, String noviPin, String tabela) async {
     await _db.from(tabela).update({
       'pin': noviPin,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -881,7 +844,7 @@ class V2MasterRealtimeManager {
 
   /// Dohvata podatke firme iz v2_racuni po putnik_id
   /// Prvo provjeri cache, pa udari DB samo ako nema
-  Future<Map<String, dynamic>?> getFirma(String putnikId) async {
+  Future<Map<String, dynamic>?> v2GetFirma(String putnikId) async {
     final cached = racuniCache[putnikId];
     if (cached != null) return cached;
     try {
@@ -901,7 +864,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Upsert podataka firme u v2_racuni
-  Future<void> upsertFirma({
+  Future<void> v2UpsertFirma({
     required String putnikId,
     required String putnikTabela,
     required String firmaNaziv,
@@ -923,7 +886,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Dohvata putnika po PIN-u iz date tabele
-  Future<Map<String, dynamic>?> getByPin(String pin, String tabela) async {
+  Future<Map<String, dynamic>?> v2GetByPin(String pin, String tabela) async {
     final row = await _db
         .from(tabela)
         .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
@@ -934,8 +897,8 @@ class V2MasterRealtimeManager {
   }
 
   /// Dohvata putnika iz bilo koje od 4 tabele — prvo cache, pa DB
-  Future<Map<String, dynamic>?> findPutnikById(String id) async {
-    final cached = getPutnikById(id);
+  Future<Map<String, dynamic>?> v2FindPutnikById(String id) async {
+    final cached = v2GetPutnikById(id);
     if (cached != null) return cached;
     for (final tabela in putnikTabele) {
       final row = await _db
@@ -949,7 +912,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Dohvata putnika po telefonu (prvo pretražuje cache, pa DB ako nije nađen)
-  Future<Map<String, dynamic>?> findByTelefon(String telefon) async {
+  Future<Map<String, dynamic>?> v2FindByTelefon(String telefon) async {
     if (telefon.isEmpty) return null;
     final normalized = _normalizePhone(telefon);
 
@@ -993,7 +956,7 @@ class V2MasterRealtimeManager {
   ///
   /// Koristi se u svim servisima umjesto ponovljenog StreamController boilerplatea.
   /// Emituje odmah (Future.microtask) i zatim na svaku promjenu odgovarajućih tabela.
-  Stream<T> streamFromCache<T>({
+  Stream<T> v2StreamFromCache<T>({
     required List<String> tables,
     required T Function() build,
   }) {
@@ -1020,9 +983,9 @@ class V2MasterRealtimeManager {
   }
 
   /// Stream aktivnih putnika iz cache-a — 0 DB upita
-  Stream<List<V2RegistrovaniPutnik>> streamAktivniPutnici() => streamFromCache<List<V2RegistrovaniPutnik>>(
+  Stream<List<V2RegistrovaniPutnik>> streamAktivniPutnici() => v2StreamFromCache<List<V2RegistrovaniPutnik>>(
         tables: putnikTabele,
-        build: () => getAllPutnici().map((row) => V2RegistrovaniPutnik.fromMap(row)).toList()
+        build: () => v2GetAllPutnici().map((row) => V2RegistrovaniPutnik.fromMap(row)).toList()
           ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase())),
       );
 

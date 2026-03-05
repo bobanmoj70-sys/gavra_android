@@ -26,7 +26,6 @@ bool get isSupabaseReady {
     Supabase.instance.client;
     return true;
   } catch (e) {
-    debugPrint('[Globals] Supabase client NOT ready: $e');
     return false;
   }
 }

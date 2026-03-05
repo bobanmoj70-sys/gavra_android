@@ -11,6 +11,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/v2_putnik.dart';
 import '../services/v2_polasci_service.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_text_utils.dart';
 
@@ -28,32 +29,15 @@ class V2PrintingService {
     BuildContext context,
   ) async {
     try {
-      final isoDate = DateTime.now().toIso8601String().split('T')[0];
-
       List<V2Putnik> sviPutnici = await V2PutnikStreamService()
           .streamKombinovaniPutniciFiltered(
-            isoDate: isoDate,
+            dan: V2DanUtils.odPunogNaziva(selectedDay),
             grad: selectedGrad,
             vreme: selectedVreme,
           )
           .first;
 
-      String getDayAbbreviation(String fullDayName) {
-        const map = {
-          'ponedeljak': 'pon',
-          'utorak': 'uto',
-          'sreda': 'sre',
-          'cetvrtak': 'cet',
-          'četvrtak': 'cet',
-          'petak': 'pet',
-          'subota': 'sub',
-          'nedelja': 'ned',
-          'nedjelja': 'ned',
-        };
-        return map[fullDayName.toLowerCase()] ?? fullDayName.toLowerCase().substring(0, 3);
-      }
-
-      final danBaza = getDayAbbreviation(selectedDay);
+      final danBaza = V2DanUtils.odPunogNaziva(selectedDay);
 
       List<V2Putnik> putnici = sviPutnici.where((v2Putnik) {
         final normalizedStatus = V2TextUtils.normalizeText(v2Putnik.status ?? '');

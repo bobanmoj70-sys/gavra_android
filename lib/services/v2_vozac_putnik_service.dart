@@ -120,10 +120,9 @@ class V2VozacPutnikService {
           )
           .select()
           .single();
-      _rm.upsertToCache('v2_vozac_putnik', row);
+      _rm.v2UpsertToCache('v2_vozac_putnik', row);
       return true;
     } catch (e) {
-      debugPrint('[V2VozacPutnikService] Greška u set(): $e');
       return false;
     }
   }
@@ -146,11 +145,10 @@ class V2VozacPutnikService {
           .map((e) => e.key)
           .toList();
       for (final id in toRemove) {
-        _rm.removeFromCache('v2_vozac_putnik', id);
+        _rm.v2RemoveFromCache('v2_vozac_putnik', id);
       }
       return true;
     } catch (e) {
-      debugPrint('[V2VozacPutnikService] Greška u delete(): $e');
       return false;
     }
   }
@@ -163,10 +161,9 @@ class V2VozacPutnikService {
           .map((e) => e.key)
           .toList();
       for (final id in toRemove) {
-        _rm.removeFromCache('v2_vozac_putnik', id);
+        _rm.v2RemoveFromCache('v2_vozac_putnik', id);
       }
     } catch (e) {
-      debugPrint('[V2VozacPutnikService] Greška u deleteForVozac(): $e');
     }
   }
 

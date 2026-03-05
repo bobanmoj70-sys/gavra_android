@@ -94,7 +94,6 @@ class V2RacunService {
       final trenutniBroj = response?['poslednji_broj'] as int? ?? 0;
       return '${trenutniBroj + 1}/$godina';
     } catch (e) {
-      debugPrint('V2RacunService.getTrenutniBrojRacuna error: $e');
       return '?/$godina';
     }
   }
@@ -177,7 +176,6 @@ class V2RacunService {
               .eq('putnik_id', v2Putnik.id?.toString() ?? '')
               .maybeSingle();
         } catch (e) {
-          debugPrint('V2RacunService: greška pri dohvatanju firma podataka: $e');
         }
 
         final stranica = await _kreirajRacunZaFirmuStranicu(

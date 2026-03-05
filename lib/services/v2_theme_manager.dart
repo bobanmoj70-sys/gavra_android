@@ -53,7 +53,6 @@ class V2ThemeManager extends ChangeNotifier {
         _currentTheme = defaultTheme;
       }
     } catch (e) {
-      debugPrint('[V2ThemeManager] Greška pri učitavanju teme, koristi default: $e');
       final defaultTheme = V2ThemeRegistry.defaultTheme;
       _currentThemeId = defaultTheme.id;
       _currentTheme = defaultTheme;
@@ -74,7 +73,6 @@ class V2ThemeManager extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_themePrefsKey, themeId);
     } catch (e) {
-      debugPrint('[V2ThemeManager] Greška pri čuvanju teme: $e');
     }
 
     _currentThemeId = themeId;

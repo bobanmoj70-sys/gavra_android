@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/v2_putnik.dart';
 import '../services/v2_polasci_service.dart';
 import '../theme.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_putnik_helpers.dart';
 import '../widgets/v2_putnik_list.dart';
 
@@ -28,7 +29,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
   void initState() {
     super.initState();
     _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
-      isoDate: V2PutnikHelpers.getWorkingDateIso(),
+      dan: V2DanUtils.odIso(V2PutnikHelpers.getWorkingDateIso()),
     );
     _setupSearchListener();
   }

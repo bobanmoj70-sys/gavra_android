@@ -33,7 +33,6 @@ class V2GorivoService {
           .single();
       return V2PumpaStanje.fromJson(response);
     } catch (e) {
-      debugPrint('[GorivoService] getStanje error: $e');
       return null;
     }
   }
@@ -110,10 +109,8 @@ class V2GorivoService {
         );
       }
 
-      debugPrint('[GorivoService] Tocenje dodato: $litri L za vozilo $voziloId');
       return true;
     } catch (e) {
-      debugPrint('[GorivoService] addTocenje error: $e');
       return false;
     }
   }
@@ -163,7 +160,6 @@ class V2GorivoService {
       lista.sort((a, b) => b.ukupnoLitri.compareTo(a.ukupnoLitri));
       return lista;
     } catch (e) {
-      debugPrint('[GorivoService] getStatistikePoVozilu error: $e');
       return [];
     }
   }

@@ -125,7 +125,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
     try {
       // Traži putnika po telefonu kroz sve v2_ tabele
-      final found = await V2MasterRealtimeManager.instance.findByTelefon(telefon);
+      final found = await V2MasterRealtimeManager.instance.v2FindByTelefon(telefon);
 
       Map<String, dynamic>? response;
       if (found != null) {
@@ -369,7 +369,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final tabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
       List<Map<String, dynamic>> matches = [];
       for (final tabela in tabele) {
-        final found = await V2MasterRealtimeManager.instance.getByPin(pin, tabela);
+        final found = await V2MasterRealtimeManager.instance.v2GetByPin(pin, tabela);
         if (found != null) {
           final storedPhone = found['telefon'] as String? ?? '';
           if (_normalizePhone(storedPhone) == normalizedInput) {
@@ -399,7 +399,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         // ... (ocisti saved credentials ako treba)
       }
     } catch (e) {
-      debugPrint('[V2PutnikLoginScreen] Login error: $e');
       setState(() => _errorMessage = 'Greška pri povezivanju: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);

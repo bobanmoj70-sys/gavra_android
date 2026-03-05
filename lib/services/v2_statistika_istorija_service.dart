@@ -45,7 +45,6 @@ class V2StatistikaIstorijaService {
 
       return await query.maybeSingle();
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] Greška u getLogEntry: $e');
       return null;
     }
   }
@@ -84,10 +83,7 @@ class V2StatistikaIstorijaService {
       }
     } else if (vozacImeParam != null && vozacImeParam.isNotEmpty) {
       vozacIme = vozacImeParam;
-      debugPrint('[dodajUplatu] vozacId NULL, koristim vozacImeParam=$vozacIme');
-    } else {
-      debugPrint('[V2StatistikaIstorijaService] dodajUplatu: vozacId je NULL ili prazan');
-    }
+    } else {}
 
     await _supabase.from('v2_statistika_istorija').insert({
       'putnik_id': putnikId,
@@ -134,10 +130,7 @@ class V2StatistikaIstorijaService {
       }
 
       final datumParsed = DateTime.tryParse(datumStr);
-      if (datumParsed == null) {
-        debugPrint(
-            '[V2StatistikaIstorijaService] logGeneric: neispravan datumStr="$datumStr", placeni_mesec/godina se nece upisati');
-      }
+      if (datumParsed == null) {}
       await _supabase.from('v2_statistika_istorija').insert({
         'tip': tip,
         'putnik_id': putnikId,
@@ -151,9 +144,7 @@ class V2StatistikaIstorijaService {
         if (datumParsed != null) 'placeni_mesec': datumParsed.month,
         if (datumParsed != null) 'placena_godina': datumParsed.year,
       });
-    } catch (e, stack) {
-      debugPrint('[V2StatistikaIstorijaService] Greška pri logovanju akcije ($tip): $e\n$stack');
-    }
+    } catch (e) {}
   }
 
   /// Logovanje potvrde zahteva (kada sistem ili admin potvrdi pending zahtev).
@@ -261,7 +252,6 @@ class V2StatistikaIstorijaService {
         }
         if (!controller.isClosed) controller.add(result);
       } catch (e) {
-        debugPrint('[V2StatistikaIstorijaService] streamPazar greška: $e');
         if (!controller.isClosed) controller.add({'_ukupno': 0});
       }
     }
@@ -299,7 +289,6 @@ class V2StatistikaIstorijaService {
           .order('datum', ascending: false);
       return List<Map<String, dynamic>>.from(rows);
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] getPlacanjaBatch greška: $e');
       return [];
     }
   }
@@ -323,7 +312,6 @@ class V2StatistikaIstorijaService {
           .order('datum', ascending: false);
       return List<Map<String, dynamic>>.from(rows);
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] getSveZapisiGodina greška: $e');
       rethrow;
     }
   }
@@ -343,9 +331,9 @@ class V2StatistikaIstorijaService {
   }
 
   /// Traži putnika po ID-u kroz sva 4 cache-a, sa DB fallback-om
-  static Future<Map<String, dynamic>?> findPutnikById(String id) async {
+  static Future<Map<String, dynamic>?> v2FindPutnikById(String id) async {
     final rm = V2MasterRealtimeManager.instance;
-    final row = rm.getPutnikById(id);
+    final row = rm.v2GetPutnikById(id);
     if (row != null) return row;
     for (final tabela in [
       V2RadniciService.tabela,
@@ -356,9 +344,7 @@ class V2StatistikaIstorijaService {
       try {
         final res = await _supabase.from(tabela).select().eq('id', id).maybeSingle();
         if (res != null) return {...res, '_tabela': tabela};
-      } catch (e) {
-        debugPrint('[V2StatistikaIstorijaService] findPutnikById fallback ($tabela) error: $e');
-      }
+      } catch (e) {}
     }
     return null;
   }
@@ -375,7 +361,6 @@ class V2StatistikaIstorijaService {
           .order('datum', ascending: false);
       return List<Map<String, dynamic>>.from(res);
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] dohvatiPlacanja error: $e');
       return [];
     }
   }
@@ -391,7 +376,6 @@ class V2StatistikaIstorijaService {
       }
       return ukupno;
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] dohvatiUkupnoPlaceno error: $e');
       return 0.0;
     }
   }
@@ -409,7 +393,6 @@ class V2StatistikaIstorijaService {
           .gte('datum', mesecStart);
       return res.length;
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] izracunajBrojVoznji error: $e');
       return 0;
     }
   }
@@ -427,7 +410,6 @@ class V2StatistikaIstorijaService {
           .gte('datum', mesecStart);
       return res.length;
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] izracunajBrojOtkazivanja error: $e');
       return 0;
     }
   }
@@ -485,7 +467,6 @@ class V2StatistikaIstorijaService {
       });
       return true;
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] upisPlacanjaULog error: $e');
       return false;
     }
   }

@@ -83,7 +83,6 @@ class V2OsrmService {
         putniciEta: parseResult.putniciEta, // ETA za svakog putnika
       );
     } catch (e) {
-      debugPrint('[V2OsrmService] optimizeRoute error: $e');
       return V2OsrmResult.error('Greška pri optimizaciji: $e');
     }
   }
@@ -118,7 +117,6 @@ class V2OsrmService {
           }
         }
       } catch (e) {
-        debugPrint('[V2OsrmService] _callOsrmWithRetry attempt $attempt error: $e');
       }
 
       if (attempt < V2RouteConfig.osrmMaxRetries) {
@@ -198,7 +196,6 @@ class V2OsrmService {
         putniciEta: putniciEta,
       );
     } catch (e) {
-      debugPrint('[V2OsrmService] _parseOsrmResponse error: $e');
       return null;
     }
   }

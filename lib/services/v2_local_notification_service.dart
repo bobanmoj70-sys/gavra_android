@@ -31,7 +31,6 @@ void notificationTapBackground(NotificationResponse notificationResponse) async 
       anonKey: anonKey,
     );
   } catch (e) {
-    debugPrint('[LocalNotif] notificationTapBackground init error: $e');
   }
 
   // 2. Prosledi hendleru
@@ -55,7 +54,6 @@ class V2LocalNotificationService {
     try {
       await flutterLocalNotificationsPlugin.cancelAll();
     } catch (e) {
-      debugPrint('[LocalNotif] Failed to clear notifications: $e');
     }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -142,7 +140,6 @@ class V2LocalNotificationService {
       try {
         await V2WakeLockService.wakeScreen(durationMs: 5000);
       } catch (e) {
-        debugPrint('[LocalNotif] Error waking screen: $e');
       }
 
       // Specijalna obrada za alternative notifikacije
@@ -175,7 +172,6 @@ class V2LocalNotificationService {
             return;
           }
         } catch (e) {
-          debugPrint('[LocalNotif] Error parsing payload for alternatives: $e');
         }
       }
 
@@ -224,7 +220,6 @@ class V2LocalNotificationService {
     } catch (e) {
       // Oslobodi lock i u slučaju greške
       _processingLocks.remove(dedupeKey);
-      debugPrint('[LocalNotif] showRealtimeNotification error: $e');
     }
   }
 
@@ -270,7 +265,6 @@ class V2LocalNotificationService {
             dedupeKey = data['notification_id'].toString();
           }
         } catch (e) {
-          debugPrint('[LocalNotif] Error parsing background payload: $e');
         }
       }
 
@@ -347,7 +341,6 @@ class V2LocalNotificationService {
     } catch (e) {
       // Oslobodi lock i u slučaju greške
       _processingLocks.remove(dedupeKey);
-      debugPrint('[LocalNotif] showNotificationFromBackground error: $e');
     }
   }
 
@@ -509,7 +502,7 @@ class V2LocalNotificationService {
       // Traži putnika po imenu iz cache-a — 0 DB querija
       String? putnikId;
       final rm = V2MasterRealtimeManager.instance;
-      final cached = rm.getAllPutnici().where((p) => p['ime'] == putnikIme && p['status'] != 'neaktivan').firstOrNull;
+      final cached = rm.v2GetAllPutnici().where((p) => p['ime'] == putnikIme && p['status'] != 'neaktivan').firstOrNull;
       putnikId = cached?['id'] as String?;
       if (putnikId == null) return null;
 
@@ -537,7 +530,6 @@ class V2LocalNotificationService {
 
       return null;
     } catch (e) {
-      debugPrint('[LocalNotif] _fetchPutnikFromDatabase error: $e');
       return null;
     }
   }
@@ -587,7 +579,7 @@ class V2LocalNotificationService {
       );
 
       // Dohvati tip korisnika iz cache-a
-      final putnikData = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+      final putnikData = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
       final userType = putnikData?['_tabela'] ?? 'V2Putnik';
 
       // LOG
@@ -601,7 +593,6 @@ class V2LocalNotificationService {
           detalji: 'Prihvaćen alternativni termin BC (Preko notifikacije)',
         );
       } catch (e) {
-        debugPrint('[LocalNotif] Error logging BC alternative: $e');
       }
 
       // Pošalji push notifikaciju putniku
@@ -612,7 +603,6 @@ class V2LocalNotificationService {
         data: {'type': 'bc_alternativa_confirmed', 'termin': termin},
       );
     } catch (e) {
-      debugPrint('[LocalNotif] _handleBcAlternativaAction error: $e');
     }
   }
 
@@ -640,7 +630,7 @@ class V2LocalNotificationService {
       );
 
       // Dohvati tip korisnika iz cache-a
-      final putnikResult = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+      final putnikResult = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
       final userType = putnikResult?['_tabela'] ?? 'V2Putnik';
 
       // LOG
@@ -654,7 +644,6 @@ class V2LocalNotificationService {
           detalji: 'Prihvaćen alternativni termin VS (Preko notifikacije)',
         );
       } catch (e) {
-        debugPrint('[LocalNotif] Error logging VS alternative: $e');
       }
 
       // Pošalji push notifikaciju putniku
@@ -665,7 +654,6 @@ class V2LocalNotificationService {
         data: {'type': 'vs_alternativa_confirmed', 'termin': termin},
       );
     } catch (e) {
-      debugPrint('[LocalNotif] _handleVsAlternativaAction error: $e');
     }
   }
 
@@ -734,7 +722,6 @@ class V2LocalNotificationService {
         payload: payload,
       );
     } catch (e) {
-      debugPrint('[LocalNotif] showV2AlternativaNotification error: $e');
     }
   }
 
@@ -748,7 +735,6 @@ class V2LocalNotificationService {
       final dan = data['dan']?.toString();
 
       if (putnikId == null || dan == null) {
-        debugPrint('[LocalNotif] [Alternativa] Nedostaje putnik_id ili dan u payload-u');
         return;
       }
 
@@ -764,12 +750,9 @@ class V2LocalNotificationService {
       );
 
       if (success) {
-        debugPrint('[LocalNotif] [Alternativa] Prihvaćeno: $selectedTime ($grad, $dan)');
       } else {
-        debugPrint('[LocalNotif] [Alternativa] Nije uspelo prihvatanje alternative');
       }
     } catch (e) {
-      debugPrint('[LocalNotif] _handleV2AlternativaAction error: $e');
     }
   }
 }
@@ -794,7 +777,6 @@ class V2WakeLockService {
       });
       return result ?? false;
     } catch (e) {
-      debugPrint('[V2WakeLockService] WakeLock nije dostupan ili greška: $e');
       return false;
     }
   }

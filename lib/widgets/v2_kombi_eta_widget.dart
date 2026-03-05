@@ -75,7 +75,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
       } else {
         // FALLBACK: cache jos nije popunjen (prva sekunda pri startu)
         // Radi jedan DB upit i popuni lokacijeCache
-        debugPrint('[KombiEta] lokacijeCache prazan — fallback DB upit');
         final data = await supabase
             .from('v2_vozac_lokacije')
             .select('id,vozac_id,lat,lng,grad,vreme_polaska,smer,putnici_eta,aktivan,updated_at')
@@ -83,7 +82,7 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
         if (!mounted) return;
         // Ažuriraj cache kroz upsertToCache — emituje onCacheChanged i prolazi kroz validaciju
         for (final row in data as List<dynamic>) {
-          V2MasterRealtimeManager.instance.upsertToCache('v2_vozac_lokacije', Map<String, dynamic>.from(row as Map));
+          V2MasterRealtimeManager.instance.v2UpsertToCache('v2_vozac_lokacije', Map<String, dynamic>.from(row as Map));
         }
         list = V2MasterRealtimeManager.instance.lokacijeCache.values.toList();
       }
@@ -228,7 +227,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
         });
       }
     } catch (e) {
-      debugPrint('[KombiEta] Greška pri čitanju v2_polasci: $e');
     }
   }
 

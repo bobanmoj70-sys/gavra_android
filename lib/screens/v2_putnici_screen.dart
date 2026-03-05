@@ -65,7 +65,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         if (mounted && _lastPutnikIds.isNotEmpty) {
           // Sync — 0 DB upita, čita direktno iz RM cache-a
           final putnici = _rm
-              .getAllPutnici()
+              .v2GetAllPutnici()
               .map((r) => V2RegistrovaniPutnik.fromMap(r))
               .where((p) => _lastPutnikIds.contains(p.id))
               .toList();
@@ -82,7 +82,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     try {
       await _ucitajStvarnaPlacanja(putnici);
     } catch (e) {
-      debugPrint('🔴 [RegistrovaniPutnici._ucitajSvePodatke] Error: $e');
     }
   }
 
@@ -104,7 +103,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
       // 1 Iz statistikaCache (danas, 0 DB) — dopuni plaćanja tekućeg dana
       final rm = V2MasterRealtimeManager.instance;
-      if (rm.statistikaCache.isEmpty) await rm.loadStatistikaCache();
+      if (rm.statistikaCache.isEmpty) await rm.v2LoadStatistikaCache();
       for (final row in rm.statistikaCache.values) {
         final putnikId = row['putnik_id'] as String?;
         if (putnikId == null || !placanja.containsKey(putnikId)) continue;
@@ -139,7 +138,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
           if (iznos > placanja[putnikId]!) placanja[putnikId] = iznos;
         }
       } catch (e) {
-        debugPrint('[V2PutniciScreen] Error: $e');
       }
       if (mounted) {
         // ?? ANTI-REBUILD OPTIMIZATION: Samo update ako su se podaci stvarno promenili
@@ -937,7 +935,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
   Future<void> _postaviStatus(V2RegistrovaniPutnik v2Putnik, String noviStatus) async {
     try {
-      await _rm.updatePutnik(
+      await _rm.v2UpdatePutnik(
         v2Putnik.id,
         {'status': noviStatus},
         v2Putnik.v2Tabela,
@@ -1075,7 +1073,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
     if (potvrda == true && mounted) {
       try {
-        final success = await _rm.deletePutnik(v2Putnik.id, v2Putnik.v2Tabela);
+        final success = await _rm.v2DeletePutnik(v2Putnik.id, v2Putnik.v2Tabela);
 
         if (success && mounted) {
           V2AppSnackBar.success(context, '${v2Putnik.ime} je uspešno obrisan');

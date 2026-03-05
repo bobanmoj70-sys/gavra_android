@@ -207,7 +207,6 @@ class V2UnifiedGeocodingService {
 
       return _createPosition(lat, lng);
     } catch (e) {
-      debugPrint('[V2UnifiedGeocodingService] Greška pri parsiranju koordinata "$coords": $e');
       return null;
     }
   }
@@ -249,7 +248,6 @@ class V2UnifiedGeocodingService {
         );
       }
     } catch (e) {
-      debugPrint('[V2UnifiedGeocodingService] Greška pri snimanju koordinata: $e');
     }
   }
 
@@ -394,7 +392,6 @@ class V2UnifiedGeocodingService {
         }
       }
     } catch (e) {
-      debugPrint('[V2UnifiedGeocodingService] Photon error: $e');
     }
     return null;
   }

@@ -47,39 +47,32 @@ class V2AuthManager {
       final String? vozacId = vozac?.id;
 
       if (vozacId == null || vozacId.isEmpty || driverName.isEmpty) {
-        debugPrint('[V2AuthManager] Vozač nije identifikovan — preskačem registraciju tokena');
         return;
       }
 
       // 1. FCM token (Google/Samsung uređaji)
       final fcmToken = await V2FirebaseService.getFCMToken();
       if (fcmToken != null && fcmToken.isNotEmpty) {
-        debugPrint('[V2AuthManager] FCM token: ${fcmToken.substring(0, 30)}...');
         final success = await V2PushTokenService.registerToken(
           token: fcmToken,
           provider: 'fcm',
           vozacId: vozacId,
         );
-        debugPrint('[V2AuthManager] FCM registracija: ${success ? "USPEH" : "NEUSPEH"}');
       }
 
       // 2. HMS token (Huawei uređaji)
       try {
         final hmsToken = await V2HuaweiPushService().getHMSToken();
         if (hmsToken != null && hmsToken.isNotEmpty) {
-          debugPrint('[V2AuthManager] HMS token: ${hmsToken.substring(0, 10)}...');
           final success = await V2PushTokenService.registerToken(
             token: hmsToken,
             provider: 'huawei',
             vozacId: vozacId,
           );
-          debugPrint('[V2AuthManager] HMS registracija: ${success ? "USPEH" : "NEUSPEH"}');
         }
       } catch (e) {
-        debugPrint('[V2AuthManager] HMS nije dostupan: $e');
       }
     } catch (e) {
-      debugPrint('[V2AuthManager] Greška pri ažuriranju tokena: $e');
     }
   }
 
@@ -101,7 +94,6 @@ class V2AuthManager {
         return _cachedDriverName;
       }
     } catch (e) {
-      debugPrint('⚠️ [V2AuthManager] Supabase nedostupan, koristim lokalni cache: $e');
     }
 
     // 2. Offline fallback — stari lokalni podatak
@@ -124,7 +116,6 @@ class V2AuthManager {
         try {
           token = await V2HuaweiPushService().getHMSToken();
         } catch (e) {
-          debugPrint('[V2AuthManager] Greška pri čitanju HMS tokena: $e');
         }
       }
 
@@ -149,7 +140,6 @@ class V2AuthManager {
         }
       }
     } catch (e) {
-      debugPrint('[V2AuthManager] Greška pri čitanju iz Supabase: $e');
     }
     return null;
   }
@@ -182,14 +172,12 @@ class V2AuthManager {
           }
         }
       } catch (e) {
-        debugPrint('[V2AuthManager] Greška pri brisanju push tokena: $e');
       }
 
       // 4. Očisti Firebase session
       try {
         await V2FirebaseService.clearCurrentDriver();
       } catch (e) {
-        debugPrint('[V2AuthManager] Greška pri čišćenju Firebase sesije: $e');
       }
 
       // 5. Navigiraj na V2WelcomeScreen — koristi globalnu navigatorKey
@@ -205,7 +193,6 @@ class V2AuthManager {
         );
       }
     } catch (e) {
-      debugPrint('[V2AuthManager] Greška tokom logout-a: $e');
       try {
         if (navigatorKey.currentState != null) {
           navigatorKey.currentState!.pushAndRemoveUntil(
@@ -214,7 +201,6 @@ class V2AuthManager {
           );
         }
       } catch (e2) {
-        debugPrint('[V2AuthManager] Greška u logout error handler-u: $e2');
       }
     }
   }
@@ -229,7 +215,6 @@ class V2AuthManager {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_rememberedEmailKey, email);
     await prefs.setString(_rememberedDriverNameKey, driverName);
-    debugPrint('[V2AuthManager] Uređaj zapamćen: email=$email, driver=$driverName');
   }
 
   /// Vrati zapamćene kredencijale uređaja ili null ako nisu sačuvani.
@@ -251,7 +236,6 @@ class V2AuthManager {
       final age = DateTime.now().toUtc().difference(sessionTime);
       return age.inDays < 30;
     } catch (e) {
-      debugPrint('[V2AuthManager] Greška pri parsiranju session timestampa: $e');
       return false;
     }
   }

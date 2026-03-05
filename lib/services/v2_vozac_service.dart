@@ -21,10 +21,9 @@ class V2VozacService {
   static Future<V2Vozac> addVozac(V2Vozac vozac) async {
     try {
       final response = await _supabase.from('v2_vozaci').insert(vozac.toMap()).select().single();
-      _rm.upsertToCache('v2_vozaci', response);
+      _rm.v2UpsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
-      debugPrint('[V2VozacService] Greška u addVozac(): $e');
       rethrow;
     }
   }
@@ -33,13 +32,12 @@ class V2VozacService {
   static Future<V2Vozac> updateVozac(V2Vozac vozac) async {
     try {
       final response = await _supabase.from('v2_vozaci').update(vozac.toMap()).eq('id', vozac.id).select().single();
-      _rm.upsertToCache('v2_vozaci', response);
+      _rm.v2UpsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
-      debugPrint('[V2VozacService] Greška u updateVozac(): $e');
       rethrow;
     }
   }
 
-  static Stream<List<V2Vozac>> streamAllVozaci() => _rm.streamFromCache(tables: ['v2_vozaci'], build: getAllVozaci);
+  static Stream<List<V2Vozac>> streamAllVozaci() => _rm.v2StreamFromCache(tables: ['v2_vozaci'], build: getAllVozaci);
 }

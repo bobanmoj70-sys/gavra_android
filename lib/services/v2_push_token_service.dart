@@ -37,13 +37,11 @@ class V2PushTokenService {
   }) async {
     try {
       if (token.isEmpty) {
-        debugPrint('[PushToken] Prazan token, preskačem registraciju');
         return false;
       }
 
       // Proveri da li je Supabase spreman - ako nije, preskaci
       if (!_isSupabaseReady) {
-        debugPrint('[PushToken] Supabase nije spreman, preskačem registraciju');
         return false;
       }
 
@@ -53,7 +51,6 @@ class V2PushTokenService {
       // Obrisi stare tokene za istog putnika
       if (putnikId != null && putnikId.isNotEmpty) {
         await _supabase.from('v2_push_tokens').delete().eq('putnik_id', putnikId).timeout(timeout).catchError((e) {
-          debugPrint('[PushToken] Greska pri brisanju starih putnik tokena: $e');
           return <dynamic>[];
         });
       }
@@ -61,7 +58,6 @@ class V2PushTokenService {
       // Obrisi stare tokene za istog vozaca
       if (vozacId != null && vozacId.isNotEmpty) {
         await _supabase.from('v2_push_tokens').delete().eq('vozac_id', vozacId).timeout(timeout).catchError((e) {
-          debugPrint('[PushToken] Greska pri brisanju starih vozac tokena: $e');
           return <dynamic>[];
         });
       }
@@ -79,14 +75,11 @@ class V2PushTokenService {
 
       await _supabase.from('v2_push_tokens').upsert(data, onConflict: 'token').timeout(timeout);
 
-      debugPrint('[PushToken] Token registrovan: $provider/${token.substring(0, token.length.clamp(0, 20))}...');
-
       // Obriši pending token ako postoji (uspešno registrovan)
       await _clearPendingToken();
 
       return true;
     } catch (e) {
-      debugPrint('[PushToken] Greška pri registraciji (pokušaj ${retryCount + 1}): $e');
 
       // RETRY LOGIKA za 503/Timeout greške
       final errorStr = e.toString().toLowerCase();
@@ -154,11 +147,8 @@ class V2PushTokenService {
         return false;
       }
 
-      debugPrint('[PushToken] Token obrisan');
-
       return true;
     } catch (e) {
-      debugPrint('[PushToken] Greška pri brisanju tokena: $e');
       return false;
     }
   }
@@ -180,7 +170,6 @@ class V2PushTokenService {
           .where((t) => t['token']!.isNotEmpty)
           .toList();
     } catch (e) {
-      debugPrint('[PushToken] Greška pri dohvatanju tokena: $e');
       return [];
     }
   }
@@ -200,7 +189,6 @@ class V2PushTokenService {
           .where((t) => t['token']!.isNotEmpty)
           .toList();
     } catch (e) {
-      debugPrint('[PushToken] Greška pri dohvatanju vozačkih tokena: $e');
       return [];
     }
   }
@@ -218,7 +206,6 @@ class V2PutnikPushService {
   /// Registruje push token za putnika u push_tokens tabelu.
   static Future<bool> registerPutnikToken(dynamic putnikId, {String? putnikTabela}) async {
     try {
-      debugPrint('[PutnikPush] Registrujem token za putnika: $putnikId');
 
       String? token;
       String? provider;
@@ -226,24 +213,19 @@ class V2PutnikPushService {
       token = await V2FirebaseService.getFCMToken();
       if (token != null && token.isNotEmpty) {
         provider = 'fcm';
-        debugPrint('[PutnikPush] FCM token dobijen: ${token.substring(0, token.length.clamp(0, 20))}...');
       } else {
-        debugPrint('[PutnikPush] FCM token nije dostupan, pokusavam HMS...');
         token = await V2HuaweiPushService().initialize();
         if (token != null && token.isNotEmpty) {
           provider = 'huawei';
-          debugPrint('[PutnikPush] HMS token dobijen: ${token.substring(0, token.length.clamp(0, 20))}...');
         }
       }
 
       if (token == null || provider == null) {
-        debugPrint('[PutnikPush] Nijedan push provider nije dostupan!');
         return false;
       }
 
       final resolvedTabela = putnikTabela ??
-          V2MasterRealtimeManager.instance.getPutnikById(putnikId?.toString() ?? '')?['putnik_tabela']?.toString();
-      debugPrint('[PutnikPush] putnikTabela: $resolvedTabela');
+          V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId?.toString() ?? '')?['putnik_tabela']?.toString();
 
       final success = await V2PushTokenService.registerToken(
         token: token,
@@ -252,10 +234,8 @@ class V2PutnikPushService {
         putnikTabela: resolvedTabela,
       );
 
-      debugPrint('[PutnikPush] Registracija ${success ? "uspesna" : "neuspesna"}');
       return success;
     } catch (e) {
-      debugPrint('[PutnikPush] Greška pri registraciji: $e');
       return false;
     }
   }

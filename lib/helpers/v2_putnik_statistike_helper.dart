@@ -592,7 +592,7 @@ class V2PutnikStatistikeHelper {
   static Future<Map<String, dynamic>> _getStatistikeForPeriod(String putnikId, String period, String tipPutnika) async {
     try {
       final placeniMeseci = await _getPlaceniMeseci(putnikId);
-      final putnikMap = await V2MasterRealtimeManager.instance.findPutnikById(putnikId);
+      final putnikMap = await V2MasterRealtimeManager.instance.v2FindPutnikById(putnikId);
       final putnikObj = putnikMap != null ? V2RegistrovaniPutnik.fromMap(putnikMap) : null;
 
       Map<String, dynamic> stats = {};

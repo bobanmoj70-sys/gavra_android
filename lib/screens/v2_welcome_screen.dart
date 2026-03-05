@@ -121,7 +121,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
         _checkAutoLoginWhenReady();
       }
     } catch (e) {
-      debugPrint(' [V2WelcomeScreen] Init failed: $e');
     }
   }
 
@@ -163,13 +162,11 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
   // "" AUTO-LOGIN BEZ PESME - Proveri da li je vozač ve logovan
   Future<void> _checkAutoLogin() async {
-    debugPrint('🚀 [V2WelcomeScreen] _checkAutoLogin POKRENUT | mounted=$mounted');
     // ZPREKINI PESMU ako se auto-login aktivira
     await _stopAudio();
 
     // "PRVO PROVERI REMEMBERED DEVICE
     final rememberedDevice = await V2AuthManager.getRememberedDevice();
-    debugPrint('🚀 [V2WelcomeScreen] rememberedDevice=$rememberedDevice');
     if (!mounted) return;
     if (rememberedDevice != null) {
       // Auto-login sa zapamenim ureajem
@@ -200,7 +197,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
         );
         return;
       } catch (e) {
-        debugPrint(' [V2WelcomeScreen] Auto-login failed: $e');
         // Nastavi dalje bez auto-login-a
       }
     }
@@ -468,16 +464,12 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
       if (correctName == driverName) {
         // '? BIOMETRIJA: Traži samo ako sesija nije aktivna (vrati se posle dužeg vremena)
-        debugPrint('"[V2WelcomeScreen] Proveravam sesiju za $correctName...');
         final sessionActive = await V2AuthManager.isSessionActive();
-        debugPrint('"[V2WelcomeScreen] Sesija aktivna: $sessionActive');
 
         if (!sessionActive) {
           // Sesija je istekla - proveri biometriju ako je uključena
           final biometricAvailable = await V2BiometricService.isBiometricAvailable();
           final biometricEnabled = await V2BiometricService.isBiometricEnabled();
-
-          debugPrint('"[V2WelcomeScreen] Biometrija: available=$biometricAvailable, enabled=$biometricEnabled');
 
           if (biometricAvailable && biometricEnabled) {
             final authenticated = await V2BiometricService.authenticate(
@@ -499,7 +491,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
         }
 
         // Ovaj vozač je zapamen na ovom ureaju - DIREKTNO AUTO-LOGIN
-        debugPrint('"[V2WelcomeScreen] Postavljam sesiju za $correctName');
         await V2AuthManager.setCurrentDriver(correctName);
 
         if (!mounted) return;
@@ -560,7 +551,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                             _isAudioPlaying = true;
                           }
                         } catch (e) {
-                          debugPrint('[V2WelcomeScreen] Error: $e');
                         }
                       },
                       child: RepaintBoundary(
@@ -984,7 +974,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
         await V2PermissionService.requestAllPermissionsOnFirstLaunch(context);
       }
     } catch (e) {
-      debugPrint('[V2WelcomeScreen] Permission request failed: $e');
     }
   }
 

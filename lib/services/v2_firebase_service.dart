@@ -18,7 +18,6 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final payload = Map<String, dynamic>.from(message.data);
     await backgroundNotificationHandler(payload);
   } catch (e) {
-    debugPrint('[FirebaseBackground] Error in background handler: $e');
   }
 }
 
@@ -33,7 +32,6 @@ Future<void> backgroundNotificationHandler(Map<String, dynamic> payload) async {
       payload: jsonEncode(payload),
     );
   } catch (e) {
-    debugPrint('[FirebaseBackground] Error handling background notification: $e');
   }
 }
 
@@ -55,10 +53,8 @@ class V2FirebaseService {
       try {
         await messaging.requestPermission();
       } catch (e) {
-        debugPrint('[V2FirebaseService] Error requesting FCM permission: $e');
       }
     } catch (e) {
-      debugPrint('[V2FirebaseService] initialize error: $e');
     }
   }
 
@@ -86,7 +82,6 @@ class V2FirebaseService {
       final messaging = FirebaseMessaging.instance;
       return await messaging.getToken();
     } catch (e) {
-      debugPrint('[V2FirebaseService] getFCMToken error: $e');
       return null;
     }
   }
@@ -103,7 +98,6 @@ class V2FirebaseService {
       try {
         await messaging.requestPermission();
       } catch (e) {
-        debugPrint('[V2FirebaseService] Error requesting FCM permission (init): $e');
       }
 
       // Get token
@@ -118,7 +112,6 @@ class V2FirebaseService {
             await _registerTokenWithServer(newToken);
           },
           onError: (error) {
-            debugPrint('[V2FirebaseService] Token refresh error: $error');
           },
         );
 
@@ -127,7 +120,6 @@ class V2FirebaseService {
 
       return null;
     } catch (e) {
-      debugPrint('[V2FirebaseService] initializeAndRegisterToken error: $e');
       return null;
     }
   }
@@ -151,7 +143,6 @@ class V2FirebaseService {
         putnikIme = prefs.getString('registrovani_putnik_ime');
       }
     } catch (e) {
-      debugPrint('[V2FirebaseService] Error getting current user for FCM: $e');
     }
 
     // Registruj ako imamo bilo koga
@@ -170,10 +161,8 @@ class V2FirebaseService {
           putnikId: putnikId,
         );
       } else {
-        debugPrint('[V2FirebaseService] Korisnik nije ulogovan - FCM token nije registrovan na serveru');
       }
     } catch (e) {
-      debugPrint('[V2FirebaseService] _registerTokenWithServer error: $e');
     }
   }
 
@@ -204,11 +193,9 @@ class V2FirebaseService {
           V2LocalNotificationService.showRealtimeNotification(
               title: title, body: body, payload: message.data.isNotEmpty ? jsonEncode(message.data) : null);
         } catch (e) {
-          debugPrint('[V2FirebaseService] showRealtimeNotification error: $e');
         }
       },
       onError: (error) {
-        debugPrint('[V2FirebaseService] onMessage stream error: $error');
       },
     );
 
@@ -218,11 +205,9 @@ class V2FirebaseService {
           // Navigate or handle tap
           V2RealtimeNotificationService.handleInitialMessage(message.data);
         } catch (e) {
-          debugPrint('[V2FirebaseService] onMessageOpenedApp error: $e');
         }
       },
       onError: (error) {
-        debugPrint('[V2FirebaseService] onMessageOpenedApp stream error: $error');
       },
     );
   }

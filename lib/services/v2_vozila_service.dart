@@ -20,16 +20,15 @@ class V2VozilaService {
       ..sort((a, b) => a.registarskiBroj.compareTo(b.registarskiBroj));
   }
 
-  static Stream<List<V2Vozilo>> streamVozila() => _rm.streamFromCache(tables: ['v2_vozila'], build: getVozila);
+  static Stream<List<V2Vozilo>> streamVozila() => _rm.v2StreamFromCache(tables: ['v2_vozila'], build: getVozila);
 
   /// Ažuriraj kolsku knjigu vozila
   static Future<bool> updateKolskaKnjiga(String id, Map<String, dynamic> podaci) async {
     try {
       await _supabase.from('v2_vozila').update(podaci).eq('id', id);
-      _rm.patchCache('v2_vozila', id, podaci);
+      _rm.v2PatchCache('v2_vozila', id, podaci);
       return true;
     } catch (e) {
-      debugPrint('[V2VozilaService] Greška u updateKolskaKnjiga(): $e');
       return false;
     }
   }
@@ -240,7 +239,6 @@ class V2VozilaServisService {
           .order('datum', ascending: false);
       return (response as List).map((r) => V2VozilaServis.fromJson(r)).toList();
     } catch (e) {
-      debugPrint('[V2VozilaServisService] getIstorijuServisa error: $e');
       return [];
     }
   }
@@ -267,7 +265,6 @@ class V2VozilaServisService {
       });
       return true;
     } catch (e) {
-      debugPrint('[V2VozilaServisService] addIstorijuServisa error: $e');
       return false;
     }
   }
@@ -278,7 +275,6 @@ class V2VozilaServisService {
       await _db.from(tabela).delete().eq('id', id);
       return true;
     } catch (e) {
-      debugPrint('[V2VozilaServisService] deleteIstorijuServisa error: $e');
       return false;
     }
   }

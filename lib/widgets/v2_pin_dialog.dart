@@ -43,7 +43,7 @@ class _V2PinDialogState extends State<V2PinDialog> {
     setState(() => _isLoading = true);
 
     try {
-      await V2MasterRealtimeManager.instance.updatePin(widget.putnikId, newPin, widget.putnikTabela);
+      await V2MasterRealtimeManager.instance.v2UpdatePin(widget.putnikId, newPin, widget.putnikTabela);
 
       setState(() {
         _pin = newPin;

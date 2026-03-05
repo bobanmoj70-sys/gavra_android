@@ -50,10 +50,9 @@ class V2PumpaConfigService {
       await _db.from(tabela).update(data);
       // Patch cache za sve redove (pumpa ima samo 1 red)
       final id = _rm.pumpaCache.keys.firstOrNull;
-      if (id != null) _rm.patchCache(tabela, id, data);
+      if (id != null) _rm.v2PatchCache(tabela, id, data);
       return true;
     } catch (e) {
-      debugPrint('[V2PumpaConfigService] updateConfig error: $e');
       return false;
     }
   }
@@ -82,7 +81,6 @@ class V2PumpaPunjenjaService {
           .limit(limit);
       return (response as List).map((r) => V2PumpaPunjenje.fromJson(r)).toList();
     } catch (e) {
-      debugPrint('[V2PumpaPunjenjaService] getPunjenja error: $e');
       return [];
     }
   }
@@ -102,10 +100,8 @@ class V2PumpaPunjenjaService {
         'ukupno_cena': (cenaPoPLitru != null) ? litri * cenaPoPLitru : null,
         'napomena': napomena,
       });
-      debugPrint('[V2PumpaPunjenjaService] Punjenje dodato: $litri L');
       return true;
     } catch (e) {
-      debugPrint('[V2PumpaPunjenjaService] addPunjenje error: $e');
       return false;
     }
   }
@@ -116,7 +112,6 @@ class V2PumpaPunjenjaService {
       await _db.from(tabela).delete().eq('id', id);
       return true;
     } catch (e) {
-      debugPrint('[V2PumpaPunjenjaService] deletePunjenje error: $e');
       return false;
     }
   }
@@ -135,7 +130,6 @@ class V2PumpaPunjenjaService {
       if (response == null) return null;
       return (response['cena_po_litru'] as num?)?.toDouble();
     } catch (e) {
-      debugPrint('[V2PumpaPunjenjaService] getPoslednaCenaPoPLitru error: $e');
       return null;
     }
   }
@@ -169,7 +163,6 @@ class V2PumpaTocenjaService {
           .limit(limit);
       return (response as List).map((r) => V2PumpaTocenje.fromJson(r)).toList();
     } catch (e) {
-      debugPrint('[V2PumpaTocenjaService] getTocenja error: $e');
       return [];
     }
   }
@@ -190,10 +183,8 @@ class V2PumpaTocenjaService {
         'km_vozila': kmVozila,
         'napomena': napomena,
       });
-      debugPrint('[V2PumpaTocenjaService] Tocenje dodato: $litri L za vozilo $voziloId');
       return true;
     } catch (e) {
-      debugPrint('[V2PumpaTocenjaService] addTocenje error: $e');
       return false;
     }
   }
@@ -204,7 +195,6 @@ class V2PumpaTocenjaService {
       await _db.from(tabela).delete().eq('id', id);
       return true;
     } catch (e) {
-      debugPrint('[V2PumpaTocenjaService] deleteTocenje error: $e');
       return false;
     }
   }
@@ -222,7 +212,6 @@ class V2PumpaTocenjaService {
 
       return List<Map<String, dynamic>>.from(await query);
     } catch (e) {
-      debugPrint('[V2PumpaTocenjaService] getTocenjaZaStatistike error: $e');
       return [];
     }
   }

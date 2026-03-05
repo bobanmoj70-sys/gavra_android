@@ -105,7 +105,6 @@ class V2CenaObracunService {
       }
       return rezultati;
     } catch (e) {
-      debugPrint('V2CenaObracunService.prebrojJediniceMasovno error: $e');
       return {};
     }
   }

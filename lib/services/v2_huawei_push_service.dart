@@ -46,7 +46,6 @@ class V2HuaweiPushService {
   Future<String?> initialize() async {
     // iOS ne podrzava Huawei Push - preskoci
     if (Platform.isIOS) {
-      debugPrint('[HuaweiPush] iOS detected, skipping Huawei Push');
       return null;
     }
 
@@ -68,18 +67,15 @@ class V2HuaweiPushService {
         }
       }
     } catch (e) {
-      debugPrint('[HuaweiPush] Error checking manufacturer: $e');
     }
 
     // Ako je vec inicijalizovan, vrati null
     if (_initialized) {
-      debugPrint('[HuaweiPush] Already initialized');
       return null;
     }
 
     // Ako je inicijalizacija u toku, sacekaj
     if (_initializing) {
-      debugPrint('[HuaweiPush] Initialization already in progress...');
       // Cekaj do 5 sekundi da se zavrsi tekuca inicijalizacija
       for (int i = 0; i < 50; i++) {
         await Future.delayed(const Duration(milliseconds: 100));
@@ -88,7 +84,6 @@ class V2HuaweiPushService {
       return null;
     }
 
-    debugPrint('[HuaweiPush] Starting Huawei Push initialization...');
     _initializing = true;
 
     try {
@@ -104,7 +99,6 @@ class V2HuaweiPushService {
           }
         },
         onError: (dynamic error) {
-          debugPrint('[HuaweiPush] Token error: $error - trazim novi token...');
           // Token istekao ili nevazeci — zatrazi novi
           Future.delayed(const Duration(seconds: 5), () => Push.getToken('HCM'));
         },
@@ -118,20 +112,15 @@ class V2HuaweiPushService {
       // that we can log any token and register it immediately.
       // First, try to get token directly (synchronous return from SDK)
       try {
-        debugPrint('[HuaweiPush] Reading App ID and AGConnect values...');
         // Read the App ID and AGConnect values from `agconnect-services.json`
         try {
           final appId = await Push.getAppId();
-          debugPrint('[HuaweiPush] App ID: $appId');
         } catch (e) {
-          debugPrint('[HuaweiPush] Failed to get App ID: $e');
         }
 
         try {
           await Push.getAgConnectValues();
-          debugPrint('[HuaweiPush] AGConnect values loaded successfully');
         } catch (e) {
-          debugPrint('[HuaweiPush] Failed to get AGConnect values: $e');
         }
 
         // Request the token explicitly: the Push.getToken requires a scope
@@ -140,13 +129,10 @@ class V2HuaweiPushService {
         // chance of getting a token quickly.
         // Poziva se samo jednom pri prvoj inicijalizaciji
         try {
-          debugPrint('[HuaweiPush] Requesting token with HCM scope...');
           Push.getToken('HCM');
         } catch (e) {
-          debugPrint('[HuaweiPush] Failed to request token: $e');
           // If we get error 907135000, HMS is not available
           if (e.toString().contains('907135000')) {
-            debugPrint('[HuaweiPush] HMS Core not available (error 907135000), skipping Huawei Push');
             _initialized = true;
             _initializing = false;
             return null;
@@ -160,26 +146,21 @@ class V2HuaweiPushService {
       // non-null stream value so that initialization can report a token when
       // one is available immediately after startup.
       try {
-        debugPrint('[HuaweiPush] Waiting for token on stream (5s timeout)...');
         // Wait longer for the token to appear on the stream, as the SDK may
         // emit the token with a delay while contacting Huawei servers.
         // Timeout: 5 sekundi
         final firstValue = await Push.getTokenStream.first.timeout(const Duration(seconds: 5));
         if (firstValue.isNotEmpty) {
-          debugPrint('[HuaweiPush] Token received on stream: ${firstValue.substring(0, 10)}...');
           _currentToken = firstValue;
           await _registerTokenWithServer(firstValue);
           _initialized = true;
           _initializing = false;
           return firstValue;
         } else {
-          debugPrint('[HuaweiPush] Empty token received on stream');
         }
       } catch (e) {
-        debugPrint('[HuaweiPush] No token received on stream within 5s: $e');
         // If HMS is not available, don't keep trying
         if (e.toString().contains('907135000') || e.toString().contains('HMS')) {
-          debugPrint('[HuaweiPush] HMS not available, marking as initialized (null token)');
           _initialized = true;
           _initializing = false;
           return null;
@@ -235,13 +216,10 @@ class V2HuaweiPushService {
             payload: jsonEncode(data),
           );
         } catch (e) {
-          debugPrint('[HuaweiPush] Greska pri obradi poruke: $e');
         }
       });
 
-      debugPrint('[HuaweiPush] Message listener registrovan');
     } catch (e) {
-      debugPrint('[HuaweiPush] Greska pri registraciji listenera: $e');
     }
   }
 
@@ -252,13 +230,11 @@ class V2HuaweiPushService {
     try {
       driverName = await V2AuthManager.getCurrentDriver();
     } catch (e) {
-      debugPrint('[V2HuaweiPushService] getCurrentDriver error: $e');
       driverName = null;
     }
 
     // Registruj samo ako je vozac ulogovan
     if (driverName == null || driverName.isEmpty) {
-      debugPrint('[V2HuaweiPushService] Vozac nije ulogovan - preskacem HMS registraciju');
       return;
     }
 
@@ -269,7 +245,6 @@ class V2HuaweiPushService {
         vozacId: V2VozacCache.getUuidByIme(driverName),
       );
     } catch (e) {
-      debugPrint('[V2HuaweiPushService] _registerTokenWithServer error: $e');
     }
   }
 

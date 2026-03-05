@@ -21,14 +21,12 @@ class V2NotificationNavigationService {
       final putnikId = prefs.getString('registrovani_putnik_id');
 
       if (putnikId == null) {
-        debugPrint('[NavService] Nemam putnik_id u SharedPreferences-u');
         return;
       }
 
       // Učitaj podatke putnika iz cache-a
-      final response = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+      final response = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
       if (response == null) {
-        debugPrint('[NavService] V2Putnik $putnikId nije u cache-u');
         return;
       }
 
@@ -42,7 +40,6 @@ class V2NotificationNavigationService {
         );
       }
     } catch (e) {
-      debugPrint('[NavService] navigateToPassengerProfile error: $e');
     }
   }
 
@@ -59,7 +56,6 @@ class V2NotificationNavigationService {
         );
       }
     } catch (e) {
-      debugPrint('[NavService] navigateToVozacScreen error: $e');
     }
   }
 
@@ -77,7 +73,6 @@ class V2NotificationNavigationService {
         );
       }
     } catch (e) {
-      debugPrint('[NavService] navigateToPinZahtevi error: $e');
     }
   }
 

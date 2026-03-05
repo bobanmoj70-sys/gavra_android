@@ -50,7 +50,6 @@ class V2VozacCache {
       await _load();
     } catch (e) {
       _clear();
-      debugPrint('[V2VozacCache] initialize failed: $e');
     }
   }
 
@@ -59,7 +58,6 @@ class V2VozacCache {
     try {
       await _load();
     } catch (e) {
-      debugPrint('[V2VozacCache] refresh failed: $e');
     }
   }
 
@@ -90,7 +88,6 @@ class V2VozacCache {
     _uuidToIme = Map.unmodifiable(uuidToIme);
     _isInitialized = true;
 
-    debugPrint('[V2VozacCache] Loaded ${vozaci.length} vozača');
   }
 
   static void _clear() {

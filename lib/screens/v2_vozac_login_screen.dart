@@ -143,7 +143,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
             final hex = v.boja!.replaceFirst('#', '');
             bojaInt = int.parse('FF$hex', radix: 16);
           } catch (e) {
-            debugPrint('⚠️ Greška pri parsiranju boje: ${v.boja}');
           }
         }
 
@@ -159,11 +158,9 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
 
       // Ako imaš vozače iz DB-a, koristi ih
       if (vozaciMaps.isNotEmpty) {
-        debugPrint('✅ Učitani vozači iz Supabase-a: ${vozaciMaps.length}');
         return vozaciMaps;
       }
     } catch (e) {
-      debugPrint('⚠️ Greška pri učitavanju vozača iz Supabase-a: $e');
       // Nastavi sa SharedPreferences fallback-om
     }
 

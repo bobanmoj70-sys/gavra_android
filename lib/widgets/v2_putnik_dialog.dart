@@ -158,7 +158,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
   Future<void> _loadFirmaPodatke(String putnikId) async {
     try {
-      final firma = await _rm.getFirma(putnikId);
+      final firma = await _rm.v2GetFirma(putnikId);
       if (firma == null || !mounted) return;
       setState(() {
         _firmaNazivController.text = firma['firma_naziv'] as String? ?? '';
@@ -168,7 +168,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         _firmaAdresaController.text = firma['firma_adresa'] as String? ?? '';
       });
     } catch (e) {
-      debugPrint('[PutnikDialog] _loadFirmaPodatke error: $e');
     }
   }
 
@@ -250,7 +249,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
       super.dispose();
     } catch (e) {
-      debugPrint('Error disposing V2PutnikDialog: $e');
       super.dispose();
     }
   }
@@ -1309,7 +1307,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
     final normalized = _normalizePhoneNumber(telefon);
 
     try {
-      final existing = await V2MasterRealtimeManager.instance.findByTelefon(telefon);
+      final existing = await V2MasterRealtimeManager.instance.v2FindByTelefon(telefon);
       if (existing != null) {
         final existingId = existing['id'] as String;
         // U edit modu preskoci ako je isti V2Putnik
@@ -1368,16 +1366,16 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
       if (widget.isEditing) {
         putnikId = widget.existingPutnik!.id;
         putnikTabela = widget.existingPutnik!.v2Tabela;
-        await _rm.updatePutnik(putnikId, putnikData, putnikTabela);
+        await _rm.v2UpdatePutnik(putnikId, putnikData, putnikTabela);
       } else {
         putnikTabela = putnikData['_tabela'] as String? ?? 'v2_radnici';
-        final row = await _rm.createPutnik(putnikData, putnikTabela);
+        final row = await _rm.v2CreatePutnik(putnikData, putnikTabela);
         putnikId = row['id'] as String;
       }
 
       // Upsert firme u v2_racuni
       if (_trebaRacun && _firmaNazivController.text.trim().isNotEmpty) {
-        await _rm.upsertFirma(
+        await _rm.v2UpsertFirma(
           putnikId: putnikId,
           putnikTabela: putnikTabela,
           firmaNaziv: _firmaNazivController.text.trim(),
@@ -1398,7 +1396,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         }
       }
     } catch (e) {
-      debugPrint('Greška pri cuvanju putnika: $e');
 
       // LOG GRESKE ZA ADMINA
       try {
@@ -1407,7 +1404,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
           greska: '[$_tip | ${_imeController.text}] ${e.toString()}',
         );
       } catch (e) {
-        debugPrint('Error logging user action: $e');
       }
 
       if (mounted) {

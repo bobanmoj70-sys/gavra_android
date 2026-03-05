@@ -80,7 +80,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
     // ?? Kreiraj streamove jednom — direktno na master cache
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
-    _streamPutnici = V2PolasciService.streamPutnici();
+    _streamPutnici = V2PolasciService.v2StreamPutnici();
     _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: todayIso);
     _streamZahteviObradaShared = V2PolasciService.v2StreamZahteviObrada().asBroadcastStream();
     _streamRadniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'radnik').length);

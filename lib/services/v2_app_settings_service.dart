@@ -78,7 +78,6 @@ class V2AppSettingsService {
         updateInfoNotifier.value = null;
       }
     } catch (e) {
-      debugPrint('[AppSettings] Version check failed: $e');
     }
   }
 
@@ -119,7 +118,6 @@ class V2AppSettingsService {
       await V2StatistikaIstorijaService.logGeneric(
           tip: 'admin_akcija', detalji: 'Promenjen red vožnje na: ${type.toUpperCase()}');
     } catch (e) {
-      debugPrint('[AppSettingsService] logGeneric error: $e');
     }
   }
 }

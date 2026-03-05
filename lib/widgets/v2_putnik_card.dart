@@ -266,7 +266,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
   Future<void> _handleRegistrovaniPayment() async {
     // Dohvati putnika iz baze po ID-u
     final putnikId = _putnik.id?.toString() ?? '';
-    final putnikMap = putnikId.isNotEmpty ? await V2StatistikaIstorijaService.findPutnikById(putnikId) : null;
+    final putnikMap = putnikId.isNotEmpty ? await V2StatistikaIstorijaService.v2FindPutnikById(putnikId) : null;
     final registrovaniPutnik = putnikMap != null ? V2RegistrovaniPutnik.fromMap(putnikMap) : null;
 
     if (registrovaniPutnik == null) {
@@ -796,7 +796,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
 
         // Za radnike/učenike koristi funkciju za mesecno placanje
         final existingId = _putnik.id?.toString() ?? '';
-        final existingMap = existingId.isNotEmpty ? await V2StatistikaIstorijaService.findPutnikById(existingId) : null;
+        final existingMap = existingId.isNotEmpty ? await V2StatistikaIstorijaService.v2FindPutnikById(existingId) : null;
         if (existingMap != null) {
           final tabela = existingMap['_tabela'] as String? ?? 'v2_radnici';
           // Koristi static funkciju za cuvanje placanja
@@ -1030,7 +1030,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
         await launchUrl(launchUri);
       }
     } catch (e) {
-      debugPrint('Greška pri pozivu: $e');
     }
   }
 
@@ -1990,7 +1989,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
         return result[_putnik];
       }
     } catch (e) {
-      debugPrint('Greška pri dobijanju koordinata: $e');
     }
     return null;
   }
@@ -2040,7 +2038,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
         }
       }
     } catch (e) {
-      debugPrint('Greška pri otvaranju navigacije: $e');
     }
   }
 

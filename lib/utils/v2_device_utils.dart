@@ -29,7 +29,6 @@ class V2DeviceUtils {
 
       return _isHuaweiDevice!;
     } catch (e) {
-      debugPrint('V2DeviceUtils.isHuaweiDevice error: $e');
       _isHuaweiDevice = false;
       return false;
     }

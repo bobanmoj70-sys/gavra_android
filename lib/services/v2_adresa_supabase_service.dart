@@ -41,7 +41,7 @@ class V2AdresaSupabaseService {
   }
 
   static Stream<List<V2Adresa>> streamSveAdrese() =>
-      V2MasterRealtimeManager.instance.streamFromCache(tables: ['v2_adrese'], build: getSveAdrese);
+      V2MasterRealtimeManager.instance.v2StreamFromCache(tables: ['v2_adrese'], build: getSveAdrese);
 
   /// Batch učitavanje adresa po UUID-ovima — iz rm.adreseCache
   static Map<String, V2Adresa> getAdreseByUuids(List<String> uuids) {
@@ -107,7 +107,6 @@ class V2AdresaSupabaseService {
         }
       }
     } catch (e) {
-      debugPrint('[AdresaSupabaseService] getAdresaByVozacIGrad error: $e');
     }
     return null;
   }
@@ -120,7 +119,7 @@ class V2AdresaSupabaseService {
   }) async {
     try {
       await supabase.from('v2_adrese').update({'gps_lat': lat, 'gps_lng': lng}).eq('id', uuid);
-      V2MasterRealtimeManager.instance.patchCache('v2_adrese', uuid, {'gps_lat': lat, 'gps_lng': lng});
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_adrese', uuid, {'gps_lat': lat, 'gps_lng': lng});
       return true;
     } catch (e) {
       return false;
@@ -144,7 +143,7 @@ class V2AdresaSupabaseService {
     // INSERT + SELECT u jednom pozivu — nema race conditiona
     final row =
         await supabase.from('v2_adrese').insert(insertData).select('id, naziv, grad, gps_lat, gps_lng').single();
-    V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', row);
+    V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', row);
     return V2Adresa.fromMap(row);
   }
 
@@ -172,13 +171,13 @@ class V2AdresaSupabaseService {
       ...updateData,
       'id': adresa.id,
     };
-    V2MasterRealtimeManager.instance.upsertToCache('v2_adrese', updatedRow);
+    V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', updatedRow);
     return V2Adresa.fromMap(updatedRow);
   }
 
   /// Briše adresu i uklanja je iz cache-a.
   static Future<void> deleteAdresa(V2Adresa adresa) async {
     await supabase.from('v2_adrese').delete().eq('id', adresa.id);
-    V2MasterRealtimeManager.instance.removeFromCache('v2_adrese', adresa.id);
+    V2MasterRealtimeManager.instance.v2RemoveFromCache('v2_adrese', adresa.id);
   }
 }

@@ -50,7 +50,7 @@ class V2RadniciService {
 
   static String? getImeById(String id) => _cache[id]?['ime']?.toString();
 
-  static V2RegistrovaniPutnik? getByPin(String pin) {
+  static V2RegistrovaniPutnik? v2GetByPin(String pin) {
     try {
       final row = _cache.values.firstWhere(
         (r) => r['pin'] == pin && r['status'] == 'aktivan',
@@ -75,7 +75,7 @@ class V2RadniciService {
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.streamFromCache(tables: [tabela], build: getAktivne);
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.v2StreamFromCache(tables: [tabela], build: getAktivne);
 
   static Future<V2RegistrovaniPutnik?> create({
     required String ime,
@@ -111,10 +111,9 @@ class V2RadniciService {
           })
           .select()
           .single();
-      _rm.upsertToCache(tabela, {...row, '_tabela': tabela});
+      _rm.v2UpsertToCache(tabela, {...row, '_tabela': tabela});
       return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
     } catch (e) {
-      debugPrint('[V2RadniciService] create error: $e');
       return null;
     }
   }
@@ -123,10 +122,9 @@ class V2RadniciService {
     try {
       updates['updated_at'] = DateTime.now().toUtc().toIso8601String();
       await _db.from(tabela).update(updates).eq('id', id);
-      _rm.patchCache(tabela, id, updates);
+      _rm.v2PatchCache(tabela, id, updates);
       return true;
     } catch (e) {
-      debugPrint('[V2RadniciService] update error: $e');
       return false;
     }
   }
@@ -136,10 +134,9 @@ class V2RadniciService {
   static Future<bool> delete(String id) async {
     try {
       await _db.from(tabela).delete().eq('id', id);
-      _rm.removeFromCache(tabela, id);
+      _rm.v2RemoveFromCache(tabela, id);
       return true;
     } catch (e) {
-      debugPrint('[V2RadniciService] delete error: $e');
       return false;
     }
   }
@@ -180,7 +177,7 @@ class V2UceniciService {
 
   static String? getImeById(String id) => _cache[id]?['ime']?.toString();
 
-  static V2RegistrovaniPutnik? getByPin(String pin) {
+  static V2RegistrovaniPutnik? v2GetByPin(String pin) {
     try {
       final row = _cache.values.firstWhere(
         (r) => r['pin'] == pin && r['status'] == 'aktivan',
@@ -205,7 +202,7 @@ class V2UceniciService {
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.streamFromCache(tables: [tabela], build: getAktivne);
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.v2StreamFromCache(tables: [tabela], build: getAktivne);
 
   static Future<V2RegistrovaniPutnik?> create({
     required String ime,
@@ -243,10 +240,9 @@ class V2UceniciService {
           })
           .select()
           .single();
-      _rm.upsertToCache(tabela, {...row, '_tabela': tabela});
+      _rm.v2UpsertToCache(tabela, {...row, '_tabela': tabela});
       return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
     } catch (e) {
-      debugPrint('[V2UceniciService] create error: $e');
       return null;
     }
   }
@@ -255,10 +251,9 @@ class V2UceniciService {
     try {
       updates['updated_at'] = DateTime.now().toUtc().toIso8601String();
       await _db.from(tabela).update(updates).eq('id', id);
-      _rm.patchCache(tabela, id, updates);
+      _rm.v2PatchCache(tabela, id, updates);
       return true;
     } catch (e) {
-      debugPrint('[V2UceniciService] update error: $e');
       return false;
     }
   }
@@ -268,10 +263,9 @@ class V2UceniciService {
   static Future<bool> delete(String id) async {
     try {
       await _db.from(tabela).delete().eq('id', id);
-      _rm.removeFromCache(tabela, id);
+      _rm.v2RemoveFromCache(tabela, id);
       return true;
     } catch (e) {
-      debugPrint('[V2UceniciService] delete error: $e');
       return false;
     }
   }
@@ -312,7 +306,7 @@ class V2DnevniService {
 
   static String? getImeById(String id) => _cache[id]?['ime']?.toString();
 
-  static V2RegistrovaniPutnik? getByPin(String pin) {
+  static V2RegistrovaniPutnik? v2GetByPin(String pin) {
     try {
       final row = _cache.values.firstWhere(
         (r) => r['pin'] == pin && r['status'] == 'aktivan',
@@ -337,7 +331,7 @@ class V2DnevniService {
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.streamFromCache(tables: [tabela], build: getAktivne);
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.v2StreamFromCache(tables: [tabela], build: getAktivne);
 
   static Future<V2RegistrovaniPutnik?> create({
     required String ime,
@@ -373,10 +367,9 @@ class V2DnevniService {
           })
           .select()
           .single();
-      _rm.upsertToCache(tabela, {...row, '_tabela': tabela});
+      _rm.v2UpsertToCache(tabela, {...row, '_tabela': tabela});
       return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
     } catch (e) {
-      debugPrint('[V2DnevniService] create error: $e');
       return null;
     }
   }
@@ -385,10 +378,9 @@ class V2DnevniService {
     try {
       updates['updated_at'] = DateTime.now().toUtc().toIso8601String();
       await _db.from(tabela).update(updates).eq('id', id);
-      _rm.patchCache(tabela, id, updates);
+      _rm.v2PatchCache(tabela, id, updates);
       return true;
     } catch (e) {
-      debugPrint('[V2DnevniService] update error: $e');
       return false;
     }
   }
@@ -398,10 +390,9 @@ class V2DnevniService {
   static Future<bool> delete(String id) async {
     try {
       await _db.from(tabela).delete().eq('id', id);
-      _rm.removeFromCache(tabela, id);
+      _rm.v2RemoveFromCache(tabela, id);
       return true;
     } catch (e) {
-      debugPrint('[V2DnevniService] delete error: $e');
       return false;
     }
   }
@@ -442,7 +433,7 @@ class V2PosiljkeService {
 
   static String? getImeById(String id) => _cache[id]?['ime']?.toString();
 
-  static V2RegistrovaniPutnik? getByPin(String pin) {
+  static V2RegistrovaniPutnik? v2GetByPin(String pin) {
     try {
       final row = _cache.values.firstWhere(
         (r) => r['pin'] == pin && r['status'] == 'aktivan',
@@ -467,7 +458,7 @@ class V2PosiljkeService {
       ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.streamFromCache(tables: [tabela], build: getAktivne);
+  static Stream<List<V2RegistrovaniPutnik>> streamAktivne() => _rm.v2StreamFromCache(tables: [tabela], build: getAktivne);
 
   static Future<V2RegistrovaniPutnik?> create({
     required String ime,
@@ -499,10 +490,9 @@ class V2PosiljkeService {
           })
           .select()
           .single();
-      _rm.upsertToCache(tabela, {...row, '_tabela': tabela});
+      _rm.v2UpsertToCache(tabela, {...row, '_tabela': tabela});
       return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
     } catch (e) {
-      debugPrint('[V2PosiljkeService] create error: $e');
       return null;
     }
   }
@@ -511,10 +501,9 @@ class V2PosiljkeService {
     try {
       updates['updated_at'] = DateTime.now().toUtc().toIso8601String();
       await _db.from(tabela).update(updates).eq('id', id);
-      _rm.patchCache(tabela, id, updates);
+      _rm.v2PatchCache(tabela, id, updates);
       return true;
     } catch (e) {
-      debugPrint('[V2PosiljkeService] update error: $e');
       return false;
     }
   }
@@ -524,10 +513,9 @@ class V2PosiljkeService {
   static Future<bool> delete(String id) async {
     try {
       await _db.from(tabela).delete().eq('id', id);
-      _rm.removeFromCache(tabela, id);
+      _rm.v2RemoveFromCache(tabela, id);
       return true;
     } catch (e) {
-      debugPrint('[V2PosiljkeService] delete error: $e');
       return false;
     }
   }

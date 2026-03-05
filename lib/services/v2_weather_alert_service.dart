@@ -23,7 +23,6 @@ class V2WeatherAlertService {
     try {
       // Proveri da li je vec poslato danas
       if (await _isAlertAlreadySentToday()) {
-        debugPrint('[WeatherAlert] Upozorenje vec poslato danas');
         return;
       }
 
@@ -47,7 +46,6 @@ class V2WeatherAlertService {
       }
 
       if (alerts.isEmpty) {
-        debugPrint('[WeatherAlert] Nema opasnih vremenskih uslova');
         return;
       }
 
@@ -57,9 +55,7 @@ class V2WeatherAlertService {
       // Oznaci da je poslato
       await _markAlertSent(alerts.join(', '));
 
-      debugPrint('[WeatherAlert] Poslato upozorenje: ${alerts.join(', ')}');
     } catch (e) {
-      debugPrint('[WeatherAlert] Greška: $e');
     }
   }
 
@@ -111,7 +107,6 @@ class V2WeatherAlertService {
       return response != null;
     } catch (e) {
       // Ako tabela ne postoji, vrati false
-      debugPrint('[WeatherAlert] Greška pri proveri loga: $e');
       return false;
     }
   }
@@ -123,7 +118,6 @@ class V2WeatherAlertService {
       final vozacTokens = await V2PushTokenService.getTokensForVozaci();
 
       if (vozacTokens.isEmpty) {
-        debugPrint('[WeatherAlert] Nema vozackih tokena');
         return;
       }
 
@@ -142,9 +136,7 @@ class V2WeatherAlertService {
         },
       );
 
-      debugPrint('[WeatherAlert] Poslato ${vozacTokens.length} vozacima');
     } catch (e) {
-      debugPrint('[WeatherAlert] Greška pri slanju: $e');
     }
   }
 
@@ -170,7 +162,6 @@ class V2WeatherAlertService {
         'alert_types': alertTypes,
       });
     } catch (e) {
-      debugPrint('[WeatherAlert] Greška pri upisu loga: $e');
     }
   }
 }

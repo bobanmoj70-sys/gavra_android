@@ -343,7 +343,6 @@ class V2PermissionService {
 
       return allCriticalGranted;
     } catch (e) {
-      debugPrint('[V2PermissionService] requestAllPermissions error: $e');
       return false;
     }
   }
@@ -358,7 +357,6 @@ class V2PermissionService {
 
       return permission != LocationPermission.denied && permission != LocationPermission.deniedForever;
     } catch (e) {
-      debugPrint('[V2PermissionService] _requestLocationPermission error: $e');
       return false;
     }
   }
@@ -373,7 +371,6 @@ class V2PermissionService {
           permission != LocationPermission.denied &&
           permission != LocationPermission.deniedForever;
     } catch (e) {
-      debugPrint('[V2PermissionService] _isLocationPermissionGranted error: $e');
       return false;
     }
   }
@@ -527,7 +524,6 @@ class V2PermissionService {
           permission != LocationPermission.denied &&
           permission != LocationPermission.deniedForever;
     } catch (e) {
-      debugPrint('[V2PermissionService] ensureGpsForNavigation error: $e');
       return false;
     }
   }
@@ -548,7 +544,6 @@ class V2PermissionService {
 
       return result.isGranted || result.isLimited;
     } catch (e) {
-      debugPrint('[V2PermissionService] ensurePhonePermissionHuawei error: $e');
       return true;
     }
   }

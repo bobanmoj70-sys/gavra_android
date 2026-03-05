@@ -96,7 +96,6 @@ class V2OpenRouteService {
 
       return V2RealtimeEtaResult.success(putniciEta);
     } catch (e) {
-      debugPrint('[V2OpenRouteService] getRealtimeEta error: $e');
       return V2RealtimeEtaResult.failure('Greška: $e');
     }
   }

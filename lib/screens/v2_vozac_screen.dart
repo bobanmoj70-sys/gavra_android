@@ -20,6 +20,7 @@ import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart'; // ??? Za validaciju gradova
 import '../utils/v2_putnik_count_helper.dart'; // ?? Za brojanje putnika po gradu
 import '../utils/v2_putnik_helpers.dart'; // ??? Centralizovani helperi
@@ -74,7 +75,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     final dodeljena = <Map<String, String>>[];
     final currentVozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
-    final targetDan = _isoDateToDayAbbr(_workingDateIso);
+    final targetDan = V2DanUtils.odIso(_workingDateIso);
 
     // Izvor 1: termini iz raspored cache-a za ovog vozaca i današnji dan
     for (final r in _rasporedCache) {
@@ -234,7 +235,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
       _currentDriver = widget.previewAsDriver;
       _streamPazar ??= V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: _workingDateIso);
       _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
-        isoDate: _workingDateIso,
+        dan: V2DanUtils.odIso(_workingDateIso),
         vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
       );
       if (mounted) {
@@ -248,24 +249,13 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     _streamPazar ??= V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: _workingDateIso);
     _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
-      isoDate: _workingDateIso,
+      dan: V2DanUtils.odIso(_workingDateIso),
       vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
     );
     if (mounted) {
       setState(() {});
       // ?? Nakon što je vozac inicijalizovan, izaberi najbliži polazak
       _selectClosestDeparture();
-    }
-  }
-
-  // ??? Konvertuj ISO datum u kraticu dana
-  String _isoDateToDayAbbr(String isoDate) {
-    try {
-      final date = DateTime.parse(isoDate);
-      const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-      return dani[date.weekday - 1];
-    } catch (e) {
-      return 'pon'; // fallback
     }
   }
 
@@ -351,7 +341,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
       // ? STOP TRACKING AKO SU SVI GOTOVI
       if (V2DriverLocationService.instance.isTracking) {
-        await V2DriverLocationService.instance.updatePutniciEta({});
+        await V2DriverLocationService.instance.v2UpdatePutniciEta({});
       }
 
       if (mounted) {
@@ -379,7 +369,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
           // ??? REALTIME FIX: Ažuriraj ETA (uklanja pokupljene sa mape)
           if (V2DriverLocationService.instance.isTracking && result.putniciEta != null) {
-            await V2DriverLocationService.instance.updatePutniciEta(result.putniciEta!);
+            await V2DriverLocationService.instance.v2UpdatePutniciEta(result.putniciEta!);
           }
 
           if (!mounted) return;
@@ -704,7 +694,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
       // Izvuci redosled imena putnika
       final putniciRedosled = _optimizedRoute.map((p) => p.ime).toList();
 
-      await V2DriverLocationService.instance.startTracking(
+      await V2DriverLocationService.instance.v2StartTracking(
         vozacId: V2VozacCache.getUuidByIme(_currentDriver!) ?? _currentDriver!,
         vozacIme: _currentDriver!,
         grad: _selectedGrad,
@@ -739,7 +729,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   // ZAUSTAVI GPS TRACKING
   Future<void> _stopGpsTracking() async {
-    await V2DriverLocationService.instance.stopTracking();
+    await V2DriverLocationService.instance.v2StopTracking();
 
     if (mounted) {
       setState(() {
@@ -825,7 +815,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
         builder: (context, snapshot) {
           // -- Zajednicki podaci za body i nav bar --------------------------
           final sviPutnici = snapshot.data ?? <V2Putnik>[];
-          final targetDan = _isoDateToDayAbbr(_workingDateIso); // jednom, dijeli se svuda
+          final targetDan = V2DanUtils.odIso(_workingDateIso); // jednom, dijeli se svuda
           final currentVozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
           final mojiPutnici = _currentDriver == null
               ? sviPutnici
@@ -849,7 +839,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
           final countHelper = V2PutnikCountHelper.fromPutnici(
             putnici: mojiPutnici,
-            targetDateIso: _workingDateIso,
             targetDayAbbr: targetDan,
           );
           int getPutnikCount(String grad, String vreme) => countHelper.getCount(grad, vreme);

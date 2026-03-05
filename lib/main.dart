@@ -23,14 +23,10 @@ import 'services/v2_weather_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  debugPrint('[Main] App starting...');
-
   // KONFIGURACIJA - Inicijalizuj osnovne kredencijale (bez Supabase)
   try {
     await configService.initializeBasic();
-    debugPrint('[Main] Basic config initialized');
   } catch (e) {
-    debugPrint('[Main] Basic config init failed: $e');
     // Critical error - cannot continue without credentials
     throw Exception('Ne mogu da inicijalizujem osnovne kredencijale: $e');
   }
@@ -41,9 +37,7 @@ void main() async {
       url: configService.getSupabaseUrl(),
       anonKey: configService.getSupabaseAnonKey(),
     );
-    debugPrint('[Main] Supabase initialized');
   } catch (e) {
-    debugPrint('[Main] Supabase init failed: $e');
   }
 
   // 1. Pokreni UI ODMAH (bez cekanja Supabase)
@@ -55,14 +49,12 @@ void main() async {
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI
 Future<void> _doStartupTasks() async {
-  debugPrint('[Main] Background tasks started');
 
   // Wakelock i edge-to-edge UI
   try {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   } catch (e) {
-    debugPrint('[Main] Wakelock/SystemChrome init failed: $e');
   }
 
   // Locale - UTF-8 podrska za dijakritiku
@@ -81,48 +73,37 @@ Future<void> _initPushSystems() async {
         await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability().timeout(const Duration(seconds: 2));
 
     if (availability == GooglePlayServicesAvailability.success) {
-      debugPrint('[Main] Detected GMS (Google Play Services)');
       try {
         await Firebase.initializeApp().timeout(const Duration(seconds: 5));
         await V2FirebaseService.initialize();
         V2FirebaseService.setupFCMListeners();
         unawaited(V2FirebaseService.initializeAndRegisterToken());
-        debugPrint('[Main] FCM initialized successfully');
       } catch (e) {
-        debugPrint('[Main] FCM initialization failed: $e');
       }
     } else {
-      debugPrint('[Main] GMS not available, trying HMS (Huawei Mobile Services)');
       try {
         final hmsToken = await V2HuaweiPushService().initialize().timeout(const Duration(seconds: 5));
         if (hmsToken != null) {
           await V2HuaweiPushService().tryRegisterPendingToken();
-          debugPrint('[Main] HMS initialized successfully');
         } else {
-          debugPrint('[Main] HMS initialization returned null token');
         }
       } catch (e) {
-        debugPrint('[Main] HMS initialization failed: $e');
       }
     }
   } catch (e) {
-    debugPrint('[Main] Push services initialization failed: $e');
     // Try HMS as last resort
     try {
-      debugPrint('[Main] Last resort: trying HMS');
       final hmsToken = await V2HuaweiPushService().initialize().timeout(const Duration(seconds: 2));
       if (hmsToken != null) {
         await V2HuaweiPushService().tryRegisterPendingToken();
       }
     } catch (e2) {
-      debugPrint('[Main] All push services failed: $e2');
     }
   }
 }
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
-  debugPrint('[Main] Starting app services...');
 
   // V2 Master Realtime Manager — jedini koji slusa Supabase.
   // On ucitava sve cache-ove (vozaci, kapacitet, settings...) i otvara WebSocket.
@@ -163,15 +144,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Kada app izadje iz backgrounda, provjeri da li je novi dan i osvjezi cache
-      V2MasterRealtimeManager.instance.refreshForNewDay().catchError((Object e) {
-        debugPrint('[Main] refreshForNewDay failed: $e');
+      V2MasterRealtimeManager.instance.v2RefreshForNewDay().catchError((Object e) {
       });
 
       // When app is resumed, try registering pending tokens (if any)
       try {
         V2HuaweiPushService().tryRegisterPendingToken();
       } catch (e) {
-        debugPrint('[Main] HMS pending token registration failed: $e');
       }
     } else if (state == AppLifecycleState.detached) {
       // App se gasi — počisti streamove
@@ -185,7 +164,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     try {
       await V2ThemeManager().initialize();
     } catch (e) {
-      debugPrint('[Main] App init failed: $e');
     }
   }
 

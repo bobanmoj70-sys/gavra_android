@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart' as globals_file;
@@ -60,7 +59,7 @@ class V2PolasciService {
           .inFilter('status', ['obrada', 'odobreno', 'odbijeno'])
           .select('id');
       for (final row in cancelledRows) {
-        rm.patchCache('v2_polasci', row['id'].toString(), {'status': cancelledStatus, 'updated_at': nowStr});
+        rm.v2PatchCache('v2_polasci', row['id'].toString(), {'status': cancelledStatus, 'updated_at': nowStr});
       }
 
       // 2. Upsert po (putnik_id, grad, dan, zeljeno_vreme) — uvijek ide ispočetka kroz obradu
@@ -88,8 +87,7 @@ class V2PolasciService {
         };
         final updated =
             await _supabase.from('v2_polasci').update(updatePayload).eq('id', existing['id']).select().single();
-        rm.upsertToCache('v2_polasci', updated);
-        debugPrint('[V2PolasciService] v2PoSaljiZahtev UPDATE $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
+        rm.v2UpsertToCache('v2_polasci', updated);
       } else {
         final inserted = await _supabase
             .from('v2_polasci')
@@ -108,11 +106,9 @@ class V2PolasciService {
             })
             .select()
             .single();
-        rm.upsertToCache('v2_polasci', inserted);
-        debugPrint('[V2PolasciService] v2PoSaljiZahtev INSERT $gradKey $normVreme $danKey (isAdmin=$isAdmin)');
+        rm.v2UpsertToCache('v2_polasci', inserted);
       }
     } catch (e) {
-      debugPrint('[V2PolasciService] v2PoSaljiZahtev error: $e');
       rethrow;
     }
   }
@@ -141,10 +137,8 @@ class V2PolasciService {
           .inFilter('status', ['obrada', 'odobreno'])
           .select('id');
 
-      debugPrint('[V2PolasciService] v2SetBrojMesta: updated ${res.length} rows → $brojMesta mesta');
       return res.isNotEmpty;
     } catch (e) {
-      debugPrint('[V2PolasciService] v2SetBrojMesta error: $e');
       return false;
     }
   }
@@ -169,11 +163,10 @@ class V2PolasciService {
         if (approvedBy != null) 'odobrio': approvedBy,
       };
       await _supabase.from('v2_polasci').update(approvePayload).eq('id', id);
-      V2MasterRealtimeManager.instance.patchCache('v2_polasci', id, approvePayload);
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', id, approvePayload);
 
       return true;
     } catch (e) {
-      debugPrint('[V2PolasciService] Error approving request: $e');
       return false;
     }
   }
@@ -189,11 +182,10 @@ class V2PolasciService {
         if (rejectedBy != null) 'otkazao': rejectedBy,
       };
       await _supabase.from('v2_polasci').update(rejectPayload).eq('id', id);
-      V2MasterRealtimeManager.instance.patchCache('v2_polasci', id, rejectPayload);
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', id, rejectPayload);
 
       return true;
     } catch (e) {
-      debugPrint('[V2PolasciService] Error rejecting request: $e');
       return false;
     }
   }
@@ -295,7 +287,7 @@ class V2PolasciService {
           'updated_at': nowStr,
         };
         await _supabase.from('v2_polasci').update(altPayload).eq('id', requestId);
-        rm.patchCache('v2_polasci', requestId, altPayload);
+        rm.v2PatchCache('v2_polasci', requestId, altPayload);
       } else {
         // Ako nema requestId, kreiraj novi zahtev (fallback)
         final inserted = await _supabase
@@ -311,11 +303,10 @@ class V2PolasciService {
             })
             .select()
             .single();
-        rm.upsertToCache('v2_polasci', inserted);
+        rm.v2UpsertToCache('v2_polasci', inserted);
       }
       return true;
     } catch (e) {
-      debugPrint('[V2PolasciService] Error accepting alternative: $e');
       return false;
     }
   }
@@ -326,10 +317,11 @@ class V2PolasciService {
 
   static final V2PutnikStreamService _svc = V2PutnikStreamService();
 
-  static Stream<List<V2Putnik>> streamPutnici() => _svc.streamPutnici();
+  static Stream<List<V2Putnik>> v2StreamPutnici() => _svc.v2StreamPutnici();
 
   static Stream<List<V2Putnik>> streamKombinovaniPutniciFiltered({
     String? isoDate,
+    String? dan,
     String? grad,
     String? vreme,
     String? selectedVreme,
@@ -340,11 +332,12 @@ class V2PolasciService {
   }) =>
       _svc.streamKombinovaniPutniciFiltered(
         isoDate: isoDate,
+        dan: dan,
         grad: grad,
         vreme: vreme ?? selectedVreme,
       );
 
-  static void refreshAllActiveStreams() => _svc.refreshAllActiveStreams();
+  static void v2RefreshStreams() => _svc.v2RefreshStreams();
 
   static Future<int> v2GlobalniBezPolaska({
     String? dan,
@@ -368,7 +361,7 @@ class V2PolasciService {
   }) async {
     if (putnikId == null) return;
     final rm = V2MasterRealtimeManager.instance;
-    final tabela = putnikTabela ?? rm.getPutnikById(putnikId)?['_tabela']?.toString();
+    final tabela = putnikTabela ?? rm.v2GetPutnikById(putnikId)?['_tabela']?.toString();
     await v2PoSaljiZahtev(
       putnikId: putnikId,
       dan: dan ?? '',
@@ -462,7 +455,7 @@ class V2PutnikStreamService {
 
   /// Stream kombinovanih putnika sa opcionim filterima (isoDate, grad, vreme, vozacId).
   Stream<List<V2Putnik>> streamKombinovaniPutniciFiltered(
-      {String? isoDate, String? grad, String? vreme, String? vozacId}) {
+      {String? isoDate, String? dan, String? grad, String? vreme, String? vozacId}) {
     final controller = StreamController<List<V2Putnik>>.broadcast();
     bool isEmitting = false;
     bool pendingEmit = false;
@@ -476,7 +469,7 @@ class V2PutnikStreamService {
       pendingEmit = false;
       try {
         if (controller.isClosed) return;
-        final result = await _fetchPutnici(isoDate: isoDate, grad: grad, vreme: vreme, vozacId: vozacId);
+        final result = await _fetchPutnici(isoDate: isoDate, dan: dan, grad: grad, vreme: vreme, vozacId: vozacId);
         if (!controller.isClosed) controller.add(result);
       } catch (e) {
         if (!controller.isClosed) controller.add([]);
@@ -519,15 +512,14 @@ class V2PutnikStreamService {
   }
 
   /// Stream svih putnika za danas.
-  Stream<List<V2Putnik>> streamPutnici() {
+  Stream<List<V2Putnik>> v2StreamPutnici() {
     final todayDate = DateTime.now().toIso8601String().split('T')[0];
     return streamKombinovaniPutniciFiltered(isoDate: todayDate);
   }
 
   /// Eksplicitan refresh — no-op jer stream automatski reaguje na RM promjene.
-  void refreshAllActiveStreams() {
-    debugPrint('[V2PutnikStreamService] refreshAllActiveStreams — osvežavam polasciCache...');
-    V2MasterRealtimeManager.instance.refreshPolasciCache();
+  void v2RefreshStreams() {
+    V2MasterRealtimeManager.instance.v2RefreshPolasciCache();
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -544,13 +536,12 @@ class V2PutnikStreamService {
           .where((sr) => sr['dan']?.toString() == targetDan)
           .map((sr) {
             final putnikId = sr['putnik_id']?.toString();
-            final rp = putnikId != null ? rm.getPutnikById(putnikId) : null;
+            final rp = putnikId != null ? rm.v2GetPutnikById(putnikId) : null;
             return _buildPutnik(sr, rp, todayDate);
           })
           .where((p) => p.status != 'bez_polaska')
           .toList();
     } catch (e) {
-      debugPrint('[PutnikService] Error fetching by day: $e');
       return [];
     }
   }
@@ -559,7 +550,7 @@ class V2PutnikStreamService {
     final String todayStr = DateTime.now().toIso8601String().split('T')[0];
     final rm = V2MasterRealtimeManager.instance;
 
-    final rpEntry = rm.getAllPutnici().where((r) => r['ime']?.toString() == ime).firstOrNull;
+    final rpEntry = rm.v2GetAllPutnici().where((r) => r['ime']?.toString() == ime).firstOrNull;
     if (rpEntry == null) return null;
     final putnikId = rpEntry['id']?.toString();
     if (putnikId == null) return null;
@@ -578,7 +569,7 @@ class V2PutnikStreamService {
       final rm = V2MasterRealtimeManager.instance;
 
       final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == idStr).firstOrNull;
-      final rp = rm.getPutnikById(idStr);
+      final rp = rm.v2GetPutnikById(idStr);
 
       if (srRow != null) {
         return _buildPutnik(srRow, rp, todayStr);
@@ -586,7 +577,6 @@ class V2PutnikStreamService {
       if (rp != null) return V2Putnik.v2FromProfil(rp);
       return null;
     } catch (e) {
-      debugPrint('[PolasciService] getPutnikById error: $e');
       return null;
     }
   }
@@ -599,17 +589,15 @@ class V2PutnikStreamService {
       final svi = await getPutniciByDayIso(danasStr);
       return svi.where((p) => idStrings.contains(p.id?.toString())).toList();
     } catch (e) {
-      debugPrint('[PutnikService] Error in getPutniciByIds: $e');
       return [];
     }
   }
 
-  Future<List<V2Putnik>> getAllPutnici({String? targetDay, String? isoDate}) async {
+  Future<List<V2Putnik>> v2GetAllPutnici({String? targetDay, String? isoDate}) async {
     try {
       final String danasStr = (isoDate ?? DateTime.now().toIso8601String()).split('T')[0];
       return await getPutniciByDayIso(danasStr);
     } catch (e) {
-      debugPrint('[PutnikService] Error in getAllPutnici: $e');
       return [];
     }
   }
@@ -618,18 +606,26 @@ class V2PutnikStreamService {
   // INTERNI HELPERI
   // ──────────────────────────────────────────────────────────────────────────
 
-  Future<List<V2Putnik>> _fetchPutnici({String? isoDate, String? grad, String? vreme, String? vozacId}) async {
-    final todayDate = (isoDate ?? DateTime.now().toIso8601String()).split('T')[0];
+  Future<List<V2Putnik>> _fetchPutnici(
+      {String? isoDate, String? dan, String? grad, String? vreme, String? vozacId}) async {
     final rm = V2MasterRealtimeManager.instance;
 
     if (!rm.isInitialized) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    final sviPutnici = await getPutniciByDayIso(todayDate);
+    final String danKratica;
+    final List<V2Putnik> sviPutnici;
+    if (dan != null) {
+      danKratica = dan;
+      sviPutnici = rm.polasciCache.values.map((row) => V2Putnik.fromMap(row)).where((p) => p.dan == dan).toList();
+    } else {
+      final todayDate = (isoDate ?? DateTime.now().toIso8601String()).split('T')[0];
+      danKratica = _isoToDanKratica(todayDate);
+      sviPutnici = await getPutniciByDayIso(todayDate);
+    }
     final gradNorm = grad == null ? null : V2GradAdresaValidator.normalizeGrad(grad).toUpperCase();
     final vremeNorm = vreme != null ? V2GradAdresaValidator.normalizeTime(vreme) : null;
-    final danKratica = _isoToDanKratica(todayDate);
 
     return sviPutnici.where((p) {
       if (gradNorm != null) {
@@ -749,15 +745,11 @@ class V2PutnikStreamService {
     return false;
   }
 
-  String nowToString() => DateTime.now().toUtc().toIso8601String();
+  String v2NowString() => DateTime.now().toUtc().toIso8601String();
 
   Future<void> v2DodajPutnika(V2Putnik putnik) async {
-    debugPrint('[PutnikService] v2DodajPutnika: ime="${putnik.ime}"');
-
-    final allPutnici = V2MasterRealtimeManager.instance.getAllPutnici();
+    final allPutnici = V2MasterRealtimeManager.instance.v2GetAllPutnici();
     final found = allPutnici.where((r) => r['ime']?.toString() == putnik.ime).firstOrNull;
-
-    debugPrint('[PutnikService] Cache lookup: ${found != null ? "FOUND id=${found['id']}" : 'NOT FOUND'}');
 
     if (found == null) {
       throw Exception('Putnik "${putnik.ime}" nije pronađen u bazi ili nije aktivan');
@@ -793,8 +785,8 @@ class V2PutnikStreamService {
     try {
       final payload = {
         'status': 'pokupljen',
-        'updated_at': nowToString(),
-        'processed_at': nowToString(),
+        'updated_at': v2NowString(),
+        'processed_at': v2NowString(),
         if (driver != null) 'pokupio': driver,
         'pokupljen_datum': targetDatum,
         'datum_akcije': targetDatum,
@@ -816,7 +808,6 @@ class V2PutnikStreamService {
           danKey = dani[dt.weekday - 1];
         } catch (_) {}
         if (gradKey == null || vremeKey == null || danKey == null) {
-          debugPrint('[PutnikService] v2OznaciPokupljen: Nedostaje grad, vreme ili dan!');
           return;
         }
         final res = await supabase
@@ -831,16 +822,14 @@ class V2PutnikStreamService {
         if (polasciUpdated) updatedId = res.first['id']?.toString();
       }
       if (!polasciUpdated) {
-        debugPrint('[PutnikService] v2OznaciPokupljen: v2_polasci update nije pronašao red, preskačem statistiku.');
         return;
       }
 
       // Optimistički cache patch — UI se osvježava odmah, bez čekanja WebSocket event-a
       if (updatedId != null) {
-        rm.patchCache('v2_polasci', updatedId, payload);
+        rm.v2PatchCache('v2_polasci', updatedId, payload);
       }
     } catch (e) {
-      debugPrint('[PutnikService] v2OznaciPokupljen: Greška pri update v2_polasci: $e');
       return;
     }
 
@@ -867,16 +856,14 @@ class V2PutnikStreamService {
 
   Future<void> v2OznaciStatus(String putnikId, String status, String actor) async {
     try {
-      final putnikData = V2MasterRealtimeManager.instance.getPutnikById(putnikId);
+      final putnikData = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
       final tabela = putnikData?['_tabela'] as String?;
       if (tabela != null) {
         await supabase.from(tabela).update({
           'status': status,
-          'updated_at': nowToString(),
+          'updated_at': v2NowString(),
         }).eq('id', putnikId);
-      } else {
-        debugPrint('[PutnikService] v2OznaciStatus: Putnik $putnikId nije u v2_ cache-u!');
-      }
+      } else {}
 
       if (status == 'bolovanje' || status == 'godisnji') {
         final danasDay = DateTime.now().weekday;
@@ -887,7 +874,7 @@ class V2PutnikStreamService {
 
         await supabase
             .from('v2_polasci')
-            .update({'status': 'otkazano', 'updated_at': nowToString()})
+            .update({'status': 'otkazano', 'updated_at': v2NowString()})
             .eq('putnik_id', putnikId)
             .inFilter('dan', [danasKratica, sutraKratica])
             .inFilter('status', ['obrada', 'odobreno']);
@@ -899,7 +886,6 @@ class V2PutnikStreamService {
         );
       }
     } catch (e) {
-      debugPrint('[PutnikService] Error setting bolovanje/godisnji: $e');
       rethrow;
     }
   }
@@ -923,8 +909,8 @@ class V2PutnikStreamService {
 
     final updatePayload = {
       'status': status,
-      'processed_at': nowToString(),
-      'updated_at': nowToString(),
+      'processed_at': v2NowString(),
+      'updated_at': v2NowString(),
       if (driver != null) 'otkazao': driver,
     };
 
@@ -936,9 +922,7 @@ class V2PutnikStreamService {
         final res = await supabase.from('v2_polasci').update(updatePayload).eq('id', requestId).select('id');
         polasciUpdated = res.isNotEmpty;
         if (polasciUpdated) updatedId = requestId;
-      } catch (e) {
-        debugPrint('[PutnikService] v2OtkaziPutnika: Error matching by requestId: $e');
-      }
+      } catch (e) {}
     }
 
     if (!polasciUpdated) {
@@ -992,19 +976,17 @@ class V2PutnikStreamService {
           }
         }
       } catch (e) {
-        debugPrint('[PutnikService] v2OtkaziPutnika ERROR: $e');
         rethrow;
       }
     }
 
     if (!polasciUpdated) {
-      debugPrint('[PutnikService] v2OtkaziPutnika: v2_polasci update nije pronašao red, preskačem statistiku.');
       return;
     }
 
     // Optimistički cache patch — UI se osvježava odmah, bez čekanja WebSocket event-a
     if (updatedId != null) {
-      V2MasterRealtimeManager.instance.patchCache('v2_polasci', updatedId, updatePayload);
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', updatedId, updatePayload);
     }
 
     try {
@@ -1017,9 +999,7 @@ class V2PutnikStreamService {
         vreme: selectedVreme ?? vreme,
         datum: datum,
       );
-    } catch (e) {
-      debugPrint('[PutnikService] Greška pri logovanju otkazivanja: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> v2OznaciPlaceno(
@@ -1052,9 +1032,9 @@ class V2PutnikStreamService {
             'placen_iznos': iznos.toDouble(),
             if (vozacId != null) 'placen_vozac_id': vozacId,
             if (driver != null) 'placen_vozac_ime': driver,
-            'datum_akcije': nowToString(),
+            'datum_akcije': v2NowString(),
             'placen_tip': tipPutnika ?? 'dnevni',
-            'updated_at': nowToString(),
+            'updated_at': v2NowString(),
           })
           .eq('id', requestId)
           .select('id');
@@ -1079,9 +1059,9 @@ class V2PutnikStreamService {
             'placen_iznos': iznos.toDouble(),
             if (vozacId != null) 'placen_vozac_id': vozacId,
             if (driver != null) 'placen_vozac_ime': driver,
-            'datum_akcije': nowToString(),
+            'datum_akcije': v2NowString(),
             'placen_tip': tipPutnika ?? 'dnevni',
-            'updated_at': nowToString(),
+            'updated_at': v2NowString(),
           })
           .eq('putnik_id', id.toString())
           .eq('dan', danKey)
@@ -1093,8 +1073,6 @@ class V2PutnikStreamService {
 
     // Upiši u statistiku SAMO ako je v2_polasci uspješno ažuriran
     if (!polasciUpdated) {
-      debugPrint(
-          '[v2OznaciPlaceno] v2_polasci nije ažuriran — statistika se ne upisuje (id=$id, requestId=$requestId)');
       return;
     }
 
@@ -1130,8 +1108,8 @@ class V2PutnikStreamService {
 
       var query = supabase.from('v2_polasci').update({
         'status': 'bez_polaska',
-        'processed_at': nowToString(),
-        'updated_at': nowToString(),
+        'processed_at': v2NowString(),
+        'updated_at': v2NowString(),
       }).match({'dan': danKey}).inFilter('status', ['odobreno', 'obrada']).eq('grad', gradKey);
 
       if (vreme.isNotEmpty && vreme != 'Sva vremena') {
@@ -1139,19 +1117,17 @@ class V2PutnikStreamService {
       }
 
       final res = await query.select('id');
-      debugPrint('[PutnikService] globalniBezPolaska: updated ${res.length} rows');
       final rm = V2MasterRealtimeManager.instance;
       final patchPayload = {
         'status': 'bez_polaska',
-        'processed_at': nowToString(),
-        'updated_at': nowToString(),
+        'processed_at': v2NowString(),
+        'updated_at': v2NowString(),
       };
       for (final row in res) {
-        rm.patchCache('v2_polasci', row['id'].toString(), patchPayload);
+        rm.v2PatchCache('v2_polasci', row['id'].toString(), patchPayload);
       }
       return res.length;
     } catch (e) {
-      debugPrint('[PutnikService] globalniBezPolaska ERROR: $e');
       return 0;
     }
   }

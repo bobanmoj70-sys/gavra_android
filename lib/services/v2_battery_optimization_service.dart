@@ -127,7 +127,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('ℹ️ Huawei startup manager failed (expected on some versions): $e');
     }
 
     // 2. Try Power Intensity (newer EMUI)
@@ -140,7 +139,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('ℹ️ Huawei power intensity failed: $e');
     }
 
     // 3. Try Protect Activity (Legacy)
@@ -153,7 +151,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('ℹ️ Huawei protect activity failed: $e');
     }
 
     // Fallback to general battery settings
@@ -170,7 +167,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('⚠️ Error launching Xiaomi power keeper: $e');
     }
 
     // Try Security app
@@ -183,7 +179,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('⚠️ Error launching Xiaomi security center: $e');
     }
 
     await _openDefaultBatterySettings();
@@ -199,7 +194,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('⚠️ Error launching Oppo safe center: $e');
     }
 
     await _openDefaultBatterySettings();
@@ -215,7 +209,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('⚠️ Error launching Vivo permission manager: $e');
     }
 
     await _openDefaultBatterySettings();
@@ -231,7 +224,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('⚠️ Error launching OnePlus security: $e');
     }
 
     await _openDefaultBatterySettings();
@@ -247,7 +239,6 @@ class V2BatteryOptimizationService {
       await intent.launch();
       return;
     } catch (e) {
-      debugPrint('⚠️ Error launching Samsung battery: $e');
     }
 
     await _openDefaultBatterySettings();
@@ -260,7 +251,6 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
     } catch (e) {
-      debugPrint('Battery settings intent failed: $e');
     }
   }
 

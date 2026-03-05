@@ -71,9 +71,8 @@ class V2VozacRasporedService {
           .upsert(entry.toMap(), onConflict: 'dan,grad,vreme')
           .select()
           .single();
-      _rm.upsertToCache('v2_vozac_raspored', row);
+      _rm.v2UpsertToCache('v2_vozac_raspored', row);
     } catch (e) {
-      debugPrint('[V2VozacRasporedService] Greška u upsert(): $e');
     }
   }
 
@@ -101,10 +100,9 @@ class V2VozacRasporedService {
           .map((e) => e.key)
           .toList();
       for (final id in toRemove) {
-        _rm.removeFromCache('v2_vozac_raspored', id);
+        _rm.v2RemoveFromCache('v2_vozac_raspored', id);
       }
     } catch (e) {
-      debugPrint('[V2VozacRasporedService] Greška u deleteTermin(): $e');
     }
   }
 }

@@ -10,6 +10,7 @@ import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_putnik_count_helper.dart';
 import '../utils/v2_vozac_cache.dart';
@@ -38,9 +39,9 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
   // Stream za putnike — kreira se jednom i reciklira dok isoDate ne promeni
   Stream<List<V2Putnik>>? _putnikStream;
-  String? _cachedIsoDate;
+  String? _cachedDan;
 
-  final List<String> _days = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+  List<String> get _days => V2DanUtils.kratice;
 
   List<String> get bcVremena {
     final navType = navBarTypeNotifier.value;
@@ -66,10 +67,10 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   @override
   void initState() {
     super.initState();
-    final today = _getDayAbbreviation(DateTime.now());
+    final today = V2DanUtils.odDatuma(DateTime.now());
     _selectedDay = (today == 'sub' || today == 'ned') ? 'pon' : today;
     _autoSelectNajblizeVreme();
-    _cacheStream = V2MasterRealtimeManager.instance.streamFromCache(
+    _cacheStream = V2MasterRealtimeManager.instance.v2StreamFromCache(
       tables: ['v2_vozac_raspored', 'v2_vozac_putnik'],
       build: () {},
     );
@@ -100,28 +101,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     _selectedVreme = najblize;
   }
 
-  /// Vraća ISO datum koji odgovara selektovanom danu u sedmici.
-  /// Ako je danas pon a chip je 'sre' → vraća ISO datum za srijedu ove sedmice.
-  /// Vikend → koristi sledeću radnu sedmicu.
-  String _getIsoDateForSelectedDay() {
-    final now = DateTime.now();
-    // Baza: ponedeljak ove sedmice (ili sledeće ako je vikend)
-    final int todayWeekday = now.weekday; // 1=pon ... 7=ned
-    final int daysToMonday = (todayWeekday == 6 || todayWeekday == 7)
-        ? (8 - todayWeekday) // vikend → sledeći ponedeljak
-        : (1 - todayWeekday); // radni dan → ovaj ponedeljak
-    final monday = now.add(Duration(days: daysToMonday));
-
-    const dayOffsets = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4, 'sub': 5, 'ned': 6};
-    final offset = dayOffsets[_selectedDay ?? 'pon'] ?? 0;
-    return monday.add(Duration(days: offset)).toIso8601String().split('T').first;
-  }
-
-  String _getDayAbbreviation(DateTime date) {
-    const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-    return dani[date.weekday - 1];
-  }
-
   void _onPolazakChanged(String grad, String vreme) {
     if (mounted)
       setState(() {
@@ -132,7 +111,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
   /// Helper: vraca V2VozacRasporedEntry za termin ili null (izbjegava dupliciranu logiku)
   V2VozacRasporedEntry? _getRasporedEntry(String grad, String vreme) {
-    final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+    final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
     final rm = V2MasterRealtimeManager.instance;
     return rm.rasporedCache.values
         .map((r) => V2VozacRasporedEntry.fromMap(r))
@@ -160,7 +139,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
   /// Dialog: Dodijeli vozača terminu (vozac_raspored)
   Future<void> _showTerminAssignDialog(String grad, String vreme) async {
-    final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+    final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
     final trenutni = _getVozacZaTermin(grad, vreme);
     String? odabranVozac = trenutni;
 
@@ -300,7 +279,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   /// Dialog: Dodijeli vozača pojedinačnom putniku (vozac_putnik individualna dodjela)
   /// Samo dostupno kada termin NEMA vozača u vozac_raspored.
   Future<void> _showPutnikAssignDialog(V2Putnik putnik) async {
-    final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+    final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
     final rm = V2MasterRealtimeManager.instance;
     final vozacPutnikList = rm.vozacPutnikCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).toList();
     // Pronađi trenutnu individualnu dodjelu za ovog putnika, SAMO za ovaj dan+grad+vreme
@@ -511,13 +490,13 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   @override
   Widget build(BuildContext context) {
     // Izracunaj jednom - koristi se za stream, countHelper i filter
-    final isoDate = _getIsoDateForSelectedDay();
+    final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
 
-    // Kreira stream samo kad se promeni datum (ne na svakom rebuildu)
-    if (_putnikStream == null || _cachedIsoDate != isoDate) {
-      _cachedIsoDate = isoDate;
+    // Kreira stream samo kad se promeni dan (ne na svakom rebuildu)
+    if (_putnikStream == null || _cachedDan != dan) {
+      _cachedDan = dan;
       _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(
-        isoDate: isoDate,
+        dan: dan,
       );
     }
 
@@ -532,11 +511,10 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
             }
 
             final allPutnici = snapshot.data ?? [];
-            final targetDay = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+            final targetDay = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
 
             final countHelper = V2PutnikCountHelper.fromPutnici(
               putnici: allPutnici,
-              targetDateIso: isoDate,
               targetDayAbbr: targetDay,
             );
 
@@ -544,7 +522,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
               try {
                 return countHelper.getCount(grad, vreme);
               } catch (e) {
-                debugPrint('[V2VozacRasporedScreen] getPutnikCount error: $e');
                 return 0;
               }
             }

@@ -76,10 +76,9 @@ class V2KapacitetService {
           )
           .select()
           .single();
-      V2MasterRealtimeManager.instance.upsertToCache('v2_kapacitet_polazaka', row);
+      V2MasterRealtimeManager.instance.v2UpsertToCache('v2_kapacitet_polazaka', row);
       return true;
     } catch (e) {
-      debugPrint('[V2KapacitetService] setKapacitet error: $e');
       return false;
     }
   }
@@ -101,7 +100,7 @@ class V2KapacitetService {
   }
 
   static Stream<Map<String, Map<String, int>>> streamKapacitet() =>
-      V2MasterRealtimeManager.instance.streamFromCache(tables: ['v2_kapacitet_polazaka'], build: getKapacitet);
+      V2MasterRealtimeManager.instance.v2StreamFromCache(tables: ['v2_kapacitet_polazaka'], build: getKapacitet);
 
   /// Dohvati kapacitet za grad/vreme (čita iz rm.kapacitetCache — nema DB upita).
   /// Vraca default 8 ako nije dostupno.
@@ -123,7 +122,6 @@ class V2KapacitetService {
   /// Inicijalizuj cache pri startu — sada je no-op jer rm vec ucitava kapacitetCache.
   static Future<void> initializeKapacitetCache() async {
     // rm.initialize() je vec ucitao kapacitetCache — nema posla ovde.
-    debugPrint('[V2KapacitetService] initializeKapacitetCache: no-op (rm handles cache)');
   }
 
   /// Zaustavi globalni listener — sada je no-op jer rm drzi kanal stalno.

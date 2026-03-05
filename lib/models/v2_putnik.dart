@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart'; // DODATO za fallback ucitavanje adrese
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_registrovani_helpers.dart';
 import '../utils/v2_vozac_cache.dart';
 
@@ -123,7 +124,7 @@ class V2Putnik {
     final rpcDatum = req['datum']?.toString();
     final datumStr = (rpcDatum != null && rpcDatum.isNotEmpty)
         ? rpcDatum.split('T')[0] // ISO: "2026-02-23T00:00:00" -> "2026-02-23"
-        : _getIsoDateForDan(danStr);
+        : V2DanUtils.isoZaDan(danStr);
     final gRaw = req['grad']?.toString().toLowerCase() ?? '';
     final grad = (gRaw == 'vs' || gRaw.contains('vrs') || gRaw.contains('vr')) ? 'VS' : 'BC';
 
@@ -184,14 +185,13 @@ class V2Putnik {
         }
       }
     } catch (e) {
-      debugPrint('[V2Putnik.v2FromPolazak] dodeljenVozac lookup failed: $e');
     }
 
     return V2Putnik(
       id: p['id'] ?? req['putnik_id'],
       ime: p['ime'] as String? ?? '',
       polazak: vreme,
-      dan: danStr.isNotEmpty ? danStr : _getDayNameFromIso(datumStr),
+      dan: danStr.isNotEmpty ? danStr : V2DanUtils.odIso(datumStr),
       grad: grad,
       status: finalStatus,
       pokupljen: isPickedUp,
@@ -222,40 +222,6 @@ class V2Putnik {
       dodeljenVozac: dodeljenVozacFinal,
       requestId: req['id']?.toString(), // ID v2_polasci reda
     );
-  }
-
-  static const _dayAbbreviations = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-
-  static String _getDayNameFromIso(String isoDate) {
-    try {
-      final dt = DateTime.parse(isoDate);
-      return _dayAbbreviations[dt.weekday - 1];
-    } catch (e) {
-      debugPrint('[V2Putnik] _getDayNameFromIso failed for "$isoDate": $e');
-      return '';
-    }
-  }
-
-  /// Izracunava ISO datum (yyyy-MM-dd) za danu kraticu dana (pon, uto...)
-  /// Traži od danas pa unaprijed (max 7 dana) sljedeci taj dan u sedmici
-  static String _getIsoDateForDan(String danKratica) {
-    if (danKratica.isEmpty) return '';
-    try {
-      final idx = _dayAbbreviations.indexWhere((a) => a.toLowerCase() == danKratica.toLowerCase());
-      if (idx < 0) return '';
-      final targetWeekday = idx + 1; // 1=Monday...7=Sunday
-      final now = DateTime.now();
-      for (int i = 0; i < 7; i++) {
-        final d = now.add(Duration(days: i));
-        if (d.weekday == targetWeekday) {
-          return d.toIso8601String().split('T')[0];
-        }
-      }
-      return '';
-    } catch (e) {
-      debugPrint('[V2Putnik] _getIsoDateForDan failed for "$danKratica": $e');
-      return '';
-    }
   }
 
   // Helper getter za proveru da li je dnevni tip (v2_dnevni ili v2_posiljke)
@@ -336,7 +302,7 @@ class V2Putnik {
   // HELPER METODE za mapiranje
   static String _v2GradIzProfila(Map<String, dynamic> map) {
     // Odredi grad na osnovu AKTIVNOG polaska za danas
-    final danKratica = _dayAbbreviations[DateTime.now().weekday - 1];
+    final danKratica = V2DanUtils.odDatuma(DateTime.now());
 
     // Proveri koji polazak postoji za danas
     final bcPolazak = V2RegistrovaniHelpers.getPolazakForDay(map, danKratica, 'bc');

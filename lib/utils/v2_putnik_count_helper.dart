@@ -16,11 +16,9 @@ class V2PutnikCountHelper {
 
   /// Izračunaj broj putnika za dati datum iz liste putnika
   /// [putnici] - lista svih putnika
-  /// [targetDateIso] - ISO datum (yyyy-MM-dd) za koji se broji
-  /// [targetDayAbbr] - skraćenica dana (pon, uto, sre...) za fallback
+  /// [targetDayAbbr] - skraćenica dana (pon, uto, sre...) za filtriranje
   factory V2PutnikCountHelper.fromPutnici({
     required List<V2Putnik> putnici,
-    required String targetDateIso,
     required String targetDayAbbr,
   }) {
     // Dinamičke mape za brojanje - ne koristimo više hardkodovane šablone
