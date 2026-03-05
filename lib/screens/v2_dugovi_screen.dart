@@ -19,8 +19,8 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
   final TextEditingController _searchController = TextEditingController();
   final _putnikService = V2PutnikStreamService();
 
-  final String _selectedFilter = 'svi'; // 'svi', 'veliki_dug', 'mali_dug'
-  final String _sortBy = 'vreme'; // 'iznos', 'vreme', 'ime', 'vozac' - default: najnoviji gore
+  String _selectedFilter = 'svi'; // 'svi', 'veliki_dug', 'mali_dug'
+  String _sortBy = 'vreme'; // 'iznos', 'vreme', 'ime', 'vozac' - default: najnoviji gore
 
   late final Stream<List<V2Putnik>> _streamDugovi;
 
@@ -30,7 +30,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
     _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
       isoDate: V2PutnikHelpers.getWorkingDateIso(),
     );
-    _setupDebouncedSearch();
+    _setupSearchListener();
   }
 
   @override
@@ -41,7 +41,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
   }
 
   // SEARCH SETUP (bez RxDart - jednostavan setState)
-  void _setupDebouncedSearch() {
+  void _setupSearchListener() {
     _searchController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -134,7 +134,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
                   (p.isDnevni || p.isPosiljka) && // Duznici su samo dnevni i posiljke (nije radnik/ucenik)
                   (p.placeno != true) && // placeno flag iz v2_polasci srRow
                   (p.jePokupljen) &&
-                  (p.status == null || (p.status != 'Otkazano' && p.status != 'otkazan')),
+                  !p.jeOtkazan,
               // IZMENA: Uklonjen filter po vozaču da bi se prikazali SVI dužnici (zahtev 26.01.2026)
             )
             .toList();
@@ -176,7 +176,6 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // ...existing code...
                   Expanded(
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator(color: Colors.white))
