@@ -5,7 +5,6 @@ import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../services/v2_app_settings_service.dart'; // ?? NAV BAR SETTINGS
 import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
-import '../services/v2_firebase_service.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_pin_zahtev_service.dart'; // ?? PIN ZAHTEVI
 import '../services/v2_polasci_service.dart';
@@ -59,8 +58,8 @@ class _AdminScreenState extends State<V2AdminScreen> {
   static const List<String> _defaultVozaciRedosled = ['Bruda', 'Bilevski', 'Bojan', 'Voja'];
 
   String? _currentDriver;
-
-  // ?? Cache-based streamovi (kreirani jednom u initState)
+  // Izračunato jednom u initState — dan se ne mijenja za života ovog widgeta
+  late final String _todayKratica;
   late final Stream<List<V2Putnik>> _streamPutnici;
   late final Stream<Map<String, double>> _streamPazar;
   late final Stream<int> _streamRadniciObrada;
@@ -75,6 +74,9 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
     // Osvježi lokalne map-ove iz rm.vozaciCache (bez DB upita)
     V2VozacCache.refresh();
+
+    // Dan ne mijenja za života screena — izračunaj jednom ovde
+    _todayKratica = _getShortDayName(_dayNamesInternal[DateTime.now().weekday - 1]).toLowerCase();
 
     // ?? Kreiraj streamove jednom — direktno na master cache
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
@@ -112,8 +114,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
         V2AppSnackBar.error(context, '⚠️ Nema ucitanih vozaca');
         return;
       }
-
-      if (!mounted) return;
 
       showDialog<void>(
         context: context,
@@ -166,22 +166,13 @@ class _AdminScreenState extends State<V2AdminScreen> {
     }
   }
 
-  void _loadCurrentDriver() {
-    // V2FirebaseService.getCurrentDriver() interno provjerava V2AuthManager in-memory
-    // cache kao fast path (bez Supabase poziva ako je vec ulogovan)
-    V2FirebaseService.getCurrentDriver().then((driver) {
-      if (mounted) {
-        setState(() {
-          _currentDriver = driver;
-        });
-      }
-    }).catchError((Object e) {
-      if (mounted) {
-        setState(() {
-          _currentDriver = null;
-        });
-      }
-    });
+  void _loadCurrentDriver() async {
+    try {
+      final driver = await V2AuthManager.getCurrentDriver();
+      if (mounted) setState(() => _currentDriver = driver);
+    } catch (_) {
+      if (mounted) setState(() => _currentDriver = null);
+    }
   }
 
   /// ?? DIJALOG ZA GLOBALNO UKLANJANJE POLASKA
@@ -547,31 +538,17 @@ class _AdminScreenState extends State<V2AdminScreen> {
                                           dropdownColor: Theme.of(context).colorScheme.primary,
                                           style: const TextStyle(color: Colors.white, fontSize: 11),
                                           selectedItemBuilder: (context) {
+                                            const labels = {'zimski': '❄️', 'letnji': '☀️', 'praznici': '🎉'};
                                             return ['zimski', 'letnji', 'praznici'].map((t) {
-                                              String label;
-                                              bool useEmoji = false;
-                                              switch (t) {
-                                                case 'zimski':
-                                                  label = '❄️';
-                                                  useEmoji = true;
-                                                  break;
-                                                case 'letnji':
-                                                  label = '☀️';
-                                                  useEmoji = true;
-                                                  break;
-                                                case 'praznici':
-                                                  label = '🎉';
-                                                  useEmoji = true;
-                                                  break;
-                                                default:
-                                                  label = t;
-                                              }
                                               return Center(
-                                                child: Text(label,
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: useEmoji ? 14 : 11,
-                                                        color: Colors.white)),
+                                                child: Text(
+                                                  labels[t] ?? t,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
                                               );
                                             }).toList();
                                           },
@@ -860,9 +837,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
                         ],
                       ),
                     ),
-                    // NETWORK STATUS - desno
-                    const SizedBox(width: 8),
-                    const SizedBox.shrink(),
                   ],
                 ),
               ),
@@ -895,10 +869,8 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
             final allPutnici = snapshot.data ?? [];
 
-            // Filter po današnjem danu — izračunato jednom ovde (ne u svakom rebuildu)
-            final now = DateTime.now();
-            final todayKratica = _getShortDayName(_dayNamesInternal[now.weekday - 1]).toLowerCase();
-            final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == todayKratica).toList();
+            // Koristi _todayKratica izračunat jednom u initState (ne na svakom rebuildu)
+            final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == _todayKratica).toList();
 
             // Dužnici — pokupljeni, neplaćeni, samo dnevni i posiljke (ne radnici/ucenici)
             final filteredDuznici = filteredPutnici.where((p) {
