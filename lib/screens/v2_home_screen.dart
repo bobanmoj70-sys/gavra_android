@@ -20,7 +20,6 @@ import '../services/v2_polasci_service.dart';
 import '../services/v2_printing_service.dart';
 import '../services/v2_racun_service.dart';
 import '../services/v2_realtime_notification_service.dart';
-import '../services/v2_slobodna_mesta_service.dart'; // ?? Provera kapaciteta
 import '../services/v2_statistika_service.dart';
 import '../services/v2_theme_manager.dart'; // ?? Tema sistem
 import '../services/v2_vozac_raspored_service.dart';
@@ -180,8 +179,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
       // ?? Auto-update removed per request
 
-      // Inicijalizuj realtime notifikacije za aktivnog vozaca
-      final notifDriver = await V2AuthManager.getCurrentDriver();
+      // Inicijalizuj realtime notifikacije za aktivnog vozaca.
+      // Koristimo _currentDriver (vec ucitan) umjesto ponovnog getCurrentDriver() poziva.
+      final notifDriver = _currentDriver;
       if (mounted && notifDriver != null && notifDriver.isNotEmpty) {
         await V2RealtimeNotificationService.requestNotificationPermissions();
         if (mounted) {
@@ -192,11 +192,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
         }
       }
 
-      // ?? KONACNO UKLONI LOADING STATE
+      // Jedan setState na kraju koji postavlja _currentDriver + _isLoading = false
       if (mounted) {
         _selectClosestDeparture();
         setState(() {
           _isLoading = false;
+          // _currentDriver je vec postavljen direktno u _initializeCurrentDriver()
         });
       }
     } catch (e) {
@@ -211,11 +212,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   Future<void> _initializeCurrentDriver() async {
     final driver = await V2AuthManager.getCurrentDriver();
-
     if (mounted) {
-      setState(() {
-        _currentDriver = driver;
-      });
+      // Spajamo setState ovde da izbjegnemo drugi setState na kraju _initializeData()
+      _currentDriver = driver;
     }
   }
 
@@ -299,9 +298,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   /// Prikazuje dijalog sa listom putnika kojima treba racun
   Future<void> _showRacunDialog(BuildContext ctx) async {
-    // Sacuvaj reference pre await
-    final scaffoldMessenger = ScaffoldMessenger.of(ctx);
-
     // Ucitaj putnike kojima treba racun iz rm cache-a
     final sviPutnici = V2StatistikaService.getAllAktivniKaoModel();
     final putnici = sviPutnici.where((p) => p.trebaRacun).toList();
@@ -1578,23 +1574,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           return;
                                         }
 
-                                        // ? Validacija vozaca koristi V2VozacCache.isValidIme()
-
-                                        // ?? PROVERA KAPACITETA - da li ima slobodnih mesta
-                                        // ?? SAMO ZA PUTNIKE - vozaci mogu dodavati bez ogranicenja
-                                        final isVozac = V2VozacCache.isValidIme(_currentDriver);
-                                        if (!isVozac) {
-                                          final imaMesta = await V2SlobodnaMestaService.imaSlobodnihMesta(
-                                            _selectedGrad,
-                                            _selectedVreme,
-                                          );
-                                          if (!imaMesta) {
-                                            if (!dialogCtx.mounted) return;
-                                            V2AppSnackBar.error(dialogCtx,
-                                                '⚠️ Termin $_selectedVreme ($_selectedGrad) je PUN! Izaberite drugo vreme.');
-                                            return;
-                                          }
-                                        }
+                                        // Validacija vozaca koristi V2VozacCache.isValidIme() — garantovano prolazi
 
                                         // POKAZI LOADING STATE - lokalno za dijalog
                                         setStateDialog(() {
