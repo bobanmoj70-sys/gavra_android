@@ -481,9 +481,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           debugPrint('⚠️ [Logout] Greška pri brisanju push tokena: $e');
         }
       }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('registrovani_putnik_telefon');
-
       if (mounted) {
         await V2AuthManager.logout(context);
       }

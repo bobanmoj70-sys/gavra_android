@@ -888,10 +888,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     );
 
     if (shouldLogout == true && mounted) {
-      // ?? Prikaži loading spinner
-      if (!mounted) return;
-
-      // ?? IzVrsi logout
+      // Izvrši logout
       try {
         await V2AuthManager.logout(context);
       } catch (e) {

@@ -161,7 +161,10 @@ class V2AuthManager {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // 1. Obriši in-memory cache i SharedPreferences (vozač + putnik sesija)
+      // 1. Pročitaj trenutnog vozača PRE brisanja sesije (potrebno za push token)
+      final currentDriver = await getCurrentDriver();
+
+      // 2. Obriši in-memory cache i SharedPreferences (vozač + putnik sesija)
       _cachedDriverName = null;
       await prefs.remove(_driverKey);
       await prefs.remove(_authSessionKey);
@@ -170,9 +173,8 @@ class V2AuthManager {
       await prefs.remove('registrovani_putnik_id');
       await prefs.remove('registrovani_putnik_ime');
 
-      // 2. Obriši push tokene iz Supabase baze
+      // 3. Obriši push tokene iz Supabase baze
       try {
-        final currentDriver = await getCurrentDriver();
         if (currentDriver != null) {
           final V2Vozac? vozac = V2VozacCache.getVozacByIme(currentDriver);
           if (vozac?.id != null) {
@@ -183,7 +185,7 @@ class V2AuthManager {
         debugPrint('[V2AuthManager] Greška pri brisanju push tokena: $e');
       }
 
-      // 3. Očisti Firebase session
+      // 4. Očisti Firebase session
       try {
         await V2FirebaseService.clearCurrentDriver();
       } catch (e) {

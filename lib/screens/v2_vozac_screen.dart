@@ -323,13 +323,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   Future<void> _logout() async {
     await V2AuthManager.logout(context);
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const V2WelcomeScreen()),
-        (route) => false,
-      );
-    }
   }
 
   // ?? REOPTIMIZACIJA RUTE NAKON PROMENE STATUSA PUTNIKA
