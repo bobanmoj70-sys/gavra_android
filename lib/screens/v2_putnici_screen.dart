@@ -45,15 +45,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   // Mapa placenih meseci po putniku
   Map<String, Set<String>> _placeniMeseci = {};
 
-  // BADGE COUNTERS
-  int _brojRadnika = 0;
-  int _brojUcenika = 0;
-  int _brojDnevnih = 0;
-  int _brojPosiljki = 0;
-
   // PLACANJE STATE
   Map<String, double> _stvarnaPlacanja = {};
-  DateTime? _lastPaymentUpdate;
   Set<String> _lastPutnikIds = {};
   Timer? _paymentUpdateDebounceTimer; // ⏱ DEBOUNCE TIMER za payment updates
 
@@ -277,8 +270,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       Positioned(
                           right: 0,
                           top: 0,
-                          child:
-                              _buildBadge(_brojRadnika, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
+                          child: _buildBadge(_rm.radniciCache.values.where((r) => r['status'] == 'aktivan').length,
+                              const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
                     ]),
                     // Učenici
                     Stack(children: [
@@ -293,8 +286,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       Positioned(
                           right: 0,
                           top: 0,
-                          child:
-                              _buildBadge(_brojUcenika, const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
+                          child: _buildBadge(_rm.uceniciCache.values.where((r) => r['status'] == 'aktivan').length,
+                              const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
                     ]),
                     // Dnevni
                     Stack(children: [
@@ -309,8 +302,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       Positioned(
                           right: 0,
                           top: 0,
-                          child:
-                              _buildBadge(_brojDnevnih, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
+                          child: _buildBadge(_rm.dnevniCache.values.where((r) => r['status'] == 'aktivan').length,
+                              const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
                     ]),
                     // Pošiljke
                     Stack(children: [
@@ -325,8 +318,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       Positioned(
                           right: 0,
                           top: 0,
-                          child: _buildBadge(
-                              _brojPosiljki, const Color(0xFFFF8C00), const Color(0xFFE65C00), Colors.orange)),
+                          child: _buildBadge(_rm.posiljkeCache.values.where((r) => r['status'] == 'aktivan').length,
+                              const Color(0xFFFF8C00), const Color(0xFFE65C00), Colors.orange)),
                     ]),
                     IconButton(
                       icon: const Icon(Icons.add,
@@ -343,7 +336,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         ),
         body: Column(
           children: [
-            // ?? SEARCH BAR
+            // SEARCH BAR
             Container(
               padding: const EdgeInsets.all(16),
               child: Container(
@@ -416,27 +409,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                   }
 
                   final sviPutnici = snapshot.data ?? [];
-
-                  // Badge counteri — lokalno izračunati, bez mutiranja State fielda
-                  final brojRadnika = sviPutnici.where((p) => p.v2Tabela == 'v2_radnici').length;
-                  final brojUcenika = sviPutnici.where((p) => p.v2Tabela == 'v2_ucenici').length;
-                  final brojDnevnih = sviPutnici.where((p) => p.v2Tabela == 'v2_dnevni').length;
-                  final brojPosiljki = sviPutnici.where((p) => p.v2Tabela == 'v2_posiljke').length;
-                  // Sinhrono ažuriranje State fielda ako su se promijenili
-                  if (_brojRadnika != brojRadnika ||
-                      _brojUcenika != brojUcenika ||
-                      _brojDnevnih != brojDnevnih ||
-                      _brojPosiljki != brojPosiljki) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted)
-                        setState(() {
-                          _brojRadnika = brojRadnika;
-                          _brojUcenika = brojUcenika;
-                          _brojDnevnih = brojDnevnih;
-                          _brojPosiljki = brojPosiljki;
-                        });
-                    });
-                  }
 
                   // Filtriraj lokalno
                   final filteredPutnici = _filterPutniciDirect(
@@ -554,10 +526,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
   Widget _buildPutnikCard(V2RegistrovaniPutnik v2Putnik, int redniBroj) {
     final bool bolovanje = v2Putnik.status == 'bolovanje';
-    // Sačuvaj sva vremena po danima (pon -> pet) i prikaži ih na kartici.
-    // Prethodna logika je prikazivala samo PRVI dan koji je imao vreme.
-    // Sada prikazujemo sve dane koji imaju bar jedan polazak (BC i/ili VS)
-    final List<String> _daniOrder = ['pon', 'uto', 'sre', 'cet', 'pet'];
 
     // neaktivan vizualno: sve osim 'aktivan'
     final bool neaktivan = v2Putnik.status != 'aktivan';
@@ -1372,19 +1340,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                                                 ),
                                               if (vozacIme != null)
                                                 Text(
-                                                  'Placeno: $datum',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    // Ako imamo ime vozaca iz strema, koristimo njegovu boju
-                                                    color: V2VozacCache.getColor(
-                                                      vozacIme,
-                                                      fallback: Colors.green.shade600,
-                                                    ),
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              if (vozacIme != null)
-                                                Text(
                                                   'Naplatio: $vozacIme',
                                                   style: TextStyle(
                                                     fontSize: 11,
@@ -1608,15 +1563,15 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     }
   }
 
-  // ?? HELPER FUNKCIJE ZA MESECE
-  String _getCurrentMonthYear() {
+  // HELPER FUNKCIJE ZA MESECE
+  static String _getCurrentMonthYear() {
     final now = DateTime.now();
     return '${_getMonthName(now.month)} ${now.year}';
   }
 
-  List<String> _getMonthOptions() {
+  static List<String> _getMonthOptions() {
     final now = DateTime.now();
-    List<String> options = [];
+    final List<String> options = [];
 
     // Dodaj svih 12 meseci trenutne godine
     for (int month = 1; month <= 12; month++) {
@@ -1627,8 +1582,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     return options;
   }
 
-  // ?? HELPER: DOBIJ BROJ MESECA IZ IMENA
-  int _getMonthNumber(String monthName) {
+  // DOBIJ BROJ MESECA IZ IMENA
+  static int _getMonthNumber(String monthName) {
     const months = [
       '', // 0 - ne postoji
       'Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun',
@@ -1643,7 +1598,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     return 0; // Ne postoji
   }
 
-  String _getMonthName(int month) {
+  static String _getMonthName(int month) {
     const months = [
       '',
       'Januar',
@@ -1663,7 +1618,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   }
 
   // Helper za konvertovanje meseca u datume
-  Map<String, dynamic> _konvertujMesecUDatume(String izabranMesec) {
+  static Map<String, dynamic> _konvertujMesecUDatume(String izabranMesec) {
     // Parsiraj izabrani mesec (format: "Septembar 2025")
     final parts = izabranMesec.split(' ');
     if (parts.length != 2) {
