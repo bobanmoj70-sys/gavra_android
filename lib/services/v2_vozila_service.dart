@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
+import '../models/v2_vozila_servis.dart';
 import 'realtime/v2_master_realtime_manager.dart';
-import 'v2_vozila_servis_service.dart';
+// V2VozilaServisService se nalazi na dnu ovog fajla (spojen sa v2_vozila_servis_service.dart)
 
 /// Servis za upravljanje vozilima — kolska knjiga i tehničko stanje.
 class V2VozilaService {
@@ -25,6 +26,7 @@ class V2VozilaService {
   static Future<bool> updateKolskaKnjiga(String id, Map<String, dynamic> podaci) async {
     try {
       await _supabase.from('v2_vozila').update(podaci).eq('id', id);
+      _rm.patchCache('v2_vozila', id, podaci);
       return true;
     } catch (e) {
       debugPrint('[V2VozilaService] Greška u updateKolskaKnjiga(): $e');
@@ -214,4 +216,70 @@ class V2Vozilo {
 
   @override
   int get hashCode => id.hashCode;
+}
+
+// =============================================================================
+// Spojeno iz v2_vozila_servis_service.dart
+// =============================================================================
+
+/// Servis za tabelu v2_vozila_servis (servisna knjiga vozila)
+class V2VozilaServisService {
+  V2VozilaServisService._();
+
+  static const String tabela = 'v2_vozila_servis';
+
+  static SupabaseClient get _db => supabase;
+
+  /// Dohvati servisnu istoriju za vozilo
+  static Future<List<V2VozilaServis>> getIstorijuServisa(String voziloId) async {
+    try {
+      final response = await _db
+          .from(tabela)
+          .select('id,vozilo_id,tip,datum,km,opis,cena,pozicija,created_at')
+          .eq('vozilo_id', voziloId)
+          .order('datum', ascending: false);
+      return (response as List).map((r) => V2VozilaServis.fromJson(r)).toList();
+    } catch (e) {
+      debugPrint('[V2VozilaServisService] getIstorijuServisa error: $e');
+      return [];
+    }
+  }
+
+  /// Dodaj zapis u servisnu istoriju
+  static Future<bool> addIstorijuServisa({
+    required String voziloId,
+    required String tip,
+    DateTime? datum,
+    int? km,
+    String? opis,
+    double? cena,
+    String? pozicija,
+  }) async {
+    try {
+      await _db.from(tabela).insert({
+        'vozilo_id': voziloId,
+        'tip': tip,
+        'datum': datum?.toIso8601String().split('T')[0],
+        'km': km,
+        'opis': opis,
+        'cena': cena,
+        'pozicija': pozicija,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('[V2VozilaServisService] addIstorijuServisa error: $e');
+      return false;
+    }
+  }
+
+  /// Obriši servisni zapis
+  static Future<bool> deleteIstorijuServisa(String id) async {
+    try {
+      await _db.from(tabela).delete().eq('id', id);
+      return true;
+    } catch (e) {
+      debugPrint('[V2VozilaServisService] deleteIstorijuServisa error: $e');
+      return false;
+    }
+  }
 }

@@ -6,7 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
-import 'v2_admin_security_service.dart';
+import 'v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import 'v2_notification_navigation_service.dart';
 import 'v2_vozac_service.dart';
 
@@ -76,8 +76,7 @@ class V2RealtimeNotificationService {
     try {
       // Dinamičko učitavanje admin vozača po imenu iz centralizovanog servisa
       final adminNames = V2AdminSecurityService.adminUsers;
-      final vozacService = V2VozacService();
-      final allVozaci = vozacService.getAllVozaci();
+      final allVozaci = V2VozacService.getAllVozaci();
       final adminVozacIds = allVozaci.where((v) => adminNames.contains(v.ime)).map((v) => v.id).toList();
 
       if (adminVozacIds.isEmpty) return;

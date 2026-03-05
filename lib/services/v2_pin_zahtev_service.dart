@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -12,10 +11,6 @@ import 'v2_realtime_notification_service.dart';
 class V2PinZahtevService {
   V2PinZahtevService._();
   static SupabaseClient get _supabase => supabase;
-
-  static StreamSubscription<String>? _pinZahteviSubscription;
-  static final StreamController<List<Map<String, dynamic>>> _zahteviController =
-      StreamController<List<Map<String, dynamic>>>.broadcast();
 
   static Future<bool> posaljiZahtev({
     required String putnikId,
@@ -57,52 +52,12 @@ class V2PinZahtevService {
     }
   }
 
-  /// Realtime stream: Prati nove zahteve za PIN
-  static Stream<List<Map<String, dynamic>>> streamZahteviKojiCekaju() {
-    // Inicijalizuj subscription ako ne postoji
-    if (_pinZahteviSubscription == null) {
-      _startRealtimeListener();
-    }
-
-    // Emituj trenutne podatke odmah za novog subscribera, pa nastavi sa broadcast streamom
-    final StreamController<List<Map<String, dynamic>>> sc = StreamController<List<Map<String, dynamic>>>();
-    sc.add(_buildEnrichedList());
-    final sub = _zahteviController.stream.listen(
-      (data) {
-        if (!sc.isClosed) sc.add(data);
-      },
-      onError: (e) {
-        if (!sc.isClosed) sc.addError(e);
-      },
-      onDone: () {
-        sc.close();
-      },
-    );
-    sc.onCancel = () {
-      sub.cancel();
-      sc.close();
-    };
-    return sc.stream;
-  }
-
-  /// Pokreni realtime listener koristeći RealtimeManager
-  static void _startRealtimeListener() {
-    _pinZahteviSubscription =
-        V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_pin_zahtevi').listen((_) {
-      debugPrint('[PinZahtevService] Primljena cache promena za v2_pin_zahtevi');
-      _fetchAndEmitZahtevi();
-    });
-
-    // Učitaj početne podatke
-    _fetchAndEmitZahtevi();
-  }
-
-  /// Emituj zahteve koji čekaju iz pinCache — nema DB upita
-  static void _fetchAndEmitZahtevi() {
-    if (!_zahteviController.isClosed) {
-      _zahteviController.add(_buildEnrichedList());
-    }
-  }
+  /// Realtime stream: Prati nove zahteve za PIN — direktno iz pinCache, 0 DB upita
+  static Stream<List<Map<String, dynamic>>> streamZahteviKojiCekaju() =>
+      V2MasterRealtimeManager.instance.streamFromCache(
+        tables: ['v2_pin_zahtevi'],
+        build: _buildEnrichedList,
+      );
 
   /// Izgradi enriched listu iz pinCache
   static List<Map<String, dynamic>> _buildEnrichedList() {
@@ -124,14 +79,6 @@ class V2PinZahtevService {
         'tip': _tabelaToTip(z['putnik_tabela'] as String? ?? ''),
       };
     }).toList();
-  }
-
-  /// Cleanup subscription
-  static void dispose() {
-    _pinZahteviSubscription?.cancel();
-    _pinZahteviSubscription = null;
-    // Ne pozivamo rm.unsubscribe — v2_pin_zahtevi je statička tabela
-    // čiji kanal drži initialize() trajno otvoren.
   }
 
   static int brojZahtevaKojiCekaju() {

@@ -270,3 +270,41 @@ class V2AuthManager {
     await prefs.setString(_authSessionKey, DateTime.now().toUtc().toIso8601String());
   }
 }
+
+// =============================================================================
+// Spojeno iz v2_admin_security_service.dart
+// =============================================================================
+
+/// Centralizovani servis za upravljanje admin privilegijama.
+class V2AdminSecurityService {
+  V2AdminSecurityService._();
+
+  static const Set<String> _adminUsers = {'Bojan'};
+
+  static List<String> get adminUsers => List.unmodifiable(_adminUsers);
+
+  static bool isAdmin(String? driverName) {
+    if (driverName == null || driverName.isEmpty) return false;
+    return _adminUsers.contains(driverName);
+  }
+
+  static Map<String, double> filterPazarByPrivileges(
+    String currentDriver,
+    Map<String, double> pazarData,
+  ) {
+    if (currentDriver.isEmpty) return {};
+    if (isAdmin(currentDriver)) return Map.from(pazarData);
+    return {
+      if (pazarData.containsKey(currentDriver)) currentDriver: pazarData[currentDriver]!,
+    };
+  }
+
+  static List<String> getVisibleDrivers(
+    String currentDriver,
+    List<String> allDrivers,
+  ) {
+    if (currentDriver.isEmpty) return [];
+    if (isAdmin(currentDriver)) return List.from(allDrivers);
+    return allDrivers.where((driver) => driver == currentDriver).toList();
+  }
+}

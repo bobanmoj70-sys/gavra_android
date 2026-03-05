@@ -55,29 +55,29 @@ class V2VozacRasporedEntry {
 
 /// Servis za učitavanje i upravljanje vozac_raspored tabelom
 class V2VozacRasporedService {
-  static final V2VozacRasporedService _instance = V2VozacRasporedService._internal();
-  factory V2VozacRasporedService() => _instance;
-  V2VozacRasporedService._internal();
+  V2VozacRasporedService._();
 
-  SupabaseClient get _supabase => supabase;
-  V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
+  static SupabaseClient get _supabase => supabase;
+  static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
-  /// Učitaj sve unose iz rm cache-a (sync)
-  List<V2VozacRasporedEntry> loadAll() {
+  static List<V2VozacRasporedEntry> loadAll() {
     return _rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
   }
 
-  /// Dodaj ili zameni unos (upsert po dan+grad+vreme)
-  Future<void> upsert(V2VozacRasporedEntry entry) async {
+  static Future<void> upsert(V2VozacRasporedEntry entry) async {
     try {
-      await _supabase.from('v2_vozac_raspored').upsert(entry.toMap(), onConflict: 'dan,grad,vreme');
+      final row = await _supabase
+          .from('v2_vozac_raspored')
+          .upsert(entry.toMap(), onConflict: 'dan,grad,vreme')
+          .select()
+          .single();
+      _rm.upsertToCache('v2_vozac_raspored', row);
     } catch (e) {
       debugPrint('[V2VozacRasporedService] Greška u upsert(): $e');
     }
   }
 
-  /// Obriši unos za termin (dan+grad+vreme+vozac_id)
-  Future<void> deleteTermin({
+  static Future<void> deleteTermin({
     required String dan,
     required String grad,
     required String vreme,
@@ -91,6 +91,18 @@ class V2VozacRasporedService {
           .eq('grad', grad)
           .eq('vreme', vreme)
           .eq('vozac_id', vozacId);
+      // Ukloni iz cache-a sve redove koji odgovaraju terminu
+      final toRemove = _rm.rasporedCache.entries
+          .where((e) =>
+              e.value['dan'] == dan &&
+              e.value['grad'] == grad &&
+              e.value['vreme'] == vreme &&
+              e.value['vozac_id']?.toString() == vozacId)
+          .map((e) => e.key)
+          .toList();
+      for (final id in toRemove) {
+        _rm.removeFromCache('v2_vozac_raspored', id);
+      }
     } catch (e) {
       debugPrint('[V2VozacRasporedService] Greška u deleteTermin(): $e');
     }

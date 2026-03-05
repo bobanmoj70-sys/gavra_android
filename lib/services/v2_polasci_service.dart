@@ -435,14 +435,25 @@ class V2PutnikStreamService {
   Stream<List<V2Putnik>> streamKombinovaniPutniciFiltered(
       {String? isoDate, String? grad, String? vreme, String? vozacId}) {
     final controller = StreamController<List<V2Putnik>>.broadcast();
+    bool isEmitting = false;
+    bool pendingEmit = false;
 
     Future<void> emit() async {
-      if (controller.isClosed) return;
+      if (isEmitting) {
+        pendingEmit = true; // zabilježi da treba još jedan emit kad završi
+        return;
+      }
+      isEmitting = true;
+      pendingEmit = false;
       try {
+        if (controller.isClosed) return;
         final result = await _fetchPutnici(isoDate: isoDate, grad: grad, vreme: vreme, vozacId: vozacId);
         if (!controller.isClosed) controller.add(result);
       } catch (e) {
         if (!controller.isClosed) controller.add([]);
+      } finally {
+        isEmitting = false;
+        if (pendingEmit) emit(); // ako je stigla nova promjena, odmah emituj
       }
     }
 

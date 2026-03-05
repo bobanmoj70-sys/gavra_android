@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -16,61 +14,20 @@ class V2OdrzavanjeScreen extends StatefulWidget {
 }
 
 class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
-  List<V2Vozilo> _vozila = [];
-  bool _isLoading = true;
   V2Vozilo? _selectedVozilo;
-  StreamSubscription? _vozilaSubscription;
+
+  late final Stream<List<V2Vozilo>> _streamVozila;
 
   final _formatBroja = NumberFormat('#,###', 'sr');
 
   @override
   void initState() {
     super.initState();
-    // Realtime osvežavanje vozila
-    _vozilaSubscription = V2VozilaService.streamVozila().listen((vozila) {
-      setState(() {
-        _vozila = vozila;
-        _isLoading = false;
-        // Ako je bilo selektovano vozilo, osveži ga
-        if (_selectedVozilo != null) {
-          try {
-            _selectedVozilo = vozila.firstWhere(
-              (v) => v.id == _selectedVozilo!.id,
-            );
-          } catch (e) {
-            _selectedVozilo = vozila.isNotEmpty ? vozila.first : null;
-          }
-        }
-      });
-    });
-  }
-
-  Future<void> _loadVozila() async {
-    setState(() => _isLoading = true);
-    final vozila = V2VozilaService.getVozila();
-    setState(() {
-      _vozila = vozila;
-      _isLoading = false;
-      // Ako je bilo selektovano vozilo, osveži ga
-      if (_selectedVozilo != null) {
-        _selectedVozilo = vozila.firstWhere(
-          (v) => v.id == _selectedVozilo!.id,
-          orElse: () => vozila.first,
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _vozilaSubscription?.cancel();
-    super.dispose();
+    _streamVozila = V2VozilaService.streamVozila();
   }
 
   void _selectVozilo(V2Vozilo? vozilo) {
-    setState(() {
-      _selectedVozilo = vozilo;
-    });
+    setState(() => _selectedVozilo = vozilo);
   }
 
   @override
@@ -81,28 +38,33 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _vozila.isEmpty
-              ? const Center(child: Text('Nema vozila u bazi'))
-              : Column(
-                  children: [
-                    // Dropdown za izbor vozila
-                    _buildVoziloDropdown(),
-
-                    // Karton vozila
-                    Expanded(
-                      child: _selectedVozilo == null
-                          ? const Center(
-                              child: Text(
-                                'Izaberi vozilo',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            )
-                          : _buildKolskaKnjiga(),
-                    ),
-                  ],
-                ),
+      body: StreamBuilder<List<V2Vozilo>>(
+        stream: _streamVozila,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final vozila = snapshot.data!;
+          if (vozila.isEmpty) return const Center(child: Text('Nema vozila u bazi'));
+          // Sinhronizuj _selectedVozilo sa svježim podacima
+          final sel = _selectedVozilo == null
+              ? null
+              : vozila.firstWhere((v) => v.id == _selectedVozilo!.id, orElse: () => vozila.first);
+          if (sel != _selectedVozilo) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _selectedVozilo = sel);
+            });
+          }
+          return Column(
+            children: [
+              _buildVoziloDropdown(vozila),
+              Expanded(
+                child: _selectedVozilo == null
+                    ? const Center(child: Text('Izaberi vozilo', style: TextStyle(color: Colors.grey)))
+                    : _buildKolskaKnjiga(),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -159,9 +121,9 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     return Colors.grey.shade300;
   }
 
-  Widget _buildVoziloDropdown() {
+  Widget _buildVoziloDropdown(List<V2Vozilo> vozila) {
     // Sortiraj: 066 levo, 102 desno, ostali po redu
-    final sortedVozila = List<V2Vozilo>.from(_vozila)
+    final sortedVozila = List<V2Vozilo>.from(vozila)
       ..sort((a, b) {
         if (a.registarskiBroj.contains('066')) return -1;
         if (b.registarskiBroj.contains('066')) return 1;
@@ -247,200 +209,196 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
   Widget _buildKolskaKnjiga() {
     final v = _selectedVozilo!;
 
-    return RefreshIndicator(
-      onRefresh: _loadVozila,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header sa osnovnim info
-            Card(
-              color: Colors.blue.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header sa osnovnim info
+          Card(
+            color: Colors.blue.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    v.displayNaziv,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Registracija: ${v.registarskiBroj}',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                  if (v.godinaProizvodnje != null)
                     Text(
-                      v.displayNaziv,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Registracija: ${v.registarskiBroj}',
+                      'Godina: ${v.godinaProizvodnje}',
                       style: TextStyle(color: Colors.grey.shade700),
                     ),
-                    if (v.godinaProizvodnje != null)
-                      Text(
-                        'Godina: ${v.godinaProizvodnje}',
-                        style: TextStyle(color: Colors.grey.shade700),
-                      ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.speed, size: 16, color: Colors.blue),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Trenutna kilometraža: ',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                          ),
-                          Text(
-                            '${_formatBroja.format(v.kilometraza ?? 0)} km',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.blue.shade200),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.speed, size: 16, color: Colors.blue),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Trenutna kilometraža: ',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                        Text(
+                          '${_formatBroja.format(v.kilometraza ?? 0)} km',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
 
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-            // Broj šasije
-            _buildEditableField(
-              icon: '🔢',
-              label: 'Broj šasije (VIN)',
-              value: v.brojSasije,
-              onEdit: () => _editTextField('broj_sasije', 'Broj šasije', v.brojSasije),
+          // Broj šasije
+          _buildEditableField(
+            icon: '🔢',
+            label: 'Broj šasije (VIN)',
+            value: v.brojSasije,
+            onEdit: () => _editTextField('broj_sasije', 'Broj šasije', v.brojSasije),
+          ),
+
+          // Registracija važi do
+          _buildEditableField(
+            icon: '📋',
+            label: 'Registracija važi do',
+            value: V2Vozilo.formatDatum(v.registracijaVaziDo),
+            valueColor: v.registracijaIstekla
+                ? Colors.red
+                : v.registracijaIstice
+                    ? Colors.orange
+                    : null,
+            badge: v.registracijaIstekla
+                ? 'ISTEKLA!'
+                : v.registracijaIstice
+                    ? '${v.danaDoIstekaRegistracije} dana'
+                    : null,
+            badgeColor: v.registracijaIstekla ? Colors.red : Colors.orange,
+            onEdit: () => _editDateField('registracija_vazi_do', 'Registracija važi do', v.registracijaVaziDo),
+          ),
+
+          // Napomena
+          _buildEditableField(
+            icon: '📝',
+            label: 'Napomena',
+            value: v.napomena ?? '-',
+            onEdit: () => _editTextField('napomena', 'Napomena', v.napomena, multiline: true),
+          ),
+
+          const Divider(height: 32),
+
+          // Mali servis
+          _buildEditableField(
+            icon: '🔧',
+            label: 'Mali servis',
+            value: _formatServis(v.maliServisDatum, v.maliServisKm),
+            onEdit: () => _editServisField('mali_servis', 'Mali servis', v.maliServisDatum, v.maliServisKm),
+          ),
+
+          // Veliki servis
+          _buildEditableField(
+            icon: '🛠️',
+            label: 'Veliki servis',
+            value: _formatServis(v.velikiServisDatum, v.velikiServisKm),
+            onEdit: () => _editServisField('veliki_servis', 'Veliki servis', v.velikiServisDatum, v.velikiServisKm),
+          ),
+
+          // Alternator
+          _buildEditableField(
+            icon: '⚡',
+            label: 'Alternator',
+            value: _formatServis(v.alternatorDatum, v.alternatorKm),
+            onEdit: () => _editServisField('alternator', 'Alternator', v.alternatorDatum, v.alternatorKm),
+          ),
+
+          // Akumulator
+          _buildEditableField(
+            icon: '🔋',
+            label: 'Akumulator',
+            value: _formatServis(v.akumulatorDatum, v.akumulatorKm),
+            onEdit: () => _editServisField('akumulator', 'Akumulator', v.akumulatorDatum, v.akumulatorKm),
+          ),
+
+          // Pločice prednje
+          _buildEditableField(
+            icon: '🛑',
+            label: 'Pločice prednje',
+            value: _formatServis(v.plocicePrednjeDatum, v.plocicePrednjeKm),
+            onEdit: () =>
+                _editServisField('plocice_prednje', 'Pločice prednje', v.plocicePrednjeDatum, v.plocicePrednjeKm),
+          ),
+
+          // Pločice zadnje
+          _buildEditableField(
+            icon: '🛑',
+            label: 'Pločice zadnje',
+            value: _formatServis(v.plociceZadnjeDatum, v.plociceZadnjeKm),
+            onEdit: () => _editServisField('plocice_zadnje', 'Pločice zadnje', v.plociceZadnjeDatum, v.plociceZadnjeKm),
+          ),
+
+          // Trap
+          _buildEditableField(
+            icon: '🔩',
+            label: 'Trap',
+            value: _formatServis(v.trapDatum, v.trapKm),
+            onEdit: () => _editServisField('trap', 'Trap', v.trapDatum, v.trapKm),
+          ),
+
+          const Divider(height: 32),
+
+          // Gume prednje
+          _buildEditableField(
+            icon: '🛞',
+            label: 'Gume prednje',
+            value: v.gumePrednjeOpis ?? v.gumeOpis ?? '-',
+            subtitle: _formatGumeSubtitle(v.gumePrednjeDatum ?? v.gumeDatum, v.gumePrednjeKm),
+            onEdit: () => _editGumeField(
+              'prednje',
+              v.gumePrednjeDatum ?? v.gumeDatum,
+              v.gumePrednjeOpis ?? v.gumeOpis,
+              v.gumePrednjeKm,
             ),
+          ),
 
-            // Registracija važi do
-            _buildEditableField(
-              icon: '📋',
-              label: 'Registracija važi do',
-              value: V2Vozilo.formatDatum(v.registracijaVaziDo),
-              valueColor: v.registracijaIstekla
-                  ? Colors.red
-                  : v.registracijaIstice
-                      ? Colors.orange
-                      : null,
-              badge: v.registracijaIstekla
-                  ? 'ISTEKLA!'
-                  : v.registracijaIstice
-                      ? '${v.danaDoIstekaRegistracije} dana'
-                      : null,
-              badgeColor: v.registracijaIstekla ? Colors.red : Colors.orange,
-              onEdit: () => _editDateField('registracija_vazi_do', 'Registracija važi do', v.registracijaVaziDo),
-            ),
+          // Gume zadnje
+          _buildEditableField(
+            icon: '🛞',
+            label: 'Gume zadnje',
+            value: v.gumeZadnjeOpis ?? '-',
+            subtitle: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
+            onEdit: () => _editGumeField('zadnje', v.gumeZadnjeDatum, v.gumeZadnjeOpis, v.gumeZadnjeKm),
+          ),
 
-            // Napomena
-            _buildEditableField(
-              icon: '📝',
-              label: 'Napomena',
-              value: v.napomena ?? '-',
-              onEdit: () => _editTextField('napomena', 'Napomena', v.napomena, multiline: true),
-            ),
+          const Divider(height: 32),
 
-            const Divider(height: 32),
+          // Radio code
+          _buildEditableField(
+            icon: '📻',
+            label: 'Radio code',
+            value: v.radio,
+            onEdit: () => _editTextField('radio', 'Radio code', v.radio),
+          ),
 
-            // Mali servis
-            _buildEditableField(
-              icon: '🔧',
-              label: 'Mali servis',
-              value: _formatServis(v.maliServisDatum, v.maliServisKm),
-              onEdit: () => _editServisField('mali_servis', 'Mali servis', v.maliServisDatum, v.maliServisKm),
-            ),
-
-            // Veliki servis
-            _buildEditableField(
-              icon: '🛠️',
-              label: 'Veliki servis',
-              value: _formatServis(v.velikiServisDatum, v.velikiServisKm),
-              onEdit: () => _editServisField('veliki_servis', 'Veliki servis', v.velikiServisDatum, v.velikiServisKm),
-            ),
-
-            // Alternator
-            _buildEditableField(
-              icon: '⚡',
-              label: 'Alternator',
-              value: _formatServis(v.alternatorDatum, v.alternatorKm),
-              onEdit: () => _editServisField('alternator', 'Alternator', v.alternatorDatum, v.alternatorKm),
-            ),
-
-            // Akumulator
-            _buildEditableField(
-              icon: '🔋',
-              label: 'Akumulator',
-              value: _formatServis(v.akumulatorDatum, v.akumulatorKm),
-              onEdit: () => _editServisField('akumulator', 'Akumulator', v.akumulatorDatum, v.akumulatorKm),
-            ),
-
-            // Pločice prednje
-            _buildEditableField(
-              icon: '🛑',
-              label: 'Pločice prednje',
-              value: _formatServis(v.plocicePrednjeDatum, v.plocicePrednjeKm),
-              onEdit: () =>
-                  _editServisField('plocice_prednje', 'Pločice prednje', v.plocicePrednjeDatum, v.plocicePrednjeKm),
-            ),
-
-            // Pločice zadnje
-            _buildEditableField(
-              icon: '🛑',
-              label: 'Pločice zadnje',
-              value: _formatServis(v.plociceZadnjeDatum, v.plociceZadnjeKm),
-              onEdit: () =>
-                  _editServisField('plocice_zadnje', 'Pločice zadnje', v.plociceZadnjeDatum, v.plociceZadnjeKm),
-            ),
-
-            // Trap
-            _buildEditableField(
-              icon: '🔩',
-              label: 'Trap',
-              value: _formatServis(v.trapDatum, v.trapKm),
-              onEdit: () => _editServisField('trap', 'Trap', v.trapDatum, v.trapKm),
-            ),
-
-            const Divider(height: 32),
-
-            // Gume prednje
-            _buildEditableField(
-              icon: '🛞',
-              label: 'Gume prednje',
-              value: v.gumePrednjeOpis ?? v.gumeOpis ?? '-',
-              subtitle: _formatGumeSubtitle(v.gumePrednjeDatum ?? v.gumeDatum, v.gumePrednjeKm),
-              onEdit: () => _editGumeField(
-                'prednje',
-                v.gumePrednjeDatum ?? v.gumeDatum,
-                v.gumePrednjeOpis ?? v.gumeOpis,
-                v.gumePrednjeKm,
-              ),
-            ),
-
-            // Gume zadnje
-            _buildEditableField(
-              icon: '🛞',
-              label: 'Gume zadnje',
-              value: v.gumeZadnjeOpis ?? '-',
-              subtitle: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
-              onEdit: () => _editGumeField('zadnje', v.gumeZadnjeDatum, v.gumeZadnjeOpis, v.gumeZadnjeKm),
-            ),
-
-            const Divider(height: 32),
-
-            // Radio code
-            _buildEditableField(
-              icon: '📻',
-              label: 'Radio code',
-              value: v.radio,
-              onEdit: () => _editTextField('radio', 'Radio code', v.radio),
-            ),
-
-            const SizedBox(height: 80),
-          ],
-        ),
+          const SizedBox(height: 80),
+        ],
       ),
     );
   }

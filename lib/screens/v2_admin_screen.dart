@@ -1,12 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart'; // ?? RASPORED VREMENA
 import '../globals.dart';
 import '../models/v2_putnik.dart';
-import '../services/v2_admin_security_service.dart'; // ??? ADMIN SECURITY
 import '../services/v2_app_settings_service.dart'; // ?? NAV BAR SETTINGS
+import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import '../services/v2_firebase_service.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_pin_zahtev_service.dart'; // ?? PIN ZAHTEVI
@@ -62,15 +60,12 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
   String? _currentDriver;
 
-  // ?? PIN ZAHTEVI - broj zahteva koji cekaju
-  int _brojPinZahteva = 0;
-  StreamSubscription<List<Map<String, dynamic>>>? _pinZahteviSubscription;
-
   // ?? Cache-based streamovi (kreirani jednom u initState)
   late final Stream<List<V2Putnik>> _streamPutnici;
   late final Stream<Map<String, double>> _streamPazar;
   late final Stream<int> _streamRadniciObrada;
   late final Stream<int> _streamUceniciObrada;
+  late final Stream<List<Map<String, dynamic>>> _streamPinZahtevi;
   // Shared broadcast stream za zahteve — jedan poziv, dvije pretplate
   late final Stream<List<dynamic>> _streamZahteviObradaShared;
 
@@ -89,14 +84,9 @@ class _AdminScreenState extends State<V2AdminScreen> {
     _streamRadniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
     _streamUceniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
 
-    _loadCurrentDriver();
+    _streamPinZahtevi = V2PinZahtevService.streamZahteviKojiCekaju();
 
-    // ?? PIN ZAHTEVI - prati automatski putem streama
-    _pinZahteviSubscription = V2PinZahtevService.streamZahteviKojiCekaju().listen((zahtevi) {
-      if (mounted) {
-        setState(() => _brojPinZahteva = zahtevi.length);
-      }
-    });
+    _loadCurrentDriver();
 
     try {
       V2LocalNotificationService.initialize(context);
@@ -107,7 +97,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
   @override
   void dispose() {
-    _pinZahteviSubscription?.cancel();
     super.dispose();
   }
 
@@ -115,8 +104,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
   void _showVozacPickerDialog(BuildContext context) {
     // Ucitaj vozace iz rm cache-a
     try {
-      final vozacService = V2VozacService();
-      final vozaci = vozacService.getAllVozaci();
+      final vozaci = V2VozacService.getAllVozaci();
 
       if (!mounted) return;
 
@@ -634,60 +622,63 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
                               // PIN
                               Expanded(
-                                child: InkWell(
-                                  onTap: () async {
-                                    await Navigator.push(context,
-                                        MaterialPageRoute<void>(builder: (context) => const V2PinZahteviScreen()));
-                                    // Stream automatski osvjezava _brojPinZahteva
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      Container(
-                                        height: 28,
-                                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).glassContainer,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color:
-                                                  _brojPinZahteva > 0 ? Colors.orange : Theme.of(context).glassBorder,
-                                              width: 1.5),
-                                        ),
-                                        child: const Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('PIN',
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        shadows: [
-                                                          Shadow(
-                                                              offset: Offset(1, 1),
-                                                              blurRadius: 3,
-                                                              color: Colors.black54)
-                                                        ])))),
-                                      ),
-                                      if (_brojPinZahteva > 0)
-                                        Positioned(
-                                          right: -4,
-                                          top: -4,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration:
-                                                const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-                                            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                                            child: Text('$_brojPinZahteva',
-                                                style: const TextStyle(
-                                                    color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                                textAlign: TextAlign.center),
+                                child: StreamBuilder<List<Map<String, dynamic>>>(
+                                  stream: _streamPinZahtevi,
+                                  initialData: const [],
+                                  builder: (context, snapshot) {
+                                    final broj = snapshot.data?.length ?? 0;
+                                    return InkWell(
+                                      onTap: () => Navigator.push(context,
+                                          MaterialPageRoute<void>(builder: (context) => const V2PinZahteviScreen())),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Container(
+                                            height: 28,
+                                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context).glassContainer,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                  color: broj > 0 ? Colors.orange : Theme.of(context).glassBorder,
+                                                  width: 1.5),
+                                            ),
+                                            child: const Center(
+                                                child: FittedBox(
+                                                    fit: BoxFit.scaleDown,
+                                                    child: Text('PIN',
+                                                        style: TextStyle(
+                                                            fontWeight: FontWeight.w600,
+                                                            fontSize: 14,
+                                                            color: Colors.white,
+                                                            shadows: [
+                                                              Shadow(
+                                                                  offset: Offset(1, 1),
+                                                                  blurRadius: 3,
+                                                                  color: Colors.black54)
+                                                            ])))),
                                           ),
-                                        ),
-                                    ],
-                                  ),
+                                          if (broj > 0)
+                                            Positioned(
+                                              right: -4,
+                                              top: -4,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration:
+                                                    const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                                                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                                child: Text('$broj',
+                                                    style: const TextStyle(
+                                                        color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                                    textAlign: TextAlign.center),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
 

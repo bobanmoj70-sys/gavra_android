@@ -39,13 +39,34 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     _loadAll();
   }
 
+  /// Puni sve 4 futures odjednom (parallelno)
   void _loadAll() {
-    _futureStanje = V2GorivoService.getStanje();
-    _futureStatistike = V2GorivoService.getStatistikePoVozilu(
-      od: DateTime(DateTime.now().year, DateTime.now().month, 1),
-    );
-    _futurePunjenja = V2GorivoService.getPunjenja();
-    _futureTocenja = V2GorivoService.getTocenja();
+    final now = DateTime.now();
+    final results = Future.wait([
+      V2GorivoService.getStanje(),
+      V2GorivoService.getStatistikePoVozilu(
+        od: DateTime(now.year, now.month, 1),
+      ),
+      V2GorivoService.getPunjenja(),
+      V2GorivoService.getTocenja(),
+    ]);
+    setState(() {
+      _futureStanje = results.then((r) => r[0] as V2PumpaStanje?);
+      _futureStatistike = results.then((r) => r[1] as List<V2VoziloStatistika>);
+      _futurePunjenja = results.then((r) => r[2] as List<V2PumpaPunjenje>);
+      _futureTocenja = results.then((r) => r[3] as List<V2PumpaTocenje>);
+    });
+  }
+
+  /// Samo osvježi stanje pumpe i statistike — za config dialog
+  void _reloadStanje() {
+    final now = DateTime.now();
+    setState(() {
+      _futureStanje = V2GorivoService.getStanje();
+      _futureStatistike = V2GorivoService.getStatistikePoVozilu(
+        od: DateTime(now.year, now.month, 1),
+      );
+    });
   }
 
   @override
@@ -752,7 +773,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                 );
                 if (!context.mounted) return;
                 Navigator.pop(ctx);
-                if (ok) setState(_loadAll);
+                if (ok) _reloadStanje();
                 if (ok) {
                   V2AppSnackBar.success(context, '✅ Podešavanja sačuvana');
                 } else {

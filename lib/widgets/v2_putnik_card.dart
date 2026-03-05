@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
-import '../services/v2_admin_security_service.dart';
+import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v2_permission_service.dart';

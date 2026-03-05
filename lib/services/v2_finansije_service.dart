@@ -41,6 +41,7 @@ class V2FinansijeService {
   static Future<bool> updateTrosak(String id, double noviIznos) async {
     try {
       await _supabase.from('v2_finansije_troskovi').update({'iznos': noviIznos}).eq('id', id);
+      V2MasterRealtimeManager.instance.patchCache('v2_finansije_troskovi', id, {'iznos': noviIznos});
       return true;
     } catch (e) {
       debugPrint('[Finansije] updateTrosak greška: $e');
@@ -53,15 +54,20 @@ class V2FinansijeService {
     try {
       final now = DateTime.now();
       debugPrint('[Finansije] Dodajem trošak: $naziv ($tip) = $iznos za ${mesec ?? now.month}/${godina ?? now.year}');
-      await _supabase.from('v2_finansije_troskovi').insert({
-        'naziv': naziv,
-        'tip': tip,
-        'iznos': iznos,
-        'mesecno': true,
-        'aktivan': true,
-        'mesec': mesec ?? now.month,
-        'godina': godina ?? now.year,
-      });
+      final row = await _supabase
+          .from('v2_finansije_troskovi')
+          .insert({
+            'naziv': naziv,
+            'tip': tip,
+            'iznos': iznos,
+            'mesecno': true,
+            'aktivan': true,
+            'mesec': mesec ?? now.month,
+            'godina': godina ?? now.year,
+          })
+          .select()
+          .single();
+      V2MasterRealtimeManager.instance.upsertToCache('v2_finansije_troskovi', row);
       debugPrint('[Finansije] Trošak dodat uspešno: $naziv');
 
       return true;
@@ -75,6 +81,7 @@ class V2FinansijeService {
   static Future<bool> deleteTrosak(String id) async {
     try {
       await _supabase.from('v2_finansije_troskovi').update({'aktivan': false}).eq('id', id);
+      V2MasterRealtimeManager.instance.patchCache('v2_finansije_troskovi', id, {'aktivan': false});
       return true;
     } catch (e) {
       debugPrint('[Finansije] deleteTrosak greška: $e');

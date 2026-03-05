@@ -132,8 +132,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
   Future<List<Map<String, dynamic>>> _loadVozaci() async {
     try {
       // Čita direktno iz rm cache-a — sync, bez timeout-a
-      final vozacService = V2VozacService();
-      final vozaciFromDB = vozacService.getAllVozaci();
+      final vozaciFromDB = V2VozacService.getAllVozaci();
 
       // Pretvori u format koji se koristi u login screen-u
       final vozaciMaps = vozaciFromDB.map((v) {

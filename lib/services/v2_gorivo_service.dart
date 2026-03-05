@@ -7,9 +7,7 @@ import '../models/v2_pumpa_stanje.dart';
 import '../models/v2_pumpa_tocenje.dart';
 import '../models/v2_vozilo_statistika.dart';
 import 'v2_finansije_service.dart';
-import 'v2_pumpa_config_service.dart';
-import 'v2_pumpa_punjenja_service.dart';
-import 'v2_pumpa_tocenja_service.dart';
+import 'v2_pumpa_service.dart';
 
 /// Orchestrator za gorivo: stanje pumpe (VIEW) + statistike + koordinacija
 /// Direktni CRUD delegiran na:
@@ -169,5 +167,4 @@ class V2GorivoService {
       return [];
     }
   }
-
 }

@@ -4,10 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../globals.dart';
 import '../models/v2_registrovani_putnik.dart';
 import 'realtime/v2_master_realtime_manager.dart';
-import 'v2_dnevni_service.dart';
-import 'v2_posiljke_service.dart';
-import 'v2_radnici_service.dart';
-import 'v2_ucenici_service.dart';
+import 'v2_putnici_service.dart';
 
 /// Servis za statistiku, plaćanja i lookup putnika kroz sve tabele.
 class V2StatistikaService {

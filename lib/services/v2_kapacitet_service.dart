@@ -68,10 +68,15 @@ class V2KapacitetService {
   /// Admin: Promeni kapacitet za odredeni polazak (atomski upsert — nema race condition)
   static Future<bool> setKapacitet(String grad, String vreme, int maxMesta) async {
     try {
-      await supabase.from('v2_kapacitet_polazaka').upsert(
-        {'grad': grad, 'vreme': vreme, 'max_mesta': maxMesta},
-        onConflict: 'grad,vreme',
-      );
+      final row = await supabase
+          .from('v2_kapacitet_polazaka')
+          .upsert(
+            {'grad': grad, 'vreme': vreme, 'max_mesta': maxMesta, 'aktivan': true},
+            onConflict: 'grad,vreme',
+          )
+          .select()
+          .single();
+      V2MasterRealtimeManager.instance.upsertToCache('v2_kapacitet_polazaka', row);
       return true;
     } catch (e) {
       debugPrint('[V2KapacitetService] setKapacitet error: $e');

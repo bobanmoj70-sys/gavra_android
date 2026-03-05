@@ -105,17 +105,22 @@ class V2VozacPutnikService {
     }
 
     try {
-      await _supabase.from('v2_vozac_putnik').upsert(
-        {
-          'putnik_id': putnikId,
-          'vozac_id': vozacId,
-          'dan': dan,
-          'grad': grad,
-          'vreme': vreme,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        },
-        onConflict: 'putnik_id,dan,grad,vreme', // UNIQUE (putnik_id, dan, grad, vreme)
-      );
+      final row = await _supabase
+          .from('v2_vozac_putnik')
+          .upsert(
+            {
+              'putnik_id': putnikId,
+              'vozac_id': vozacId,
+              'dan': dan,
+              'grad': grad,
+              'vreme': vreme,
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            },
+            onConflict: 'putnik_id,dan,grad,vreme', // UNIQUE (putnik_id, dan, grad, vreme)
+          )
+          .select()
+          .single();
+      _rm.upsertToCache('v2_vozac_putnik', row);
       return true;
     } catch (e) {
       debugPrint('[V2VozacPutnikService] Greška u set(): $e');
@@ -131,6 +136,18 @@ class V2VozacPutnikService {
       if (grad != null) q = q.eq('grad', grad);
       if (vreme != null) q = q.eq('vreme', vreme);
       await q;
+      // Ukloni iz cache-a sve redove koji odgovaraju filteru
+      final toRemove = _rm.vozacPutnikCache.entries
+          .where((e) =>
+              e.value['putnik_id']?.toString() == putnikId &&
+              (dan == null || e.value['dan'] == dan) &&
+              (grad == null || e.value['grad'] == grad) &&
+              (vreme == null || e.value['vreme'] == vreme))
+          .map((e) => e.key)
+          .toList();
+      for (final id in toRemove) {
+        _rm.removeFromCache('v2_vozac_putnik', id);
+      }
       return true;
     } catch (e) {
       debugPrint('[V2VozacPutnikService] Greška u delete(): $e');
@@ -141,6 +158,13 @@ class V2VozacPutnikService {
   static Future<void> deleteForVozac({required String vozacId}) async {
     try {
       await _supabase.from('v2_vozac_putnik').delete().eq('vozac_id', vozacId);
+      final toRemove = _rm.vozacPutnikCache.entries
+          .where((e) => e.value['vozac_id']?.toString() == vozacId)
+          .map((e) => e.key)
+          .toList();
+      for (final id in toRemove) {
+        _rm.removeFromCache('v2_vozac_putnik', id);
+      }
     } catch (e) {
       debugPrint('[V2VozacPutnikService] Greška u deleteForVozac(): $e');
     }

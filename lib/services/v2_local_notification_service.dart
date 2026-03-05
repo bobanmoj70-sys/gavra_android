@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,7 +16,7 @@ import 'v2_notification_navigation_service.dart';
 import 'v2_polasci_service.dart';
 import 'v2_realtime_notification_service.dart';
 import 'v2_statistika_istorija_service.dart';
-import 'v2_wake_lock_service.dart';
+// V2WakeLockService se nalazi na dnu ovog fajla (spojen sa v2_wake_lock_service.dart)
 
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse notificationResponse) async {
@@ -769,6 +770,32 @@ class V2LocalNotificationService {
       }
     } catch (e) {
       debugPrint('[LocalNotif] _handleV2AlternativaAction error: $e');
+    }
+  }
+}
+
+// =============================================================================
+// Spojen iz v2_wake_lock_service.dart
+// =============================================================================
+
+/// Servis za paljenje ekrana kada stigne notifikacija.
+/// Koristi native Android WakeLock API.
+class V2WakeLockService {
+  V2WakeLockService._();
+
+  static const MethodChannel _wakeLockChannel = MethodChannel('com.gavra013.gavra_android/wakelock');
+
+  /// Pali ekran na određeno vreme (default 5 sekundi).
+  /// Koristi se kada stigne push notifikacija dok je telefon zaključan.
+  static Future<bool> wakeScreen({int durationMs = 5000}) async {
+    try {
+      final result = await _wakeLockChannel.invokeMethod<bool>('wakeScreen', {
+        'duration': durationMs,
+      });
+      return result ?? false;
+    } catch (e) {
+      debugPrint('[V2WakeLockService] WakeLock nije dostupan ili greška: $e');
+      return false;
     }
   }
 }

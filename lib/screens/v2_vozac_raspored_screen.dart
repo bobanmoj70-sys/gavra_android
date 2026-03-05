@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
@@ -30,22 +28,15 @@ class V2VozacRasporedScreen extends StatefulWidget {
 }
 
 class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
-  // Write-only servisi (DB mutacije)
-  final _rasporedService = V2VozacRasporedService();
-  // Stream servis — jednom kreiran, ne ponovo na svakom rebuildu
   final _putnikStreamService = V2PutnikStreamService();
 
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
   String? _selectedDay;
-  List<V2VozacRasporedEntry> _rasporedCache = [];
-  List<V2VozacPutnikEntry> _vozacPutnikCache = [];
 
-  // Realtime subscriptions
-  StreamSubscription<String>? _rasporedSub;
-  StreamSubscription<String>? _vozacPutnikSub;
+  late final Stream<void> _cacheStream;
 
-  // Stream se kreira jednom i reciklira dok isoDate ne promeni
+  // Stream za putnike — kreira se jednom i reciklira dok isoDate ne promeni
   Stream<List<V2Putnik>>? _putnikStream;
   String? _cachedIsoDate;
 
@@ -78,11 +69,10 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     final today = _getDayAbbreviation(DateTime.now());
     _selectedDay = (today == 'sub' || today == 'ned') ? 'pon' : today;
     _autoSelectNajblizeVreme();
-    // Odmah ucitaj iz rm.cache (bez DB upita)
-    final rm = V2MasterRealtimeManager.instance;
-    _rasporedCache = rm.rasporedCache.values.map((r) => V2VozacRasporedEntry.fromMap(r)).toList();
-    _vozacPutnikCache = rm.vozacPutnikCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).toList();
-    _subscribeRealtime();
+    _cacheStream = V2MasterRealtimeManager.instance.streamFromCache(
+      tables: ['v2_vozac_raspored', 'v2_vozac_putnik'],
+      build: () {},
+    );
   }
 
   /// Automatski selektuje najbliže vreme polaska za trenutni čas.
@@ -108,32 +98,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
     _selectedGrad = 'BC';
     _selectedVreme = najblize;
-  }
-
-  @override
-  void dispose() {
-    _rasporedSub?.cancel();
-    _vozacPutnikSub?.cancel();
-    super.dispose();
-  }
-
-  /// Realtime: prati vozac_raspored i vozac_putnik tabele
-  void _subscribeRealtime() {
-    final rm = V2MasterRealtimeManager.instance;
-    _rasporedSub = rm.onCacheChanged.where((t) => t == 'v2_vozac_raspored').listen((_) {
-      if (mounted) {
-        setState(() {
-          _rasporedCache = rm.rasporedCache.values.map((r) => V2VozacRasporedEntry.fromMap(r)).toList();
-        });
-      }
-    });
-    _vozacPutnikSub = rm.onCacheChanged.where((t) => t == 'v2_vozac_putnik').listen((_) {
-      if (mounted) {
-        setState(() {
-          _vozacPutnikCache = rm.vozacPutnikCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).toList();
-        });
-      }
-    });
   }
 
   /// Vraća ISO datum koji odgovara selektovanom danu u sedmici.
@@ -169,7 +133,11 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   /// Helper: vraca V2VozacRasporedEntry za termin ili null (izbjegava dupliciranu logiku)
   V2VozacRasporedEntry? _getRasporedEntry(String grad, String vreme) {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
-    return _rasporedCache.where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme).firstOrNull;
+    final rm = V2MasterRealtimeManager.instance;
+    return rm.rasporedCache.values
+        .map((r) => V2VozacRasporedEntry.fromMap(r))
+        .where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme)
+        .firstOrNull;
   }
 
   /// Vraća boju vozača dodijeljenog terminu (grad+vreme) za selektovani dan
@@ -333,8 +301,10 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   /// Samo dostupno kada termin NEMA vozača u vozac_raspored.
   Future<void> _showPutnikAssignDialog(V2Putnik putnik) async {
     final dan = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+    final rm = V2MasterRealtimeManager.instance;
+    final vozacPutnikList = rm.vozacPutnikCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).toList();
     // Pronađi trenutnu individualnu dodjelu za ovog putnika, SAMO za ovaj dan+grad+vreme
-    final trenutniEntry = _vozacPutnikCache
+    final trenutniEntry = vozacPutnikList
         .where(
           (e) =>
               e.putnikId == putnik.id?.toString() &&
@@ -508,7 +478,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
       return;
     }
     try {
-      await _rasporedService.upsert(V2VozacRasporedEntry(
+      await V2VozacRasporedService.upsert(V2VozacRasporedEntry(
         dan: dan,
         grad: grad,
         vreme: vreme,
@@ -527,7 +497,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
       return;
     }
     try {
-      await _rasporedService.deleteTermin(dan: dan, grad: grad, vreme: vreme, vozacId: vozacId);
+      await V2VozacRasporedService.deleteTermin(dan: dan, grad: grad, vreme: vreme, vozacId: vozacId);
       if (mounted) V2AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($dan)');
     } catch (e) {
       if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
@@ -551,172 +521,180 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
       );
     }
 
-    return StreamBuilder<List<V2Putnik>>(
-      stream: _putnikStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
-          return const Center(child: CircularProgressIndicator(color: Colors.white));
-        }
+    return StreamBuilder<void>(
+      stream: _cacheStream,
+      builder: (context, __) {
+        return StreamBuilder<List<V2Putnik>>(
+          stream: _putnikStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
+              return const Center(child: CircularProgressIndicator(color: Colors.white));
+            }
 
-        final allPutnici = snapshot.data ?? [];
-        final targetDay = _selectedDay ?? _getDayAbbreviation(DateTime.now());
+            final allPutnici = snapshot.data ?? [];
+            final targetDay = _selectedDay ?? _getDayAbbreviation(DateTime.now());
 
-        final countHelper = V2PutnikCountHelper.fromPutnici(
-          putnici: allPutnici,
-          targetDateIso: isoDate,
-          targetDayAbbr: targetDay,
-        );
+            final countHelper = V2PutnikCountHelper.fromPutnici(
+              putnici: allPutnici,
+              targetDateIso: isoDate,
+              targetDayAbbr: targetDay,
+            );
 
-        int getPutnikCount(String grad, String vreme) {
-          try {
-            return countHelper.getCount(grad, vreme);
-          } catch (e) {
-            debugPrint('[V2VozacRasporedScreen] getPutnikCount error: $e');
-            return 0;
-          }
-        }
+            int getPutnikCount(String grad, String vreme) {
+              try {
+                return countHelper.getCount(grad, vreme);
+              } catch (e) {
+                debugPrint('[V2VozacRasporedScreen] getPutnikCount error: $e');
+                return 0;
+              }
+            }
 
-        // Filtriraj po gradu, vremenu, danu i statusu (bez otkazanih/bez_polaska)
-        final filteredByGradVreme = allPutnici.where((p) {
-          final gradMatch = _selectedGrad.isEmpty || V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad);
-          final vremeMatch = _selectedVreme.isEmpty || p.polazak == _selectedVreme;
-          final danMatch = targetDay.isEmpty || p.dan == targetDay;
-          final statusMatch = p.status != 'otkazano' && p.status != 'bez_polaska';
-          return gradMatch && vremeMatch && danMatch && statusMatch;
-        }).toList();
+            // Filtriraj po gradu, vremenu, danu i statusu (bez otkazanih/bez_polaska)
+            final filteredByGradVreme = allPutnici.where((p) {
+              final gradMatch =
+                  _selectedGrad.isEmpty || V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad);
+              final vremeMatch = _selectedVreme.isEmpty || p.polazak == _selectedVreme;
+              final danMatch = targetDay.isEmpty || p.dan == targetDay;
+              final statusMatch = p.status != 'otkazano' && p.status != 'bez_polaska';
+              return gradMatch && vremeMatch && danMatch && statusMatch;
+            }).toList();
 
-        return Scaffold(
-          extendBodyBehindAppBar: true,
-          extendBody: true,
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            foregroundColor: Colors.white,
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Raspored vozača',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ],
-            ),
-          ),
-          body: Container(
-            decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // DAY CHIPS
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: _days.map((day) {
-                        final isSelected = _selectedDay == day;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: InkWell(
-                            onTap: () => setState(() => _selectedDay = day),
-                            borderRadius: BorderRadius.circular(12),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.white.withOpacity(0.25)
-                                    : Theme.of(context).glassContainer.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected ? Colors.white.withOpacity(0.7) : Theme.of(context).glassBorder,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                day.toUpperCase(),
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Theme.of(context).colorScheme.onPrimary.withOpacity(0.6),
-                                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                                  fontSize: 13,
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+            return Scaffold(
+              extendBodyBehindAppBar: true,
+              extendBody: true,
+              appBar: AppBar(
+                automaticallyImplyLeading: false,
+                centerTitle: true,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                foregroundColor: Colors.white,
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Raspored vozača',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                     ),
-                  ),
-
-                  // TERMIN INFO TRAKA: koji vozač je dodeljen selektovanom terminu
-                  if (_selectedVreme.isNotEmpty) _buildTerminInfoRow(targetDay),
-
-                  // Lista putnika
-                  Expanded(
-                    child: filteredByGradVreme.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.inbox, size: 48, color: Colors.white.withOpacity(0.3)),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _selectedVreme.isEmpty
-                                      ? 'Odaberi polazak u donjem meniju'
-                                      : 'Nema putnika za ovaj polazak',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 15),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            itemCount: filteredByGradVreme.length,
-                            itemBuilder: (ctx, i) {
-                              final p = filteredByGradVreme[i];
-                              // Da li je termin dodeljen (vozac_raspored)?
-                              final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
-                              // Individualna dodjela putnika za OVAJ dan+grad+vreme (vozac_putnik)
-                              final dan = targetDay;
-                              final individualnaEntry = _vozacPutnikCache.where((e) {
-                                return e.putnikId == p.id?.toString() &&
-                                    e.dan == dan &&
-                                    e.grad.toUpperCase() == _selectedGrad.toUpperCase() &&
-                                    V2GradAdresaValidator.normalizeTime(e.vreme) ==
-                                        V2GradAdresaValidator.normalizeTime(_selectedVreme);
-                              }).firstOrNull;
-                              // Boja: individualna dodjela ima prioritet nad termin bojom
-                              final vozacColor = individualnaEntry != null
-                                  ? V2VozacCache.getColorByUuid(individualnaEntry.vozacId)
-                                  : _getVozacColorForTermin(_selectedGrad, _selectedVreme);
-                              return _PutnikRasporedTile(
-                                putnik: p,
-                                vozacColor: vozacColor,
-                                terminJeDodeljen: terminJeDodeljen,
-                                vozacPutnikIme: individualnaEntry != null
-                                    ? V2VozacCache.getImeByUuid(individualnaEntry.vozacId)
-                                    : null,
-                                onTap: () => _showPutnikAssignDialog(p),
-                              );
-                            },
-                          ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
-          bottomNavigationBar: ValueListenableBuilder<String>(
-            valueListenable: navBarTypeNotifier,
-            builder: (context, navType, _) {
-              return _buildBottomNavBar(navType, getPutnikCount, targetDay);
-            },
-          ),
+              body: Container(
+                decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      // DAY CHIPS
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: _days.map((day) {
+                            final isSelected = _selectedDay == day;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: InkWell(
+                                onTap: () => setState(() => _selectedDay = day),
+                                borderRadius: BorderRadius.circular(12),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white.withOpacity(0.25)
+                                        : Theme.of(context).glassContainer.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected ? Colors.white.withOpacity(0.7) : Theme.of(context).glassBorder,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    day.toUpperCase(),
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Theme.of(context).colorScheme.onPrimary.withOpacity(0.6),
+                                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                                      fontSize: 13,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                      // TERMIN INFO TRAKA: koji vozač je dodeljen selektovanom terminu
+                      if (_selectedVreme.isNotEmpty) _buildTerminInfoRow(targetDay),
+
+                      // Lista putnika
+                      Expanded(
+                        child: filteredByGradVreme.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.inbox, size: 48, color: Colors.white.withOpacity(0.3)),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      _selectedVreme.isEmpty
+                                          ? 'Odaberi polazak u donjem meniju'
+                                          : 'Nema putnika za ovaj polazak',
+                                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 15),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                itemCount: filteredByGradVreme.length,
+                                itemBuilder: (ctx, i) {
+                                  final p = filteredByGradVreme[i];
+                                  // Da li je termin dodeljen (vozac_raspored)?
+                                  final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
+                                  // Individualna dodjela putnika za OVAJ dan+grad+vreme (vozac_putnik)
+                                  final dan = targetDay;
+                                  final rmCache = V2MasterRealtimeManager.instance.vozacPutnikCache;
+                                  final individualnaEntry =
+                                      rmCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).where((e) {
+                                    return e.putnikId == p.id?.toString() &&
+                                        e.dan == dan &&
+                                        e.grad.toUpperCase() == _selectedGrad.toUpperCase() &&
+                                        V2GradAdresaValidator.normalizeTime(e.vreme) ==
+                                            V2GradAdresaValidator.normalizeTime(_selectedVreme);
+                                  }).firstOrNull;
+                                  // Boja: individualna dodjela ima prioritet nad termin bojom
+                                  final vozacColor = individualnaEntry != null
+                                      ? V2VozacCache.getColorByUuid(individualnaEntry.vozacId)
+                                      : _getVozacColorForTermin(_selectedGrad, _selectedVreme);
+                                  return _PutnikRasporedTile(
+                                    putnik: p,
+                                    vozacColor: vozacColor,
+                                    terminJeDodeljen: terminJeDodeljen,
+                                    vozacPutnikIme: individualnaEntry != null
+                                        ? V2VozacCache.getImeByUuid(individualnaEntry.vozacId)
+                                        : null,
+                                    onTap: () => _showPutnikAssignDialog(p),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              bottomNavigationBar: ValueListenableBuilder<String>(
+                valueListenable: navBarTypeNotifier,
+                builder: (context, navType, _) {
+                  return _buildBottomNavBar(navType, getPutnikCount, targetDay);
+                },
+              ),
+            );
+          },
         );
       },
     );

@@ -10,10 +10,9 @@ import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
-import '../services/v2_admin_security_service.dart';
 import '../services/v2_adresa_supabase_service.dart';
-import '../services/v2_auth_manager.dart';
-import '../services/v2_cena_obracun_service.dart';
+import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
+import '../services/v2_cena_obracun_service.dart'; // V2AdminSecurityService je dostupan kroz v2_auth_manager.dart
 import '../services/v2_firebase_service.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v2_kapacitet_service.dart'; // ?? Kapacitet za bottom nav bar
