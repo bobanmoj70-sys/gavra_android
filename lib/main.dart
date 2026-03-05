@@ -51,9 +51,7 @@ void main() async {
   runApp(const MyApp());
 
   // 2. Čekaj malo da se UI renderira, pa tek onda inicijalizuj servise
-  Future<void>.delayed(const Duration(milliseconds: 500), () {
-    unawaited(_doStartupTasks());
-  });
+  unawaited(Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks));
 }
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI
@@ -113,7 +111,10 @@ Future<void> _initPushSystems() async {
     // Try HMS as last resort
     try {
       debugPrint('[Main] Last resort: trying HMS');
-      await V2HuaweiPushService().initialize().timeout(const Duration(seconds: 2));
+      final hmsToken = await V2HuaweiPushService().initialize().timeout(const Duration(seconds: 2));
+      if (hmsToken != null) {
+        await V2HuaweiPushService().tryRegisterPendingToken();
+      }
     } catch (e2) {
       debugPrint('[Main] All push services failed: $e2');
     }
@@ -174,14 +175,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       } catch (e) {
         debugPrint('[Main] HMS pending token registration failed: $e');
       }
+    } else if (state == AppLifecycleState.detached) {
+      // App se gasi — počisti streamove
+      V2WeatherService.dispose();
+      V2RealtimeGpsService.dispose();
+      V2StatistikaIstorijaService.dispose();
+      V2SlobodnaMestaService.dispose();
     }
   }
 
   Future<void> _initializeApp() async {
     try {
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-
-      // Inicijalizuj V2ThemeManager
       await V2ThemeManager().initialize();
     } catch (e) {
       debugPrint('[Main] App init failed: $e');
@@ -211,16 +215,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             Locale('sr', 'ME'),
           ],
           locale: const Locale('sr'), // Default locale sa dijakritikom
-          // Samo jedna tema - nema dark mode
-          navigatorObservers: const [],
-          home: _buildHome(),
+          home: const V2WelcomeScreen(),
         );
       },
     );
-  }
-
-  Widget _buildHome() {
-    // Uvek idi direktno na V2WelcomeScreen - bez Loading ekrana
-    return const V2WelcomeScreen();
   }
 }
