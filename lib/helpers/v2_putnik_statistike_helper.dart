@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
-import '../services/v2_polasci_service.dart';
+import '../services/v2_statistika_istorija_service.dart';
 
 /// Helper za prikazivanje detaljnih statistika putnika
 /// Koristi se i u admin ekranu i u profilu putnika
@@ -202,7 +202,7 @@ class V2PutnikStatistikeHelper {
   // DOHVATI PLAĆENE MESECE ZA PUTNIKA
   static Future<Set<String>> _getPlaceniMeseci(String putnikId) async {
     try {
-      final svaPlacanja = await V2PutnikStatistikaService.dohvatiPlacanja(putnikId);
+      final svaPlacanja = await V2StatistikaIstorijaService.dohvatiPlacanja(putnikId);
       final Set<String> placeni = {};
 
       for (var placanje in svaPlacanja) {
@@ -411,7 +411,7 @@ class V2PutnikStatistikeHelper {
           const Divider(),
           // Datum, iznos i vozač poslednjeg plaćanja
           FutureBuilder<Map<String, dynamic>?>(
-            future: V2PutnikStatistikaService.dohvatiPlacanja(putnikId).then((l) => l.isNotEmpty ? l.first : null),
+            future: V2StatistikaIstorijaService.dohvatiPlacanja(putnikId).then((l) => l.isNotEmpty ? l.first : null),
             builder: (context, snapshot) {
               final placanje = snapshot.data;
               final datum = placanje?['datum'] as String?;

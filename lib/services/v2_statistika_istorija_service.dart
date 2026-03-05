@@ -380,6 +380,22 @@ class V2StatistikaIstorijaService {
     }
   }
 
+  /// Dohvata ukupno plaćeno za putnika (suma svih uplata)
+  static Future<double> dohvatiUkupnoPlaceno(String putnikId) async {
+    try {
+      final rows =
+          await _supabase.from('v2_statistika_istorija').select('iznos').eq('putnik_id', putnikId).eq('tip', 'uplata');
+      double ukupno = 0.0;
+      for (final row in rows) {
+        ukupno += (row['iznos'] as num?)?.toDouble() ?? 0.0;
+      }
+      return ukupno;
+    } catch (e) {
+      debugPrint('[V2StatistikaIstorijaService] dohvatiUkupnoPlaceno error: $e');
+      return 0.0;
+    }
+  }
+
   /// Broji vožnje (tip='voznja') za putnika u tekućem mjesecu
   static Future<int> izracunajBrojVoznji(String putnikId) async {
     try {

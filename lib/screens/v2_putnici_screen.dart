@@ -9,7 +9,6 @@ import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_permission_service.dart';
-import '../services/v2_polasci_service.dart';
 import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -1225,7 +1224,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     String selectedMonth = _getCurrentMonthYear(); // Default current month
 
     // ?? FIX: Ucitaj stvarni ukupni iznos iz baze
-    final ukupnoPlaceno = await V2PutnikStatistikaService.dohvatiUkupnoPlaceno(v2Putnik.id);
+    final ukupnoPlaceno = await V2StatistikaIstorijaService.dohvatiUkupnoPlaceno(v2Putnik.id);
 
     // Default cena po danu za input field
     final cenaPoDanu = V2CenaObracunService.getCenaPoDanu(v2Putnik);
@@ -1244,7 +1243,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
     // Future se kreira jednom pre showDialog — ne ponovo na svakom rebuildu StatefulBuilder-a
     final futurePoslednjePlacanje =
-        V2PutnikStatistikaService.dohvatiPlacanja(v2Putnik.id).then((lista) => lista.isNotEmpty ? lista.first : null);
+        V2StatistikaIstorijaService.dohvatiPlacanja(v2Putnik.id).then((lista) => lista.isNotEmpty ? lista.first : null);
 
     showDialog<void>(
       context: context,
@@ -1536,7 +1535,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       // ?? Konvertuj string meseca u datume
       final Map<String, dynamic> datumi = _konvertujMesecUDatume(mesec);
 
-      final uspeh = await V2PutnikStatistikaService.upisPlacanjaULog(
+      final uspeh = await V2StatistikaIstorijaService.upisPlacanjaULog(
         putnikId: v2Putnik.id,
         putnikIme: v2Putnik.ime,
         putnikTabela: v2Putnik.v2Tabela,
