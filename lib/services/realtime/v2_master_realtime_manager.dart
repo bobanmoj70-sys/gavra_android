@@ -605,6 +605,10 @@ class V2MasterRealtimeManager {
         statistikaCache.clear();
         await loadStatistikaCache();
         _cacheChangeController.add('v2_statistika_istorija');
+      } else if (table == 'v2_racuni') {
+        racuniCache.clear();
+        await _loadRacuniCache();
+        _cacheChangeController.add('v2_racuni');
       } else {
         // Generički infra reload — direktan upit, fill u odgovarajući cache
         final targetCache = _cacheForTable(table);
