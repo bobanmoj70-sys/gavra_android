@@ -33,7 +33,6 @@ import '../widgets/v2_clock_ticker.dart';
 import '../widgets/v2_putnik_list.dart';
 import '../widgets/v2_shimmer_widgets.dart';
 import 'v2_dugovi_screen.dart';
-import 'v2_welcome_screen.dart';
 
 /// ?? VOZAC SCREEN
 /// Prikazuje putnike koristeci isti PutnikService stream kao DanasScreen
