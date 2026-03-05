@@ -453,10 +453,12 @@ class V2MasterRealtimeManager {
     // v2_racuni: keyed by putnik_id, ali Realtime DELETE payload šalje record 'id' (UUID reda)
     // Trebamo pronaći putnik_id koji odgovara tom id-u
     if (table == 'v2_racuni') {
-      final key = racuniCache.entries.firstWhere(
-        (e) => e.value['id']?.toString() == id,
-        orElse: () => const MapEntry('', {}),
-      ).key;
+      final key = racuniCache.entries
+          .firstWhere(
+            (e) => e.value['id']?.toString() == id,
+            orElse: () => const MapEntry('', {}),
+          )
+          .key;
       if (key.isNotEmpty) {
         racuniCache.remove(key);
         if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
