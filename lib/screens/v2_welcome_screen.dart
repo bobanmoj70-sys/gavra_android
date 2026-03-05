@@ -58,7 +58,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     WidgetsBinding.instance.addObserver(this); // Dodano za lifecycle
 
     _setupAnimations();
-    _loadDrivers();
+    _loadDrivers(fromInitState: true);
     _loadAppVersion();
     updateInfoNotifier.addListener(_onUpdateInfo);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
@@ -82,15 +82,22 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     });
   }
 
-  /// Učitaj vozače direktno iz master cache-a (0 DB upita)
-  void _loadDrivers() {
+  /// Učitaj vozače direktno iz master cache-a (0 DB upita).
+  /// [fromInitState] = true: postavlja fields direktno bez setState (widget još nije build-ovan).
+  void _loadDrivers({bool fromInitState = false}) {
     final rm = V2MasterRealtimeManager.instance;
     final vozaci = rm.vozaciCache.values.map((row) => V2Vozac.fromMap(row)).toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
-    setState(() {
+    if (fromInitState) {
       _drivers = vozaci;
       _isLoadingDrivers = false;
-    });
+    } else {
+      if (mounted)
+        setState(() {
+          _drivers = vozaci;
+          _isLoadingDrivers = false;
+        });
+    }
   }
 
   Future<void> _loadAppVersion() async {
@@ -118,19 +125,20 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     }
   }
 
-  /// Pokreće auto-login čim V2VozacCache bude inicijalizovan.
-  /// Ako je već spreman — odmah poziva. Ako nije — čeka prvi v2_vozaci event.
+  /// Pokreće auto-login čim V2MasterRealtimeManager bude potpuno inicijalizovan.
+  /// Koristi onCacheChanged stream (kancelabilan) umjesto .first.asStream() koje nije.
   void _checkAutoLoginWhenReady() {
-    if (V2VozacCache.isInitialized) {
+    if (V2MasterRealtimeManager.instance.isInitialized) {
+      // RM je već spreman — V2VozacCache.initialize() je sigurno pozvan
+      _loadDrivers();
       _checkAutoLogin();
       return;
     }
-    // Cache još nije spreman — čekaj prvi signal da su vozači učitani
-    _cacheReadySub = V2MasterRealtimeManager.instance.onCacheChanged
-        .where((table) => table == 'v2_vozaci')
-        .first
-        .asStream()
-        .listen((_) {
+    // RM još nije spreman — čekaj bilo koji cache event i provjeri isInitialized.
+    // Koristimo StreamSubscription umjesto .first da bismo mogli cancel() u dispose().
+    _cacheReadySub = V2MasterRealtimeManager.instance.onCacheChanged.listen((_) {
+      if (!V2MasterRealtimeManager.instance.isInitialized) return;
+      _cacheReadySub?.cancel();
       _cacheReadySub = null;
       if (mounted) {
         _loadDrivers(); // osvježi listu vozača na welcome screenu
@@ -402,7 +410,8 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
         ),
       ),
     ).whenComplete(() {
-      if (!info.isForced) _updateDialogShown = false;
+      // Reset uvijek — ako stignu 2+ update eventi, drugi ne smije biti izgubljen
+      _updateDialogShown = false;
     });
   }
 
@@ -854,8 +863,9 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
   // s- Dijalog za izbor vozača
   void _showDriverSelectionDialog() {
-    // Osvježi listu vozača iz cache-a koji je sada sigurno popunjen
-    _loadDrivers();
+    // Citaj vozace direktno iz cache-a — nema setState na parent widgetu
+    final drivers = V2MasterRealtimeManager.instance.vozaciCache.values.map((row) => V2Vozac.fromMap(row)).toList()
+      ..sort((a, b) => a.ime.compareTo(b.ime));
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -895,10 +905,10 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (_isLoadingDrivers)
+                if (drivers.isEmpty)
                   const CircularProgressIndicator(color: Colors.white)
                 else
-                  ..._drivers.map((driver) {
+                  ...drivers.map((driver) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: GestureDetector(
