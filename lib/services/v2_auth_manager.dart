@@ -10,7 +10,6 @@ import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_firebase_service.dart';
 import 'v2_huawei_push_service.dart';
-import 'v2_pin_zahtev_service.dart';
 import 'v2_push_token_service.dart';
 
 /// Centralizovani auth manager.
@@ -189,13 +188,6 @@ class V2AuthManager {
         await V2FirebaseService.clearCurrentDriver();
       } catch (e) {
         debugPrint('[V2AuthManager] Greška pri čišćenju Firebase sesije: $e');
-      }
-
-      // 4. Očisti PIN zahtevi subscription
-      try {
-        V2PinZahtevService.dispose();
-      } catch (e) {
-        debugPrint('[V2AuthManager] Greška pri dispose PinZahtevService: $e');
       }
 
       // 5. Navigiraj na V2WelcomeScreen — koristi globalnu navigatorKey
