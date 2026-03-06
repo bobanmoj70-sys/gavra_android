@@ -1243,15 +1243,15 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                       () {
                                         switch (_putnik.tipPutnika?.toLowerCase()) {
                                           case 'radnik':
-                                            return '👷 RADNIK';
+                                            return 'RADNIK';
                                           case 'ucenik':
-                                            return '🎒 UCENIK';
+                                            return 'UCENIK';
                                           case 'posiljka':
-                                            return '📦 POSILJKA';
+                                            return 'POSILJKA';
                                           case 'dnevni':
-                                            return '🎫 DNEVNI';
+                                            return 'DNEVNI';
                                           default:
-                                            return '🧍 PUTNIK';
+                                            return 'PUTNIK';
                                         }
                                       }(),
                                       style: TextStyle(
