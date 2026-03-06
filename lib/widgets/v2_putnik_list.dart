@@ -199,10 +199,10 @@ class V2PutnikList extends StatelessWidget {
       }
       var filteredPutnici = putnici!.where(prikaziPutnika).toList();
       filteredPutnici = deduplicatePutnici(filteredPutnici);
-      // NOVI VIZUELNI REDOSLED U LISTI:
+      // VIZUELNI REDOSLED U LISTI:
       // 1) BELE - Nepokupljeni (na vrhu)
-      // 2) PLAVE - Pokupljeni neplaćeni
-      // 3) ZELENE - Pokupljeni mesečne i pokupljeni plaćeno
+      // 2) PLAVE - Pokupljeni neplaćeni (svi tipovi)
+      // 3) ZELENE - Pokupljeni plaćeni (svi tipovi)
       // 4) CRVENE - Otkazani
       // 5) ŽUTE - Odsustvo (godišnji/bolovanje) (na dnu)
 
@@ -215,7 +215,7 @@ class V2PutnikList extends StatelessWidget {
         final nedodeljeni = <V2Putnik>[]; // nedodeljeni (vozac_id = null)
         final sivi = <V2Putnik>[]; // tuđi putnici (dodeljen drugom vozaču)
         final plavi = <V2Putnik>[]; // pokupljeni neplaćeni
-        final zeleni = <V2Putnik>[]; // pokupljeni plaćeni/mesečni
+        final zeleni = <V2Putnik>[]; // pokupljeni plaćeni (svi tipovi)
         final crveni = <V2Putnik>[]; // otkazani
         final zuti = <V2Putnik>[]; // odsustvo
 
