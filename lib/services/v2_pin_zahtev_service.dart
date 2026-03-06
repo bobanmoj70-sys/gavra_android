@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -106,6 +107,14 @@ class V2PinZahtevService {
       }).eq('id', zahtevId);
       // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
       V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': 'odobren'});
+
+      // Pošalji push notifikaciju putniku da je PIN odobren
+      unawaited(V2RealtimeNotificationService.sendNotificationToPutnik(
+        putnikId: putnikId,
+        title: '🔑 PIN je dodeljen!',
+        body: 'Vaš PIN je spreman. Otvorite aplikaciju i prijavite se.',
+        data: {'type': 'pin_odobren', 'putnik_id': putnikId},
+      ));
 
       return true;
     } catch (e) {

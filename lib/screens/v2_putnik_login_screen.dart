@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'dart:async';
+
 import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_biometric_service.dart';
 import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_push_token_service.dart'; // V2PutnikPushService spojen ovde
+import '../services/v2_realtime_notification_service.dart';
 import '../theme.dart';
 import 'v2_putnik_profil_screen.dart';
 
@@ -36,6 +39,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
   String _biometricTypeText = 'otisak prsta';
+
+  // Pretplata na push notifikacije — čeka odobrenje PIN-a
+  StreamSubscription<Map<String, dynamic>>? _pinOdobrenSub;
 
   @override
   void initState() {
@@ -150,6 +156,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               _currentStep = _LoginStep.zahtevPoslat;
               _infoMessage = 'Vaš zahtev za PIN je vec poslat. Molimo sacekajte da admin odobri.';
             });
+            _listenForPinOdobren();
           } else {
             // Ponudi da pošalje zahtev
             _showPinRequestDialog();
@@ -326,6 +333,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           _currentStep = _LoginStep.zahtevPoslat;
           _infoMessage = 'Zahtev je uspešno poslat! Admin ce vam dodeliti PIN.';
         });
+        _listenForPinOdobren();
       } else {
         setState(() => _errorMessage = 'Greška pri slanju zahteva');
       }
@@ -336,6 +344,26 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  /// Slušaj push notifikacije dok je putnik na zahtevPoslat ekranu
+  void _listenForPinOdobren() {
+    _pinOdobrenSub?.cancel();
+    final putnikId = _putnikData?['id'] as String?;
+    _pinOdobrenSub = V2RealtimeNotificationService.notificationStream.listen((data) {
+      if (!mounted) return;
+      final type = data['type'] as String?;
+      final noId = data['putnik_id'] as String?;
+      if (type == 'pin_odobren' && (putnikId == null || noId == putnikId)) {
+        _pinOdobrenSub?.cancel();
+        _pinOdobrenSub = null;
+        setState(() {
+          _currentStep = _LoginStep.pin;
+          _infoMessage = '✅ PIN je dodeljen! Unesite PIN koji ste dobili.';
+          _errorMessage = null;
+        });
+      }
+    });
   }
 
   /// Korak 3: Login sa PIN-om
@@ -496,6 +524,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
   @override
   void dispose() {
+    _pinOdobrenSub?.cancel();
     _telefonController.dispose();
     _emailController.dispose();
     _pinController.dispose();
@@ -967,6 +996,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           _currentStep = _LoginStep.zahtevPoslat;
           _infoMessage = 'Vec ste poslali zahtev za PIN. Molimo sacekajte da admin odobri.';
         });
+        _listenForPinOdobren();
         return;
       }
 
