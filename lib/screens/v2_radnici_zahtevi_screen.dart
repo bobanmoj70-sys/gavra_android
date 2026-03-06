@@ -162,7 +162,6 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
     final obradjenoStr = z.processedAt != null
         ? '${z.processedAt!.day.toString().padLeft(2, '0')}.${z.processedAt!.month.toString().padLeft(2, '0')}. ${z.processedAt!.hour.toString().padLeft(2, '0')}:${z.processedAt!.minute.toString().padLeft(2, '0')}'
         : null;
-    final koObradio = z.approvedBy ?? z.cancelledBy;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -222,14 +221,10 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
               spacing: 12,
               runSpacing: 2,
               children: [
-                if (poslatStr != null)
-                  _timelineChip('📨 poslato', poslatStr, Colors.white54),
-                if (obradjenoStr != null)
-                  _timelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
+                if (poslatStr != null) _timelineChip('📨 poslato', poslatStr, Colors.white54),
+                if (obradjenoStr != null) _timelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
                 if (obradjenoStr == null && status == 'obrada')
                   _timelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
-                if (koObradio != null)
-                  _timelineChip('👤', koObradio, Colors.white70),
               ],
             ),
           ],
