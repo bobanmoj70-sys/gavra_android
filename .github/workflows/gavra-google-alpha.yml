@@ -7,7 +7,7 @@ on:
       bump_version:
         description: 'Auto-bump version in pubspec.yaml?'
         required: true
-        default: 'true'
+        default: 'false'
         type: boolean
   workflow_call:
     inputs:
