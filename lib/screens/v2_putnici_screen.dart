@@ -1159,19 +1159,10 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
   Future<void> _prikaziPlacanje(V2RegistrovaniPutnik v2Putnik) async {
     if (!mounted) return;
-
-    final TextEditingController iznosController = TextEditingController();
-    try {
-      await _prikaziPlacanjeDialog(v2Putnik, iznosController);
-    } finally {
-      iznosController.dispose();
-    }
+    await _prikaziPlacanjeDialog(v2Putnik);
   }
 
-  Future<void> _prikaziPlacanjeDialog(
-    V2RegistrovaniPutnik v2Putnik,
-    TextEditingController iznosController,
-  ) async {
+  Future<void> _prikaziPlacanjeDialog(V2RegistrovaniPutnik v2Putnik) async {
     if (!mounted) return;
     String selectedMonth = _getCurrentMonthYear(); // Default current month
 
@@ -1179,7 +1170,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
     // Default cena po danu za input field
     final cenaPoDanu = V2CenaObracunService.getCenaPoDanu(v2Putnik);
-    iznosController.text = cenaPoDanu.toStringAsFixed(0);
+    final iznosController = TextEditingController(text: cenaPoDanu.toStringAsFixed(0));
 
     final tipLower = v2Putnik.v2Tabela;
     final imeLower = v2Putnik.ime.toLowerCase();
@@ -1195,8 +1186,9 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     final futurePoslednjePlacanje =
         V2StatistikaIstorijaService.dohvatiPlacanja(v2Putnik.id).then((lista) => lista.isNotEmpty ? lista.first : null);
 
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
+      useRootNavigator: true,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -1405,7 +1397,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           ),
                         ),
                       ),
-                      autofocus: !jeFiksna,
+                      autofocus: false,
                     ),
                   ],
                 ),
@@ -1450,6 +1442,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         );
       },
     );
+    iznosController.dispose();
   }
 
   Future<void> _prikaziDetaljneStatistike(V2RegistrovaniPutnik v2Putnik) async {
