@@ -85,7 +85,6 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        // Summary badges
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

@@ -119,8 +119,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
         _ensureNotificationPermissions();
         _checkAutoLoginWhenReady();
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// Pokreće auto-login čim V2MasterRealtimeManager bude potpuno inicijalizovan.
@@ -289,7 +288,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Ikona
                   Container(
                     width: 72,
                     height: 72,
@@ -308,7 +306,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Naslov
                   Text(
                     info.isForced ? 'Obavezno ažuriranje' : 'Nova verzija dostupna',
                     style: const TextStyle(
@@ -320,7 +317,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  // Verzija badge
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
@@ -341,7 +337,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Poruka
                   Text(
                     info.isForced
                         ? 'Ova verzija aplikacije više nije podržana. Molimo ažurirajte da biste nastavili sa korišćenjem.'
@@ -354,7 +349,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 28),
-                  // Dugmad
                   Row(
                     children: [
                       if (!info.isForced) ...[
@@ -547,8 +541,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                             await _audioPlayer.play(AssetSource('kasno_je.mp3'));
                             _isAudioPlaying = true;
                           }
-                        } catch (e) {
-                        }
+                        } catch (e) {}
                       },
                       child: RepaintBoundary(
                         child: AnimatedBuilder(
@@ -614,7 +607,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
                   const SizedBox(height: 8),
 
-                  // Subtitle
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: Text(
@@ -694,7 +686,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                     opacity: _fadeAnimation,
                     child: Row(
                       children: [
-                        // O NAMA
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
@@ -735,10 +726,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                             ),
                           ),
                         ),
-
                         const SizedBox(width: 16),
-
-                        // VOZAI
                         Expanded(
                           child: GestureDetector(
                             onTap: () => _showDriverSelectionDialog(),
@@ -970,8 +958,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       if (!permissionsChecked && mounted) {
         await V2PermissionService.requestAllPermissionsOnFirstLaunch(context);
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// "< Show battery optimization warning for Huawei/Xiaomi phones

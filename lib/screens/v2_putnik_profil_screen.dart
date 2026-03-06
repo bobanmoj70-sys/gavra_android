@@ -32,7 +32,6 @@ class V2PutnikProfilScreen extends StatefulWidget {
 class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with WidgetsBindingObserver {
   Map<String, dynamic> _putnikData = {};
   bool _isLoading = false;
-  // Status notifikacija
   PermissionStatus _notificationStatus = PermissionStatus.granted;
 
   int _brojVoznji = 0;
@@ -71,8 +70,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   /// Reaguje na promenu sezone
   void _onSeasonChanged() {
     if (mounted) {
-      setState(() {
-      });
+      setState(() {});
     }
   }
 
@@ -471,8 +469,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       if (putnikId != null) {
         try {
           await V2PushTokenService.clearToken(putnikId: putnikId);
-        } catch (e) {
-        }
+        } catch (e) {}
       }
       if (mounted) {
         await V2AuthManager.logout(context);
@@ -615,7 +612,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         tabela,
       );
 
-      // Ažuriraj lokalni state
       setState(() {
         _putnikData['status'] = noviStatus;
       });
@@ -1338,8 +1334,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           existing['${grad}_otkazano'] = false;
           existing['${grad}_otkazano_vreme'] = null;
         }
-      } catch (e) {
-      }
+      } catch (e) {}
     }
 
     // Prikazujemo samo radne dane

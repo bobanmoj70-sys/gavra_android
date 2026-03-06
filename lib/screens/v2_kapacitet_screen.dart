@@ -61,7 +61,6 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // GLASSMORPHISM HEADER
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -117,7 +116,6 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                   ],
                 ),
               ),
-              // CONTENT
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -156,7 +154,6 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // BUTTONS
                     Row(
                       children: [
                         Expanded(
@@ -257,7 +254,6 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Brzo smanjenje
                       IconButton(
                         onPressed: maxMesta > 1
                             ? () async {
@@ -270,7 +266,6 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                             : null,
                         icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
                       ),
-                      // Prikaz broja
                       Container(
                         width: 40,
                         height: 40,
@@ -289,7 +284,6 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                           ),
                         ),
                       ),
-                      // Brzo povećanje
                       IconButton(
                         onPressed: maxMesta < 20
                             ? () async {

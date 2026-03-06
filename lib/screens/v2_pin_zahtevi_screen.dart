@@ -272,7 +272,6 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header - ime i tip
             Row(
               children: [
                 CircleAvatar(
@@ -320,17 +319,12 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Info redovi
             _buildInfoRow(Icons.phone, 'Telefon', telefon),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.email, 'Email', email),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.access_time, 'Zahtev poslat', vremeZahteva),
-
             const SizedBox(height: 16),
-
-            // Akcije
             Row(
               children: [
                 Expanded(

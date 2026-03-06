@@ -71,12 +71,8 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // POTRAŽIVANJA (Dugovi putnika)
                             _buildPotrazivanjaCard(izvestaj.potrazivanja),
-
                             const SizedBox(height: 16),
-
-                            // NEDELJA
                             _buildPeriodCard(
                               icon: '📅',
                               naslov: 'Ova nedelja',
@@ -87,10 +83,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                               voznjiLabel: '${izvestaj.voznjiNedelja} vožnji',
                               color: Colors.blue,
                             ),
-
                             const SizedBox(height: 16),
-
-                            // MESEC
                             _buildPeriodCard(
                               icon: '🗓️',
                               naslov: 'Ovaj mesec',
@@ -101,10 +94,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                               voznjiLabel: '${izvestaj.voznjiMesec} vožnji',
                               color: Colors.green,
                             ),
-
                             const SizedBox(height: 16),
-
-                            // PROŠLA GODINA
                             _buildPeriodCard(
                               icon: '📊',
                               naslov: 'Prošla godina (${izvestaj.proslaGodina})',
@@ -115,15 +105,9 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                               voznjiLabel: '${izvestaj.voznjiProslaGodina} vožnji',
                               color: Colors.grey,
                             ),
-
                             const SizedBox(height: 16),
-
-                            // DETALJI TROŠKOVA
                             _buildTroskoviDetailsList(izvestaj.troskoviPoTipu),
-
                             const SizedBox(height: 16),
-
-                            // Dugme za podešavanje
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
@@ -212,18 +196,15 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
             const Divider(),
             const SizedBox(height: 8),
 
-            // Prihod
             _buildRow('Prihod', prihod, Colors.green.shade700, isPlus: true),
             const SizedBox(height: 8),
 
-            // Troškovi
             _buildRow('Troškovi', troskovi, Colors.red.shade700, isMinus: true),
 
             const SizedBox(height: 8),
             Divider(color: Colors.grey.shade300),
             const SizedBox(height: 8),
 
-            // NETO
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -320,8 +301,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Lista po tipu
             ...troskoviPoTipu.entries.map(
               (entry) => _buildTrosakRow(entry.key, entry.value),
             ),
@@ -382,50 +361,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
     );
   }
 
-  static Widget _buildTrosakInputRow(String emoji, String label, TextEditingController controller,
-      {double? currentTotal, required NumberFormat formatBroja}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 16)),
-                  if (currentTotal != null && currentTotal > 0)
-                    Text('Trenutno: ${formatBroja.format(currentTotal)}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  hintText: 'Dodaj...',
-                  suffixText: 'din',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  isDense: true,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Future<void> _saveTroskovi({
     required double plate,
     required double kredit,
@@ -457,7 +392,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
 
   static Future<void> _addTrosakIfPositive(String naziv, String tip, double iznos) async {
     if (iznos != 0) {
-      // Dozvoljava i negativne za ispravke
       await V2FinansijeService.addTrosak(naziv, tip, iznos);
     }
   }
@@ -603,10 +537,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Zasebni StatefulWidget za bottom sheet unosa troškova → proper dispose()
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _TroskoviBottomSheet extends StatefulWidget {
   final Map<String, double> poTipu;
   final NumberFormat formatBroja;
@@ -679,6 +609,49 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
     super.dispose();
   }
 
+  Widget _buildTrosakInputRow(String emoji, String label, TextEditingController controller, {double? currentTotal}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 16)),
+                  if (currentTotal != null && currentTotal > 0)
+                    Text('Trenutno: ${widget.formatBroja.format(currentTotal)}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  hintText: 'Dodaj...',
+                  suffixText: 'din',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  isDense: true,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pt = widget.poTipu;
@@ -696,7 +669,6 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Handle
                 Container(
                   width: 40,
                   height: 4,
@@ -716,41 +688,28 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                   style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 24),
-
-                _FinansijeScreenState._buildTrosakInputRow('💰', 'Plate', _plateController,
-                    currentTotal: pt['plata'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('💰', 'Plate', _plateController, currentTotal: pt['plata']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('🏦', 'Kredit', _kreditController,
-                    currentTotal: pt['kredit'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('🏦', 'Kredit', _kreditController, currentTotal: pt['kredit']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('⛽', 'Gorivo', _gorivoController,
-                    currentTotal: pt['gorivo'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('⛽', 'Gorivo', _gorivoController, currentTotal: pt['gorivo']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('🔧', 'Amortizacija', _amortizacijaController,
-                    currentTotal: pt['amortizacija'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('🔧', 'Amortizacija', _amortizacijaController, currentTotal: pt['amortizacija']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('📋', 'Registracija', _registracijaController,
-                    currentTotal: pt['registracija'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('📋', 'Registracija', _registracijaController, currentTotal: pt['registracija']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('🚗', 'YU auto', _yuAutoController,
-                    currentTotal: pt['yu_auto'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('🚗', 'YU auto', _yuAutoController, currentTotal: pt['yu_auto']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('🛠️', 'Majstori', _majstoriController,
-                    currentTotal: pt['majstori'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('🛠️', 'Majstori', _majstoriController, currentTotal: pt['majstori']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('🏛️', 'Porez', _porezController,
-                    currentTotal: pt['porez'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('🏛️', 'Porez', _porezController, currentTotal: pt['porez']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('👶', 'Alimentacija', _alimentacijaController,
-                    currentTotal: pt['alimentacija'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('👶', 'Alimentacija', _alimentacijaController, currentTotal: pt['alimentacija']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('🧾', 'Računi', _racuniController,
-                    currentTotal: pt['racuni'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('🧾', 'Računi', _racuniController, currentTotal: pt['racuni']),
                 const SizedBox(height: 12),
-                _FinansijeScreenState._buildTrosakInputRow('📋', 'Ostalo', _ostaloController,
-                    currentTotal: pt['ostalo'], formatBroja: widget.formatBroja),
+                _buildTrosakInputRow('📋', 'Ostalo', _ostaloController, currentTotal: pt['ostalo']),
                 const SizedBox(height: 24),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(

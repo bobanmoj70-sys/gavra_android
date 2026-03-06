@@ -258,9 +258,14 @@ class V2StatistikaIstorijaService {
 
     Future.microtask(emit);
     // Prati i polasci (pokupljen/plaćen flag) i statistika (nova uplata)
-    final sub =
-        rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_statistika_istorija').listen((_) => emit());
+    // Debounce 150ms — skuplja brze uzastopne evente u jedan emit
+    Timer? debounce;
+    final sub = rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_statistika_istorija').listen((_) {
+      debounce?.cancel();
+      debounce = Timer(const Duration(milliseconds: 150), emit);
+    });
     controller.onCancel = () {
+      debounce?.cancel();
       sub.cancel();
       controller.close();
     };

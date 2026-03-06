@@ -164,7 +164,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle
               Center(
                 child: Container(
                   width: 40,
@@ -186,7 +185,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
               ),
               const SizedBox(height: 16),
-              // Lista vozača
               ...vozaci.map((ime) {
                 final isSelected = odabranVozac == ime;
                 final color = V2VozacCache.getColor(ime);
@@ -234,7 +232,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 );
               }),
               const SizedBox(height: 8),
-              // Ukloni dodjelu
               if (trenutni != null)
                 TextButton.icon(
                   onPressed: () async {
@@ -245,7 +242,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                   label: const Text('Ukloni dodjelu termina', style: TextStyle(color: Colors.redAccent)),
                 ),
               const SizedBox(height: 8),
-              // Potvrdi
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -316,7 +312,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle
               Center(
                 child: Container(
                   width: 40,
@@ -343,7 +338,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
               ),
               const SizedBox(height: 16),
-              // Lista vozača
               ...vozaci.map((ime) {
                 final isSelected = odabranVozac == ime;
                 final color = V2VozacCache.getColor(ime);
@@ -391,7 +385,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 );
               }),
               const SizedBox(height: 8),
-              // Ukloni individualnu dodjelu
               if (trenutni != null)
                 TextButton.icon(
                   onPressed: () async {
@@ -412,7 +405,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                   label: const Text('Ukloni individualnu dodjelu', style: TextStyle(color: Colors.redAccent)),
                 ),
               const SizedBox(height: 8),
-              // Potvrdi
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -559,7 +551,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 child: SafeArea(
                   child: Column(
                     children: [
-                      // DAY CHIPS
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -605,7 +596,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                       // TERMIN INFO TRAKA: koji vozač je dodeljen selektovanom terminu
                       if (_selectedVreme.isNotEmpty) _buildTerminInfoRow(targetDay),
 
-                      // Lista putnika
                       Expanded(
                         child: filteredByGradVreme.isEmpty
                             ? Center(

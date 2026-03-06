@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
@@ -79,7 +78,6 @@ class V2PushTokenService {
 
       return true;
     } catch (e) {
-
       // RETRY LOGIKA za 503/Timeout greške
       final errorStr = e.toString().toLowerCase();
       if ((errorStr.contains('503') || errorStr.contains('timeout') || errorStr.contains('upstream')) &&
@@ -113,21 +111,16 @@ class V2PushTokenService {
     required String provider,
     String? vozacId,
     String? putnikId,
-  }) async {
-    // Do nothing
-  }
+  }) async {}
 
   /// Pokušaj registrovati pending token.
   /// Poziva se nakon što Supabase postane dostupan.
   static Future<bool> tryRegisterPendingToken() async {
-    // Return false
     return false;
   }
 
   /// Obrisi pending token iz SharedPreferences
-  static Future<void> _clearPendingToken() async {
-    // Do nothing
-  }
+  static Future<void> _clearPendingToken() async {}
 
   /// Obrisi token iz baze (logout, deregistracija)
   static Future<bool> clearToken({
@@ -205,7 +198,6 @@ class V2PutnikPushService {
   /// Registruje push token za putnika u push_tokens tabelu.
   static Future<bool> registerPutnikToken(dynamic putnikId, {String? putnikTabela}) async {
     try {
-
       String? token;
       String? provider;
 

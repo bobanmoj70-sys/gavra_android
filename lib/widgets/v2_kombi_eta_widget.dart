@@ -35,6 +35,8 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   StreamSubscription<String>? _subscription;
   StreamSubscription<String>? _putnikSubscription;
   Timer? _pollingTimer;
+  Timer? _gpsDebounce;
+  Timer? _pokupljenjeDebounce;
   int? _etaMinutes;
   bool _isLoading = true;
   bool _isActive = false;
@@ -51,6 +53,8 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _gpsDebounce?.cancel();
+    _pokupljenjeDebounce?.cancel();
     _subscription?.cancel();
     _putnikSubscription?.cancel();
     super.dispose();
@@ -172,13 +176,15 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
     // Polling je sada samo fallback ako realtime padne.
     // Interval produžen: 30s → 5min jer nema potrebe za cestim upitima.
     _pollingTimer = Timer.periodic(const Duration(minutes: 5), (_) => _loadGpsData());
-    _subscription = V2MasterRealtimeManager.instance.onCacheChanged
-        .where((t) => t == 'v2_vozac_lokacije')
-        .listen((_) => _loadGpsData());
+    _subscription = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_vozac_lokacije').listen((_) {
+      _gpsDebounce?.cancel();
+      _gpsDebounce = Timer(const Duration(milliseconds: 150), _loadGpsData);
+    });
     if (widget.putnikId != null) {
-      _putnikSubscription = V2MasterRealtimeManager.instance.onCacheChanged
-          .where((t) => t == 'v2_polasci')
-          .listen((_) => _loadPokupljenjeIzBaze());
+      _putnikSubscription = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
+        _pokupljenjeDebounce?.cancel();
+        _pokupljenjeDebounce = Timer(const Duration(milliseconds: 150), _loadPokupljenjeIzBaze);
+      });
     }
   }
 
@@ -224,8 +230,7 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
           _vremePokupljenja = null;
         });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Widget _buildFaza1() {

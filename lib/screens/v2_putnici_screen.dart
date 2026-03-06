@@ -80,8 +80,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
     try {
       await _ucitajStvarnaPlacanja(putnici);
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> _ucitajStvarnaPlacanja(List<V2RegistrovaniPutnik> putnici) async {
@@ -135,8 +134,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
           final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
           if (iznos > placanja[putnikId]!) placanja[putnikId] = iznos;
         }
-      } catch (e) {
-      }
+      } catch (e) {}
       if (mounted) {
         final existingKeys = _stvarnaPlacanja.keys.toSet();
         final newKeys = placanja.keys.toSet();
@@ -247,7 +245,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Radnici
                     Stack(children: [
                       IconButton(
                         icon: Icon(Icons.engineering,
@@ -263,7 +260,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           child: _buildBadge(_rm.radniciCache.values.where((r) => r['status'] == 'aktivan').length,
                               const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
                     ]),
-                    // Učenici
                     Stack(children: [
                       IconButton(
                         icon: Icon(Icons.school,
@@ -279,7 +275,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           child: _buildBadge(_rm.uceniciCache.values.where((r) => r['status'] == 'aktivan').length,
                               const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
                     ]),
-                    // Dnevni
                     Stack(children: [
                       IconButton(
                         icon: Icon(Icons.today,
@@ -295,7 +290,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           child: _buildBadge(_rm.dnevniCache.values.where((r) => r['status'] == 'aktivan').length,
                               const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
                     ]),
-                    // Pošiljke
                     Stack(children: [
                       IconButton(
                         icon: Icon(Icons.local_shipping,
@@ -566,7 +560,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
               children: [
                 Row(
                   children: [
-                    // Redni broj i ime
                     Expanded(
                       child: Row(
                         children: [
@@ -592,7 +585,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         ],
                       ),
                     ),
-                    // Tip putnika - skroz desno
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -638,9 +630,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 12),
-
                 if (v2Putnik.adresa != null) ...[
                   Row(
                     children: [
@@ -664,7 +654,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                   ),
                   const SizedBox(height: 8),
                 ],
-
                 Row(
                   children: [
                     Expanded(
@@ -679,9 +668,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         color: (_stvarnaPlacanja[v2Putnik.id] ?? 0) > 0 ? Colors.green : Colors.purple,
                       ),
                     ),
-
                     const SizedBox(width: 6),
-
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _toggleAktivnost(v2Putnik),
@@ -708,9 +695,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         },
                       ),
                     ),
-
                     const SizedBox(width: 6),
-
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _prikaziDetaljneStatistike(v2Putnik),
@@ -721,9 +706,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 8),
-
                 Row(
                   children: [
                     if (v2Putnik.telefon != null || v2Putnik.telefonOca != null || v2Putnik.telefonMajke != null) ...[
@@ -737,8 +720,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       ),
                       const SizedBox(width: 6),
                     ],
-
-                    // Uredi
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _editPutnik(v2Putnik),
@@ -747,9 +728,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         color: Colors.blue,
                       ),
                     ),
-
                     const SizedBox(width: 6),
-
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _showPinDialog(v2Putnik),
@@ -758,10 +737,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         color: Colors.amber,
                       ),
                     ),
-
                     const SizedBox(width: 6),
-
-                    // Obriši
                     Expanded(
                       child: _buildCompactActionButton(
                         onPressed: () => _obrisiPutnika(v2Putnik),
@@ -1365,7 +1341,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -1404,9 +1379,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: iznosController,
                       enabled: !jeFiksna,

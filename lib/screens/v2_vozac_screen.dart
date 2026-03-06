@@ -53,6 +53,8 @@ class _VozacScreenState extends State<V2VozacScreen> {
   StreamSubscription<Position>? _driverPositionSubscription;
   StreamSubscription<String>? _rasporedRealtimeSub;
   StreamSubscription<String>? _vozacPutnikRealtimeSub;
+  Timer? _rasporedDebounce;
+  Timer? _vozacPutnikDebounce;
 
   Stream<Map<String, double>>? _streamPazar;
 
@@ -193,12 +195,20 @@ class _VozacScreenState extends State<V2VozacScreen> {
     _vozacPutnikRealtimeSub?.cancel();
     final rm = V2MasterRealtimeManager.instance;
     _rasporedRealtimeSub = rm.onCacheChanged.where((t) => t == 'v2_vozac_raspored').listen((_) {
-      final entries = rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
-      if (mounted) setState(() => _rasporedCache = entries);
+      _rasporedDebounce?.cancel();
+      _rasporedDebounce = Timer(const Duration(milliseconds: 150), () {
+        if (!mounted) return;
+        final entries = rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
+        setState(() => _rasporedCache = entries);
+      });
     });
     _vozacPutnikRealtimeSub = rm.onCacheChanged.where((t) => t == 'v2_vozac_putnik').listen((_) {
-      final entries = rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
-      if (mounted) setState(() => _vozacPutnikCache = entries);
+      _vozacPutnikDebounce?.cancel();
+      _vozacPutnikDebounce = Timer(const Duration(milliseconds: 150), () {
+        if (!mounted) return;
+        final entries = rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
+        setState(() => _vozacPutnikCache = entries);
+      });
     });
   }
 
@@ -215,6 +225,8 @@ class _VozacScreenState extends State<V2VozacScreen> {
     _driverPositionSubscription?.cancel();
     _rasporedRealtimeSub?.cancel();
     _vozacPutnikRealtimeSub?.cancel();
+    _rasporedDebounce?.cancel();
+    _vozacPutnikDebounce?.cancel();
     _latestPutniciSub?.cancel();
     super.dispose();
   }
@@ -871,20 +883,16 @@ class _VozacScreenState extends State<V2VozacScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // PRVI RED - Datum i vreme
                       _buildDigitalDateDisplay(),
                       const SizedBox(height: 8),
-                      // DRUGI RED - Dugmad ravnomerno rasporedena
                       Row(
                         children: [
                           Expanded(child: _buildOptimizeButton(mojiPutnici)),
                           const SizedBox(width: 4),
                           Expanded(child: _buildMapsButton()),
                           const SizedBox(width: 4),
-
                           Expanded(child: _buildSpeedometerButton()),
                           const SizedBox(width: 4),
-                          // Logout
                           _buildAppBarButton(
                             icon: Icons.logout,
                             color: Colors.red.shade400,

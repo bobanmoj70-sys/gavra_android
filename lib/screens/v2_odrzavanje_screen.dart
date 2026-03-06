@@ -152,7 +152,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Kombi ikona
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
@@ -177,7 +176,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    // Tablica - slika
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(3),
@@ -268,7 +266,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
           const SizedBox(height: 16),
 
-          // Broj šasije
           _buildEditableField(
             icon: '🔢',
             label: 'Broj šasije (VIN)',
@@ -276,7 +273,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editTextField('broj_sasije', 'Broj šasije', v.brojSasije),
           ),
 
-          // Registracija važi do
           _buildEditableField(
             icon: '📋',
             label: 'Registracija važi do',
@@ -295,7 +291,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editDateField('registracija_vazi_do', 'Registracija važi do', v.registracijaVaziDo),
           ),
 
-          // Napomena
           _buildEditableField(
             icon: '📝',
             label: 'Napomena',
@@ -305,7 +300,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
           const Divider(height: 32),
 
-          // Mali servis
           _buildEditableField(
             icon: '🔧',
             label: 'Mali servis',
@@ -313,7 +307,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editServisField('mali_servis', 'Mali servis', v.maliServisDatum, v.maliServisKm),
           ),
 
-          // Veliki servis
           _buildEditableField(
             icon: '🛠️',
             label: 'Veliki servis',
@@ -321,7 +314,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editServisField('veliki_servis', 'Veliki servis', v.velikiServisDatum, v.velikiServisKm),
           ),
 
-          // Alternator
           _buildEditableField(
             icon: '⚡',
             label: 'Alternator',
@@ -329,7 +321,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editServisField('alternator', 'Alternator', v.alternatorDatum, v.alternatorKm),
           ),
 
-          // Akumulator
           _buildEditableField(
             icon: '🔋',
             label: 'Akumulator',
@@ -337,7 +328,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editServisField('akumulator', 'Akumulator', v.akumulatorDatum, v.akumulatorKm),
           ),
 
-          // Pločice prednje
           _buildEditableField(
             icon: '🛑',
             label: 'Pločice prednje',
@@ -346,7 +336,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                 _editServisField('plocice_prednje', 'Pločice prednje', v.plocicePrednjeDatum, v.plocicePrednjeKm),
           ),
 
-          // Pločice zadnje
           _buildEditableField(
             icon: '🛑',
             label: 'Pločice zadnje',
@@ -354,7 +343,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editServisField('plocice_zadnje', 'Pločice zadnje', v.plociceZadnjeDatum, v.plociceZadnjeKm),
           ),
 
-          // Trap
           _buildEditableField(
             icon: '🔩',
             label: 'Trap',
@@ -364,9 +352,8 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
           const Divider(height: 32),
 
-          // Gume prednje
           _buildEditableField(
-            icon: '🛞',
+            icon: '🛥',
             label: 'Gume prednje',
             value: v.gumePrednjeOpis ?? v.gumeOpis ?? '-',
             subtitle: _formatGumeSubtitle(v.gumePrednjeDatum ?? v.gumeDatum, v.gumePrednjeKm),
@@ -378,9 +365,8 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             ),
           ),
 
-          // Gume zadnje
           _buildEditableField(
-            icon: '🛞',
+            icon: '🛥',
             label: 'Gume zadnje',
             value: v.gumeZadnjeOpis ?? '-',
             subtitle: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
@@ -389,7 +375,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
           const Divider(height: 32),
 
-          // Radio code
           _buildEditableField(
             icon: '📻',
             label: 'Radio code',
@@ -481,9 +466,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     );
   }
 
-  // �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
-  // EDIT DIALOGS
-  // �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 
   void _editTextField(String field, String label, String? currentValue, {bool multiline = false}) {
     final controller = TextEditingController(text: currentValue);

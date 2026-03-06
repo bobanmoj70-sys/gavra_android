@@ -138,7 +138,6 @@ class V2PermissionService {
                           const SizedBox(height: 24),
                           Column(
                             children: [
-                              // ODOBRI DOZVOLE dugme - zelena boja (gore)
                               SizedBox(
                                 width: double.infinity,
                                 child: Container(
@@ -182,7 +181,6 @@ class V2PermissionService {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              // PRESKOČI dugme - crvenkasto (dole)
                               SizedBox(
                                 width: double.infinity,
                                 child: Container(

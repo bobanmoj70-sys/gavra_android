@@ -16,12 +16,8 @@ class V2DugoviScreen extends StatefulWidget {
 }
 
 class _DugoviScreenState extends State<V2DugoviScreen> {
-  // SEARCH & FILTERING (bez RxDart)
   final TextEditingController _searchController = TextEditingController();
   final _putnikService = V2PutnikStreamService();
-
-  final String _selectedFilter = 'svi'; // 'svi', 'veliki_dug', 'mali_dug'
-  final String _sortBy = 'vreme'; // 'iznos', 'vreme', 'ime', 'vozac' - default: najnoviji gore
 
   late final Stream<List<V2Putnik>> _streamDugovi;
 
@@ -36,61 +32,30 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
 
   @override
   void dispose() {
-    // SEARCH CLEANUP
     _searchController.dispose();
     super.dispose();
   }
 
-  // SEARCH SETUP (bez RxDart - jednostavan setState)
   void _setupSearchListener() {
     _searchController.addListener(() {
       if (mounted) setState(() {});
     });
   }
 
-  // SORT DUGOVE
   void _sortDugovi(List<V2Putnik> dugovi) {
-    switch (_sortBy) {
-      case 'iznos':
-        dugovi.sort((a, b) {
-          // Za dugove, koristimo cenu putovanja kao osnovu za sortiranje
-          final cenaA = _calculateDugAmount(a);
-          final cenaB = _calculateDugAmount(b);
-          return cenaB.compareTo(cenaA); // Najveći dug prvi
-        });
-        break;
-      case 'vreme':
-        dugovi.sort((a, b) {
-          final timeA = a.vremePokupljenja;
-          final timeB = b.vremePokupljenja;
-          if (timeA == null && timeB == null) return 0;
-          if (timeA == null) return 1;
-          if (timeB == null) return -1;
-          return timeB.compareTo(timeA); // Najnoviji prvi
-        });
-        break;
-      case 'ime':
-        dugovi.sort((a, b) => a.ime.compareTo(b.ime));
-        break;
-      case 'vozac':
-        dugovi.sort(
-          (a, b) => (a.pokupioVozac ?? '').compareTo(b.pokupioVozac ?? ''),
-        );
-        break;
-    }
-  }
-
-  // CALCULATE DUG AMOUNT HELPER
-  static double _calculateDugAmount(V2Putnik putnik) {
-    // FIX: Koristi efektivnu cenu iz modela pomnoženu sa brojem mesta
-    // Umesto hardkodovanih 500.0
-    return putnik.effectivePrice * (putnik.brojMesta > 0 ? putnik.brojMesta : 1);
+    dugovi.sort((a, b) {
+      final timeA = a.vremePokupljenja;
+      final timeB = b.vremePokupljenja;
+      if (timeA == null && timeB == null) return 0;
+      if (timeA == null) return 1;
+      if (timeB == null) return -1;
+      return timeB.compareTo(timeA);
+    });
   }
 
   List<V2Putnik> _applyFiltersAndSort(List<V2Putnik> input) {
     var result = input;
 
-    // Apply search filter
     final searchQuery = _searchController.text.toLowerCase();
     if (searchQuery.isNotEmpty) {
       result = result.where((duznik) {
@@ -100,22 +65,6 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
       }).toList();
     }
 
-    // Apply amount filter
-    if (_selectedFilter != 'svi') {
-      result = result.where((duznik) {
-        final iznos = _calculateDugAmount(duznik);
-        switch (_selectedFilter) {
-          case 'veliki_dug':
-            return iznos >= 600; // Veliki dug (Dnevni je 600)
-          case 'mali_dug':
-            return iznos < 600;
-          default:
-            return true;
-        }
-      }).toList();
-    }
-
-    // Sort
     _sortDugovi(result);
     return result;
   }
@@ -128,19 +77,12 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
         final putnici = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting && putnici.isEmpty;
 
-        // Filter dužnike - putnici sa PLAVOM KARTICOM (nisu mesečni tip) koji nisu platili
         final duzniciRaw = putnici
             .where(
-              (p) =>
-                  (p.isDnevni || p.isPosiljka) && // Duznici su samo dnevni i posiljke (nije radnik/ucenik)
-                  (p.placeno != true) && // placeno flag iz v2_polasci srRow
-                  (p.jePokupljen) &&
-                  !p.jeOtkazan,
-              // IZMENA: Uklonjen filter po vozaču da bi se prikazali SVI dužnici (zahtev 26.01.2026)
+              (p) => (p.isDnevni || p.isPosiljka) && (p.placeno != true) && (p.jePokupljen) && !p.jeOtkazan,
             )
             .toList();
 
-        // DEDUPLIKACIJA: Jedan V2Putnik može imati više termina, ali je jedan dužnik
         final seenIds = <dynamic>{};
         final duzniciDeduplicated = duzniciRaw.where((p) {
           final key = p.id ?? '${p.ime}_${p.dan}';
@@ -149,7 +91,6 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
           return true;
         }).toList();
 
-        // Apply filters and sort
         final filteredDugovi = _applyFiltersAndSort(duzniciDeduplicated);
 
         return Scaffold(

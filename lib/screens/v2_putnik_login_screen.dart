@@ -392,7 +392,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         setState(() {
           _errorMessage = 'Pogrešan PIN ili broj telefona. Pokušajte ponovo.';
         });
-        // ... (ocisti saved credentials ako treba)
       }
     } catch (e) {
       setState(() => _errorMessage = 'Greška pri povezivanju: $e');
@@ -526,15 +525,12 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-                // Ikona
                 Icon(
                   _getStepIcon(),
                   color: Colors.amber,
                   size: 60,
                 ),
                 const SizedBox(height: 16),
-
-                // Naslov
                 Text(
                   _getStepTitle(),
                   style: const TextStyle(
@@ -553,12 +549,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-
-                // Step indicator
                 _buildStepIndicator(),
                 const SizedBox(height: 24),
-
-                // Info message
                 if (_infoMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -582,13 +574,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Sadržaj zavisno od koraka
                 _buildStepContent(),
-
                 const SizedBox(height: 16),
-
-                // Error message
                 if (_errorMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -612,8 +599,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Action button
                 if (_currentStep != _LoginStep.zahtevPoslat)
                   SizedBox(
                     width: double.infinity,
@@ -639,8 +624,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                             ),
                     ),
                   ),
-
-                // Dugme za povratak ako je zahtev poslat
                 if (_currentStep == _LoginStep.zahtevPoslat) ...[
                   const SizedBox(height: 24),
                   SizedBox(
@@ -662,10 +645,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                     ),
                   ),
                 ],
-
                 const SizedBox(height: 24),
-
-                // Info
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -880,7 +860,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
         if (_biometricAvailable && _biometricEnabled)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -898,7 +877,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               ),
             ),
           ),
-
         GestureDetector(
           onTap: _showForgotPinDialog,
           child: Text(

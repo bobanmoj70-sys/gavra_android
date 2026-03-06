@@ -192,7 +192,6 @@ class V2PolasciService {
   }
 
   // ---------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------
 
   /// Čita polasciCache iz mastera, enrichuje iz putnici cacheova — 0 DB upita.
   ///
@@ -251,8 +250,14 @@ class V2PolasciService {
     // Emituj odmah (cache je već popunjen pri initialize())
     Future.microtask(emit);
 
-    final cacheSub = rm.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) => emit());
+    // Debounce 150ms — skuplja brze uzastopne v2_polasci evente u jedan emit
+    Timer? debounce;
+    final cacheSub = rm.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
+      debounce?.cancel();
+      debounce = Timer(const Duration(milliseconds: 150), emit);
+    });
     controller.onCancel = () {
+      debounce?.cancel();
       cacheSub.cancel();
       controller.close();
     };
@@ -458,6 +463,7 @@ class V2PutnikStreamService {
     final controller = StreamController<List<V2Putnik>>.broadcast();
     bool isEmitting = false;
     bool pendingEmit = false;
+    Timer? _debounce;
 
     Future<void> emit() async {
       if (isEmitting) {
@@ -478,6 +484,11 @@ class V2PutnikStreamService {
       }
     }
 
+    void scheduleEmit() {
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 150), emit);
+    }
+
     final rm = V2MasterRealtimeManager.instance;
 
     // Inicijalna emisija — ako RM nije gotov, čeka pa emituje
@@ -491,6 +502,7 @@ class V2PutnikStreamService {
     });
 
     // Sve relevantne tabele — polasci + raspored + putnik tabele (status promjena)
+    // Debounce 150ms — skuplja brze uzastopne evente u jedan emit (sprečava treperenje)
     final cacheSub = rm.onCacheChanged
         .where((t) =>
             t == 'v2_polasci' ||
@@ -500,9 +512,10 @@ class V2PutnikStreamService {
             t == 'v2_radnici' ||
             t == 'v2_ucenici' ||
             t == 'v2_posiljke')
-        .listen((_) => emit());
+        .listen((_) => scheduleEmit());
 
     controller.onCancel = () {
+      _debounce?.cancel();
       cacheSub.cancel();
       controller.close();
     };

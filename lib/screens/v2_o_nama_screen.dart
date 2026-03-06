@@ -93,11 +93,8 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // LOGO I NAZIV
               _buildHeader(),
               const SizedBox(height: 24),
-
-              // ISTORIJA
               _buildGlassCard(
                 icon: Icons.history,
                 title: 'Naša priča',
@@ -134,8 +131,6 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // KONTAKT INFORMACIJE
               _buildGlassCard(
                 icon: Icons.contact_phone,
                 title: 'Kontakt',
@@ -165,8 +160,6 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // REGISTRACIONI PODACI
               _buildGlassCard(
                 icon: Icons.business,
                 title: 'Podaci o firmi',
@@ -189,8 +182,6 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // VERZIJA APLIKACIJE
               _buildGlassCard(
                 icon: Icons.phone_android,
                 title: 'Aplikacija',
@@ -211,8 +202,6 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // IN MEMORIAM
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -259,7 +248,6 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
   static Widget _buildHeader() {
     return Column(
       children: [
-        // Logo
         Container(
           width: 100,
           height: 100,
@@ -295,7 +283,6 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        // Naziv
         const Text(
           'Gavra 013',
           style: TextStyle(

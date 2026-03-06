@@ -142,8 +142,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
           try {
             final hex = v.boja!.replaceFirst('#', '');
             bojaInt = int.parse('FF$hex', radix: 16);
-          } catch (e) {
-          }
+          } catch (e) {}
         }
 
         return <String, dynamic>{
@@ -299,7 +298,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header
                 Icon(
                   Icons.login,
                   color: isDark ? currentTheme.colorScheme.primary : Colors.amber,
@@ -325,8 +323,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-
-                // Email
                 TextFormField(
                   controller: _emailController,
                   style: const TextStyle(color: Colors.white),
@@ -343,8 +339,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // Telefon
                 TextFormField(
                   controller: _telefonController,
                   style: const TextStyle(color: Colors.white),
@@ -356,8 +350,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // Šifra
                 TextFormField(
                   controller: _sifraController,
                   style: const TextStyle(color: Colors.white),
@@ -391,8 +383,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-
-                // Login dugme
                 ElevatedButton(
                   onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
@@ -417,8 +407,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                 ),
-
-                // Biometrija dugme
                 if (_biometricAvailable && _hasSavedCredentials) ...[
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
@@ -439,8 +427,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
                   ),
                 ],
                 const SizedBox(height: 16),
-
-                // Info
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(

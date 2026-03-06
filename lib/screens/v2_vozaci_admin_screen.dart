@@ -161,7 +161,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Ime
                 TextFormField(
                   controller: _imeController,
                   style: const TextStyle(color: Colors.white),
@@ -169,8 +168,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   validator: (v) => v?.isEmpty == true ? 'Unesite ime' : null,
                 ),
                 const SizedBox(height: 12),
-
-                // Email
                 TextFormField(
                   controller: _emailController,
                   style: const TextStyle(color: Colors.white),
@@ -183,8 +180,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-
-                // Sifra
                 TextFormField(
                   controller: _sifraController,
                   style: const TextStyle(color: Colors.white),
@@ -192,8 +187,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   decoration: _inputDecoration('Sifra', Icons.lock),
                 ),
                 const SizedBox(height: 12),
-
-                // Telefon
                 TextFormField(
                   controller: _telefonController,
                   style: const TextStyle(color: Colors.white),
@@ -201,8 +194,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   decoration: _inputDecoration('Telefon', Icons.phone),
                 ),
                 const SizedBox(height: 16),
-
-                // Boja
                 const Text('Izaberi boju:', style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 8),
                 Wrap(
@@ -345,7 +336,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
-                // SEKCIJA VOZACA
                 Row(
                   children: [
                     const Text(
@@ -371,7 +361,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-
                 if (vozaci.isEmpty)
                   const Center(
                     child: Padding(
@@ -398,7 +387,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         child: Row(
                           children: [
-                            // Avatar
                             CircleAvatar(
                               backgroundColor: boja,
                               radius: 22,
@@ -412,12 +400,10 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Info
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Ime vozaca + ikone u istom redu
                                   Row(
                                     children: [
                                       Expanded(
@@ -430,7 +416,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                                           ),
                                         ),
                                       ),
-                                      // Actions - olovka i kanta
                                       IconButton(
                                         icon: Icon(Icons.edit, color: boja, size: 20),
                                         onPressed: () => _editVozac(vozac),

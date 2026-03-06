@@ -4,7 +4,7 @@ import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../services/v2_app_settings_service.dart';
-import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
+import '../services/v2_auth_manager.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_polasci_service.dart';
@@ -13,13 +13,14 @@ import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_dug_button.dart';
 import 'v2_adrese_screen.dart';
 import 'v2_dugovi_screen.dart';
 import 'v2_finansije_screen.dart';
-import 'v2_gorivo_screen.dart'; // ? Pumpa goriva
-import 'v2_kapacitet_screen.dart'; // DODANO za kapacitet polazaka
+import 'v2_gorivo_screen.dart';
+import 'v2_kapacitet_screen.dart';
 import 'v2_odrzavanje_screen.dart';
 import 'v2_pin_zahtevi_screen.dart';
 import 'v2_putnici_screen.dart';
@@ -27,7 +28,7 @@ import 'v2_radnici_zahtevi_screen.dart';
 import 'v2_ucenici_zahtevi_screen.dart';
 import 'v2_vozac_raspored_screen.dart';
 import 'v2_vozac_screen.dart';
-import 'v2_vozaci_admin_screen.dart'; // Admin panel za upravljanje vozacima
+import 'v2_vozaci_admin_screen.dart';
 
 class V2AdminScreen extends StatefulWidget {
   const V2AdminScreen({super.key});
@@ -37,24 +38,6 @@ class V2AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<V2AdminScreen> {
-  static const List<String> _dayNamesInternal = [
-    'Ponedeljak',
-    'Utorak',
-    'Sreda',
-    'Cetvrtak',
-    'Petak',
-    'Subota',
-    'Nedelja'
-  ];
-
-  static const Map<String, String> _dayAbbrevMapping = {
-    'ponedeljak': 'Pon',
-    'utorak': 'Uto',
-    'sreda': 'Sre',
-    'cetvrtak': 'Cet',
-    'petak': 'Pet',
-  };
-
   static const List<String> _defaultVozaciRedosled = ['Bruda', 'Bilevski', 'Bojan', 'Voja'];
 
   String? _currentDriver;
@@ -75,8 +58,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
     // Osvježi lokalne map-ove iz rm.vozaciCache (bez DB upita)
     V2VozacCache.refresh();
 
-    // Dan ne mijenja za života screena — izračunaj jednom ovde
-    _todayKratica = _getShortDayName(_dayNamesInternal[DateTime.now().weekday - 1]).toLowerCase();
+    _todayKratica = V2DanUtils.danas();
 
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
     _streamPutnici = V2PolasciService.v2StreamPutnici();
@@ -94,11 +76,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
     } catch (e) {
       // ignore
     }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   /// ?? VOZAC PICKER DIALOG - Admin može da vidi ekran bilo kog vozaca
@@ -158,7 +135,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
         },
       );
     } catch (e) {
-      debugPrint('❌ Error loading drivers: $e');
       if (!mounted) return;
       V2AppSnackBar.error(context, '❌ Greška pri ucitavanju vozaca');
     }
@@ -177,7 +153,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
   void _showGlobalniBezPolaskaDialog() {
     String selectedGrad = 'BC';
     String selectedVreme = '05:00';
-    String selectedDan = _dayNamesInternal[DateTime.now().weekday - 1];
+    String selectedDan = V2DanUtils.puniNazivi[DateTime.now().weekday - 1];
     bool isProcessing = false;
 
     showDialog(
@@ -232,7 +208,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
               DropdownButtonFormField<String>(
                 value: selectedDan,
                 decoration: const InputDecoration(labelText: 'Dan'),
-                items: _dayNamesInternal.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                items: V2DanUtils.puniNazivi.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                 onChanged: (val) {
                   if (val != null) setDialogState(() => selectedDan = val);
                 },
@@ -368,25 +344,19 @@ class _AdminScreenState extends State<V2AdminScreen> {
     );
   }
 
-  // Mapiranje punih imena dana u skracice za filtriranje
-  static String _getShortDayName(String fullDayName) {
-    final key = fullDayName.trim().toLowerCase();
-    return _dayAbbrevMapping[key] ?? (fullDayName.isNotEmpty ? fullDayName.trim() : 'Pon');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: V2ThemeManager().currentGradient, // Theme-aware gradijent
+        gradient: V2ThemeManager().currentGradient,
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Transparentna pozadina
+        backgroundColor: Colors.transparent,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(147),
           child: Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).glassContainer, // Transparentni glassmorphism
+              color: Theme.of(context).glassContainer,
               border: Border.all(
                 color: Theme.of(context).glassBorder,
                 width: 1.5,
@@ -395,7 +365,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
                 bottomLeft: Radius.circular(25),
                 bottomRight: Radius.circular(25),
               ),
-              // No boxShadow ? keep AppBar fully transparent and only glass border
             ),
             child: SafeArea(
               child: Padding(
@@ -844,7 +813,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
           stream: _streamPutnici,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              // Error handling - logging removed for production
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -855,7 +823,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        if (mounted) setState(() {}); // Pokušaj ponovo
+                        if (mounted) setState(() {});
                       },
                       child: const Text('Pokušaj ponovo'),
                     ),
@@ -866,7 +834,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
             final allPutnici = snapshot.data ?? [];
 
-            // Koristi _todayKratica izračunat jednom u initState (ne na svakom rebuildu)
             final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == _todayKratica).toList();
 
             // Dužnici — pokupljeni, neplaćeni, samo dnevni i posiljke (ne radnici/ucenici)
@@ -899,8 +866,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
                 final double mojUkupanPazar = filteredPazar.values.fold(0.0, (sum, val) => sum + val);
 
                 final Map<String, Color> vozacBoje = V2VozacCache.bojeSync;
-                // Preferiraj dinamičku listu iz V2VozacCache, ali ako je cache prazan,
-                // koristimo legacy redosled kao fallback (ne menjamo UX neočekivano).
                 final List<String> vozaciRedosled =
                     V2VozacCache.imenaVozaca.isNotEmpty ? V2VozacCache.imenaVozaca : _defaultVozaciRedosled;
 
@@ -1025,7 +990,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
                               context,
                               MaterialPageRoute<void>(
                                 builder: (context) => V2DugoviScreen(
-                                  // duznici: filteredDuznici,
                                   currentDriver: _currentDriver!,
                                 ),
                               ),
@@ -1037,19 +1001,16 @@ class _AdminScreenState extends State<V2AdminScreen> {
                         // UKUPAN PAZAR
                         Container(
                           width: double.infinity,
-                          // increased slightly to provide safe headroom across
-                          // devices (prevent tiny 1?3px overflows caused by
-                          // font metrics / shadows on some phones)
                           height: 76,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2), // Glassmorphism
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Theme.of(context).glassBorder, // Transparentni border
+                              color: Theme.of(context).glassBorder,
                               width: 1.5,
                             ),
                             boxShadow: [
@@ -1229,7 +1190,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
             );
           },
         ),
-      ), // Zatvaranje Scaffold
-    ); // Zatvaranje Container
+      ),
+    );
   }
 }

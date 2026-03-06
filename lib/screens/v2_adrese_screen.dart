@@ -72,7 +72,6 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
 
   Future<void> _editAdresa(V2Adresa adresa) async {
     final result = await showDialog<Map<String, dynamic>>(
-      // Changed to Map<String, dynamic> to include doubles
       context: context,
       builder: (context) => _AdresaDialog(
         initialNaziv: adresa.naziv,
@@ -167,7 +166,6 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // Header sa statistikom
                   Container(
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(16),
@@ -187,7 +185,6 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        // Search bar
                         TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
@@ -222,7 +219,6 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                           onChanged: (value) => setState(() => _searchQuery = value),
                         ),
                         const SizedBox(height: 12),
-                        // Filter dugmad
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -236,8 +232,6 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                       ],
                     ),
                   ),
-
-                  // Lista adresa
                   Expanded(
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator())

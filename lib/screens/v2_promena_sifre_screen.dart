@@ -144,7 +144,6 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header
                 const Icon(
                   Icons.lock_reset,
                   color: Colors.amber,
@@ -170,8 +169,6 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-
-                // Stara šifra (ako postoji)
                 if (imaSifru) ...[
                   TextFormField(
                     controller: _staraSifraController,
@@ -212,8 +209,6 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Nova šifra
                 TextFormField(
                   controller: _novaSifraController,
                   style: const TextStyle(color: Colors.white),
@@ -255,8 +250,6 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // Potvrda šifre
                 TextFormField(
                   controller: _potvrdaSifraController,
                   style: const TextStyle(color: Colors.white),
@@ -298,8 +291,6 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
                   },
                 ),
                 const SizedBox(height: 32),
-
-                // Dugme za promenu
                 ElevatedButton(
                   onPressed: _isLoading ? null : _promeniSifru,
                   style: ElevatedButton.styleFrom(
@@ -322,8 +313,6 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
                         ),
                 ),
                 const SizedBox(height: 24),
-
-                // Info
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(

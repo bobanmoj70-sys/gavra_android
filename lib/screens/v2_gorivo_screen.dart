@@ -112,7 +112,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  // "?"? FAB - mijenja se po tabu "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildFab() {
     return AnimatedBuilder(
       animation: _tabController,
@@ -137,7 +136,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  // "?"? TAB 1: STANJE "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildStanjeTab() {
     return FutureBuilder<V2PumpaStanje?>(
       future: _futureStanje,
@@ -389,7 +387,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  // "?"? TAB 2: PUNJENJA "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildPunjenjaTab() {
     return FutureBuilder<List<V2PumpaPunjenje>>(
       future: _futurePunjenja,
@@ -472,7 +469,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  // "?"? TAB 3: TOOENJA "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
   Widget _buildTocenjaTab() {
     return FutureBuilder<List<V2PumpaTocenje>>(
       future: _futureTocenja,
@@ -567,8 +563,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  // "?"? DIJALOZI "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
-
   void _showDodajPunjenjeDialog() {
     final litriCtrl = TextEditingController();
     final cenaCtrl = TextEditingController();
@@ -584,7 +578,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           title: '🛢️ Novo punjenje pumpe',
           accentColor: Colors.green,
           children: [
-            // Datum
             _datumRow(datum, (d) => setLocal(() => datum = d)),
             const SizedBox(height: 12),
             _inputField(litriCtrl, 'Litri *', suffixText: 'L', keyboardType: TextInputType.number),
@@ -642,7 +635,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     DateTime datum = DateTime.now();
     V2Vozilo? selectedVozilo = vozila.isNotEmpty ? vozila.first : null;
 
-    // Zadnja cijena
     final lastCena = await V2GorivoService.getPoslednaCenaPoPLitru();
 
     if (!mounted) return;
@@ -656,11 +648,8 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           title: '> Novo točenje',
           accentColor: _accent,
           children: [
-            // Datum
             _datumRow(datum, (d) => setLocal(() => datum = d)),
             const SizedBox(height: 12),
-
-            // V2Vozilo dropdown
             DropdownButtonFormField<V2Vozilo>(
               value: selectedVozilo,
               decoration: _inputDeco('V2Vozilo *'),
@@ -811,8 +800,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
     if (ok == true) onConfirm();
   }
-
-  // "?"? HELPERS "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
 
   Widget _buildBottomSheet({
     required String title,
