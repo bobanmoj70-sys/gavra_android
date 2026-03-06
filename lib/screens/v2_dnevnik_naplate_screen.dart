@@ -107,6 +107,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
         .select('putnik_id, putnik_tabela, grad, dodeljeno_vreme, placen_iznos, placen_at, updated_at')
         .eq('placen', true)
         .eq('placen_vozac_ime', _selectedVozacIme!)
+        .gt('placen_iznos', 0)
         .gte('updated_at', '${dateStr}T00:00:00')
         .lte('updated_at', '${dateStr}T23:59:59') as List;
 
@@ -116,6 +117,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     final dnevniIds = <String>[];
     final radniciIds = <String>[];
     final uceniciIds = <String>[];
+    final posiljkeIds = <String>[];
 
     for (final r in rows) {
       final id = r['putnik_id']?.toString() ?? '';
@@ -127,6 +129,8 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
           radniciIds.add(id);
         case 'v2_ucenici':
           uceniciIds.add(id);
+        case 'v2_posiljke':
+          posiljkeIds.add(id);
       }
     }
 
@@ -145,6 +149,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       fetchIme('v2_dnevni', dnevniIds),
       fetchIme('v2_radnici', radniciIds),
       fetchIme('v2_ucenici', uceniciIds),
+      fetchIme('v2_posiljke', posiljkeIds),
     ]);
 
     final sve = <Map<String, dynamic>>[];
