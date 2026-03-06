@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
+import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
@@ -447,13 +448,7 @@ class V2StatistikaIstorijaService {
           if (vozacId != null) 'placen_vozac_id': vozacId,
           if (vozacIme != null) 'placen_vozac_ime': vozacIme,
           'datum_akcije': datumStr,
-          'placen_tip': const {
-                'v2_radnici': 'radnik',
-                'v2_ucenici': 'ucenik',
-                'v2_dnevni': 'dnevni',
-                'v2_posiljke': 'posiljka',
-              }[putnikTabela] ??
-              'radnik',
+          'placen_tip': V2Putnik.tipIzTabele(putnikTabela) ?? 'radnik',
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', srRow['id'].toString());
       }

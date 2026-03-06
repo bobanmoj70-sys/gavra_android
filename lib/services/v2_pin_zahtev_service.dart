@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
+import '../models/v2_putnik.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_realtime_notification_service.dart';
 
@@ -76,7 +76,7 @@ class V2PinZahtevService {
         ...Map<String, dynamic>.from(z),
         'putnik_ime': putnikData?['ime'],
         'broj_telefona': putnikData?['telefon'],
-        'tip': _tabelaToTip(z['putnik_tabela'] as String? ?? ''),
+        'tip': V2Putnik.tipIzTabele(z['putnik_tabela'] as String?),
       };
     }).toList();
   }
@@ -181,12 +181,4 @@ class V2PinZahtevService {
       return false;
     }
   }
-
-  static String _tabelaToTip(String tabela) => switch (tabela) {
-        'v2_radnici' => 'radnik',
-        'v2_ucenici' => 'ucenik',
-        'v2_dnevni' => 'dnevni',
-        'v2_posiljke' => 'posiljka',
-        _ => tabela,
-      };
 }

@@ -1,3 +1,5 @@
+import 'v2_putnik.dart';
+
 /// Model za zahteve za mesta u kombiju (v2_polasci tabela)
 class V2Polazak {
   final String id;
@@ -49,13 +51,7 @@ class V2Polazak {
   factory V2Polazak.fromJson(Map<String, dynamic> json) {
     // putnikIme, brojTelefona, tipPutnika se enrichuju u servisu iz v2_* cache-a
     final putnikTabela = json['putnik_tabela'] as String?;
-    final tipPutnika = switch (putnikTabela) {
-      'v2_radnici' => 'radnik',
-      'v2_ucenici' => 'ucenik',
-      'v2_dnevni' => 'dnevni',
-      'v2_posiljke' => 'posiljka',
-      _ => json['tip_putnika'] as String? ?? json['tip'] as String?,
-    };
+    final tipPutnika = V2Putnik.tipIzTabele(putnikTabela) ?? json['tip_putnika'] as String? ?? json['tip'] as String?;
 
     return V2Polazak(
       id: json['id'] as String,

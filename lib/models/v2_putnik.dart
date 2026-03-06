@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart'; // DODATO za fallback ucitavanje adrese
 import '../utils/v2_dan_utils.dart';
@@ -47,18 +45,21 @@ class V2Putnik {
     return V2Putnik.v2FromProfil(map);
   }
 
+  // Centralno mapiranje tabele u tip putnika
+  static String? tipIzTabele(String? tabela) {
+    return switch (tabela) {
+      'v2_radnici' => 'radnik',
+      'v2_ucenici' => 'ucenik',
+      'v2_dnevni' => 'dnevni',
+      'v2_posiljke' => 'posiljka',
+      _ => null,
+    };
+  }
+
   // Factory za v2 putnik profil (v2_radnici, v2_ucenici, v2_dnevni, v2_posiljke)
   factory V2Putnik.v2FromProfil(Map<String, dynamic> map) {
     final grad = _v2GradIzProfila(map);
-    final tipPutnika = map['_tabela'] != null
-        ? (map['_tabela'] == 'v2_radnici'
-            ? 'radnik'
-            : map['_tabela'] == 'v2_ucenici'
-                ? 'ucenik'
-                : map['_tabela'] == 'v2_dnevni'
-                    ? 'dnevni'
-                    : 'posiljka')
-        : map['tip'] as String?;
+    final tipPutnika = tipIzTabele(map['_tabela']?.toString());
     final isDnevni = tipPutnika == 'dnevni' || tipPutnika == 'posiljka';
 
     return V2Putnik(
@@ -139,7 +140,7 @@ class V2Putnik {
     // Koristi centralizovanu normalizaciju vremena
     final vreme = V2RegistrovaniHelpers.normalizeTime(vremeRaw) ?? '05:00';
 
-    final tip = p['tip'] as String?;
+    final tip = V2Putnik.tipIzTabele(p['_tabela']?.toString() ?? req['putnik_tabela']?.toString());
     final isDnevni = tip == 'dnevni' || tip == 'posiljka';
 
     // Status: Prioritet ima status iz profila ako je na bolovanju/godišnjem,
@@ -182,8 +183,7 @@ class V2Putnik {
           dodeljenVozacFinal = V2VozacCache.getImeByUuid(terminRaspored['vozac_id']?.toString() ?? '');
         }
       }
-    } catch (e) {
-    }
+    } catch (e) {}
 
     return V2Putnik(
       id: p['id'] ?? req['putnik_id'],
@@ -465,5 +465,4 @@ class V2Putnik {
 
     return adresa;
   }
-
 }

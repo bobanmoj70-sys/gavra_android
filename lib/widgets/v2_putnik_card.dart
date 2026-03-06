@@ -1116,7 +1116,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
                               ),
                             ),
                             // Broj mesta badge — tap otvara dijalog za promenu
-                            if ((isAdmin || isVozac) && widget.showActions && !_putnik.jeOtkazan)
+                            if ((isAdmin || isVozac) &&
+                                widget.showActions &&
+                                !_putnik.jeOtkazan &&
+                                _putnik.brojMesta > 1)
                               GestureDetector(
                                 onTap: _handleSetBrojMesta,
                                 child: Padding(
@@ -1124,27 +1127,21 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: _putnik.brojMesta > 1
-                                          ? textColor.withOpacity(0.18)
-                                          : textColor.withOpacity(0.08),
+                                      color: textColor.withOpacity(0.18),
                                       borderRadius: BorderRadius.circular(4),
-                                      border: _putnik.brojMesta > 1
-                                          ? Border.all(
-                                              color: textColor.withOpacity(0.45),
-                                              width: 1,
-                                            )
-                                          : null,
+                                      border: Border.all(
+                                        color: textColor.withOpacity(0.45),
+                                        width: 1,
+                                      ),
                                     ),
                                     child: Text(
-                                      _putnik.brojMesta > 1
-                                          ? ((_putnik.cena != null && (_putnik.cena ?? 0) > 0)
-                                              ? 'x${_putnik.brojMesta} (${_putnik.cena!.toStringAsFixed(0)} RSD)'
-                                              : 'x${_putnik.brojMesta} (${(_putnik.effectivePrice * _putnik.brojMesta).toStringAsFixed(0)} RSD)')
-                                          : '🪑',
+                                      (_putnik.cena != null && (_putnik.cena ?? 0) > 0)
+                                          ? 'x${_putnik.brojMesta} (${_putnik.cena!.toStringAsFixed(0)} RSD)'
+                                          : 'x${_putnik.brojMesta} (${(_putnik.effectivePrice * _putnik.brojMesta).toStringAsFixed(0)} RSD)',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: _putnik.brojMesta > 1 ? textColor : textColor.withOpacity(0.45),
+                                        color: textColor,
                                       ),
                                     ),
                                   ),

@@ -118,10 +118,7 @@ class V2CardColorHelper {
       return CardState.otkazano;
     }
     if (putnik.jePokupljen) {
-      // PRAVI FIX: Proveravamo `placeno` polje umesto iznosa
-      final bool isPlaceno = putnik.placeno == true;
-      final bool isRadnikIliUcenik = putnik.isRadnik || putnik.isUcenik;
-      if (isPlaceno || isRadnikIliUcenik) {
+      if (putnik.placeno == true) {
         return CardState.placeno;
       }
       return CardState.pokupljeno;
