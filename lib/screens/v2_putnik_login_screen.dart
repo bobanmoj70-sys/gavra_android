@@ -1,7 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'dart:async';
 
 import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
@@ -9,6 +9,7 @@ import '../services/v2_biometric_service.dart';
 import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_push_token_service.dart'; // V2PutnikPushService spojen ovde
 import '../services/v2_realtime_notification_service.dart';
+import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
 import 'v2_putnik_profil_screen.dart';
 
@@ -452,6 +453,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       if (putnikId != null) {
         final tabela = response['_tabela'] as String? ?? response['putnik_tabela'] as String?;
         await V2PutnikPushService.registerPutnikToken(putnikId, putnikTabela: tabela);
+        unawaited(V2StatistikaIstorijaService.logGeneric(
+          tip: 'login',
+          putnikId: putnikId.toString(),
+          detalji: 'Putnik se prijavio (PIN)',
+        ));
       }
       if (showBiometricPrompt && _biometricAvailable && !_biometricEnabled && mounted) {
         await _showBiometricSetupDialog(telefon, pin);

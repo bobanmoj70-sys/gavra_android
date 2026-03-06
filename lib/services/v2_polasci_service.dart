@@ -109,6 +109,18 @@ class V2PolasciService {
             .single();
         rm.v2UpsertToCache('v2_polasci', inserted);
       }
+      // Audit: log zahteva samo kad putnik sam šalje (isAdmin=false)
+      if (!isAdmin) {
+        try {
+          await V2StatistikaIstorijaService.logGeneric(
+            tip: 'zahtev_poslan',
+            putnikId: putnikId,
+            detalji: 'Zahtev za vožnju: $danKey $gradKey $normVreme',
+            grad: grad,
+            vreme: vreme,
+          );
+        } catch (_) {}
+      }
     } catch (e) {
       rethrow;
     }
@@ -266,8 +278,8 @@ class V2PolasciService {
 
   /// Broj zahteva u statusu `'obrada'` za dnevne putnike — za bedž na Home ekranu.
   /// Usklađeno sa screen filterom koji prikazuje samo tip 'dnevni'.
-  static Stream<int> v2StreamBrojZahteva() =>
-      v2StreamZahteviObrada().map((list) => list.where((z) => (z.tipPutnika ?? 'dnevni').toLowerCase() == 'dnevni').length);
+  static Stream<int> v2StreamBrojZahteva() => v2StreamZahteviObrada()
+      .map((list) => list.where((z) => (z.tipPutnika ?? 'dnevni').toLowerCase() == 'dnevni').length);
 
   /// Prihvata alternativni termin - ODMAH ODOBRAVA
   static Future<bool> v2PrihvatiAlternativu({
@@ -429,6 +441,7 @@ class V2PolasciService {
   static Future<void> v2OtkaziPutnika({
     String? putnikId,
     String? vozacId,
+    String? otkazao,
     String? grad,
     String? vreme,
     String? selectedDan,
@@ -439,7 +452,7 @@ class V2PolasciService {
     if (putnikId == null) return;
     await _svc.v2OtkaziPutnika(
       putnikId,
-      vozacId,
+      otkazao,
       grad: grad,
       vreme: vreme,
       selectedDan: selectedDan,

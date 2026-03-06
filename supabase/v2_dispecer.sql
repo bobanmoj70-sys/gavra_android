@@ -191,6 +191,30 @@ BEGIN
            otkazao          = CASE WHEN v_novi_status = 'odbijeno' THEN 'sistem' ELSE otkazao END
      WHERE id = v_req.id;
 
+    -- 8. Audit log u v2_statistika_istorija
+    INSERT INTO public.v2_statistika_istorija
+      (tip, putnik_id, putnik_tabela, datum, grad, vreme, detalji, vozac_ime, placeni_mesec, placena_godina, created_at)
+    VALUES (
+      CASE WHEN v_novi_status = 'odobreno' THEN 'dispecer_odobrio' ELSE 'dispecer_odbio' END,
+      (SELECT putnik_id FROM v2_polasci WHERE id = v_req.id),
+      v_req.putnik_tabela,
+      (v_now AT TIME ZONE 'UTC')::date,
+      v_req.grad,
+      v_req.zeljeno_vreme::text,
+      CASE
+        WHEN v_novi_status = 'odobreno' THEN
+          'Sistem odobrio: ' || v_req.dan || ' ' || v_req.grad || ' ' || v_req.zeljeno_vreme::text
+        ELSE
+          'Sistem odbio (puno): ' || v_req.dan || ' ' || v_req.grad || ' ' || v_req.zeljeno_vreme::text
+          || COALESCE(' | alt1=' || v_alt1, '')
+          || COALESCE(' | alt2=' || v_alt2, '')
+      END,
+      'sistem',
+      EXTRACT(MONTH FROM v_now)::int,
+      EXTRACT(YEAR  FROM v_now)::int,
+      v_now
+    );
+
     v_processed := v_processed + 1;
 
   END LOOP;

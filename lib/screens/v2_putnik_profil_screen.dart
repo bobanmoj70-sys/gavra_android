@@ -469,6 +469,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final putnikId = _putnikData['id']?.toString();
       if (putnikId != null) {
         try {
+          await V2StatistikaIstorijaService.logGeneric(
+            tip: 'logout',
+            putnikId: putnikId,
+            detalji: 'Putnik se odjavio',
+          );
+        } catch (e) {}
+        try {
           await V2PushTokenService.clearToken(putnikId: putnikId);
         } catch (e) {}
       }
@@ -1410,7 +1417,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         dayName: dan,
                         tipPutnika: tip.toString(),
                         tipPrikazivanja: tipPrikazivanja,
-                        onChanged: (newValue) => _updatePolazak(dan, 'bc', newValue),
+                        onChanged: (newValue) =>
+                            _updatePolazak(dan, 'bc', newValue, trenutnoVreme: bcDisplayVreme?.toString()),
                       ),
                     ),
                   ),
@@ -1423,7 +1431,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         dayName: dan,
                         tipPutnika: tip.toString(),
                         tipPrikazivanja: tipPrikazivanja,
-                        onChanged: (newValue) => _updatePolazak(dan, 'vs', newValue),
+                        onChanged: (newValue) =>
+                            _updatePolazak(dan, 'vs', newValue, trenutnoVreme: vsDisplayVreme?.toString()),
                       ),
                     ),
                   ),
@@ -1437,24 +1446,30 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   }
 
   /// Ažurira polazak
-  Future<void> _updatePolazak(String dan, String tipGrad, String? novoVreme) async {
+  Future<void> _updatePolazak(String dan, String tipGrad, String? novoVreme, {String? trenutnoVreme}) async {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
 
     final gradKey = tipGrad.startsWith('bc') ? 'BC' : 'VS';
 
-    // null → bez_polaska (ukloni polazak)
+    // null → otkazano
     if (novoVreme == null) {
+      final _ime = (_putnikData['putnik_ime'] as String?)?.isNotEmpty == true
+          ? _putnikData['putnik_ime'] as String
+          : (_putnikData['ime'] as String? ?? 'Putnik');
+      final putnikImeZaLog = '[Putnik] $_ime';
       try {
         await V2PolasciService.v2OtkaziPutnika(
           putnikId: putnikId,
+          otkazao: putnikImeZaLog,
           grad: gradKey,
           selectedDan: dan,
-          status: 'bez_polaska',
+          vreme: trenutnoVreme,
+          status: 'otkazano',
         );
       } catch (e) {
-        debugPrint('❌ _updatePolazak (bez_polaska): $e');
-        if (mounted) V2AppSnackBar.error(context, 'Greška pri uklanjanju polaska.');
+        debugPrint('❌ _updatePolazak (otkazano): $e');
+        if (mounted) V2AppSnackBar.error(context, 'Greška pri otkazivanju polaska.');
         return;
       }
     } else {
@@ -1485,7 +1500,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     await _refreshPutnikData();
     if (mounted) {
       V2AppSnackBar.success(
-          context, 'Polazak ažuriran: $dan $gradKey${novoVreme != null ? " $novoVreme" : " uklonjen"}.');
+          context, 'Polazak ažuriran: $dan $gradKey${novoVreme != null ? " $novoVreme" : " otkazan"}.');
     }
   }
 
