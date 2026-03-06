@@ -17,9 +17,9 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
   @override
   void initState() {
     super.initState();
-    // obrada + odobreno + odbijeno — prati obradu zahtjeva, bez vozačkih akcija
+    // obrada + odobreno + odbijeno + otkazano — kompletan lifecycle zahteva
     _stream = V2PolasciService.v2StreamZahteviObrada(
-      statusFilter: const ['obrada', 'odobreno', 'odbijeno'],
+      statusFilter: const ['obrada', 'odobreno', 'odbijeno', 'otkazano'],
     );
   }
 
@@ -32,14 +32,13 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
 
         // Bez datumskog filtera — prikazuje sve radničke zahteve iz cache-a
         // Time picker logika zaključavanja kontroliše kad zahtevi ulaze u bazu
-        final zahtevi = svi
-            .where((z) => (z.tipPutnika ?? '').toLowerCase() == 'radnik')
-            .toList();
+        final zahtevi = svi.where((z) => (z.tipPutnika ?? '').toLowerCase() == 'radnik').toList();
 
         // Grupiši po statusu za summary u AppBaru
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
         final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
         final brOdbijeno = zahtevi.where((z) => z.status == 'odbijeno').length;
+        final brOtkazano = zahtevi.where((z) => z.status == 'otkazano').length;
 
         return Container(
           decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
@@ -82,8 +81,10 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
                             if (brOdobreno > 0) _summaryBadge('🟢 $brOdobreno odobreno', Colors.green),
                             if (brOdobreno > 0) const SizedBox(width: 8),
                             if (brOdbijeno > 0) _summaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
+                            if (brOdbijeno > 0 && brOtkazano > 0) const SizedBox(width: 8),
+                            if (brOtkazano > 0) _summaryBadge('⛔ $brOtkazano otkazano', Colors.orange),
                             if (zahtevi.isEmpty)
-                              Text('Nema aktivnih zahtjeva',
+                              Text('Nema zahtjeva',
                                   style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
                           ],
                         ),
@@ -138,7 +139,6 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
 
   Widget _buildKartica(V2Polazak z) {
     final ime = z.putnikIme ?? 'Nepoznat';
-    final telefon = z.brojTelefona ?? '';
     final grad = z.grad ?? 'BC';
     final dan = z.dan ?? '';
     final zeljeno = z.zeljenoVreme ?? '—';
@@ -151,8 +151,18 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
       'obrada' => (Colors.amber, 'OBRADA'),
       'odobreno' => (Colors.green, 'ODOBRENO'),
       'odbijeno' => (Colors.red, 'ODBIJENO'),
+      'otkazano' => (Colors.orange, 'OTKAZANO'),
       _ => (Colors.grey, status.toUpperCase()),
     };
+
+    // Timeline formatiranje
+    final poslatStr = z.createdAt != null
+        ? '${z.createdAt!.day.toString().padLeft(2, '0')}.${z.createdAt!.month.toString().padLeft(2, '0')}. ${z.createdAt!.hour.toString().padLeft(2, '0')}:${z.createdAt!.minute.toString().padLeft(2, '0')}'
+        : null;
+    final obradjenoStr = z.processedAt != null
+        ? '${z.processedAt!.day.toString().padLeft(2, '0')}.${z.processedAt!.month.toString().padLeft(2, '0')}. ${z.processedAt!.hour.toString().padLeft(2, '0')}:${z.processedAt!.minute.toString().padLeft(2, '0')}'
+        : null;
+    final koObradio = z.approvedBy ?? z.cancelledBy;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -201,9 +211,25 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
               runSpacing: 2,
               children: [
                 _vremeChip('Željeno', zeljeno, Colors.white70),
-                if (dodeljeno != null && dodeljeno.isNotEmpty) _vremeChip('', dodeljeno, Colors.green),
+                if (dodeljeno != null && dodeljeno.isNotEmpty) _vremeChip('→', dodeljeno, Colors.green),
                 if (alt1 != null && alt1.isNotEmpty) _vremeChip('Alt 1', alt1, Colors.lightBlue),
                 if (alt2 != null && alt2.isNotEmpty) _vremeChip('Alt 2', alt2, Colors.lightBlue),
+              ],
+            ),
+            const SizedBox(height: 4),
+            // RED 4: timeline — kada poslato / kada obrađeno / ko obradio
+            Wrap(
+              spacing: 12,
+              runSpacing: 2,
+              children: [
+                if (poslatStr != null)
+                  _timelineChip('📨 poslato', poslatStr, Colors.white54),
+                if (obradjenoStr != null)
+                  _timelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
+                if (obradjenoStr == null && status == 'obrada')
+                  _timelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
+                if (koObradio != null)
+                  _timelineChip('👤', koObradio, Colors.white70),
               ],
             ),
           ],
@@ -215,8 +241,17 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
   static Widget _vremeChip(String label, String vreme, Color color) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
+          if (label.isNotEmpty)
+            Text('$label: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
           Text(vreme, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      );
+
+  static Widget _timelineChip(String label, String value, Color color) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label ', style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11)),
+          Text(value, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
         ],
       );
 
