@@ -264,9 +264,10 @@ class V2PolasciService {
     return controller.stream;
   }
 
-  /// Broj zahteva u statusu `'obrada'` samo za dnevne putnike — za bedž na Home ekranu.
+  /// Broj zahteva u statusu `'obrada'` za dnevne putnike — za bedž na Home ekranu.
+  /// Usklađeno sa screen filterom koji prikazuje samo tip 'dnevni'.
   static Stream<int> v2StreamBrojZahteva() =>
-      v2StreamZahteviObrada().map((list) => list.where((z) => z.tipPutnika == 'dnevni').length);
+      v2StreamZahteviObrada().map((list) => list.where((z) => (z.tipPutnika ?? 'dnevni').toLowerCase() == 'dnevni').length);
 
   /// Prihvata alternativni termin - ODMAH ODOBRAVA
   static Future<bool> v2PrihvatiAlternativu({

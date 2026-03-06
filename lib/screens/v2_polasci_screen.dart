@@ -14,7 +14,8 @@ class V2PolasciScreen extends StatefulWidget {
 }
 
 class _V2PolasciScreenState extends State<V2PolasciScreen> {
-  bool _isLoading = false;
+  final Set<String> _loadingIds = {};
+  String? _currentDriver;
 
   late final Stream<List<V2Polazak>> _streamDnevni;
 
@@ -22,6 +23,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
   void initState() {
     super.initState();
     _streamDnevni = V2PolasciService.v2StreamZahteviObrada();
+    V2AuthManager.getCurrentDriver().then((d) => _currentDriver = d);
   }
 
   @override
@@ -32,7 +34,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
         final svi = snapshot.data ?? [];
         final zahtevi = svi.where((z) {
           final t = (z.tipPutnika ?? 'dnevni').toLowerCase();
-          return t == 'dnevni' || t == 'manual';
+          return t == 'dnevni';
         }).toList();
 
         return Container(
@@ -160,7 +162,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
               Row(children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : () => _approveZahtev(id, zahtev),
+                    onPressed: _loadingIds.contains(id) ? null : () => _approveZahtev(id, zahtev),
                     icon: const Icon(Icons.check_circle_outline),
                     label: const Text('ODOBRI', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.1)),
                     style: ElevatedButton.styleFrom(
@@ -175,7 +177,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : () => _rejectZahtev(id),
+                    onPressed: _loadingIds.contains(id) ? null : () => _rejectZahtev(id),
                     icon: const Icon(Icons.cancel_outlined),
                     label: const Text('ODBIJ', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.1)),
                     style: ElevatedButton.styleFrom(
@@ -244,28 +246,32 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
   // ─── Akcije (samo dnevni tab) ─────────────────────────────────────────────
 
   Future<void> _approveZahtev(String id, V2Polazak zahtev) async {
-    setState(() => _isLoading = true);
+    setState(() => _loadingIds.add(id));
     try {
-      final currentDriver = await V2AuthManager.getCurrentDriver();
-      final success = await V2PolasciService.v2OdobriZahtev(id, approvedBy: currentDriver);
-      if (success && mounted) {
+      final success = await V2PolasciService.v2OdobriZahtev(id, approvedBy: _currentDriver);
+      if (!mounted) return;
+      if (success) {
         V2AppSnackBar.success(context, '✅ Zahtev uspešno odobren');
+      } else {
+        V2AppSnackBar.error(context, '⚠️ Greška pri odobravanju, pokušaj ponovo');
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _loadingIds.remove(id));
     }
   }
 
   Future<void> _rejectZahtev(String id) async {
-    setState(() => _isLoading = true);
+    setState(() => _loadingIds.add(id));
     try {
-      final currentDriver = await V2AuthManager.getCurrentDriver();
-      final success = await V2PolasciService.v2OdbijZahtev(id, rejectedBy: currentDriver);
-      if (success && mounted) {
-        V2AppSnackBar.error(context, '❌ Zahtev je odbijen');
+      final success = await V2PolasciService.v2OdbijZahtev(id, rejectedBy: _currentDriver);
+      if (!mounted) return;
+      if (success) {
+        V2AppSnackBar.success(context, '✅ Zahtev odbijen');
+      } else {
+        V2AppSnackBar.error(context, '⚠️ Greška pri odbijanju, pokušaj ponovo');
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _loadingIds.remove(id));
     }
   }
 }
