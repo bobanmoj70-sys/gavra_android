@@ -29,22 +29,11 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
       builder: (context, snapshot) {
         final svi = snapshot.data ?? [];
 
-        // Tekuća sedmica: od ponedjeljka do nedjelje
-        final now = DateTime.now();
-        final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-        final pocetak = DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day);
-        final kraj = pocetak.add(const Duration(days: 7));
-
-        final zahtevi = svi.where((z) {
-          if ((z.tipPutnika ?? '').toLowerCase() != 'ucenik') return false;
-          // Samo putnik sam poslao (processed_at != null znači dispečer obradio)
-          if (z.processedAt == null) return false;
-          // Samo tekuća sedmica po created_at
-          final ca = z.createdAt;
-          if (ca == null) return false;
-          final caLocal = ca.toLocal();
-          return caLocal.isAfter(pocetak) && caLocal.isBefore(kraj);
-        }).toList();
+        // Bez datumskog filtera — prikazuje sve učeničke zahteve iz cache-a
+        // Time picker logika zaključavanja kontroliše kad zahtevi ulaze u bazu
+        final zahtevi = svi
+            .where((z) => (z.tipPutnika ?? '').toLowerCase() == 'ucenik')
+            .toList();
 
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
         final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
