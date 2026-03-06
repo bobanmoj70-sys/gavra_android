@@ -17,6 +17,7 @@ import '../utils/v2_dan_utils.dart';
 import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_dug_button.dart';
 import 'v2_adrese_screen.dart';
+import 'v2_dnevnik_naplate_screen.dart';
 import 'v2_dugovi_screen.dart';
 import 'v2_finansije_screen.dart';
 import 'v2_gorivo_screen.dart';
@@ -468,6 +469,45 @@ class _AdminScreenState extends State<V2AdminScreen> {
                                         fit: BoxFit.scaleDown,
                                         child: Text(
                                           'Adrese',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                            shadows: [
+                                              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // DNEVNIK NAPLATE
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => const V2DnevnikNaplateScreen(),
+                                    ),
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                    ),
+                                    child: const Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          'Dnevnik',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
