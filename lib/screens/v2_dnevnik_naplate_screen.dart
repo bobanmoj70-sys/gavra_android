@@ -472,7 +472,37 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                                     borderSide: BorderSide.none,
                                                   ),
                                                 ),
-                                                onChanged: (_) => setFooter(() {}),
+                                                onChanged: (_) {
+                                                  setFooter(() {});
+                                                  setState(() => _predaoSacuvan = false);
+                                                },
+                                                onSubmitted: (_) => _sacuvajPredaju(),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            // Dugme Sacuvaj
+                                            GestureDetector(
+                                              onTap: _sacuvajPredaju,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: _predaoSacuvan
+                                                      ? Colors.green.withValues(alpha: 0.3)
+                                                      : Colors.white.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color: _predaoSacuvan
+                                                        ? Colors.greenAccent
+                                                        : Colors.white24,
+                                                  ),
+                                                ),
+                                                child: Icon(
+                                                  _predaoSacuvan ? Icons.check : Icons.save_outlined,
+                                                  color: _predaoSacuvan
+                                                      ? Colors.greenAccent
+                                                      : Colors.white54,
+                                                  size: 20,
+                                                ),
                                               ),
                                             ),
                                           ],
