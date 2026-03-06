@@ -8,7 +8,6 @@ import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart'; // Za realtime raspored
 import '../services/v2_auth_manager.dart';
-import '../services/v2_dnevna_predaja_service.dart';
 import '../services/v2_driver_location_service.dart';
 import '../services/v2_kapacitet_service.dart';
 import '../services/v2_local_notification_service.dart';
@@ -312,112 +311,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   Future<void> _logout() async {
     await V2AuthManager.logout(context);
-  }
-
-  /// Promena šifre — vozač sam menja svoju šifru
-  Future<void> _predajPazar() async {
-    if (_currentDriver == null) return;
-    final danas = DateTime.now();
-
-    // Provjeri da li postoji vec upisana predaja za danas
-    final postojeca = await V2DnevnaPredajaService.get(
-      vozacIme: _currentDriver!,
-      datum: danas,
-    );
-
-    final ctrl = TextEditingController(
-      text: postojeca != null && postojeca.predaoIznos > 0
-          ? postojeca.predaoIznos.toStringAsFixed(0)
-          : '',
-    );
-
-    try {
-      final potvrda = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.account_balance_wallet, color: Colors.greenAccent),
-              SizedBox(width: 8),
-              Text('Predaja pazara', style: TextStyle(color: Colors.white, fontSize: 16)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Upiši koliko predaješ danas:',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: ctrl,
-                autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: '0',
-                  hintStyle: const TextStyle(color: Colors.white38),
-                  suffixText: 'din',
-                  suffixStyle: const TextStyle(color: Colors.white54, fontSize: 16),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.08),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-              ),
-              if (postojeca != null && postojeca.predaoIznos > 0) ...
-                [
-                  const SizedBox(height: 8),
-                  Text(
-                    'Prethodno upisano: ${postojeca.predaoIznos.toStringAsFixed(0)} din',
-                    style: const TextStyle(color: Colors.white38, fontSize: 12),
-                  ),
-                ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text('Potvrdi', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
-
-      if (potvrda == true && mounted) {
-        final iznos = double.tryParse(ctrl.text.replaceAll(',', '.'));
-        if (iznos == null || iznos <= 0) {
-          V2AppSnackBar.warning(context, 'Upiši ispravan iznos');
-          return;
-        }
-        final ok = await V2DnevnaPredajaService.upsert(
-          vozacIme: _currentDriver!,
-          datum: danas,
-          predaoIznos: iznos,
-        );
-        if (mounted) {
-          if (ok) {
-            V2AppSnackBar.success(context, '✅ Predaja sačuvana: ${iznos.toStringAsFixed(0)} din');
-          } else {
-            V2AppSnackBar.error(context, 'Greška pri čuvanju');
-          }
-        }
-      }
-    } finally {
-      ctrl.dispose();
-    }
   }
 
   Future<void> _promeniSifru() async {
@@ -1144,12 +1037,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
                           Expanded(child: _buildMapsButton()),
                           const SizedBox(width: 4),
                           Expanded(child: _buildSpeedometerButton()),
-                          const SizedBox(width: 4),
-                          _buildAppBarButton(
-                            icon: Icons.account_balance_wallet,
-                            color: Colors.greenAccent,
-                            onTap: _predajPazar,
-                          ),
                           const SizedBox(width: 4),
                           _buildAppBarButton(
                             icon: Icons.lock_reset,
