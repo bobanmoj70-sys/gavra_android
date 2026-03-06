@@ -386,34 +386,42 @@ class V2StatistikaIstorijaService {
     }
   }
 
-  /// Broji vožnje (tip='voznja') za putnika u tekućem mjesecu
-  static Future<int> izracunajBrojVoznji(String putnikId) async {
+  /// Broji vožnje (tip='voznja') za putnika u zadatom ili tekućem mesecu
+  static Future<int> izracunajBrojVoznji(String putnikId, {int? mesec, int? godina}) async {
     try {
       final now = DateTime.now();
-      final mesecStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+      final m = mesec ?? now.month;
+      final g = godina ?? now.year;
+      final mesecStart = '$g-${m.toString().padLeft(2, '0')}-01';
+      final mesecEnd = DateTime(g, m + 1, 1).toIso8601String().split('T')[0];
       final res = await _supabase
           .from('v2_statistika_istorija')
           .select('id')
           .eq('putnik_id', putnikId)
           .eq('tip', 'voznja')
-          .gte('datum', mesecStart);
+          .gte('datum', mesecStart)
+          .lt('datum', mesecEnd);
       return res.length;
     } catch (e) {
       return 0;
     }
   }
 
-  /// Broji otkazivanja (tip='otkazivanje') za putnika u tekućem mjesecu
-  static Future<int> izracunajBrojOtkazivanja(String putnikId) async {
+  /// Broji otkazivanja (tip='otkazivanje') za putnika u zadatom ili tekućem mesecu
+  static Future<int> izracunajBrojOtkazivanja(String putnikId, {int? mesec, int? godina}) async {
     try {
       final now = DateTime.now();
-      final mesecStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+      final m = mesec ?? now.month;
+      final g = godina ?? now.year;
+      final mesecStart = '$g-${m.toString().padLeft(2, '0')}-01';
+      final mesecEnd = DateTime(g, m + 1, 1).toIso8601String().split('T')[0];
       final res = await _supabase
           .from('v2_statistika_istorija')
           .select('id')
           .eq('putnik_id', putnikId)
           .eq('tip', 'otkazivanje')
-          .gte('datum', mesecStart);
+          .gte('datum', mesecStart)
+          .lt('datum', mesecEnd);
       return res.length;
     } catch (e) {
       return 0;
