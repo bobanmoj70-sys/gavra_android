@@ -21,6 +21,13 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _naplate = [];
   double _ukupnoIznos = 0;
+  final _predaoController = TextEditingController();
+
+  @override
+  void dispose() {
+    _predaoController.dispose();
+    super.dispose();
+  }
 
   List<String> get _vozaciImena {
     final vozaci = V2VozacService.getAllVozaci();
@@ -42,6 +49,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
         _naplate = result;
         _ukupnoIznos = result.fold(0.0, (sum, r) => sum + ((r['iznos'] as num?)?.toDouble() ?? 0));
         _isLoading = false;
+        _predaoController.clear();
       });
     } catch (e) {
       setState(() => _isLoading = false);
@@ -168,6 +176,14 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
     buffer.writeln('─────────────────────────');
     buffer.writeln('UKUPNO: ${_naplate.length} uplata — ${_ukupnoIznos.toStringAsFixed(0)} din');
+    final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
+    if (predaoVal != null) {
+      final razlika = predaoVal - _ukupnoIznos;
+      buffer.writeln('Predao: ${predaoVal.toStringAsFixed(0)} din');
+      buffer.writeln(razlika >= 0
+          ? 'Višak: ${razlika.toStringAsFixed(0)} din'
+          : 'Manjak: ${razlika.abs().toStringAsFixed(0)} din');
+    }
 
     Clipboard.setData(ClipboardData(text: buffer.toString()));
     V2AppSnackBar.success(context, '📋 Kopirano u clipboard — možeš nalepiti u WhatsApp/SMS');
@@ -353,32 +369,102 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                 ),
                               ),
 
-                              // Ukupno footer
-                              Container(
-                                margin: const EdgeInsets.all(12),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${_naplate.length} uplata',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 15),
+                              // Ukupno + Predao footer
+                              StatefulBuilder(
+                                builder: (context, setFooter) {
+                                  final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
+                                  final razlika = predaoVal != null ? predaoVal - _ukupnoIznos : null;
+                                  return Container(
+                                    margin: const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
                                     ),
-                                    Text(
-                                      '${_ukupnoIznos.toStringAsFixed(0)} din',
-                                      style: const TextStyle(
-                                        color: Colors.greenAccent,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    child: Column(
+                                      children: [
+                                        // Red 1 — ukupno
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '${_naplate.length} uplata',
+                                              style: const TextStyle(color: Colors.white70, fontSize: 15),
+                                            ),
+                                            Text(
+                                              '${_ukupnoIznos.toStringAsFixed(0)} din',
+                                              style: const TextStyle(
+                                                color: Colors.greenAccent,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        // Red 2 — Predao input
+                                        Row(
+                                          children: [
+                                            const Text(
+                                              'Predao:',
+                                              style: TextStyle(color: Colors.white70, fontSize: 14),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: TextField(
+                                                controller: _predaoController,
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                style: const TextStyle(color: Colors.white, fontSize: 15),
+                                                decoration: InputDecoration(
+                                                  hintText: '0',
+                                                  hintStyle: const TextStyle(color: Colors.white38),
+                                                  suffixText: 'din',
+                                                  suffixStyle: const TextStyle(color: Colors.white54),
+                                                  isDense: true,
+                                                  contentPadding:
+                                                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                                  filled: true,
+                                                  fillColor: Colors.white.withValues(alpha: 0.08),
+                                                  border: OutlineInputBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    borderSide: BorderSide.none,
+                                                  ),
+                                                ),
+                                                onChanged: (_) => setFooter(() {}),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        // Red 3 — Razlika (samo ako je uneseno)
+                                        if (razlika != null) ...[
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                razlika >= 0 ? 'Višak:' : 'Manjak:',
+                                                style: TextStyle(
+                                                  color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              Text(
+                                                '${razlika.abs().toStringAsFixed(0)} din',
+                                                style: TextStyle(
+                                                  color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  );
+                                },
                               ),
                             ],
                           ),
