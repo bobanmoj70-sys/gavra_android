@@ -133,12 +133,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
     final int brojMesta = _putnik.brojMesta;
     final double ukupnaSuma = cenaPoMestu * brojMesta;
 
-    // Ako cena nije postavljena, traži slobodan unos
+    // Naplacujemo sve odjednom
     final customController = TextEditingController(
       text: cenaNePostoji ? '' : ukupnaSuma.toStringAsFixed(0),
     );
-
-    // Naplacujemo sve odjednom
     final double? confirmedIznos = await showDialog<double>(
       context: context,
       builder: (ctx) {
@@ -167,105 +165,107 @@ class _PutnikCardState extends State<V2PutnikCard> {
                 ),
               ],
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'V2Putnik: ${_putnik.ime}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Relacija: ${_putnik.grad}',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                Text(
-                  'Polazak: ${_putnik.polazak}',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 16),
-                if (cenaNePostoji) ...[
-                  // Slobodan unos ako cena nije postavljena
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.withOpacity(0.4)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.orange, size: 16),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Cena nije postavljena. Unesi iznos ručno.',
-                            style: TextStyle(fontSize: 12, color: Colors.orange),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'V2Putnik: ${_putnik.ime}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Relacija: ${_putnik.grad}',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  Text(
+                    'Polazak: ${_putnik.polazak}',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  if (cenaNePostoji) ...[
+                    // Slobodan unos ako cena nije postavljena
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Cena nije postavljena. Unesi iznos ručno.',
+                              style: TextStyle(fontSize: 12, color: Colors.orange),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: customController,
-                    keyboardType: TextInputType.number,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Iznos (RSD)',
-                      prefixIcon: Icon(Icons.attach_money),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ] else ...[
-                  // Fiksni prikaz kad cena postoji
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        if (brojMesta > 1)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Ukupno za $brojMesta mesta:',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: customController,
+                      keyboardType: TextInputType.number,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Iznos (RSD)',
+                        prefixIcon: Icon(Icons.attach_money),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ] else ...[
+                    // Fiksni prikaz kad cena postoji
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          if (brojMesta > 1)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Text(
+                                'Ukupno za $brojMesta mesta:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                                ),
                               ),
                             ),
-                          ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.attach_money,
-                              size: 32,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${ukupnaSuma.toStringAsFixed(0)} RSD',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.attach_money,
+                                size: 32,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 8),
+                              Text(
+                                '${ukupnaSuma.toStringAsFixed(0)} RSD',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
             actions: [
               TextButton(
@@ -295,7 +295,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
         );
       },
     );
-
     customController.dispose();
 
     if (confirmedIznos != null && confirmedIznos > 0) {
@@ -464,9 +463,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                     Padding(
                       padding: const EdgeInsets.only(top: 4.0),
                       child: Text(
-                        jeZubi
-                            ? 'Tip: Pošiljka ZUBI'
-                            : (jePosiljka ? 'Tip: Pošiljka' : 'Tip: Dnevni'),
+                        jeZubi ? 'Tip: Pošiljka ZUBI' : (jePosiljka ? 'Tip: Pošiljka' : 'Tip: Dnevni'),
                         style: TextStyle(
                           color: jeZubi ? Colors.purple : (jePosiljka ? Colors.blue : Colors.orange),
                           fontWeight: FontWeight.bold,

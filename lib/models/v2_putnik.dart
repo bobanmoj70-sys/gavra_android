@@ -213,7 +213,7 @@ class V2Putnik {
       pokupioVozacId: req['pokupioVozacId'] as String?,
       naplatioVozacId: req['naplatioVozacId'] as String?,
       otkazaoVozacId: req['otkazaoVozacId'] as String?,
-      cena: req['cena']?.toDouble(),
+      cena: (req['cena'] ?? p['cena'])?.toDouble(),
       vremePlacanja: req['vreme_placanja'] != null ? DateTime.parse(req['vreme_placanja']).toLocal() : null,
       vremeOtkazivanja: req['vreme_otkazivanja'] != null ? DateTime.parse(req['vreme_otkazivanja']).toLocal() : null,
       obrisan: false,
