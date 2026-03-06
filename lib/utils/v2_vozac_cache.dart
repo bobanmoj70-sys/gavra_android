@@ -102,6 +102,9 @@ class V2VozacCache {
   // BOJA
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // Sistemska boja — kronom/automat, nije vozač
+  static const Color sistemColor = Color(0xFFF44336); // crvena
+
   /// Vraća boju po UUID-u. Nikad ne baca exception.
   static Color getColorByUuid(String? uuid, {Color fallback = Colors.grey}) {
     if (uuid == null || uuid.isEmpty) return fallback;
@@ -112,6 +115,7 @@ class V2VozacCache {
   /// Ovo zamjenjuje VozacBoja.getSync().
   static Color getColor(String? imeIliUuid, {Color fallback = Colors.grey}) {
     if (imeIliUuid == null || imeIliUuid.isEmpty) return fallback;
+    if (imeIliUuid == 'sistem') return sistemColor;
     if (_uuidRegex.hasMatch(imeIliUuid)) {
       return _uuidToColor[imeIliUuid] ?? fallback;
     }

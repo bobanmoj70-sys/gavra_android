@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/v2_polazak.dart';
 import '../services/v2_polasci_service.dart';
 import '../theme.dart';
+import '../utils/v2_vozac_cache.dart';
 
 class V2RadniciZahteviScreen extends StatefulWidget {
   const V2RadniciZahteviScreen({super.key});
@@ -162,6 +163,8 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
     final obradjenoStr = z.processedAt != null
         ? '${z.processedAt!.day.toString().padLeft(2, '0')}.${z.processedAt!.month.toString().padLeft(2, '0')}. ${z.processedAt!.hour.toString().padLeft(2, '0')}:${z.processedAt!.minute.toString().padLeft(2, '0')}'
         : null;
+    final koObradio = z.approvedBy ?? z.cancelledBy;
+    final koObradioColor = V2VozacCache.getColor(koObradio);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -225,6 +228,8 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
                 if (obradjenoStr != null) _timelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
                 if (obradjenoStr == null && status == 'obrada')
                   _timelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
+                if (koObradio != null)
+                  _timelineChip('👤', koObradio, koObradioColor),
               ],
             ),
           ],
