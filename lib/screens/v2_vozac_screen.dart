@@ -1328,25 +1328,23 @@ class _VozacScreenState extends State<V2VozacScreen> {
       return true;
     }).toList();
 
-    // Grupišemo sve polaske po putniku (ID) da vidimo ko ima BC, a ko ima i VS
+    // Grupišemo sve polaske po putniku (ID) da vidimo ko ima BC, a ko ima i VS.
+    // Čuvamo i ime putnika odmah pri iteraciji — ne koristimo orElse sa .first (crash risk).
     final Map<dynamic, Set<String>> putnikSmerovi = {};
+    final Map<dynamic, String> putnikIme = {}; // id -> ime, za prikaz u popupu
 
     for (var p in sviPutnici) {
-      // ISKLJUCUJEMO: otkazano, bez_polaska, odsustvo, obrisan, posiljke
-      if (p.jeOtkazan || p.jeBezPolaska || p.jeOdsustvo || p.obrisan) continue;
-      if (p.tipPutnika == 'posiljka') continue;
-
       // SAMO UCENICI za kocku Povratak
       if (p.tipPutnika != 'ucenik') continue;
 
-      // Preskoči otkazano i bez_polaska
-      final statusLower = p.status?.toLowerCase() ?? '';
-      if (statusLower == 'otkazano' || statusLower == 'bez_polaska') continue;
+      // ISKLJUCUJEMO: otkazano, bez_polaska, odsustvo, obrisan
+      if (p.jeOtkazan || p.jeBezPolaska || p.jeOdsustvo || p.obrisan) continue;
 
       final id = p.id;
       if (id == null) continue;
 
       putnikSmerovi.putIfAbsent(id, () => <String>{});
+      putnikIme.putIfAbsent(id, () => p.ime); // upamti ime pri prvom susretu
 
       if (p.grad == 'BC') {
         putnikSmerovi[id]!.add('bc');
@@ -1365,10 +1363,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
       if (smerovi.contains('bc') && smerovi.contains('vs')) {
         saObaSmera++;
       } else {
-        final p = sviPutnici.firstWhere((element) => element.id == id, orElse: () => sviPutnici.first);
-        if (p.id != id) return; // V2Putnik nije pronaden, preskoci
+        final ime = putnikIme[id];
+        if (ime == null) return; // ne bi trebalo, ali sigurnosno
         final grad = smerovi.contains('bc') ? 'BC' : 'VS';
-        samoJedanSmerImena.add('${p.ime} ($grad)');
+        samoJedanSmerImena.add('$ime ($grad)');
       }
     });
 
