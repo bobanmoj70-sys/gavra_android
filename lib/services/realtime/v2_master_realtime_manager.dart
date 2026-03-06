@@ -903,7 +903,8 @@ class V2MasterRealtimeManager {
     for (final tabela in putnikTabele) {
       final row = await _db
           .from(tabela)
-          .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
+          .select(
+              'id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,cena,cena_po_danu,created_at,updated_at')
           .eq('id', id)
           .maybeSingle();
       if (row != null) return {...row, '_tabela': tabela};

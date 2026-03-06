@@ -396,13 +396,16 @@ class V2PutnikStatistikeHelper {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              Text(
-                (customCena != null && customCena > 0)
-                    ? '${(customCena as num).toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'vožnja'}'
-                    : 'Cena nije postavljena',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              Flexible(
+                child: Text(
+                  (customCena != null && customCena > 0)
+                      ? '${(customCena as num).toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'vožnja'}'
+                      : 'Cena nije postavljena',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.end,
                 ),
               ),
             ],

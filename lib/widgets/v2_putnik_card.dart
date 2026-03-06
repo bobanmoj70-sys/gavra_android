@@ -97,6 +97,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
     return '${vreme.hour.toString().padLeft(2, '0')}:${vreme.minute.toString().padLeft(2, '0')}';
   }
 
+  String _formatDatumVreme(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')} ${_formatVreme(dt)}';
+  }
+
   // Univerzalna metoda za placanje - custom cena za sve tipove putnika
   Future<void> _handlePayment() async {
     // Validacija vozaca pre pokusaja placanja - koristi V2VozacCache
@@ -791,7 +795,8 @@ class _PutnikCardState extends State<V2PutnikCard> {
 
         // Za radnike/učenike koristi funkciju za mesecno placanje
         final existingId = _putnik.id?.toString() ?? '';
-        final existingMap = existingId.isNotEmpty ? await V2StatistikaIstorijaService.v2FindPutnikById(existingId) : null;
+        final existingMap =
+            existingId.isNotEmpty ? await V2StatistikaIstorijaService.v2FindPutnikById(existingId) : null;
         if (existingMap != null) {
           final tabela = existingMap['_tabela'] as String? ?? 'v2_radnici';
           // Koristi static funkciju za cuvanje placanja
@@ -1024,8 +1029,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
       if (await canLaunchUrl(launchUri)) {
         await launchUrl(launchUri);
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   @override
@@ -1515,9 +1519,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                         // spacer removed to let Wrap spacing control gaps
                                       ],
                                       // IKONA ZA PLACANJE - za sve korisnike (3. po redu)
-                                      if (!_putnik.jeOtkazan &&
-                                          ((_putnik.isRadnik || _putnik.isUcenik) ||
-                                              (_putnik.iznosPlacanja == null || _putnik.iznosPlacanja == 0))) ...[
+                                      if (!_putnik.jeOtkazan) ...[
                                         GestureDetector(
                                           onTap: () => _handlePayment(),
                                           child: Container(
@@ -1639,7 +1641,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                         if (_putnik.vremePokupljenja != null) const SizedBox(width: 12),
                         if (_putnik.naplatioVozac != null)
                           Text(
-                            'Placeno: ${_putnik.iznosPlacanja!.toStringAsFixed(0)}${_putnik.vremePlacanja != null ? ' ${_formatVreme(_putnik.vremePlacanja!)}' : ''}',
+                            'Placeno: ${_putnik.iznosPlacanja!.toStringAsFixed(0)}${_putnik.vremePlacanja != null ? ' ${_formatDatumVreme(_putnik.vremePlacanja!)}' : ''}',
                             style: TextStyle(
                               fontSize: 13,
                               color: V2VozacCache.getColorByUuid(_putnik.naplatioVozacId) != Colors.grey
@@ -1981,8 +1983,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
       if (result.isNotEmpty && result.containsKey(_putnik)) {
         return result[_putnik];
       }
-    } catch (e) {
-    }
+    } catch (e) {}
     return null;
   }
 
@@ -2030,8 +2031,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
           );
         }
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   // PICKER ZA ODSUSTVO (Bolovanje / Godišnji)

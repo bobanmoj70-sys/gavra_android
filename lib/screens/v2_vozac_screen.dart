@@ -15,7 +15,6 @@ import '../services/v2_polasci_service.dart';
 import '../services/v2_realtime_gps_service.dart';
 import '../services/v2_realtime_notification_service.dart';
 import '../services/v2_smart_navigation_service.dart';
-import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
@@ -32,7 +31,6 @@ import '../widgets/v2_bottom_nav_bar_zimski.dart';
 import '../widgets/v2_clock_ticker.dart';
 import '../widgets/v2_putnik_list.dart';
 import '../widgets/v2_shimmer_widgets.dart';
-import 'v2_dugovi_screen.dart';
 
 /// ?? VOZAC SCREEN
 /// Prikazuje putnike koristeci isti PutnikService stream kao DanasScreen
@@ -55,8 +53,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
   StreamSubscription<String>? _vozacPutnikRealtimeSub;
   Timer? _rasporedDebounce;
   Timer? _vozacPutnikDebounce;
-
-  Stream<Map<String, double>>? _streamPazar;
 
   String _selectedGrad = 'BC';
   String _selectedVreme = ''; // Ce biti postavljen u _selectClosestDeparture()
@@ -234,7 +230,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
   Future<void> _initializeCurrentDriver() async {
     if (widget.previewAsDriver != null && widget.previewAsDriver!.isNotEmpty) {
       _currentDriver = widget.previewAsDriver;
-      _streamPazar ??= V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: _workingDateIso);
       _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
         dan: V2DanUtils.odIso(_workingDateIso),
         vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
@@ -248,7 +243,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     _currentDriver = await V2AuthManager.getCurrentDriver();
 
-    _streamPazar ??= V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: _workingDateIso);
     _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
       dan: V2DanUtils.odIso(_workingDateIso),
       vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
@@ -1124,8 +1118,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   Widget _buildStatBox(String label, String value, Color color) {
     return Container(
-      height: 45,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
@@ -1225,48 +1218,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
       margin: const EdgeInsets.all(12),
       child: Row(
         children: [
-          Expanded(
-            child: StreamBuilder<Map<String, double>>(
-              stream: _streamPazar,
-              builder: (context, snapshot) {
-                final pazar = _currentDriver != null ? (snapshot.data?[_currentDriver!] ?? 0.0) : 0.0;
-                return InkWell(
-                  onTap: () {
-                    _showStatPopup(
-                      context,
-                      'Pazar',
-                      pazar.toStringAsFixed(0),
-                      Colors.green,
-                    );
-                  },
-                  child: _buildStatBox(
-                    'Pazar',
-                    pazar.toStringAsFixed(0),
-                    Colors.green,
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => V2DugoviScreen(currentDriver: _currentDriver!),
-                  ),
-                );
-              },
-              child: _buildStatBox(
-                'Dugovi',
-                filteredDuznici.length.toString(),
-                filteredDuznici.isEmpty ? Colors.blue : Colors.red,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
           Expanded(
             child: InkWell(
               onTap: () {
@@ -1401,69 +1352,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
                   ),
                 ),
                 child: const Text('Zatvori'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showStatPopup(BuildContext context, String label, String value, Color color) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _getBorderColor(color)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'Zatvori',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
             ],
           ),
