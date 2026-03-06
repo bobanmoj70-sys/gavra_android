@@ -30,16 +30,18 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
       builder: (context, snapshot) {
         final svi = snapshot.data ?? [];
 
-        // Tekuća sedmica: od ponedjeljka do nedjelje
+        // Prikaz: od ponedjeljka tekuće sedmice + 3 dana u budućnost
+        // Ako je danas pon-ned, pocetak = prošlog ponedjeljka, kraj = sledeće nedjelje
         final now = DateTime.now();
         final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-        final pocetak = DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day);
-        final kraj = pocetak.add(const Duration(days: 7));
+        final pocetak = DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day)
+            .subtract(const Duration(days: 7)); // +prethodna sedmica za sigurnost
+        final kraj = DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day)
+            .add(const Duration(days: 10)); // do kraja naredne sedmice
 
         final zahtevi = svi.where((z) {
           if ((z.tipPutnika ?? '').toLowerCase() != 'radnik') return false;
-          // Samo putnik sam poslao (processed_at != null znači dispečer obradio)
-          if (z.processedAt == null) return false;
+          // processed_at uslov uklonjen — kronom ne upisuje processed_at
           // Samo tekuća sedmica po created_at
           final ca = z.createdAt;
           if (ca == null) return false;
