@@ -1,5 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import '../globals.dart';
 import '../services/v2_dnevna_predaja_service.dart';
@@ -228,6 +234,140 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     V2AppSnackBar.success(context, '📋 Kopirano u clipboard');
   }
 
+  Future<void> _exportPdf() async {
+    if (_naplate.isEmpty) return;
+
+    final doc = pw.Document();
+    final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
+    final razlika = predaoVal != null ? predaoVal - _ukupnoIznos : null;
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context ctx) {
+          return [
+            // Naslov
+            pw.Text(
+              'DNEVNIK NAPLATE',
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text('Vozač: $_selectedVozacIme'),
+            pw.Text('Datum: ${_formatDatum()}'),
+            pw.SizedBox(height: 12),
+            pw.Divider(),
+            pw.SizedBox(height: 8),
+
+            // Zaglavlje tabele
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+              columnWidths: const {
+                0: pw.FixedColumnWidth(28),
+                1: pw.FlexColumnWidth(3),
+                2: pw.FlexColumnWidth(3),
+                3: pw.FlexColumnWidth(2),
+                4: pw.FlexColumnWidth(2),
+              },
+              children: [
+                // Header red
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                  children: [
+                    _cell('#', bold: true),
+                    _cell('Ime', bold: true),
+                    _cell('Grad / Polazak', bold: true),
+                    _cell('Iznos', bold: true),
+                    _cell('Vreme', bold: true),
+                  ],
+                ),
+                // Redovi podataka
+                for (int i = 0; i < _naplate.length; i++)
+                  pw.TableRow(
+                    children: [
+                      _cell('${i + 1}.'),
+                      _cell(_naplate[i]['ime'] as String),
+                      _cell('${_naplate[i]['grad']} ${_naplate[i]['polazak']}'),
+                      _cell('${(_naplate[i]['iznos'] as double).toStringAsFixed(0)} din'),
+                      _cell(_naplate[i]['vreme_naplate'] as String),
+                    ],
+                  ),
+              ],
+            ),
+
+            pw.SizedBox(height: 12),
+            pw.Divider(),
+            pw.SizedBox(height: 8),
+
+            // Ukupno
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'UKUPNO (${_naplate.length} uplata):',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
+                ),
+                pw.Text(
+                  '${_ukupnoIznos.toStringAsFixed(0)} din',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
+                ),
+              ],
+            ),
+
+            // Predao / Razlika
+            if (predaoVal != null) ...[
+              pw.SizedBox(height: 6),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Predao:'),
+                  pw.Text('${predaoVal.toStringAsFixed(0)} din'),
+                ],
+              ),
+              if (razlika != null) ...[
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      razlika >= 0 ? 'Višak:' : 'Manjak:',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.Text(
+                      '${razlika.abs().toStringAsFixed(0)} din',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ];
+        },
+      ),
+    );
+
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final fileName =
+          'dnevnik_${_selectedVozacIme?.replaceAll(' ', '_') ?? 'vozac'}_${_formatDatum().replaceAll('.', '-')}.pdf';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(await doc.save());
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      if (mounted) V2AppSnackBar.error(context, 'Greška pri izvozu PDF: $e');
+    }
+  }
+
+  pw.Widget _cell(String text, {bool bold = false}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(fontSize: 10, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vozaci = _vozaciImena;
@@ -239,12 +379,18 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
         elevation: 0,
         title: const Text('Dnevnik naplate', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          if (_naplate.isNotEmpty)
+          if (_naplate.isNotEmpty) ...[
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+              tooltip: 'Sačuvaj PDF',
+              onPressed: _exportPdf,
+            ),
             IconButton(
               icon: const Icon(Icons.copy, color: Colors.white),
               tooltip: 'Kopiraj izveštaj',
               onPressed: _share,
             ),
+          ],
         ],
       ),
       body: Container(
@@ -491,16 +637,12 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                                       : Colors.white.withValues(alpha: 0.1),
                                                   borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(
-                                                    color: _predaoSacuvan
-                                                        ? Colors.greenAccent
-                                                        : Colors.white24,
+                                                    color: _predaoSacuvan ? Colors.greenAccent : Colors.white24,
                                                   ),
                                                 ),
                                                 child: Icon(
                                                   _predaoSacuvan ? Icons.check : Icons.save_outlined,
-                                                  color: _predaoSacuvan
-                                                      ? Colors.greenAccent
-                                                      : Colors.white54,
+                                                  color: _predaoSacuvan ? Colors.greenAccent : Colors.white54,
                                                   size: 20,
                                                 ),
                                               ),
