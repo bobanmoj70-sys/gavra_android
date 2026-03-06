@@ -1307,9 +1307,9 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
-                                      // GPS IKONA ZA NAVIGACIJU - ako postoji adresa (radnik/ucenik ili ima adresu)
-                                      if ((_putnik.isRadnik || _putnik.isUcenik) ||
-                                          (_putnik.adresa != null && _putnik.adresa!.isNotEmpty)) ...[
+                                      // GPS IKONA ZA NAVIGACIJU - ako putnik ima adresu (bilo koji tip)
+                                      if (_putnik.getAdresaFallback() != null &&
+                                          _putnik.getAdresaFallback()!.isNotEmpty) ...[
                                         GestureDetector(
                                           onTap: () {
                                             showDialog<void>(
@@ -1356,9 +1356,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                                         ),
                                                       ),
                                                       child: Text(
-                                                        _putnik.adresa?.isNotEmpty == true
-                                                            ? _putnik.adresa!
-                                                            : 'Adresa nije definisana',
+                                                        _putnik.getAdresaFallback() ?? 'Adresa nije definisana',
                                                         style: const TextStyle(
                                                           fontSize: 16,
                                                           fontWeight: FontWeight.w600,
@@ -1391,9 +1389,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                                         }
 
                                                         // Dobij koordinate - UNIFIKOVANO za sve putnike
+                                                        final adresaZaNav = _putnik.getAdresaFallback();
                                                         final koordinate = await _getKoordinateZaAdresu(
                                                           _putnik.grad,
-                                                          _putnik.adresa,
+                                                          adresaZaNav,
                                                           _putnik.adresaId,
                                                         );
 
@@ -1403,15 +1402,11 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                                           ).hideCurrentSnackBar();
 
                                                           if (koordinate != null) {
-                                                            // Uspešno - pokaži pozitivnu poruku
                                                             V2AppSnackBar.success(context, '🧭 Otvaram navigaciju...');
-                                                            await _otvoriNavigaciju(
-                                                              koordinate,
-                                                            );
+                                                            await _otvoriNavigaciju(koordinate);
                                                           } else {
-                                                            // Neuspešno - prikaži detaljniju grešku
                                                             V2AppSnackBar.warning(context,
-                                                                '⚠️ Lokacija nije pronadena\nAdresa: ${_putnik.adresa}\n🔄 Pokušajte ponovo za 10 sekundi');
+                                                                '⚠️ Lokacija nije pronadena za: ${adresaZaNav ?? _putnik.adresa}');
                                                           }
                                                         }
                                                       } catch (e) {
