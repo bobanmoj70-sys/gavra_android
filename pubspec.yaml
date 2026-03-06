@@ -110,4 +110,6 @@ flutter:
     - assets/tablica_093.png
     - assets/tablica_097.png
     - assets/tablica_102.png
+    - assets/fonts/Lato-Regular.ttf
+    - assets/fonts/Lato-Bold.ttf
 
