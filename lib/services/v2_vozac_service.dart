@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
@@ -37,6 +36,12 @@ class V2VozacService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  /// Menja samo šifru vozača (koristi vozač za self-service promenu šifre)
+  static Future<void> updateSifra(String vozacId, String novaSifra) async {
+    final response = await _supabase.from('v2_vozaci').update({'sifra': novaSifra}).eq('id', vozacId).select().single();
+    _rm.v2UpsertToCache('v2_vozaci', response);
   }
 
   static Stream<List<V2Vozac>> streamAllVozaci() => _rm.v2StreamFromCache(tables: ['v2_vozaci'], build: getAllVozaci);

@@ -18,6 +18,7 @@ import '../services/v2_smart_navigation_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
+import '../services/v2_vozac_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
@@ -310,6 +311,157 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   Future<void> _logout() async {
     await V2AuthManager.logout(context);
+  }
+
+  /// Promena šifre — vozač sam menja svoju šifru
+  Future<void> _promeniSifru() async {
+    final vozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
+    if (vozacId == null) {
+      V2AppSnackBar.error(context, 'Greška: ne mogu da nađem vozača');
+      return;
+    }
+
+    // Dohvati trenutnu šifru iz cache-a
+    final vozacMap = V2MasterRealtimeManager.instance.vozaciCache[vozacId];
+    final trenutnaSifra = vozacMap?['sifra']?.toString() ?? '';
+
+    final staraCtrl = TextEditingController();
+    final novaCtrl = TextEditingController();
+    final potvrdiCtrl = TextEditingController();
+    bool staraVisible = false;
+    bool novaVisible = false;
+    bool potvrdiVisible = false;
+
+    try {
+      final potvrda = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1A2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.lock_reset, color: Colors.blueAccent),
+                SizedBox(width: 8),
+                Text('Promena šifre', style: TextStyle(color: Colors.white, fontSize: 16)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: staraCtrl,
+                  obscureText: !staraVisible,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Stara šifra',
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.blueAccent),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(staraVisible ? Icons.visibility_off : Icons.visibility, color: Colors.white38),
+                      onPressed: () => setDialogState(() => staraVisible = !staraVisible),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: novaCtrl,
+                  obscureText: !novaVisible,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Nova šifra',
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.blueAccent),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(novaVisible ? Icons.visibility_off : Icons.visibility, color: Colors.white38),
+                      onPressed: () => setDialogState(() => novaVisible = !novaVisible),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: potvrdiCtrl,
+                  obscureText: !potvrdiVisible,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Potvrdi novu šifru',
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.blueAccent),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(potvrdiVisible ? Icons.visibility_off : Icons.visibility, color: Colors.white38),
+                      onPressed: () => setDialogState(() => potvrdiVisible = !potvrdiVisible),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final stara = staraCtrl.text;
+                  final nova = novaCtrl.text;
+                  final potvrdi = potvrdiCtrl.text;
+
+                  if (trenutnaSifra.isNotEmpty && stara != trenutnaSifra) {
+                    V2AppSnackBar.error(ctx, 'Stara šifra nije ispravna');
+                    return;
+                  }
+                  if (nova.isEmpty) {
+                    V2AppSnackBar.warning(ctx, 'Nova šifra ne može biti prazna');
+                    return;
+                  }
+                  if (nova != potvrdi) {
+                    V2AppSnackBar.error(ctx, 'Šifre se ne poklapaju');
+                    return;
+                  }
+                  Navigator.pop(ctx, true);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                child: const Text('Sačuvaj', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (potvrda == true && mounted) {
+        try {
+          await V2VozacService.updateSifra(vozacId, novaCtrl.text);
+          if (mounted) V2AppSnackBar.success(context, '✅ Šifra uspešno promenjena');
+        } catch (e) {
+          if (mounted) V2AppSnackBar.error(context, 'Greška pri čuvanju šifre: $e');
+        }
+      }
+    } finally {
+      staraCtrl.dispose();
+      novaCtrl.dispose();
+      potvrdiCtrl.dispose();
+    }
   }
 
   Future<void> _reoptimizeAfterStatusChange() async {
@@ -886,6 +1038,12 @@ class _VozacScreenState extends State<V2VozacScreen> {
                           Expanded(child: _buildMapsButton()),
                           const SizedBox(width: 4),
                           Expanded(child: _buildSpeedometerButton()),
+                          const SizedBox(width: 4),
+                          _buildAppBarButton(
+                            icon: Icons.lock_reset,
+                            color: Colors.blueAccent,
+                            onTap: _promeniSifru,
+                          ),
                           const SizedBox(width: 4),
                           _buildAppBarButton(
                             icon: Icons.logout,
