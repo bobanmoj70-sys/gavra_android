@@ -174,12 +174,17 @@ class V2MasterRealtimeManager {
 
     _initialized = true;
 
+    debugPrint(
+        '❌ [RM] polasci=${polasciCache.length} radnici=${radniciCache.length} ucenici=${uceniciCache.length} dnevni=${dnevniCache.length} vozaci=${vozaciCache.length}');
   }
 
   /// Forsira refresh polasciCache bez promjene dana (npr. nakon ručnog dodavanja termina)
   Future<void> v2RefreshPolasciCache() async {
     polasciCache.clear();
     await _loadPolasciCache();
+    if (!_cacheChangeController.isClosed) {
+      _cacheChangeController.add('v2_polasci');
+    }
   }
 
   /// Poziva se iz AppLifecycleObserver kad datum nije isti
@@ -293,7 +298,6 @@ class V2MasterRealtimeManager {
       for (final row in results[3]) {
         posiljkeCache[row['id'].toString()] = _tagRow(row, 'v2_posiljke');
       }
-
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadPutniciCaches: $e');
     }
@@ -348,7 +352,6 @@ class V2MasterRealtimeManager {
 
       // Osvježi V2VozacCache i AppSettings paralelno — oba čitaju iz već popunjenih cache-ova
       await Future.wait([V2VozacCache.initialize(), V2AppSettingsService.initialize()]);
-
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadInfraCache: $e');
     }
@@ -958,18 +961,25 @@ class V2MasterRealtimeManager {
     required T Function() build,
   }) {
     StreamSubscription<String>? sub;
+    Timer? debounce;
     late StreamController<T> controller;
 
     void emit() {
       if (!controller.isClosed) controller.add(build());
     }
 
+    void scheduleEmit() {
+      debounce?.cancel();
+      debounce = Timer(const Duration(milliseconds: 150), emit);
+    }
+
     controller = StreamController<T>.broadcast(
       onListen: () {
         emit();
-        sub = onCacheChanged.where(tables.contains).listen((_) => emit());
+        sub = onCacheChanged.where(tables.contains).listen((_) => scheduleEmit());
       },
       onCancel: () async {
+        debounce?.cancel();
         await sub?.cancel();
         sub = null;
         controller.close();

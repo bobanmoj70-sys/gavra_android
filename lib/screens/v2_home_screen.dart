@@ -11,8 +11,8 @@ import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
-import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
-import '../services/v2_cena_obracun_service.dart'; // V2AdminSecurityService je dostupan kroz v2_auth_manager.dart
+import '../services/v2_auth_manager.dart';
+import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v2_kapacitet_service.dart';
 import '../services/v2_local_notification_service.dart';
@@ -30,7 +30,7 @@ import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_page_transitions.dart';
 import '../utils/v2_putnik_count_helper.dart';
 import '../utils/v2_text_utils.dart';
-import '../utils/v2_vozac_cache.dart'; // Dodato za centralizovane boje vozaca
+import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_bottom_nav_bar_letnji.dart';
 import '../widgets/v2_bottom_nav_bar_praznici.dart';
 import '../widgets/v2_bottom_nav_bar_zimski.dart';
@@ -51,23 +51,17 @@ class V2HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin {
-  // Logging using dlog function from logging.dart
-
   bool _isLoading = true;
-  // bool _isAddingPutnik = false; // previously used loading state; now handled local to dialog
-  String _selectedDay = 'Ponedeljak'; // Bice postavljeno na današnji dan u initState
+  String _selectedDay = 'pon'; // kratica: 'pon','uto','sre','cet','pet' — postavlja se u initState
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00'; // inicijalna vrednost, overriduje se u initState
-
-  // Key and overlay entry for custom days dropdown
-  // (removed overlay support for now) - will use DropdownButton2 built-in overlay
 
   String? _currentDriver;
 
   late final Stream<int> _streamBrojZahteva;
 
   Stream<List<V2Putnik>>? _streamPutnici;
-  String? _cachedPutniciDay;
+  String? _cachedDan;
 
   List<String> get bcVremena {
     final navType = navBarTypeNotifier.value;
@@ -99,23 +93,13 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   /// Automatski selektuje najbliže vreme polaska za trenutni cas (BC grad).
 
-  /// Kreira/zamjenjuje _streamPutnici za zadani dan. Poziva se iz initState i kad se dan promjeni.
-  void _updatePutniciStream(String day) {
-    final kratica = V2DanUtils.odPunogNaziva(day);
-    _cachedPutniciDay = day;
-    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: kratica);
-  }
-
   @override
   void initState() {
     super.initState();
     final today = DateTime.now().weekday;
     // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
-    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday)
-        ? 'Ponedeljak'
-        : V2DanUtils.puniNaziv(V2DanUtils.danas());
+    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
-    _updatePutniciStream(_selectedDay);
     _initializeData();
   }
 
@@ -134,14 +118,10 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
         return;
       }
 
-      // Inicijalizuj lokalne notifikacije za heads-up i zvuk
       if (mounted) {
         V2LocalNotificationService.initialize(context);
-        // V2RealtimeNotificationService.listenForForegroundNotifications(context);
       }
 
-      // Inicijalizuj realtime notifikacije za aktivnog vozaca.
-      // Koristimo _currentDriver (vec ucitan) umjesto ponovnog getCurrentDriver() poziva.
       final notifDriver = _currentDriver;
       if (mounted && notifDriver != null && notifDriver.isNotEmpty) {
         await V2RealtimeNotificationService.requestNotificationPermissions();
@@ -153,30 +133,18 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
         }
       }
 
-      // Jedan setState na kraju koji postavlja _currentDriver + _isLoading = false
       if (mounted) {
         _selectClosestDeparture();
-        setState(() {
-          _isLoading = false;
-          // _currentDriver je vec postavljen direktno u _initializeCurrentDriver()
-        });
+        setState(() => _isLoading = false);
       }
     } catch (e) {
-      // Ako se dogodi greška, i dalje ukloni loading
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _initializeCurrentDriver() async {
     final driver = await V2AuthManager.getCurrentDriver();
-    if (mounted) {
-      // Spajamo setState ovde da izbjegnemo drugi setState na kraju _initializeData()
-      _currentDriver = driver;
-    }
+    if (mounted) _currentDriver = driver;
   }
 
   /// ?? Bira polazak koji je najbliži trenutnom vremenu
@@ -207,7 +175,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       final minute = int.tryParse(timeParts[1]) ?? 0;
       final polazakMinutes = hour * 60 + minute;
 
-      // Izracunaj apsolutnu razliku u minutima
       final diff = (polazakMinutes - currentMinutes).abs();
 
       if (diff < minDifference) {
@@ -278,10 +245,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
     if (!mounted) return;
 
-    // Map za pracenje selektovanih putnika
     final Map<String, bool> selected = {for (var p in putnici) p.id: true};
-
-    // Map za broj dana (sada koristi stvarne podatke iz baze)
     final Map<String, int> brojDana = {for (var p in putnici) p.id: counts[p.id] ?? 0};
 
     // Map za TextEditingController-e
@@ -351,7 +315,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -386,7 +349,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                           ],
                         ),
                         const SizedBox(height: 12),
-                        // Kontrola meseca
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -428,14 +390,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                       ],
                     ),
                   ),
-                  // Content
                   Flexible(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Lista putnika
                           ...putnici.map((p) {
                             final cena = V2CenaObracunService.getCenaPoDanu(p);
                             final dana = brojDana[p.id] ?? 0;
@@ -462,7 +422,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                 child: Row(
                                   children: [
-                                    // Checkbox
                                     Checkbox(
                                       value: selected[p.id],
                                       activeColor: Colors.white,
@@ -474,7 +433,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         });
                                       },
                                     ),
-                                    // Ime i detalji - fleksibilno
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,7 +466,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         ],
                                       ),
                                     ),
-                                    // Dana input - fiksna širina
                                     SizedBox(
                                       width: 55,
                                       child: Column(
@@ -545,7 +502,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             );
                           }),
                           const Divider(color: Colors.white30),
-                          // Ukupno
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -561,7 +517,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                       ),
                     ),
                   ),
-                  // Actions
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -843,7 +798,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       try {
         await V2AuthManager.logout(context);
       } catch (e) {
-        debugPrint('❌ Logout error: $e');
         // Ako logout fail, pokreni navigaciju rucno
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
@@ -978,7 +932,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             ),
                           ),
                         ),
-                        // Close button
                         GestureDetector(
                           onTap: () => Navigator.pop(dialogCtx),
                           child: Container(
@@ -1045,13 +998,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                 const SizedBox(height: 12),
                                 _buildGlassStatRow('⏰ Vreme:', _selectedVreme),
                                 _buildGlassStatRow('📍 Grad:', _selectedGrad),
-                                _buildGlassStatRow('📅 Dan:', _selectedDay),
+                                _buildGlassStatRow('📅 Dan:', V2DanUtils.puniNaziv(_selectedDay)),
                               ],
                             ),
                           ),
-
                           const SizedBox(height: 20),
-
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
@@ -1413,7 +1364,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                       ),
                     ),
                   ),
-
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -1462,7 +1412,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                           ),
                         ),
                         const SizedBox(width: 15),
-                        // Add button
                         Expanded(
                           flex: 2,
                           child: AnimatedContainer(
@@ -1535,7 +1484,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           ime: selectedPutnik!.ime,
                                           polazak: _selectedVreme,
                                           grad: _selectedGrad,
-                                          dan: V2DanUtils.odPunogNaziva(_selectedDay),
+                                          dan: _selectedDay,
                                           vremeDodavanja: DateTime.now(),
                                           dodeljenVozac: _currentDriver!, // Safe non-null assertion nakon validacije
                                           adresa: adresaZaKoristiti,
@@ -1554,8 +1503,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           adresaId: adresaIdZaKoristiti,
                                           brojMesta: brojMesta,
                                         );
-
-                                        V2PolasciService.v2RefreshStreams();
 
                                         if (!dialogCtx.mounted) return;
 
@@ -1799,11 +1746,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       );
     }
 
-    // Auto-refresh kada se promeni status putnika (pokupljen/naplacen/otkazan)
-    // Use a parametric stream filtered to the currently selected day
-    // and will appear in the list/counts for arbitrary selected day.
-    // ? FIX: Ne prosledujemo vreme da bismo dobili SVE putnike za dan (za bottom nav bar brojace)
-    // Filtriranje po gradu/vremenu se radi client-side za prikaz liste
+    // Kreira stream za selektovani dan — samo kad se dan promeni (kao u raspored ekranu)
+    if (_streamPutnici == null || _cachedDan != _selectedDay) {
+      _cachedDan = _selectedDay;
+      _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
+    }
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V2Putnik>>(
@@ -1853,24 +1801,15 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
             );
           }
 
-          if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
-            // Umesto beskonacnog cekanja, nastavi sa praznom listom
-          }
-
           final allPutnici = snapshot.data ?? [];
-
-          // Jedan prolaz: dedup + split na prikaz vs. bottom-bar brojaci
-          final String danKratica = V2DanUtils.odPunogNaziva(_selectedDay);
+          final normalizedVreme = V2GradAdresaValidator.normalizeTime(_selectedVreme);
           final Map<String, V2Putnik> uniqueZaDan = {};
           final Map<String, V2Putnik> uniqueZaPrikaz = {};
-          final normalizedVreme = V2GradAdresaValidator.normalizeTime(_selectedVreme);
 
           for (final p in allPutnici) {
-            if (!p.dan.toLowerCase().contains(danKratica)) continue;
+            if (!p.dan.toLowerCase().contains(_selectedDay)) continue;
             final key = '${p.id}_${p.polazak}_${p.dan}';
-            // Za bottom-bar brojace: samo dedup po danu
             uniqueZaDan[key] = p;
-            // Za prikaz liste: dodatni filteri
             final normalizedStatus = V2TextUtils.normalizeText(p.status ?? '');
             if (normalizedStatus == 'obrada' || normalizedStatus == 'bez_polaska') continue;
             if (p.polazak.toString().trim().isEmpty) continue;
@@ -1880,29 +1819,13 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
             uniqueZaPrikaz[key] = p;
           }
 
-          final sviPutniciBezDuplikata = uniqueZaPrikaz.values.toList();
-          final countCandidates = uniqueZaDan.values.toList();
-
-          // REFAKTORISANO: Koristi V2PutnikCountHelper za centralizovano brojanje
+          final putniciZaPrikaz = uniqueZaPrikaz.values.toList();
           final countHelper = V2PutnikCountHelper.fromPutnici(
-            putnici: countCandidates,
-            targetDayAbbr: danKratica,
+            putnici: uniqueZaDan.values.toList(),
+            targetDayAbbr: _selectedDay,
           );
 
-          // Uklonjen dupli sort - V2PutnikList sada sortira konzistentno sa V2VozacScreen
-          // Sortiranje se vrsi u V2PutnikList widgetu sa istom logikom za sva tri ekrana
-          final putniciZaPrikaz = sviPutniciBezDuplikata;
-
-          // Funkcija za brojanje putnika po gradu, vremenu i danu
-          int getPutnikCount(String grad, String vreme) {
-            try {
-              return countHelper.getCount(grad, vreme);
-            } catch (e) {
-              return 0;
-            }
-          }
-
-          // (totalFilteredCount removed)
+          int getPutnikCount(String grad, String vreme) => countHelper.getCount(grad, vreme);
 
           return Container(
             decoration: BoxDecoration(
@@ -2081,7 +2004,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           Expanded(
                                             child: Center(
                                               child: Text(
-                                                _selectedDay,
+                                                V2DanUtils.puniNaziv(_selectedDay),
                                                 style: TextStyle(
                                                   color: Theme.of(context).colorScheme.onPrimary,
                                                   fontWeight: FontWeight.w600,
@@ -2104,13 +2027,13 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         ),
                                         elevation: 8,
                                       ),
-                                      items: V2DanUtils.puniNazivi
+                                      items: V2DanUtils.kratice
                                           .map(
                                             (dan) => DropdownMenuItem(
                                               value: dan,
                                               child: Center(
                                                 child: Text(
-                                                  dan,
+                                                  V2DanUtils.puniNaziv(dan),
                                                   style: TextStyle(
                                                     color: Theme.of(context).colorScheme.onPrimary,
                                                     fontWeight: FontWeight.w700,
@@ -2128,7 +2051,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                         if (value == null || !mounted) return;
                                         setState(() {
                                           _selectedDay = value;
-                                          _updatePutniciStream(_selectedDay);
                                         });
                                       },
                                     ),
@@ -2145,7 +2067,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
               ),
               body: Column(
                 children: [
-                  // Action buttons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
@@ -2449,7 +2370,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             currentDriver: _currentDriver ?? '',
                             selectedGrad: _selectedGrad,
                             selectedVreme: _selectedVreme,
-                            selectedDay: V2DanUtils.odPunogNaziva(_selectedDay),
+                            selectedDay: _selectedDay,
                             bcVremena: bcVremena,
                             vsVremena: vsVremena,
                           ),
@@ -2472,7 +2393,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   /// Helper metoda za kreiranje bottom nav bar-a prema tipu
   /// ?? Boja vozaca za termin (za bottom nav bar border)
   Color? _getVozacColorForTermin(String grad, String vreme) {
-    final dan = V2DanUtils.odPunogNaziva(_selectedDay);
+    final dan = _selectedDay;
     final entry = V2MasterRealtimeManager.instance.rasporedCache.values
         .map((row) => V2VozacRasporedEntry.fromMap(row))
         .where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme)
