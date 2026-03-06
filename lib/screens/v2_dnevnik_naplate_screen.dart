@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../globals.dart';
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_dnevna_predaja_service.dart';
 import '../services/v2_vozac_service.dart';
 import '../theme.dart';
@@ -31,8 +33,36 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   final _predaoController = TextEditingController();
   bool _predaoSacuvan = false;
 
+  StreamSubscription<String>? _realtimeSub;
+  Timer? _refreshDebounce;
+
   @override
-  void dispose() {
+  void initState() {
+    super.initState();
+    _subscribeRealtime();
+  }
+
+  void _subscribeRealtime() {
+    _realtimeSub?.cancel();
+    _realtimeSub = V2MasterRealtimeManager.instance
+        .onCacheChanged
+        .where((t) => t == 'v2_polasci')
+        .listen((_) {
+      // Samo refresh ako je izabran vozač i datum je danas
+      if (_selectedVozacIme == null) return;
+      final today = DateTime.now();
+      final isToday = _selectedDate.year == today.year &&
+          _selectedDate.month == today.month &&
+          _selectedDate.day == today.day;
+      if (!isToday) return;
+      _refreshDebounce?.cancel();
+      _refreshDebounce = Timer(const Duration(milliseconds: 300), () {
+        if (mounted) _ucitajNaplate();
+      });
+    });
+  }
+    _realtimeSub?.cancel();
+    _refreshDebounce?.cancel();
     _predaoController.dispose();
     super.dispose();
   }
