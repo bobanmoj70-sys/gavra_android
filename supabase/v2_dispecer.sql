@@ -186,7 +186,9 @@ BEGIN
            updated_at       = v_now,
            dodeljeno_vreme  = CASE WHEN v_novi_status = 'odobreno' THEN v_req.zeljeno_vreme ELSE dodeljeno_vreme END,
            alternativno_vreme_1 = v_alt1,
-           alternativno_vreme_2 = v_alt2
+           alternativno_vreme_2 = v_alt2,
+           odobrio          = CASE WHEN v_novi_status = 'odobreno' THEN 'sistem' ELSE odobrio END,
+           otkazao          = CASE WHEN v_novi_status = 'odbijeno' THEN 'sistem' ELSE otkazao END
      WHERE id = v_req.id;
 
     v_processed := v_processed + 1;
