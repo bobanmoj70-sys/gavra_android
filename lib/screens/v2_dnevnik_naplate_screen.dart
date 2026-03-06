@@ -50,48 +50,56 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchDirectQuery(String dateStr) async {
-    // Dnevni putnici
-    final dnevni = await supabase
+    // Jedan upit — bez JOIN (v2_polasci nema FK prema putnik tabelama)
+    final rows = await supabase
         .from('v2_polasci')
-        .select('putnik_id, grad, dodeljeno_vreme, placen_iznos, placen_at, updated_at, v2_dnevni!inner(ime)')
-        .eq('putnik_tabela', 'v2_dnevni')
+        .select('putnik_id, putnik_tabela, grad, dodeljeno_vreme, placen_iznos, placen_at, updated_at')
         .eq('placen', true)
         .eq('placen_vozac_ime', _selectedVozacIme!)
-        .or('placen_at.gte.${dateStr}T00:00:00,and(placen_at.is.null,updated_at.gte.${dateStr}T00:00:00)')
-        .or('placen_at.lte.${dateStr}T23:59:59,and(placen_at.is.null,updated_at.lte.${dateStr}T23:59:59)');
+        .gte('updated_at', '${dateStr}T00:00:00')
+        .lte('updated_at', '${dateStr}T23:59:59') as List;
 
-    // Radnici
-    final radnici = await supabase
-        .from('v2_polasci')
-        .select('putnik_id, grad, dodeljeno_vreme, placen_iznos, placen_at, updated_at, v2_radnici!inner(ime)')
-        .eq('putnik_tabela', 'v2_radnici')
-        .eq('placen', true)
-        .eq('placen_vozac_ime', _selectedVozacIme!)
-        .or('placen_at.gte.${dateStr}T00:00:00,and(placen_at.is.null,updated_at.gte.${dateStr}T00:00:00)')
-        .or('placen_at.lte.${dateStr}T23:59:59,and(placen_at.is.null,updated_at.lte.${dateStr}T23:59:59)');
+    if (rows.isEmpty) return [];
 
-    // Ucenici
-    final ucenici = await supabase
-        .from('v2_polasci')
-        .select('putnik_id, grad, dodeljeno_vreme, placen_iznos, placen_at, updated_at, v2_ucenici!inner(ime)')
-        .eq('putnik_tabela', 'v2_ucenici')
-        .eq('placen', true)
-        .eq('placen_vozac_ime', _selectedVozacIme!)
-        .or('placen_at.gte.${dateStr}T00:00:00,and(placen_at.is.null,updated_at.gte.${dateStr}T00:00:00)')
-        .or('placen_at.lte.${dateStr}T23:59:59,and(placen_at.is.null,updated_at.lte.${dateStr}T23:59:59)');
+    // Grupiši putnik_id-ove po tabeli za batch lookup
+    final dnevniIds = <String>[];
+    final radniciIds = <String>[];
+    final uceniciIds = <String>[];
+
+    for (final r in rows) {
+      final id = r['putnik_id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      switch (r['putnik_tabela'] as String?) {
+        case 'v2_dnevni':
+          dnevniIds.add(id);
+        case 'v2_radnici':
+          radniciIds.add(id);
+        case 'v2_ucenici':
+          uceniciIds.add(id);
+      }
+    }
+
+    // Batch fetch imena iz svake tabele
+    final Map<String, String> imeMap = {};
+
+    Future<void> fetchIme(String tabela, List<String> ids) async {
+      if (ids.isEmpty) return;
+      final res = await supabase.from(tabela).select('id, ime').inFilter('id', ids) as List;
+      for (final r in res) {
+        imeMap[r['id'].toString()] = r['ime']?.toString() ?? '?';
+      }
+    }
+
+    await Future.wait([
+      fetchIme('v2_dnevni', dnevniIds),
+      fetchIme('v2_radnici', radniciIds),
+      fetchIme('v2_ucenici', uceniciIds),
+    ]);
 
     final sve = <Map<String, dynamic>>[];
-
-    for (final r in dnevni as List) {
-      final ime = (r['v2_dnevni'] as Map?)?['ime'] as String? ?? '?';
-      sve.add(_buildRow(r as Map<String, dynamic>, ime));
-    }
-    for (final r in radnici as List) {
-      final ime = (r['v2_radnici'] as Map?)?['ime'] as String? ?? '?';
-      sve.add(_buildRow(r as Map<String, dynamic>, ime));
-    }
-    for (final r in ucenici as List) {
-      final ime = (r['v2_ucenici'] as Map?)?['ime'] as String? ?? '?';
+    for (final r in rows) {
+      final id = r['putnik_id']?.toString() ?? '';
+      final ime = imeMap[id] ?? '?';
       sve.add(_buildRow(r as Map<String, dynamic>, ime));
     }
 
@@ -109,8 +117,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     if (tsStr.isNotEmpty) {
       final dt = DateTime.tryParse(tsStr)?.toLocal();
       if (dt != null) {
-        vremeNaplate =
-            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        vremeNaplate = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       }
     }
     return {
@@ -212,9 +219,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                             style: const TextStyle(color: Colors.white, fontSize: 14),
                             icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
                             isExpanded: true,
-                            items: vozaci
-                                .map((ime) => DropdownMenuItem(value: ime, child: Text(ime)))
-                                .toList(),
+                            items: vozaci.map((ime) => DropdownMenuItem(value: ime, child: Text(ime))).toList(),
                             onChanged: (v) {
                               setState(() {
                                 _selectedVozacIme = v;
@@ -261,7 +266,10 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
                       child: _isLoading
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.search, size: 20),
                     ),
                   ],
@@ -313,7 +321,8 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                           Expanded(
                                             child: Text(
                                               n['ime'] as String,
-                                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                              style: const TextStyle(
+                                                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                                             ),
                                           ),
                                           // Grad + polazak
