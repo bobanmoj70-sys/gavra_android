@@ -1853,8 +1853,21 @@ class _RegistrovaniPaymentDialogState extends State<_RegistrovaniPaymentDialog> 
   }
 
   static String _monthName(int m) {
-    const names = ['', 'Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun',
-        'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar'];
+    const names = [
+      '',
+      'Januar',
+      'Februar',
+      'Mart',
+      'April',
+      'Maj',
+      'Jun',
+      'Jul',
+      'Avgust',
+      'Septembar',
+      'Oktobar',
+      'Novembar',
+      'Decembar'
+    ];
     return names[m];
   }
 
