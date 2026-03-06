@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -44,6 +46,12 @@ class _V2PinDialogState extends State<V2PinDialog> {
 
     try {
       await V2MasterRealtimeManager.instance.v2UpdatePin(widget.putnikId, newPin, widget.putnikTabela);
+
+      // Audit log — direktna izmena PIN-a od strane admina (bez zahteva putnika)
+      unawaited(V2PinZahtevService.logujDirektnaIzmena(
+        putnikId: widget.putnikId,
+        putnikTabela: widget.putnikTabela,
+      ));
 
       setState(() {
         _pin = newPin;

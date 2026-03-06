@@ -167,6 +167,25 @@ class V2PinZahtevService {
     }
   }
 
+  /// Upiši audit zapis u v2_pin_zahtevi kada admin direktno menja PIN
+  /// (bez zahteva od putnika — npr. iz V2PinDialog)
+  static Future<void> logujDirektnaIzmena({
+    required String putnikId,
+    required String putnikTabela,
+  }) async {
+    try {
+      await _supabase.from('v2_pin_zahtevi').insert({
+        'putnik_id': putnikId,
+        'putnik_tabela': putnikTabela,
+        'status': 'direktna_izmena',
+        'email': null,
+        'telefon': null,
+      });
+    } catch (_) {
+      // audit log greška ne blokira głównu operaciju
+    }
+  }
+
   static Future<bool> azurirajEmail({
     required String putnikId,
     required String putnikTabela,

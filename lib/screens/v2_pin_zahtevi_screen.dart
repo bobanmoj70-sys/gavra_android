@@ -256,7 +256,7 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
 
     String vremeZahteva = '-';
     if (createdAt != null) {
-      final dt = DateTime.tryParse(createdAt);
+      final dt = DateTime.tryParse(createdAt)?.toLocal();
       if (dt != null) {
         vremeZahteva = '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
             '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';

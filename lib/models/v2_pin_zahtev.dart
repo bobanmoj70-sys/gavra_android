@@ -15,7 +15,7 @@ class V2PinZahtev {
     required this.putnikTabela,
     this.email,
     this.telefon,
-    this.status = 'na_cekanju',
+    this.status = 'ceka',
     this.createdAt,
     this.updatedAt,
   });
@@ -27,7 +27,7 @@ class V2PinZahtev {
       putnikTabela: json['putnik_tabela'] as String? ?? '',
       email: json['email'] as String?,
       telefon: json['telefon'] as String?,
-      status: json['status'] as String? ?? 'na_cekanju',
+      status: json['status'] as String? ?? 'ceka',
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
     );
