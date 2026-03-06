@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
@@ -18,19 +17,9 @@ class V2CenaObracunService {
 
   /// Dobija cenu po danu za putnika (SAMO custom cena)
   static double getCenaPoDanu(V2RegistrovaniPutnik v2Putnik) {
-    // 1. Ako ima postavljenu custom cenu - koristi je
     if (v2Putnik.cena != null && v2Putnik.cena! > 0) {
       return v2Putnik.cena!;
     }
-
-    final imeLower = v2Putnik.ime.toLowerCase();
-
-    // 2. STROGO FIKSNE CENE samo za specijalne slučajeve
-    if (v2Putnik.v2Tabela == 'v2_posiljke' && imeLower.contains('zubi')) {
-      return 300.0;
-    }
-
-    // 3. Ako nema custom cene - više nema default cena, vraća 0.0
     return 0.0;
   }
 

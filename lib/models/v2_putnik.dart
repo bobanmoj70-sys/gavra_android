@@ -237,24 +237,10 @@ class V2Putnik {
 
   /// Izracunava efektivnu cenu po mestu za ovaj polazak
   double get effectivePrice {
-    // 1. Custom cena iz baze (AKO JE POSTAVLJENA - NAJVECI PRIORITET)
+    // Cena iskljucivo iz baze - admin postavlja manuelno
     if (cena != null && cena! > 0) {
       return cena!;
     }
-
-    final tipLower = tipPutnika?.toLowerCase() ?? '';
-    final imeLower = ime.toLowerCase();
-
-    // 2. Zubi (Specijalna cena - Fallback)
-    if (tipLower == 'posiljka' && imeLower.contains('zubi')) {
-      return 300.0;
-    }
-
-    // 3. Default cena za dnevne putnike (Fiksno 600 RSD)
-    if (isDnevniTip) {
-      return 600.0;
-    }
-
     return 0.0;
   }
 
