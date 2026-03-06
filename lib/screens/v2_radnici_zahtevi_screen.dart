@@ -30,21 +30,11 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
       builder: (context, snapshot) {
         final svi = snapshot.data ?? [];
 
-        // Tekuća sedmica: pon 00:00 → ned 23:59
-        final now = DateTime.now();
-        final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-        final pocetak = DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day);
-        final kraj = pocetak.add(const Duration(days: 7));
-
-        final zahtevi = svi.where((z) {
-          if ((z.tipPutnika ?? '').toLowerCase() != 'radnik') return false;
-          // processed_at uslov uklonjen — kronom ne upisuje processed_at
-          // Samo tekuća sedmica po created_at
-          final ca = z.createdAt;
-          if (ca == null) return false;
-          final caLocal = ca.toLocal();
-          return caLocal.isAfter(pocetak) && caLocal.isBefore(kraj);
-        }).toList();
+        // Bez datumskog filtera — prikazuje sve radničke zahteve iz cache-a
+        // Time picker logika zaključavanja kontroliše kad zahtevi ulaze u bazu
+        final zahtevi = svi
+            .where((z) => (z.tipPutnika ?? '').toLowerCase() == 'radnik')
+            .toList();
 
         // Grupiši po statusu za summary u AppBaru
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
