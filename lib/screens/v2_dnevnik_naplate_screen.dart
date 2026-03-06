@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../globals.dart';
+import '../services/v2_dnevna_predaja_service.dart';
 import '../services/v2_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -61,46 +62,35 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
   }
 
-  String get _dateStr =>
-      '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-
   Future<void> _ucitajPredaju(String dateStr) async {
-    try {
-      final row = await supabase
-          .from('v2_dnevna_predaja')
-          .select('predao_iznos')
-          .eq('vozac_ime', _selectedVozacIme!)
-          .eq('datum', dateStr)
-          .maybeSingle();
-      if (row != null && mounted) {
-        final iznos = (row['predao_iznos'] as num?)?.toDouble() ?? 0;
-        setState(() {
-          _predaoController.text = iznos > 0 ? iznos.toStringAsFixed(0) : '';
-          _predaoSacuvan = iznos > 0;
-        });
-      }
-    } catch (_) {}
+    final predaja = await V2DnevnaPredajaService.get(
+      vozacIme: _selectedVozacIme!,
+      datum: _selectedDate,
+    );
+    if (predaja != null && mounted) {
+      setState(() {
+        _predaoController.text = predaja.predaoIznos > 0 ? predaja.predaoIznos.toStringAsFixed(0) : '';
+        _predaoSacuvan = predaja.predaoIznos > 0;
+      });
+    }
   }
 
   Future<void> _sacuvajPredaju() async {
     final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
     if (predaoVal == null || _selectedVozacIme == null) return;
-    final razlika = predaoVal - _ukupnoIznos;
-    try {
-      await supabase.from('v2_dnevna_predaja').upsert({
-        'vozac_ime': _selectedVozacIme,
-        'datum': _dateStr,
-        'predao_iznos': predaoVal,
-        'ukupno_naplaceno': _ukupnoIznos,
-        'razlika': razlika,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }, onConflict: 'vozac_ime,datum');
-      if (mounted) {
+    final ok = await V2DnevnaPredajaService.upsert(
+      vozacIme: _selectedVozacIme!,
+      datum: _selectedDate,
+      predaoIznos: predaoVal,
+      ukupnoNaplaceno: _ukupnoIznos,
+    );
+    if (mounted) {
+      if (ok) {
         setState(() => _predaoSacuvan = true);
         V2AppSnackBar.success(context, '✅ Predaja sačuvana');
+      } else {
+        V2AppSnackBar.error(context, 'Greška pri čuvanju');
       }
-    } catch (e) {
-      if (mounted) V2AppSnackBar.error(context, 'Greška pri čuvanju: $e');
     }
   }
 
