@@ -22,6 +22,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   List<Map<String, dynamic>> _naplate = [];
   double _ukupnoIznos = 0;
   final _predaoController = TextEditingController();
+  bool _predaoSacuvan = false;
 
   @override
   void dispose() {
@@ -50,10 +51,56 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
         _ukupnoIznos = result.fold(0.0, (sum, r) => sum + ((r['iznos'] as num?)?.toDouble() ?? 0));
         _isLoading = false;
         _predaoController.clear();
+        _predaoSacuvan = false;
       });
+      // Ucitaj eventualno vec sacuvanu predaju
+      await _ucitajPredaju(dateStr);
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) V2AppSnackBar.error(context, 'Greška: $e');
+    }
+  }
+
+  String get _dateStr =>
+      '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+
+  Future<void> _ucitajPredaju(String dateStr) async {
+    try {
+      final row = await supabase
+          .from('v2_dnevna_predaja')
+          .select('predao_iznos')
+          .eq('vozac_ime', _selectedVozacIme!)
+          .eq('datum', dateStr)
+          .maybeSingle();
+      if (row != null && mounted) {
+        final iznos = (row['predao_iznos'] as num?)?.toDouble() ?? 0;
+        setState(() {
+          _predaoController.text = iznos > 0 ? iznos.toStringAsFixed(0) : '';
+          _predaoSacuvan = iznos > 0;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _sacuvajPredaju() async {
+    final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
+    if (predaoVal == null || _selectedVozacIme == null) return;
+    final razlika = predaoVal - _ukupnoIznos;
+    try {
+      await supabase.from('v2_dnevna_predaja').upsert({
+        'vozac_ime': _selectedVozacIme,
+        'datum': _dateStr,
+        'predao_iznos': predaoVal,
+        'ukupno_naplaceno': _ukupnoIznos,
+        'razlika': razlika,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }, onConflict: 'vozac_ime,datum');
+      if (mounted) {
+        setState(() => _predaoSacuvan = true);
+        V2AppSnackBar.success(context, '✅ Predaja sačuvana');
+      }
+    } catch (e) {
+      if (mounted) V2AppSnackBar.error(context, 'Greška pri čuvanju: $e');
     }
   }
 
@@ -154,6 +201,8 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
         _selectedDate = picked;
         _naplate = [];
         _ukupnoIznos = 0;
+        _predaoController.clear();
+        _predaoSacuvan = false;
       });
     }
   }
@@ -186,7 +235,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
 
     Clipboard.setData(ClipboardData(text: buffer.toString()));
-    V2AppSnackBar.success(context, '📋 Kopirano u clipboard — možeš nalepiti u WhatsApp/SMS');
+    V2AppSnackBar.success(context, '📋 Kopirano u clipboard');
   }
 
   @override
@@ -241,6 +290,8 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                 _selectedVozacIme = v;
                                 _naplate = [];
                                 _ukupnoIznos = 0;
+                                _predaoController.clear();
+                                _predaoSacuvan = false;
                               });
                             },
                           ),
