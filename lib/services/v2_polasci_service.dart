@@ -387,6 +387,8 @@ class V2PolasciService {
     String? selectedVreme,
     String? selectedDan,
     String? tipPutnika,
+    String? putnikIme,
+    String? putnikTabela,
   }) async {
     if (putnikId == null) return;
     await _svc.v2OznaciPlaceno(
@@ -397,6 +399,8 @@ class V2PolasciService {
       selectedVreme: selectedVreme,
       selectedDan: selectedDan,
       tipPutnika: tipPutnika,
+      putnikIme: putnikIme,
+      putnikTabela: putnikTabela,
     );
   }
 
@@ -700,8 +704,9 @@ class V2PutnikStreamService {
     final double? iznos = (srRow['placen_iznos'] as num?)?.toDouble();
     final String? naplatioVozac = srRow['placen_vozac_ime']?.toString();
     final String? naplatioVozacId = srRow['placen_vozac_id']?.toString();
-    final String? vremeUplate =
-        jePlacen ? (srRow['placen_at']?.toString() ?? srRow['updated_at']?.toString() ?? srRow['datum_akcije']?.toString()) : null;
+    final String? vremeUplate = jePlacen
+        ? (srRow['placen_at']?.toString() ?? srRow['updated_at']?.toString() ?? srRow['datum_akcije']?.toString())
+        : null;
 
     final String? vozacId = naplatioVozacId ?? (jePokupljen ? _vozacIdZaIme(srRow['pokupio']?.toString()) : null);
     final String? vozacIme = naplatioVozac ?? (jePokupljen ? srRow['pokupio']?.toString() : null);
@@ -1024,6 +1029,8 @@ class V2PutnikStreamService {
     String? selectedDan,
     String? requestId,
     String? tipPutnika,
+    String? putnikIme,
+    String? putnikTabela,
   }) async {
     final dateStr = DateTime.now().toIso8601String().split('T')[0];
 
@@ -1094,6 +1101,8 @@ class V2PutnikStreamService {
       putnikId: id.toString(),
       datum: DateTime.parse(dateStr),
       iznos: iznos.toDouble(),
+      putnikIme: putnikIme,
+      putnikTabela: putnikTabela,
       vozacId: vozacId,
       vozacImeParam: driver,
       grad: grad,

@@ -585,6 +585,13 @@ class _PutnikCardState extends State<V2PutnikCard> {
           selectedVreme: _putnik.polazak,
           selectedDan: _putnik.dan,
           tipPutnika: _putnik.tipPutnika,
+          putnikIme: _putnik.ime,
+          putnikTabela: const {
+            'dnevni': 'v2_dnevni',
+            'radnik': 'v2_radnici',
+            'ucenik': 'v2_ucenici',
+            'posiljka': 'v2_posiljke',
+          }[_putnik.tipPutnika],
         );
       }
 

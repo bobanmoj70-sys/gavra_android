@@ -55,6 +55,8 @@ class V2StatistikaIstorijaService {
     required String putnikId,
     required DateTime datum,
     required double iznos,
+    String? putnikIme,
+    String? putnikTabela,
     String? vozacId,
     String? vozacImeParam, // direktan fallback ako UUID lookup ne uspe
     int? placeniMesec,
@@ -88,6 +90,8 @@ class V2StatistikaIstorijaService {
 
     await _supabase.from('v2_statistika_istorija').insert({
       'putnik_id': putnikId,
+      'putnik_ime': putnikIme,
+      'putnik_tabela': putnikTabela,
       'datum': datum.toIso8601String().split('T')[0],
       'tip': tipUplate,
       'iznos': iznos,
