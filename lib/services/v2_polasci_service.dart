@@ -701,7 +701,7 @@ class V2PutnikStreamService {
     final String? naplatioVozac = srRow['placen_vozac_ime']?.toString();
     final String? naplatioVozacId = srRow['placen_vozac_id']?.toString();
     final String? vremeUplate =
-        jePlacen ? (srRow['updated_at']?.toString() ?? srRow['datum_akcije']?.toString()) : null;
+        jePlacen ? (srRow['placen_at']?.toString() ?? srRow['updated_at']?.toString() ?? srRow['datum_akcije']?.toString()) : null;
 
     final String? vozacId = naplatioVozacId ?? (jePokupljen ? _vozacIdZaIme(srRow['pokupio']?.toString()) : null);
     final String? vozacIme = naplatioVozac ?? (jePokupljen ? srRow['pokupio']?.toString() : null);
@@ -1046,6 +1046,7 @@ class V2PutnikStreamService {
             if (driver != null) 'placen_vozac_ime': driver,
             'datum_akcije': v2NowString(),
             'placen_tip': tipPutnika ?? 'dnevni',
+            'placen_at': v2NowString(),
             'updated_at': v2NowString(),
           })
           .eq('id', requestId)
@@ -1073,6 +1074,7 @@ class V2PutnikStreamService {
             if (driver != null) 'placen_vozac_ime': driver,
             'datum_akcije': v2NowString(),
             'placen_tip': tipPutnika ?? 'dnevni',
+            'placen_at': v2NowString(),
             'updated_at': v2NowString(),
           })
           .eq('putnik_id', id.toString())
