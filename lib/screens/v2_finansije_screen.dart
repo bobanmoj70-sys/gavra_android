@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -19,7 +17,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
 
   late Stream<V2FinansijskiIzvestaj> _streamIzvestaj;
-  StreamSubscription<V2FinansijskiIzvestaj>? _streamSub;
 
   @override
   void initState() {
@@ -28,14 +25,11 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   }
 
   void _prijaviStream() {
-    _streamSub?.cancel();
     _streamIzvestaj = V2FinansijeService.streamIzvestaj();
-    _streamSub = _streamIzvestaj.listen((_) {});
   }
 
   @override
   void dispose() {
-    _streamSub?.cancel();
     super.dispose();
   }
 
@@ -76,9 +70,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                   : RefreshIndicator(
                       key: _refreshKey,
                       onRefresh: () async {
-                        setState(() {
-                          _prijaviStream();
-                        });
+                        setState(_prijaviStream);
                       },
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -481,6 +473,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
 
   void _showCustomReportDialog(DateTime from, DateTime to) {
     final dateFormat = DateFormat('dd.MM.yyyy');
+    final future = V2FinansijeService.getIzvestajZaPeriod(from, to);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -495,7 +488,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
           ],
         ),
         content: FutureBuilder<Map<String, dynamic>>(
-          future: V2FinansijeService.getIzvestajZaPeriod(from, to),
+          future: future,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
@@ -625,43 +618,38 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
   }
 
   Widget _buildTrosakInputRow(String emoji, String label, TextEditingController controller, {double? currentTotal}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 16)),
-                  if (currentTotal != null && currentTotal > 0)
-                    Text('Trenutno: ${widget.formatBroja.format(currentTotal)}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                ],
+        Text(emoji, style: const TextStyle(fontSize: 24)),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 16)),
+              if (currentTotal != null && currentTotal > 0)
+                Text('Trenutno: ${widget.formatBroja.format(currentTotal)}',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.right,
+            decoration: InputDecoration(
+              hintText: 'Dodaj...',
+              suffixText: 'din',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              isDense: true,
             ),
-            Expanded(
-              flex: 3,
-              child: TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  hintText: 'Dodaj...',
-                  suffixText: 'din',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  isDense: true,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
