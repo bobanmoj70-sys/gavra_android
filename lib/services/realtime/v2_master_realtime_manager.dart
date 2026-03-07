@@ -1059,6 +1059,18 @@ class V2MasterRealtimeManager {
           ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase())),
       );
 
+  /// Stream audit log zapisa iz cache-a — 0 DB upita, sortiran created_at DESC.
+  /// Cache drži posljednjih 200 zapisa (punjenih pri init i Realtime INSERT).
+  Stream<List<Map<String, dynamic>>> streamAuditLog() => v2StreamFromCache<List<Map<String, dynamic>>>(
+        tables: ['v2_audit_log'],
+        build: () => auditLogCache.values.toList()
+          ..sort((a, b) {
+            final ca = a['created_at']?.toString() ?? '';
+            final cb = b['created_at']?.toString() ?? '';
+            return cb.compareTo(ca); // DESC
+          }),
+      );
+
   static String _normalizePhone(String telefon) {
     var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
     if (cleaned.startsWith('+381')) {
