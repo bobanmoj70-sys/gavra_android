@@ -100,7 +100,7 @@ class V2HuaweiPushService {
         },
         onError: (dynamic error) {
           // Token istekao ili nevazeci — zatrazi novi
-          Future.delayed(const Duration(seconds: 5), () => Push.getToken('HCM'));
+          unawaited(Future.delayed(const Duration(seconds: 5), () => Push.getToken('HCM')));
         },
       );
 
@@ -113,7 +113,7 @@ class V2HuaweiPushService {
       try {
         // Read the App ID and AGConnect values from `agconnect-services.json`
         try {
-          final appId = await Push.getAppId();
+          await Push.getAppId();
         } catch (e) {
           debugPrint('[V2HuaweiPushService] getAppId greška: $e');
         }
