@@ -440,7 +440,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           Text(
-                                            '${cena.toStringAsFixed(0)} RSD ž $dana dana = ${iznos.toStringAsFixed(0)} RSD',
+                                            '${cena.toStringAsFixed(0)} RSD × $dana dana = ${iznos.toStringAsFixed(0)} RSD',
                                             style: TextStyle(fontSize: 11, color: Colors.white70),
                                           ),
                                         ],
