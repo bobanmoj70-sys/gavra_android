@@ -110,7 +110,7 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
     String? rezultat;
     rezultat = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -160,15 +160,15 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
               if (pinController.text.length == 4) {
-                Navigator.pop(context, pinController.text);
+                Navigator.pop(dialogCtx, pinController.text);
               } else {
-                V2AppSnackBar.warning(context, 'PIN mora imati 4 cifre');
+                V2AppSnackBar.warning(dialogCtx, 'PIN mora imati 4 cifre');
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -205,7 +205,7 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
 
     final potvrda = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
@@ -221,11 +221,11 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Odbij', style: TextStyle(color: Colors.white)),
           ),
@@ -357,7 +357,7 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  static Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
         Icon(icon, color: Colors.white.withValues(alpha: 0.5), size: 18),
