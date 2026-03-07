@@ -186,7 +186,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           return const Center(child: Text('Greška pri učitavanju stanja'));
         }
         return RefreshIndicator(
-          onRefresh: () async => setState(_loadAll),
+          onRefresh: () async { _loadAll(); },
           color: _accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -443,7 +443,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           );
         }
         return RefreshIndicator(
-          onRefresh: () async => setState(_loadAll),
+          onRefresh: () async { _loadAll(); },
           color: _accent,
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
@@ -525,7 +525,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           );
         }
         return RefreshIndicator(
-          onRefresh: () async => setState(_loadAll),
+          onRefresh: () async { _loadAll(); },
           color: _accent,
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
@@ -633,7 +633,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                   );
                   if (!context.mounted) return;
                   Navigator.pop(ctx);
-                  if (ok) setState(_loadAll);
+                  if (ok) _loadAll();
                   if (ok) {
                     V2AppSnackBar.success(context, '✅ Punjenje dodato: $litri L');
                   } else {
@@ -652,10 +652,14 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           ],
         ),
       ),
-    );
+    ).then((_) {
+      litriCtrl.dispose();
+      cenaCtrl.dispose();
+      napomenaCtrl.dispose();
+    });
   }
 
-  void _showDodajTocenjeDialog() async {
+  Future<void> _showDodajTocenjeDialog() async {
     final vozila = V2VozilaService.getVozila();
     if (!mounted) return;
 
@@ -716,13 +720,14 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                     V2AppSnackBar.warning(context, 'Unesi broj litara!');
                     return;
                   }
-                  if (selectedVozilo == null) {
+                  final vozilo = selectedVozilo;
+                  if (vozilo == null) {
                     V2AppSnackBar.warning(context, 'Izaberi vozilo!');
                     return;
                   }
                   final ok = await V2GorivoService.addTocenje(
                     datum: datum,
-                    voziloId: selectedVozilo!.id,
+                    voziloId: vozilo.id,
                     litri: litri,
                     kmVozila: int.tryParse(kmCtrl.text),
                     napomena: napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text,
@@ -730,10 +735,10 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                   );
                   if (!context.mounted) return;
                   Navigator.pop(ctx);
-                  if (ok) setState(_loadAll);
+                  if (ok) _loadAll();
                   if (ok) {
                     V2AppSnackBar.success(
-                        context, '✅ Točenje zabeleženo: $litri L — ${selectedVozilo!.registarskiBroj}');
+                        context, '✅ Točenje zabeleženo: $litri L — ${vozilo.registarskiBroj}');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }
@@ -750,7 +755,11 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           ],
         ),
       ),
-    );
+    ).then((_) {
+      litriCtrl.dispose();
+      kmCtrl.dispose();
+      napomenaCtrl.dispose();
+    });
   }
 
   void _showConfigDialog() {
@@ -777,7 +786,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
               suffixText: 'L', keyboardType: TextInputType.number),
           const SizedBox(height: 8),
           Text(
-            'Početno stanje postavi na trenutnu litražu pumpe. Sve buduće promene idu na to.',
+            'Početno stanje postavi na trenutnu litrazu pumpe. Sve buduće promene idu na to.',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
@@ -810,7 +819,11 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           ),
         ],
       ),
-    );
+    ).then((_) {
+      kapacitetCtrl.dispose();
+      alarmCtrl.dispose();
+      pocetnoCtrl.dispose();
+    });
   }
 
   Future<void> _confirmDelete(String title, String subtitle, VoidCallback onConfirm) async {
@@ -836,38 +849,51 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     required Color accentColor,
     required List<Widget> children,
   }) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(2),
+    return Builder(
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: SafeArea(
+          top: false,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(ctx).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: accentColor,
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ...children,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
                   ),
                 ),
                 const SizedBox(height: 20),
