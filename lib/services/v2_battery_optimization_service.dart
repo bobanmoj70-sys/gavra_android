@@ -123,7 +123,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     // 2. Try Power Intensity (newer EMUI)
@@ -135,7 +135,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     // 3. Try Protect Activity (Legacy)
@@ -147,7 +147,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     // Fallback to general battery settings
@@ -163,7 +163,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     // Try Security app
@@ -175,7 +175,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     await _openDefaultBatterySettings();
@@ -190,7 +190,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     await _openDefaultBatterySettings();
@@ -205,7 +205,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     await _openDefaultBatterySettings();
@@ -220,7 +220,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     await _openDefaultBatterySettings();
@@ -235,7 +235,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (e) {
+    } catch (_) {
     }
 
     await _openDefaultBatterySettings();
@@ -247,7 +247,7 @@ class V2BatteryOptimizationService {
         action: 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
       );
       await intent.launch();
-    } catch (e) {
+    } catch (_) {
     }
   }
 
@@ -300,7 +300,7 @@ class V2BatteryOptimizationService {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Row(
           children: [
             Icon(Icons.battery_alert, color: Colors.orange[700], size: 28),
@@ -357,21 +357,21 @@ class V2BatteryOptimizationService {
           TextButton(
             onPressed: () async {
               await markDismissedPermanently();
-              if (context.mounted) Navigator.of(context).pop();
+              if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
             },
             child: const Text('Ne prikazuj više'),
           ),
           TextButton(
             onPressed: () async {
               await markShown();
-              if (context.mounted) Navigator.of(context).pop();
+              if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
             },
             child: const Text('Kasnije'),
           ),
           ElevatedButton.icon(
             onPressed: () async {
               await markShown();
-              if (context.mounted) Navigator.of(context).pop();
+              if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
               await openBatterySettings();
             },
             icon: const Icon(Icons.settings, size: 18),
