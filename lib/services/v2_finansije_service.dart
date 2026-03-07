@@ -110,11 +110,11 @@ class V2FinansijeService {
       ]);
 
       final putnikIds =
-          (voznjeResp as List).map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet().toList();
+          voznjeResp.map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet().toList();
 
       if (putnikIds.isEmpty) return 0;
 
-      final placeniIds = (uplateResp as List).map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet();
+      final placeniIds = uplateResp.map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet();
 
       // Putnici s dugom = imaju vožnje ali nisu platili
       final duznici = putnikIds.where((id) => !placeniIds.contains(id)).whereType<String>().toList();
@@ -157,7 +157,7 @@ class V2FinansijeService {
             .filter('datum', 'lte', mesecDo);
 
         final Map<String, int> voznjePoId = {};
-        for (final r in (brojVoznjiResp as List)) {
+        for (final r in brojVoznjiResp) {
           final pid = r['putnik_id'] as String?;
           if (pid != null) voznjePoId[pid] = (voznjePoId[pid] ?? 0) + 1;
         }
@@ -204,9 +204,9 @@ class V2FinansijeService {
         supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', proslaFrom).lte('datum', proslaTo),
       ]);
 
-      final nedRows = (results[0] as List).cast<Map<String, dynamic>>();
-      final mesRows = (results[1] as List).cast<Map<String, dynamic>>();
-      final proslaRows = (results[2] as List).cast<Map<String, dynamic>>();
+      final nedRows = results[0];
+      final mesRows = results[1];
+      final proslaRows = results[2];
 
       // Troškovi iz troskoviCache (0 DB upita)
       final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values.toList();
@@ -322,25 +322,22 @@ class V2FinansijeService {
       final fromStr = _fmtDate(from);
       final toStr = _fmtDate(to);
 
-      final results = await Future.wait([
-        // v2_statistika_istorija za period
-        supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', fromStr).lte('datum', toStr),
-      ]);
-
-      final voznjeRows = (results[0] as List).cast<Map<String, dynamic>>();
+      final voznjeRows = await supabase
+          .from('v2_statistika_istorija')
+          .select('tip, iznos')
+          .gte('datum', fromStr)
+          .lte('datum', toStr);
 
       // Troškovi za period iz cache-a (aktivan=true, godina i mesec u opsegu from..to)
-      final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values
-          .where((r) {
-            if (r['aktivan'] != true) return false;
-            final g = r['godina'] as int? ?? 0;
-            final m = r['mesec'] as int? ?? 0;
-            if (g < from.year || g > to.year) return false;
-            if (g == from.year && m < from.month) return false;
-            if (g == to.year && m > to.month) return false;
-            return true;
-          })
-          .toList();
+      final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values.where((r) {
+        if (r['aktivan'] != true) return false;
+        final g = r['godina'] as int? ?? 0;
+        final m = r['mesec'] as int? ?? 0;
+        if (g < from.year || g > to.year) return false;
+        if (g == from.year && m < from.month) return false;
+        if (g == to.year && m > to.month) return false;
+        return true;
+      }).toList();
 
       final prihod = _sumirajPrihode(voznjeRows);
       final voznje = _broji(voznjeRows, 'voznja');
@@ -385,7 +382,7 @@ class V2FinansijeService {
 
     controller.onCancel = () {
       debounce?.cancel();
-      sub.cancel();
+      unawaited(sub.cancel());
       controller.close();
     };
 
