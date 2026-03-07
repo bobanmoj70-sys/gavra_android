@@ -145,7 +145,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
     if (_currentDriver != null && _currentDriver!.isNotEmpty) {
       V2RealtimeNotificationService.initialize();
     }
-
   }
 
   Future<void> _loadRaspored() async {
@@ -520,7 +519,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
   }
 
   // OPTIMIZACIJA RUTE
-  void _optimizeCurrentRoute(List<V2Putnik> putnici, {bool isAlreadyOptimized = false}) async {
+  Future<void> _optimizeCurrentRoute(List<V2Putnik> putnici, {bool isAlreadyOptimized = false}) async {
     if (_currentDriver == null || !V2VozacCache.isValidIme(_currentDriver)) {
       if (mounted) {
         V2AppSnackBar.warning(context, 'Morate biti ulogovani i ovlašceni da biste koristili optimizaciju rute.');
@@ -1377,7 +1376,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
   ) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
           width: double.infinity,
@@ -1446,7 +1445,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
                     : ListView.builder(
                         shrinkWrap: true,
                         itemCount: putniciJedanSmer.length,
-                        itemBuilder: (context, index) {
+                        itemBuilder: (_, index) {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4.0),
                             child: Row(
