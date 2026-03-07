@@ -163,7 +163,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       icon: const Icon(Icons.add,
                           color: Colors.white,
                           shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                      onPressed: () => _pokaziDijalogZaDodavanje(),
+                      onPressed: _pokaziDijalogZaDodavanje,
                       tooltip: 'Dodaj novog putnika',
                     ),
                   ],
@@ -851,19 +851,18 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       ),
     );
 
-    if (potvrda == true && mounted) {
-      try {
-        final success = await _rm.v2DeletePutnik(v2Putnik.id, v2Putnik.v2Tabela);
+    if (potvrda != true || !mounted) return;
+    try {
+      final success = await _rm.v2DeletePutnik(v2Putnik.id, v2Putnik.v2Tabela);
 
-        if (success && mounted) {
-          V2AppSnackBar.success(context, '${v2Putnik.ime} je uspešno obrisan');
-        } else if (mounted) {
-          V2AppSnackBar.error(context, 'Greška pri brisanju putnika');
-        }
-      } catch (e) {
-        if (mounted) {
-          V2AppSnackBar.error(context, 'Greška: $e');
-        }
+      if (success && mounted) {
+        V2AppSnackBar.success(context, '${v2Putnik.ime} je uspešno obrisan');
+      } else if (mounted) {
+        V2AppSnackBar.error(context, 'Greška pri brisanju putnika');
+      }
+    } catch (e) {
+      if (mounted) {
+        V2AppSnackBar.error(context, 'Greška: $e');
       }
     }
   }
@@ -958,6 +957,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   Future<void> _pozovi(String brojTelefona) async {
     try {
       final hasPermission = await V2PermissionService.ensurePhonePermissionHuawei();
+      if (!mounted) return;
       if (!hasPermission) {
         if (mounted) {
           V2AppSnackBar.error(context, '❌ Dozvola za pozive je potrebna');
