@@ -79,7 +79,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
     _cachedDan = _selectedDay;
-    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
     _initializeData();
   }
 
@@ -115,6 +114,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
       if (mounted) {
         _selectClosestDeparture();
+        _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
         setState(() => _isLoading = false);
       }
     } catch (e) {
