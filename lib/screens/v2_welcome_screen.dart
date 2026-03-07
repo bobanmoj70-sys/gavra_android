@@ -91,11 +91,12 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       _drivers = vozaci;
       _isLoadingDrivers = false;
     } else {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _drivers = vozaci;
           _isLoadingDrivers = false;
         });
+      }
     }
   }
 
@@ -116,7 +117,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
       // 2. Auto-login — tek kada je V2VozacCache spreman (izbjegava race condition)
       if (mounted) {
-        _ensureNotificationPermissions();
+        unawaited(_ensureNotificationPermissions());
         _checkAutoLoginWhenReady();
       }
     } catch (e) {}
@@ -409,7 +410,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     switch (state) {
       case AppLifecycleState.paused:
         // Aplikacija ide u pozadinu - zaustavi muziku
-        _stopAudio();
+        unawaited(_stopAudio());
         break;
       case AppLifecycleState.resumed:
         // Aplikacija se vraa u foreground - ne radi ništa
@@ -417,11 +418,11 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
         // Zaustavi muziku i u ovim stanjima
-        _stopAudio();
+        unawaited(_stopAudio());
         break;
       case AppLifecycleState.hidden:
         // Zaustavi muziku kada je skrivena
-        _stopAudio();
+        unawaited(_stopAudio());
         break;
     }
   }
@@ -446,6 +447,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
     // "PRVO PROVERI REMEMBERED DEVICE za ovog vozača
     final rememberedDevice = await V2AuthManager.getRememberedDevice();
+    if (!mounted) return;
     if (rememberedDevice != null) {
       final rememberedEmail = rememberedDevice['email']!;
       final rememberedName = rememberedDevice['driverName']!;
@@ -456,11 +458,14 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       if (correctName == driverName) {
         // '? BIOMETRIJA: Traži samo ako sesija nije aktivna (vrati se posle dužeg vremena)
         final sessionActive = await V2AuthManager.isSessionActive();
+        if (!mounted) return;
 
         if (!sessionActive) {
           // Sesija je istekla - proveri biometriju ako je uključena
           final biometricAvailable = await V2BiometricService.isBiometricAvailable();
+          if (!mounted) return;
           final biometricEnabled = await V2BiometricService.isBiometricEnabled();
+          if (!mounted) return;
 
           if (biometricAvailable && biometricEnabled) {
             final authenticated = await V2BiometricService.authenticate(
@@ -843,7 +848,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       ..sort((a, b) => a.ime.compareTo(b.ime));
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext ctx) {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
@@ -872,7 +877,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
               children: [
                 Text(
                   'Izaberi vozača',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -888,7 +893,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pop(context); // Zatvori dijalog
+                          Navigator.pop(ctx); // Zatvori dijalog
                           _loginAsDriver(driver.ime);
                         },
                         child: Container(
@@ -934,7 +939,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                   }),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(ctx),
                   child: Text(
                     'Otkaži',
                     style: TextStyle(
