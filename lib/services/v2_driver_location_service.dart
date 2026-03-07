@@ -90,13 +90,13 @@ class V2DriverLocationService {
 
     // Lokacija (lat/lng) se šalje svake 30s putem V2RealtimeGpsService (bez API).
     // ORS ETA se racuna odvojeno svake 60s.
-    _etaTimer = Timer.periodic(_etaUpdateInterval, (_) => _refreshEta());
+    _etaTimer = Timer.periodic(_etaUpdateInterval, (_) => unawaited(_refreshEta()));
 
     // Prikaži persistent notifikaciju — drži app živ dok vozač prikuplja putnike
     await _showGpsNotif(
       grad: grad,
       vreme: vremePolaska ?? '',
-      putniciCount: putniciEta?.values.where((v) => v >= 0).length ?? 0,
+      putniciCount: remainingPassengers,
     );
 
     return true;
@@ -105,6 +105,7 @@ class V2DriverLocationService {
   /// Rucno stopiranje tracking-a
   Future<void> v2StopTracking() async {
     _etaTimer?.cancel();
+    _etaTimer = null;
     // Postavi flag odmah da spriječi novi _sendCurrentLocation
     _isTracking = false;
 
@@ -157,8 +158,7 @@ class V2DriverLocationService {
     if (_putniciCoordinates == null || _putniciRedosled == null || _currentPutniciEta == null) return;
 
     final aktivniPutnici = _putniciRedosled!
-        .where((ime) =>
-            _currentPutniciEta != null && _currentPutniciEta!.containsKey(ime) && _currentPutniciEta![ime]! >= 0)
+        .where((ime) => _currentPutniciEta!.containsKey(ime) && _currentPutniciEta![ime]! >= 0)
         .toList();
 
     if (aktivniPutnici.isEmpty) return;
@@ -244,7 +244,13 @@ class V2DriverLocationService {
     _isSending = true;
 
     try {
-      final position = knownPosition ?? await Geolocator.getCurrentPosition();
+      final position = knownPosition ??
+          await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 10),
+            ),
+          );
 
       _lastPosition = position;
 
