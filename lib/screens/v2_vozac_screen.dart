@@ -140,6 +140,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     // 3. Ostalo
     _initializeGpsTracking();
+    if (!mounted) return;
     V2LocalNotificationService.initialize(context);
     // _currentDriver je vec setovan u _initializeCurrentDriver() — nema potrebe za dodatnim Firebase pozivom
     if (_currentDriver != null && _currentDriver!.isNotEmpty) {
@@ -671,13 +672,13 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     return InkWell(
       onTap: canPress
-          ? () {
+          ? () async {
               if (_isGpsTracking) {
-                _stopGpsTracking(); // async, fire-and-forget je OK ovdje jer je UI odmah
+                await _stopGpsTracking();
               } else if (_isRouteOptimized) {
-                _startGpsTracking();
+                await _startGpsTracking();
               } else {
-                _optimizeCurrentRoute(filtriraniPutnici, isAlreadyOptimized: false);
+                await _optimizeCurrentRoute(filtriraniPutnici, isAlreadyOptimized: false);
               }
             }
           : null,
