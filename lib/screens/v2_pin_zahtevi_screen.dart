@@ -84,6 +84,7 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
     );
 
     try {
+      if (!mounted) return;
       if (await canLaunchUrl(smsUri)) {
         await launchUrl(smsUri);
       } else {
@@ -189,7 +190,7 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
       if (success) {
         V2AppSnackBar.success(context, '✅ PIN $rezultat dodeljen putniku $ime');
         // Automatski otvori SMS da pošalje PIN
-        if (brojTelefona.isNotEmpty) {
+        if (brojTelefona.isNotEmpty && mounted) {
           await _posaljiPinSms(brojTelefona, rezultat, ime);
         }
       } else {
@@ -233,14 +234,13 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
       ),
     );
 
-    if (potvrda == true) {
-      final success = await V2PinZahtevService.odbijZahtev(zahtevId);
-      if (!mounted) return;
-      if (success) {
-        V2AppSnackBar.warning(context, 'Zahtev od $ime je odbijen');
-      } else {
-        V2AppSnackBar.error(context, 'Greška pri odbijanju');
-      }
+    if (potvrda != true || !mounted) return;
+    final success = await V2PinZahtevService.odbijZahtev(zahtevId);
+    if (!mounted) return;
+    if (success) {
+      V2AppSnackBar.warning(context, 'Zahtev od $ime je odbijen');
+    } else {
+      V2AppSnackBar.error(context, 'Greška pri odbijanju');
     }
   }
 
