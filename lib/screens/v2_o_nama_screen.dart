@@ -50,19 +50,24 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
     }
 
     final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (!mounted) return;
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
+    } else if (mounted) {
+      V2AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za pozive');
     }
   }
 
-  static Future<void> _sendEmail(String email) async {
+  Future<void> _sendEmail(String email) async {
     final Uri launchUri = Uri(scheme: 'mailto', path: email);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
+    } else if (mounted) {
+      V2AppSnackBar.error(context, 'Ne mogu da otvorim email aplikaciju');
     }
   }
 
-  static Future<void> _openMaps() async {
+  Future<void> _openMaps() async {
     // HERE WeGo - besplatno, radi na svim uređajima
     // Koordinate za Mihajla Pupina 74, Bela Crkva
     final Uri launchUri = Uri.parse(
@@ -70,6 +75,8 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
     );
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      V2AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
     }
   }
 
@@ -192,7 +199,7 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
                     _buildInfoRow('Platforma', 'Android'),
                     const SizedBox(height: 12),
                     Text(
-                      '© 2024-2025 Gavra 013. Sva prava zadržana.',
+                      '© 2024-2026 Gavra 013. Sva prava zadržana.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 12,
