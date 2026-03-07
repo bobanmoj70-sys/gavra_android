@@ -57,8 +57,8 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
                   ),
                 ),
                 child: SafeArea(
-                  child: Center(
-                    child: const Text(
+                  child: const Center(
+                    child: Text(
                       'Zahtevi Rezervacija',
                       style: TextStyle(
                         fontSize: 20,
