@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart'; // DODATO za fallback ucitavanje adrese
 import '../utils/v2_dan_utils.dart';
@@ -5,8 +7,6 @@ import '../utils/v2_registrovani_helpers.dart';
 import '../utils/v2_vozac_cache.dart';
 
 class V2Putnik {
-  // NOVO - originalni datum za dnevne putnike (ISO yyyy-MM-dd)
-
   V2Putnik({
     this.id,
     required this.ime,
@@ -68,7 +68,7 @@ class V2Putnik {
       ime: map['ime'] as String? ?? '',
       polazak: '---',
       pokupljen: false,
-      vremeDodavanja: map['created_at'] != null ? DateTime.parse(map['created_at'] as String).toLocal() : null,
+      vremeDodavanja: map['created_at'] != null ? DateTime.tryParse(map['created_at'] as String)?.toLocal() : null,
       dan: '',
       status: map['status'] as String? ?? 'aktivan',
       statusVreme: map['updated_at'] as String?,
@@ -77,7 +77,7 @@ class V2Putnik {
       adresaId: _v2AdresaId(map, grad),
       obrisan: !V2RegistrovaniHelpers.isActiveFromMap(map),
       brojTelefona: map['telefon'] as String?,
-      brojMesta: (map['broj_mesta'] as int?) ?? 1,
+      brojMesta: (map['broj_mesta'] as num?)?.toInt() ?? 1,
       tipPutnika: tipPutnika,
     );
   }
@@ -161,7 +161,7 @@ class V2Putnik {
       final rm = V2MasterRealtimeManager.instance;
       final putnikIdStr = (p['id'] ?? req['putnik_id'])?.toString() ?? '';
       final gradNorm = grad.toUpperCase(); // već je 'BC' ili 'VS'
-      final vremeNorm = V2RegistrovaniHelpers.normalizeTime(vreme) ?? '';
+      final vremeNorm = vreme; // već normalizovan via V2RegistrovaniHelpers.normalizeTime
 
       // 1. Individualna dodjela za ovaj dan+grad+vreme
       final indDodjela = rm.vozacPutnikCache.values.where((vp) {
@@ -185,7 +185,9 @@ class V2Putnik {
           dodeljenVozacFinal = V2VozacCache.getImeByUuid(terminRaspored['vozac_id']?.toString() ?? '');
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('[V2Putnik] v2FromPolazak dodeljenVozac greška: $e');
+    }
 
     return V2Putnik(
       id: p['id'] ?? req['putnik_id'],
@@ -198,7 +200,7 @@ class V2Putnik {
       placeno: isPaid,
       datum: datumStr,
       tipPutnika: tip,
-      brojMesta: req['broj_mesta'] ?? p['broj_mesta'] ?? 1,
+      brojMesta: (req['broj_mesta'] as num?)?.toInt() ?? (p['broj_mesta'] as num?)?.toInt() ?? 1,
       adresa: ((req['adrese'] as Map?)?['naziv'] as String?) ??
           (grad == 'VS'
               ? ((p['adresa_vs'] as Map<String, dynamic>?)?['naziv'] as String?)
@@ -207,18 +209,21 @@ class V2Putnik {
           (grad == 'VS' ? p['adresa_vs_id'] as String? : p['adresa_bc_id'] as String?),
       brojTelefona: p['telefon'] as String?,
       statusVreme: p['updated_at'],
-      vremeDodavanja: p['created_at'] != null ? DateTime.parse(p['created_at']) : null,
-      vremePokupljenja: req['processed_at'] != null ? DateTime.parse(req['processed_at']).toLocal() : null,
+      vremeDodavanja: p['created_at'] != null ? DateTime.tryParse(p['created_at'].toString())?.toLocal() : null,
+      vremePokupljenja:
+          req['processed_at'] != null ? DateTime.tryParse(req['processed_at'].toString())?.toLocal() : null,
       pokupioVozac: req['pokupioVozac'],
       naplatioVozac: req['naplatioVozac'],
       otkazaoVozac: req['otkazaoVozac'],
       pokupioVozacId: req['pokupioVozacId'] as String?,
       naplatioVozacId: req['naplatioVozacId'] as String?,
       otkazaoVozacId: req['otkazaoVozacId'] as String?,
-      cena: isDnevni ? (p['cena'])?.toDouble() : (p['cena_po_danu'])?.toDouble(),
+      cena: isDnevni ? (p['cena'] as num?)?.toDouble() : (p['cena_po_danu'] as num?)?.toDouble(),
       iznosUplate: (req['placen_iznos'] as num?)?.toDouble(),
-      vremePlacanja: req['vreme_placanja'] != null ? DateTime.parse(req['vreme_placanja']).toLocal() : null,
-      vremeOtkazivanja: req['vreme_otkazivanja'] != null ? DateTime.parse(req['vreme_otkazivanja']).toLocal() : null,
+      vremePlacanja:
+          req['vreme_placanja'] != null ? DateTime.tryParse(req['vreme_placanja'].toString())?.toLocal() : null,
+      vremeOtkazivanja:
+          req['vreme_otkazivanja'] != null ? DateTime.tryParse(req['vreme_otkazivanja'].toString())?.toLocal() : null,
       obrisan: false,
       dodeljenVozac: dodeljenVozacFinal,
       requestId: req['id']?.toString(), // ID v2_polasci reda
