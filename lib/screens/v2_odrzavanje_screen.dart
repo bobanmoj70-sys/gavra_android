@@ -393,7 +393,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     final parts = <String>[];
     if (datum != null) parts.add(V2Vozilo.formatDatum(datum));
     if (km != null) parts.add('${_formatBroja.format(km)} km');
-    return parts.join(' �?� ');
+    return parts.join(' · ');
   }
 
   String? _formatGumeSubtitle(DateTime? datum, int? km) {
@@ -401,7 +401,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     final parts = <String>[];
     if (datum != null) parts.add('Menjane: ${V2Vozilo.formatDatum(datum)}');
     if (km != null) parts.add('${_formatBroja.format(km)} km');
-    return parts.join(' �?� ');
+    return parts.join(' · ');
   }
 
   Widget _buildEditableField({
@@ -465,7 +465,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
       ),
     );
   }
-
 
   void _editTextField(String field, String label, String? currentValue, {bool multiline = false}) {
     final controller = TextEditingController(text: currentValue);
@@ -668,11 +667,11 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     String? selectedTip;
     // Pokušaj prepoznati tip iz opisa
     if (opis != null) {
-      if (opis.contains('�~?️') || opis.toLowerCase().contains('letn')) {
+      if (opis.contains('☀️') || opis.toLowerCase().contains('letn')) {
         selectedTip = 'letnje';
-      } else if (opis.contains('�"️') || opis.toLowerCase().contains('zimsk')) {
+      } else if (opis.contains('❄️') || opis.toLowerCase().contains('zimsk')) {
         selectedTip = 'zimske';
-      } else if (opis.contains('�YO�️') ||
+      } else if (opis.contains('🛤️') ||
           opis.toLowerCase().contains('m+s') ||
           opis.toLowerCase().contains('univerzal')) {
         selectedTip = 'ms';
@@ -702,7 +701,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      '�Y>z $label',
+                      '🛄 $label',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
@@ -715,7 +714,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                       children: [
                         Expanded(
                           child: _buildTipGumaChip(
-                            '�~?️ Letnje',
+                            '☀️ Letnje',
                             'letnje',
                             selectedTip,
                             (tip) => setStateDialog(() => selectedTip = tip),
@@ -724,7 +723,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _buildTipGumaChip(
-                            '�"️ Zimske',
+                            '❄️ Zimske',
                             'zimske',
                             selectedTip,
                             (tip) => setStateDialog(() => selectedTip = tip),
@@ -733,7 +732,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _buildTipGumaChip(
-                            '�YO�️ M+S',
+                            '🛤️ M+S',
                             'ms',
                             selectedTip,
                             (tip) => setStateDialog(() => selectedTip = tip),
@@ -804,10 +803,10 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                         String finalOpis = '';
                         if (selectedTip != null) {
                           final tipEmoji = selectedTip == 'letnje'
-                              ? '�~?️'
+                              ? '☀️'
                               : selectedTip == 'zimske'
-                                  ? '�"️'
-                                  : '�YO�️';
+                                  ? '❄️'
+                                  : '🛤️';
                           finalOpis = tipEmoji;
                         }
                         if (opisController.text.isNotEmpty) {
@@ -854,7 +853,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                         if (!context.mounted) return;
                         Navigator.pop(context);
                         if (success) {
-                          V2AppSnackBar.success(context, '�o. Sačuvano');
+                          V2AppSnackBar.success(context, '✅ Sačuvano');
                         }
                       },
                       icon: const Icon(Icons.save),
