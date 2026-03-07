@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
@@ -18,7 +19,8 @@ class V2BiometricService {
   static Future<bool> isDeviceSupported() async {
     try {
       return await _auth.isDeviceSupported();
-    } on PlatformException {
+    } on PlatformException catch (e) {
+      debugPrint('[V2BiometricService] isDeviceSupported greška: $e');
       return false;
     }
   }
@@ -27,7 +29,8 @@ class V2BiometricService {
   static Future<bool> canCheckBiometrics() async {
     try {
       return await _auth.canCheckBiometrics;
-    } on PlatformException {
+    } on PlatformException catch (e) {
+      debugPrint('[V2BiometricService] canCheckBiometrics greška: $e');
       return false;
     }
   }
@@ -36,7 +39,8 @@ class V2BiometricService {
   static Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
       return await _auth.getAvailableBiometrics();
-    } on PlatformException {
+    } on PlatformException catch (e) {
+      debugPrint('[V2BiometricService] getAvailableBiometrics greška: $e');
       return [];
     }
   }
@@ -112,37 +116,34 @@ class V2BiometricService {
       return await _auth.authenticate(
         localizedReason: reason,
       );
-    } on PlatformException {
-      // Biometric auth failed silently
+    } on PlatformException catch (e) {
+      debugPrint('[V2BiometricService] authenticate greška: $e');
       return false;
     }
   }
 
+  /// Dobij tekst i ikonu za tip biometrije odjednom (jedan platform channel poziv)
+  static Future<({String text, String icon})> getBiometricInfo() async {
+    final types = await getAvailableBiometrics();
+    if (types.contains(BiometricType.face)) {
+      return (text: 'Face ID', icon: '\uD83E\uDEAA');
+    } else if (types.contains(BiometricType.fingerprint)) {
+      return (text: 'otisak prsta', icon: '\uD83D\uDC46');
+    } else if (types.contains(BiometricType.iris)) {
+      return (text: 'iris', icon: '\uD83D\uDC41');
+    }
+    return (text: 'biometriju', icon: '\uD83D\uDD10');
+  }
+
   /// Dobij tekst za tip biometrije (za UI)
   static Future<String> getBiometricTypeText() async {
-    final types = await getAvailableBiometrics();
-
-    if (types.contains(BiometricType.face)) {
-      return 'Face ID';
-    } else if (types.contains(BiometricType.fingerprint)) {
-      return 'otisak prsta';
-    } else if (types.contains(BiometricType.iris)) {
-      return 'iris';
-    } else if (types.contains(BiometricType.strong) || types.contains(BiometricType.weak)) {
-      return 'biometriju';
-    }
-    return 'biometriju';
+    final info = await getBiometricInfo();
+    return info.text;
   }
 
   /// Dobij ikonu za tip biometrije
   static Future<String> getBiometricIcon() async {
-    final types = await getAvailableBiometrics();
-
-    if (types.contains(BiometricType.face)) {
-      return ''; // Face ID
-    } else if (types.contains(BiometricType.fingerprint)) {
-      return ''; // Fingerprint
-    }
-    return '🔐';
+    final info = await getBiometricInfo();
+    return info.icon;
   }
 }
