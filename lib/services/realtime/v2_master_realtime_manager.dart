@@ -184,6 +184,22 @@ class V2MasterRealtimeManager {
 
     _initialized = true;
 
+    // Obavijesti sve stream-ove koji su čekali na isInitialized — triggera inicijalni emit
+    if (!_cacheChangeController.isClosed) {
+      for (final table in const [
+        'v2_polasci',
+        'v2_radnici',
+        'v2_ucenici',
+        'v2_dnevni',
+        'v2_posiljke',
+        'v2_vozac_raspored',
+        'v2_vozac_putnik',
+        'v2_statistika_istorija',
+      ]) {
+        _cacheChangeController.add(table);
+      }
+    }
+
     debugPrint(
         '✅ [RM] polasci=${polasciCache.length} radnici=${radniciCache.length} ucenici=${uceniciCache.length} dnevni=${dnevniCache.length} vozaci=${vozaciCache.length}');
   }

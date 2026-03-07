@@ -311,8 +311,15 @@ class V2PolasciService {
       controller.add(result);
     }
 
-    // Emituj odmah (cache je već popunjen pri initialize())
-    Future.microtask(emit);
+    // Inicijalna emisija — ako RM nije gotov, čeka pa emituje
+    Future(() async {
+      if (!rm.isInitialized) {
+        for (int i = 0; i < 50 && !rm.isInitialized; i++) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      }
+      emit();
+    });
 
     // Debounce 150ms — skuplja brze uzastopne v2_polasci evente u jedan emit
     Timer? debounce;
@@ -997,9 +1004,7 @@ class V2PutnikStreamService {
             .from('v2_polasci')
             .update(polasciPayload)
             .eq('putnik_id', putnikId)
-            .inFilter('dan', [danasKratica, sutraKratica])
-            .inFilter('status', ['obrada', 'odobreno'])
-            .select('id');
+            .inFilter('dan', [danasKratica, sutraKratica]).inFilter('status', ['obrada', 'odobreno']).select('id');
         // Batch cache patch za sve pogođene polasci redove
         for (final row in res) {
           rm.v2PatchCache('v2_polasci', row['id'].toString(), polasciPayload);
