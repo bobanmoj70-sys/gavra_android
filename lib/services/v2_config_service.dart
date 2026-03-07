@@ -9,12 +9,15 @@ class V2ConfigService {
 
   String _supabaseUrl = '';
   String _supabaseAnonKey = '';
-  bool _initialized = false;
+  Future<void>? _initFuture;
 
   /// Inicijalizuj osnovne kredencijale.
-  /// Idempotentna — drugi poziv je no-op ako je već inicijalizovano.
-  Future<void> initializeBasic() async {
-    if (_initialized) return;
+  /// Idempotentna i thread-safe — višestruki paralelni pozivi dijele isti Future.
+  Future<void> initializeBasic() {
+    return _initFuture ??= _doInitialize();
+  }
+
+  Future<void> _doInitialize() async {
 
     // Pokušaj učitati .env fajl; u produkciji možda ne postoji — to je OK
     try {
@@ -38,19 +41,17 @@ class V2ConfigService {
       throw Exception('Osnovni kredencijali nisu postavljeni. '
           'Postavite SUPABASE_URL i SUPABASE_ANON_KEY u .env fajlu ili kao --dart-define varijable.');
     }
-
-    _initialized = true;
   }
 
   /// Vraća Supabase URL. Baca [StateError] ako [initializeBasic] nije pozvan.
   String getSupabaseUrl() {
-    if (!_initialized) throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
+    if (_initFuture == null) throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
     return _supabaseUrl;
   }
 
   /// Vraća Supabase anon key. Baca [StateError] ako [initializeBasic] nije pozvan.
   String getSupabaseAnonKey() {
-    if (!_initialized) throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
+    if (_initFuture == null) throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
     return _supabaseAnonKey;
   }
 }
