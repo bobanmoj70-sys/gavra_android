@@ -71,8 +71,10 @@ class V2AuthManager {
           );
         }
       } catch (e) {
+        debugPrint('[V2AuthManager] _updatePushTokenWithUserId HMS greška: $e');
       }
     } catch (e) {
+      debugPrint('[V2AuthManager] _updatePushTokenWithUserId greška: $e');
     }
   }
 
@@ -94,6 +96,7 @@ class V2AuthManager {
         return _cachedDriverName;
       }
     } catch (e) {
+      debugPrint('[V2AuthManager] getCurrentDriver Supabase greška: $e');
     }
 
     // 2. Offline fallback — stari lokalni podatak
@@ -116,6 +119,7 @@ class V2AuthManager {
         try {
           token = await V2HuaweiPushService().getHMSToken();
         } catch (e) {
+          debugPrint('[V2AuthManager] _getDriverFromSupabase HMS greška: $e');
         }
       }
 
@@ -140,6 +144,7 @@ class V2AuthManager {
         }
       }
     } catch (e) {
+      debugPrint('[V2AuthManager] _getDriverFromSupabase greška: $e');
     }
     return null;
   }
@@ -172,12 +177,14 @@ class V2AuthManager {
           }
         }
       } catch (e) {
+        debugPrint('[V2AuthManager] logout clearToken greška: $e');
       }
 
       // 4. Očisti Firebase session
       try {
         await V2FirebaseService.clearCurrentDriver();
       } catch (e) {
+        debugPrint('[V2AuthManager] logout clearCurrentDriver greška: $e');
       }
 
       // 5. Navigiraj na V2WelcomeScreen — koristi globalnu navigatorKey
@@ -193,6 +200,7 @@ class V2AuthManager {
         );
       }
     } catch (e) {
+      debugPrint('[V2AuthManager] logout greška: $e');
       try {
         if (navigatorKey.currentState != null) {
           navigatorKey.currentState!.pushAndRemoveUntil(
@@ -201,6 +209,7 @@ class V2AuthManager {
           );
         }
       } catch (e2) {
+        debugPrint('[V2AuthManager] logout navigacija greška: $e2');
       }
     }
   }

@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
 import '../models/v2_dnevna_predaja.dart';
@@ -9,7 +9,6 @@ class V2DnevnaPredajaService {
   V2DnevnaPredajaService._();
 
   static const String _tabela = 'v2_dnevna_predaja';
-  static SupabaseClient get _db => supabase;
 
   /// Dohvati predaju za vozača i datum.
   /// Vraća null ako zapis ne postoji.
@@ -18,12 +17,16 @@ class V2DnevnaPredajaService {
     required DateTime datum,
   }) async {
     try {
-      final datumStr =
-          '${datum.year}-${datum.month.toString().padLeft(2, '0')}-${datum.day.toString().padLeft(2, '0')}';
-      final row = await _db.from(_tabela).select().eq('vozac_ime', vozacIme).eq('datum', datumStr).maybeSingle();
+      final row = await supabase
+          .from(_tabela)
+          .select()
+          .eq('vozac_ime', vozacIme)
+          .eq('datum', V2DnevnaPredaja.datumStr(datum))
+          .maybeSingle();
       if (row == null) return null;
       return V2DnevnaPredaja.fromJson(row);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2DnevnaPredajaService] get greška: $e');
       return null;
     }
   }
@@ -38,18 +41,20 @@ class V2DnevnaPredajaService {
   }) async {
     try {
       final razlika = ukupnoNaplaceno != null ? predaoIznos - ukupnoNaplaceno : null;
-      final predaja = V2DnevnaPredaja(
-        id: '', // ignorisano pri upsertu
-        vozacIme: vozacIme,
-        datum: datum,
-        predaoIznos: predaoIznos,
-        ukupnoNaplaceno: ukupnoNaplaceno,
-        razlika: razlika,
-        updatedAt: DateTime.now(),
+      await supabase.from(_tabela).upsert(
+        {
+          'vozac_ime': vozacIme,
+          'datum': V2DnevnaPredaja.datumStr(datum),
+          'predao_iznos': predaoIznos,
+          if (ukupnoNaplaceno != null) 'ukupno_naplaceno': ukupnoNaplaceno,
+          if (razlika != null) 'razlika': razlika,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        },
+        onConflict: 'vozac_ime,datum',
       );
-      await _db.from(_tabela).upsert(predaja.toUpsertJson(), onConflict: 'vozac_ime,datum');
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2DnevnaPredajaService] upsert greška: $e');
       return false;
     }
   }
@@ -57,11 +62,10 @@ class V2DnevnaPredajaService {
   /// Lista svih predaja za određeni datum (svi vozači).
   static Future<List<V2DnevnaPredaja>> getByDatum(DateTime datum) async {
     try {
-      final datumStr =
-          '${datum.year}-${datum.month.toString().padLeft(2, '0')}-${datum.day.toString().padLeft(2, '0')}';
-      final rows = await _db.from(_tabela).select().eq('datum', datumStr) as List;
+      final rows = await supabase.from(_tabela).select().eq('datum', V2DnevnaPredaja.datumStr(datum)) as List;
       return rows.map((r) => V2DnevnaPredaja.fromJson(r)).toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2DnevnaPredajaService] getByDatum greška: $e');
       return [];
     }
   }
@@ -69,9 +73,11 @@ class V2DnevnaPredajaService {
   /// Lista svih predaja za vozača (sve dane).
   static Future<List<V2DnevnaPredaja>> getByVozac(String vozacIme) async {
     try {
-      final rows = await _db.from(_tabela).select().eq('vozac_ime', vozacIme).order('datum', ascending: false) as List;
+      final rows =
+          await supabase.from(_tabela).select().eq('vozac_ime', vozacIme).order('datum', ascending: false) as List;
       return rows.map((r) => V2DnevnaPredaja.fromJson(r)).toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[V2DnevnaPredajaService] getByVozac greška: $e');
       return [];
     }
   }

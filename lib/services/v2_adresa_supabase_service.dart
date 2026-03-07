@@ -67,12 +67,10 @@ class V2AdresaSupabaseService {
   static Future<V2Adresa?> createOrGetAdresa({
     required String naziv,
     required String grad,
-    double? lat,
-    double? lng,
   }) async {
     final postojeca = findAdresaByNazivAndGrad(naziv, grad);
     if (postojeca != null) {
-      if (!postojeca.hasValidCoordinates && lat != null && lng != null) {
+      if (!postojeca.hasValidCoordinates) {
         final updated = await _geocodeAndUpdateAdresa(postojeca, grad);
         if (updated != null) return updated;
       }
@@ -107,6 +105,7 @@ class V2AdresaSupabaseService {
         }
       }
     } catch (e) {
+      debugPrint('[V2AdresaSupabaseService] _geocodeAndUpdateAdresa greška: $e');
     }
     return null;
   }
@@ -122,6 +121,7 @@ class V2AdresaSupabaseService {
       V2MasterRealtimeManager.instance.v2PatchCache('v2_adrese', uuid, {'gps_lat': lat, 'gps_lng': lng});
       return true;
     } catch (e) {
+      debugPrint('[V2AdresaSupabaseService] updateKoordinate greška: $e');
       return false;
     }
   }
@@ -140,8 +140,11 @@ class V2AdresaSupabaseService {
     if (lat != null) insertData['gps_lat'] = lat;
     if (lng != null) insertData['gps_lng'] = lng;
 
-    final row =
-        await supabase.from('v2_adrese').insert(insertData).select('id, naziv, grad, gps_lat, gps_lng').single();
+    final row = await supabase
+        .from('v2_adrese')
+        .insert(insertData)
+        .select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at')
+        .single();
     V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', row);
     return V2Adresa.fromMap(row);
   }

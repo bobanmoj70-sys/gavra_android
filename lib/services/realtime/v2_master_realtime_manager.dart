@@ -43,8 +43,6 @@ class V2MasterRealtimeManager {
   static final V2MasterRealtimeManager _instance = V2MasterRealtimeManager._internal();
   static V2MasterRealtimeManager get instance => _instance;
 
-  SupabaseClient get _db => supabase;
-
   // ──────────────────────────────────────────────────────────────────────────
   // IN-MEMORY CACHE — ključ je uvek 'id' reda
   // ──────────────────────────────────────────────────────────────────────────
@@ -215,7 +213,7 @@ class V2MasterRealtimeManager {
 
   Future<void> _loadPolasciCache() async {
     try {
-      final rows = await _db
+      final rows = await supabase
           .from('v2_polasci')
           .select('id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
               'status, created_at, updated_at, processed_at, broj_mesta, '
@@ -241,7 +239,7 @@ class V2MasterRealtimeManager {
   /// Puni/osvežava statistikaCache za tekući dan — poziva se on-demand (pazar, profil, lista)
   Future<void> v2LoadStatistikaCache() async {
     try {
-      final rows = await _db
+      final rows = await supabase
           .from('v2_statistika_istorija')
           .select(
             'id, putnik_id, putnik_ime, putnik_tabela, datum, dan, '
@@ -261,14 +259,14 @@ class V2MasterRealtimeManager {
   Future<void> _loadPutniciCaches() async {
     try {
       final results = await Future.wait([
-        _db
+        supabase
             .from('v2_radnici')
             .select(
               'id, ime, status, telefon, telefon_2, adresa_bc_id, adresa_vs_id, '
               'pin, email, cena_po_danu, broj_mesta, treba_racun, created_at, updated_at',
             )
             .eq('status', 'aktivan'),
-        _db
+        supabase
             .from('v2_ucenici')
             .select(
               'id, ime, status, telefon, telefon_oca, telefon_majke, '
@@ -276,14 +274,14 @@ class V2MasterRealtimeManager {
               'treba_racun, created_at, updated_at',
             )
             .eq('status', 'aktivan'),
-        _db
+        supabase
             .from('v2_dnevni')
             .select(
               'id, ime, status, telefon, telefon_2, adresa_bc_id, adresa_vs_id, '
               'pin, email, cena, broj_mesta, treba_racun, created_at, updated_at',
             )
             .eq('status', 'aktivan'),
-        _db
+        supabase
             .from('v2_posiljke')
             .select(
               'id, ime, status, telefon, adresa_bc_id, adresa_vs_id, '
@@ -312,35 +310,37 @@ class V2MasterRealtimeManager {
   Future<void> _loadInfraCache() async {
     try {
       final results = await Future.wait([
-        _db.from('v2_vozaci').select('id, ime, email, telefon, sifra, boja'),
-        _db.from('v2_vozila').select('id, registarski_broj, marka, model, godina_proizvodnje, kilometraza, napomena, '
-            'broj_sasije, registracija_vazi_do, '
-            'mali_servis_datum, mali_servis_km, veliki_servis_datum, veliki_servis_km, '
-            'alternator_datum, alternator_km, akumulator_datum, akumulator_km, '
-            'gume_datum, gume_opis, gume_prednje_datum, gume_prednje_opis, gume_prednje_km, '
-            'gume_zadnje_datum, gume_zadnje_opis, gume_zadnje_km, '
-            'plocice_datum, plocice_km, plocice_prednje_datum, plocice_prednje_km, '
-            'plocice_zadnje_datum, plocice_zadnje_km, trap_datum, trap_km, radio'),
-        _db.from('v2_kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
-        _db.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at'),
-        _db.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id, created_at, updated_at'),
-        _db
+        supabase.from('v2_vozaci').select('id, ime, email, telefon, sifra, boja'),
+        supabase
+            .from('v2_vozila')
+            .select('id, registarski_broj, marka, model, godina_proizvodnje, kilometraza, napomena, '
+                'broj_sasije, registracija_vazi_do, '
+                'mali_servis_datum, mali_servis_km, veliki_servis_datum, veliki_servis_km, '
+                'alternator_datum, alternator_km, akumulator_datum, akumulator_km, '
+                'gume_datum, gume_opis, gume_prednje_datum, gume_prednje_opis, gume_prednje_km, '
+                'gume_zadnje_datum, gume_zadnje_opis, gume_zadnje_km, '
+                'plocice_datum, plocice_km, plocice_prednje_datum, plocice_prednje_km, '
+                'plocice_zadnje_datum, plocice_zadnje_km, trap_datum, trap_km, radio'),
+        supabase.from('v2_kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
+        supabase.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at'),
+        supabase.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id, created_at, updated_at'),
+        supabase
             .from('v2_vozac_putnik')
             .select('id, putnik_id, putnik_tabela, vozac_id, dan, grad, vreme, created_at, updated_at'),
-        _db
+        supabase
             .from('v2_finansije_troskovi')
             .select('id, naziv, iznos, tip, aktivan, mesecno, vozac_id, mesec, godina, created_at')
             .eq('aktivan', true),
-        _db.from('v2_pumpa_config').select('id, kapacitet_litri, alarm_nivo, pocetno_stanje, updated_at'),
-        _db
+        supabase.from('v2_pumpa_config').select('id, kapacitet_litri, alarm_nivo, pocetno_stanje, updated_at'),
+        supabase
             .from('v2_vozac_lokacije')
             .select('id, vozac_id, lat, lng, grad, vreme_polaska, smer, putnici_eta, aktivan, updated_at')
             .eq('aktivan', true),
-        _db
+        supabase
             .from('v2_pin_zahtevi')
             .select('id, putnik_id, putnik_tabela, email, telefon, status, created_at, updated_at')
             .eq('status', 'ceka'),
-        _db.from('v2_app_settings').select(
+        supabase.from('v2_app_settings').select(
             'id, min_version, latest_version, store_url_android, store_url_huawei, store_url_ios, nav_bar_type, updated_at'),
       ]);
 
@@ -366,7 +366,7 @@ class V2MasterRealtimeManager {
   /// Učitava sve v2_racuni zapise u racuniCache (keyed by putnik_id)
   Future<void> _loadRacuniCache() async {
     try {
-      final rows = await _db.from('v2_racuni').select(
+      final rows = await supabase.from('v2_racuni').select(
           'id, putnik_id, putnik_tabela, firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa, updated_at');
       racuniCache.clear();
       _racuniIdToPutnikId.clear();
@@ -386,7 +386,7 @@ class V2MasterRealtimeManager {
   /// Učitava posljednjih 200 audit log zapisa u auditLogCache (keyed by id).
   Future<void> _loadAuditLogCache() async {
     try {
-      final rows = await _db
+      final rows = await supabase
           .from('v2_audit_log')
           .select('id, tip, aktor_id, aktor_ime, aktor_tip, putnik_id, putnik_ime, putnik_tabela, '
               'dan, grad, vreme, polazak_id, detalji, created_at')
@@ -570,7 +570,7 @@ class V2MasterRealtimeManager {
   }
 
   void _createChannel(String table) {
-    final channel = _db.channel('v2master:$table');
+    final channel = supabase.channel('v2master:$table');
 
     channel
         .onPostgresChanges(
@@ -625,7 +625,7 @@ class V2MasterRealtimeManager {
         _cacheChangeController.add('v2_racuni');
       } else if (table == 'v2_audit_log') {
         // Audit log: reload posljednjih 200 zapisa (nema filter po danu — sve je relevantno)
-        final rows = await _db
+        final rows = await supabase
             .from('v2_audit_log')
             .select('id, tip, aktor_id, aktor_ime, aktor_tip, putnik_id, putnik_ime, putnik_tabela, '
                 'dan, grad, vreme, polazak_id, detalji, created_at')
@@ -646,12 +646,12 @@ class V2MasterRealtimeManager {
           'v2_ucenici' ||
           'v2_dnevni' ||
           'v2_posiljke' =>
-            _db.from(table).select().eq('status', 'aktivan'),
-          'v2_kapacitet_polazaka' => _db.from(table).select().eq('aktivan', true),
-          'v2_vozac_lokacije' => _db.from(table).select().eq('aktivan', true),
-          'v2_finansije_troskovi' => _db.from(table).select().eq('aktivan', true),
-          'v2_pin_zahtevi' => _db.from(table).select().eq('status', 'ceka'),
-          _ => _db.from(table).select(),
+            supabase.from(table).select().eq('status', 'aktivan'),
+          'v2_kapacitet_polazaka' => supabase.from(table).select().eq('aktivan', true),
+          'v2_vozac_lokacije' => supabase.from(table).select().eq('aktivan', true),
+          'v2_finansije_troskovi' => supabase.from(table).select().eq('aktivan', true),
+          'v2_pin_zahtevi' => supabase.from(table).select().eq('status', 'ceka'),
+          _ => supabase.from(table).select(),
         };
         final rows = await query;
         targetCache.clear();
@@ -722,7 +722,7 @@ class V2MasterRealtimeManager {
       final existing = _channels[table];
       if (existing != null) {
         try {
-          await _db.removeChannel(existing);
+          await supabase.removeChannel(existing);
         } catch (_) {}
         _channels.remove(table);
       }
@@ -819,7 +819,7 @@ class V2MasterRealtimeManager {
     data['updated_at'] = DateTime.now().toUtc().toIso8601String();
     data.remove('_tabela');
     data.remove('tip');
-    final row = await _db.from(tabela).update(data).eq('id', id).select().single();
+    final row = await supabase.from(tabela).update(data).eq('id', id).select().single();
     final result = {...row, '_tabela': tabela};
     v2UpsertToCache(tabela, result);
     return result;
@@ -837,7 +837,7 @@ class V2MasterRealtimeManager {
     d.remove('_tabela');
     d.remove('tip');
     if (d['id'] == null) d.remove('id');
-    final row = await _db.from(tabela).insert(d).select().single();
+    final row = await supabase.from(tabela).insert(d).select().single();
     final result = {...row, '_tabela': tabela};
     v2UpsertToCache(tabela, result);
     return result;
@@ -846,10 +846,10 @@ class V2MasterRealtimeManager {
   /// Briše putnika i sve vezane podatke (trajno)
   Future<bool> v2DeletePutnik(String id, String tabela) async {
     try {
-      await _db.from('v2_pin_zahtevi').delete().eq('putnik_id', id);
-      await _db.from('v2_polasci').delete().eq('putnik_id', id);
-      await _db.from('v2_vozac_putnik').delete().eq('putnik_id', id);
-      await _db.from(tabela).delete().eq('id', id);
+      await supabase.from('v2_pin_zahtevi').delete().eq('putnik_id', id);
+      await supabase.from('v2_polasci').delete().eq('putnik_id', id);
+      await supabase.from('v2_vozac_putnik').delete().eq('putnik_id', id);
+      await supabase.from(tabela).delete().eq('id', id);
       // Ukloni putnika iz glavnog cache-a
       v2RemoveFromCache(tabela, id);
       // Odmah očisti sve vezane redove iz polasciCache i vozacPutnikCache
@@ -874,7 +874,7 @@ class V2MasterRealtimeManager {
 
   /// Ažurira PIN putnika
   Future<void> v2UpdatePin(String id, String noviPin, String tabela) async {
-    await _db.from(tabela).update({
+    await supabase.from(tabela).update({
       'pin': noviPin,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', id);
@@ -886,7 +886,7 @@ class V2MasterRealtimeManager {
     final cached = racuniCache[putnikId];
     if (cached != null) return cached;
     try {
-      final row = await _db
+      final row = await supabase
           .from('v2_racuni')
           .select('firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa')
           .eq('putnik_id', putnikId)
@@ -911,7 +911,7 @@ class V2MasterRealtimeManager {
     String? firmaZiro,
     String? firmaAdresa,
   }) async {
-    await _db.from('v2_racuni').upsert({
+    await supabase.from('v2_racuni').upsert({
       'putnik_id': putnikId,
       'putnik_tabela': putnikTabela,
       'firma_naziv': firmaNaziv,
@@ -925,7 +925,7 @@ class V2MasterRealtimeManager {
 
   /// Dohvata putnika po PIN-u iz date tabele
   Future<Map<String, dynamic>?> v2GetByPin(String pin, String tabela) async {
-    final row = await _db
+    final row = await supabase
         .from(tabela)
         .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
         .eq('pin', pin)
@@ -939,7 +939,7 @@ class V2MasterRealtimeManager {
     final cached = v2GetPutnikById(id);
     if (cached != null) return cached;
     for (final tabela in putnikTabele) {
-      final row = await _db
+      final row = await supabase
           .from(tabela)
           .select(
               'id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,cena,cena_po_danu,created_at,updated_at')
@@ -971,7 +971,7 @@ class V2MasterRealtimeManager {
 
     // Fallback: DB upit (cache prazan ili putnik neaktivan)
     for (final tabela in putnikTabele) {
-      final svi = await _db
+      final svi = await supabase
           .from(tabela)
           .select(
               'id, ime, telefon, telefon_2, adresa_bc_id, adresa_vs_id, status, pin, email, treba_racun, created_at, updated_at')

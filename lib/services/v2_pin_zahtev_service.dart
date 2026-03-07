@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
 import '../models/v2_putnik.dart';
@@ -11,7 +11,6 @@ import 'v2_realtime_notification_service.dart';
 /// Servis za upravljanje PIN zahtevima putnika
 class V2PinZahtevService {
   V2PinZahtevService._();
-  static SupabaseClient get _supabase => supabase;
 
   static Future<bool> posaljiZahtev({
     required String putnikId,
@@ -20,7 +19,7 @@ class V2PinZahtevService {
     String? putnikTabela,
   }) async {
     try {
-      final existing = await _supabase
+      final existing = await supabase
           .from('v2_pin_zahtevi')
           .select('id')
           .eq('putnik_id', putnikId)
@@ -31,7 +30,7 @@ class V2PinZahtevService {
         return true;
       }
 
-      await _supabase.from('v2_pin_zahtevi').insert({
+      await supabase.from('v2_pin_zahtevi').insert({
         'putnik_id': putnikId,
         'email': email,
         'telefon': telefon,
@@ -48,6 +47,7 @@ class V2PinZahtevService {
 
       return true;
     } catch (e) {
+      debugPrint('[V2PinZahtevService] posaljiZahtev greška: $e');
       return false;
     }
   }
@@ -98,10 +98,10 @@ class V2PinZahtevService {
       final putnikTabela = zahtev['putnik_tabela'] as String? ?? '';
 
       if (putnikTabela.isNotEmpty) {
-        await _supabase.from(putnikTabela).update({'pin': pin}).eq('id', putnikId);
+        await supabase.from(putnikTabela).update({'pin': pin}).eq('id', putnikId);
       }
 
-      await _supabase.from('v2_pin_zahtevi').update({
+      await supabase.from('v2_pin_zahtevi').update({
         'status': 'odobren',
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
@@ -118,13 +118,14 @@ class V2PinZahtevService {
 
       return true;
     } catch (e) {
+      debugPrint('[V2PinZahtevService] odobriZahtev greška: $e');
       return false;
     }
   }
 
   static Future<bool> odbijZahtev(String zahtevId) async {
     try {
-      await _supabase.from('v2_pin_zahtevi').update({
+      await supabase.from('v2_pin_zahtevi').update({
         'status': 'odbijen',
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
@@ -133,6 +134,7 @@ class V2PinZahtevService {
 
       return true;
     } catch (e) {
+      debugPrint('[V2PinZahtevService] odbijZahtev greška: $e');
       return false;
     }
   }
@@ -155,7 +157,7 @@ class V2PinZahtevService {
     if (izCachea) return true;
 
     try {
-      final row = await _supabase
+      final row = await supabase
           .from('v2_pin_zahtevi')
           .select('id')
           .eq('putnik_id', putnikId)
@@ -163,6 +165,7 @@ class V2PinZahtevService {
           .maybeSingle();
       return row != null;
     } catch (e) {
+      debugPrint('[V2PinZahtevService] imaZahtevKojiCekuAsync greška: $e');
       return false;
     }
   }
@@ -174,7 +177,7 @@ class V2PinZahtevService {
     required String putnikTabela,
   }) async {
     try {
-      await _supabase.from('v2_pin_zahtevi').insert({
+      await supabase.from('v2_pin_zahtevi').insert({
         'putnik_id': putnikId,
         'putnik_tabela': putnikTabela,
         'status': 'direktna_izmena',
@@ -193,10 +196,11 @@ class V2PinZahtevService {
   }) async {
     try {
       if (putnikTabela.isNotEmpty) {
-        await _supabase.from(putnikTabela).update({'email': email}).eq('id', putnikId);
+        await supabase.from(putnikTabela).update({'email': email}).eq('id', putnikId);
       }
       return true;
     } catch (e) {
+      debugPrint('[V2PinZahtevService] azurirajEmail greška: $e');
       return false;
     }
   }

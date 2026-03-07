@@ -1,15 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
 /// Servis za računanje prihoda, troškova i neto zarade
 class V2FinansijeService {
-  static SupabaseClient get _supabase => supabase;
-
   /// Dohvati sve aktivne troškove za određeni mesec/godinu (čita iz cache-a)
   static Future<List<V2Trosak>> getTroskovi({int? mesec, int? godina}) async {
     try {
@@ -32,6 +29,7 @@ class V2FinansijeService {
       }).toList()
         ..sort((a, b) => a.tip.compareTo(b.tip));
     } catch (e) {
+      debugPrint('[V2FinansijeService] getTroskovi greška: $e');
       return [];
     }
   }
@@ -39,10 +37,11 @@ class V2FinansijeService {
   /// Ažuriraj trošak
   static Future<bool> updateTrosak(String id, double noviIznos) async {
     try {
-      await _supabase.from('v2_finansije_troskovi').update({'iznos': noviIznos}).eq('id', id);
+      await supabase.from('v2_finansije_troskovi').update({'iznos': noviIznos}).eq('id', id);
       V2MasterRealtimeManager.instance.v2PatchCache('v2_finansije_troskovi', id, {'iznos': noviIznos});
       return true;
     } catch (e) {
+      debugPrint('[V2FinansijeService] updateTrosak greška: $e');
       return false;
     }
   }
@@ -51,7 +50,7 @@ class V2FinansijeService {
   static Future<bool> addTrosak(String naziv, String tip, double iznos, {int? mesec, int? godina}) async {
     try {
       final now = DateTime.now();
-      final row = await _supabase
+      final row = await supabase
           .from('v2_finansije_troskovi')
           .insert({
             'naziv': naziv,
@@ -68,6 +67,7 @@ class V2FinansijeService {
 
       return true;
     } catch (e) {
+      debugPrint('[V2FinansijeService] addTrosak greška: $e');
       return false;
     }
   }
@@ -75,10 +75,11 @@ class V2FinansijeService {
   /// Obriši trošak (soft delete)
   static Future<bool> deleteTrosak(String id) async {
     try {
-      await _supabase.from('v2_finansije_troskovi').update({'aktivan': false}).eq('id', id);
+      await supabase.from('v2_finansije_troskovi').update({'aktivan': false}).eq('id', id);
       V2MasterRealtimeManager.instance.v2PatchCache('v2_finansije_troskovi', id, {'aktivan': false});
       return true;
     } catch (e) {
+      debugPrint('[V2FinansijeService] deleteTrosak greška: $e');
       return false;
     }
   }
@@ -94,13 +95,13 @@ class V2FinansijeService {
 
       // Paralelno dohvati vožnje i uplate za ovaj mesec
       final [voznjeResp, uplateResp] = await Future.wait([
-        _supabase
+        supabase
             .from('v2_statistika_istorija')
             .select('putnik_id')
             .eq('tip', 'voznja')
             .filter('datum', 'gte', mesecOd)
             .filter('datum', 'lte', mesecDo),
-        _supabase
+        supabase
             .from('v2_statistika_istorija')
             .select('putnik_id')
             .inFilter('tip', ['uplata'])
@@ -147,7 +148,7 @@ class V2FinansijeService {
 
       // Jedan batch DB upit za sve dnevne dužnike
       if (dnevniDuznici.isNotEmpty) {
-        final brojVoznjiResp = await _supabase
+        final brojVoznjiResp = await supabase
             .from('v2_statistika_istorija')
             .select('putnik_id')
             .inFilter('putnik_id', dnevniDuznici)
@@ -172,6 +173,7 @@ class V2FinansijeService {
 
       return ukupnoDug;
     } catch (e) {
+      debugPrint('[V2FinansijeService] getPotrazivanja greška: $e');
       return 0;
     }
   }
@@ -195,11 +197,11 @@ class V2FinansijeService {
       // Paralelni upiti iz v2_statistika_istorija (trošovi se čitaju iz troskoviCache)
       final results = await Future.wait([
         // 0: nedelja
-        _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', nedFrom).lte('datum', nedTo),
+        supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', nedFrom).lte('datum', nedTo),
         // 1: mesec
-        _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', mesFrom).lte('datum', mesTo),
+        supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', mesFrom).lte('datum', mesTo),
         // 2: prosla godina
-        _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', proslaFrom).lte('datum', proslaTo),
+        supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', proslaFrom).lte('datum', proslaTo),
       ]);
 
       final nedRows = (results[0] as List).cast<Map<String, dynamic>>();
@@ -261,6 +263,7 @@ class V2FinansijeService {
         endNedelja: sundayThisWeek,
       );
     } catch (e) {
+      debugPrint('[V2FinansijeService] getIzvestaj greška: $e');
       return _getEmptyIzvestaj();
     }
   }
@@ -321,7 +324,7 @@ class V2FinansijeService {
 
       final results = await Future.wait([
         // v2_statistika_istorija za period
-        _supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', fromStr).lte('datum', toStr),
+        supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', fromStr).lte('datum', toStr),
       ]);
 
       final voznjeRows = (results[0] as List).cast<Map<String, dynamic>>();
@@ -343,6 +346,7 @@ class V2FinansijeService {
         'neto': prihod - troskovi,
       };
     } catch (e) {
+      debugPrint('[V2FinansijeService] getIzvestajZaPeriod greška: $e');
       return {'prihod': 0, 'voznje': 0, 'troskovi': 0, 'neto': 0};
     }
   }
@@ -359,6 +363,7 @@ class V2FinansijeService {
         final izvestaj = await getIzvestaj();
         if (!controller.isClosed) controller.add(izvestaj);
       } catch (e) {
+        debugPrint('[V2FinansijeService] streamIzvestaj emit greška: $e');
       }
     }
 

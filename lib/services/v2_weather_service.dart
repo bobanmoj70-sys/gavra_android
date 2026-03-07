@@ -173,6 +173,7 @@ class V2WeatherService {
                   break;
                 }
               } catch (e) {
+                debugPrint('[V2WeatherService] parse hourTime greška: $e');
               }
             }
           }
@@ -201,6 +202,7 @@ class V2WeatherService {
         return weatherData;
       }
     } catch (e) {
+      debugPrint('[V2WeatherService] getWeatherData greška: $e');
       return null;
     }
 

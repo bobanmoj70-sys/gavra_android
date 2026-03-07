@@ -67,6 +67,7 @@ class V2HuaweiPushService {
         }
       }
     } catch (e) {
+      debugPrint('[V2HuaweiPushService] initialize deviceInfo greška: $e');
     }
 
     // Ako je vec inicijalizovan, vrati null
@@ -114,11 +115,13 @@ class V2HuaweiPushService {
         try {
           final appId = await Push.getAppId();
         } catch (e) {
+          debugPrint('[V2HuaweiPushService] getAppId greška: $e');
         }
 
         try {
           await Push.getAgConnectValues();
         } catch (e) {
+          debugPrint('[V2HuaweiPushService] getAgConnectValues greška: $e');
         }
 
         // Request the token explicitly: the Push.getToken requires a scope
@@ -154,6 +157,7 @@ class V2HuaweiPushService {
           _initializing = false;
           return firstValue;
         } else {
+          debugPrint('[V2HuaweiPushService] getTokenStream: prazan token');
         }
       } catch (e) {
         // If HMS is not available, don't keep trying
@@ -212,10 +216,11 @@ class V2HuaweiPushService {
             payload: jsonEncode(data),
           );
         } catch (e) {
+          debugPrint('[V2HuaweiPushService] _setupMessageListener poruka greška: $e');
         }
       });
-
     } catch (e) {
+      debugPrint('[V2HuaweiPushService] _setupMessageListener setup greška: $e');
     }
   }
 
@@ -226,6 +231,7 @@ class V2HuaweiPushService {
     try {
       driverName = await V2AuthManager.getCurrentDriver();
     } catch (e) {
+      debugPrint('[V2HuaweiPushService] _registerTokenWithServer getCurrentDriver greška: $e');
       driverName = null;
     }
 
@@ -241,6 +247,7 @@ class V2HuaweiPushService {
         vozacId: V2VozacCache.getUuidByIme(driverName),
       );
     } catch (e) {
+      debugPrint('[V2HuaweiPushService] _registerTokenWithServer greška: $e');
     }
   }
 

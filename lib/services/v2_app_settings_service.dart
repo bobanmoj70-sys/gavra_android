@@ -22,7 +22,10 @@ class V2AppSettingsService {
     try {
       final rm = V2MasterRealtimeManager.instance;
       final response = rm.settingsCache['global'];
-      if (response == null) return;
+      if (response == null) {
+        debugPrint('[V2AppSettingsService] settingsCache nema "global" red — ostaju default vrednosti.');
+        return;
+      }
 
       final navBarType = response['nav_bar_type'] as String? ?? 'letnji';
       navBarTypeNotifier.value = navBarType;
@@ -36,7 +39,7 @@ class V2AppSettingsService {
         storeUrlIos: response['store_url_ios'] as String?,
       );
     } catch (e) {
-      // Ako nema reda, ostavi default vrednosti
+      debugPrint('[V2AppSettingsService] _loadSettings greška: $e');
     }
   }
 
@@ -78,10 +81,10 @@ class V2AppSettingsService {
         updateInfoNotifier.value = null;
       }
     } catch (e) {
+      debugPrint('[V2AppSettingsService] _checkForUpdates greška: $e');
     }
   }
 
-  /// Parsira "6.0.61" u listu integera [6, 0, 61]
   static List<int> _parseVersion(String version) {
     return version.split('.').map((p) => int.tryParse(p.trim()) ?? 0).toList();
   }
@@ -118,6 +121,7 @@ class V2AppSettingsService {
       await V2StatistikaIstorijaService.logGeneric(
           tip: 'admin_akcija', detalji: 'Promenjen red vožnje na: ${type.toUpperCase()}');
     } catch (e) {
+      debugPrint('[V2AppSettingsService] setNavBarType logGeneric greška: $e');
     }
   }
 }

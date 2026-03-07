@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import 'v2_push_token_service.dart';
@@ -14,8 +13,6 @@ import 'v2_weather_service.dart';
 /// - Gusta magla
 class V2WeatherAlertService {
   V2WeatherAlertService._();
-
-  static SupabaseClient get _supabase => supabase;
 
   /// Glavna funkcija - proverava prognozu i šalje upozorenje ako treba
   /// Poziva se na app startup (main.dart)
@@ -50,8 +47,8 @@ class V2WeatherAlertService {
 
       // Oznaci da je poslato
       await _markAlertSent(alerts.join(', '));
-
     } catch (e) {
+      debugPrint('[V2WeatherAlertService] checkAndSendWeatherAlerts greška: $e');
     }
   }
 
@@ -94,7 +91,7 @@ class V2WeatherAlertService {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
-      final response = await _supabase
+      final response = await supabase
           .from('v2_weather_alerts_log')
           .select('id')
           .eq('alert_date', today.toIso8601String().split('T')[0])
@@ -102,6 +99,7 @@ class V2WeatherAlertService {
 
       return response != null;
     } catch (e) {
+      debugPrint('[V2WeatherAlertService] _isAlertAlreadySentToday greška: $e');
       // Ako tabela ne postoji, vrati false
       return false;
     }
@@ -131,8 +129,8 @@ class V2WeatherAlertService {
           'alerts': alerts.join('|'),
         },
       );
-
     } catch (e) {
+      debugPrint('[V2WeatherAlertService] _sendWeatherAlert greška: $e');
     }
   }
 
@@ -153,11 +151,12 @@ class V2WeatherAlertService {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
-      await _supabase.from('v2_weather_alerts_log').insert({
+      await supabase.from('v2_weather_alerts_log').insert({
         'alert_date': today.toIso8601String().split('T')[0],
         'alert_types': alertTypes,
       });
     } catch (e) {
+      debugPrint('[V2WeatherAlertService] _markAlertSent greška: $e');
     }
   }
 }

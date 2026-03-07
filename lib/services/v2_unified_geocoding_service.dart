@@ -243,11 +243,10 @@ class V2UnifiedGeocodingService {
         await V2AdresaSupabaseService.createOrGetAdresa(
           naziv: putnik.adresa!,
           grad: putnik.grad,
-          lat: lat,
-          lng: lng,
         );
       }
     } catch (e) {
+      debugPrint('[V2UnifiedGeocodingService] _saveCoordinatesToDatabase greška: $e');
     }
   }
 
@@ -392,6 +391,7 @@ class V2UnifiedGeocodingService {
         }
       }
     } catch (e) {
+      debugPrint('[V2UnifiedGeocodingService] _fetchFromPhoton greška: $e');
     }
     return null;
   }

@@ -40,6 +40,7 @@ class V2NotificationNavigationService {
         );
       }
     } catch (e) {
+      debugPrint('[V2NotificationNavigationService] navigateToPassengerProfile greška: $e');
     }
   }
 
@@ -56,6 +57,7 @@ class V2NotificationNavigationService {
         );
       }
     } catch (e) {
+      debugPrint('[V2NotificationNavigationService] navigateToVozacScreen greška: $e');
     }
   }
 
@@ -73,6 +75,7 @@ class V2NotificationNavigationService {
         );
       }
     } catch (e) {
+      debugPrint('[V2NotificationNavigationService] navigateToPinZahtevi greška: $e');
     }
   }
 

@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
 import 'realtime/v2_master_realtime_manager.dart';
@@ -13,9 +13,6 @@ import 'v2_huawei_push_service.dart';
 /// - Pending token mehanizam za offline scenarije
 class V2PushTokenService {
   V2PushTokenService._();
-
-  /// Lazy getter - pristupa Supabase tek kada je potrebno i inicijalizovan
-  static SupabaseClient get _supabase => supabase;
 
   /// Proveri da li je Supabase inicijalizovan
   static bool get _isSupabaseReady => isSupabaseReady;
@@ -48,14 +45,14 @@ class V2PushTokenService {
 
       // Obrisi stare tokene za istog putnika
       if (putnikId != null && putnikId.isNotEmpty) {
-        await _supabase.from('v2_push_tokens').delete().eq('putnik_id', putnikId).timeout(timeout).catchError((e) {
+        await supabase.from('v2_push_tokens').delete().eq('putnik_id', putnikId).timeout(timeout).catchError((e) {
           return <dynamic>[];
         });
       }
 
       // Obrisi stare tokene za istog vozaca
       if (vozacId != null && vozacId.isNotEmpty) {
-        await _supabase.from('v2_push_tokens').delete().eq('vozac_id', vozacId).timeout(timeout).catchError((e) {
+        await supabase.from('v2_push_tokens').delete().eq('vozac_id', vozacId).timeout(timeout).catchError((e) {
           return <dynamic>[];
         });
       }
@@ -71,7 +68,7 @@ class V2PushTokenService {
       if (putnikId != null && putnikId.isNotEmpty) data['putnik_id'] = putnikId;
       if (putnikTabela != null && putnikTabela.isNotEmpty) data['putnik_tabela'] = putnikTabela;
 
-      await _supabase.from('v2_push_tokens').upsert(data, onConflict: 'token').timeout(timeout);
+      await supabase.from('v2_push_tokens').upsert(data, onConflict: 'token').timeout(timeout);
 
       // Obriši pending token ako postoji (uspešno registrovan)
       await _clearPendingToken();
@@ -130,17 +127,18 @@ class V2PushTokenService {
   }) async {
     try {
       if (token != null) {
-        await _supabase.from('v2_push_tokens').delete().eq('token', token);
+        await supabase.from('v2_push_tokens').delete().eq('token', token);
       } else if (putnikId != null) {
-        await _supabase.from('v2_push_tokens').delete().eq('putnik_id', putnikId);
+        await supabase.from('v2_push_tokens').delete().eq('putnik_id', putnikId);
       } else if (vozacId != null) {
-        await _supabase.from('v2_push_tokens').delete().eq('vozac_id', vozacId);
+        await supabase.from('v2_push_tokens').delete().eq('vozac_id', vozacId);
       } else {
         return false;
       }
 
       return true;
     } catch (e) {
+      debugPrint('[V2PushTokenService] clearToken greška: $e');
       return false;
     }
   }
@@ -151,7 +149,7 @@ class V2PushTokenService {
 
     try {
       final response =
-          await _supabase.from('v2_push_tokens').select('vozac_id, token, provider').inFilter('vozac_id', vozacIds);
+          await supabase.from('v2_push_tokens').select('vozac_id, token, provider').inFilter('vozac_id', vozacIds);
 
       return response
           .map<Map<String, String>>((row) => {
@@ -162,6 +160,7 @@ class V2PushTokenService {
           .where((t) => t['token']!.isNotEmpty)
           .toList();
     } catch (e) {
+      debugPrint('[V2PushTokenService] getTokensForUsers greška: $e');
       return [];
     }
   }
@@ -170,7 +169,7 @@ class V2PushTokenService {
   static Future<List<Map<String, String>>> getTokensForVozaci() async {
     try {
       final response =
-          await _supabase.from('v2_push_tokens').select('vozac_id, token, provider').not('vozac_id', 'is', null);
+          await supabase.from('v2_push_tokens').select('vozac_id, token, provider').not('vozac_id', 'is', null);
 
       return response
           .map<Map<String, String>>((row) => {
@@ -181,6 +180,7 @@ class V2PushTokenService {
           .where((t) => t['token']!.isNotEmpty)
           .toList();
     } catch (e) {
+      debugPrint('[V2PushTokenService] getTokensForVozaci greška: $e');
       return [];
     }
   }
@@ -227,6 +227,7 @@ class V2PutnikPushService {
 
       return success;
     } catch (e) {
+      debugPrint('[V2PutnikPushService] registerPutnikToken greška: $e');
       return false;
     }
   }

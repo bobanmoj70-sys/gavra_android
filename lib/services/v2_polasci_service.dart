@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart' as globals_file;
 import '../globals.dart';
@@ -17,8 +16,6 @@ import 'v2_statistika_istorija_service.dart';
 /// Servis za upravljanje aktivnim zahtevima za sedišta (v2_polasci tabela)
 class V2PolasciService {
   V2PolasciService._();
-
-  static SupabaseClient get _supabase => supabase;
 
   /// UNIFIKOVANA ULAZNA TAČKA — koriste je svi akteri (V2Putnik, admin, vozač)
   ///
@@ -54,7 +51,7 @@ class V2PolasciService {
       //   'bez_polaska' ima prioritet 0 → automatski se pregazi kad putnik pošalje nov zahtev.
       // isAdmin=false → 'cancelled': putnik sam menja zahtev na drugo vreme
       final cancelledStatus = isAdmin ? 'bez_polaska' : 'cancelled';
-      final cancelledRows = await _supabase
+      final cancelledRows = await supabase
           .from('v2_polasci')
           .update({'status': cancelledStatus, 'updated_at': nowStr})
           .eq('putnik_id', putnikId)
@@ -68,7 +65,7 @@ class V2PolasciService {
       }
 
       // 2. Upsert po (putnik_id, grad, dan, zeljeno_vreme) — uvijek ide ispočetka kroz obradu
-      final existing = await _supabase
+      final existing = await supabase
           .from('v2_polasci')
           .select('id')
           .eq('putnik_id', putnikId)
@@ -91,10 +88,10 @@ class V2PolasciService {
           'updated_at': nowStr,
         };
         final updated =
-            await _supabase.from('v2_polasci').update(updatePayload).eq('id', existing['id']).select().single();
+            await supabase.from('v2_polasci').update(updatePayload).eq('id', existing['id']).select().single();
         rm.v2UpsertToCache('v2_polasci', updated);
       } else {
-        final inserted = await _supabase
+        final inserted = await supabase
             .from('v2_polasci')
             .insert({
               'putnik_id': putnikId,
@@ -158,7 +155,7 @@ class V2PolasciService {
       final danKey = dan.toLowerCase();
       final nowStr = DateTime.now().toUtc().toIso8601String();
 
-      final res = await _supabase
+      final res = await supabase
           .from('v2_polasci')
           .update({'broj_mesta': brojMesta, 'updated_at': nowStr})
           .eq('putnik_id', putnikId)
@@ -170,6 +167,7 @@ class V2PolasciService {
 
       return res.isNotEmpty;
     } catch (e) {
+      debugPrint('[V2PolasciService] v2SetBrojMesta greška: $e');
       return false;
     }
   }
@@ -183,7 +181,7 @@ class V2PolasciService {
       // Fallback: DB upit ako iz nekog razloga nije u cache-u
       final cachedRow = V2MasterRealtimeManager.instance.polasciCache[id];
       final zeljenoVreme = cachedRow?['zeljeno_vreme'] ??
-          (await _supabase.from('v2_polasci').select('zeljeno_vreme').eq('id', id).single())['zeljeno_vreme'];
+          (await supabase.from('v2_polasci').select('zeljeno_vreme').eq('id', id).single())['zeljeno_vreme'];
 
       // 2. Odobri i upisi dodeljeno_vreme = zeljeno_vreme
       final approvePayload = {
@@ -193,7 +191,7 @@ class V2PolasciService {
         'processed_at': nowStr,
         if (approvedBy != null) 'odobrio': approvedBy,
       };
-      await _supabase.from('v2_polasci').update(approvePayload).eq('id', id);
+      await supabase.from('v2_polasci').update(approvePayload).eq('id', id);
       V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', id, approvePayload);
 
       // Audit log
@@ -215,6 +213,7 @@ class V2PolasciService {
 
       return true;
     } catch (e) {
+      debugPrint('[V2PolasciService] v2OdobriZahtev greška: $e');
       return false;
     }
   }
@@ -229,7 +228,7 @@ class V2PolasciService {
         'processed_at': nowStr,
         if (rejectedBy != null) 'otkazao': rejectedBy,
       };
-      await _supabase.from('v2_polasci').update(rejectPayload).eq('id', id);
+      await supabase.from('v2_polasci').update(rejectPayload).eq('id', id);
       V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', id, rejectPayload);
 
       // Audit log
@@ -251,6 +250,7 @@ class V2PolasciService {
 
       return true;
     } catch (e) {
+      debugPrint('[V2PolasciService] v2OdbijZahtev greška: $e');
       return false;
     }
   }
@@ -356,11 +356,11 @@ class V2PolasciService {
           'processed_at': nowStr,
           'updated_at': nowStr,
         };
-        await _supabase.from('v2_polasci').update(altPayload).eq('id', requestId);
+        await supabase.from('v2_polasci').update(altPayload).eq('id', requestId);
         rm.v2PatchCache('v2_polasci', requestId, altPayload);
       } else {
         // Ako nema requestId, kreiraj novi zahtev (fallback)
-        final inserted = await _supabase
+        final inserted = await supabase
             .from('v2_polasci')
             .insert({
               'putnik_id': putnikId,
@@ -377,6 +377,7 @@ class V2PolasciService {
       }
       return true;
     } catch (e) {
+      debugPrint('[V2PolasciService] v2PrihvatiAlternativu greška: $e');
       return false;
     }
   }
@@ -524,7 +525,8 @@ class V2PolasciService {
 /// Servis za putnike — read metode čitaju iz V2MasterRealtimeManager cache-a,
 /// write metode pišu direktno u bazu.
 class V2PutnikStreamService {
-  SupabaseClient get supabase => globals_file.supabase;
+  // ignore: unnecessary_getters_setters
+  dynamic get supabase => globals_file.supabase;
 
   // ──────────────────────────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
@@ -920,6 +922,7 @@ class V2PutnikStreamService {
         rm.v2PatchCache('v2_polasci', updatedId, payload);
       }
     } catch (e) {
+      debugPrint('[V2PutnikStreamService] v2OznaciPokupljen greška: $e');
       return;
     }
 
@@ -1039,7 +1042,9 @@ class V2PutnikStreamService {
         final res = await supabase.from('v2_polasci').update(updatePayload).eq('id', requestId).select('id');
         polasciUpdated = res.isNotEmpty;
         if (polasciUpdated) updatedId = requestId;
-      } catch (e) {}
+      } catch (e) {
+        debugPrint('[V2PutnikStreamService] v2OtkaziPutnika (requestId) greška: $e');
+      }
     }
 
     if (!polasciUpdated) {
@@ -1116,7 +1121,9 @@ class V2PutnikStreamService {
         vreme: selectedVreme ?? vreme,
         datum: datum,
       );
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('[V2PutnikStreamService] v2OtkaziPutnika statistika greška: $e');
+    }
 
     // Audit log — ko je otkazao i koji status
     final putnikRow = V2MasterRealtimeManager.instance.v2GetPutnikById(id.toString());
@@ -1226,7 +1233,7 @@ class V2PutnikStreamService {
     );
 
     // Audit log — zabilježi naplatu
-    final _gradForAudit = grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null;
+    final gradForAudit = grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null;
     V2AuditLogService.log(
       tip: 'naplata',
       aktorId: vozacId,
@@ -1236,7 +1243,7 @@ class V2PutnikStreamService {
       putnikIme: putnikIme,
       putnikTabela: putnikTabela,
       dan: selectedDan,
-      grad: _gradForAudit,
+      grad: gradForAudit,
       vreme: selectedVreme,
       polazakId: requestId?.isNotEmpty == true ? requestId : null,
       novo: {'placen': true, 'iznos': iznos.toDouble()},

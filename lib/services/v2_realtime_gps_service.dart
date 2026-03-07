@@ -49,6 +49,7 @@ class V2RealtimeGpsService {
         _speedController.add(speedKmh);
       },
       onError: (error) {
+        debugPrint('[V2RealtimeGpsService] GPS stream greška: $error');
       },
     );
   }

@@ -18,6 +18,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final payload = Map<String, dynamic>.from(message.data);
     await backgroundNotificationHandler(payload);
   } catch (e) {
+    debugPrint('[V2FirebaseService] firebaseMessagingBackgroundHandler greška: $e');
   }
 }
 
@@ -32,6 +33,7 @@ Future<void> backgroundNotificationHandler(Map<String, dynamic> payload) async {
       payload: jsonEncode(payload),
     );
   } catch (e) {
+    debugPrint('[V2FirebaseService] backgroundNotificationHandler greška: $e');
   }
 }
 
@@ -53,8 +55,10 @@ class V2FirebaseService {
       try {
         await messaging.requestPermission();
       } catch (e) {
+        debugPrint('[V2FirebaseService] initialize requestPermission greška: $e');
       }
     } catch (e) {
+      debugPrint('[V2FirebaseService] initialize greška: $e');
     }
   }
 
@@ -82,6 +86,7 @@ class V2FirebaseService {
       final messaging = FirebaseMessaging.instance;
       return await messaging.getToken();
     } catch (e) {
+      debugPrint('[V2FirebaseService] getFCMToken greška: $e');
       return null;
     }
   }
@@ -98,6 +103,7 @@ class V2FirebaseService {
       try {
         await messaging.requestPermission();
       } catch (e) {
+        debugPrint('[V2FirebaseService] _registerTokenWithServer requestPermission greška: $e');
       }
 
       // Get token
@@ -111,6 +117,7 @@ class V2FirebaseService {
             await _registerTokenWithServer(newToken);
           },
           onError: (error) {
+            debugPrint('[V2FirebaseService] tokenRefresh onError: $error');
           },
         );
 
@@ -119,6 +126,7 @@ class V2FirebaseService {
 
       return null;
     } catch (e) {
+      debugPrint('[V2FirebaseService] initializeAndRegisterToken greška: $e');
       return null;
     }
   }
@@ -142,6 +150,7 @@ class V2FirebaseService {
         putnikIme = prefs.getString('registrovani_putnik_ime');
       }
     } catch (e) {
+      debugPrint('[V2FirebaseService] _registerTokenWithServer dohvat vozaca greška: $e');
     }
 
     // Registruj ako imamo bilo koga
@@ -160,8 +169,10 @@ class V2FirebaseService {
           putnikId: putnikId,
         );
       } else {
+        debugPrint('[V2FirebaseService] _registerTokenWithServer: nema ni vozaca ni putnika');
       }
     } catch (e) {
+      debugPrint('[V2FirebaseService] _registerTokenWithServer greška: $e');
     }
   }
 
@@ -192,9 +203,11 @@ class V2FirebaseService {
           V2LocalNotificationService.showRealtimeNotification(
               title: title, body: body, payload: message.data.isNotEmpty ? jsonEncode(message.data) : null);
         } catch (e) {
+          debugPrint('[V2FirebaseService] setupFCMListeners onMessage greška: $e');
         }
       },
       onError: (error) {
+        debugPrint('[V2FirebaseService] setupFCMListeners onMessage onError: $error');
       },
     );
 
@@ -204,9 +217,11 @@ class V2FirebaseService {
           // Navigate or handle tap
           V2RealtimeNotificationService.handleInitialMessage(message.data);
         } catch (e) {
+          debugPrint('[V2FirebaseService] setupFCMListeners onMessageOpenedApp greška: $e');
         }
       },
       onError: (error) {
+        debugPrint('[V2FirebaseService] setupFCMListeners onMessageOpenedApp onError: $error');
       },
     );
   }

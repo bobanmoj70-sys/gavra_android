@@ -31,9 +31,8 @@ void notificationTapBackground(NotificationResponse notificationResponse) async 
       anonKey: anonKey,
     );
   } catch (e) {
+    debugPrint('[V2LocalNotificationService] notificationTapBackground Supabase init greška: $e');
   }
-
-  // 2. Prosledi hendleru
   await V2LocalNotificationService.handleNotificationTap(notificationResponse);
 }
 
@@ -54,6 +53,7 @@ class V2LocalNotificationService {
     try {
       await flutterLocalNotificationsPlugin.cancelAll();
     } catch (e) {
+      debugPrint('[V2LocalNotificationService] initialize cancelAll greška: $e');
     }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -140,6 +140,7 @@ class V2LocalNotificationService {
       try {
         await V2WakeLockService.wakeScreen(durationMs: 5000);
       } catch (e) {
+        debugPrint('[V2LocalNotificationService] wakeScreen greška: $e');
       }
 
       // Specijalna obrada za alternative notifikacije
@@ -172,6 +173,7 @@ class V2LocalNotificationService {
             return;
           }
         } catch (e) {
+          debugPrint('[V2LocalNotificationService] showRealtimeNotification alternativa parse greška: $e');
         }
       }
 
@@ -265,6 +267,7 @@ class V2LocalNotificationService {
             dedupeKey = data['notification_id'].toString();
           }
         } catch (e) {
+          debugPrint('[V2LocalNotificationService] showNotificationFromBackground payload parse greška: $e');
         }
       }
 
@@ -593,6 +596,7 @@ class V2LocalNotificationService {
           detalji: 'Prihvaćen alternativni termin BC (Preko notifikacije)',
         );
       } catch (e) {
+        debugPrint('[V2LocalNotificationService] logPotvrda BC alt greška: $e');
       }
 
       // Pošalji push notifikaciju putniku
@@ -603,6 +607,7 @@ class V2LocalNotificationService {
         data: {'type': 'bc_alternativa_confirmed', 'termin': termin},
       );
     } catch (e) {
+      debugPrint('[V2LocalNotificationService] _handleBcAlternativaAction greška: $e');
     }
   }
 
@@ -644,6 +649,7 @@ class V2LocalNotificationService {
           detalji: 'Prihvaćen alternativni termin VS (Preko notifikacije)',
         );
       } catch (e) {
+        debugPrint('[V2LocalNotificationService] logPotvrda VS greška: $e');
       }
 
       // Pošalji push notifikaciju putniku
@@ -654,6 +660,7 @@ class V2LocalNotificationService {
         data: {'type': 'vs_alternativa_confirmed', 'termin': termin},
       );
     } catch (e) {
+      debugPrint('[V2LocalNotificationService] _handleVsAlternativaAction greška: $e');
     }
   }
 
@@ -722,6 +729,7 @@ class V2LocalNotificationService {
         payload: payload,
       );
     } catch (e) {
+      debugPrint('[V2LocalNotificationService] showV2AlternativaNotification greška: $e');
     }
   }
 
@@ -749,10 +757,11 @@ class V2LocalNotificationService {
         dan: dan,
       );
 
-      if (success) {
-      } else {
+      if (!success) {
+        debugPrint('[V2LocalNotificationService] _handleV2AlternativaAction: prihvatiAlternativu nije uspjelo');
       }
     } catch (e) {
+      debugPrint('[V2LocalNotificationService] _handleV2AlternativaAction greška: $e');
     }
   }
 }

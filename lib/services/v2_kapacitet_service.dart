@@ -11,28 +11,10 @@ class V2KapacitetService {
   V2KapacitetService._();
 
   /// Vremena polazaka za Belu Crkvu (prema navBarType)
-  static List<String> get bcVremena {
-    final navType = navBarTypeNotifier.value;
-    if (navType == 'praznici') {
-      return V2RouteConfig.bcVremenaPraznici;
-    } else if (navType == 'zimski') {
-      return V2RouteConfig.bcVremenaZimski;
-    } else {
-      return V2RouteConfig.bcVremenaLetnji;
-    }
-  }
+  static List<String> get bcVremena => V2RouteConfig.getVremenaByNavType('BC');
 
   /// Vremena polazaka za Vrsac (prema navBarType)
-  static List<String> get vsVremena {
-    final navType = navBarTypeNotifier.value;
-    if (navType == 'praznici') {
-      return V2RouteConfig.vsVremenaPraznici;
-    } else if (navType == 'zimski') {
-      return V2RouteConfig.vsVremenaZimski;
-    } else {
-      return V2RouteConfig.vsVremenaLetnji;
-    }
-  }
+  static List<String> get vsVremena => V2RouteConfig.getVremenaByNavType('VS');
 
   /// Sva moguca vremena (zimska + letnja + praznicna) - za kapacitet tabelu
   static List<String> get svaVremenaBc {
@@ -47,22 +29,18 @@ class V2KapacitetService {
 
   /// Dohvati vremena za grad (sezonski)
   static List<String> getVremenaZaGrad(String grad) {
-    if (grad == 'BC') {
-      return bcVremena;
-    } else if (grad == 'VS') {
-      return vsVremena;
-    }
-    return bcVremena; // default
+    if (grad == 'BC') return bcVremena;
+    if (grad == 'VS') return vsVremena;
+    assert(false, 'getVremenaZaGrad: nepoznat grad "$grad"');
+    return bcVremena;
   }
 
   /// Dohvati sva moguca vremena za grad (obe sezone) - za kapacitet tabelu
   static List<String> getSvaVremenaZaGrad(String grad) {
-    if (grad == 'BC') {
-      return svaVremenaBc;
-    } else if (grad == 'VS') {
-      return svaVremenaVs;
-    }
-    return svaVremenaBc; // default
+    if (grad == 'BC') return svaVremenaBc;
+    if (grad == 'VS') return svaVremenaVs;
+    assert(false, 'getSvaVremenaZaGrad: nepoznat grad "$grad"');
+    return svaVremenaBc;
   }
 
   /// Admin: Promeni kapacitet za odredeni polazak (atomski upsert — nema race condition)
@@ -79,6 +57,7 @@ class V2KapacitetService {
       V2MasterRealtimeManager.instance.v2UpsertToCache('v2_kapacitet_polazaka', row);
       return true;
     } catch (e) {
+      debugPrint('[V2KapacitetService] setKapacitet greška: $e');
       return false;
     }
   }

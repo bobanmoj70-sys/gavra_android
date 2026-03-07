@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import 'realtime/v2_master_realtime_manager.dart';
@@ -57,7 +56,6 @@ class V2VozacRasporedEntry {
 class V2VozacRasporedService {
   V2VozacRasporedService._();
 
-  static SupabaseClient get _supabase => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
   static List<V2VozacRasporedEntry> loadAll() {
@@ -66,13 +64,14 @@ class V2VozacRasporedService {
 
   static Future<void> upsert(V2VozacRasporedEntry entry) async {
     try {
-      final row = await _supabase
+      final row = await supabase
           .from('v2_vozac_raspored')
           .upsert(entry.toMap(), onConflict: 'dan,grad,vreme')
           .select()
           .single();
       _rm.v2UpsertToCache('v2_vozac_raspored', row);
     } catch (e) {
+      debugPrint('[V2VozacRasporedService] upsert greška: $e');
     }
   }
 
@@ -83,7 +82,7 @@ class V2VozacRasporedService {
     required String vozacId,
   }) async {
     try {
-      await _supabase
+      await supabase
           .from('v2_vozac_raspored')
           .delete()
           .eq('dan', dan)
@@ -103,6 +102,7 @@ class V2VozacRasporedService {
         _rm.v2RemoveFromCache('v2_vozac_raspored', id);
       }
     } catch (e) {
+      debugPrint('[V2VozacRasporedService] deleteTermin greška: $e');
     }
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v2_pumpa_punjenje.dart';
@@ -17,8 +16,6 @@ import 'v2_pumpa_service.dart';
 class V2GorivoService {
   V2GorivoService._();
 
-  static SupabaseClient get _db => supabase;
-
   // ─────────────────────────────────────────────────────────────
   // STANJE PUMPE (v2_pumpa_stanje VIEW)
   // ─────────────────────────────────────────────────────────────
@@ -26,13 +23,14 @@ class V2GorivoService {
   /// Dohvati trenutno stanje pumpe
   static Future<V2PumpaStanje?> getStanje() async {
     try {
-      final response = await _db
+      final response = await supabase
           .from('v2_pumpa_stanje')
           .select(
               'kapacitet_litri,alarm_nivo,pocetno_stanje,ukupno_punjeno,ukupno_utroseno,trenutno_stanje,procenat_pune')
           .single();
       return V2PumpaStanje.fromJson(response);
     } catch (e) {
+      debugPrint('[V2GorivoService] getStanje greška: $e');
       return null;
     }
   }
@@ -94,7 +92,7 @@ class V2GorivoService {
 
       // Ažuriraj kilometražu vozila ako je unesena
       if (kmVozila != null) {
-        await _db.from('v2_vozila').update({'kilometraza': kmVozila}).eq('id', voziloId);
+        await supabase.from('v2_vozila').update({'kilometraza': kmVozila}).eq('id', voziloId);
       }
 
       // Kreiraj trošak u finansijama (ako postoji cijena)
@@ -111,6 +109,7 @@ class V2GorivoService {
 
       return true;
     } catch (e) {
+      debugPrint('[V2GorivoService] addTocenje greška: $e');
       return false;
     }
   }
@@ -160,6 +159,7 @@ class V2GorivoService {
       lista.sort((a, b) => b.ukupnoLitri.compareTo(a.ukupnoLitri));
       return lista;
     } catch (e) {
+      debugPrint('[V2GorivoService] getStatistikePoVozilu greška: $e');
       return [];
     }
   }

@@ -119,8 +119,8 @@ class V2DriverLocationService {
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('vozac_id', _currentVozacId!);
       } catch (e) {
+        debugPrint('[V2DriverLocationService] v2StopTracking greška: $e');
       }
-    } else {
     }
 
     _currentVozacId = null;
@@ -177,6 +177,7 @@ class V2DriverLocationService {
       }
       await _sendCurrentLocation();
     } else {
+      debugPrint('[V2DriverLocationService] _refreshEta: ORS API nije vratio ETA, zadržan stari');
     }
   }
 
@@ -268,6 +269,7 @@ class V2DriverLocationService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'vozac_id');
     } catch (e) {
+      debugPrint('[V2DriverLocationService] _sendCurrentLocation greška: $e');
     } finally {
       _isSending = false; // Oslobodi lock bez obzira na ishod
     }

@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v2_pumpa_config.dart';
@@ -23,7 +22,6 @@ class V2PumpaConfigService {
 
   static const String tabela = 'v2_pumpa_config';
 
-  static SupabaseClient get _db => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
   /// Dohvati konfiguraciju pumpe — čita iz RM cache-a (0 DB upita)
@@ -47,12 +45,13 @@ class V2PumpaConfigService {
       if (alarmNivo != null) data['alarm_nivo'] = alarmNivo;
       if (pocetnoStanje != null) data['pocetno_stanje'] = pocetnoStanje;
 
-      await _db.from(tabela).update(data);
+      await supabase.from(tabela).update(data);
       // Patch cache za sve redove (pumpa ima samo 1 red)
       final id = _rm.pumpaCache.keys.firstOrNull;
       if (id != null) _rm.v2PatchCache(tabela, id, data);
       return true;
     } catch (e) {
+      debugPrint('[V2PumpaConfigService] updateConfig greška: $e');
       return false;
     }
   }
@@ -68,12 +67,10 @@ class V2PumpaPunjenjaService {
 
   static const String tabela = 'v2_pumpa_punjenja';
 
-  static SupabaseClient get _db => supabase;
-
   /// Dohvati sva punjenja (najnovija prva)
   static Future<List<V2PumpaPunjenje>> getPunjenja({int limit = 50}) async {
     try {
-      final response = await _db
+      final response = await supabase
           .from(tabela)
           .select('id,datum,litri,cena_po_litru,ukupno_cena,napomena,created_at')
           .order('datum', ascending: false)
@@ -81,6 +78,7 @@ class V2PumpaPunjenjaService {
           .limit(limit);
       return (response as List).map((r) => V2PumpaPunjenje.fromJson(r)).toList();
     } catch (e) {
+      debugPrint('[V2PumpaPunjenjaService] getPunjenja greška: $e');
       return [];
     }
   }
@@ -93,7 +91,7 @@ class V2PumpaPunjenjaService {
     String? napomena,
   }) async {
     try {
-      await _db.from(tabela).insert({
+      await supabase.from(tabela).insert({
         'datum': datum.toIso8601String().split('T')[0],
         'litri': litri,
         'cena_po_litru': cenaPoPLitru,
@@ -102,6 +100,7 @@ class V2PumpaPunjenjaService {
       });
       return true;
     } catch (e) {
+      debugPrint('[V2PumpaPunjenjaService] addPunjenje greška: $e');
       return false;
     }
   }
@@ -109,9 +108,10 @@ class V2PumpaPunjenjaService {
   /// Obriši punjenje
   static Future<bool> deletePunjenje(String id) async {
     try {
-      await _db.from(tabela).delete().eq('id', id);
+      await supabase.from(tabela).delete().eq('id', id);
       return true;
     } catch (e) {
+      debugPrint('[V2PumpaPunjenjaService] deletePunjenje greška: $e');
       return false;
     }
   }
@@ -119,7 +119,7 @@ class V2PumpaPunjenjaService {
   /// Posljednja cijena po litru
   static Future<double?> getPoslednaCenaPoPLitru() async {
     try {
-      final response = await _db
+      final response = await supabase
           .from(tabela)
           .select('cena_po_litru')
           .not('cena_po_litru', 'is', null)
@@ -130,6 +130,7 @@ class V2PumpaPunjenjaService {
       if (response == null) return null;
       return (response['cena_po_litru'] as num?)?.toDouble();
     } catch (e) {
+      debugPrint('[V2PumpaPunjenjaService] getPoslednaCenaPoPLitru greška: $e');
       return null;
     }
   }
@@ -145,15 +146,13 @@ class V2PumpaTocenjaService {
 
   static const String tabela = 'v2_pumpa_tocenja';
 
-  static SupabaseClient get _db => supabase;
-
   /// Dohvati sva točenja (najnovija prva), opcionalno filtrirano po vozilu
   static Future<List<V2PumpaTocenje>> getTocenja({
     int limit = 100,
     String? voziloId,
   }) async {
     try {
-      var query = _db
+      var query = supabase
           .from(tabela)
           .select('id,datum,vozilo_id,litri,km_vozila,napomena,created_at,v2_vozila(registarski_broj,marka,model)');
 
@@ -163,6 +162,7 @@ class V2PumpaTocenjaService {
           .limit(limit);
       return (response as List).map((r) => V2PumpaTocenje.fromJson(r)).toList();
     } catch (e) {
+      debugPrint('[V2PumpaTocenjaService] getTocenja greška: $e');
       return [];
     }
   }
@@ -176,7 +176,7 @@ class V2PumpaTocenjaService {
     String? napomena,
   }) async {
     try {
-      await _db.from(tabela).insert({
+      await supabase.from(tabela).insert({
         'datum': datum.toIso8601String().split('T')[0],
         'vozilo_id': voziloId,
         'litri': litri,
@@ -185,6 +185,7 @@ class V2PumpaTocenjaService {
       });
       return true;
     } catch (e) {
+      debugPrint('[V2PumpaTocenjaService] addTocenje greška: $e');
       return false;
     }
   }
@@ -192,9 +193,10 @@ class V2PumpaTocenjaService {
   /// Obriši točenje
   static Future<bool> deleteTocenje(String id) async {
     try {
-      await _db.from(tabela).delete().eq('id', id);
+      await supabase.from(tabela).delete().eq('id', id);
       return true;
     } catch (e) {
+      debugPrint('[V2PumpaTocenjaService] deleteTocenje greška: $e');
       return false;
     }
   }
@@ -205,13 +207,15 @@ class V2PumpaTocenjaService {
     DateTime? do_,
   }) async {
     try {
-      var query = _db.from(tabela).select('vozilo_id, litri, km_vozila, v2_vozila(registarski_broj, marka, model)');
+      var query =
+          supabase.from(tabela).select('vozilo_id, litri, km_vozila, v2_vozila(registarski_broj, marka, model)');
 
       if (od != null) query = query.gte('datum', od.toIso8601String().split('T')[0]);
       if (do_ != null) query = query.lte('datum', do_.toIso8601String().split('T')[0]);
 
       return List<Map<String, dynamic>>.from(await query);
     } catch (e) {
+      debugPrint('[V2PumpaTocenjaService] getTocenjaZaStatistike greška: $e');
       return [];
     }
   }

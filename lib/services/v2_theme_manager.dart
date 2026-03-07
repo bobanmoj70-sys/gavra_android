@@ -53,6 +53,7 @@ class V2ThemeManager extends ChangeNotifier {
         _currentTheme = defaultTheme;
       }
     } catch (e) {
+      debugPrint('[V2ThemeManager] initialize greška: $e');
       final defaultTheme = V2ThemeRegistry.defaultTheme;
       _currentThemeId = defaultTheme.id;
       _currentTheme = defaultTheme;
@@ -73,6 +74,7 @@ class V2ThemeManager extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_themePrefsKey, themeId);
     } catch (e) {
+      debugPrint('[V2ThemeManager] changeTheme spremi greška: $e');
     }
 
     _currentThemeId = themeId;

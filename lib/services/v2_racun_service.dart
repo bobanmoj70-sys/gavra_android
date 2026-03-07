@@ -7,7 +7,6 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -33,7 +32,6 @@ class V2RacunService {
       'Račun je punovažan bez pečata i potpisa u skladu sa Zakonom o privrednim društvima';
 
   // ========== AUTO-INCREMENT BROJ RAČUNA (BAZA) ==========
-  static SupabaseClient get _supabase => supabase;
 
   /// Vraća sledeći broj računa u formatu "X/YYYY" i automatski uvećava brojač u BAZI
   /// Atomska operacija putem optimistic locking - sprečava duplikate između vozača
@@ -46,11 +44,11 @@ class V2RacunService {
       for (int attempt = 0; attempt < 5; attempt++) {
         // Čitaj trenutni broj
         final selectResp =
-            await _supabase.from('v2_racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
+            await supabase.from('v2_racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
 
         if (selectResp == null) {
           // Red ne postoji — kreiraj ga s brojem 1
-          await _supabase.from('v2_racun_sequence').insert({'godina': godina, 'poslednji_broj': 1});
+          await supabase.from('v2_racun_sequence').insert({'godina': godina, 'poslednji_broj': 1});
           return '1/$godina';
         }
 
@@ -58,7 +56,7 @@ class V2RacunService {
         final novi = stari + 1;
 
         // Pokušaj UPDATE samo ako stari_broj == onaj koji smo pročitali
-        final updateResp = await _supabase
+        final updateResp = await supabase
             .from('v2_racun_sequence')
             .update({'poslednji_broj': novi})
             .eq('godina', godina)
@@ -88,7 +86,7 @@ class V2RacunService {
 
     try {
       final response =
-          await _supabase.from('v2_racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
+          await supabase.from('v2_racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
 
       final trenutniBroj = response?['poslednji_broj'] as int? ?? 0;
       return '${trenutniBroj + 1}/$godina';
@@ -169,12 +167,13 @@ class V2RacunService {
         // Dohvati firma podatke iz v2_racuni
         Map<String, dynamic>? firma;
         try {
-          firma = await _supabase
+          firma = await supabase
               .from('v2_racuni')
               .select('firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa')
               .eq('putnik_id', v2Putnik.id?.toString() ?? '')
               .maybeSingle();
         } catch (e) {
+          debugPrint('[V2RacunService] dohvat firma podataka greška: $e');
         }
 
         final stranica = await _kreirajRacunZaFirmuStranicu(

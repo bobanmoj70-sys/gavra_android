@@ -60,6 +60,7 @@ class V2RealtimeNotificationService {
         return false;
       }
     } catch (e) {
+      debugPrint('[V2RealtimeNotificationService] sendPushNotification greška: $e');
       return false;
     }
   }
@@ -97,6 +98,7 @@ class V2RealtimeNotificationService {
         data: data,
       );
     } catch (e) {
+      debugPrint('[V2RealtimeNotificationService] sendNotificationToAdmins greška: $e');
     }
   }
 
@@ -128,6 +130,7 @@ class V2RealtimeNotificationService {
         data: data,
       );
     } catch (e) {
+      debugPrint('[V2RealtimeNotificationService] sendNotificationToPutnik greška: $e');
       return false;
     }
   }
@@ -140,6 +143,7 @@ class V2RealtimeNotificationService {
 
       await _handleNotificationTap(messageData);
     } catch (e) {
+      debugPrint('[V2RealtimeNotificationService] handleInitialMessage greška: $e');
     }
   }
 
@@ -163,6 +167,7 @@ class V2RealtimeNotificationService {
       await messaging.subscribeToTopic('gavra_driver_${driverId.toLowerCase()}');
       await messaging.subscribeToTopic('gavra_all_drivers');
     } catch (e) {
+      debugPrint('[V2RealtimeNotificationService] subscribeToDriverTopics greška: $e');
     }
   }
 
@@ -179,6 +184,7 @@ class V2RealtimeNotificationService {
       return settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional;
     } catch (e) {
+      debugPrint('[V2RealtimeNotificationService] requestNotificationPermissions greška: $e');
       return false;
     }
   }
@@ -214,6 +220,7 @@ class V2RealtimeNotificationService {
         );
       }
     } catch (e) {
+      debugPrint('[V2RealtimeNotificationService] _handleNotificationTap greška: $e');
     }
   }
 }

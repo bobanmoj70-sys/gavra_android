@@ -1,5 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../globals.dart';
 import '../models/v2_vozac.dart';
 import 'realtime/v2_master_realtime_manager.dart';
@@ -8,7 +6,6 @@ import 'realtime/v2_master_realtime_manager.dart';
 class V2VozacService {
   V2VozacService._();
 
-  static SupabaseClient get _supabase => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
   /// Dohvata sve vozače iz rm cache-a (sync)
@@ -19,7 +16,7 @@ class V2VozacService {
   /// Dodaje novog vozača
   static Future<V2Vozac> addVozac(V2Vozac vozac) async {
     try {
-      final response = await _supabase.from('v2_vozaci').insert(vozac.toMap()).select().single();
+      final response = await supabase.from('v2_vozaci').insert(vozac.toMap()).select().single();
       _rm.v2UpsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
@@ -30,7 +27,7 @@ class V2VozacService {
   /// Ažurira postojećeg vozača
   static Future<V2Vozac> updateVozac(V2Vozac vozac) async {
     try {
-      final response = await _supabase.from('v2_vozaci').update(vozac.toMap()).eq('id', vozac.id).select().single();
+      final response = await supabase.from('v2_vozaci').update(vozac.toMap()).eq('id', vozac.id).select().single();
       _rm.v2UpsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
@@ -40,7 +37,7 @@ class V2VozacService {
 
   /// Menja samo šifru vozača (koristi vozač za self-service promenu šifre)
   static Future<void> updateSifra(String vozacId, String novaSifra) async {
-    final response = await _supabase.from('v2_vozaci').update({'sifra': novaSifra}).eq('id', vozacId).select().single();
+    final response = await supabase.from('v2_vozaci').update({'sifra': novaSifra}).eq('id', vozacId).select().single();
     _rm.v2UpsertToCache('v2_vozaci', response);
   }
 

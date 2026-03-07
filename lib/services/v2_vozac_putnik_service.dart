@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../utils/v2_grad_adresa_validator.dart';
@@ -78,7 +77,6 @@ class V2VozacPutnikEntry {
 class V2VozacPutnikService {
   V2VozacPutnikService._();
 
-  static SupabaseClient get _supabase => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
   /// Učitaj sve individualne dodjele iz rm cache-a (sync)
@@ -105,7 +103,7 @@ class V2VozacPutnikService {
     }
 
     try {
-      final row = await _supabase
+      final row = await supabase
           .from('v2_vozac_putnik')
           .upsert(
             {
@@ -123,6 +121,7 @@ class V2VozacPutnikService {
       _rm.v2UpsertToCache('v2_vozac_putnik', row);
       return true;
     } catch (e) {
+      debugPrint('[V2VozacPutnikService] set greška: $e');
       return false;
     }
   }
@@ -130,7 +129,7 @@ class V2VozacPutnikService {
   /// Briše individualnu dodjelu za putnika za konkretni dan+grad+vreme.
   static Future<bool> delete({required String putnikId, String? dan, String? grad, String? vreme}) async {
     try {
-      var q = _supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId);
+      var q = supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId);
       if (dan != null) q = q.eq('dan', dan);
       if (grad != null) q = q.eq('grad', grad);
       if (vreme != null) q = q.eq('vreme', vreme);
@@ -149,13 +148,14 @@ class V2VozacPutnikService {
       }
       return true;
     } catch (e) {
+      debugPrint('[V2VozacPutnikService] delete greška: $e');
       return false;
     }
   }
 
   static Future<void> deleteForVozac({required String vozacId}) async {
     try {
-      await _supabase.from('v2_vozac_putnik').delete().eq('vozac_id', vozacId);
+      await supabase.from('v2_vozac_putnik').delete().eq('vozac_id', vozacId);
       final toRemove = _rm.vozacPutnikCache.entries
           .where((e) => e.value['vozac_id']?.toString() == vozacId)
           .map((e) => e.key)
@@ -164,6 +164,7 @@ class V2VozacPutnikService {
         _rm.v2RemoveFromCache('v2_vozac_putnik', id);
       }
     } catch (e) {
+      debugPrint('[V2VozacPutnikService] deleteForVozac greška: $e');
     }
   }
 

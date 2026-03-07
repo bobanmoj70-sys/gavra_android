@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v2_vozila_servis.dart';
@@ -9,8 +8,6 @@ import 'realtime/v2_master_realtime_manager.dart';
 /// Servis za upravljanje vozilima — kolska knjiga i tehničko stanje.
 class V2VozilaService {
   V2VozilaService._();
-
-  static SupabaseClient get _supabase => supabase;
 
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
@@ -25,10 +22,11 @@ class V2VozilaService {
   /// Ažuriraj kolsku knjigu vozila
   static Future<bool> updateKolskaKnjiga(String id, Map<String, dynamic> podaci) async {
     try {
-      await _supabase.from('v2_vozila').update(podaci).eq('id', id);
+      await supabase.from('v2_vozila').update(podaci).eq('id', id);
       _rm.v2PatchCache('v2_vozila', id, podaci);
       return true;
     } catch (e) {
+      debugPrint('[V2VozilaService] updateKolskaKnjiga greška: $e');
       return false;
     }
   }
@@ -227,18 +225,17 @@ class V2VozilaServisService {
 
   static const String tabela = 'v2_vozila_servis';
 
-  static SupabaseClient get _db => supabase;
-
   /// Dohvati servisnu istoriju za vozilo
   static Future<List<V2VozilaServis>> getIstorijuServisa(String voziloId) async {
     try {
-      final response = await _db
+      final response = await supabase
           .from(tabela)
           .select('id,vozilo_id,tip,datum,km,opis,cena,pozicija,created_at')
           .eq('vozilo_id', voziloId)
           .order('datum', ascending: false);
       return (response as List).map((r) => V2VozilaServis.fromJson(r)).toList();
     } catch (e) {
+      debugPrint('[V2VozilaServisService] getIstorijuServisa greška: $e');
       return [];
     }
   }
@@ -254,7 +251,7 @@ class V2VozilaServisService {
     String? pozicija,
   }) async {
     try {
-      await _db.from(tabela).insert({
+      await supabase.from(tabela).insert({
         'vozilo_id': voziloId,
         'tip': tip,
         'datum': datum?.toIso8601String().split('T')[0],
@@ -265,6 +262,7 @@ class V2VozilaServisService {
       });
       return true;
     } catch (e) {
+      debugPrint('[V2VozilaServisService] addIstorijuServisa greška: $e');
       return false;
     }
   }
@@ -272,9 +270,10 @@ class V2VozilaServisService {
   /// Obriši servisni zapis
   static Future<bool> deleteIstorijuServisa(String id) async {
     try {
-      await _db.from(tabela).delete().eq('id', id);
+      await supabase.from(tabela).delete().eq('id', id);
       return true;
     } catch (e) {
+      debugPrint('[V2VozilaServisService] deleteIstorijuServisa greška: $e');
       return false;
     }
   }

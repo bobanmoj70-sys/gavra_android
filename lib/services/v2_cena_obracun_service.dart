@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
 import '../models/v2_registrovani_putnik.dart';
@@ -12,8 +12,6 @@ import '../models/v2_registrovani_putnik.dart';
 /// - POŠILJKA: Admin postavlja cenu (osim "ZUBI" koji ima fiksnih 300 RSD)
 class V2CenaObracunService {
   V2CenaObracunService._();
-
-  static SupabaseClient get _supabase => supabase;
 
   /// Dobija cenu po danu za putnika (SAMO custom cena)
   static double getCenaPoDanu(V2RegistrovaniPutnik v2Putnik) {
@@ -40,7 +38,7 @@ class V2CenaObracunService {
     final krajMeseca = DateTime(godina, mesec + 1, 0);
 
     try {
-      final response = await _supabase
+      final response = await supabase
           .from('v2_statistika_istorija')
           .select('datum, broj_mesta, putnik_id')
           .inFilter('putnik_id', ids)
@@ -94,6 +92,7 @@ class V2CenaObracunService {
       }
       return rezultati;
     } catch (e) {
+      debugPrint('[V2CenaObracunService] prebrojJediniceMasovno greška: $e');
       return {};
     }
   }

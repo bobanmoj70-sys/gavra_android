@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 
@@ -39,8 +38,6 @@ import '../globals.dart';
 // ============================================================================
 class V2AuditLogService {
   V2AuditLogService._();
-
-  static SupabaseClient get _db => supabase;
 
   /// Upiši audit zapis. Fire-and-forget — ne čeka odgovor.
   /// Koristi [logAndWait] samo kad je garantovano sekvencijalno izvršavanje kritično.
@@ -152,7 +149,7 @@ class V2AuditLogService {
     };
     debugPrint('[V2AuditLog] INSERT pokušaj tip=$tip payload=$payload');
     try {
-      await _db.from('v2_audit_log').insert(payload);
+      await supabase.from('v2_audit_log').insert(payload);
       debugPrint('[V2AuditLog] INSERT uspješno tip=$tip');
     } catch (e, st) {
       // Audit log ne smije rušiti app — tiho logguj
@@ -170,7 +167,7 @@ class V2AuditLogService {
     int limit = 50,
   }) async {
     try {
-      final rows = await _db
+      final rows = await supabase
           .from('v2_audit_log')
           .select('id, tip, aktor_ime, aktor_tip, dan, grad, vreme, staro, novo, detalji, created_at')
           .eq('putnik_id', putnikId)
@@ -189,7 +186,7 @@ class V2AuditLogService {
     int limit = 50,
   }) async {
     try {
-      final rows = await _db
+      final rows = await supabase
           .from('v2_audit_log')
           .select('id, tip, putnik_ime, putnik_tabela, dan, grad, vreme, staro, novo, detalji, created_at')
           .eq('aktor_id', aktorId)
@@ -210,7 +207,7 @@ class V2AuditLogService {
     DateTime? do_,
   }) async {
     try {
-      var query = _db
+      var query = supabase
           .from('v2_audit_log')
           .select('id, tip, aktor_ime, putnik_ime, dan, grad, vreme, detalji, created_at')
           .eq('tip', tip);
