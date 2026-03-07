@@ -97,8 +97,10 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       });
       await _ucitajPredaju(dateStr);
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-      if (mounted) V2AppSnackBar.error(context, 'Greška: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        V2AppSnackBar.error(context, 'Greška: $e');
+      }
     }
   }
 
@@ -167,7 +169,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     return sve;
   }
 
-  Map<String, dynamic> _buildRow(Map<String, dynamic> r, String ime) {
+  static Map<String, dynamic> _buildRow(Map<String, dynamic> r, String ime) {
     final placenAt = r['placen_at'] as String?;
     final updatedAt = r['updated_at'] as String?;
     final tsStr = placenAt ?? updatedAt ?? '';
@@ -184,7 +186,8 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       'polazak': r['dodeljeno_vreme'] as String? ?? '-',
       'iznos': (r['placen_iznos'] as num?)?.toDouble() ?? 0.0,
       'vreme_naplate': vremeNaplate,
-      'sort_ts': tsStr,
+      // Prazni sort_ts idu na kraj (sentinel '9999' > svaka ISO vrijednost)
+      'sort_ts': tsStr.isNotEmpty ? tsStr : '9999',
     };
   }
 
@@ -303,7 +306,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                     ),
                     children: [
                       _pdfCell('${i + 1}.', style: baseStyle),
-                      _pdfCell(_naplate[i]['ime'] as String, style: baseStyle),
+                      _pdfCell(_naplate[i]['ime']?.toString() ?? '?', style: baseStyle),
                       _pdfCell('${_naplate[i]['grad']} ${_naplate[i]['polazak']}', style: baseStyle),
                       _pdfCell('${(_naplate[i]['iznos'] as double).toStringAsFixed(0)} din', style: baseStyle),
                       _pdfCell(_naplate[i]['vreme_naplate'] as String, style: baseStyle),
@@ -363,7 +366,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
   }
 
-  pw.Widget _pdfCell(String text, {required pw.TextStyle style}) {
+  static pw.Widget _pdfCell(String text, {required pw.TextStyle style}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: pw.Text(text, style: style),
@@ -614,7 +617,6 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                                   ),
                                                 ),
                                                 onChanged: (_) {
-                                                  setFooter(() {});
                                                   setState(() => _predaoSacuvan = false);
                                                 },
                                                 onSubmitted: (_) => _sacuvajPredaju(),
