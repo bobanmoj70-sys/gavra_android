@@ -15,8 +15,7 @@ import 'v2_realtime_notification_service.dart';
 /// Top-level background handler — registruje se sa Firebase Messaging pluginom
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
-    final payload = Map<String, dynamic>.from(message.data);
-    await backgroundNotificationHandler(payload);
+    await backgroundNotificationHandler(message.data);
   } catch (e) {
     debugPrint('[V2FirebaseService] firebaseMessagingBackgroundHandler greška: $e');
   }
@@ -70,12 +69,12 @@ class V2FirebaseService {
   }
 
   /// Postavlja trenutnog vozaca
-  static Future<void> setCurrentDriver(String driver) async {
+  static void setCurrentDriver(String driver) {
     _currentDriver = driver;
   }
 
   /// Brise trenutnog vozaca
-  static Future<void> clearCurrentDriver() async {
+  static void clearCurrentDriver() {
     _currentDriver = null;
   }
 
