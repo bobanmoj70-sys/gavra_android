@@ -18,7 +18,6 @@ class V2ConfigService {
   }
 
   Future<void> _doInitialize() async {
-
     // Pokušaj učitati .env fajl; u produkciji možda ne postoji — to je OK
     try {
       await dotenv.load(fileName: '.env');
@@ -43,15 +42,19 @@ class V2ConfigService {
     }
   }
 
-  /// Vraća Supabase URL. Baca [StateError] ako [initializeBasic] nije pozvan.
+  /// Vraća Supabase URL. Bača [StateError] ako [initializeBasic] nije pozvan ili nije uspio.
   String getSupabaseUrl() {
-    if (_initFuture == null) throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
+    if (_initFuture == null || _supabaseUrl.isEmpty) {
+      throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
+    }
     return _supabaseUrl;
   }
 
-  /// Vraća Supabase anon key. Baca [StateError] ako [initializeBasic] nije pozvan.
+  /// Vraća Supabase anon key. Bača [StateError] ako [initializeBasic] nije pozvan ili nije uspio.
   String getSupabaseAnonKey() {
-    if (_initFuture == null) throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
+    if (_initFuture == null || _supabaseAnonKey.isEmpty) {
+      throw StateError('V2ConfigService nije inicijalizovan. Pozovi initializeBasic() prvo.');
+    }
     return _supabaseAnonKey;
   }
 }
