@@ -28,11 +28,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
     _streamIzvestaj = V2FinansijeService.streamIzvestaj();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   String _formatIznos(double iznos) {
     return '${_formatBroja.format(iznos.round())} din';
   }
@@ -53,7 +48,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.calendar_month),
-                onPressed: () => _selectCustomRange(),
+                onPressed: _selectCustomRange,
                 tooltip: 'Izveštaj za period',
               ),
               IconButton(
@@ -337,6 +332,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   }
 
   static String _getMesecNaziv(int mesec) {
+    assert(mesec >= 1 && mesec <= 12, 'Mesec mora biti izmedju 1 i 12, dobijeno: $mesec');
     const meseci = [
       '',
       'Januar',
@@ -450,7 +446,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2023),
-      lastDate: DateTime.now().add(const Duration(days: 31)),
+      lastDate: DateTime.now(),
       saveText: 'PRIKAŽI',
       builder: (context, child) {
         return Theme(
@@ -573,33 +569,17 @@ class _TroskoviBottomSheet extends StatefulWidget {
 }
 
 class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
-  late final TextEditingController _plateController;
-  late final TextEditingController _kreditController;
-  late final TextEditingController _gorivoController;
-  late final TextEditingController _amortizacijaController;
-  late final TextEditingController _registracijaController;
-  late final TextEditingController _yuAutoController;
-  late final TextEditingController _majstoriController;
-  late final TextEditingController _ostaloController;
-  late final TextEditingController _porezController;
-  late final TextEditingController _alimentacijaController;
-  late final TextEditingController _racuniController;
-
-  @override
-  void initState() {
-    super.initState();
-    _plateController = TextEditingController();
-    _kreditController = TextEditingController();
-    _gorivoController = TextEditingController();
-    _amortizacijaController = TextEditingController();
-    _registracijaController = TextEditingController();
-    _yuAutoController = TextEditingController();
-    _majstoriController = TextEditingController();
-    _ostaloController = TextEditingController();
-    _porezController = TextEditingController();
-    _alimentacijaController = TextEditingController();
-    _racuniController = TextEditingController();
-  }
+  final _plateController = TextEditingController();
+  final _kreditController = TextEditingController();
+  final _gorivoController = TextEditingController();
+  final _amortizacijaController = TextEditingController();
+  final _registracijaController = TextEditingController();
+  final _yuAutoController = TextEditingController();
+  final _majstoriController = TextEditingController();
+  final _ostaloController = TextEditingController();
+  final _porezController = TextEditingController();
+  final _alimentacijaController = TextEditingController();
+  final _racuniController = TextEditingController();
 
   @override
   void dispose() {
@@ -718,17 +698,17 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                   child: ElevatedButton.icon(
                     onPressed: () async {
                       await widget.onSave(
-                        plate: double.tryParse(_plateController.text) ?? 0,
-                        kredit: double.tryParse(_kreditController.text) ?? 0,
-                        gorivo: double.tryParse(_gorivoController.text) ?? 0,
-                        amortizacija: double.tryParse(_amortizacijaController.text) ?? 0,
-                        registracija: double.tryParse(_registracijaController.text) ?? 0,
-                        yuAuto: double.tryParse(_yuAutoController.text) ?? 0,
-                        majstori: double.tryParse(_majstoriController.text) ?? 0,
-                        ostalo: double.tryParse(_ostaloController.text) ?? 0,
-                        porez: double.tryParse(_porezController.text) ?? 0,
-                        alimentacija: double.tryParse(_alimentacijaController.text) ?? 0,
-                        racuni: double.tryParse(_racuniController.text) ?? 0,
+                        plate: double.tryParse(_plateController.text.replaceAll(',', '.')) ?? 0,
+                        kredit: double.tryParse(_kreditController.text.replaceAll(',', '.')) ?? 0,
+                        gorivo: double.tryParse(_gorivoController.text.replaceAll(',', '.')) ?? 0,
+                        amortizacija: double.tryParse(_amortizacijaController.text.replaceAll(',', '.')) ?? 0,
+                        registracija: double.tryParse(_registracijaController.text.replaceAll(',', '.')) ?? 0,
+                        yuAuto: double.tryParse(_yuAutoController.text.replaceAll(',', '.')) ?? 0,
+                        majstori: double.tryParse(_majstoriController.text.replaceAll(',', '.')) ?? 0,
+                        ostalo: double.tryParse(_ostaloController.text.replaceAll(',', '.')) ?? 0,
+                        porez: double.tryParse(_porezController.text.replaceAll(',', '.')) ?? 0,
+                        alimentacija: double.tryParse(_alimentacijaController.text.replaceAll(',', '.')) ?? 0,
+                        racuni: double.tryParse(_racuniController.text.replaceAll(',', '.')) ?? 0,
                       );
                       if (!context.mounted) return;
                       Navigator.pop(context);
