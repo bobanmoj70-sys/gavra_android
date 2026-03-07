@@ -25,7 +25,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
     _streamDnevni = V2PolasciService.v2StreamZahteviObrada();
     V2AuthManager.getCurrentDriver().then((d) {
       if (mounted) setState(() => _currentDriver = d);
-    });
+    }).catchError((_) {});
   }
 
   @override
@@ -103,13 +103,15 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
     final vreme = zahtev.zeljenoVreme ?? '';
     final id = zahtev.id;
     final brojMesta = zahtev.brojMesta;
+    final glassContainer = Theme.of(context).glassContainer;
+    final glassBorder = Theme.of(context).glassBorder;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Theme.of(context).glassContainer.withValues(alpha: 0.15),
+        color: glassContainer.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+        border: Border.all(color: glassBorder, width: 1.5),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: ClipRRect(
@@ -268,7 +270,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
       final success = await V2PolasciService.v2OdbijZahtev(id, rejectedBy: _currentDriver);
       if (!mounted) return;
       if (success) {
-        V2AppSnackBar.success(context, '✅ Zahtev odbijen');
+        V2AppSnackBar.warning(context, 'Zahtev odbijen');
       } else {
         V2AppSnackBar.error(context, '⚠️ Greška pri odbijanju, pokušaj ponovo');
       }
