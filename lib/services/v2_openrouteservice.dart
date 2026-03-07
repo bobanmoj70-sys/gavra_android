@@ -50,7 +50,7 @@ class V2OpenRouteService {
       }
 
       // POST request sa JSON body
-      final body = json.encode({'coordinates': coordinates});
+      final body = jsonEncode({'coordinates': coordinates});
 
       final response = await http
           .post(
@@ -68,16 +68,16 @@ class V2OpenRouteService {
         return V2RealtimeEtaResult.failure('ORS error: ${response.statusCode}');
       }
 
-      final data = json.decode(response.body) as Map<String, dynamic>;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       // Parsiraj GeoJSON response
-      final routes = data['routes'] as List?;
-      if (routes == null || routes.isEmpty) {
+      final routesRaw = data['routes'];
+      if (routesRaw is! List || routesRaw.isEmpty) {
         return V2RealtimeEtaResult.failure('Nema rute');
       }
 
-      final segments = routes[0]['segments'] as List?;
-      if (segments == null || segments.isEmpty) {
+      final segmentsRaw = routesRaw[0] is Map ? (routesRaw[0] as Map)['segments'] : null;
+      if (segmentsRaw is! List || segmentsRaw.isEmpty) {
         return V2RealtimeEtaResult.failure('Nema segmenata');
       }
 
@@ -85,11 +85,10 @@ class V2OpenRouteService {
       final putniciEta = <String, int>{};
       double cumulativeSec = 0;
 
-      for (int i = 0; i < segments.length && i < validPutnici.length; i++) {
-        final raw = segments[i];
+      for (int i = 0; i < segmentsRaw.length && i < validPutnici.length; i++) {
+        final raw = segmentsRaw[i];
         if (raw is! Map<String, dynamic>) continue;
-        final segment = raw;
-        final duration = (segment['duration'] as num?)?.toDouble() ?? 0;
+        final duration = (raw['duration'] as num?)?.toDouble() ?? 0;
         cumulativeSec += duration;
         putniciEta[validPutnici[i]] = (cumulativeSec / 60).round();
       }
