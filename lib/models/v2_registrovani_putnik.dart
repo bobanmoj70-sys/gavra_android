@@ -1,6 +1,11 @@
 import '../services/v2_adresa_supabase_service.dart';
 
 class V2RegistrovaniPutnik {
+  static const statusAktivan = 'aktivan';
+  static const statusNeaktivan = 'neaktivan';
+  static const statusGodisnji = 'godisnji';
+  static const statusBolovanje = 'bolovanje';
+
   V2RegistrovaniPutnik({
     required this.id,
     required this.ime,
@@ -32,7 +37,7 @@ class V2RegistrovaniPutnik {
   /// aktivan | neaktivan | godisnji | bolovanje
   final String status;
 
-  bool get aktivan => status == 'aktivan';
+  bool get aktivan => status == statusAktivan;
 
   final String? telefon;
   final String? telefon2;
@@ -53,13 +58,15 @@ class V2RegistrovaniPutnik {
   final String? grad;
 
   factory V2RegistrovaniPutnik.fromMap(Map<String, dynamic> map) {
-    final v2Tabela = map['_tabela'] as String;
+    final id = map['id'] as String?;
+    if (id == null || id.isEmpty) throw ArgumentError('V2RegistrovaniPutnik.fromMap: id je null ili prazan');
+    final v2Tabela = map['_tabela'] as String? ?? '';
     final bool dnevniIliPosiljka = v2Tabela == 'v2_dnevni' || v2Tabela == 'v2_posiljke';
     return V2RegistrovaniPutnik(
-      id: map['id'] as String,
-      ime: map['ime'] as String,
+      id: id,
+      ime: map['ime'] as String? ?? '',
       v2Tabela: v2Tabela,
-      status: map['status'] as String,
+      status: map['status'] as String? ?? statusAktivan,
       telefon: map['telefon'] as String?,
       telefon2: map['telefon_2'] as String?,
       telefonOca: map['telefon_oca'] as String?,
@@ -71,8 +78,12 @@ class V2RegistrovaniPutnik {
       cena: dnevniIliPosiljka ? _parseNum(map['cena'])?.toDouble() : _parseNum(map['cena_po_danu'])?.toDouble(),
       trebaRacun: (map['treba_racun'] as bool?) ?? false,
       brojMesta: v2Tabela == 'v2_posiljke' ? 0 : (_parseNum(map['broj_mesta'])?.toInt() ?? 1),
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String).toLocal() : DateTime.now(),
-      updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String).toLocal() : DateTime.now(),
+      createdAt: map['created_at'] != null
+          ? (DateTime.tryParse(map['created_at'] as String)?.toLocal() ?? DateTime.now())
+          : DateTime.now(),
+      updatedAt: map['updated_at'] != null
+          ? (DateTime.tryParse(map['updated_at'] as String)?.toLocal() ?? DateTime.now())
+          : DateTime.now(),
       adresa: (map['adresa_bc'] is Map ? (map['adresa_bc'] as Map)['naziv'] as String? : null) ??
           (map['adresa_vs'] is Map ? (map['adresa_vs'] as Map)['naziv'] as String? : null),
       grad: map['adresa_bc'] is Map ? 'BC' : (map['adresa_vs'] is Map ? 'VS' : null),
@@ -82,29 +93,26 @@ class V2RegistrovaniPutnik {
   Map<String, dynamic> toMap() {
     final bool dnevniIliPosiljka = v2Tabela == 'v2_dnevni' || v2Tabela == 'v2_posiljke';
     final result = <String, dynamic>{
-      'id': id,
       'ime': ime,
       'status': status,
-      'telefon': telefon,
-      'adresa_bc_id': adresaBcId,
-      'adresa_vs_id': adresaVsId,
-      'pin': pin,
-      'email': email,
+      if (telefon != null) 'telefon': telefon,
+      if (adresaBcId != null) 'adresa_bc_id': adresaBcId,
+      if (adresaVsId != null) 'adresa_vs_id': adresaVsId,
+      if (pin != null) 'pin': pin,
+      if (email != null) 'email': email,
       'treba_racun': trebaRacun,
-      'created_at': createdAt.toUtc().toIso8601String(),
-      'updated_at': updatedAt.toUtc().toIso8601String(),
     };
 
-    if (v2Tabela != 'v2_posiljke') result['telefon_2'] = telefon2;
+    if (v2Tabela != 'v2_posiljke' && telefon2 != null) result['telefon_2'] = telefon2;
     if (v2Tabela == 'v2_ucenici') {
-      result['telefon_oca'] = telefonOca;
-      result['telefon_majke'] = telefonMajke;
+      if (telefonOca != null) result['telefon_oca'] = telefonOca;
+      if (telefonMajke != null) result['telefon_majke'] = telefonMajke;
     }
     if (dnevniIliPosiljka) {
-      result['cena'] = cena;
+      if (cena != null) result['cena'] = cena;
       if (v2Tabela == 'v2_dnevni') result['broj_mesta'] = brojMesta;
     } else {
-      result['cena_po_danu'] = cena;
+      if (cena != null) result['cena_po_danu'] = cena;
       result['broj_mesta'] = brojMesta;
     }
 
@@ -116,50 +124,53 @@ class V2RegistrovaniPutnik {
     String? ime,
     String? v2Tabela,
     String? status,
-    String? telefon,
-    String? telefon2,
-    String? telefonOca,
-    String? telefonMajke,
-    String? adresaBcId,
-    String? adresaVsId,
-    String? pin,
-    String? email,
-    double? cena,
+    Object? telefon = _sentinel,
+    Object? telefon2 = _sentinel,
+    Object? telefonOca = _sentinel,
+    Object? telefonMajke = _sentinel,
+    Object? adresaBcId = _sentinel,
+    Object? adresaVsId = _sentinel,
+    Object? pin = _sentinel,
+    Object? email = _sentinel,
+    Object? cena = _sentinel,
     bool? trebaRacun,
     int? brojMesta,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? adresa,
-    String? grad,
+    Object? adresa = _sentinel,
+    Object? grad = _sentinel,
   }) {
     return V2RegistrovaniPutnik(
       id: id ?? this.id,
       ime: ime ?? this.ime,
       v2Tabela: v2Tabela ?? this.v2Tabela,
       status: status ?? this.status,
-      telefon: telefon ?? this.telefon,
-      telefon2: telefon2 ?? this.telefon2,
-      telefonOca: telefonOca ?? this.telefonOca,
-      telefonMajke: telefonMajke ?? this.telefonMajke,
-      adresaBcId: adresaBcId ?? this.adresaBcId,
-      adresaVsId: adresaVsId ?? this.adresaVsId,
-      pin: pin ?? this.pin,
-      email: email ?? this.email,
-      cena: cena ?? this.cena,
+      telefon: telefon == _sentinel ? this.telefon : telefon as String?,
+      telefon2: telefon2 == _sentinel ? this.telefon2 : telefon2 as String?,
+      telefonOca: telefonOca == _sentinel ? this.telefonOca : telefonOca as String?,
+      telefonMajke: telefonMajke == _sentinel ? this.telefonMajke : telefonMajke as String?,
+      adresaBcId: adresaBcId == _sentinel ? this.adresaBcId : adresaBcId as String?,
+      adresaVsId: adresaVsId == _sentinel ? this.adresaVsId : adresaVsId as String?,
+      pin: pin == _sentinel ? this.pin : pin as String?,
+      email: email == _sentinel ? this.email : email as String?,
+      cena: cena == _sentinel ? this.cena : cena as double?,
       trebaRacun: trebaRacun ?? this.trebaRacun,
       brojMesta: brojMesta ?? this.brojMesta,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      adresa: adresa ?? this.adresa,
-      grad: grad ?? this.grad,
+      adresa: adresa == _sentinel ? this.adresa : adresa as String?,
+      grad: grad == _sentinel ? this.grad : grad as String?,
     );
   }
 
   @override
-  String toString() => 'V2RegistrovaniPutnik(id: $id, ime: $ime, v2Tabela: $v2Tabela, status: $status)';
+  String toString() => 'V2RegistrovaniPutnik(id: $id, ime: $ime, v2Tabela: $v2Tabela, '
+      'status: $status, brojMesta: $brojMesta, cena: $cena)';
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is V2RegistrovaniPutnik && other.id == id);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (runtimeType == other.runtimeType && other is V2RegistrovaniPutnik && other.id == id);
 
   @override
   int get hashCode => id.hashCode;
@@ -196,3 +207,5 @@ class V2RegistrovaniPutnik {
     return null;
   }
 }
+
+const _sentinel = Object();
