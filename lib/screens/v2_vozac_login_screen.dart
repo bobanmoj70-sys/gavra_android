@@ -455,7 +455,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
     );
   }
 
-  static InputDecoration _inputDecoration(String label, IconData icon, bool isDark, ThemeData currentTheme) {
+  static InputDecoration _inputDecoration(String label, IconData icon, bool isDark, V2ThemeDefinition currentTheme) {
     final accentColor = isDark ? currentTheme.colorScheme.primary : Colors.amber;
     return InputDecoration(
       labelText: label,

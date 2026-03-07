@@ -33,7 +33,7 @@ class V2AuthManager {
 
     _cachedDriverName = driverName;
     await _saveDriverSession(driverName);
-    await V2FirebaseService.setCurrentDriver(driverName);
+    V2FirebaseService.setCurrentDriver(driverName);
 
     // Ažuriraj push token u pozadini — ne blokira login flow
     _updatePushTokenWithUserId(driverName);
@@ -182,7 +182,7 @@ class V2AuthManager {
 
       // 4. Očisti Firebase session
       try {
-        await V2FirebaseService.clearCurrentDriver();
+        V2FirebaseService.clearCurrentDriver();
       } catch (e) {
         debugPrint('[V2AuthManager] logout clearCurrentDriver greška: $e');
       }
