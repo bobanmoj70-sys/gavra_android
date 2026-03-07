@@ -51,7 +51,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     _checkSavedLogin();
   }
 
-  /// ?? Proveri dostupnost biometrije
+  /// Proveri dostupnost biometrije
   Future<void> _checkBiometric() async {
     final available = await V2BiometricService.isBiometricAvailable();
     final enabled = await V2BiometricService.isBiometricEnabled();
@@ -81,6 +81,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           if (updateInfoNotifier.value?.isForced == true) return;
           _telefonController.text = credentials['phone']!;
           _pinController.text = credentials['pin']!;
+          if (!mounted) return;
           await _loginWithPin(showBiometricPrompt: false);
           return;
         }
@@ -98,11 +99,12 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       // Automatski probaj login
       _telefonController.text = savedPhone;
       _pinController.text = savedPin;
+      if (!mounted) return;
       await _loginWithPin(showBiometricPrompt: true);
     }
   }
 
-  /// ?? Normalizuje broj telefona za poredenje
+  /// Normalizuje broj telefona za poredenje
   static String _normalizePhone(String telefon) {
     var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
     if (cleaned.startsWith('+381')) {
@@ -272,7 +274,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
@@ -291,14 +293,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(this.context); // Vrati na pocetni ekran
+              Navigator.pop(dialogCtx);
+              Navigator.pop(context); // Vrati na pocetni ekran
             },
             child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
               _sendPinRequest();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
@@ -416,7 +418,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final response = matches.isNotEmpty ? matches.first : null;
 
       if (response != null) {
-        _performLogin(response, telefon, pin, showBiometricPrompt);
+        await _performLogin(response, telefon, pin, showBiometricPrompt);
       } else {
         setState(() {
           _errorMessage = 'Pogrešan PIN ili broj telefona. Pokušajte ponovo.';
@@ -443,7 +445,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       await prefs.setString('registrovani_putnik_pin', pin);
 
       final putnikId = response['id'];
-      final putnikIme = response['putnik_ime'] ?? response['ime_prezime'] ?? 'V2Putnik';
+      final putnikIme = response['putnik_ime'] ?? response['ime_prezime'] ?? 'Putnik';
 
       if (putnikId != null) {
         await prefs.setString('registrovani_putnik_id', putnikId.toString());
@@ -480,7 +482,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     }
   }
 
-  /// ?? Ponudi setup biometrijske prijave
+  /// Ponudi setup biometrijske prijave
   Future<void> _showBiometricSetupDialog(String phone, String pin) async {
     final biometricIcon = await V2BiometricService.getBiometricIcon();
 
@@ -489,7 +491,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -510,11 +512,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Ne, hvala', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
             child: Text('Ukljuci $_biometricTypeText', style: const TextStyle(color: Colors.black)),
           ),
@@ -540,8 +542,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: tripleBlueFashionGradient,
+      decoration: BoxDecoration(
+        gradient: Theme.of(context).backgroundGradient,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -721,7 +723,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     );
   }
 
-  Widget _buildStepDot(int step, bool active) {
+  static Widget _buildStepDot(int step, bool active) {
     return Container(
       width: 12,
       height: 12,
@@ -732,7 +734,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     );
   }
 
-  Widget _buildStepLine(bool active) {
+  static Widget _buildStepLine(bool active) {
     return Container(
       width: 40,
       height: 2,
@@ -928,7 +930,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     );
   }
 
-  /// ?? Login sa biometrijom
+  /// Login sa biometrijom
   Future<void> _loginWithBiometric() async {
     final credentials = await V2BiometricService.getSavedCredentials();
     if (credentials == null) {
@@ -947,11 +949,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     }
   }
 
-  /// ?? Dialog za zaboravljen PIN
+  /// Dialog za zaboravljen PIN
   void _showForgotPinDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
@@ -967,12 +969,12 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
               _sendPinResetRequest();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
@@ -983,7 +985,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     );
   }
 
-  /// ?? Pošalji zahtev za reset PIN-a
+  /// Pošalji zahtev za reset PIN-a
   Future<void> _sendPinResetRequest() async {
     setState(() {
       _isLoading = true;
@@ -1018,6 +1020,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           _currentStep = _LoginStep.zahtevPoslat;
           _infoMessage = 'Zahtev za novi PIN je uspešno poslat! Admin ce vam dodeliti novi PIN.';
         });
+        _listenForPinOdobren();
       } else {
         setState(() => _errorMessage = 'Greška pri slanju zahteva. Pokušajte ponovo.');
       }
