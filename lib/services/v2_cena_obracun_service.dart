@@ -15,17 +15,17 @@ class V2CenaObracunService {
 
   /// Dobija cenu po danu za putnika (SAMO custom cena)
   static double getCenaPoDanu(V2RegistrovaniPutnik v2Putnik) {
-    if (v2Putnik.cena != null && v2Putnik.cena! > 0) {
+    if ((v2Putnik.cena ?? 0) > 0) {
       return v2Putnik.cena!;
     }
     return 0.0;
   }
 
-  /// Izračunaj mesečnu cenu za putnika na osnovu pokupljenja
-  ///
-  /// [V2Putnik] - V2RegistrovaniPutnik objekat
-  /// [mesec] - Mesec za koji se računa (1-12)
   /// Masovni obračun jedinica za listu putnika (optimizovano - jedan upit)
+  ///
+  /// [putnici] - Lista [V2RegistrovaniPutnik] objekata za obračun
+  /// [mesec] - Mesec za koji se računa (1–12)
+  /// [godina] - Godina za koju se računa
   static Future<Map<String, int>> prebrojJediniceMasovno({
     required List<V2RegistrovaniPutnik> putnici,
     required int mesec,
@@ -46,12 +46,11 @@ class V2CenaObracunService {
           .gte('datum', pocetakMeseca.toIso8601String().split('T')[0])
           .lte('datum', krajMeseca.toIso8601String().split('T')[0]);
 
-      final records = response;
       final Map<String, int> rezultati = {for (var p in putnici) p.id: 0};
 
       // Grupiši rekorde po putniku
       final Map<String, List<Map<String, dynamic>>> grupisanRekordi = {};
-      for (final r in records) {
+      for (final r in response) {
         final pid = r['putnik_id'] as String?;
         if (pid == null) continue;
         grupisanRekordi.putIfAbsent(pid, () => []).add(r);
