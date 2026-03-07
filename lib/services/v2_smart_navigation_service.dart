@@ -36,7 +36,7 @@ class V2SmartNavigationService {
       return Position(
         latitude: V2RouteConfig.vrsacLat,
         longitude: V2RouteConfig.vrsacLng,
-        timestamp: DateTime.fromMillisecondsSinceEpoch(0),
+        timestamp: DateTime.now(),
         accuracy: 0,
         altitude: 0,
         heading: 0,
@@ -52,7 +52,7 @@ class V2SmartNavigationService {
       return Position(
         latitude: V2RouteConfig.belaCrkvaLat,
         longitude: V2RouteConfig.belaCrkvaLng,
-        timestamp: DateTime.fromMillisecondsSinceEpoch(0),
+        timestamp: DateTime.now(),
         accuracy: 0,
         altitude: 0,
         heading: 0,
@@ -200,8 +200,8 @@ class V2SmartNavigationService {
     double totalDistance = 0.0;
     Position currentPos = start;
 
-    for (final v2Putnik in route) {
-      final nextPos = coordinates[v2Putnik];
+    for (final putnik in route) {
+      final nextPos = coordinates[putnik];
       if (nextPos == null) continue;
       totalDistance += _calculateDistance(currentPos, nextPos);
       currentPos = nextPos;
