@@ -17,6 +17,7 @@ import '../utils/v2_dan_utils.dart';
 import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_dug_button.dart';
 import 'v2_adrese_screen.dart';
+import 'v2_audit_log_screen.dart';
 import 'v2_dnevnik_naplate_screen.dart';
 import 'v2_dugovi_screen.dart';
 import 'v2_finansije_screen.dart';
@@ -247,19 +248,26 @@ class _AdminScreenState extends State<V2AdminScreen> {
                   : () async {
                       setDialogState(() => isProcessing = true);
 
-                      final count = await V2PolasciService.v2GlobalniBezPolaska(
-                        dan: selectedDan,
-                        grad: selectedGrad,
-                        vreme: selectedVreme,
-                      );
+                      try {
+                        final count = await V2PolasciService.v2GlobalniBezPolaska(
+                          dan: selectedDan,
+                          grad: selectedGrad,
+                          vreme: selectedVreme,
+                        );
 
-                      if (mounted) {
-                        Navigator.pop(context);
-                        V2AppSnackBar.success(
-                            context,
-                            selectedVreme == 'Sva vremena'
-                                ? '✅ Uspešno uklonjeno $count putnika za ceo dan ($selectedGrad) - $selectedDan'
-                                : '✅ Uspešno uklonjeno $count putnika za $selectedVreme ($selectedGrad) - $selectedDan');
+                        if (mounted) {
+                          Navigator.pop(context);
+                          V2AppSnackBar.success(
+                              context,
+                              selectedVreme == 'Sva vremena'
+                                  ? '✅ Uspešno uklonjeno $count putnika za ceo dan ($selectedGrad) - $selectedDan'
+                                  : '✅ Uspešno uklonjeno $count putnika za $selectedVreme ($selectedGrad) - $selectedDan');
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setDialogState(() => isProcessing = false);
+                          V2AppSnackBar.error(context, '❌ Greška: $e');
+                        }
                       }
                     },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
@@ -835,6 +843,49 @@ class _AdminScreenState extends State<V2AdminScreen> {
                                                     shadows: [
                                                       Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
                                                     ])))),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // PETI RED - Audit log
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => const V2AuditLogScreen(),
+                                    ),
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 28,
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).glassContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.teal.withValues(alpha: 0.6), width: 1.5),
+                                    ),
+                                    child: const Center(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          '📋 Audit log',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                            shadows: [
+                                              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),

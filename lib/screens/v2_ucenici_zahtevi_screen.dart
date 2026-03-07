@@ -31,9 +31,7 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
 
         // Bez datumskog filtera — prikazuje sve učeničke zahteve iz cache-a
         // Time picker logika zaključavanja kontroliše kad zahtevi ulaze u bazu
-        final zahtevi = svi
-            .where((z) => (z.tipPutnika ?? '').toLowerCase() == 'ucenik')
-            .toList();
+        final zahtevi = svi.where((z) => (z.tipPutnika ?? '').toLowerCase() == 'ucenik').toList();
 
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
         final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;

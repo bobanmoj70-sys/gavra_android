@@ -20,6 +20,7 @@ import '../../utils/v2_vozac_cache.dart';
 /// CACHE MAPA:
 /// polasciCache     ← v2_polasci          (sedmični, svi aktivni dani)
 /// statistikaCache  ← v2_statistika_istorija (dnevni, filter po danas)
+/// auditLogCache    ← v2_audit_log           (posljednjih 200 zapisa, realtime feed)
 /// radniciCache     ← v2_radnici           (statički, svi aktivni)
 /// uceniciCache     ← v2_ucenici           (statički, svi aktivni)
 /// dnevniCache      ← v2_dnevni            (statički, svi aktivni)
@@ -54,6 +55,9 @@ class V2MasterRealtimeManager {
 
   /// v2_statistika_istorija za tekući dan
   final Map<String, Map<String, dynamic>> statistikaCache = {};
+
+  /// v2_audit_log — posljednjih N zapisa za tekući dan (realtime feed)
+  final Map<String, Map<String, dynamic>> auditLogCache = {};
 
   // --- Putnici (svi aktivni, statički) ---
   /// v2_radnici — aktivni radnici
@@ -159,6 +163,7 @@ class V2MasterRealtimeManager {
       'v2_kapacitet_polazaka', 'v2_vozac_raspored', 'v2_vozac_putnik',
       'v2_vozac_lokacije', 'v2_pin_zahtevi',
       'v2_racuni',
+      'v2_audit_log',
     ];
     for (final tabela in staticTabele) {
       _staticSubscriptions.add(subscribe(tabela).listen((_) {}));
@@ -170,6 +175,7 @@ class V2MasterRealtimeManager {
       _loadPutniciCaches(),
       _loadInfraCache(),
       _loadRacuniCache(),
+      _loadAuditLogCache(),
     ]);
 
     _initialized = true;
@@ -377,6 +383,24 @@ class V2MasterRealtimeManager {
     }
   }
 
+  /// Učitava posljednjih 200 audit log zapisa u auditLogCache (keyed by id).
+  Future<void> _loadAuditLogCache() async {
+    try {
+      final rows = await _db
+          .from('v2_audit_log')
+          .select('id, tip, aktor_id, aktor_ime, aktor_tip, putnik_id, putnik_ime, putnik_tabela, '
+              'dan, grad, vreme, polazak_id, detalji, created_at')
+          .order('created_at', ascending: false)
+          .limit(200);
+      auditLogCache.clear();
+      for (final row in rows) {
+        auditLogCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+    } catch (e) {
+      debugPrint('❌ [V2MasterRealtimeManager] _loadAuditLogCache: $e');
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -489,6 +513,7 @@ class V2MasterRealtimeManager {
     'v2_pumpa_config': pumpaCache,
     'v2_pin_zahtevi': pinCache,
     'v2_app_settings': settingsCache,
+    'v2_audit_log': auditLogCache,
     // v2_racuni intentionally excluded — keyed by putnik_id, handled separately in upsertToCache
   };
 
@@ -598,6 +623,19 @@ class V2MasterRealtimeManager {
         racuniCache.clear();
         await _loadRacuniCache();
         _cacheChangeController.add('v2_racuni');
+      } else if (table == 'v2_audit_log') {
+        // Audit log: reload posljednjih 200 zapisa (nema filter po danu — sve je relevantno)
+        final rows = await _db
+            .from('v2_audit_log')
+            .select('id, tip, aktor_id, aktor_ime, aktor_tip, putnik_id, putnik_ime, putnik_tabela, '
+                'dan, grad, vreme, polazak_id, detalji, created_at')
+            .order('created_at', ascending: false)
+            .limit(200);
+        auditLogCache.clear();
+        for (final row in rows) {
+          auditLogCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+        }
+        _cacheChangeController.add('v2_audit_log');
       } else {
         // Generički infra reload — direktan upit, fill u odgovarajući cache
         final targetCache = _cacheForTable(table);

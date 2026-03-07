@@ -56,8 +56,7 @@ class V2VozacCache {
   static Future<void> refresh() async {
     try {
       await _load();
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   static Future<void> _load() async {
@@ -86,7 +85,6 @@ class V2VozacCache {
     _imeToUuid = Map.unmodifiable(imeToUuid);
     _uuidToIme = Map.unmodifiable(uuidToIme);
     _isInitialized = true;
-
   }
 
   static void _clear() {

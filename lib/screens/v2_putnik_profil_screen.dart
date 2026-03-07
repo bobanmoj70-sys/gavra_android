@@ -7,6 +7,7 @@ import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart';
+import '../services/v2_audit_log_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_polasci_service.dart';
@@ -475,6 +476,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
             detalji: 'Putnik se odjavio',
           );
         } catch (e) {}
+        // Audit log — putnik se odjavio
+        V2AuditLogService.log(
+          tip: 'putnik_logout',
+          aktorId: putnikId,
+          aktorTip: 'putnik',
+          putnikId: putnikId,
+          detalji: 'Putnik se odjavio',
+        );
         try {
           await V2PushTokenService.clearToken(putnikId: putnikId);
         } catch (e) {}
@@ -623,6 +632,19 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       setState(() {
         _putnikData['status'] = noviStatus;
       });
+
+      // Audit log — odsustvo ili povratak na posao
+      final _audTip = noviStatus == 'aktivan' ? 'odsustvo_uklonjeno' : 'odsustvo_postavljeno';
+      V2AuditLogService.log(
+        tip: _audTip,
+        aktorId: putnikId,
+        aktorTip: 'putnik',
+        putnikId: putnikId,
+        putnikTabela: tabela,
+        staro: {'status': _putnikData['status']?.toString()},
+        novo: {'status': noviStatus},
+        detalji: 'Status promijenjen: ${_putnikData['status']} → $noviStatus',
+      );
 
       if (mounted) {
         final poruka = noviStatus == 'aktivan'

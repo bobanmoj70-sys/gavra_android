@@ -9,6 +9,7 @@ import '../models/v2_registrovani_putnik.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
+import 'v2_audit_log_service.dart';
 import 'v2_putnici_service.dart';
 
 /// Servis za upravljanje istorijom vožnji.
@@ -102,6 +103,21 @@ class V2StatistikaIstorijaService {
       'placeni_mesec': placeniMesec ?? datum.month,
       'placena_godina': placenaGodina ?? datum.year,
     });
+
+    // Audit log — uplata dodana
+    V2AuditLogService.log(
+      tip: 'uplata_dodana',
+      aktorId: vozacId,
+      aktorIme: vozacIme,
+      aktorTip: 'vozac',
+      putnikId: putnikId,
+      putnikIme: putnikIme,
+      putnikTabela: putnikTabela,
+      grad: gradKod,
+      vreme: vremeNormalizovano,
+      novo: {'iznos': iznos, 'tip': tipUplate},
+      detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
+    );
   }
 
   /// Logovanje generičke akcije u statistika_istorija tabelu.
@@ -477,6 +493,19 @@ class V2StatistikaIstorijaService {
         'placena_godina': placenaGodina ?? now.year,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
+
+      // Audit log — uplata dodana
+      V2AuditLogService.log(
+        tip: 'uplata_dodana',
+        aktorId: vozacId,
+        aktorIme: vozacIme,
+        aktorTip: 'vozac',
+        putnikId: putnikId,
+        putnikIme: putnikIme,
+        putnikTabela: putnikTabela,
+        novo: {'iznos': iznos, 'tip': 'uplata'},
+        detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
+      );
       return true;
     } catch (e) {
       return false;

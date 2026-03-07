@@ -19,7 +19,7 @@ class V2TimePickerCell extends StatelessWidget {
   final ValueChanged<String?> onChanged;
   final double? width;
   final double? height;
-  final String? status; // obrada, odobreno, otkazano, odbijeno, pokupljen, bez_polaska
+  final String? status; // obrada, odobreno, otkazano, odbijeno, pokupljen
   final String? dayName; // Dan u nedelji (pon, uto, sre...) za zaključavanje prošlih dana
   final String? tipPutnika; // Tip putnika: radnik, ucenik, dnevni
   final String? tipPrikazivanja; // Režim prikaza: standard, DNEVNI
@@ -382,7 +382,6 @@ class V2TimePickerCell extends StatelessWidget {
                   height: 350,
                   child: ListView(
                     children: [
-                      // "Otkaži" - putnik otkazuje termin, računa se u statistiku
                       ListTile(
                         title: Text(
                           'Otkaži',
@@ -392,15 +391,10 @@ class V2TimePickerCell extends StatelessWidget {
                           value == null || value!.isEmpty ? Icons.check_circle : Icons.circle_outlined,
                           color: value == null || value!.isEmpty ? Colors.green : Colors.red.shade300,
                         ),
-                        subtitle: const Text(
-                          '⚠️ Računa se u statistiku kao otkazana vožnja',
-                          style: TextStyle(color: Colors.orange, fontSize: 11),
-                        ),
                         onTap: () async {
                           if (value != null && value!.isNotEmpty) {
                             Navigator.of(dialogContext).pop();
                             onChanged(null);
-                            V2AppSnackBar.warning(context, 'Vožnja otkazana. Evidentirano kao otkazivanje.');
                           } else {
                             V2AppSnackBar.info(context, 'Vreme polaska je već prazno.');
                             if (dialogContext.mounted) Navigator.of(dialogContext).pop();

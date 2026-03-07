@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart' as globals_file;
@@ -10,6 +11,7 @@ import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
+import 'v2_audit_log_service.dart';
 import 'v2_statistika_istorija_service.dart';
 
 /// Servis za upravljanje aktivnim zahtevima za sedišta (v2_polasci tabela)
@@ -47,8 +49,10 @@ class V2PolasciService {
 
       // 1. Ukloni sve ostale aktivne zahtjeve za isti grad+dan (drugačije vreme)
       // Putnik može imati samo jedan aktivan zahtjev po grad+dan.
-      // isAdmin=true → 'bez_polaska' (tiho brisanje, ne utiče na statistiku)
-      // isAdmin=false → 'cancelled' (putnik sam menja zahtev)
+      // isAdmin=true → 'bez_polaska': SOFT RESET, zapis ostaje u bazi (ne briše se!).
+      //   Null/brisanje bi uklonilo putnika iz cache-a i slomilo prikaz u profilu i vozačevom ekranu.
+      //   'bez_polaska' ima prioritet 0 → automatski se pregazi kad putnik pošalje nov zahtev.
+      // isAdmin=false → 'cancelled': putnik sam menja zahtev na drugo vreme
       final cancelledStatus = isAdmin ? 'bez_polaska' : 'cancelled';
       final cancelledRows = await _supabase
           .from('v2_polasci')
@@ -57,7 +61,7 @@ class V2PolasciService {
           .eq('grad', gradKey)
           .eq('dan', danKey)
           .neq('zeljeno_vreme', normVreme)
-          .inFilter('status', ['obrada', 'odobreno', 'odbijeno'])
+          .inFilter('status', ['obrada', 'odobreno', 'odbijeno', 'pokupljen', 'otkazano'])
           .select('id');
       for (final row in cancelledRows) {
         rm.v2PatchCache('v2_polasci', row['id'].toString(), {'status': cancelledStatus, 'updated_at': nowStr});
@@ -120,6 +124,20 @@ class V2PolasciService {
             vreme: vreme,
           );
         } catch (_) {}
+
+        // Audit log — putnik šalje zahtev za vožnju
+        V2AuditLogService.log(
+          tip: 'zahtev_poslan',
+          aktorId: putnikId,
+          aktorTip: 'putnik',
+          putnikId: putnikId,
+          putnikTabela: putnikTabela,
+          dan: danKey,
+          grad: gradKey,
+          vreme: normVreme,
+          novo: {'status': status, 'broj_mesta': brojMesta},
+          detalji: 'Zahtev za vožnju: $danKey $gradKey $normVreme',
+        );
       }
     } catch (e) {
       rethrow;
@@ -178,6 +196,23 @@ class V2PolasciService {
       await _supabase.from('v2_polasci').update(approvePayload).eq('id', id);
       V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', id, approvePayload);
 
+      // Audit log
+      final r = cachedRow;
+      V2AuditLogService.log(
+        tip: 'odobren_zahtev',
+        aktorIme: approvedBy,
+        aktorTip: 'vozac',
+        putnikId: r?['putnik_id']?.toString(),
+        putnikTabela: r?['putnik_tabela']?.toString(),
+        dan: r?['dan']?.toString(),
+        grad: r?['grad']?.toString(),
+        vreme: zeljenoVreme?.toString(),
+        polazakId: id,
+        staro: {'status': r?['status'] ?? 'obrada'},
+        novo: {'status': 'odobreno'},
+        detalji: 'Zahtev odobren${approvedBy != null ? " od: $approvedBy" : ""}',
+      );
+
       return true;
     } catch (e) {
       return false;
@@ -196,6 +231,23 @@ class V2PolasciService {
       };
       await _supabase.from('v2_polasci').update(rejectPayload).eq('id', id);
       V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', id, rejectPayload);
+
+      // Audit log
+      final r = V2MasterRealtimeManager.instance.polasciCache[id];
+      V2AuditLogService.log(
+        tip: 'odbijen_zahtev',
+        aktorIme: rejectedBy,
+        aktorTip: 'vozac',
+        putnikId: r?['putnik_id']?.toString(),
+        putnikTabela: r?['putnik_tabela']?.toString(),
+        dan: r?['dan']?.toString(),
+        grad: r?['grad']?.toString(),
+        vreme: r?['zeljeno_vreme']?.toString(),
+        polazakId: id,
+        staro: {'status': r?['status'] ?? 'obrada'},
+        novo: {'status': 'odbijeno'},
+        detalji: 'Zahtev odbijen${rejectedBy != null ? " od: $rejectedBy" : ""}',
+      );
 
       return true;
     } catch (e) {
@@ -884,6 +936,32 @@ class V2PutnikStreamService {
         vreme: vreme,
       );
     }
+
+    // Audit log — ko je pokupljeno i od koga
+    final putnikRow = V2MasterRealtimeManager.instance.v2GetPutnikById(id.toString());
+    V2AuditLogService.log(
+      tip: 'pokupljen',
+      aktorId: vozacId,
+      aktorIme: driver,
+      aktorTip: 'vozac',
+      putnikId: id.toString(),
+      putnikIme: putnikRow?['ime']?.toString(),
+      putnikTabela: putnikRow?['_tabela']?.toString(),
+      dan: () {
+        try {
+          final dt = DateTime.parse(targetDatum);
+          const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+          return dani[dt.weekday - 1];
+        } catch (_) {
+          return null;
+        }
+      }(),
+      grad: grad,
+      vreme: vreme,
+      polazakId: requestId?.isNotEmpty == true ? requestId : null,
+      novo: {'status': 'pokupljen', 'datum': targetDatum},
+      detalji: 'Putnik pokupljen${driver != null ? " od: $driver" : ""}',
+    );
   }
 
   Future<void> v2OznaciStatus(String putnikId, String status, String actor) async {
@@ -1032,6 +1110,25 @@ class V2PutnikStreamService {
         datum: datum,
       );
     } catch (e) {}
+
+    // Audit log — ko je otkazao i koji status
+    final putnikRow = V2MasterRealtimeManager.instance.v2GetPutnikById(id.toString());
+    V2AuditLogService.log(
+      tip: 'otkazano_vozac',
+      aktorId: vozacUuid,
+      aktorIme: driver,
+      aktorTip: driver != null ? 'vozac' : 'putnik',
+      putnikId: id.toString(),
+      putnikIme: putnikRow?['ime']?.toString(),
+      putnikTabela: putnikRow?['_tabela']?.toString(),
+      dan: selectedDan,
+      grad: selectedGrad ?? grad,
+      vreme: selectedVreme ?? vreme,
+      polazakId: updatedId,
+      staro: {'status': 'odobreno'},
+      novo: {'status': status},
+      detalji: 'Otkazano${driver != null ? " od: $driver" : ""} — status: $status',
+    );
   }
 
   Future<void> v2OznaciPlaceno(
@@ -1122,8 +1219,35 @@ class V2PutnikStreamService {
       grad: grad,
       vreme: selectedVreme,
     );
+
+    // Audit log — zabilježi naplatu
+    final _gradForAudit = grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null;
+    V2AuditLogService.log(
+      tip: 'naplata',
+      aktorId: vozacId,
+      aktorIme: driver,
+      aktorTip: 'vozac',
+      putnikId: id.toString(),
+      putnikIme: putnikIme,
+      putnikTabela: putnikTabela,
+      dan: selectedDan,
+      grad: _gradForAudit,
+      vreme: selectedVreme,
+      polazakId: requestId?.isNotEmpty == true ? requestId : null,
+      novo: {'placen': true, 'iznos': iznos.toDouble()},
+      detalji: 'Naplata: ${iznos.toStringAsFixed(0)} RSD${driver != null ? " od: $driver" : ""}',
+    );
   }
 
+  // NAPOMENA: v2GlobalniBezPolaska koristi UPDATE → 'bez_polaska', NE brisanje zapisa.
+  // Razlozi:
+  //   1. Null/brisanje bi uklonilo putnika iz cache-a (aktivniStatusi u MasterRealtimeManager
+  //      eksplicitno uključuje 'bez_polaska') → putnik nestaje iz profila i vozačevog ekrana.
+  //   2. jeBezPolaska getter se koristi na 10+ mjesta u vozac_screen i putnik_profil_screen
+  //      za poseban prikaz — null bi pokrio drugu granu logike (putnik nema raspored).
+  //   3. 'bez_polaska' ima _statusPrioritet = 0 → automatski pregažen novim zahtevom putnika.
+  //   4. Semantika: 'bez_polaska' = putnik IMA raspored ali ta nedelja nema polaska.
+  //                  null/nema zapisa = putnik NIKAD nije imao raspored za taj dan.
   Future<int> v2GlobalniBezPolaska({
     required String dan,
     required String grad,
@@ -1143,11 +1267,12 @@ class V2PutnikStreamService {
       final danLow = dan.toLowerCase();
       final danKey = _danMap[danLow] ?? danLow;
 
+      final now = v2NowString();
       var query = supabase.from('v2_polasci').update({
         'status': 'bez_polaska',
-        'processed_at': v2NowString(),
-        'updated_at': v2NowString(),
-      }).match({'dan': danKey}).inFilter('status', ['odobreno', 'obrada']).eq('grad', gradKey);
+        'processed_at': now,
+        'updated_at': now,
+      }).match({'dan': danKey}).inFilter('status', ['odobreno', 'obrada', 'pokupljen', 'otkazano']).eq('grad', gradKey);
 
       if (vreme.isNotEmpty && vreme != 'Sva vremena') {
         query = query.eq('zeljeno_vreme', V2GradAdresaValidator.normalizeTime(vreme));
@@ -1157,15 +1282,29 @@ class V2PutnikStreamService {
       final rm = V2MasterRealtimeManager.instance;
       final patchPayload = {
         'status': 'bez_polaska',
-        'processed_at': v2NowString(),
-        'updated_at': v2NowString(),
+        'processed_at': now,
+        'updated_at': now,
       };
       for (final row in res) {
         rm.v2PatchCache('v2_polasci', row['id'].toString(), patchPayload);
       }
+
+      // Audit log — jedna globalna stavka koja bilježi broj pogođenih putnika
+      V2AuditLogService.log(
+        tip: 'bez_polaska_globalni',
+        aktorTip: 'admin',
+        dan: danKey,
+        grad: gradKey,
+        vreme: vreme.isNotEmpty && vreme != 'Sva vremena' ? V2GradAdresaValidator.normalizeTime(vreme) : null,
+        novo: {'status': 'bez_polaska', 'pogodeni_putnici': res.length},
+        detalji:
+            'Bez polaska: $danKey $gradKey${vreme.isNotEmpty && vreme != "Sva vremena" ? " $vreme" : " (sva vremena)"} — ${res.length} putnika',
+      );
+
       return res.length;
-    } catch (e) {
-      return 0;
+    } catch (e, st) {
+      debugPrint('[v2GlobalniBezPolaska] greška: $e\n$st');
+      rethrow;
     }
   }
 }

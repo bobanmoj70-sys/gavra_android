@@ -44,15 +44,11 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
 
   void _subscribeRealtime() {
     _realtimeSub?.cancel();
-    _realtimeSub = V2MasterRealtimeManager.instance
-        .onCacheChanged
-        .where((t) => t == 'v2_polasci')
-        .listen((_) {
+    _realtimeSub = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
       if (_selectedVozacIme == null) return;
       final today = DateTime.now();
-      final isToday = _selectedDate.year == today.year &&
-          _selectedDate.month == today.month &&
-          _selectedDate.day == today.day;
+      final isToday =
+          _selectedDate.year == today.year && _selectedDate.month == today.month && _selectedDate.day == today.day;
       if (!isToday) return;
       _refreshDebounce?.cancel();
       _refreshDebounce = Timer(const Duration(milliseconds: 300), () {
@@ -106,8 +102,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     );
     if (predaja != null && mounted) {
       setState(() {
-        _predaoController.text =
-            predaja.predaoIznos > 0 ? predaja.predaoIznos.toStringAsFixed(0) : '';
+        _predaoController.text = predaja.predaoIznos > 0 ? predaja.predaoIznos.toStringAsFixed(0) : '';
         _predaoSacuvan = predaja.predaoIznos > 0;
       });
     }
@@ -168,8 +163,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
 
     Future<void> fetchIme(String tabela, List<String> ids) async {
       if (ids.isEmpty) return;
-      final res =
-          await supabase.from(tabela).select('id, ime').inFilter('id', ids) as List;
+      final res = await supabase.from(tabela).select('id, ime').inFilter('id', ids) as List;
       for (final r in res) {
         imeMap[r['id'].toString()] = r['ime']?.toString() ?? '?';
       }
@@ -202,8 +196,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     if (tsStr.isNotEmpty) {
       final dt = DateTime.tryParse(tsStr)?.toLocal();
       if (dt != null) {
-        vremeNaplate =
-            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        vremeNaplate = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       }
     }
     return {
@@ -252,12 +245,10 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
       final iznos = (n['iznos'] as double).toStringAsFixed(0);
-      buffer.writeln(
-          '${i + 1}. ${n['ime']} (${n['grad']} ${n['polazak']}) — $iznos din — ${n['vreme_naplate']}');
+      buffer.writeln('${i + 1}. ${n['ime']} (${n['grad']} ${n['polazak']}) — $iznos din — ${n['vreme_naplate']}');
     }
     buffer.writeln('─────────────────────────');
-    buffer.writeln(
-        'UKUPNO: ${_naplate.length} uplata — ${_ukupnoIznos.toStringAsFixed(0)} din');
+    buffer.writeln('UKUPNO: ${_naplate.length} uplata — ${_ukupnoIznos.toStringAsFixed(0)} din');
     final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
     if (predaoVal != null) {
       final razlika = predaoVal - _ukupnoIznos;
@@ -334,14 +325,9 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                     children: [
                       _pdfCell('${i + 1}.', style: baseStyle),
                       _pdfCell(_naplate[i]['ime'] as String, style: baseStyle),
-                      _pdfCell(
-                          '${_naplate[i]['grad']} ${_naplate[i]['polazak']}',
-                          style: baseStyle),
-                      _pdfCell(
-                          '${(_naplate[i]['iznos'] as double).toStringAsFixed(0)} din',
-                          style: baseStyle),
-                      _pdfCell(_naplate[i]['vreme_naplate'] as String,
-                          style: baseStyle),
+                      _pdfCell('${_naplate[i]['grad']} ${_naplate[i]['polazak']}', style: baseStyle),
+                      _pdfCell('${(_naplate[i]['iznos'] as double).toStringAsFixed(0)} din', style: baseStyle),
+                      _pdfCell(_naplate[i]['vreme_naplate'] as String, style: baseStyle),
                     ],
                   ),
               ],
@@ -413,8 +399,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Dnevnik naplate',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Dnevnik naplate', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (_naplate.isNotEmpty) ...[
             IconButton(
@@ -452,18 +437,12 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedVozacIme,
-                            hint: const Text('Vozač',
-                                style: TextStyle(color: Colors.white54)),
+                            hint: const Text('Vozač', style: TextStyle(color: Colors.white54)),
                             dropdownColor: const Color(0xFF1A1A2E),
-                            style:
-                                const TextStyle(color: Colors.white, fontSize: 14),
-                            icon: const Icon(Icons.arrow_drop_down,
-                                color: Colors.white54),
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
                             isExpanded: true,
-                            items: vozaci
-                                .map((ime) =>
-                                    DropdownMenuItem(value: ime, child: Text(ime)))
-                                .toList(),
+                            items: vozaci.map((ime) => DropdownMenuItem(value: ime, child: Text(ime))).toList(),
                             onChanged: (v) {
                               setState(() {
                                 _selectedVozacIme = v;
@@ -483,8 +462,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                       onTap: _pickDate,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
@@ -492,15 +470,11 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today,
-                                color: Colors.white70, size: 16),
+                            const Icon(Icons.calendar_today, color: Colors.white70, size: 16),
                             const SizedBox(width: 6),
                             Text(
                               _formatDatum(),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600),
+                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
@@ -509,22 +483,18 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                     const SizedBox(width: 8),
                     // Učitaj dugme
                     ElevatedButton(
-                      onPressed:
-                          _selectedVozacIme == null ? null : _ucitajNaplate,
+                      onPressed: _selectedVozacIme == null ? null : _ucitajNaplate,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
                       child: _isLoading
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.search, size: 20),
                     ),
                   ],
@@ -534,16 +504,14 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
               // Sadržaj
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(color: Colors.white))
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
                     : _naplate.isEmpty
                         ? Center(
                             child: Text(
                               _selectedVozacIme == null
                                   ? 'Izaberi vozača i datum'
                                   : 'Nema naplata za ${_formatDatum()}',
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 16),
+                              style: const TextStyle(color: Colors.white54, fontSize: 16),
                             ),
                           )
                         : Column(
@@ -551,23 +519,18 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                               // Lista naplata
                               Expanded(
                                 child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
                                   itemCount: _naplate.length,
                                   itemBuilder: (context, index) {
                                     final n = _naplate[index];
-                                    final iznos =
-                                        (n['iznos'] as double).toStringAsFixed(0);
+                                    final iznos = (n['iznos'] as double).toStringAsFixed(0);
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 6),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 10),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                       decoration: BoxDecoration(
-                                        color:
-                                            Colors.white.withValues(alpha: 0.07),
+                                        color: Colors.white.withValues(alpha: 0.07),
                                         borderRadius: BorderRadius.circular(10),
-                                        border:
-                                            Border.all(color: Colors.white12),
+                                        border: Border.all(color: Colors.white12),
                                       ),
                                       child: Row(
                                         children: [
@@ -575,25 +538,19 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                             width: 28,
                                             child: Text(
                                               '${index + 1}.',
-                                              style: const TextStyle(
-                                                  color: Colors.white38,
-                                                  fontSize: 13),
+                                              style: const TextStyle(color: Colors.white38, fontSize: 13),
                                             ),
                                           ),
                                           Expanded(
                                             child: Text(
                                               n['ime'] as String,
                                               style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600),
+                                                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                                             ),
                                           ),
                                           Text(
                                             '${n['grad']} ${n['polazak']}',
-                                            style: const TextStyle(
-                                                color: Colors.white54,
-                                                fontSize: 13),
+                                            style: const TextStyle(color: Colors.white54, fontSize: 13),
                                           ),
                                           const SizedBox(width: 10),
                                           Text(
@@ -607,9 +564,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                           const SizedBox(width: 10),
                                           Text(
                                             n['vreme_naplate'] as String,
-                                            style: const TextStyle(
-                                                color: Colors.white38,
-                                                fontSize: 12),
+                                            style: const TextStyle(color: Colors.white38, fontSize: 12),
                                           ),
                                         ],
                                       ),
@@ -621,36 +576,25 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                               // Footer: Ukupno + Predao
                               StatefulBuilder(
                                 builder: (context, setFooter) {
-                                  final predaoVal = double.tryParse(
-                                      _predaoController.text
-                                          .replaceAll(',', '.'));
-                                  final razlika = predaoVal != null
-                                      ? predaoVal - _ukupnoIznos
-                                      : null;
+                                  final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
+                                  final razlika = predaoVal != null ? predaoVal - _ukupnoIznos : null;
                                   return Container(
                                     margin: const EdgeInsets.all(12),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     decoration: BoxDecoration(
-                                      color:
-                                          Colors.green.withValues(alpha: 0.15),
+                                      color: Colors.green.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: Colors.green
-                                              .withValues(alpha: 0.4)),
+                                      border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
                                     ),
                                     child: Column(
                                       children: [
                                         // Ukupno
                                         Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
                                               '${_naplate.length} uplata',
-                                              style: const TextStyle(
-                                                  color: Colors.white70,
-                                                  fontSize: 15),
+                                              style: const TextStyle(color: Colors.white70, fontSize: 15),
                                             ),
                                             Text(
                                               '${_ukupnoIznos.toStringAsFixed(0)} din',
@@ -668,77 +612,53 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                           children: [
                                             const Text(
                                               'Predao:',
-                                              style: TextStyle(
-                                                  color: Colors.white70,
-                                                  fontSize: 14),
+                                              style: TextStyle(color: Colors.white70, fontSize: 14),
                                             ),
                                             const SizedBox(width: 10),
                                             Expanded(
                                               child: TextField(
                                                 controller: _predaoController,
-                                                keyboardType: const TextInputType
-                                                    .numberWithOptions(
-                                                    decimal: true),
-                                                style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 15),
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                style: const TextStyle(color: Colors.white, fontSize: 15),
                                                 decoration: InputDecoration(
                                                   hintText: '0',
-                                                  hintStyle: const TextStyle(
-                                                      color: Colors.white38),
+                                                  hintStyle: const TextStyle(color: Colors.white38),
                                                   suffixText: 'din',
-                                                  suffixStyle: const TextStyle(
-                                                      color: Colors.white54),
+                                                  suffixStyle: const TextStyle(color: Colors.white54),
                                                   isDense: true,
                                                   contentPadding:
-                                                      const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 8),
+                                                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                                   filled: true,
-                                                  fillColor: Colors.white
-                                                      .withValues(alpha: 0.08),
+                                                  fillColor: Colors.white.withValues(alpha: 0.08),
                                                   border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(8),
+                                                    borderRadius: BorderRadius.circular(8),
                                                     borderSide: BorderSide.none,
                                                   ),
                                                 ),
                                                 onChanged: (_) {
                                                   setFooter(() {});
-                                                  setState(() =>
-                                                      _predaoSacuvan = false);
+                                                  setState(() => _predaoSacuvan = false);
                                                 },
-                                                onSubmitted: (_) =>
-                                                    _sacuvajPredaju(),
+                                                onSubmitted: (_) => _sacuvajPredaju(),
                                               ),
                                             ),
                                             const SizedBox(width: 8),
                                             GestureDetector(
                                               onTap: _sacuvajPredaju,
                                               child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(8),
+                                                padding: const EdgeInsets.all(8),
                                                 decoration: BoxDecoration(
                                                   color: _predaoSacuvan
-                                                      ? Colors.green
-                                                          .withValues(alpha: 0.3)
-                                                      : Colors.white
-                                                          .withValues(alpha: 0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
+                                                      ? Colors.green.withValues(alpha: 0.3)
+                                                      : Colors.white.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(
-                                                    color: _predaoSacuvan
-                                                        ? Colors.greenAccent
-                                                        : Colors.white24,
+                                                    color: _predaoSacuvan ? Colors.greenAccent : Colors.white24,
                                                   ),
                                                 ),
                                                 child: Icon(
-                                                  _predaoSacuvan
-                                                      ? Icons.check
-                                                      : Icons.save_outlined,
-                                                  color: _predaoSacuvan
-                                                      ? Colors.greenAccent
-                                                      : Colors.white54,
+                                                  _predaoSacuvan ? Icons.check : Icons.save_outlined,
+                                                  color: _predaoSacuvan ? Colors.greenAccent : Colors.white54,
                                                   size: 20,
                                                 ),
                                               ),
@@ -749,17 +669,12 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                         if (razlika != null) ...[
                                           const SizedBox(height: 8),
                                           Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                razlika >= 0
-                                                    ? 'Višak:'
-                                                    : 'Manjak:',
+                                                razlika >= 0 ? 'Višak:' : 'Manjak:',
                                                 style: TextStyle(
-                                                  color: razlika >= 0
-                                                      ? Colors.greenAccent
-                                                      : Colors.redAccent,
+                                                  color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -767,9 +682,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                               Text(
                                                 '${razlika.abs().toStringAsFixed(0)} din',
                                                 style: TextStyle(
-                                                  color: razlika >= 0
-                                                      ? Colors.greenAccent
-                                                      : Colors.redAccent,
+                                                  color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.bold,
                                                 ),

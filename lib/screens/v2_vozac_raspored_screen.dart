@@ -4,6 +4,7 @@ import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
+import '../services/v2_audit_log_service.dart';
 import '../services/v2_kapacitet_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_vozac_putnik_service.dart';
@@ -396,6 +397,21 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                       vreme: _selectedVreme,
                     );
                     if (ok) {
+                      // Audit log
+                      final vozacIdDel = trenutniEntry?.vozacId;
+                      V2AuditLogService.log(
+                        tip: 'uklonjen_vozac',
+                        aktorId: vozacIdDel,
+                        aktorIme: trenutni,
+                        aktorTip: 'vozac',
+                        putnikId: putnik.id?.toString(),
+                        putnikIme: putnik.ime,
+                        dan: dan,
+                        grad: _selectedGrad,
+                        vreme: _selectedVreme,
+                        staro: {'vozac': trenutni},
+                        detalji: 'Individualna dodjela uklonjena: $trenutni ← ${putnik.ime} ($dan)',
+                      );
                       if (mounted) V2AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
                     } else {
                       if (mounted) V2AppSnackBar.error(context, '❌ Greška pri brisanju');
@@ -426,6 +442,21 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                             vreme: _selectedVreme,
                           );
                           if (ok) {
+                            // Audit log
+                            final vozacIdSet = V2VozacCache.getUuidByIme(odabranVozac!);
+                            V2AuditLogService.log(
+                              tip: 'dodeljen_vozac',
+                              aktorId: vozacIdSet,
+                              aktorIme: odabranVozac,
+                              aktorTip: 'vozac',
+                              putnikId: putnik.id?.toString(),
+                              putnikIme: putnik.ime,
+                              dan: dan,
+                              grad: _selectedGrad,
+                              vreme: _selectedVreme,
+                              novo: {'vozac': odabranVozac},
+                              detalji: 'Individualna dodjela: $odabranVozac → ${putnik.ime} ($dan)',
+                            );
                             if (mounted) V2AppSnackBar.success(context, '✅ $odabranVozac → ${putnik.ime}');
                           } else {
                             if (mounted) V2AppSnackBar.error(context, '❌ Greška pri dodjeli');
@@ -455,6 +486,19 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
         vozacId: vozacId,
       ));
       if (mounted) V2AppSnackBar.success(context, '✅ $vozacIme → $grad $vreme ($dan)');
+
+      // Audit log
+      V2AuditLogService.log(
+        tip: 'dodat_termin',
+        aktorId: vozacId,
+        aktorIme: vozacIme,
+        aktorTip: 'vozac',
+        dan: dan,
+        grad: grad,
+        vreme: vreme,
+        novo: {'vozac': vozacIme, 'grad': grad, 'vreme': vreme, 'dan': dan},
+        detalji: 'Termin dodan: $vozacIme → $grad $vreme ($dan)',
+      );
     } catch (e) {
       if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
     }
@@ -469,6 +513,19 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     try {
       await V2VozacRasporedService.deleteTermin(dan: dan, grad: grad, vreme: vreme, vozacId: vozacId);
       if (mounted) V2AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($dan)');
+
+      // Audit log
+      V2AuditLogService.log(
+        tip: 'uklonjen_termin',
+        aktorId: vozacId,
+        aktorIme: vozacIme,
+        aktorTip: 'vozac',
+        dan: dan,
+        grad: grad,
+        vreme: vreme,
+        staro: {'vozac': vozacIme, 'grad': grad, 'vreme': vreme, 'dan': dan},
+        detalji: 'Termin uklonjen: $vozacIme ← $grad $vreme ($dan)',
+      );
     } catch (e) {
       if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
     }

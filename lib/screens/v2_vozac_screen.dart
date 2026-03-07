@@ -7,6 +7,7 @@ import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart'; // Za realtime raspored
+import '../services/v2_audit_log_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_driver_location_service.dart';
 import '../services/v2_kapacitet_service.dart';
@@ -451,6 +452,14 @@ class _VozacScreenState extends State<V2VozacScreen> {
       if (potvrda == true && mounted) {
         try {
           await V2VozacService.updateSifra(vozacId, novaCtrl.text);
+          // Audit log — promena šifre
+          V2AuditLogService.log(
+            tip: 'promena_sifre',
+            aktorId: vozacId,
+            aktorIme: _currentDriver,
+            aktorTip: 'vozac',
+            detalji: 'Vozač promijenio šifru',
+          );
           if (mounted) V2AppSnackBar.success(context, '✅ Šifra uspešno promenjena');
         } catch (e) {
           if (mounted) V2AppSnackBar.error(context, 'Greška pri čuvanju šifre: $e');

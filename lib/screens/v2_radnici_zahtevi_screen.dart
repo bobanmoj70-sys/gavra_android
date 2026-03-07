@@ -228,8 +228,7 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
                 if (obradjenoStr != null) _timelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
                 if (obradjenoStr == null && status == 'obrada')
                   _timelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
-                if (koObradio != null)
-                  _timelineChip('👤', koObradio, koObradioColor),
+                if (koObradio != null) _timelineChip('👤', koObradio, koObradioColor),
               ],
             ),
           ],
