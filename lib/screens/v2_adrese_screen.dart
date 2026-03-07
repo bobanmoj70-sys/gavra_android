@@ -33,11 +33,12 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
   }
 
   List<V2Adresa> _getFilteredAdrese(List<V2Adresa> adrese) {
+    final query = _searchQuery.toLowerCase();
     return adrese.where((adresa) {
-      final naziv = (adresa.naziv).toLowerCase();
+      final naziv = adresa.naziv.toLowerCase();
       final grad = adresa.grad ?? '';
 
-      final matchesSearch = _searchQuery.isEmpty || naziv.contains(_searchQuery.toLowerCase());
+      final matchesSearch = query.isEmpty || naziv.contains(query);
       final matchesGrad = _filterGrad == 'Svi' || grad == _filterGrad;
 
       return matchesSearch && matchesGrad;
@@ -147,8 +148,10 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         final adrese = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting && adrese.isEmpty;
 
+        // Ukupni stats zavise samo od stream podataka, ne od filter stanja
         final belaCrkvaCount = adrese.where((a) => a.grad == 'BC').length;
         final vrsacCount = adrese.where((a) => a.grad == 'VS').length;
+        // filteredAdrese zavisi od _searchQuery i _filterGrad — mora ostati u builderu
         final filteredAdrese = _getFilteredAdrese(adrese);
 
         return Scaffold(
@@ -437,7 +440,7 @@ class _AdresaDialogState extends State<_AdresaDialog> {
                       labelText: 'Latitude (opciono)',
                       hintText: 'npr. 44.7568',
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -448,7 +451,7 @@ class _AdresaDialogState extends State<_AdresaDialog> {
                       labelText: 'Longitude (opciono)',
                       hintText: 'npr. 21.1622',
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
               ],

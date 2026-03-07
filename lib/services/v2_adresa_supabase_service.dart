@@ -157,9 +157,11 @@ class V2AdresaSupabaseService {
     double? lat,
     double? lng,
   }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
     final updateData = <String, dynamic>{
       'naziv': naziv,
       'grad': grad,
+      'updated_at': now,
     };
     if (lat != null) updateData['gps_lat'] = lat;
     if (lng != null) updateData['gps_lng'] = lng;
