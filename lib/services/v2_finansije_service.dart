@@ -329,10 +329,17 @@ class V2FinansijeService {
 
       final voznjeRows = (results[0] as List).cast<Map<String, dynamic>>();
 
-      // Troškovi za period iz cache-a (aktivan=true, godina u opsegu from..to)
+      // Troškovi za period iz cache-a (aktivan=true, godina i mesec u opsegu from..to)
       final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values
-          .where((r) =>
-              r['aktivan'] == true && (r['godina'] as int? ?? 0) >= from.year && (r['godina'] as int? ?? 0) <= to.year)
+          .where((r) {
+            if (r['aktivan'] != true) return false;
+            final g = r['godina'] as int? ?? 0;
+            final m = r['mesec'] as int? ?? 0;
+            if (g < from.year || g > to.year) return false;
+            if (g == from.year && m < from.month) return false;
+            if (g == to.year && m > to.month) return false;
+            return true;
+          })
           .toList();
 
       final prihod = _sumirajPrihode(voznjeRows);
@@ -371,8 +378,7 @@ class V2FinansijeService {
     Future.microtask(emit);
 
     // Debounce 1s — finansije se ne moraju ažurirati svaki event (radi 4 DB upita)
-    final sub =
-        rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_finansije_troskovi').listen((_) {
+    final sub = rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_finansije_troskovi').listen((_) {
       debounce?.cancel();
       debounce = Timer(const Duration(seconds: 1), emit);
     });

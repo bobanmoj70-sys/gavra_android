@@ -528,12 +528,12 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     }
   }
 
-  void _editServisField(String prefix, String label, DateTime? datum, int? km) {
+  void _editServisField(String prefix, String label, DateTime? datum, int? km) async {
     DateTime? selectedDatum = datum ?? DateTime.now();
     final currentVanKm = _selectedVozilo?.kilometraza?.toInt();
     final kmController = TextEditingController(text: (km ?? currentVanKm)?.toString() ?? '');
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -653,9 +653,10 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
         ),
       ),
     );
+    kmController.dispose();
   }
 
-  void _editGumeField(String pozicija, DateTime? datum, String? opis, int? km) {
+  void _editGumeField(String pozicija, DateTime? datum, String? opis, int? km) async {
     DateTime? selectedDatum = datum ?? DateTime.now();
     final opisController = TextEditingController(text: opis ?? '');
     final currentVanKm = _selectedVozilo?.kilometraza?.toInt();
@@ -678,7 +679,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
       }
     }
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -870,6 +871,8 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
         ),
       ),
     );
+    opisController.dispose();
+    kmController.dispose();
   }
 
   Widget _buildTipGumaChip(String label, String value, String? selected, Function(String?) onTap) {

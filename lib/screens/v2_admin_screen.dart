@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
+import '../models/v2_polazak.dart';
 import '../services/v2_app_settings_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_local_notification_service.dart';
@@ -51,7 +52,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
   late final Stream<int> _streamUceniciObrada;
   late final Stream<List<Map<String, dynamic>>> _streamPinZahtevi;
   // Shared broadcast stream za zahteve — jedan poziv, dvije pretplate
-  late final Stream<List<dynamic>> _streamZahteviObradaShared;
+  late final Stream<List<V2Polazak>> _streamZahteviObradaShared;
 
   @override
   void initState() {
@@ -80,7 +81,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
     }
   }
 
-  /// ?? VOZAC PICKER DIALOG - Admin može da vidi ekran bilo kog vozaca
+  /// 🚗 VOZAC PICKER DIALOG - Admin može da vidi ekran bilo kog vozaca
   void _showVozacPickerDialog(BuildContext context) {
     try {
       final vozaci = V2VozacService.getAllVozaci();
@@ -231,7 +232,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
     }
   }
 
-  /// ?? DIJALOG ZA GLOBALNO UKLANJANJE POLASKA
+  /// ⚠️ DIJALOG ZA GLOBALNO UKLANJANJE POLASKA
   void _showGlobalniBezPolaskaDialog() {
     String selectedGrad = 'BC';
     String selectedVreme = '05:00';
