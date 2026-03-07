@@ -156,10 +156,10 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
 
     // Timeline formatiranje
     final poslatStr = z.createdAt != null
-        ? '${z.createdAt!.day.toString().padLeft(2, '0')}.${z.createdAt!.month.toString().padLeft(2, '0')}. ${z.createdAt!.hour.toString().padLeft(2, '0')}:${z.createdAt!.minute.toString().padLeft(2, '0')}'
+        ? '${z.createdAt!.toLocal().day.toString().padLeft(2, '0')}.${z.createdAt!.toLocal().month.toString().padLeft(2, '0')}. ${z.createdAt!.toLocal().hour.toString().padLeft(2, '0')}:${z.createdAt!.toLocal().minute.toString().padLeft(2, '0')}'
         : null;
     final obradjenoStr = z.processedAt != null
-        ? '${z.processedAt!.day.toString().padLeft(2, '0')}.${z.processedAt!.month.toString().padLeft(2, '0')}. ${z.processedAt!.hour.toString().padLeft(2, '0')}:${z.processedAt!.minute.toString().padLeft(2, '0')}'
+        ? '${z.processedAt!.toLocal().day.toString().padLeft(2, '0')}.${z.processedAt!.toLocal().month.toString().padLeft(2, '0')}. ${z.processedAt!.toLocal().hour.toString().padLeft(2, '0')}:${z.processedAt!.toLocal().minute.toString().padLeft(2, '0')}'
         : null;
     final koObradio = z.approvedBy ?? z.cancelledBy;
     final koObradioColor = V2VozacCache.getColor(koObradio);
