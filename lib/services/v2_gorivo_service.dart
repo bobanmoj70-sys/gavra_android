@@ -83,13 +83,14 @@ class V2GorivoService {
     double? cenaPoPLitru,
   }) async {
     try {
-      await V2PumpaTocenjaService.addTocenje(
+      final ok = await V2PumpaTocenjaService.addTocenje(
         datum: datum,
         voziloId: voziloId,
         litri: litri,
         kmVozila: kmVozila,
         napomena: napomena,
       );
+      if (!ok) return false;
 
       // Ažuriraj kilometražu vozila ako je unesena
       if (kmVozila != null) {
@@ -141,10 +142,11 @@ class V2GorivoService {
         final marka = vozilo?['marka'] as String? ?? '';
         final model = vozilo?['model'] as String? ?? '';
 
-        if (mapa.containsKey(voziloId)) {
-          mapa[voziloId] = mapa[voziloId]!.copyWith(
-            ukupnoLitri: mapa[voziloId]!.ukupnoLitri + litri,
-            brojTocenja: mapa[voziloId]!.brojTocenja + 1,
+        final existing = mapa[voziloId];
+        if (existing != null) {
+          mapa[voziloId] = existing.copyWith(
+            ukupnoLitri: existing.ukupnoLitri + litri,
+            brojTocenja: existing.brojTocenja + 1,
           );
         } else {
           mapa[voziloId] = V2VoziloStatistika(
