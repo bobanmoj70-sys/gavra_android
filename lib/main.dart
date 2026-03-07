@@ -38,6 +38,7 @@ void main() async {
       anonKey: configService.getSupabaseAnonKey(),
     );
   } catch (e) {
+    debugPrint('❌ [main] Supabase.initialize greška: $e');
   }
 
   // 1. Pokreni UI ODMAH (bez cekanja Supabase)
@@ -49,12 +50,12 @@ void main() async {
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI
 Future<void> _doStartupTasks() async {
-
   // Wakelock i edge-to-edge UI
   try {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   } catch (e) {
+    debugPrint('⚠️ [main] Wakelock/SystemChrome greška: $e');
   }
 
   // Locale - UTF-8 podrska za dijakritiku
@@ -79,35 +80,37 @@ Future<void> _initPushSystems() async {
         V2FirebaseService.setupFCMListeners();
         unawaited(V2FirebaseService.initializeAndRegisterToken());
       } catch (e) {
+        debugPrint('⚠️ [main] Firebase/FCM init greška: $e');
       }
     } else {
-      try {
-        final hmsToken = await V2HuaweiPushService().initialize().timeout(const Duration(seconds: 5));
-        if (hmsToken != null) {
-          await V2HuaweiPushService().tryRegisterPendingToken();
-        } else {
-        }
-      } catch (e) {
-      }
+      await _tryInitHms(timeout: const Duration(seconds: 5));
     }
   } catch (e) {
-    // Try HMS as last resort
-    try {
-      final hmsToken = await V2HuaweiPushService().initialize().timeout(const Duration(seconds: 2));
-      if (hmsToken != null) {
-        await V2HuaweiPushService().tryRegisterPendingToken();
-      }
-    } catch (e2) {
+    // GMS provjera nije uspjela — probaj HMS kao fallback
+    debugPrint('⚠️ [main] GMS provjera greška, pokušavam HMS: $e');
+    await _tryInitHms(timeout: const Duration(seconds: 2));
+  }
+}
+
+/// HMS inicijalizacija (Huawei uređaji bez GMS)
+Future<void> _tryInitHms({required Duration timeout}) async {
+  try {
+    final hmsToken = await V2HuaweiPushService().initialize().timeout(timeout);
+    if (hmsToken != null) {
+      await V2HuaweiPushService().tryRegisterPendingToken();
     }
+  } catch (e) {
+    debugPrint('⚠️ [main] HMS init greška: $e');
   }
 }
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
-
   // V2 Master Realtime Manager — jedini koji slusa Supabase.
   // On ucitava sve cache-ove (vozaci, kapacitet, settings...) i otvara WebSocket.
-  unawaited(V2MasterRealtimeManager.instance.initialize());
+  unawaited(V2MasterRealtimeManager.instance
+      .initialize()
+      .catchError((Object e) => debugPrint('❌ [main] MasterRealtimeManager.initialize greška: $e')));
 
   // Weather alerts (bez cekanja)
   unawaited(V2WeatherAlertService.checkAndSendWeatherAlerts());
@@ -133,10 +136,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Cleanup: zatvori stream controllere
+    // Cleanup: zatvori stream controllere i WebSocket kanale
     V2WeatherService.dispose();
     V2RealtimeGpsService.dispose();
     V2StatistikaIstorijaService.dispose();
+    V2MasterRealtimeManager.instance.dispose();
     super.dispose();
   }
 
@@ -144,19 +148,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Kada app izadje iz backgrounda, provjeri da li je novi dan i osvjezi cache
-      V2MasterRealtimeManager.instance.v2RefreshForNewDay().catchError((Object e) {
-      });
+      V2MasterRealtimeManager.instance.v2RefreshForNewDay().catchError((Object e) {});
 
       // When app is resumed, try registering pending tokens (if any)
       try {
         V2HuaweiPushService().tryRegisterPendingToken();
-      } catch (e) {
-      }
-    } else if (state == AppLifecycleState.detached) {
-      // App se gasi — počisti streamove
-      V2WeatherService.dispose();
-      V2RealtimeGpsService.dispose();
-      V2StatistikaIstorijaService.dispose();
+      } catch (e) {}
     }
   }
 
@@ -164,6 +161,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     try {
       await V2ThemeManager().initialize();
     } catch (e) {
+      debugPrint('⚠️ [main] V2ThemeManager.initialize greška: $e');
     }
   }
 
@@ -185,9 +183,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           supportedLocales: const [
             Locale('en', 'US'),
             Locale('sr'),
-            Locale('sr', 'RS'),
-            Locale('sr', 'BA'),
-            Locale('sr', 'ME'),
           ],
           locale: const Locale('sr'), // Default locale sa dijakritikom
           home: const V2WelcomeScreen(),
