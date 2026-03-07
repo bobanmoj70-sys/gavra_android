@@ -174,12 +174,18 @@ class V2MasterRealtimeManager {
       _loadInfraCache(),
       _loadRacuniCache(),
       _loadAuditLogCache(),
-    ]);
+    ]).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        debugPrint('⚠️ [RM] initialize() timeout — nastavlja sa djelimično popunjenim cache-om');
+        return [];
+      },
+    );
 
     _initialized = true;
 
     debugPrint(
-        '❌ [RM] polasci=${polasciCache.length} radnici=${radniciCache.length} ucenici=${uceniciCache.length} dnevni=${dnevniCache.length} vozaci=${vozaciCache.length}');
+        '✅ [RM] polasci=${polasciCache.length} radnici=${radniciCache.length} ucenici=${uceniciCache.length} dnevni=${dnevniCache.length} vozaci=${vozaciCache.length}');
   }
 
   /// Forsira refresh polasciCache bez promjene dana (npr. nakon ručnog dodavanja termina)
@@ -624,17 +630,7 @@ class V2MasterRealtimeManager {
         await _loadRacuniCache();
         _cacheChangeController.add('v2_racuni');
       } else if (table == 'v2_audit_log') {
-        // Audit log: reload posljednjih 200 zapisa (nema filter po danu — sve je relevantno)
-        final rows = await supabase
-            .from('v2_audit_log')
-            .select('id, tip, aktor_id, aktor_ime, aktor_tip, putnik_id, putnik_ime, putnik_tabela, '
-                'dan, grad, vreme, polazak_id, detalji, created_at')
-            .order('created_at', ascending: false)
-            .limit(200);
-        auditLogCache.clear();
-        for (final row in rows) {
-          auditLogCache[row['id'].toString()] = Map<String, dynamic>.from(row);
-        }
+        await _loadAuditLogCache();
         _cacheChangeController.add('v2_audit_log');
       } else {
         // Generički infra reload — direktan upit, fill u odgovarajući cache
@@ -846,9 +842,12 @@ class V2MasterRealtimeManager {
   /// Briše putnika i sve vezane podatke (trajno)
   Future<bool> v2DeletePutnik(String id, String tabela) async {
     try {
-      await supabase.from('v2_pin_zahtevi').delete().eq('putnik_id', id);
-      await supabase.from('v2_polasci').delete().eq('putnik_id', id);
-      await supabase.from('v2_vozac_putnik').delete().eq('putnik_id', id);
+      // Briši vezane podatke paralelno, pa tek onda putnika (FK constraint)
+      await Future.wait([
+        supabase.from('v2_pin_zahtevi').delete().eq('putnik_id', id),
+        supabase.from('v2_polasci').delete().eq('putnik_id', id),
+        supabase.from('v2_vozac_putnik').delete().eq('putnik_id', id),
+      ]);
       await supabase.from(tabela).delete().eq('id', id);
       // Ukloni putnika iz glavnog cache-a
       v2RemoveFromCache(tabela, id);
@@ -874,10 +873,18 @@ class V2MasterRealtimeManager {
 
   /// Ažurira PIN putnika
   Future<void> v2UpdatePin(String id, String noviPin, String tabela) async {
-    await supabase.from(tabela).update({
-      'pin': noviPin,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', id);
+    try {
+      final updatedAt = DateTime.now().toUtc().toIso8601String();
+      await supabase.from(tabela).update({
+        'pin': noviPin,
+        'updated_at': updatedAt,
+      }).eq('id', id);
+      // Optimistički ažuriraj cache bez čekanja Realtime eventa
+      v2PatchCache(tabela, id, {'pin': noviPin, 'updated_at': updatedAt});
+    } catch (e) {
+      debugPrint('❌ [V2MasterRealtimeManager] v2UpdatePin greška: $e');
+      rethrow;
+    }
   }
 
   /// Dohvata podatke firme iz v2_racuni po putnik_id
@@ -938,14 +945,15 @@ class V2MasterRealtimeManager {
   Future<Map<String, dynamic>?> v2FindPutnikById(String id) async {
     final cached = v2GetPutnikById(id);
     if (cached != null) return cached;
-    for (final tabela in putnikTabele) {
-      final row = await supabase
-          .from(tabela)
-          .select(
-              'id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,cena,cena_po_danu,created_at,updated_at')
-          .eq('id', id)
-          .maybeSingle();
-      if (row != null) return {...row, '_tabela': tabela};
+    // Upitaj sve 4 tabele paralelno — uzmi prvi non-null rezultat
+    const cols =
+        'id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,cena,cena_po_danu,created_at,updated_at';
+    final results = await Future.wait(
+      putnikTabele.map((tabela) => supabase.from(tabela).select(cols).eq('id', id).maybeSingle()),
+    );
+    for (int i = 0; i < results.length; i++) {
+      final row = results[i];
+      if (row != null) return {...row, '_tabela': putnikTabele[i]};
     }
     return null;
   }
@@ -1018,10 +1026,10 @@ class V2MasterRealtimeManager {
         sub = onCacheChanged.where(tables.contains).listen((_) => scheduleEmit());
       },
       onCancel: () async {
+        // Ne zatvaraj controller — broadcast stream može dobiti novog listenera
         debounce?.cancel();
         await sub?.cancel();
         sub = null;
-        controller.close();
       },
     );
 
