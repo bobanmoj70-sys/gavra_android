@@ -136,7 +136,7 @@ class V2PolasciService {
           detalji: 'Zahtev za vožnju: $danKey $gradKey $normVreme',
         );
       }
-  }
+  } // end v2PoSaljiZahtev
 
   /// Ažurira broj_mesta za postojeći polazak (vozač označava da putnik povede više osoba)
   static Future<bool> v2SetBrojMesta({
@@ -733,6 +733,7 @@ class V2PutnikStreamService {
     final List<V2Putnik> sviPutnici;
     if (dan != null) {
       danKratica = dan;
+      final isoZaDan = V2DanUtils.isoZaDan(dan);
       sviPutnici = rm.polasciCache.values
           .where((sr) => sr['dan']?.toString() == dan)
           .map((sr) {
