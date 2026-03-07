@@ -45,16 +45,12 @@ class V2PushTokenService {
 
       // Obrisi stare tokene za istog putnika
       if (putnikId != null && putnikId.isNotEmpty) {
-        await supabase.from('v2_push_tokens').delete().eq('putnik_id', putnikId).timeout(timeout).catchError((e) {
-          return <dynamic>[];
-        });
+        await supabase.from('v2_push_tokens').delete().eq('putnik_id', putnikId).timeout(timeout).catchError((_) {});
       }
 
       // Obrisi stare tokene za istog vozaca
       if (vozacId != null && vozacId.isNotEmpty) {
-        await supabase.from('v2_push_tokens').delete().eq('vozac_id', vozacId).timeout(timeout).catchError((e) {
-          return <dynamic>[];
-        });
+        await supabase.from('v2_push_tokens').delete().eq('vozac_id', vozacId).timeout(timeout).catchError((_) {});
       }
 
       // UPSERT novi token
@@ -157,7 +153,7 @@ class V2PushTokenService {
                 'token': row['token']?.toString() ?? '',
                 'provider': row['provider']?.toString() ?? '',
               })
-          .where((t) => t['token']!.isNotEmpty)
+          .where((t) => t['token']?.isNotEmpty ?? false)
           .toList();
     } catch (e) {
       debugPrint('[V2PushTokenService] getTokensForUsers greška: $e');
@@ -177,7 +173,7 @@ class V2PushTokenService {
                 'token': row['token']?.toString() ?? '',
                 'provider': row['provider']?.toString() ?? '',
               })
-          .where((t) => t['token']!.isNotEmpty)
+          .where((t) => t['token']?.isNotEmpty ?? false)
           .toList();
     } catch (e) {
       debugPrint('[V2PushTokenService] getTokensForVozaci greška: $e');
