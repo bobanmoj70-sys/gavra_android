@@ -25,7 +25,7 @@ class V2PutnikStatistikeHelper {
   }) async {
     String selectedPeriod = _getCurrentMonthYear();
 
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
@@ -161,13 +161,18 @@ class V2PutnikStatistikeHelper {
                                     ..addAll([
                                       DropdownMenuItem(
                                         value: 'Cela ${DateTime.now().year}',
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.event_note, size: 14, color: Colors.lightBlueAccent),
-                                            const SizedBox(width: 8),
-                                            Text('Cela ${DateTime.now().year}',
-                                                style: const TextStyle(color: Colors.white, fontSize: 14)),
-                                          ],
+                                        child: Builder(
+                                          builder: (context) {
+                                            final currentYear = DateTime.now().year;
+                                            return Row(
+                                              children: [
+                                                const Icon(Icons.event_note, size: 14, color: Colors.lightBlueAccent),
+                                                const SizedBox(width: 8),
+                                                Text('Cela $currentYear',
+                                                    style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                              ],
+                                            );
+                                          },
                                         ),
                                       ),
                                       const DropdownMenuItem(
@@ -206,7 +211,11 @@ class V2PutnikStatistikeHelper {
                                   return const SizedBox(
                                     height: 200,
                                     child: Center(
-                                      child: CircularProgressIndicator(color: Colors.white54),
+                                      child: Text(
+                                        'Greška pri učitavanju statistika.',
+                                        style: TextStyle(color: Colors.redAccent, fontSize: 13),
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
                                   );
                                 }
@@ -280,7 +289,8 @@ class V2PutnikStatistikeHelper {
         }
       }
       return placeni;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2PutnikStatistikeHelper] _getPlaceniMeseci greška: $e\n$st');
       return {};
     }
   }
@@ -319,16 +329,15 @@ class V2PutnikStatistikeHelper {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader(context, '📋 Osnovne informacije', Colors.blue),
+              _buildSectionHeader('📋 Osnovne informacije', Colors.blue),
               const SizedBox(height: 8),
-              _buildStatRow(context, '👤 Ime:', putnikIme),
+              _buildStatRow('👤 Ime:', putnikIme),
               if (tipSkole != null)
                 _buildStatRow(
-                  context,
                   tip == 'ucenik' ? '🏫 Škola:' : '🏢 Ustanova/Firma:',
                   tipSkole,
                 ),
-              if (brojTelefona != null) _buildStatRow(context, '📞 Telefon:', brojTelefona),
+              if (brojTelefona != null) _buildStatRow('📞 Telefon:', brojTelefona),
             ],
           ),
         ),
@@ -367,14 +376,13 @@ class V2PutnikStatistikeHelper {
                 ],
               ),
               const SizedBox(height: 10),
-              _buildStatRow(context, '🚗 Putovanja:', '${stats['putovanja'] ?? 0}'),
-              _buildStatRow(context, '❌ Otkazivanja:', '${stats['otkazivanja'] ?? 0}'),
+              _buildStatRow('🚗 Putovanja:', '${stats['putovanja'] ?? 0}'),
+              _buildStatRow('❌ Otkazivanja:', '${stats['otkazivanja'] ?? 0}'),
               _buildStatRow(
-                context,
                 '🔄 Poslednje:',
                 stats['poslednje'] as String? ?? 'Nema podataka',
               ),
-              _buildStatRow(context, '📊 Uspešnost:', '${stats['uspesnost'] ?? 0}%'),
+              _buildStatRow('📊 Uspešnost:', '${stats['uspesnost'] ?? 0}%'),
             ],
           ),
         ),
@@ -388,10 +396,10 @@ class V2PutnikStatistikeHelper {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader(context, '🕐 Sistemske informacije', Colors.white54),
-              _buildStatRow(context, '📅 Kreiran:', _formatDatum(createdAt)),
-              _buildStatRow(context, '🔄 Ažuriran:', _formatDatum(updatedAt)),
-              _buildStatRow(context, '✅ Status:', aktivan ? 'Aktivan' : '⚠️ Neaktivan'),
+              _buildSectionHeader('🕐 Sistemske informacije', Colors.white54),
+              _buildStatRow('📅 Kreiran:', _formatDatum(createdAt)),
+              _buildStatRow('🔄 Ažuriran:', _formatDatum(updatedAt)),
+              _buildStatRow('✅ Status:', aktivan ? 'Aktivan' : '⚠️ Neaktivan'),
             ],
           ),
         ),
@@ -418,7 +426,7 @@ class V2PutnikStatistikeHelper {
   }
 
   // HELPER: Sekcija naslov
-  static Widget _buildSectionHeader(BuildContext context, String title, Color color) {
+  static Widget _buildSectionHeader(String title, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
@@ -440,7 +448,7 @@ class V2PutnikStatistikeHelper {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader(context, '💰 Finansijske informacije', Colors.greenAccent),
+          _buildSectionHeader('💰 Finansijske informacije', Colors.greenAccent),
           // PRIKAZ CENE PO DANU
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -473,12 +481,11 @@ class V2PutnikStatistikeHelper {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildStatRow(
-                    context,
                     '💵 Poslednje plaćanje:',
                     iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : 'Nema podataka',
                   ),
-                  _buildStatRow(context, '📅 Datum plaćanja:', datum ?? 'Nema podataka'),
-                  _buildStatRow(context, '🚗 Vozač (naplata):', vozacIme ?? 'Nema podataka'),
+                  _buildStatRow('📅 Datum plaćanja:', datum ?? 'Nema podataka'),
+                  _buildStatRow('🚗 Vozač (naplata):', vozacIme ?? 'Nema podataka'),
                 ],
               );
             },
@@ -506,7 +513,7 @@ class V2PutnikStatistikeHelper {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader(context, '✅ Plaćeni meseci', Colors.greenAccent),
+          _buildSectionHeader('✅ Plaćeni meseci', Colors.greenAccent),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -536,7 +543,7 @@ class V2PutnikStatistikeHelper {
   }
 
   // HELPER METODA ZA KREIRANJE REDA STATISTIKE
-  static Widget _buildStatRow(BuildContext context, String label, String value) {
+  static Widget _buildStatRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -659,12 +666,13 @@ class V2PutnikStatistikeHelper {
         }
       }
 
-      if (stats.isEmpty) stats = _emptyStats();
+      if (stats.isEmpty) stats = Map<String, dynamic>.from(_kEmptyStats);
       stats['placeniMeseci'] = placeniMeseci;
       stats['cena_po_danu'] = putnikObj?.cena;
       return stats;
-    } catch (e) {
-      return {'error': true, ..._emptyStats()};
+    } catch (e, st) {
+      debugPrint('[V2PutnikStatistikeHelper] _getStatistikeForPeriod greška: $e\n$st');
+      return {'error': true, ..._kEmptyStats};
     }
   }
 
@@ -910,7 +918,8 @@ class V2PutnikStatistikeHelper {
             : 0,
         'ukupan_prihod': '${ukupanPrihodData.toStringAsFixed(0)} RSD',
       };
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2PutnikStatistikeHelper] _getStatistikeZaMesec greška: $e\n$st');
       return {
         'error': true,
         'putovanja': 0,
@@ -923,12 +932,10 @@ class V2PutnikStatistikeHelper {
   }
 
   /// DOHVATI MEDICINSKU POMOĆ LOGS - dodato kao fensi opcija
-  static Map<String, dynamic> _emptyStats() {
-    return {
-      'putovanja': 0,
-      'otkazivanja': 0,
-      'poslednje': 'Nema podataka',
-      'uspesnost': 0,
-    };
-  }
+  static const Map<String, dynamic> _kEmptyStats = {
+    'putovanja': 0,
+    'otkazivanja': 0,
+    'poslednje': 'Nema podataka',
+    'uspesnost': 0,
+  };
 }

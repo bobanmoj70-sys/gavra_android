@@ -2,9 +2,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../models/v2_registrovani_putnik.dart';
 import '../services/v2_auth_manager.dart';
-import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -75,14 +73,16 @@ class V2PlacanjeDialogHelper {
     String? vreme,
   }) async {
     try {
-      final vozacIme = await V2AuthManager.getCurrentDriver() ?? '';
+      final vozacIme = await V2AuthManager.getCurrentDriver();
+      if (vozacIme == null || vozacIme.isEmpty) throw Exception('Vozač nije ulogovan');
       final parts = mesec.split(' ');
       if (parts.length != 2) throw Exception('Neispravan format meseca: $mesec');
       final monthNumber = _getMonthNumber(parts[0]);
       if (monthNumber == 0) throw Exception('Neispravno ime meseca: ${parts[0]}');
-      final year = int.tryParse(parts[1]) ?? 0;
+      final year = int.tryParse(parts[1]);
+      if (year == null || year < 2020) throw Exception('Neispravna godina: ${parts[1]}');
 
-      final uspeh = await V2StatistikaIstorijaService.upisPlacanjaULog(
+      final uspeh = await V2StatistikaIstorijaService.v2SacuvajUplatu(
         putnikId: putnikId,
         putnikIme: putnikIme,
         putnikTabela: putnikTabela,
@@ -98,12 +98,14 @@ class V2PlacanjeDialogHelper {
       );
 
       if (uspeh && context.mounted) {
-        V2AppSnackBar.payment(context, '\u2705 Pla\u0107anje od ${iznos.toStringAsFixed(0)} RSD za $mesec je sa\u010duvano');
+        V2AppSnackBar.payment(
+            context, '\u2705 Pla\u0107anje od ${iznos.toStringAsFixed(0)} RSD za $mesec je sa\u010duvano');
       } else if (!uspeh) {
         throw Exception('Gre\u0161ka pri \u010duvanju pla\u0107anja u bazu');
       }
       return uspeh;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2PlacanjeDialogHelper] sacuvajPlacanje greška: $e\n$st');
       if (context.mounted) {
         V2AppSnackBar.error(context, '\u274c Gre\u0161ka: $e');
       }
@@ -118,26 +120,44 @@ class V2PlacanjeDialogHelper {
 
   static List<String> _getMonthOptions() {
     final now = DateTime.now();
-    return List.generate(12, (i) => '${_getMonthName(i + 1)} ${now.year}');
+    final options = <String>[];
+    for (final year in [now.year - 1, now.year, now.year + 1]) {
+      for (int m = 1; m <= 12; m++) {
+        options.add('${_getMonthName(m)} $year');
+      }
+    }
+    return options;
   }
 
-  static int _getMonthNumber(String name) {
-    const months = ['', 'Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun',
-        'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar'];
-    return months.indexOf(name).clamp(0, 12);
-  }
+  static const List<String> _kMonthNames = [
+    '',
+    'Januar',
+    'Februar',
+    'Mart',
+    'April',
+    'Maj',
+    'Jun',
+    'Jul',
+    'Avgust',
+    'Septembar',
+    'Oktobar',
+    'Novembar',
+    'Decembar',
+  ];
 
-  static String _getMonthName(int month) {
-    const months = ['', 'Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun',
-        'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar'];
-    return month >= 1 && month <= 12 ? months[month] : '';
-  }
+  static int _getMonthNumber(String name) => _kMonthNames.indexOf(name).clamp(0, 12);
+
+  static String _getMonthName(int month) => month >= 1 && month <= 12 ? _kMonthNames[month] : '';
 
   static String _tipOpis(String tabela, String ime, double ukupnaCena, int brojMesta) {
     final imeLower = ime.toLowerCase();
-    if (tabela == 'v2_posiljke' && imeLower.contains('zubi')) return 'Tip: Po\u0161iljka ZUBI (${ukupnaCena.toStringAsFixed(0)} RSD)';
+    if (tabela == 'v2_posiljke' && imeLower.contains('zubi'))
+      return 'Tip: Po\u0161iljka ZUBI (${ukupnaCena.toStringAsFixed(0)} RSD)';
     if (tabela == 'v2_posiljke') return 'Tip: Po\u0161iljka (${ukupnaCena.toStringAsFixed(0)} RSD)';
-    if (tabela == 'v2_dnevni') return brojMesta > 1 ? 'Tip: Dnevni \u2014 $brojMesta mesta (${ukupnaCena.toStringAsFixed(0)} RSD)' : 'Tip: Dnevni (${ukupnaCena.toStringAsFixed(0)} RSD)';
+    if (tabela == 'v2_dnevni')
+      return brojMesta > 1
+          ? 'Tip: Dnevni \u2014 $brojMesta mesta (${ukupnaCena.toStringAsFixed(0)} RSD)'
+          : 'Tip: Dnevni (${ukupnaCena.toStringAsFixed(0)} RSD)';
     if (tabela == 'v2_radnici') return 'Tip: Radnik (${ukupnaCena.toStringAsFixed(0)} RSD)';
     if (tabela == 'v2_ucenici') return 'Tip: U\u010denik (${ukupnaCena.toStringAsFixed(0)} RSD)';
     return 'Iznos: ${ukupnaCena.toStringAsFixed(0)} RSD';
@@ -151,10 +171,6 @@ class V2PlacanjeDialogHelper {
     if (tabela == 'v2_radnici') return Colors.greenAccent;
     if (tabela == 'v2_ucenici') return Colors.cyanAccent;
     return Colors.white70;
-  }
-
-  static double getCenaZaPutnika(V2RegistrovaniPutnik putnik, {int brojMesta = 1}) {
-    return V2CenaObracunService.getCenaPoDanu(putnik) * brojMesta;
   }
 }
 
@@ -189,6 +205,7 @@ class _PlacanjeDialogContent extends StatefulWidget {
 
 class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
   late final TextEditingController _iznosController;
+  late final List<String> _monthOptions;
   late String _selectedMonth;
 
   @override
@@ -197,6 +214,7 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
     _iznosController = TextEditingController(
       text: widget.ukupnaCena > 0 ? widget.ukupnaCena.toStringAsFixed(0) : '',
     );
+    _monthOptions = V2PlacanjeDialogHelper._getMonthOptions();
     _selectedMonth = V2PlacanjeDialogHelper._getCurrentMonthYear();
   }
 
@@ -316,7 +334,8 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
                           border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
                         ),
                         child: Text(
-                          V2PlacanjeDialogHelper._tipOpis(widget.putnikTabela, widget.putnikIme, widget.ukupnaCena, widget.brojMesta),
+                          V2PlacanjeDialogHelper._tipOpis(
+                              widget.putnikTabela, widget.putnikIme, widget.ukupnaCena, widget.brojMesta),
                           style: TextStyle(
                             color: V2PlacanjeDialogHelper._tipBoja(widget.putnikTabela, widget.putnikIme),
                             fontWeight: FontWeight.bold,
@@ -324,8 +343,8 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                      ),
-                    if (!widget.jeFiksna)
+                      )
+                    else
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -369,7 +388,8 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
                                     children: [
                                       Text(
                                         'Ukupno pla\u0107eno: ${widget.ukupnoPlaceno.toStringAsFixed(0)} RSD',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.greenAccent, fontSize: 14),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600, color: Colors.greenAccent, fontSize: 14),
                                       ),
                                       FutureBuilder<Map<String, dynamic>?>(
                                         future: widget.futurePoslednjePlacanje,
@@ -382,11 +402,15 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               if (datum != null)
-                                                Text('Poslednje: $datum', style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                                                Text('Poslednje: $datum',
+                                                    style: const TextStyle(fontSize: 12, color: Colors.white70)),
                                               if (vozacIme != null)
                                                 Text(
                                                   'Naplatio: $vozacIme',
-                                                  style: TextStyle(fontSize: 11, color: V2VozacCache.getColor(vozacIme), fontWeight: FontWeight.w500),
+                                                  style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: V2VozacCache.getColor(vozacIme),
+                                                      fontWeight: FontWeight.w500),
                                                 ),
                                             ],
                                           );
@@ -412,7 +436,8 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
                                   Expanded(
                                     child: Text(
                                       'Dodavanje novog pla\u0107anja (bi\u0107e dodato na postoje\u0107a)',
-                                      style: TextStyle(fontSize: 11, color: Colors.white60, fontStyle: FontStyle.italic),
+                                      style:
+                                          TextStyle(fontSize: 11, color: Colors.white60, fontStyle: FontStyle.italic),
                                     ),
                                   ),
                                 ],
@@ -442,7 +467,7 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
                           onChanged: (String? newValue) {
                             if (newValue != null) setState(() => _selectedMonth = newValue);
                           },
-                          items: V2PlacanjeDialogHelper._getMonthOptions()
+                          items: _monthOptions
                               .map<DropdownMenuItem<String>>((v) => DropdownMenuItem<String>(value: v, child: Text(v)))
                               .toList(),
                         ),
@@ -486,7 +511,7 @@ class _PlacanjeDialogContentState extends State<_PlacanjeDialogContent> {
                             child: OutlinedButton.icon(
                               onPressed: () {
                                 Navigator.of(context).pop();
-                                widget.onDetaljno!();
+                                widget.onDetaljno?.call();
                               },
                               icon: const Icon(Icons.analytics_outlined, size: 16),
                               label: const Text('Detaljno'),

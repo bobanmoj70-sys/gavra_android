@@ -4,10 +4,12 @@
 /// Koristi se u kapacitet servisu i navigacionim bar-ovima.
 library;
 
+import '../globals.dart';
+
 class V2RouteConfig {
   V2RouteConfig._();
 
-  // BELA CRKVA - Zimski raspored (oktobar-mart) - FALLBACK
+  // BELA CRKVA - Zimski raspored (oktobar-mart)
   static const List<String> bcVremenaZimski = [
     '05:00',
     '06:00',
@@ -22,7 +24,7 @@ class V2RouteConfig {
     '18:00',
   ];
 
-  // BELA CRKVA - Letnji raspored (april-septembar) - FALLBACK
+  // BELA CRKVA - Letnji raspored (april-septembar)
   static const List<String> bcVremenaLetnji = [
     '05:00',
     '06:00',
@@ -36,7 +38,7 @@ class V2RouteConfig {
     '18:00',
   ];
 
-  // BELA CRKVA - Praznični raspored - FALLBACK
+  // BELA CRKVA - Praznički raspored
   static const List<String> bcVremenaPraznici = [
     '05:00',
     '06:00',
@@ -45,7 +47,7 @@ class V2RouteConfig {
     '15:00',
   ];
 
-  // Vrsac - Zimski raspored (oktobar-mart) - FALLBACK
+  // VRŠAC - Zimski raspored (oktobar-mart)
   static const List<String> vsVremenaZimski = [
     '06:00',
     '07:00',
@@ -60,7 +62,7 @@ class V2RouteConfig {
     '19:00',
   ];
 
-  // Vrsac - Letnji raspored (april-septembar) - FALLBACK
+  // VRŠAC - Letnji raspored (april-septembar)
   static const List<String> vsVremenaLetnji = [
     '06:00',
     '07:00',
@@ -74,7 +76,7 @@ class V2RouteConfig {
     '18:00',
   ];
 
-  // Vrsac - Praznični raspored - FALLBACK
+  // VRŠAC - Praznički raspored
   static const List<String> vsVremenaPraznici = [
     '06:00',
     '07:00',
@@ -99,8 +101,9 @@ class V2RouteConfig {
 
   /// ⏱ Dobija delay za retry pokušaj (exponential backoff)
   static Duration getRetryDelay(int attempt) {
-    // 1s, 2s, 4s, 8s...
-    return Duration(seconds: 1 << (attempt - 1));
+    // 1s, 2s, 4s, 8s... max 30s
+    final clamped = attempt.clamp(1, 5); // 2^(5-1) = 16s, 2^4 = 16s
+    return Duration(seconds: 1 << (clamped - 1));
   }
 
   /// Vraća listu vremena polazaka za grad i sezonu
@@ -116,5 +119,14 @@ class V2RouteConfig {
     } else {
       return isBc ? bcVremenaLetnji : vsVremenaLetnji;
     }
+  }
+
+  /// Vraća listu vremena polazaka za grad prema aktivnoj sezoni (čita navBarTypeNotifier).
+  /// Grad: 'BC' ili 'VS'
+  static List<String> getVremenaByNavType(String grad) {
+    return getVremenaPolazaka(
+      grad: grad,
+      sezona: navBarTypeNotifier.value,
+    );
   }
 }
