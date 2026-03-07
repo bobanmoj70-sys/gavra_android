@@ -132,12 +132,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
     try {
       // Traži putnika po telefonu kroz sve v2_ tabele
-      final found = await V2MasterRealtimeManager.instance.v2FindByTelefon(telefon);
-
-      Map<String, dynamic>? response;
-      if (found != null) {
-        response = found;
-      }
+      final response = await V2MasterRealtimeManager.instance.v2FindByTelefon(telefon);
 
       if (response != null) {
         _putnikData = Map<String, dynamic>.from(response);
@@ -470,7 +465,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => V2PutnikProfilScreen(
+            builder: (_) => V2PutnikProfilScreen(
               putnikData: response,
             ),
           ),
@@ -500,7 +495,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Brša prijava?',
+                'Brza prijava?',
                 style: const TextStyle(color: Colors.white),
               ),
             ),
@@ -723,7 +718,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     );
   }
 
-  static Widget _buildStepDot(int step, bool active) {
+  static Widget _buildStepDot(int _, bool active) {
     return Container(
       width: 12,
       height: 12,
@@ -764,7 +759,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       children: _putnikCandidates!.map((p) {
         final ime = p['putnik_ime'] as String? ?? 'Nepoznat';
         final tip = p['tip'] as String? ?? '';
-        final id = p['id'] as String? ?? '';
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -886,7 +880,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
             maxLength: 4,
             obscureText: true,
             decoration: InputDecoration(
-              hintText: 'š ž š š',
+              hintText: '• • • •',
               hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), letterSpacing: 8),
               prefixIcon: const Icon(Icons.lock, color: Colors.amber),
               border: InputBorder.none,
