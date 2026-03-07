@@ -55,8 +55,6 @@ class V2RealtimeNotificationService {
       if (response.data != null && response.data['success'] == true) {
         return true;
       } else {
-        // await V2LocalNotificationService.showRealtimeNotification(
-        // title: title, body: body, payload: jsonEncode(data ?? {}));
         return false;
       }
     } catch (e) {
@@ -85,11 +83,14 @@ class V2RealtimeNotificationService {
       if (response.isEmpty) return;
 
       final tokens = response
+          .where((t) => t['token']?.toString().isNotEmpty == true)
           .map<Map<String, dynamic>>((t) => {
-                'token': t['token']?.toString() ?? '',
+                'token': t['token']!.toString(),
                 'provider': t['provider']?.toString() ?? '',
               })
           .toList();
+
+      if (tokens.isEmpty) return;
 
       await sendPushNotification(
         title: title,
@@ -117,8 +118,9 @@ class V2RealtimeNotificationService {
       }
 
       final tokens = response
+          .where((t) => t['token']?.toString().isNotEmpty == true)
           .map<Map<String, dynamic>>((t) => {
-                'token': t['token']?.toString() ?? '',
+                'token': t['token']!.toString(),
                 'provider': t['provider']?.toString() ?? '',
               })
           .toList();
