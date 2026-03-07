@@ -31,7 +31,7 @@ class V2AppSettingsService {
       navBarTypeNotifier.value = navBarType;
       praznicniModNotifier.value = navBarType == 'praznici';
 
-      _checkForUpdates(
+      await _checkForUpdates(
         minVersion: response['min_version'] as String?,
         latestVersion: response['latest_version'] as String?,
         storeUrlAndroid: response['store_url_android'] as String?,
@@ -114,9 +114,7 @@ class V2AppSettingsService {
   /// Postavi nav_bar_type (samo admin može)
   static Future<void> setNavBarType(String type) async {
     final updatedAt = DateTime.now().toUtc().toIso8601String();
-    await supabase
-        .from('v2_app_settings')
-        .update({'nav_bar_type': type, 'updated_at': updatedAt}).eq('id', 'global');
+    await supabase.from('v2_app_settings').update({'nav_bar_type': type, 'updated_at': updatedAt}).eq('id', 'global');
 
     // Optimistički cache patch — odmah ažurira ovaj uređaj bez čekanja WebSocket event-a
     V2MasterRealtimeManager.instance.v2PatchCache('v2_app_settings', 'global', {
