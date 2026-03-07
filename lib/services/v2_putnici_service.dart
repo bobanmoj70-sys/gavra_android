@@ -430,7 +430,7 @@ class V2PosiljkeService {
   static V2RegistrovaniPutnik? v2GetByPin(String pin) {
     try {
       final row = _cache.values.firstWhere(
-        (r) => r['pin'] == pin && r['status'] == 'aktivan',
+        (r) => r['pin'] == pin && r['status'] == V2Posiljka.statusAktivan,
       );
       return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
     } catch (_) {
@@ -446,7 +446,7 @@ class V2PosiljkeService {
 
   static List<V2Posiljka> getAktivneKaoModele() {
     return _cache.values
-        .where((r) => r['status'] == 'aktivan')
+        .where((r) => r['status'] == V2Posiljka.statusAktivan)
         .map((r) => V2Posiljka.fromJson(Map<String, dynamic>.from(r)))
         .toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
@@ -464,7 +464,7 @@ class V2PosiljkeService {
     bool trebaRacun = false,
     String? pin,
     String? email,
-    String status = 'aktivan',
+    String status = V2Posiljka.statusAktivan,
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
