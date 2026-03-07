@@ -65,7 +65,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
     final todayIso = DateTime.now().toIso8601String().split('T')[0];
     _streamPutnici = V2PolasciService.v2StreamPutnici();
     _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: todayIso);
-    _streamZahteviObradaShared = V2PolasciService.v2StreamZahteviObrada().asBroadcastStream();
+    _streamZahteviObradaShared = V2PolasciService.v2StreamZahteviObrada();
     _streamRadniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
     _streamUceniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
 
@@ -1010,7 +1010,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
             // Dužnici — pokupljeni, neplaćeni, samo dnevni i posiljke (ne radnici/ucenici)
             final filteredDuznici = filteredPutnici.where((p) {
               if (p.isRadnik || p.isUcenik) return false;
-              return p.placeno != true && p.status != 'otkazan' && p.status != 'Otkazano' && p.jePokupljen;
+              return p.placeno != true && (p.status?.toLowerCase() != 'otkazano') && p.jePokupljen;
             }).toList();
 
             return StreamBuilder<Map<String, double>>(
@@ -1095,14 +1095,10 @@ class _AdminScreenState extends State<V2AdminScreen> {
                                     vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: (vozacBoje[vozac] ?? Colors.blueGrey).withAlpha(
-                                      60,
-                                    ),
+                                    color: (vozacBoje[vozac] ?? Colors.blueGrey).withValues(alpha: 60 / 255),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: (vozacBoje[vozac] ?? Colors.blueGrey).withAlpha(
-                                        120,
-                                      ),
+                                      color: (vozacBoje[vozac] ?? Colors.blueGrey).withValues(alpha: 120 / 255),
                                     ),
                                   ),
                                   child: Row(

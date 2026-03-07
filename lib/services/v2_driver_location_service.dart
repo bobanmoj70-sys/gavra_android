@@ -246,15 +246,6 @@ class V2DriverLocationService {
     try {
       final position = knownPosition ?? await Geolocator.getCurrentPosition();
 
-      if (_lastPosition != null) {
-        final distance = Geolocator.distanceBetween(
-          _lastPosition!.latitude,
-          _lastPosition!.longitude,
-          position.latitude,
-          position.longitude,
-        );
-      }
-
       _lastPosition = position;
 
       await supabase.from('v2_vozac_lokacije').upsert({

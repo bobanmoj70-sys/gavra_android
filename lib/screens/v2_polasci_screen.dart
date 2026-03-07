@@ -23,7 +23,9 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
   void initState() {
     super.initState();
     _streamDnevni = V2PolasciService.v2StreamZahteviObrada();
-    V2AuthManager.getCurrentDriver().then((d) => _currentDriver = d);
+    V2AuthManager.getCurrentDriver().then((d) {
+      if (mounted) setState(() => _currentDriver = d);
+    });
   }
 
   @override
