@@ -132,8 +132,10 @@ class V2Vozilo {
   });
 
   factory V2Vozilo.fromJson(Map<String, dynamic> json) {
+    final id = json['id']?.toString() ?? '';
+    if (id.isEmpty) throw ArgumentError('V2Vozilo.fromJson: id je null ili prazan');
     return V2Vozilo(
-      id: json['id']?.toString() ?? '',
+      id: id,
       registarskiBroj: json['registarski_broj']?.toString() ?? '',
       marka: json['marka']?.toString(),
       model: json['model']?.toString(),
@@ -172,7 +174,7 @@ class V2Vozilo {
 
   static DateTime? _parseDate(dynamic value) {
     if (value == null) return null;
-    return DateTime.tryParse(value.toString());
+    return DateTime.tryParse(value.toString())?.toLocal();
   }
 
   /// Prikaži naziv
@@ -183,11 +185,11 @@ class V2Vozilo {
     return registarskiBroj;
   }
 
-  /// Da li registracija ističe uskoro (30 dana)
+  /// Da li registracija ističe uskoro (30 dana), ali još nije istekla
   bool get registracijaIstice {
     if (registracijaVaziDo == null) return false;
     final danaDoIsteka = registracijaVaziDo!.difference(DateTime.now()).inDays;
-    return danaDoIsteka <= 30;
+    return danaDoIsteka >= 0 && danaDoIsteka <= 30;
   }
 
   /// Da li je registracija istekla
@@ -196,7 +198,7 @@ class V2Vozilo {
     return registracijaVaziDo!.isBefore(DateTime.now());
   }
 
-  /// Koliko dana do isteka registracije
+  /// Koliko dana do isteka registracije (negativno = već istekla)
   int? get danaDoIstekaRegistracije {
     if (registracijaVaziDo == null) return null;
     return registracijaVaziDo!.difference(DateTime.now()).inDays;
@@ -209,10 +211,15 @@ class V2Vozilo {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is V2Vozilo && other.id == id);
+  bool operator ==(Object other) =>
+      identical(this, other) || (runtimeType == other.runtimeType && other is V2Vozilo && other.id == id);
 
   @override
   int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'V2Vozilo(id: $id, registarskiBroj: $registarskiBroj, '
+      'marka: $marka, model: $model, kilometraza: $kilometraza)';
 }
 
 // =============================================================================
@@ -233,7 +240,7 @@ class V2VozilaServisService {
           .select('id,vozilo_id,tip,datum,km,opis,cena,pozicija,created_at')
           .eq('vozilo_id', voziloId)
           .order('datum', ascending: false);
-      return (response as List).map((r) => V2VozilaServis.fromJson(r)).toList();
+      return List<Map<String, dynamic>>.from(response).map((r) => V2VozilaServis.fromJson(r)).toList();
     } catch (e) {
       debugPrint('[V2VozilaServisService] getIstorijuServisa greška: $e');
       return [];
@@ -254,7 +261,7 @@ class V2VozilaServisService {
       await supabase.from(tabela).insert({
         'vozilo_id': voziloId,
         'tip': tip,
-        'datum': datum?.toIso8601String().split('T')[0],
+        'datum': (datum ?? DateTime.now()).toIso8601String().split('T')[0],
         'km': km,
         'opis': opis,
         'cena': cena,
