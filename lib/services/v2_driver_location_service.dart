@@ -146,7 +146,7 @@ class V2DriverLocationService {
     final activeCount = _currentPutniciEta!.values.where((v) => v >= 0).length;
     if (activeCount == 0 && _isTracking) {
       _onAllPassengersPickedUp?.call();
-      v2StopTracking();
+      await v2StopTracking();
     }
   }
 
@@ -154,7 +154,7 @@ class V2DriverLocationService {
   /// Ako API ne odgovori — zadrži stari ETA (nema skakanja).
   Future<void> _refreshEta() async {
     if (!_isTracking || _lastPosition == null) return;
-    if (_putniciCoordinates == null || _putniciRedosled == null) return;
+    if (_putniciCoordinates == null || _putniciRedosled == null || _currentPutniciEta == null) return;
 
     final aktivniPutnici = _putniciRedosled!
         .where((ime) =>
