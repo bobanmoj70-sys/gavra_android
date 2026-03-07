@@ -43,8 +43,8 @@ class V2RealtimeGpsService {
       (Position position) {
         _positionController.add(position);
 
-        // Kalkuliši brzinu (km/h)
-        final speedMps = position.speed; // meters per second
+        // Kalkuliši brzinu (km/h); clamp na 0 jer speed može biti -1.0 ako GPS nema podatak
+        final speedMps = position.speed.clamp(0.0, double.infinity); // meters per second
         final speedKmh = speedMps * 3.6; // convert to km/h
         _speedController.add(speedKmh);
       },
