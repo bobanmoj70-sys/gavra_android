@@ -113,9 +113,19 @@ class V2AppSettingsService {
 
   /// Postavi nav_bar_type (samo admin može)
   static Future<void> setNavBarType(String type) async {
+    final updatedAt = DateTime.now().toUtc().toIso8601String();
     await supabase
         .from('v2_app_settings')
-        .update({'nav_bar_type': type, 'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', 'global');
+        .update({'nav_bar_type': type, 'updated_at': updatedAt}).eq('id', 'global');
+
+    // Optimistički cache patch — odmah ažurira ovaj uređaj bez čekanja WebSocket event-a
+    V2MasterRealtimeManager.instance.v2PatchCache('v2_app_settings', 'global', {
+      'nav_bar_type': type,
+      'updated_at': updatedAt,
+    });
+    // Odmah primeni na notifier-e (kao što radi _loadSettings)
+    navBarTypeNotifier.value = type;
+    praznicniModNotifier.value = type == 'praznici';
 
     try {
       await V2StatistikaIstorijaService.logGeneric(

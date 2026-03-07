@@ -5,6 +5,7 @@ import '../models/v2_pumpa_punjenje.dart';
 import '../models/v2_pumpa_stanje.dart';
 import '../models/v2_pumpa_tocenje.dart';
 import '../models/v2_vozilo_statistika.dart';
+import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_finansije_service.dart';
 import 'v2_pumpa_service.dart';
 
@@ -93,6 +94,8 @@ class V2GorivoService {
       // Ažuriraj kilometražu vozila ako je unesena
       if (kmVozila != null) {
         await supabase.from('v2_vozila').update({'kilometraza': kmVozila}).eq('id', voziloId);
+        // Optimistički cache patch — streamVozila se odmah osvježava
+        V2MasterRealtimeManager.instance.v2PatchCache('v2_vozila', voziloId, {'kilometraza': kmVozila});
       }
 
       // Kreiraj trošak u finansijama (ako postoji cijena)

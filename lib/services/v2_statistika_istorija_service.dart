@@ -494,6 +494,8 @@ class V2StatistikaIstorijaService {
       // 1. v2_polasci
       if (requestId != null && requestId.isNotEmpty) {
         await supabase.from('v2_polasci').update(placenPayload).eq('id', requestId);
+        // Optimistički cache patch — UI se osvježava odmah
+        rm.v2PatchCache('v2_polasci', requestId, placenPayload);
       }
 
       // 2. v2_statistika_istorija

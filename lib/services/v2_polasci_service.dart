@@ -975,14 +975,15 @@ class V2PutnikStreamService {
 
   Future<void> v2OznaciStatus(String putnikId, String status, String actor) async {
     try {
-      final putnikData = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
+      final rm = V2MasterRealtimeManager.instance;
+      final putnikData = rm.v2GetPutnikById(putnikId);
       final tabela = putnikData?['_tabela'] as String?;
+      final statusPayload = {'status': status, 'updated_at': v2NowString()};
       if (tabela != null) {
-        await supabase.from(tabela).update({
-          'status': status,
-          'updated_at': v2NowString(),
-        }).eq('id', putnikId);
-      } else {}
+        await supabase.from(tabela).update(statusPayload).eq('id', putnikId);
+        // Optimistički cache patch — UI se osvježava odmah
+        rm.v2PatchCache(tabela, putnikId, statusPayload);
+      }
 
       if (status == 'bolovanje' || status == 'godisnji') {
         final danasDay = DateTime.now().weekday;
@@ -990,13 +991,19 @@ class V2PutnikStreamService {
         const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
         final danasKratica = dani[danasDay - 1];
         final sutraKratica = dani[sutraDay - 1];
+        final polasciPayload = {'status': 'otkazano', 'updated_at': v2NowString()};
 
-        await supabase
+        final res = await supabase
             .from('v2_polasci')
-            .update({'status': 'otkazano', 'updated_at': v2NowString()})
+            .update(polasciPayload)
             .eq('putnik_id', putnikId)
             .inFilter('dan', [danasKratica, sutraKratica])
-            .inFilter('status', ['obrada', 'odobreno']);
+            .inFilter('status', ['obrada', 'odobreno'])
+            .select('id');
+        // Batch cache patch za sve pogođene polasci redove
+        for (final row in res) {
+          rm.v2PatchCache('v2_polasci', row['id'].toString(), polasciPayload);
+        }
         await V2StatistikaIstorijaService.logGeneric(
           tip: status, // 'bolovanje' ili 'godisnji'
           putnikId: putnikId,
