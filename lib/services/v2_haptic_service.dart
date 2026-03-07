@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
@@ -38,11 +40,13 @@ class V2HapticService {
   static void success() {
     try {
       HapticFeedback.lightImpact();
-      Future.delayed(const Duration(milliseconds: 100), () {
-        try {
-          HapticFeedback.lightImpact();
-        } catch (_) {}
-      });
+      unawaited(
+        Future.delayed(const Duration(milliseconds: 100), () {
+          try {
+            HapticFeedback.lightImpact();
+          } catch (_) {}
+        }),
+      );
     } catch (_) {}
   }
 
@@ -108,7 +112,7 @@ class V2HapticElevatedButton extends StatelessWidget {
                 case HapticType.error:
                   V2HapticService.error();
               }
-              onPressed?.call();
+              onPressed!();
             },
       child: child,
     );
