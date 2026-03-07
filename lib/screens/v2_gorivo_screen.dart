@@ -186,7 +186,9 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           return const Center(child: Text('Greška pri učitavanju stanja'));
         }
         return RefreshIndicator(
-          onRefresh: () async { _loadAll(); },
+          onRefresh: () async {
+            _loadAll();
+          },
           color: _accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -443,7 +445,9 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           );
         }
         return RefreshIndicator(
-          onRefresh: () async { _loadAll(); },
+          onRefresh: () async {
+            _loadAll();
+          },
           color: _accent,
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
@@ -525,7 +529,9 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           );
         }
         return RefreshIndicator(
-          onRefresh: () async { _loadAll(); },
+          onRefresh: () async {
+            _loadAll();
+          },
           color: _accent,
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
@@ -737,8 +743,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                   Navigator.pop(ctx);
                   if (ok) _loadAll();
                   if (ok) {
-                    V2AppSnackBar.success(
-                        context, '✅ Točenje zabeleženo: $litri L — ${vozilo.registarskiBroj}');
+                    V2AppSnackBar.success(context, '✅ Točenje zabeleženo: $litri L — ${vozilo.registarskiBroj}');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }
@@ -894,17 +899,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       ),
     );
   }
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ...children,
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _datumRow(DateTime datum, ValueChanged<DateTime> onChanged) {
     return InkWell(
@@ -941,7 +935,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  static InputDecoration _inputDeco(String label, {String? suffixText}) {
+  InputDecoration _inputDeco(String label, {String? suffixText}) {
     return InputDecoration(
       labelText: label,
       suffixText: suffixText,
