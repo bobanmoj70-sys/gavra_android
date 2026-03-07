@@ -26,16 +26,20 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
     _stream = V2MasterRealtimeManager.instance.streamAuditLog();
   }
 
-  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> logs) {
-    if (_filterTip == null && _filterAktorTip == null) return logs;
+  static List<Map<String, dynamic>> _applyFilters(
+    List<Map<String, dynamic>> logs,
+    String? filterTip,
+    String? filterAktorTip,
+  ) {
+    if (filterTip == null && filterAktorTip == null) return logs;
     return logs.where((log) {
-      if (_filterTip != null && log['tip']?.toString() != _filterTip) return false;
-      if (_filterAktorTip != null && log['aktor_tip']?.toString() != _filterAktorTip) return false;
+      if (filterTip != null && log['tip']?.toString() != filterTip) return false;
+      if (filterAktorTip != null && log['aktor_tip']?.toString() != filterAktorTip) return false;
       return true;
     }).toList();
   }
 
-  Color _tipColor(String tip) {
+  static Color _tipColor(String tip) {
     if (tip.contains('zahtev') || tip == 'pokupljen') return Colors.greenAccent;
     if (tip.contains('otkazan') || tip.contains('otkazano') || tip.contains('odbijen')) return Colors.redAccent;
     if (tip.contains('uplata') || tip == 'naplata') return Colors.amberAccent;
@@ -46,30 +50,29 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
     return Colors.white70;
   }
 
-  String _tipEmoji(String tip) {
-    const map = {
-      'odobren_zahtev': '✅',
-      'odbijen_zahtev': '❌',
-      'zahtev_poslan': '📤',
-      'zahtev_otkazan': '🚫',
-      'pokupljen': '🚗',
-      'otkazano_vozac': '❌',
-      'naplata': '💳',
-      'uplata_dodana': '💰',
-      'bez_polaska_globalni': '⚠️',
-      'odsustvo_postavljeno': '🏥',
-      'odsustvo_uklonjeno': '✅',
-      'putnik_logout': '🚪',
-      'dodat_termin': '📅',
-      'uklonjen_termin': '🗑️',
-      'dodeljen_vozac': '👤',
-      'uklonjen_vozac': '👤',
-      'promena_sifre': '🔑',
-    };
-    return map[tip] ?? '📋';
-  }
+  static const _tipEmojiMap = {
+    'odobren_zahtev': '✅',
+    'odbijen_zahtev': '❌',
+    'zahtev_poslan': '📤',
+    'zahtev_otkazan': '🚫',
+    'pokupljen': '🚗',
+    'otkazano_vozac': '❌',
+    'naplata': '💳',
+    'uplata_dodana': '💰',
+    'bez_polaska_globalni': '⚠️',
+    'odsustvo_postavljeno': '🏥',
+    'odsustvo_uklonjeno': '✅',
+    'putnik_logout': '🚪',
+    'dodat_termin': '📅',
+    'uklonjen_termin': '🗑️',
+    'dodeljen_vozac': '👤',
+    'uklonjen_vozac': '👤',
+    'promena_sifre': '🔑',
+  };
 
-  String _formatDatum(String? iso) {
+  static String _tipEmoji(String tip) => _tipEmojiMap[tip] ?? '📋';
+
+  static String _formatDatum(String? iso) {
     if (iso == null) return '—';
     try {
       final dt = DateTime.parse(iso).toLocal();
@@ -99,14 +102,10 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
           stream: _stream,
           builder: (context, snapshot) {
             final allLogs = snapshot.data ?? [];
-            final logs = _applyFilters(allLogs);
+            final logs = _applyFilters(allLogs, _filterTip, _filterAktorTip);
             final isLoading = snapshot.connectionState == ConnectionState.waiting && allLogs.isEmpty;
             // Dinamički tipovi iz stvarnih podataka — uvijek aktualni
-            final dostupniTipovi = allLogs
-                .map((l) => l['tip']?.toString())
-                .whereType<String>()
-                .toSet()
-                .toList()
+            final dostupniTipovi = allLogs.map((l) => l['tip']?.toString()).whereType<String>().toSet().toList()
               ..sort();
 
             return Column(
@@ -293,7 +292,7 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                                             if (dan != null || grad != null || vreme != null) ...[
                                               const SizedBox(height: 3),
                                               Text(
-                                                [dan, grad, vreme].where((e) => e != null).join(' · '),
+                                                [dan, grad, vreme].whereType<String>().join(' · '),
                                                 style: const TextStyle(color: Colors.white24, fontSize: 10),
                                               ),
                                             ],
