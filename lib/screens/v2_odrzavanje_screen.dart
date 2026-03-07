@@ -93,7 +93,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     if (danaDoIsteka >= 15 && danaDoIsteka <= 30) {
       return [
         BoxShadow(
-          color: Colors.lime.withOpacity(0.6),
+          color: Colors.lime.withValues(alpha: 0.6),
           blurRadius: 12,
           spreadRadius: 3,
         ),
@@ -156,7 +156,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? (color == Colors.white ? Colors.grey.shade200 : color.withOpacity(0.2))
+                            ? (color == Colors.white ? Colors.grey.shade200 : color.withValues(alpha: 0.2))
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
@@ -436,8 +436,8 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                 if (badge != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: badgeColor?.withOpacity(0.1),
+                      decoration: BoxDecoration(
+                      color: badgeColor?.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -471,7 +471,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Text(label),
         content: TextField(
           controller: controller,
@@ -484,7 +484,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Otkaži'),
           ),
           TextButton(
@@ -493,9 +493,9 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                 _selectedVozilo!.id,
                 {field: controller.text.isEmpty ? null : controller.text},
               );
-              if (!context.mounted) return;
-              Navigator.pop(context);
-              if (success) {
+              if (!dialogCtx.mounted) return;
+              Navigator.pop(dialogCtx);
+              if (success && mounted) {
                 V2AppSnackBar.success(context, '🗸. Sačuvano');
               }
             },
@@ -503,10 +503,10 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
           ),
         ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
-  void _editDateField(String field, String label, DateTime? currentValue) async {
+  Future<void> _editDateField(String field, String label, DateTime? currentValue) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: currentValue ?? DateTime.now(),
@@ -515,20 +515,18 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
       helpText: label,
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       final success = await V2VozilaService.updateKolskaKnjiga(
         _selectedVozilo!.id,
         {field: picked.toIso8601String().split('T')[0]},
       );
-      if (success) {
-        if (mounted) {
-          V2AppSnackBar.success(context, '🗸. Sačuvano');
-        }
+      if (success && mounted) {
+        V2AppSnackBar.success(context, '🗸. Sačuvano');
       }
     }
   }
 
-  void _editServisField(String prefix, String label, DateTime? datum, int? km) async {
+  Future<void> _editServisField(String prefix, String label, DateTime? datum, int? km) async {
     DateTime? selectedDatum = datum ?? DateTime.now();
     final currentVanKm = _selectedVozilo?.kilometraza?.toInt();
     final kmController = TextEditingController(text: (km ?? currentVanKm)?.toString() ?? '');
@@ -656,7 +654,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     kmController.dispose();
   }
 
-  void _editGumeField(String pozicija, DateTime? datum, String? opis, int? km) async {
+  Future<void> _editGumeField(String pozicija, DateTime? datum, String? opis, int? km) async {
     DateTime? selectedDatum = datum ?? DateTime.now();
     final opisController = TextEditingController(text: opis ?? '');
     final currentVanKm = _selectedVozilo?.kilometraza?.toInt();
