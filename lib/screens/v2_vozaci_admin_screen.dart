@@ -69,8 +69,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
 
     try {
       await V2VozacService.addVozac(noviVozac);
-      if (!mounted) return;
-      V2AppSnackBar.info(context, 'V2Vozac dodan');
     } catch (e) {
       if (!mounted) return;
       V2AppSnackBar.error(context, 'Greska: $e');
@@ -85,7 +83,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
 
     if (mounted) {
       Navigator.pop(context);
-      V2AppSnackBar.success(context, 'V2Vozac ${noviVozac.ime} dodat!');
+      V2AppSnackBar.success(context, 'Vozac ${noviVozac.ime} dodat!');
     }
   }
 
@@ -95,7 +93,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Greska', style: TextStyle(color: Colors.white)),
+        title: const Text('Info', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Brisanje vozaca nije dostupno u ovoj verziji.\nKoristite web admin panel.',
           style: TextStyle(color: Colors.white70),
@@ -139,7 +137,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             await V2VozacService.updateVozac(updatedVozac);
             if (!mounted) return;
             Navigator.pop(context);
-            V2AppSnackBar.info(context, 'V2Vozac azuriran');
+            V2AppSnackBar.info(context, 'Vozac azuriran');
           } catch (e) {
             if (!mounted) return;
             V2AppSnackBar.error(context, 'Greska: $e');
@@ -152,7 +150,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   /// Dialog za dodavanje/editovanje vozaca
   Widget _buildVozacDialog({required String title, required VoidCallback onSave}) {
     return StatefulBuilder(
-      builder: (context, setDialogState) => AlertDialog(
+      builder: (ctx, setDialogState) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         title: Text(title, style: const TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
@@ -236,7 +234,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
               _emailController.clear();
               _sifraController.clear();
               _telefonController.clear();
-              Navigator.pop(context);
+              Navigator.pop(ctx);
             },
             child: const Text('Otkazi'),
           ),
@@ -250,7 +248,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
+  static InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
@@ -317,7 +315,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
         ),
         body: StreamBuilder<List<V2Vozac>>(
           stream: _streamVozaci,
-          builder: (context, snapshot) {
+          builder: (_, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
