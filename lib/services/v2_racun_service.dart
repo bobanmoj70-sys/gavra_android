@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +64,7 @@ class V2RacunService {
             .eq('poslednji_broj', stari)
             .select('poslednji_broj');
 
-        if ((updateResp as List).isNotEmpty) {
+        if (updateResp.isNotEmpty) {
           return '$novi/$godina';
         }
         // Drugi je stigao prvi — kratka pauza pa retry
@@ -108,8 +109,6 @@ class V2RacunService {
     required BuildContext context,
   }) async {
     try {
-      // Fonts loaded automatically via getters
-
       final pdf = await _kreirajRacunPDF(
         brojRacuna: brojRacuna,
         imePrezimeKupca: imePrezimeKupca,
@@ -151,8 +150,6 @@ class V2RacunService {
     }
 
     try {
-      // Fonts loaded automatically via getters
-
       final pdf = pw.Document();
       final obracunskiDatum = datumPrometa ?? DateTime.now();
       final mesecStr = DateFormat('MMMM yyyy', 'sr_Latn').format(obracunskiDatum);
@@ -243,7 +240,7 @@ class V2RacunService {
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(40),
       theme: theme,
-      build: (pw.Context context) {
+      build: (pw.Context pdfCtx) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -438,7 +435,7 @@ class V2RacunService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
         theme: theme,
-        build: (pw.Context context) {
+        build: (pw.Context pdfCtx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
