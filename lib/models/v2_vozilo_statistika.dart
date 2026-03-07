@@ -16,11 +16,19 @@ class V2VoziloStatistika {
     required this.brojTocenja,
   });
 
-  V2VoziloStatistika copyWith({double? ukupnoLitri, int? brojTocenja}) => V2VoziloStatistika(
-        voziloId: voziloId,
-        registarskiBroj: registarskiBroj,
-        marka: marka,
-        model: model,
+  V2VoziloStatistika copyWith({
+    String? voziloId,
+    String? registarskiBroj,
+    String? marka,
+    String? model,
+    double? ukupnoLitri,
+    int? brojTocenja,
+  }) =>
+      V2VoziloStatistika(
+        voziloId: voziloId ?? this.voziloId,
+        registarskiBroj: registarskiBroj ?? this.registarskiBroj,
+        marka: marka ?? this.marka,
+        model: model ?? this.model,
         ukupnoLitri: ukupnoLitri ?? this.ukupnoLitri,
         brojTocenja: brojTocenja ?? this.brojTocenja,
       );
@@ -28,11 +36,17 @@ class V2VoziloStatistika {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is V2VoziloStatistika &&
+      (runtimeType == other.runtimeType &&
+          other is V2VoziloStatistika &&
           voziloId == other.voziloId &&
           ukupnoLitri == other.ukupnoLitri &&
-          brojTocenja == other.brojTocenja;
+          brojTocenja == other.brojTocenja);
 
   @override
   int get hashCode => Object.hash(voziloId, ukupnoLitri, brojTocenja);
+
+  @override
+  String toString() => 'V2VoziloStatistika(voziloId: $voziloId, '
+      'registarskiBroj: $registarskiBroj, marka: $marka, model: $model, '
+      'ukupnoLitri: $ukupnoLitri, brojTocenja: $brojTocenja)';
 }
