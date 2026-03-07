@@ -40,7 +40,7 @@ class V2PolasciService {
       final normVreme = V2GradAdresaValidator.normalizeTime(vreme);
       final danKey = dan.toLowerCase();
       final nowStr = DateTime.now().toUtc().toIso8601String();
-      final status = isAdmin ? 'odobreno' : 'obrada';
+      final status = isAdmin ? V2Polazak.statusOdobreno : V2Polazak.statusObrada;
 
       final rm = V2MasterRealtimeManager.instance;
 
@@ -58,7 +58,13 @@ class V2PolasciService {
           .eq('grad', gradKey)
           .eq('dan', danKey)
           .neq('zeljeno_vreme', normVreme)
-          .inFilter('status', ['obrada', 'odobreno', 'odbijeno', 'pokupljen', 'otkazano'])
+          .inFilter('status', [
+            V2Polazak.statusObrada,
+            V2Polazak.statusOdobreno,
+            V2Polazak.statusOdbijeno,
+            V2Polazak.statusPokupljen,
+            V2Polazak.statusOtkazano
+          ])
           .select('id');
       for (final row in cancelledRows) {
         rm.v2PatchCache('v2_polasci', row['id'].toString(), {'status': cancelledStatus, 'updated_at': nowStr});
@@ -162,7 +168,7 @@ class V2PolasciService {
           .eq('grad', gradKey)
           .eq('dan', danKey)
           .eq('zeljeno_vreme', normVreme)
-          .inFilter('status', ['obrada', 'odobreno'])
+          .inFilter('status', [V2Polazak.statusObrada, V2Polazak.statusOdobreno])
           .select('id');
 
       return res.isNotEmpty;
@@ -185,7 +191,7 @@ class V2PolasciService {
 
       // 2. Odobri i upisi dodeljeno_vreme = zeljeno_vreme
       final approvePayload = {
-        'status': 'odobreno',
+        'status': V2Polazak.statusOdobreno,
         'dodeljeno_vreme': zeljenoVreme, // kopira zeljeno_vreme u dodeljeno_vreme
         'updated_at': nowStr,
         'processed_at': nowStr,
@@ -206,8 +212,8 @@ class V2PolasciService {
         grad: r?['grad']?.toString(),
         vreme: zeljenoVreme?.toString(),
         polazakId: id,
-        staro: {'status': r?['status'] ?? 'obrada'},
-        novo: {'status': 'odobreno'},
+        staro: {'status': r?['status'] ?? V2Polazak.statusObrada},
+        novo: {'status': V2Polazak.statusOdobreno},
         detalji: 'Zahtev odobren${approvedBy != null ? " od: $approvedBy" : ""}',
       );
 
@@ -223,7 +229,7 @@ class V2PolasciService {
     try {
       final nowStr = DateTime.now().toUtc().toIso8601String();
       final rejectPayload = {
-        'status': 'odbijeno',
+        'status': V2Polazak.statusOdbijeno,
         'updated_at': nowStr,
         'processed_at': nowStr,
         if (rejectedBy != null) 'otkazao': rejectedBy,
@@ -243,8 +249,8 @@ class V2PolasciService {
         grad: r?['grad']?.toString(),
         vreme: r?['zeljeno_vreme']?.toString(),
         polazakId: id,
-        staro: {'status': r?['status'] ?? 'obrada'},
-        novo: {'status': 'odbijeno'},
+        staro: {'status': r?['status'] ?? V2Polazak.statusObrada},
+        novo: {'status': V2Polazak.statusOdbijeno},
         detalji: 'Zahtev odbijen${rejectedBy != null ? " od: $rejectedBy" : ""}',
       );
 
@@ -271,7 +277,7 @@ class V2PolasciService {
     // Čita iz cache-a i emituje — bez ijednog DB upita
     void emit() {
       if (controller.isClosed) return;
-      final statusi = statusFilter != null && statusFilter.isNotEmpty ? statusFilter : const ['obrada'];
+      final statusi = statusFilter != null && statusFilter.isNotEmpty ? statusFilter : const [V2Polazak.statusObrada];
 
       final result = rm.polasciCache.values.where((row) {
         if (!statusi.contains(row['status'])) return false;
@@ -359,7 +365,7 @@ class V2PolasciService {
         final altPayload = {
           'zeljeno_vreme': novoVreme, // cekaonica → premestamo na novi termin
           'dodeljeno_vreme': novoVreme, // stvarni termin putovanja → novi termin
-          'status': 'odobreno',
+          'status': V2Polazak.statusOdobreno,
           'processed_at': nowStr,
           'updated_at': nowStr,
         };
@@ -375,7 +381,7 @@ class V2PolasciService {
               'dan': danKey,
               'zeljeno_vreme': novoVreme, // cekaonica
               'dodeljeno_vreme': novoVreme, // stvarni termin putovanja
-              'status': 'odobreno',
+              'status': V2Polazak.statusOdobreno,
               'processed_at': nowStr,
             })
             .select()
@@ -520,7 +526,7 @@ class V2PolasciService {
       selectedDan: selectedDan,
       datum: datum,
       requestId: requestId,
-      status: status ?? 'otkazano',
+      status: status ?? V2Polazak.statusOtkazano,
     );
   }
 
@@ -799,8 +805,8 @@ class V2PutnikStreamService {
     Map<String, dynamic>? rp,
     String isoDate,
   ) {
-    final bool jePokupljen = srRow['status'] == 'pokupljen';
-    final bool jeOtkazan = srRow['status'] == 'otkazano';
+    final bool jePokupljen = srRow['status'] == V2Polazak.statusPokupljen;
+    final bool jeOtkazan = srRow['status'] == V2Polazak.statusOtkazano;
 
     final bool jePlacen = srRow['placen'] == true;
     final double? iznos = (srRow['placen_iznos'] as num?)?.toDouble();
@@ -908,7 +914,7 @@ class V2PutnikStreamService {
     try {
       final nowTs = v2NowString();
       final payload = {
-        'status': 'pokupljen',
+        'status': V2Polazak.statusPokupljen,
         'updated_at': nowTs,
         'processed_at': nowTs,
         if (driver != null) 'pokupio': driver,
@@ -1001,7 +1007,7 @@ class V2PutnikStreamService {
       grad: grad,
       vreme: vreme,
       polazakId: requestId?.isNotEmpty == true ? requestId : null,
-      novo: {'status': 'pokupljen', 'datum': targetDatum},
+      novo: {'status': V2Polazak.statusPokupljen, 'datum': targetDatum},
       detalji: 'Putnik pokupljen${driver != null ? " od: $driver" : ""}',
     );
   }
@@ -1024,13 +1030,14 @@ class V2PutnikStreamService {
         const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
         final danasKratica = dani[danasDay - 1];
         final sutraKratica = dani[sutraDay - 1];
-        final polasciPayload = {'status': 'otkazano', 'updated_at': v2NowString()};
+        final polasciPayload = {'status': V2Polazak.statusOtkazano, 'updated_at': v2NowString()};
 
         final res = await supabase
             .from('v2_polasci')
             .update(polasciPayload)
             .eq('putnik_id', putnikId)
-            .inFilter('dan', [danasKratica, sutraKratica]).inFilter('status', ['obrada', 'odobreno']).select('id');
+            .inFilter('dan', [danasKratica, sutraKratica]).inFilter(
+                'status', [V2Polazak.statusObrada, V2Polazak.statusOdobreno]).select('id');
         // Batch cache patch za sve pogođene polasci redove
         for (final row in res) {
           rm.v2PatchCache('v2_polasci', row['id'].toString(), polasciPayload);
@@ -1057,7 +1064,7 @@ class V2PutnikStreamService {
     String? selectedGrad,
     String? datum,
     String? requestId,
-    String status = 'otkazano',
+    String status = V2Polazak.statusOtkazano,
   }) async {
     String? vozacUuid;
     if (driver != null) {
@@ -1178,7 +1185,7 @@ class V2PutnikStreamService {
       grad: selectedGrad ?? grad,
       vreme: selectedVreme ?? vreme,
       polazakId: updatedId,
-      staro: {'status': 'odobreno'},
+      staro: {'status': V2Polazak.statusOdobreno},
       novo: {'status': status},
       detalji: 'Otkazano${driver != null ? " od: $driver" : ""} — status: $status',
     );
@@ -1324,7 +1331,12 @@ class V2PutnikStreamService {
         'status': 'bez_polaska',
         'processed_at': now,
         'updated_at': now,
-      }).match({'dan': danKey}).inFilter('status', ['odobreno', 'obrada', 'pokupljen', 'otkazano']).eq('grad', gradKey);
+      }).match({'dan': danKey}).inFilter('status', [
+        V2Polazak.statusOdobreno,
+        V2Polazak.statusObrada,
+        V2Polazak.statusPokupljen,
+        V2Polazak.statusOtkazano
+      ]).eq('grad', gradKey);
 
       if (vreme.isNotEmpty && vreme != 'Sva vremena') {
         query = query.eq('zeljeno_vreme', V2GradAdresaValidator.normalizeTime(vreme));

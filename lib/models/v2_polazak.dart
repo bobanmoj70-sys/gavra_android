@@ -2,6 +2,13 @@ import 'v2_putnik.dart';
 
 /// Model za zahteve za mesta u kombiju (v2_polasci tabela)
 class V2Polazak {
+  /// Mogući statusi polaska.
+  static const String statusObrada = 'obrada';
+  static const String statusOdobreno = 'odobreno';
+  static const String statusOdbijeno = 'odbijeno';
+  static const String statusOtkazano = 'otkazano';
+  static const String statusPokupljen = 'pokupljen';
+
   final String id;
   final String? putnikId;
   final String? grad;
@@ -32,7 +39,7 @@ class V2Polazak {
     this.dan,
     this.zeljenoVreme,
     this.dodeljenoVreme,
-    this.status = 'obrada',
+    this.status = statusObrada,
     this.createdAt,
     this.updatedAt,
     this.processedAt,
@@ -50,23 +57,25 @@ class V2Polazak {
 
   factory V2Polazak.fromJson(Map<String, dynamic> json) {
     // putnikIme, brojTelefona, tipPutnika se enrichuju u servisu iz v2_* cache-a
+    final id = json['id'] as String?;
+    if (id == null || id.isEmpty) throw ArgumentError('V2Polazak.fromJson: id je null/prazan');
     final putnikTabela = json['putnik_tabela'] as String?;
     final tipPutnika = V2Putnik.tipIzTabele(putnikTabela) ?? json['tip_putnika'] as String? ?? json['tip'] as String?;
 
     return V2Polazak(
-      id: json['id'] as String,
+      id: id,
       putnikId: json['putnik_id'] as String?,
       grad: json['grad'] as String?,
       dan: json['dan'] as String?,
       zeljenoVreme: json['zeljeno_vreme'] as String?,
       dodeljenoVreme: json['dodeljeno_vreme'] as String?,
-      status: json['status'] as String? ?? 'obrada',
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : null,
-      processedAt: json['processed_at'] != null ? DateTime.parse(json['processed_at'] as String) : null,
+      status: json['status'] as String? ?? statusObrada,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String)?.toLocal() : null,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String)?.toLocal() : null,
+      processedAt: json['processed_at'] != null ? DateTime.tryParse(json['processed_at'] as String)?.toLocal() : null,
       alternativeVreme1: json['alternativno_vreme_1'] as String?,
       alternativeVreme2: json['alternativno_vreme_2'] as String?,
-      brojMesta: json['broj_mesta'] as int? ?? 1,
+      brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
       customAdresaId: json['custom_adresa_id'] as String?,
       cancelledBy: json['otkazao'] as String?,
       pokupljenoBy: json['pokupio'] as String?,
