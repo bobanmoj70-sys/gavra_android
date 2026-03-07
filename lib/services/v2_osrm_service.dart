@@ -109,13 +109,15 @@ class V2OsrmService {
         ).timeout(V2RouteConfig.osrmTimeout);
 
         if (response.statusCode == 200) {
-          final data = json.decode(response.body) as Map<String, dynamic>;
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-          if (data['code'] == 'Ok' && data['trips'] != null && (data['trips'] as List).isNotEmpty) {
+          final trips = data['trips'];
+          if (data['code'] == 'Ok' && trips is List && trips.isNotEmpty) {
             return data;
           }
         }
       } catch (e) {
+        debugPrint('[V2OsrmService] _callOsrmWithRetry pokušaj $attempt greška: $e');
       }
 
       if (attempt < V2RouteConfig.osrmMaxRetries) {
@@ -135,12 +137,15 @@ class V2OsrmService {
     bool hasEndDestination = false,
   }) {
     try {
-      final trips = data['trips'] as List;
-      if (trips.isEmpty) return null;
+      final tripsRaw = data['trips'];
+      if (tripsRaw is! List || tripsRaw.isEmpty) return null;
 
-      final trip = trips[0] as Map<String, dynamic>;
-      final waypoints = data['waypoints'] as List?;
-      final legs = trip['legs'] as List?;
+      final trip = tripsRaw[0];
+      if (trip is! Map<String, dynamic>) return null;
+      final waypointsRaw = data['waypoints'];
+      final legsRaw = trip['legs'];
+      final waypoints = waypointsRaw is List ? waypointsRaw : null;
+      final legs = legsRaw is List ? legsRaw : null;
 
       if (waypoints == null || waypoints.isEmpty) return null;
 
