@@ -136,9 +136,6 @@ class V2PolasciService {
           detalji: 'Zahtev za vožnju: $danKey $gradKey $normVreme',
         );
       }
-    } catch (e) {
-      rethrow;
-    }
   }
 
   /// Ažurira broj_mesta za postojeći polazak (vozač označava da putnik povede više osoba)
@@ -569,7 +566,7 @@ class V2PutnikStreamService {
     final controller = StreamController<List<V2Putnik>>.broadcast();
     bool isEmitting = false;
     bool pendingEmit = false;
-    Timer? _debounce;
+    Timer? debounce;
 
     Future<void> emit() async {
       if (isEmitting) {
@@ -591,8 +588,8 @@ class V2PutnikStreamService {
     }
 
     void scheduleEmit() {
-      _debounce?.cancel();
-      _debounce = Timer(const Duration(milliseconds: 150), emit);
+      debounce?.cancel();
+      debounce = Timer(const Duration(milliseconds: 150), emit);
     }
 
     final rm = V2MasterRealtimeManager.instance;
@@ -621,7 +618,7 @@ class V2PutnikStreamService {
         .listen((_) => scheduleEmit());
 
     controller.onCancel = () {
-      _debounce?.cancel();
+      debounce?.cancel();
       cacheSub.cancel();
       controller.close();
     };
@@ -736,7 +733,6 @@ class V2PutnikStreamService {
     final List<V2Putnik> sviPutnici;
     if (dan != null) {
       danKratica = dan;
-      final isoZaDan = V2DanUtils.isoZaDan(dan);
       sviPutnici = rm.polasciCache.values
           .where((sr) => sr['dan']?.toString() == dan)
           .map((sr) {
@@ -906,10 +902,11 @@ class V2PutnikStreamService {
     }
 
     try {
+      final nowTs = v2NowString();
       final payload = {
         'status': 'pokupljen',
-        'updated_at': v2NowString(),
-        'processed_at': v2NowString(),
+        'updated_at': nowTs,
+        'processed_at': nowTs,
         if (driver != null) 'pokupio': driver,
         if (vozacId != null) 'pokupio_vozac_id': vozacId,
         'pokupljen_datum': targetDatum,
@@ -1097,7 +1094,8 @@ class V2PutnikStreamService {
           final dt = DateTime.parse(datum);
           const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
           danKey = dani[dt.weekday - 1];
-        } catch (_) {
+        } catch (e) {
+          debugPrint('[V2PutnikStreamService] v2OtkaziPutnika: ne mogu parsirati datum "$datum", koristim danas: $e');
           const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
           danKey = dani[DateTime.now().weekday - 1];
         }
@@ -1203,15 +1201,16 @@ class V2PutnikStreamService {
       vozacId = rm.vozaciCache.values.firstWhere((v) => v['ime'] == driver, orElse: () => {})['id'] as String?;
     }
 
+    final placenNow = v2NowString();
     final placenPayload = {
       'placen': true,
       'placen_iznos': iznos.toDouble(),
       if (vozacId != null) 'placen_vozac_id': vozacId,
       if (driver != null) 'placen_vozac_ime': driver,
-      'datum_akcije': v2NowString(),
+      'datum_akcije': placenNow,
       'placen_tip': tipPutnika ?? 'dnevni',
-      'placen_at': v2NowString(),
-      'updated_at': v2NowString(),
+      'placen_at': placenNow,
+      'updated_at': placenNow,
     };
 
     bool polasciUpdated = false;
@@ -1304,7 +1303,7 @@ class V2PutnikStreamService {
   }) async {
     try {
       final gradKey = V2GradAdresaValidator.normalizeGrad(grad);
-      const _danMap = {
+      const danMap = {
         'ponedeljak': 'pon',
         'utorak': 'uto',
         'sreda': 'sre',
@@ -1314,7 +1313,7 @@ class V2PutnikStreamService {
         'nedelja': 'ned',
       };
       final danLow = dan.toLowerCase();
-      final danKey = _danMap[danLow] ?? danLow;
+      final danKey = danMap[danLow] ?? danLow;
 
       final now = v2NowString();
       var query = supabase.from('v2_polasci').update({
