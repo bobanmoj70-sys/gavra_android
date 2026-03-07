@@ -213,8 +213,8 @@ class V2AuditLogService {
           .from('v2_audit_log')
           .select('id, tip, aktor_ime, putnik_ime, dan, grad, vreme, detalji, created_at')
           .eq('tip', tip);
-      if (od != null) query = query.gte('created_at', od.toIso8601String());
-      if (do_ != null) query = query.lte('created_at', do_.toIso8601String());
+      if (od != null) query = query.gte('created_at', od.toUtc().toIso8601String());
+      if (do_ != null) query = query.lte('created_at', do_.toUtc().toIso8601String());
       final rows = await query.order('created_at', ascending: false).limit(limit);
       return rows;
     } catch (e) {
