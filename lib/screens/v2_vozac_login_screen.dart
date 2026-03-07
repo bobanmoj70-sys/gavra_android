@@ -264,7 +264,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
   }
 
   void _showError(String message) {
-    setState(() => _isLoading = false);
     if (mounted) {
       V2AppSnackBar.error(context, message);
     }
