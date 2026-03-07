@@ -624,9 +624,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       });
 
       // Audit log — odsustvo ili povratak na posao
-      final _audTip = noviStatus == 'aktivan' ? 'odsustvo_uklonjeno' : 'odsustvo_postavljeno';
+      final audTip = noviStatus == 'aktivan' ? 'odsustvo_uklonjeno' : 'odsustvo_postavljeno';
       V2AuditLogService.log(
-        tip: _audTip,
+        tip: audTip,
         aktorId: putnikId,
         aktorTip: 'putnik',
         putnikId: putnikId,
@@ -708,14 +708,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   void _showWeatherDialog(String grad, V2WeatherData? data) {
     showDialog<void>(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogCtx) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.9),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(dialogCtx).size.width * 0.9),
           decoration: BoxDecoration(
-            gradient: Theme.of(context).backgroundGradient,
+            gradient: Theme.of(dialogCtx).backgroundGradient,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+            border: Border.all(color: Theme.of(dialogCtx).glassBorder, width: 1.5),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2)],
           ),
           child: Column(
@@ -725,7 +725,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).glassContainer,
+                  color: Theme.of(dialogCtx).glassContainer,
                   borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
                 ),
                 child: Row(
@@ -737,7 +737,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () => Navigator.pop(dialogCtx),
                       child: const Icon(Icons.close, color: Colors.white70),
                     ),
                   ],
@@ -1077,7 +1077,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                                                   ? '💼 Radnik'
                                                   : tip == 'dnevni'
                                                       ? '📅 Dnevni'
-                                                      : '👤 V2Putnik',
+                                                      : '👤 Putnik',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -1466,10 +1466,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
     // null → otkazano
     if (novoVreme == null) {
-      final _ime = (_putnikData['putnik_ime'] as String?)?.isNotEmpty == true
+      final ime = (_putnikData['putnik_ime'] as String?)?.isNotEmpty == true
           ? _putnikData['putnik_ime'] as String
           : (_putnikData['ime'] as String? ?? 'Putnik');
-      final putnikImeZaLog = '[Putnik] $_ime';
+      final putnikImeZaLog = '[Putnik] $ime';
       try {
         await V2PolasciService.v2OtkaziPutnika(
           putnikId: putnikId,
