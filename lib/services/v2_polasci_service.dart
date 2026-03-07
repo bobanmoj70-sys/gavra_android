@@ -136,7 +136,10 @@ class V2PolasciService {
           detalji: 'Zahtev za vožnju: $danKey $gradKey $normVreme',
         );
       }
-  } // end v2PoSaljiZahtev
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   /// Ažurira broj_mesta za postojeći polazak (vozač označava da putnik povede više osoba)
   static Future<bool> v2SetBrojMesta({
