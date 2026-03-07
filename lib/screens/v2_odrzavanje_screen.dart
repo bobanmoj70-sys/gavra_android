@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import '../services/v2_vozila_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// �Y"- KOLSKA KNJIGA
-/// Tehničko pra�?enje vozila - servisi, registracija, gume...
+/// 🛥 KOLSKA KNJIGA
+/// Tehničko praćenje vozila - servisi, registracija, gume...
 class V2OdrzavanjeScreen extends StatefulWidget {
   const V2OdrzavanjeScreen({super.key});
 
@@ -89,7 +89,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     final danaDoIsteka = _getDanaDoIsteka(vozilo);
     if (danaDoIsteka == null) return null;
 
-    // Samo za 15-30 dana (�?�14 dana ve�? ima widget na home screenu)
+    // Samo za 15-30 dana (≤14 dana već ima widget na home screenu)
     if (danaDoIsteka >= 15 && danaDoIsteka <= 30) {
       return [
         BoxShadow(
@@ -160,7 +160,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
-                        boxShadow: registracijaSenka, // �YY� Informativna senka 15-30 dana
+                        boxShadow: registracijaSenka, // ⚠️ Informativna senka 15-30 dana
                       ),
                       child: Icon(
                         Icons.airport_shuttle,
@@ -613,7 +613,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                           '${prefix}_km': kmValue,
                         };
 
-                        // Ako je uneta kilometraža ve�?a od trenutne u bazi, ažuriraj i nju
+                        // Ako je uneta kilometraža veća od trenutne u bazi, ažuriraj i nju
                         if (kmValue != null && kmValue > (_selectedVozilo?.kilometraza ?? 0)) {
                           updateData['kilometraza'] = kmValue.toDouble();
                         }
@@ -828,7 +828,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                                 'gume_zadnje_km': kmValue,
                               };
 
-                        // Ako je uneta kilometraža ve�?a od trenutne u bazi, ažuriraj i nju
+                        // Ako je uneta kilometraža veća od trenutne u bazi, ažuriraj i nju
                         if (kmValue != null && kmValue > (_selectedVozilo?.kilometraza ?? 0)) {
                           updateData['kilometraza'] = kmValue.toDouble();
                         }
