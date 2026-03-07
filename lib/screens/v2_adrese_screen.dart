@@ -48,7 +48,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
   Future<void> _addAdresa() async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => _AdresaDialog(),
+      builder: (context) => const _AdresaDialog(),
     );
 
     if (result != null) {
@@ -337,7 +337,11 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          adresa.grad == 'BC' ? 'Bela Crkva' : adresa.grad == 'VS' ? 'Vrsac' : adresa.grad ?? '',
+          adresa.grad == 'BC'
+              ? 'Bela Crkva'
+              : adresa.grad == 'VS'
+                  ? 'Vrsac'
+                  : adresa.grad ?? '',
           style: TextStyle(color: Colors.grey[400], fontSize: 12),
         ),
         trailing: Row(

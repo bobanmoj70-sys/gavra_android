@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:uuid/uuid.dart';
 
+const _sentinel = Object();
+
 /// Model za adrese
 class V2Adresa {
   static const _uuid = Uuid();
@@ -26,12 +28,8 @@ class V2Adresa {
       grad: _normalizeGrad(map['grad'] as String?),
       gpsLat: (map['gps_lat'] as num?)?.toDouble(),
       gpsLng: (map['gps_lng'] as num?)?.toDouble(),
-      createdAt: map['created_at'] != null
-          ? (DateTime.tryParse(map['created_at'] as String) ?? DateTime.now())
-          : DateTime.now(),
-      updatedAt: map['updated_at'] != null
-          ? (DateTime.tryParse(map['updated_at'] as String) ?? DateTime.now())
-          : DateTime.now(),
+      createdAt: DateTime.tryParse(map['created_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(map['updated_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
     );
   }
 
@@ -50,9 +48,9 @@ class V2Adresa {
     return {
       'id': id,
       'naziv': naziv,
-      'grad': grad,
-      'gps_lat': gpsLat,
-      'gps_lng': gpsLng,
+      if (grad != null) 'grad': grad,
+      if (gpsLat != null) 'gps_lat': gpsLat,
+      if (gpsLng != null) 'gps_lng': gpsLng,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -77,18 +75,18 @@ class V2Adresa {
   V2Adresa copyWith({
     String? id,
     String? naziv,
-    String? grad,
-    double? gpsLat,
-    double? gpsLng,
+    Object? grad = _sentinel,
+    Object? gpsLat = _sentinel,
+    Object? gpsLng = _sentinel,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return V2Adresa(
       id: id ?? this.id,
       naziv: naziv ?? this.naziv,
-      grad: grad ?? this.grad,
-      gpsLat: gpsLat ?? this.gpsLat,
-      gpsLng: gpsLng ?? this.gpsLng,
+      grad: identical(grad, _sentinel) ? this.grad : grad as String?,
+      gpsLat: identical(gpsLat, _sentinel) ? this.gpsLat : gpsLat as double?,
+      gpsLng: identical(gpsLng, _sentinel) ? this.gpsLng : gpsLng as double?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -107,10 +105,7 @@ class V2Adresa {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is V2Adresa &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+      identical(this, other) || other is V2Adresa && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;
