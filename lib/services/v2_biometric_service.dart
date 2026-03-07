@@ -69,15 +69,21 @@ class V2BiometricService {
     required String phone,
     required String pin,
   }) async {
-    await _secureStorage.write(key: _savedPhoneKey, value: phone);
-    await _secureStorage.write(key: _savedPinKey, value: pin);
+    await Future.wait([
+      _secureStorage.write(key: _savedPhoneKey, value: phone),
+      _secureStorage.write(key: _savedPinKey, value: pin),
+    ]);
     await setBiometricEnabled(true);
   }
 
   /// Dobij sačuvane kredencijale
   static Future<Map<String, String>?> getSavedCredentials() async {
-    final phone = await _secureStorage.read(key: _savedPhoneKey);
-    final pin = await _secureStorage.read(key: _savedPinKey);
+    final results = await Future.wait([
+      _secureStorage.read(key: _savedPhoneKey),
+      _secureStorage.read(key: _savedPinKey),
+    ]);
+    final phone = results[0];
+    final pin = results[1];
 
     if (phone != null && pin != null) {
       return {'phone': phone, 'pin': pin};
@@ -87,8 +93,10 @@ class V2BiometricService {
 
   /// Obriši sačuvane kredencijale
   static Future<void> clearCredentials() async {
-    await _secureStorage.delete(key: _savedPhoneKey);
-    await _secureStorage.delete(key: _savedPinKey);
+    await Future.wait([
+      _secureStorage.delete(key: _savedPhoneKey),
+      _secureStorage.delete(key: _savedPinKey),
+    ]);
     await setBiometricEnabled(false);
   }
 
