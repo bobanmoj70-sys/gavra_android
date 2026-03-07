@@ -20,27 +20,6 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
   String? _filterTip;
   String? _filterAktorTip; // vozac / putnik / admin
 
-  // Sve dostupne vrijednosti za tip dropdown
-  static const _tipoviList = [
-    'odobren_zahtev',
-    'odbijen_zahtev',
-    'zahtev_poslan',
-    'zahtev_otkazan',
-    'pokupljen',
-    'otkazano_vozac',
-    'naplata',
-    'uplata_dodana',
-    'bez_polaska_globalni',
-    'odsustvo_postavljeno',
-    'odsustvo_uklonjeno',
-    'putnik_logout',
-    'dodat_termin',
-    'uklonjen_termin',
-    'dodeljen_vozac',
-    'uklonjen_vozac',
-    'promena_sifre',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -122,6 +101,13 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
             final allLogs = snapshot.data ?? [];
             final logs = _applyFilters(allLogs);
             final isLoading = snapshot.connectionState == ConnectionState.waiting && allLogs.isEmpty;
+            // Dinamički tipovi iz stvarnih podataka — uvijek aktualni
+            final dostupniTipovi = allLogs
+                .map((l) => l['tip']?.toString())
+                .whereType<String>()
+                .toSet()
+                .toList()
+              ..sort();
 
             return Column(
               children: [
@@ -141,7 +127,7 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                             border: Border.all(color: Colors.white24),
                           ),
                           child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
+                            child: DropdownButton<String?>(
                               value: _filterTip,
                               hint: const Text('Tip', style: TextStyle(color: Colors.white54, fontSize: 13)),
                               dropdownColor: const Color(0xFF1A1A2E),
@@ -149,8 +135,8 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                               isExpanded: true,
                               icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 18),
                               items: [
-                                const DropdownMenuItem<String>(value: null, child: Text('Svi tipovi')),
-                                ..._tipoviList.map((t) => DropdownMenuItem(value: t, child: Text(t))),
+                                const DropdownMenuItem<String?>(value: null, child: Text('Svi tipovi')),
+                                ...dostupniTipovi.map((t) => DropdownMenuItem<String?>(value: t, child: Text(t))),
                               ],
                               onChanged: (v) => setState(() => _filterTip = v),
                             ),
@@ -169,7 +155,7 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                             border: Border.all(color: Colors.white24),
                           ),
                           child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
+                            child: DropdownButton<String?>(
                               value: _filterAktorTip,
                               hint: const Text('Ko', style: TextStyle(color: Colors.white54, fontSize: 13)),
                               dropdownColor: const Color(0xFF1A1A2E),
@@ -177,10 +163,10 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                               isExpanded: true,
                               icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 18),
                               items: const [
-                                DropdownMenuItem<String>(value: null, child: Text('Svi')),
-                                DropdownMenuItem(value: 'vozac', child: Text('Vozač')),
-                                DropdownMenuItem(value: 'putnik', child: Text('Putnik')),
-                                DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                                DropdownMenuItem<String?>(value: null, child: Text('Svi')),
+                                DropdownMenuItem<String?>(value: 'vozac', child: Text('Vozač')),
+                                DropdownMenuItem<String?>(value: 'putnik', child: Text('Putnik')),
+                                DropdownMenuItem<String?>(value: 'admin', child: Text('Admin')),
                               ],
                               onChanged: (v) => setState(() => _filterAktorTip = v),
                             ),
