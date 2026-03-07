@@ -63,31 +63,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   Stream<List<V2Putnik>>? _streamPutnici;
   String? _cachedDan;
 
-  List<String> get bcVremena {
-    final navType = navBarTypeNotifier.value;
-    if (navType == 'praznici') {
-      return V2RouteConfig.bcVremenaPraznici;
-    } else if (navType == 'zimski') {
-      return V2RouteConfig.bcVremenaZimski;
-    } else {
-      return V2RouteConfig.bcVremenaLetnji;
-    }
-  }
-
-  List<String> get vsVremena {
-    final navType = navBarTypeNotifier.value;
-    if (navType == 'praznici') {
-      return V2RouteConfig.vsVremenaPraznici;
-    } else if (navType == 'zimski') {
-      return V2RouteConfig.vsVremenaZimski;
-    } else {
-      return V2RouteConfig.vsVremenaLetnji;
-    }
-  }
-
   List<String> get _sviPolasci {
-    final bcList = bcVremena.map((v) => '$v BC').toList();
-    final vsList = vsVremena.map((v) => '$v VS').toList();
+    final bcList = V2RouteConfig.getVremenaByNavType('BC').map((v) => '$v BC').toList();
+    final vsList = V2RouteConfig.getVremenaByNavType('VS').map((v) => '$v VS').toList();
     return [...bcList, ...vsList];
   }
 
@@ -100,6 +78,8 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
+    _cachedDan = _selectedDay;
+    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
     _initializeData();
   }
 
@@ -1746,8 +1726,8 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       );
     }
 
-    // Kreira stream za selektovani dan — samo kad se dan promeni (kao u raspored ekranu)
-    if (_streamPutnici == null || _cachedDan != _selectedDay) {
+    // Kreira stream za selektovani dan — samo kad se dan promeni
+    if (_cachedDan != _selectedDay) {
       _cachedDan = _selectedDay;
       _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
     }
@@ -2371,8 +2351,8 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             selectedGrad: _selectedGrad,
                             selectedVreme: _selectedVreme,
                             selectedDay: _selectedDay,
-                            bcVremena: bcVremena,
-                            vsVremena: vsVremena,
+                            bcVremena: V2RouteConfig.getVremenaByNavType('BC'),
+                            vsVremena: V2RouteConfig.getVremenaByNavType('VS'),
                           ),
                   ),
                 ],

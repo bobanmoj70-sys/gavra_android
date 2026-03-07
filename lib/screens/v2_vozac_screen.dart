@@ -115,31 +115,9 @@ class _VozacScreenState extends State<V2VozacScreen> {
   StreamSubscription<List<V2Putnik>>? _latestPutniciSub; // listener za _latestPutnici
   late final String _workingDateIso; // Radni datum — izracunava se jednom u initState
 
-  List<String> get _bcVremena {
-    final navType = navBarTypeNotifier.value;
-    if (navType == 'praznici') {
-      return V2RouteConfig.bcVremenaPraznici;
-    } else if (navType == 'zimski') {
-      return V2RouteConfig.bcVremenaZimski;
-    } else {
-      return V2RouteConfig.bcVremenaLetnji;
-    }
-  }
-
-  List<String> get _vsVremena {
-    final navType = navBarTypeNotifier.value;
-    if (navType == 'praznici') {
-      return V2RouteConfig.vsVremenaPraznici;
-    } else if (navType == 'zimski') {
-      return V2RouteConfig.vsVremenaZimski;
-    } else {
-      return V2RouteConfig.vsVremenaLetnji;
-    }
-  }
-
   List<String> get _sviPolasci {
-    final bcList = _bcVremena.map((v) => '$v BC').toList();
-    final vsList = _vsVremena.map((v) => '$v VS').toList();
+    final bcList = V2RouteConfig.getVremenaByNavType('BC').map((v) => '$v BC').toList();
+    final vsList = V2RouteConfig.getVremenaByNavType('VS').map((v) => '$v VS').toList();
     return [...bcList, ...vsList];
   }
 
@@ -152,10 +130,9 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   Future<void> _initAsync() async {
     // 1. Inicijalizuj vozaca (ovo ce takode pozvati _selectClosestDeparture)
+    // 2. Ucitaj raspored — oba su awaited da bi setState bio samo jednom (na kraju _initializeCurrentDriver)
+    await _loadRaspored();
     await _initializeCurrentDriver();
-
-    // 2. Ucitaj raspored vozaca + subscribe na realtime promjene
-    _loadRaspored();
     _subscribeRealtime();
 
     // 3. Ostalo
@@ -179,12 +156,9 @@ class _VozacScreenState extends State<V2VozacScreen> {
     // Čita direktno iz RM in-memory cache — 0 DB querija
     final raspored = rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
     final vozacPutnik = rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
-    if (mounted) {
-      setState(() {
-        _rasporedCache = raspored;
-        _vozacPutnikCache = vozacPutnik;
-      });
-    }
+    // Bez setState — poziva se iz _initAsync koji vec radi setState na kraju
+    _rasporedCache = raspored;
+    _vozacPutnikCache = vozacPutnik;
   }
 
   /// Realtime: prati vozac_raspored i vozac_putnik i osvježava lokalne cache-ove
@@ -1183,8 +1157,8 @@ class _VozacScreenState extends State<V2VozacScreen> {
                                   selectedVreme: _selectedVreme,
                                   selectedDay: targetDan,
                                   onPutnikStatusChanged: _reoptimizeAfterStatusChange,
-                                  bcVremena: _bcVremena,
-                                  vsVremena: _vsVremena,
+                                  bcVremena: V2RouteConfig.getVremenaByNavType('BC'),
+                                  vsVremena: V2RouteConfig.getVremenaByNavType('VS'),
                                 ),
                         ),
                       ],

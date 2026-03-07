@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../globals.dart';
 import '../helpers/v2_putnik_statistike_helper.dart';
 import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
@@ -57,11 +56,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     WidgetsBinding.instance.addObserver(this); // Prati lifecycle aplikacije
     _checkNotificationPermission(); // Proveri dozvolu za notifikacije
 
-    navBarTypeNotifier.addListener(_onSeasonChanged);
-
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
+    // v2_app_settings pokrije i promjenu sezone (nav_bar_type) — nije potreban poseban listener
     _cacheStream = V2MasterRealtimeManager.instance.v2StreamFromCache(
-      tables: ['v2_polasci'],
+      tables: ['v2_polasci', 'v2_app_settings'],
       build: () {},
     );
     _refreshPutnikData();
@@ -69,17 +67,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     V2WeatherService.refreshAll();
   }
 
-  /// Reaguje na promenu sezone
-  void _onSeasonChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    navBarTypeNotifier.removeListener(_onSeasonChanged);
     super.dispose();
   }
 
