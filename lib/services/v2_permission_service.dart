@@ -60,7 +60,7 @@ class V2PermissionService {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder: (BuildContext context) {
+          builder: (BuildContext dialogCtx) {
             return Dialog(
               backgroundColor: Colors.transparent,
               child: Container(
@@ -166,8 +166,8 @@ class V2PermissionService {
                                     ),
                                     onPressed: () async {
                                       final success = await requestAllPermissions();
-                                      if (context.mounted) {
-                                        Navigator.of(context).pop(success);
+                                      if (dialogCtx.mounted) {
+                                        Navigator.of(dialogCtx).pop(success);
                                       }
                                     },
                                     child: const Text(
@@ -199,7 +199,7 @@ class V2PermissionService {
                                     ),
                                   ),
                                   child: TextButton(
-                                    onPressed: () => Navigator.of(context).pop(false),
+                                    onPressed: () => Navigator.of(dialogCtx).pop(false),
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 16,
@@ -386,7 +386,7 @@ class V2PermissionService {
         if (context != null && context.mounted) {
           final shouldOpen = await showDialog<bool>(
             context: context,
-            builder: (context) => Dialog(
+            builder: (dialogCtx) => Dialog(
               backgroundColor: Colors.transparent,
               child: Container(
                 margin: const EdgeInsets.all(16),
@@ -456,7 +456,7 @@ class V2PermissionService {
                                 ),
                               ),
                               child: TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
+                                onPressed: () => Navigator.of(dialogCtx).pop(false),
                                 child: const Text(
                                   'Otkaži',
                                   style: TextStyle(
@@ -484,7 +484,7 @@ class V2PermissionService {
                                   elevation: 0,
                                   shadowColor: Colors.transparent,
                                 ),
-                                onPressed: () => Navigator.of(context).pop(true),
+                                onPressed: () => Navigator.of(dialogCtx).pop(true),
                                 child: const Text(
                                   'Uključi GPS',
                                   style: TextStyle(fontWeight: FontWeight.bold),
@@ -536,6 +536,8 @@ class V2PermissionService {
       final result = await Permission.phone.request();
 
       if (result.isDenied || result.isPermanentlyDenied) {
+        // Namjerno true: na Huawei uredajima phone permission nije kriticna,
+        // ne blokiramo app ako korisnik odbije
         return true;
       }
 
