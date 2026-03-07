@@ -368,7 +368,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ys- Potrošnja ovog meseca ?" po vozilu',
+                Text('📊 Potrošnja ovog meseca po vozilu',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         )),
@@ -394,7 +394,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             children: [
               Text(v.registarskiBroj, style: const TextStyle(fontWeight: FontWeight.w600)),
               Text(
-                '${_fmt.format(v.ukupnoLitri)} L  ?  ${v.brojTocenja}- točeno',
+                '${_fmt.format(v.ukupnoLitri)} L · ${v.brojTocenja}× točeno',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: _accent,
                       fontWeight: FontWeight.bold,
@@ -478,7 +478,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             Text(datumStr),
             if (p.cenaPoPLitru != null)
               Text(
-                '${_fmt.format(p.cenaPoPLitru!)} din/L  ?  ${_fmtInt.format(p.ukupnoCena ?? (p.litri * p.cenaPoPLitru!))} din',
+                '${_fmt.format(p.cenaPoPLitru!)} din/L · ${_fmtInt.format(p.ukupnoCena ?? (p.litri * p.cenaPoPLitru!))} din',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             if (p.napomena != null) Text(p.napomena!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
@@ -491,7 +491,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             '${_fmt.format(p.litri)} L od $datumStr',
             () async {
               await V2GorivoService.deletePunjenje(p.id);
-              setState(() {});
+              setState(_loadAll);
             },
           ),
         ),
@@ -548,7 +548,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _accent.withValues(alpha: 0.15),
-          child: const Text('>', style: TextStyle(fontSize: 20)),
+          child: const Text('🚗', style: TextStyle(fontSize: 20)),
         ),
         title: Row(
           children: [
@@ -582,10 +582,10 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           icon: const Icon(Icons.delete_outline, color: Colors.red),
           onPressed: () => _confirmDelete(
             'Obriši točenje?',
-            '${_fmt.format(t.litri)} L ?" ${t.voziloNaziv} ?" $datumStr',
+            '${_fmt.format(t.litri)} L — ${t.voziloNaziv} — $datumStr',
             () async {
               await V2GorivoService.deleteTocenje(t.id);
-              setState(() {});
+              setState(_loadAll);
             },
           ),
         ),
@@ -675,7 +675,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => _buildBottomSheet(
-          title: '> Novo točenje',
+          title: '🚗 Novo točenje',
           accentColor: _accent,
           children: [
             _datumRow(datum, (d) => setLocal(() => datum = d)),
@@ -702,7 +702,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             if (lastCena != null) ...[
               const SizedBox(height: 8),
               Text(
-                'Poslednja cena: ${lastCena.toStringAsFixed(2)} din/L ?" koristi se za finansije',
+                'Poslednja cena: ${lastCena.toStringAsFixed(2)} din/L — koristi se za finansije',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
             ],
@@ -777,7 +777,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
               suffixText: 'L', keyboardType: TextInputType.number),
           const SizedBox(height: 8),
           Text(
-            'Početno stanje postavi na trenutnu litražu pumpe. Sve budu?e promene idu na to.',
+            'Početno stanje postavi na trenutnu litražu pumpe. Sve buduće promene idu na to.',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
