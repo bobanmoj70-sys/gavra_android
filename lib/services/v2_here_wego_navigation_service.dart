@@ -92,7 +92,7 @@ class V2HereWeGoNavigationService {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
+          builder: (dialogCtx) => AlertDialog(
             title: const Text('🗺️ HERE WeGo Navigacija'),
             content: const Column(
               mainAxisSize: MainAxisSize.min,
@@ -107,11 +107,11 @@ class V2HereWeGoNavigationService {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(dialogCtx, false),
                 child: const Text('Odustani'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(dialogCtx, true),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                 child: const Text('Preuzmi (Install)'),
               ),
@@ -123,7 +123,7 @@ class V2HereWeGoNavigationService {
 
   /// Otvori Store za preuzimanje HERE WeGo
   static Future<void> _openStore() async {
-    String url = '';
+    String? url;
 
     if (Platform.isAndroid) {
       final isHuawei = await V2DeviceUtils.isHuaweiDevice();
@@ -144,7 +144,7 @@ class V2HereWeGoNavigationService {
       url = 'https://apps.apple.com/app/here-wego-maps-navigation/id955837609';
     }
 
-    if (url.isNotEmpty) {
+    if (url != null) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     }
   }
