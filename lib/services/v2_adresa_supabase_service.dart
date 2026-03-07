@@ -90,18 +90,20 @@ class V2AdresaSupabaseService {
       if (coordsString != null) {
         final parts = coordsString.split(',');
         if (parts.length == 2) {
-          final lat = double.tryParse(parts[0]);
-          final lng = double.tryParse(parts[1]);
+          final lat = double.tryParse(parts[0].trim());
+          final lng = double.tryParse(parts[1].trim());
 
           if (lat != null && lng != null) {
-            final response = await supabase
+            await supabase
                 .from('v2_adrese')
                 .update({'gps_lat': lat, 'gps_lng': lng})
-                .eq('id', adresa.id)
-                .select('id, naziv, grad, gps_lat, gps_lng')
-                .single();
-            V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', response);
-            return V2Adresa.fromMap(response);
+                .eq('id', adresa.id);
+            // Spreada stari cache red pa override koordinate — ne gube se ostala polja
+            final rm = V2MasterRealtimeManager.instance;
+            final existing = rm.adreseCache[adresa.id] ?? {};
+            final updatedRow = <String, dynamic>{...existing, 'gps_lat': lat, 'gps_lng': lng};
+            rm.v2UpsertToCache('v2_adrese', updatedRow);
+            return V2Adresa.fromMap(updatedRow);
           }
         }
       }
@@ -141,13 +143,18 @@ class V2AdresaSupabaseService {
     if (lat != null) insertData['gps_lat'] = lat;
     if (lng != null) insertData['gps_lng'] = lng;
 
-    final row = await supabase
-        .from('v2_adrese')
-        .insert(insertData)
-        .select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at')
-        .single();
-    V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', row);
-    return V2Adresa.fromMap(row);
+    try {
+      final row = await supabase
+          .from('v2_adrese')
+          .insert(insertData)
+          .select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at')
+          .single();
+      V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', row);
+      return V2Adresa.fromMap(row);
+    } catch (e) {
+      debugPrint('[V2AdresaSupabaseService] addAdresa greška: $e');
+      rethrow;
+    }
   }
 
   /// Ažurira adresu, osvježava cache, vraća ažuriranu adresu.
@@ -167,22 +174,33 @@ class V2AdresaSupabaseService {
     if (lat != null) updateData['gps_lat'] = lat;
     if (lng != null) updateData['gps_lng'] = lng;
 
-    await supabase.from('v2_adrese').update(updateData).eq('id', adresa.id);
+    try {
+      await supabase.from('v2_adrese').update(updateData).eq('id', adresa.id);
+    } catch (e) {
+      debugPrint('[V2AdresaSupabaseService] updateAdresa greška: $e');
+      rethrow;
+    }
 
-    // Spread starog reda pa override sa novim — ne gube se gps_lat/gps_lng kad se ne salju
+    // Spreada stari cache red pa override sa novim — ne gube se gps_lat/gps_lng ni created_at
+    final rm = V2MasterRealtimeManager.instance;
+    final existing = rm.adreseCache[adresa.id] ?? {};
     final updatedRow = <String, dynamic>{
-      if (adresa.gpsLat != null) 'gps_lat': adresa.gpsLat,
-      if (adresa.gpsLng != null) 'gps_lng': adresa.gpsLng,
+      ...existing,
       ...updateData,
       'id': adresa.id,
     };
-    V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', updatedRow);
+    rm.v2UpsertToCache('v2_adrese', updatedRow);
     return V2Adresa.fromMap(updatedRow);
   }
 
   /// Briše adresu i uklanja je iz cache-a.
   static Future<void> deleteAdresa(V2Adresa adresa) async {
-    await supabase.from('v2_adrese').delete().eq('id', adresa.id);
-    V2MasterRealtimeManager.instance.v2RemoveFromCache('v2_adrese', adresa.id);
+    try {
+      await supabase.from('v2_adrese').delete().eq('id', adresa.id);
+      V2MasterRealtimeManager.instance.v2RemoveFromCache('v2_adrese', adresa.id);
+    } catch (e) {
+      debugPrint('[V2AdresaSupabaseService] deleteAdresa greška: $e');
+      rethrow;
+    }
   }
 }
