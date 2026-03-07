@@ -13,9 +13,7 @@ class V2AppSettingsService {
   V2AppSettingsService._();
 
   /// Inicijalizuje podešavanja — čita iz rm.settingsCache (rm već sluša tabelu).
-  static Future<void> initialize() async {
-    await _loadSettings();
-  }
+  static Future<void> initialize() => _loadSettings();
 
   /// Učitaj sva podešavanja iz rm.settingsCache (nema DB upita)
   static Future<void> _loadSettings() async {
@@ -104,16 +102,25 @@ class V2AppSettingsService {
   static Future<void> openStore() async {
     final info = updateInfoNotifier.value;
     if (info == null) return;
-    final uri = Uri.parse(info.storeUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final uri = Uri.parse(info.storeUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('[V2AppSettingsService] openStore greška: $e');
     }
   }
 
   /// Postavi nav_bar_type (samo admin može)
   static Future<void> setNavBarType(String type) async {
     final updatedAt = DateTime.now().toUtc().toIso8601String();
-    await supabase.from('v2_app_settings').update({'nav_bar_type': type, 'updated_at': updatedAt}).eq('id', 'global');
+    try {
+      await supabase.from('v2_app_settings').update({'nav_bar_type': type, 'updated_at': updatedAt}).eq('id', 'global');
+    } catch (e) {
+      debugPrint('[V2AppSettingsService] setNavBarType DB greška: $e');
+      rethrow;
+    }
 
     // Optimistički cache patch — odmah ažurira ovaj uređaj bez čekanja WebSocket event-a
     V2MasterRealtimeManager.instance.v2PatchCache('v2_app_settings', 'global', {
