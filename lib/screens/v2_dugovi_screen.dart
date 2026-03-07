@@ -79,7 +79,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
 
         final duzniciRaw = putnici
             .where(
-              (p) => (p.isDnevni || p.isPosiljka) && (p.placeno != true) && (p.jePokupljen) && !p.jeOtkazan,
+              (p) => p.isDnevniTip && (p.placeno != true) && (p.jePokupljen) && !p.jeOtkazan,
             )
             .toList();
 
