@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
@@ -58,7 +60,7 @@ class V2AuditLogService {
     String? detalji,
   }) {
     // Fire-and-forget — ne await-ujemo, audit ne smije blokirati UI
-    _insert(
+    unawaited(_insert(
       tip: tip,
       aktorId: aktorId,
       aktorIme: aktorIme,
@@ -73,7 +75,7 @@ class V2AuditLogService {
       staro: staro,
       novo: novo,
       detalji: detalji,
-    );
+    ));
   }
 
   /// Ista kao [log] ali async — čeka potvrdu DB-a.
@@ -173,7 +175,7 @@ class V2AuditLogService {
           .eq('putnik_id', putnikId)
           .order('created_at', ascending: false)
           .limit(limit);
-      return List<Map<String, dynamic>>.from(rows);
+      return rows;
     } catch (e) {
       debugPrint('[V2AuditLog] zahtevPutnika error: $e');
       return [];
@@ -192,7 +194,7 @@ class V2AuditLogService {
           .eq('aktor_id', aktorId)
           .order('created_at', ascending: false)
           .limit(limit);
-      return List<Map<String, dynamic>>.from(rows);
+      return rows;
     } catch (e) {
       debugPrint('[V2AuditLog] zahtevAktora error: $e');
       return [];
@@ -214,7 +216,7 @@ class V2AuditLogService {
       if (od != null) query = query.gte('created_at', od.toIso8601String());
       if (do_ != null) query = query.lte('created_at', do_.toIso8601String());
       final rows = await query.order('created_at', ascending: false).limit(limit);
-      return List<Map<String, dynamic>>.from(rows);
+      return rows;
     } catch (e) {
       debugPrint('[V2AuditLog] zahtevTipa error: $e');
       return [];
