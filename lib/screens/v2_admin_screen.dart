@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
-import '../models/v2_putnik.dart';
 import '../models/v2_polazak.dart';
+import '../models/v2_putnik.dart';
 import '../services/v2_app_settings_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_local_notification_service.dart';
@@ -74,11 +74,13 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
     _loadCurrentDriver();
 
-    try {
-      V2LocalNotificationService.initialize(context);
-    } catch (e) {
-      // ignore
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        try {
+          V2LocalNotificationService.initialize(context);
+        } catch (_) {}
+      }
+    });
   }
 
   /// 🚗 VOZAC PICKER DIALOG - Admin može da vidi ekran bilo kog vozaca
@@ -223,7 +225,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
     }
   }
 
-  void _loadCurrentDriver() async {
+  Future<void> _loadCurrentDriver() async {
     try {
       final driver = await V2AuthManager.getCurrentDriver();
       if (mounted) setState(() => _currentDriver = driver);
@@ -246,19 +248,21 @@ class _AdminScreenState extends State<V2AdminScreen> {
         final navType = navBarTypeNotifier.value;
         List<String> vremena;
         if (selectedGrad == 'BC') {
-          if (navType == 'praznici')
+          if (navType == 'praznici') {
             vremena = ['Sva vremena', ...V2RouteConfig.bcVremenaPraznici];
-          else if (navType == 'zimski')
+          } else if (navType == 'zimski') {
             vremena = ['Sva vremena', ...V2RouteConfig.bcVremenaZimski];
-          else
+          } else {
             vremena = ['Sva vremena', ...V2RouteConfig.bcVremenaLetnji];
+          }
         } else {
-          if (navType == 'praznici')
+          if (navType == 'praznici') {
             vremena = ['Sva vremena', ...V2RouteConfig.vsVremenaPraznici];
-          else if (navType == 'zimski')
+          } else if (navType == 'zimski') {
             vremena = ['Sva vremena', ...V2RouteConfig.vsVremenaZimski];
-          else
+          } else {
             vremena = ['Sva vremena', ...V2RouteConfig.vsVremenaLetnji];
+          }
         }
 
         if (!vremena.contains(selectedVreme)) {
