@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -65,8 +66,8 @@ class V2LocalNotificationService {
 
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        handleNotificationTap(response);
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        unawaited(handleNotificationTap(response));
       },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
@@ -450,7 +451,7 @@ class V2LocalNotificationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const V2HomeScreen(),
+            builder: (_) => const V2HomeScreen(),
           ),
         );
       }
@@ -485,7 +486,7 @@ class V2LocalNotificationService {
       if (context != null && context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const V2HomeScreen(),
+            builder: (_) => const V2HomeScreen(),
           ),
         );
       }
@@ -503,10 +504,9 @@ class V2LocalNotificationService {
       final danKratica = dani[danas.weekday - 1];
 
       // Traži putnika po imenu iz cache-a — 0 DB querija
-      String? putnikId;
       final rm = V2MasterRealtimeManager.instance;
       final cached = rm.v2GetAllPutnici().where((p) => p['ime'] == putnikIme && p['status'] != 'neaktivan').firstOrNull;
-      putnikId = cached?['id'] as String?;
+      final putnikId = cached?['id'] as String?;
       if (putnikId == null) return null;
 
       // Nađi njegovu današnju vožnju u v2_polasci
@@ -574,12 +574,16 @@ class V2LocalNotificationService {
       if (putnikId == null || dan == null || termin.isEmpty) return;
 
       // Prihvati alternativu u v2_polasci
-      await V2PolasciService.v2PrihvatiAlternativu(
+      final ok = await V2PolasciService.v2PrihvatiAlternativu(
         putnikId: putnikId,
         novoVreme: termin,
         grad: 'BC',
         dan: dan,
       );
+      if (!ok) {
+        debugPrint('[V2LocalNotificationService] _handleBcAlternativaAction: prihvatiAlternativu nije uspjelo');
+        return;
+      }
 
       // Dohvati tip korisnika iz cache-a
       final putnikData = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
@@ -627,12 +631,16 @@ class V2LocalNotificationService {
       if (putnikId == null || dan == null || termin.isEmpty) return;
 
       // Prihvati alternativu u v2_polasci
-      await V2PolasciService.v2PrihvatiAlternativu(
+      final okVs = await V2PolasciService.v2PrihvatiAlternativu(
         putnikId: putnikId,
         novoVreme: termin,
         grad: 'VS',
         dan: dan,
       );
+      if (!okVs) {
+        debugPrint('[V2LocalNotificationService] _handleVsAlternativaAction: prihvatiAlternativu nije uspjelo');
+        return;
+      }
 
       // Dohvati tip korisnika iz cache-a
       final putnikResult = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
