@@ -113,6 +113,9 @@ class _VozacScreenState extends State<V2VozacScreen> {
   Stream<List<V2Putnik>>? _streamPutnici; // Inicijalizuje se u _initializeCurrentDriver()
   List<V2Putnik> _latestPutnici = []; // Poslednji podaci iz stream listenera — koristi _reoptimizeAfterStatusChange
   StreamSubscription<List<V2Putnik>>? _latestPutniciSub; // listener za _latestPutnici
+  // Cache za _rasporedVozaca() rezultat — izbjegava ponovnu iteraciju u svakom build()
+  List<Map<String, String>>? _cachedDodeljenaVremena;
+  List<V2Putnik>? _lastMojiPutniciForCache;
   late final String _workingDateIso; // Radni datum — izracunava se jednom u initState
 
   List<String> get _sviPolasci {
@@ -143,12 +146,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
       V2RealtimeNotificationService.initialize();
     }
 
-    // 4. Stream listener za _latestPutnici (bez side effecta u builder)
-    if (_streamPutnici != null) {
-      _latestPutniciSub = _streamPutnici!.listen((putnici) {
-        _latestPutnici = putnici;
-      });
-    }
   }
 
   Future<void> _loadRaspored() async {
@@ -185,7 +182,12 @@ class _VozacScreenState extends State<V2VozacScreen> {
   }
 
   void _initializeGpsTracking() {
-    V2RealtimeGpsService.startTracking().catchError((Object e) {});
+    V2RealtimeGpsService.startTracking().catchError((Object e) {
+      debugPrint('⚠️ [VozacScreen] GPS tracking greška: $e');
+      if (mounted) {
+        V2AppSnackBar.warning(context, 'GPS nedostupan — provjeri dozvole');
+      }
+    });
 
     _driverPositionSubscription = V2RealtimeGpsService.positionStream.listen((pos) {
       V2DriverLocationService.instance.forceLocationUpdate(knownPosition: pos);
@@ -210,6 +212,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
         dan: V2DanUtils.odIso(_workingDateIso),
         vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
       );
+      // Subscribeuj odmah nakon kreiranja — broadcast stream, ne smije kasniti
+      _latestPutniciSub ??= _streamPutnici!.listen((putnici) {
+        _latestPutnici = putnici;
+      });
       if (mounted) {
         setState(() {});
         _selectClosestDeparture();
@@ -223,6 +229,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
       dan: V2DanUtils.odIso(_workingDateIso),
       vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
     );
+    // Subscribeuj odmah nakon kreiranja — broadcast stream, ne smije kasniti
+    _latestPutniciSub ??= _streamPutnici!.listen((putnici) {
+      _latestPutnici = putnici;
+    });
     if (mounted) {
       setState(() {});
       _selectClosestDeparture();
@@ -946,7 +956,12 @@ class _VozacScreenState extends State<V2VozacScreen> {
                 );
 
           // -- Nav bar: samo dodeljena vremena vozaca ------------------------
-          final dodeljenaVremena = _rasporedVozaca(sviPutnici: mojiPutnici);
+          // Memoizuj — rekalkuliraj samo kad se mojiPutnici promijeni (izbjegava iteraciju u svakom frame)
+          if (!identical(_lastMojiPutniciForCache, mojiPutnici)) {
+            _lastMojiPutniciForCache = mojiPutnici;
+            _cachedDodeljenaVremena = _rasporedVozaca(sviPutnici: mojiPutnici);
+          }
+          final dodeljenaVremena = _cachedDodeljenaVremena ?? _rasporedVozaca(sviPutnici: mojiPutnici);
           final bcVremenaToShow =
               (dodeljenaVremena.where((v) => v['grad'] == 'BC').map((v) => v['vreme']!).toList()..sort());
           final vsVremenaToShow =
@@ -1293,45 +1308,19 @@ class _VozacScreenState extends State<V2VozacScreen> {
   }
 
   Widget _buildStatsRow(List<V2Putnik> sviPutnici, List<V2Putnik> mojiPutnici) {
-    final filteredDuzniciRaw = sviPutnici.where((v2Putnik) {
-      // Duznici su samo dnevni i posiljke (radnici i ucenici ne duguju po voznji)
-      if (v2Putnik.isRadnik || v2Putnik.isUcenik) return false;
-      final nijePlatio = v2Putnik.placeno != true; // placeno flag iz v2_polasci srRow
-      final nijeOtkazan = !v2Putnik.jeOtkazan && !v2Putnik.jeBezPolaska;
-      final pokupljen = v2Putnik.jePokupljen;
-      return nijePlatio && nijeOtkazan && pokupljen;
-    }).toList();
-
-    final seenIds = <dynamic>{};
-    final filteredDuznici = filteredDuzniciRaw.where((p) {
-      final key = p.id ?? '${p.ime}_${p.dan}';
-      if (seenIds.contains(key)) return false;
-      seenIds.add(key);
-      return true;
-    }).toList();
-
-    // Grupišemo sve polaske po putniku (ID) da vidimo ko ima BC, a ko ima i VS.
-    // Čuvamo i ime putnika odmah pri iteraciji — ne koristimo orElse sa .first (crash risk).
+    // Jedna iteracija kroz sviPutnici za obje statistike
     final Map<dynamic, Set<String>> putnikSmerovi = {};
-    final Map<dynamic, String> putnikIme = {}; // id -> ime, za prikaz u popupu
+    final Map<dynamic, String> putnikIme = {};
 
-    for (var p in sviPutnici) {
-      // SAMO UCENICI za kocku Povratak
-      if (p.tipPutnika != 'ucenik') continue;
-
-      // ISKLJUCUJEMO: otkazano, bez_polaska, odsustvo, obrisan
-      if (p.jeOtkazan || p.jeBezPolaska || p.jeOdsustvo || p.obrisan) continue;
-
-      final id = p.id;
-      if (id == null) continue;
-
-      putnikSmerovi.putIfAbsent(id, () => <String>{});
-      putnikIme.putIfAbsent(id, () => p.ime); // upamti ime pri prvom susretu
-
-      if (p.grad == 'BC') {
-        putnikSmerovi[id]!.add('bc');
-      } else {
-        putnikSmerovi[id]!.add('vs');
+    for (final p in sviPutnici) {
+      // --- Povratak (samo ucenici, aktivni) ---
+      if (p.tipPutnika == 'ucenik' && !p.jeOtkazan && !p.jeBezPolaska && !p.jeOdsustvo && !p.obrisan) {
+        final id = p.id;
+        if (id != null) {
+          putnikSmerovi.putIfAbsent(id, () => <String>{});
+          putnikIme.putIfAbsent(id, () => p.ime);
+          putnikSmerovi[id]!.add(p.grad == 'BC' ? 'bc' : 'vs');
+        }
       }
     }
 
