@@ -25,7 +25,7 @@ bool get isSupabaseReady {
   try {
     Supabase.instance.client;
     return true;
-  } catch (e) {
+  } catch (_) {
     return false;
   }
 }
@@ -43,9 +43,11 @@ bool get isWinter => navBarTypeNotifier.value == 'zimski';
 /// Kada je true, koristi se V2BottomNavBarPraznici sa smanjenim brojem polazaka
 /// BC: 5:00, 6:00, 12:00, 13:00, 15:00
 /// VS: 6:00, 7:00, 13:00, 14:00, 15:30
+@Deprecated('Koristi navBarTypeNotifier umesto praznicniModNotifier')
 final ValueNotifier<bool> praznicniModNotifier = ValueNotifier<bool>(false);
 
 /// Helper za proveru prazničnog moda
+@Deprecated('Koristi navBarTypeNotifier.value == "praznici" umesto isPraznicniMod')
 bool get isPraznicniMod => praznicniModNotifier.value;
 
 /// Globalna instanca Config Service

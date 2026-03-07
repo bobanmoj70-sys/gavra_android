@@ -29,7 +29,6 @@ class V2AppSettingsService {
 
       final navBarType = response['nav_bar_type'] as String? ?? 'letnji';
       navBarTypeNotifier.value = navBarType;
-      praznicniModNotifier.value = navBarType == 'praznici';
 
       await _checkForUpdates(
         minVersion: response['min_version'] as String?,
@@ -123,7 +122,6 @@ class V2AppSettingsService {
     });
     // Odmah primeni na notifier-e (kao što radi _loadSettings)
     navBarTypeNotifier.value = type;
-    praznicniModNotifier.value = type == 'praznici';
 
     try {
       await V2StatistikaIstorijaService.logGeneric(
