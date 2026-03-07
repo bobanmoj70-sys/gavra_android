@@ -136,7 +136,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
           try {
             await V2VozacService.updateVozac(updatedVozac);
             if (!mounted) return;
-            Navigator.pop(context);
+            Navigator.pop(ctx);
             V2AppSnackBar.info(context, 'Vozac azuriran');
           } catch (e) {
             if (!mounted) return;
@@ -148,7 +148,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   }
 
   /// Dialog za dodavanje/editovanje vozaca
-  Widget _buildVozacDialog({required String title, required VoidCallback onSave}) {
+  Widget _buildVozacDialog({required String title, required Future<void> Function() onSave}) {
     return StatefulBuilder(
       builder: (ctx, setDialogState) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
@@ -432,7 +432,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                                   ),
                                   Row(
                                     children: [
-                                      Icon(Icons.email, size: 14, color: Colors.white54),
+                                      const Icon(Icons.email, size: 14, color: Colors.white54),
                                       const SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
@@ -447,7 +447,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                                   const SizedBox(height: 3),
                                   Row(
                                     children: [
-                                      Icon(Icons.phone, size: 14, color: Colors.white54),
+                                      const Icon(Icons.phone, size: 14, color: Colors.white54),
                                       const SizedBox(width: 6),
                                       Text(
                                         vozac.brojTelefona ?? '-',
