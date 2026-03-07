@@ -15,30 +15,50 @@ class V2DugoviScreen extends StatefulWidget {
   State<V2DugoviScreen> createState() => _DugoviScreenState();
 }
 
-class _DugoviScreenState extends State<V2DugoviScreen> {
+class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   final _putnikService = V2PutnikStreamService();
 
-  late final Stream<List<V2Putnik>> _streamDugovi;
+  late String _workingDateIso;
+  String _searchQuery = '';
+  late Stream<List<V2Putnik>> _streamDugovi;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _workingDateIso = V2PutnikHelpers.getWorkingDateIso();
     _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
-      dan: V2DanUtils.odIso(V2PutnikHelpers.getWorkingDateIso()),
+      dan: V2DanUtils.odIso(_workingDateIso),
     );
     _setupSearchListener();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final newIso = V2PutnikHelpers.getWorkingDateIso();
+      if (newIso != _workingDateIso && mounted) {
+        setState(() {
+          _workingDateIso = newIso;
+          _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
+            dan: V2DanUtils.odIso(_workingDateIso),
+          );
+        });
+      }
+    }
+  }
+
   void _setupSearchListener() {
     _searchController.addListener(() {
-      if (mounted) setState(() {});
+      if (mounted) setState(() => _searchQuery = _searchController.text);
     });
   }
 
@@ -54,9 +74,9 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
   }
 
   List<V2Putnik> _applyFiltersAndSort(List<V2Putnik> input) {
-    var result = input;
+    var result = List<V2Putnik>.of(input);
 
-    final searchQuery = _searchController.text.toLowerCase();
+    final searchQuery = _searchQuery.toLowerCase();
     if (searchQuery.isNotEmpty) {
       result = result.where((duznik) {
         return duznik.ime.toLowerCase().contains(searchQuery) ||
