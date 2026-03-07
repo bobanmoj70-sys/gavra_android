@@ -46,18 +46,18 @@ class V2CenaObracunService {
           .gte('datum', pocetakMeseca.toIso8601String().split('T')[0])
           .lte('datum', krajMeseca.toIso8601String().split('T')[0]);
 
-      final records = response as List;
+      final records = response;
       final Map<String, int> rezultati = {for (var p in putnici) p.id: 0};
 
       // Grupiši rekorde po putniku
-      final Map<String, List<dynamic>> grupisanRekordi = {};
-      for (var r in records) {
+      final Map<String, List<Map<String, dynamic>>> grupisanRekordi = {};
+      for (final r in records) {
         final pid = r['putnik_id'] as String?;
         if (pid == null) continue;
         grupisanRekordi.putIfAbsent(pid, () => []).add(r);
       }
 
-      for (var p in putnici) {
+      for (final p in putnici) {
         final logs = grupisanRekordi[p.id] ?? [];
         if (logs.isEmpty) continue;
 
