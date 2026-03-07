@@ -38,12 +38,12 @@ class V2PinZahtevService {
         if (putnikTabela != null) 'putnik_tabela': putnikTabela,
       });
 
-      // Pošalji notifikaciju adminima
-      await V2RealtimeNotificationService.sendNotificationToAdmins(
+      // Pošalji notifikaciju adminima (fire-and-forget — ne blokira zahtev)
+      unawaited(V2RealtimeNotificationService.sendNotificationToAdmins(
         title: '🔔 Novi zahtev za PIN',
         body: 'V2Putnik traži PIN za pristup aplikaciji',
         data: {'type': 'pin_zahtev', 'putnik_id': putnikId},
-      );
+      ));
 
       return true;
     } catch (e) {
@@ -99,6 +99,8 @@ class V2PinZahtevService {
 
       if (putnikTabela.isNotEmpty) {
         await supabase.from(putnikTabela).update({'pin': pin}).eq('id', putnikId);
+      } else {
+        debugPrint('[V2PinZahtevService] odobriZahtev: putnikTabela je prazan — PIN nije upisan u bazu!');
       }
 
       await supabase.from('v2_pin_zahtevi').update({
@@ -184,8 +186,9 @@ class V2PinZahtevService {
         'email': null,
         'telefon': null,
       });
-    } catch (_) {
-      // audit log greška ne blokira głównu operaciju
+    } catch (e) {
+      // audit log greška ne blokira glavnu operaciju
+      debugPrint('[V2PinZahtevService] logujDirektnaIzmena greška: $e');
     }
   }
 
