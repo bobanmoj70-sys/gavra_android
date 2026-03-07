@@ -1331,4 +1331,31 @@ class V2PutnikStreamService {
       rethrow;
     }
   }
+
+  /// Dohvata sve naplaćene vožnje za datog vozača na određeni datum.
+  ///
+  /// Koristi se isključivo u V2DnevnikNaplateScreen.
+  /// Filter: placen=true, placen_vozac_ime=vozacIme, placen_iznos>0, updated_at u opsegu datuma.
+  ///
+  /// NAPOMENA: polasciCache drži samo aktuelnu sedmicu — za prošle datume DB upit je neophodan.
+  /// Servis je jedino dozvolieno mjesto za direktan DB upit — screen ne sme da poziva supabase direktno.
+  static Future<List<Map<String, dynamic>>> getNaplateZaVozacaDan({
+    required String vozacIme,
+    required String dateStr, // format: 'yyyy-MM-dd'
+  }) async {
+    try {
+      final rows = await globals_file.supabase
+          .from('v2_polasci')
+          .select('putnik_id, putnik_tabela, grad, dodeljeno_vreme, placen_iznos, placen_at, updated_at')
+          .eq('placen', true)
+          .eq('placen_vozac_ime', vozacIme)
+          .gt('placen_iznos', 0)
+          .gte('updated_at', '${dateStr}T00:00:00')
+          .lte('updated_at', '${dateStr}T23:59:59') as List;
+      return rows.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('[V2PolasciService] getNaplateZaVozacaDan greška: $e');
+      rethrow;
+    }
+  }
 }

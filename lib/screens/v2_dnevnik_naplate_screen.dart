@@ -8,9 +8,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_dnevna_predaja_service.dart';
+import '../services/v2_polasci_service.dart';
 import '../services/v2_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -33,13 +33,26 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   final _predaoController = TextEditingController();
   bool _predaoSacuvan = false;
 
+  // Lista vozača — osvježava se kada RM emituje promjenu vozaciCache
+  List<String> _vozaciImena = [];
+
   StreamSubscription<String>? _realtimeSub;
+  StreamSubscription<String>? _vozaciSub;
   Timer? _refreshDebounce;
 
   @override
   void initState() {
     super.initState();
+    _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
     _subscribeRealtime();
+    _vozaciSub = V2MasterRealtimeManager.instance.onCacheChanged
+        .where((t) => t == 'v2_vozaci')
+        .listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
+      });
+    });
   }
 
   void _subscribeRealtime() {
@@ -60,14 +73,10 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   @override
   void dispose() {
     _realtimeSub?.cancel();
+    _vozaciSub?.cancel();
     _refreshDebounce?.cancel();
     _predaoController.dispose();
     super.dispose();
-  }
-
-  List<String> get _vozaciImena {
-    final vozaci = V2VozacService.getAllVozaci();
-    return vozaci.map((v) => v.ime).toList();
   }
 
   Future<void> _ucitajNaplate() async {
@@ -79,7 +88,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       final dateStr =
           '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
 
-      final result = await _fetchDirectQuery(dateStr);
+      final result = await _fetchNaplate(dateStr);
 
       setState(() {
         _naplate = result;
@@ -90,7 +99,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       });
       await _ucitajPredaju(dateStr);
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) V2AppSnackBar.error(context, 'Greška: $e');
     }
   }
@@ -127,60 +136,28 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchDirectQuery(String dateStr) async {
-    final rows = await supabase
-        .from('v2_polasci')
-        .select('putnik_id, putnik_tabela, grad, dodeljeno_vreme, placen_iznos, placen_at, updated_at')
-        .eq('placen', true)
-        .eq('placen_vozac_ime', _selectedVozacIme!)
-        .gt('placen_iznos', 0)
-        .gte('updated_at', '${dateStr}T00:00:00')
-        .lte('updated_at', '${dateStr}T23:59:59') as List;
+  /// Dohvata naplate za vozača i datum.
+  /// Query za v2_polasci ide kroz V2PolasciService (jedino dozvoljeno mjesto za direktan DB).
+  /// Imenovanja putnika se rješavaju iz RM cache-a — 0 dodatnih DB upita.
+  Future<List<Map<String, dynamic>>> _fetchNaplate(String dateStr) async {
+    final rows = await V2PolasciService.getNaplateZaVozacaDan(
+      vozacIme: _selectedVozacIme!,
+      dateStr: dateStr,
+    );
 
     if (rows.isEmpty) return [];
 
-    final dnevniIds = <String>[];
-    final radniciIds = <String>[];
-    final uceniciIds = <String>[];
-    final posiljkeIds = <String>[];
-
-    for (final r in rows) {
-      final id = r['putnik_id']?.toString() ?? '';
-      if (id.isEmpty) continue;
-      switch (r['putnik_tabela'] as String?) {
-        case 'v2_dnevni':
-          dnevniIds.add(id);
-        case 'v2_radnici':
-          radniciIds.add(id);
-        case 'v2_ucenici':
-          uceniciIds.add(id);
-        case 'v2_posiljke':
-          posiljkeIds.add(id);
-      }
-    }
-
-    final Map<String, String> imeMap = {};
-
-    Future<void> fetchIme(String tabela, List<String> ids) async {
-      if (ids.isEmpty) return;
-      final res = await supabase.from(tabela).select('id, ime').inFilter('id', ids) as List;
-      for (final r in res) {
-        imeMap[r['id'].toString()] = r['ime']?.toString() ?? '?';
-      }
-    }
-
-    await Future.wait([
-      fetchIme('v2_dnevni', dnevniIds),
-      fetchIme('v2_radnici', radniciIds),
-      fetchIme('v2_ucenici', uceniciIds),
-      fetchIme('v2_posiljke', posiljkeIds),
-    ]);
-
+    final rm = V2MasterRealtimeManager.instance;
     final sve = <Map<String, dynamic>>[];
+
     for (final r in rows) {
-      final id = r['putnik_id']?.toString() ?? '';
-      final ime = imeMap[id] ?? '?';
-      sve.add(_buildRow(r as Map<String, dynamic>, ime));
+      final putnikId = r['putnik_id']?.toString() ?? '';
+      final putnikTabela = r['putnik_tabela']?.toString() ?? '';
+      // Ime iz RM cache-a — bez ijednog DB upita
+      final ime = (putnikId.isNotEmpty && putnikTabela.isNotEmpty)
+          ? (rm.getIme(putnikTabela, putnikId) ?? '?')
+          : '?';
+      sve.add(_buildRow(r, ime));
     }
 
     sve.sort((a, b) => (a['sort_ts'] as String).compareTo(b['sort_ts'] as String));
@@ -392,8 +369,6 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vozaci = _vozaciImena;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -442,7 +417,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                             style: const TextStyle(color: Colors.white, fontSize: 14),
                             icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
                             isExpanded: true,
-                            items: vozaci.map((ime) => DropdownMenuItem(value: ime, child: Text(ime))).toList(),
+                            items: _vozaciImena.map((ime) => DropdownMenuItem(value: ime, child: Text(ime))).toList(),
                             onChanged: (v) {
                               setState(() {
                                 _selectedVozacIme = v;
