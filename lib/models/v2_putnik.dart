@@ -213,7 +213,10 @@ class V2Putnik {
       pokupioVozacId: req['pokupioVozacId'] as String?,
       naplatioVozacId: req['naplatioVozacId'] as String?,
       otkazaoVozacId: req['otkazaoVozacId'] as String?,
-      cena: (req['cena'] ?? p['cena'])?.toDouble(),
+      // Za radnike/učenike: cena je cena_po_danu iz profila (ne iznos zadnje uplate)
+      // Za dnevne/pošiljke: cena je cena po vožnji iz profila
+      // req['cena'] = iznos zadnje uplate — NE koristiti kao cenu putnika
+      cena: isDnevni ? (p['cena'])?.toDouble() : (p['cena_po_danu'])?.toDouble(),
       vremePlacanja: req['vreme_placanja'] != null ? DateTime.parse(req['vreme_placanja']).toLocal() : null,
       vremeOtkazivanja: req['vreme_otkazivanja'] != null ? DateTime.parse(req['vreme_otkazivanja']).toLocal() : null,
       obrisan: false,

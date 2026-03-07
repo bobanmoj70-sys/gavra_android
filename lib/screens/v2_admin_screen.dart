@@ -95,44 +95,124 @@ class _AdminScreenState extends State<V2AdminScreen> {
       showDialog<void>(
         context: context,
         builder: (BuildContext dialogContext) {
-          return AlertDialog(
-            title: const Text('Izaberi vozaca'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: vozaci.length,
-                itemBuilder: (context, index) {
-                  final vozac = vozaci[index];
-                  final boja = vozac.color ?? Color(0xFFBDBDBD); // Gray fallback
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: boja,
-                      child: Text(
-                        vozac.ime[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.92,
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
+              ),
+              decoration: BoxDecoration(
+                gradient: Theme.of(context).backgroundGradient,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // HEADER
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
                       ),
+                      border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
                     ),
-                    title: Text(vozac.ime),
-                    onTap: () {
-                      Navigator.of(dialogContext).pop();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => V2VozacScreen(previewAsDriver: vozac.ime),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.blue.withValues(alpha: 0.4)),
+                          ),
+                          child: const Icon(Icons.person_search_outlined, color: Colors.white, size: 20),
                         ),
-                      );
-                    },
-                  );
-                },
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Izaberi vozača',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(),
+                          child: Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+                            ),
+                            child: const Icon(Icons.close, color: Colors.white, size: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // LISTA VOZAČA
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: vozaci.length,
+                      separatorBuilder: (_, __) => Divider(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                      ),
+                      itemBuilder: (context, index) {
+                        final vozac = vozaci[index];
+                        final boja = vozac.color ?? const Color(0xFFBDBDBD);
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          leading: CircleAvatar(
+                            backgroundColor: boja,
+                            child: Text(
+                              vozac.ime[0].toUpperCase(),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          title: Text(
+                            vozac.ime,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 14),
+                          onTap: () {
+                            Navigator.of(dialogContext).pop();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (context) => V2VozacScreen(previewAsDriver: vozac.ime),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Otkaži'),
-              ),
-            ],
           );
         },
       );
@@ -362,7 +442,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(147),
+          preferredSize: const Size.fromHeight(165),
           child: Container(
             decoration: BoxDecoration(
               color: Theme.of(context).glassContainer,

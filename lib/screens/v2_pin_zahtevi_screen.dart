@@ -108,79 +108,76 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
     final pinController = TextEditingController(text: generisaniPin);
 
     String? rezultat;
-    try {
-      rezultat = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.vpn_key, color: Colors.green),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Dodeli PIN za $ime', style: const TextStyle(color: Colors.white, fontSize: 16))),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: pinController,
-                style: const TextStyle(color: Colors.white, fontSize: 28, letterSpacing: 12),
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                maxLength: 4,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  hintText: '0000',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                  counterText: '',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.green, width: 2),
-                  ),
+    rezultat = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a2e),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.vpn_key, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Dodeli PIN za $ime', style: const TextStyle(color: Colors.white, fontSize: 16))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: pinController,
+              style: const TextStyle(color: Colors.white, fontSize: 28, letterSpacing: 12),
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 4,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                hintText: '0000',
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                counterText: '',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.green),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.green),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.green, width: 2),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () {
-                  pinController.text = V2PinZahtevService.generatePin();
-                },
-                icon: const Icon(Icons.refresh, color: Colors.amber),
-                label: const Text('Generiši novi', style: TextStyle(color: Colors.amber)),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
             ),
-            ElevatedButton(
+            const SizedBox(height: 12),
+            TextButton.icon(
               onPressed: () {
-                if (pinController.text.length == 4) {
-                  Navigator.pop(context, pinController.text);
-                } else {
-                  V2AppSnackBar.warning(context, 'PIN mora imati 4 cifre');
-                }
+                pinController.text = V2PinZahtevService.generatePin();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text('Dodeli PIN', style: TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.refresh, color: Colors.amber),
+              label: const Text('Generiši novi', style: TextStyle(color: Colors.amber)),
             ),
           ],
         ),
-      ); // showDialog
-    } finally {
-      pinController.dispose();
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (pinController.text.length == 4) {
+                Navigator.pop(context, pinController.text);
+              } else {
+                V2AppSnackBar.warning(context, 'PIN mora imati 4 cifre');
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Dodeli PIN', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ); // showDialog
+    pinController.dispose();
 
     if (rezultat != null) {
       final success = await V2PinZahtevService.odobriZahtev(

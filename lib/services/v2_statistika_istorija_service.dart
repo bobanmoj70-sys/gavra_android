@@ -65,6 +65,7 @@ class V2StatistikaIstorijaService {
     String tipUplate = 'uplata',
     String? tipPlacanja,
     String? status,
+    String? dan,
     String? grad,
     String? vreme,
   }) async {
@@ -98,6 +99,7 @@ class V2StatistikaIstorijaService {
       'iznos': iznos,
       'vozac_id': vozacId,
       'vozac_ime': vozacIme,
+      if (dan != null) 'dan': dan,
       'grad': gradKod,
       'vreme': vremeNormalizovano,
       'placeni_mesec': placeniMesec ?? datum.month,
@@ -113,6 +115,7 @@ class V2StatistikaIstorijaService {
       putnikId: putnikId,
       putnikIme: putnikIme,
       putnikTabela: putnikTabela,
+      dan: dan,
       grad: gradKod,
       vreme: vremeNormalizovano,
       novo: {'iznos': iznos, 'tip': tipUplate},
@@ -458,6 +461,10 @@ class V2StatistikaIstorijaService {
     DateTime? datum,
     int? placeniMesec,
     int? placenaGodina,
+    String? requestId,
+    String? dan,
+    String? grad,
+    String? vreme,
   }) async {
     if (putnikId == null || iznos == null) return false;
     try {
@@ -468,44 +475,111 @@ class V2StatistikaIstorijaService {
       if (vozacIme != null) {
         vozacId = rm.vozaciCache.values.where((v) => v['ime']?.toString() == vozacIme).firstOrNull?['id']?.toString();
       }
-      final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
-      if (srRow != null) {
-        await _supabase.from('v2_polasci').update({
-          'placen': true,
-          'placen_iznos': iznos,
-          if (vozacId != null) 'placen_vozac_id': vozacId,
-          if (vozacIme != null) 'placen_vozac_ime': vozacIme,
-          'datum_akcije': datumStr,
-          'placen_tip': V2Putnik.tipIzTabele(putnikTabela) ?? 'radnik',
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        }).eq('id', srRow['id'].toString());
-      }
-      await _supabase.from('v2_statistika_istorija').insert({
-        'putnik_id': putnikId,
-        'putnik_ime': putnikIme,
-        'putnik_tabela': putnikTabela,
-        'tip': 'uplata',
-        'iznos': iznos,
-        'vozac_id': vozacId,
-        'vozac_ime': vozacIme,
-        'datum': datumStr,
-        'placeni_mesec': placeniMesec ?? now.month,
-        'placena_godina': placenaGodina ?? now.year,
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-      });
+      final placenPayload = {
+        'placen': true,
+        'placen_iznos': iznos,
+        if (vozacId != null) 'placen_vozac_id': vozacId,
+        if (vozacIme != null) 'placen_vozac_ime': vozacIme,
+        'datum_akcije': datumStr,
+        'placen_tip': V2Putnik.tipIzTabele(putnikTabela) ?? 'radnik',
+        'placen_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
 
-      // Audit log — uplata dodana
-      V2AuditLogService.log(
-        tip: 'uplata_dodana',
-        aktorId: vozacId,
-        aktorIme: vozacIme,
-        aktorTip: 'vozac',
-        putnikId: putnikId,
-        putnikIme: putnikIme,
-        putnikTabela: putnikTabela,
-        novo: {'iznos': iznos, 'tip': 'uplata'},
-        detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
-      );
+      // Ako je proslijeđen requestId — upiši samo taj jedan polazak
+      // Inače — iteriraj sve aktivne polasci redove za putnika (fallback)
+      final List<Map<String, dynamic>> srRows;
+      if (requestId != null && requestId.isNotEmpty) {
+        final srRow = rm.polasciCache[requestId] ??
+            rm.polasciCache.values.where((r) => r['id']?.toString() == requestId).firstOrNull;
+        srRows = srRow != null ? [srRow] : [];
+      } else {
+        srRows = rm.polasciCache.values
+            .where((r) =>
+                r['putnik_id']?.toString() == putnikId &&
+                const ['odobreno', 'pokupljen', 'obrada'].contains(r['status']?.toString()))
+            .toList();
+      }
+
+      // Ako ni cache nema red — koristi proslijeđene dan/grad/vreme direktno
+      if (srRows.isEmpty) {
+        await _supabase.from('v2_statistika_istorija').insert({
+          'putnik_id': putnikId,
+          'putnik_ime': putnikIme,
+          'putnik_tabela': putnikTabela,
+          'tip': 'uplata',
+          'iznos': iznos,
+          'vozac_id': vozacId,
+          'vozac_ime': vozacIme,
+          'datum': datumStr,
+          if (dan != null) 'dan': dan,
+          if (grad != null) 'grad': V2GradAdresaValidator.normalizeGrad(grad),
+          if (vreme != null) 'vreme': V2GradAdresaValidator.normalizeTime(vreme),
+          'placeni_mesec': placeniMesec ?? now.month,
+          'placena_godina': placenaGodina ?? now.year,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        });
+        V2AuditLogService.log(
+          tip: 'uplata_dodana',
+          aktorId: vozacId,
+          aktorIme: vozacIme,
+          aktorTip: 'vozac',
+          putnikId: putnikId,
+          putnikIme: putnikIme,
+          putnikTabela: putnikTabela,
+          dan: dan,
+          grad: grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null,
+          vreme: vreme != null ? V2GradAdresaValidator.normalizeTime(vreme) : null,
+          polazakId: requestId,
+          novo: {'iznos': iznos, 'tip': 'uplata'},
+          detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
+        );
+      } else {
+        for (final srRow in srRows) {
+          final rowId = srRow['id']?.toString();
+          if (rowId == null) continue;
+
+          // Ažuriraj v2_polasci red
+          await _supabase.from('v2_polasci').update(placenPayload).eq('id', rowId);
+
+          final rowDan = srRow['dan']?.toString();
+          final rowGrad = srRow['grad']?.toString();
+          final rowVreme = (srRow['dodeljeno_vreme'] ?? srRow['zeljeno_vreme'])?.toString();
+
+          await _supabase.from('v2_statistika_istorija').insert({
+            'putnik_id': putnikId,
+            'putnik_ime': putnikIme,
+            'putnik_tabela': putnikTabela,
+            'tip': 'uplata',
+            'iznos': iznos,
+            'vozac_id': vozacId,
+            'vozac_ime': vozacIme,
+            'datum': datumStr,
+            if (rowDan != null) 'dan': rowDan,
+            if (rowGrad != null) 'grad': rowGrad,
+            if (rowVreme != null) 'vreme': rowVreme,
+            'placeni_mesec': placeniMesec ?? now.month,
+            'placena_godina': placenaGodina ?? now.year,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          });
+
+          V2AuditLogService.log(
+            tip: 'uplata_dodana',
+            aktorId: vozacId,
+            aktorIme: vozacIme,
+            aktorTip: 'vozac',
+            putnikId: putnikId,
+            putnikIme: putnikIme,
+            putnikTabela: putnikTabela,
+            dan: rowDan,
+            grad: rowGrad,
+            vreme: rowVreme,
+            polazakId: rowId,
+            novo: {'iznos': iznos, 'tip': 'uplata'},
+            detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
+          );
+        }
+      }
       return true;
     } catch (e) {
       return false;

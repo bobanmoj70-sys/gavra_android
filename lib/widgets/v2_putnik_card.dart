@@ -6,10 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../helpers/v2_placanje_dialog_helper.dart';
 import '../models/v2_putnik.dart';
-import '../models/v2_registrovani_putnik.dart';
 import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
-import '../services/v2_cena_obracun_service.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v2_permission_service.dart';
 import '../services/v2_polasci_service.dart';
@@ -101,423 +100,52 @@ class _PutnikCardState extends State<V2PutnikCard> {
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')} ${_formatVreme(dt)}';
   }
 
-  // Univerzalna metoda za placanje - custom cena za sve tipove putnika
+  // Univerzalna metoda za placanje — koristi V2PlacanjeDialogHelper
   Future<void> _handlePayment() async {
-    // Validacija vozaca pre pokusaja placanja - koristi V2VozacCache
     final vozacUuid = V2VozacCache.getUuidByIme(widget.currentDriver);
     if (vozacUuid == null) {
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: Vozac nije definisan u sistemu');
+        V2AppSnackBar.error(context, 'Greška: Vozač nije definisan u sistemu');
       }
       return;
     }
 
-    if (_putnik.isRadnik || _putnik.isUcenik) {
-      // RADNIK / UCENIK - CUSTOM CENA umesto fiksne
-      await _handleRegistrovaniPayment();
-    } else if (_putnik.isDnevniTip) {
-      // DNEVNI / POSILJKA - obracun na osnovu cene iz baze
-      await _handleDnevniPosiljkaPayment();
-    } else {
-      // FALLBACK - unos custom iznosa
-      await _handleObicniPayment();
-    }
-  }
-
-  // PLACANJE DNEVNOG PUTNIKA - ukupna suma odjednom
-  Future<void> _handleDnevniPosiljkaPayment() async {
-    // Koristi centralizovanu logiku cena iz modela
-    final double cenaPoMestu = _putnik.effectivePrice;
-    final bool cenaNePostoji = cenaPoMestu <= 0;
-
-    final int brojMesta = _putnik.brojMesta;
-    final double ukupnaSuma = cenaPoMestu * brojMesta;
-
-    // Naplacujemo sve odjednom
-    final customController = TextEditingController(
-      text: cenaNePostoji ? '' : ukupnaSuma.toStringAsFixed(0),
-    );
-    final theme = Theme.of(context);
-    final double? confirmedIznos = await showDialog<double>(
-      context: context,
-      useRootNavigator: true,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (dCtx, setStateDialog) => AlertDialog(
-            backgroundColor: Theme.of(dCtx).colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: BorderSide(
-                color: Theme.of(dCtx).colorScheme.outline,
-                width: 2,
-              ),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  _putnik.isPosiljka ? Icons.inventory_2 : Icons.today,
-                  color: cenaNePostoji ? Colors.orange : theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Naplata — ${_putnik.isPosiljka ? 'Pošiljka' : 'Dnevni'}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'V2Putnik: ${_putnik.ime}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Relacija: ${_putnik.grad}',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  Text(
-                    'Polazak: ${_putnik.polazak}',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 16),
-                  if (cenaNePostoji) ...[
-                    // Slobodan unos ako cena nije postavljena
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.withOpacity(0.4)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline, color: Colors.orange, size: 16),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'Cena nije postavljena. Unesi iznos ručno.',
-                              style: TextStyle(fontSize: 12, color: Colors.orange),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: customController,
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Iznos (RSD)',
-                        prefixIcon: Icon(Icons.attach_money),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ] else ...[
-                    // Fiksni prikaz kad cena postoji
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          if (brojMesta > 1)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Text(
-                                'Ukupno za $brojMesta mesta:',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: theme.colorScheme.primary.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.attach_money,
-                                size: 32,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${ukupnaSuma.toStringAsFixed(0)} RSD',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(null),
-                child: const Text('Odustani'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  if (cenaNePostoji) {
-                    final value = double.tryParse(customController.text);
-                    if (value != null && value > 0) {
-                      Navigator.of(ctx).pop(value);
-                    }
-                  } else {
-                    Navigator.of(ctx).pop(ukupnaSuma);
-                  }
-                },
-                icon: const Icon(Icons.payment),
-                label: const Text('Potvrdi placanje'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    customController.dispose();
-
-    if (confirmedIznos != null && confirmedIznos > 0) {
-      if (_putnik.id == null || _putnik.id.toString().isEmpty) {
-        if (mounted) {
-          V2AppSnackBar.error(context, 'V2Putnik nema valjan ID - ne može se naplatiti');
-        }
-        return;
-      }
-
-      await _executePayment(
-        confirmedIznos,
-        isRegistrovani: false,
-      );
-
+    if (_putnik.id == null || _putnik.id.toString().isEmpty) {
       if (mounted) {
-        V2AppSnackBar.payment(context, 'Naplaceno $brojMesta mesta - Ukupno: ${confirmedIznos.toStringAsFixed(0)} RSD');
-      }
-    }
-  }
-
-  // PLACANJE RADNIK/UCENIK - CUSTOM CENA (korisnik unosi iznos)
-  Future<void> _handleRegistrovaniPayment() async {
-    // Dohvati putnika iz baze po ID-u
-    final putnikId = _putnik.id?.toString() ?? '';
-    final putnikMap = putnikId.isNotEmpty ? await V2StatistikaIstorijaService.v2FindPutnikById(putnikId) : null;
-    final registrovaniPutnik = putnikMap != null ? V2RegistrovaniPutnik.fromMap(putnikMap) : null;
-
-    if (registrovaniPutnik == null) {
-      if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: V2Putnik "${_putnik.ime}" nije pronaden');
+        V2AppSnackBar.error(context, 'V2Putnik nema valjan ID — ne može se naplatiti');
       }
       return;
     }
 
-    Set<String> placeniMeseci = {};
-    try {
-      final svaPlacanja = await V2StatistikaIstorijaService.dohvatiPlacanja(putnikId);
-      for (var placanje in svaPlacanja) {
-        final mesec = placanje['placeni_mesec'];
-        final godina = placanje['placena_godina'];
-        if (mesec != null && godina != null) {
-          // Format: "mesec-godina" za internu proveru
-          placeniMeseci.add('$mesec-$godina');
-        }
-      }
-    } catch (e) {
-      // Ako ne mo?emo ucitati, ostaje prazan set
-    }
+    // Cena: effectivePrice * brojMesta (0 = slobodan unos)
+    final cena = _putnik.effectivePrice;
+    final int brMesta = _putnik.brojMesta;
 
-    // Racuna za ceo trenutni mesec (1. do 30.)
-    final currentDate = DateTime.now();
-    final firstDayOfMonth = DateTime(currentDate.year, currentDate.month);
-    final lastDayOfMonth = DateTime(
-      currentDate.year,
-      currentDate.month + 1,
-      0,
-    ); // poslednji dan u mesecu
+    // Tabela iz tipPutnika
+    final tabela = const {
+          'radnik': 'v2_radnici',
+          'ucenik': 'v2_ucenici',
+          'dnevni': 'v2_dnevni',
+          'posiljka': 'v2_posiljke',
+        }[_putnik.tipPutnika] ??
+        'v2_radnici';
 
-    // Broj putovanja za trenutni mesec
-    int brojPutovanja = 0;
-    int brojOtkazivanja = 0;
-    try {
-      brojPutovanja = await V2StatistikaIstorijaService.izracunajBrojVoznji(
-        _putnik.id! as String,
-      );
-      // Racunaj otkazivanja iz stvarne istorije
-      brojOtkazivanja = await V2StatistikaIstorijaService.izracunajBrojOtkazivanja(
-        _putnik.id! as String,
-      );
-    } catch (e) {
-      // Greška pri citanju - koristi 0
-      brojPutovanja = 0;
-      brojOtkazivanja = 0;
-    }
-
-    if (!mounted) return;
-
-    // Sugeriši cenu na osnovu tipa putnika
-    final sugerisanaCenaOut = V2CenaObracunService.getCenaPoDanu(registrovaniPutnik);
-    final controller = TextEditingController(text: sugerisanaCenaOut.toStringAsFixed(0));
-    final theme = Theme.of(context);
-
-    final result = await showDialog<Map<String, dynamic>>(
+    final rezultat = await V2PlacanjeDialogHelper.prikaziDialog(
       context: context,
-      useRootNavigator: true,
-      builder: (ctx) => _RegistrovaniPaymentDialog(
-        putnikIme: _putnik.ime,
-        putnikGrad: _putnik.grad,
-        registrovaniPutnik: registrovaniPutnik,
-        controller: controller,
-        placeniMeseci: placeniMeseci,
-        brojPutovanja: brojPutovanja,
-        brojOtkazivanja: brojOtkazivanja,
-        firstDayOfMonth: firstDayOfMonth,
-        lastDayOfMonth: lastDayOfMonth,
-        getMonthOptions: _getMonthOptionsStatic,
-        getMonthNumber: _getMonthNumberStatic,
-        formatDate: _formatDate,
-      ),
-    );
-    controller.dispose();
-
-    if (result != null && result['iznos'] != null && mounted) {
-      // Koristimo iznos koji je korisnik uneo u dialog
-      await _executePayment(
-        result['iznos'] as double,
-        mesec: result['mesec'] as String?,
-        isRegistrovani: true,
-      );
-    }
-  }
-
-  // PLACANJE OBICNOG PUTNIKA - standardno
-  Future<void> _handleObicniPayment() async {
-    double? iznos = await showDialog<double>(
-      context: context,
-      useRootNavigator: true,
-      builder: (ctx) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(
-              color: Theme.of(context).colorScheme.outline,
-              width: 2,
-            ),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.person,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Placanje putovanja',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'V2Putnik: ${_putnik.ime}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Relacija: ${_putnik.grad}',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-              Text(
-                'Polazak: ${_putnik.polazak}',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Iznos (RSD)',
-                  prefixIcon: Icon(Icons.attach_money),
-                  border: OutlineInputBorder(),
-                ),
-                autofocus: true,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Odustani'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                final value = double.tryParse(controller.text);
-                if (value != null && value > 0) {
-                  Navigator.of(ctx).pop(value);
-                }
-              },
-              icon: const Icon(Icons.payment),
-              label: const Text('Potvrdi placanje'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        );
-      },
+      putnikId: _putnik.id.toString(),
+      putnikIme: _putnik.ime,
+      putnikTabela: tabela,
+      cena: cena,
+      brojMesta: brMesta,
     );
 
-    if (iznos != null && iznos > 0) {
-      if (_putnik.id == null || _putnik.id.toString().isEmpty) {
-        if (mounted) {
-          V2AppSnackBar.error(context, 'V2Putnik nema valjan ID - ne može se naplatiti');
-        }
-        return;
-      }
+    if (rezultat == null || !mounted) return;
 
-      try {
-        await _executePayment(iznos, isRegistrovani: false);
-
-        // Haptic feedback za uspe?no placanje
-        V2HapticService.lightImpact();
-      } catch (e) {
-        if (mounted) {
-          V2AppSnackBar.error(context, 'Greška pri placanju: $e');
-        }
-      }
-    }
+    await _executePayment(
+      rezultat.iznos,
+      mesec: rezultat.mesec,
+      isRegistrovani: _putnik.isRadnik || _putnik.isUcenik,
+    );
   }
 
   // Izvr?avanje placanja - zajednicko za oba tipa
@@ -567,6 +195,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
             iznos: iznos,
             mesec: mesec,
             vozacIme: widget.currentDriver,
+            requestId: _putnik.requestId,
+            dan: _putnik.dan.isNotEmpty ? _putnik.dan : null,
+            grad: _putnik.grad.isNotEmpty ? _putnik.grad : null,
+            vreme: _putnik.polazak != '---' ? _putnik.polazak : null,
           );
         } else {
           throw Exception('V2Putnik "${_putnik.ime}" nije pronaden u bazi');
@@ -580,10 +212,11 @@ class _PutnikCardState extends State<V2PutnikCard> {
         await V2PolasciService.v2OznaciPlaceno(
           putnikId: _putnik.id!,
           iznos: iznos,
-          vozacId: widget.currentDriver,
+          vozacIme: widget.currentDriver,
           grad: _putnik.grad,
           selectedVreme: _putnik.polazak,
           selectedDan: _putnik.dan,
+          requestId: _putnik.requestId,
           tipPutnika: _putnik.tipPutnika,
           putnikIme: _putnik.ime,
           putnikTabela: const {
@@ -1454,62 +1087,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
     ); // kraj GestureDetector
   }
 
-  // Helper metode za placanje radnik/ucenik
-  String _formatDate(DateTime date) {
-    return '${date.day}.${date.month}.${date.year}';
-  }
-
-  // HELPER FUNKCIJE za mesecno placanje
-  String _getMonthNameStatic(int month) {
-    const months = [
-      '',
-      'Januar',
-      'Februar',
-      'Mart',
-      'April',
-      'Maj',
-      'Jun',
-      'Jul',
-      'Avgust',
-      'Septembar',
-      'Oktobar',
-      'Novembar',
-      'Decembar',
-    ];
-    return months[month];
-  }
-
-  int _getMonthNumberStatic(String monthName) {
-    const months = {
-      'Januar': 1,
-      'Februar': 2,
-      'Mart': 3,
-      'April': 4,
-      'Maj': 5,
-      'Jun': 6,
-      'Jul': 7,
-      'Avgust': 8,
-      'Septembar': 9,
-      'Oktobar': 10,
-      'Novembar': 11,
-      'Decembar': 12,
-    };
-    return months[monthName] ?? 0;
-  }
-
-  List<String> _getMonthOptionsStatic() {
-    final now = DateTime.now();
-    List<String> options = [];
-
-    // Dodaj svih 12 meseci trenutne godine
-    for (int month = 1; month <= 12; month++) {
-      final monthYear = '${_getMonthNameStatic(month)} ${now.year}';
-      options.add(monthYear);
-    }
-
-    return options;
-  }
-
   // CUVANJE PLACANJA
   Future<void> _sacuvajPlacanjeStatic({
     required String putnikId,
@@ -1518,6 +1095,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
     required double iznos,
     required String mesec,
     required String vozacIme,
+    String? requestId,
+    String? dan,
+    String? grad,
+    String? vreme,
   }) async {
     try {
       // Parsiraj izabrani mesec (format: "Septembar 2025")
@@ -1532,7 +1113,11 @@ class _PutnikCardState extends State<V2PutnikCard> {
         throw Exception('Neispravna godina: ${parts[1]}');
       }
 
-      final monthNumber = _getMonthNumberStatic(monthName);
+      const _monthMap = {
+        'Januar': 1, 'Februar': 2, 'Mart': 3, 'April': 4, 'Maj': 5, 'Jun': 6,
+        'Jul': 7, 'Avgust': 8, 'Septembar': 9, 'Oktobar': 10, 'Novembar': 11, 'Decembar': 12,
+      };
+      final monthNumber = _monthMap[monthName] ?? 0;
       if (monthNumber == 0) {
         throw Exception('Neispravno ime meseca: $monthName');
       }
@@ -1552,6 +1137,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
         datum: DateTime.now(),
         placeniMesec: pocetakMeseca.month,
         placenaGodina: pocetakMeseca.year,
+        requestId: requestId,
+        dan: dan,
+        grad: grad,
+        vreme: vreme,
       );
 
       if (uspeh) {
@@ -1816,336 +1405,3 @@ class _PutnikCardState extends State<V2PutnikCard> {
 }
 
 // ─── Privatni dialog widget za plaćanje registrovanog putnika ───────────────
-class _RegistrovaniPaymentDialog extends StatefulWidget {
-  const _RegistrovaniPaymentDialog({
-    required this.putnikIme,
-    required this.putnikGrad,
-    required this.registrovaniPutnik,
-    required this.controller,
-    required this.placeniMeseci,
-    required this.brojPutovanja,
-    required this.brojOtkazivanja,
-    required this.firstDayOfMonth,
-    required this.lastDayOfMonth,
-    required this.getMonthOptions,
-    required this.getMonthNumber,
-    required this.formatDate,
-  });
-
-  final String putnikIme;
-  final String putnikGrad;
-  final V2RegistrovaniPutnik registrovaniPutnik;
-  final TextEditingController controller;
-  final Set<String> placeniMeseci;
-  final int brojPutovanja;
-  final int brojOtkazivanja;
-  final DateTime firstDayOfMonth;
-  final DateTime lastDayOfMonth;
-  final List<String> Function() getMonthOptions;
-  final int Function(String) getMonthNumber;
-  final String Function(DateTime) formatDate;
-
-  @override
-  State<_RegistrovaniPaymentDialog> createState() => _RegistrovaniPaymentDialogState();
-}
-
-class _RegistrovaniPaymentDialogState extends State<_RegistrovaniPaymentDialog> {
-  late String selectedMonth;
-
-  @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    selectedMonth = '${_monthName(now.month)} ${now.year}';
-  }
-
-  static String _monthName(int m) {
-    const names = [
-      '',
-      'Januar',
-      'Februar',
-      'Mart',
-      'April',
-      'Maj',
-      'Jun',
-      'Jul',
-      'Avgust',
-      'Septembar',
-      'Oktobar',
-      'Novembar',
-      'Decembar'
-    ];
-    return names[m];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final r = widget.registrovaniPutnik;
-    final tipLower = r.v2Tabela;
-    final imeLower = r.ime.toLowerCase();
-    final jeZubi = tipLower == 'v2_posiljke' && imeLower.contains('zubi');
-    final jePosiljka = tipLower == 'v2_posiljke';
-    final jeDnevni = tipLower == 'v2_dnevni';
-    final sugerisanaCena = V2CenaObracunService.getCenaPoDanu(r);
-    final cenaNePostoji = sugerisanaCena <= 0;
-    final jeFiksna = (jeZubi || jePosiljka || jeDnevni) && !cenaNePostoji;
-
-    return AlertDialog(
-      backgroundColor: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: theme.colorScheme.outline, width: 2),
-      ),
-      title: Row(
-        children: [
-          Icon(
-            jeFiksna ? Icons.lock : Icons.card_membership,
-            color: jeFiksna ? Colors.orange : theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              jeFiksna
-                  ? 'Naplata (FIKSNO)'
-                  : 'Naplata — ${const {
-                        'v2_radnici': 'Radnik',
-                        'v2_ucenici': 'Ucenik',
-                        'v2_dnevni': 'Dnevni',
-                        'v2_posiljke': 'Posiljka'
-                      }[tipLower] ?? 'Putnik'}',
-              style: TextStyle(color: theme.colorScheme.onSurface),
-            ),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'V2Putnik: ${widget.putnikIme}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            if (cenaNePostoji)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.orange.withOpacity(0.4)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.orange, size: 14),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Cena nije postavljena — unesi iznos ručno.',
-                          style: TextStyle(fontSize: 12, color: Colors.orange),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else if (jeFiksna)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  jeZubi ? 'Tip: Pošiljka ZUBI' : (jePosiljka ? 'Tip: Pošiljka' : 'Tip: Dnevni'),
-                  style: TextStyle(
-                    color: jeZubi ? Colors.purple : (jePosiljka ? Colors.blue : Colors.orange),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 4),
-            Text('Grad: ${widget.putnikGrad}', style: TextStyle(color: Colors.grey[600])),
-            const SizedBox(height: 16),
-            // STATISTIKE
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.analytics, color: theme.colorScheme.primary, size: 18),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Statistike za trenutni mesec',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('🚌 Putovanja:', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                          Text(
-                            '${widget.brojPutovanja}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.successPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Otkazivanja:', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                          Text(
-                            '${widget.brojOtkazivanja}',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  if (widget.placeniMeseci.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Period: ${widget.formatDate(widget.firstDayOfMonth)} - ${widget.formatDate(widget.lastDayOfMonth)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // IZBOR MESECA
-            Text(
-              'Mesec za koji se placa:',
-              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[700]),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: TripleBlueFashionStyles.dropdownDecoration,
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selectedMonth,
-                  isExpanded: true,
-                  dropdownColor: theme.colorScheme.surface,
-                  style: TextStyle(color: theme.colorScheme.onSurface),
-                  items: widget.getMonthOptions().map((monthYear) {
-                    final parts = monthYear.split(' ');
-                    final monthNumber = widget.getMonthNumber(parts[0]);
-                    final year = int.tryParse(parts[1]) ?? 0;
-                    final bool isPlacen = widget.placeniMeseci.contains('$monthNumber-$year');
-                    return DropdownMenuItem<String>(
-                      value: monthYear,
-                      child: Row(
-                        children: [
-                          Icon(
-                            isPlacen ? Icons.check_circle : Icons.calendar_today,
-                            size: 16,
-                            color: isPlacen
-                                ? theme.colorScheme.successPrimary
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            monthYear,
-                            style: TextStyle(
-                              color: isPlacen ? theme.colorScheme.successPrimary : null,
-                              fontWeight: isPlacen ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newMonth) {
-                    if (newMonth != null) setState(() => selectedMonth = newMonth);
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // UNOS CENE
-            TextField(
-              controller: widget.controller,
-              enabled: !jeFiksna,
-              readOnly: jeFiksna,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: jeFiksna ? 'Fiksni iznos (RSD)' : 'Iznos (RSD)',
-                prefixIcon: const Icon(Icons.attach_money),
-                border: const OutlineInputBorder(),
-                fillColor: jeFiksna ? Colors.grey.withOpacity(0.1) : null,
-                filled: jeFiksna,
-                helperText: jeFiksna ? 'Ovaj tip putnika ima fiksnu cenu.' : null,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // INFO
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.successPrimary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: theme.colorScheme.successPrimary, size: 16),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Možete platiti isti mesec više puta. Svako placanje se evidentira.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Odustani'),
-        ),
-        ElevatedButton.icon(
-          onPressed: () {
-            final value = double.tryParse(widget.controller.text);
-            if (value != null && value > 0) {
-              Navigator.of(context).pop({'iznos': value, 'mesec': selectedMonth});
-            }
-          },
-          icon: const Icon(Icons.payment),
-          label: const Text('Potvrdi placanje'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.successPrimary,
-            foregroundColor: Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-}

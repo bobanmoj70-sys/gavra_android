@@ -134,24 +134,26 @@ class V2AuditLogService {
     Map<String, dynamic>? novo,
     String? detalji,
   }) async {
+    final payload = {
+      'tip': tip,
+      if (aktorId != null) 'aktor_id': aktorId,
+      if (aktorIme != null) 'aktor_ime': aktorIme,
+      if (aktorTip != null) 'aktor_tip': aktorTip,
+      if (putnikId != null) 'putnik_id': putnikId,
+      if (putnikIme != null) 'putnik_ime': putnikIme,
+      if (putnikTabela != null) 'putnik_tabela': putnikTabela,
+      if (dan != null) 'dan': dan,
+      if (grad != null) 'grad': grad,
+      if (vreme != null) 'vreme': vreme,
+      if (polazakId != null) 'polazak_id': polazakId,
+      if (staro != null) 'staro': staro,
+      if (novo != null) 'novo': novo,
+      if (detalji != null) 'detalji': detalji,
+    };
+    debugPrint('[V2AuditLog] INSERT pokušaj tip=$tip payload=$payload');
     try {
-      await _db.from('v2_audit_log').insert({
-        'tip': tip,
-        if (aktorId != null) 'aktor_id': aktorId,
-        if (aktorIme != null) 'aktor_ime': aktorIme,
-        if (aktorTip != null) 'aktor_tip': aktorTip,
-        if (putnikId != null) 'putnik_id': putnikId,
-        if (putnikIme != null) 'putnik_ime': putnikIme,
-        if (putnikTabela != null) 'putnik_tabela': putnikTabela,
-        if (dan != null) 'dan': dan,
-        if (grad != null) 'grad': grad,
-        if (vreme != null) 'vreme': vreme,
-        if (polazakId != null) 'polazak_id': polazakId,
-        if (staro != null) 'staro': staro,
-        if (novo != null) 'novo': novo,
-        if (detalji != null) 'detalji': detalji,
-        // created_at: DB default (now())
-      });
+      await _db.from('v2_audit_log').insert(payload);
+      debugPrint('[V2AuditLog] INSERT uspješno tip=$tip');
     } catch (e, st) {
       // Audit log ne smije rušiti app — tiho logguj
       debugPrint('[V2AuditLog] GREŠKA pri upisu (tip=$tip): $e\n$st');

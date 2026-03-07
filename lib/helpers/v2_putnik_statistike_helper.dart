@@ -4,6 +4,7 @@ import '../globals.dart';
 import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_statistika_istorija_service.dart';
+import '../theme.dart';
 
 /// Helper za prikazivanje detaljnih statistika putnika
 /// Koristi se i u admin ekranu i u profilu putnika
@@ -29,168 +30,235 @@ class V2PutnikStatistikeHelper {
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.analytics_outlined, color: Colors.blue.shade600),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Detaljne statistike - $putnikIme',
-                      style: const TextStyle(fontSize: 16),
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.95,
+                  maxHeight: MediaQuery.of(context).size.height * 0.88,
+                ),
+                decoration: BoxDecoration(
+                  gradient: Theme.of(context).backgroundGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 24,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 8),
                     ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
+                  ],
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // DROPDOWN ZA PERIOD
+                    // ── HEADER ──
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.grey.shade50,
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedPeriod,
-                          isExpanded: true,
-                          icon: Icon(
-                            Icons.arrow_drop_down,
-                            color: Colors.blue.shade600,
-                          ),
-                          items: _getMonthOptions().map<DropdownMenuItem<String>>((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.calendar_today,
-                                    size: 16,
-                                    color: Colors.blue.shade300,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(value),
-                                ],
-                              ),
-                            );
-                          }).toList()
-                            ..addAll([
-                              // CELA GODINA I UKUPNO
-                              DropdownMenuItem(
-                                value: 'Cela ${DateTime.now().year}',
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.event_note,
-                                      size: 16,
-                                      color: Colors.blue,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text('Cela ${DateTime.now().year}'),
-                                  ],
-                                ),
-                              ),
-                              const DropdownMenuItem(
-                                value: 'Ukupno',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.history,
-                                      size: 16,
-                                      color: Colors.purple,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text('Ukupno'),
-                                  ],
-                                ),
-                              ),
-                            ]),
-                          onChanged: (String? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                selectedPeriod = newValue;
-                              });
-                            }
-                          },
+                        color: Colors.white.withValues(alpha: 0.06),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                        border: Border(
+                          bottom: BorderSide(color: Theme.of(context).glassBorder),
                         ),
                       ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.blue.withValues(alpha: 0.4)),
+                            ),
+                            child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Detaljne statistike',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white60,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                Text(
+                                  putnikIme,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54),
+                                    ],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(dialogContext).pop(),
+                            child: Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+                              ),
+                              child: const Icon(Icons.close, color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
 
-                    FutureBuilder<Map<String, dynamic>>(
-                      future: _getStatistikeForPeriod(putnikId, selectedPeriod, tip),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
-                          return const SizedBox(
-                            height: 200,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-
-                        if (snapshot.hasError) {
-                          return const SizedBox(
-                            height: 200,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-
-                        final stats = snapshot.data ?? {};
-                        if (stats['error'] == true) {
-                          return SizedBox(
-                            height: 200,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.warning_amber_outlined,
-                                    color: Colors.orange,
-                                    size: 48,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Podaci trenutno nisu dostupni.\nPovežite se na internet.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.orange[700]),
-                                  ),
-                                ],
+                    // ── SCROLLABLE CONTENT ──
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // DROPDOWN ZA PERIOD
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.07),
+                                border: Border.all(color: Theme.of(context).glassBorder),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedPeriod,
+                                  isExpanded: true,
+                                  dropdownColor: Theme.of(context).backgroundGradient.colors.first,
+                                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                                  items: _getMonthOptions().map<DropdownMenuItem<String>>((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 14, color: Colors.white54),
+                                          const SizedBox(width: 8),
+                                          Text(value, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList()
+                                    ..addAll([
+                                      DropdownMenuItem(
+                                        value: 'Cela ${DateTime.now().year}',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.event_note, size: 14, color: Colors.lightBlueAccent),
+                                            const SizedBox(width: 8),
+                                            Text('Cela ${DateTime.now().year}',
+                                                style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                          ],
+                                        ),
+                                      ),
+                                      const DropdownMenuItem(
+                                        value: 'Ukupno',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.history, size: 14, color: Colors.purpleAccent),
+                                            SizedBox(width: 8),
+                                            Text('Ukupno', style: TextStyle(color: Colors.white, fontSize: 14)),
+                                          ],
+                                        ),
+                                      ),
+                                    ]),
+                                  onChanged: (String? newValue) {
+                                    if (newValue != null) {
+                                      setState(() => selectedPeriod = newValue);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
-                          );
-                        }
+                            const SizedBox(height: 16),
 
-                        return _buildStatistikeContent(
-                          putnikIme: putnikIme,
-                          tip: tip,
-                          tipSkole: tipSkole,
-                          brojTelefona: brojTelefona,
-                          createdAt: createdAt,
-                          updatedAt: updatedAt,
-                          aktivan: aktivan,
-                          putnikId: putnikId,
-                          stats: stats,
-                          period: selectedPeriod,
-                        );
-                      },
+                            FutureBuilder<Map<String, dynamic>>(
+                              future: _getStatistikeForPeriod(putnikId, selectedPeriod, tip),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
+                                  return const SizedBox(
+                                    height: 200,
+                                    child: Center(
+                                      child: CircularProgressIndicator(color: Colors.white54),
+                                    ),
+                                  );
+                                }
+                                if (snapshot.hasError) {
+                                  return const SizedBox(
+                                    height: 200,
+                                    child: Center(
+                                      child: CircularProgressIndicator(color: Colors.white54),
+                                    ),
+                                  );
+                                }
+                                final stats = snapshot.data ?? {};
+                                if (stats['error'] == true) {
+                                  return SizedBox(
+                                    height: 200,
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(50),
+                                            ),
+                                            child: const Icon(Icons.wifi_off_outlined, color: Colors.orange, size: 40),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          const Text(
+                                            'Podaci nisu dostupni.\nPovežite se na internet.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(color: Colors.orange, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return _buildStatistikeContent(
+                                  context: context,
+                                  putnikIme: putnikIme,
+                                  tip: tip,
+                                  tipSkole: tipSkole,
+                                  brojTelefona: brojTelefona,
+                                  createdAt: createdAt,
+                                  updatedAt: updatedAt,
+                                  aktivan: aktivan,
+                                  putnikId: putnikId,
+                                  stats: stats,
+                                  period: selectedPeriod,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Zatvori'),
-                ),
-              ],
             );
           },
         );
@@ -219,6 +287,7 @@ class V2PutnikStatistikeHelper {
 
   // KREIRANJE SADRŽAJA STATISTIKA
   static Widget _buildStatistikeContent({
+    required BuildContext context,
     required String putnikIme,
     required String tip,
     String? tipSkole,
@@ -244,119 +313,85 @@ class V2PutnikStatistikeHelper {
     return Column(
       children: [
         // OSNOVNE INFORMACIJE
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-          ),
+        _buildSection(
+          context: context,
+          accentColor: Colors.blue,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '📋 Osnovne informacije',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                  fontSize: 16,
-                ),
-              ),
+              _buildSectionHeader(context, '📋 Osnovne informacije', Colors.blue),
               const SizedBox(height: 8),
-              _buildStatRow('👤 Ime:', putnikIme),
-              _buildStatRow('📊 Tip putnika:', tip),
+              _buildStatRow(context, '👤 Ime:', putnikIme),
               if (tipSkole != null)
                 _buildStatRow(
+                  context,
                   tip == 'ucenik' ? '🏫 Škola:' : '🏢 Ustanova/Firma:',
                   tipSkole,
                 ),
-              if (brojTelefona != null) _buildStatRow('📞 Telefon:', brojTelefona),
+              if (brojTelefona != null) _buildStatRow(context, '📞 Telefon:', brojTelefona),
             ],
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // FINANSIJSKE INFORMACIJE
-        _buildFinancialSection(putnikId, tip, stats['cena_po_danu']),
+        _buildFinancialSection(context, putnikId, tip, stats['cena_po_danu']),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // PLAĆENI MESECI
-        _buildPlaceniMeseciSection(tip, stats['placeniMeseci'] ?? {}),
+        _buildPlaceniMeseciSection(context, tip, stats['placeniMeseci'] ?? {}),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
-        // STATISTIKE PUTOVANJA - DINAMICKI PERIOD
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: periodColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: periodColor.withValues(alpha: 0.3)),
-          ),
+        // STATISTIKE PUTOVANJA - DINAMIČKI PERIOD
+        _buildSection(
+          context: context,
+          accentColor: periodColor,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(periodIcon, size: 16, color: periodColor),
-                  const SizedBox(width: 4),
+                  Icon(periodIcon, size: 15, color: periodColor),
+                  const SizedBox(width: 6),
                   Text(
-                    '📈 Statistike',
+                    '📈 Statistike putovanja',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: periodColor,
-                      fontSize: 16,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              _buildStatRow('🚗 Putovanja:', '${stats['putovanja'] ?? 0}'),
-              _buildStatRow('❌ Otkazivanja:', '${stats['otkazivanja'] ?? 0}'),
+              const SizedBox(height: 10),
+              _buildStatRow(context, '🚗 Putovanja:', '${stats['putovanja'] ?? 0}'),
+              _buildStatRow(context, '❌ Otkazivanja:', '${stats['otkazivanja'] ?? 0}'),
               _buildStatRow(
-                '🔄 Poslednje putovanje:',
+                context,
+                '🔄 Poslednje:',
                 stats['poslednje'] as String? ?? 'Nema podataka',
               ),
-              _buildStatRow('📊 Uspešnost:', '${stats['uspesnost'] ?? 0}%'),
-              if (stats['ukupan_prihod'] != null)
-                _buildStatRow(
-                  '💰 Ukupan prihod:',
-                  '${stats['ukupan_prihod']}',
-                ),
+              _buildStatRow(context, '📊 Uspešnost:', '${stats['uspesnost'] ?? 0}%'),
             ],
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // SISTEMSKE INFORMACIJE
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-          ),
+        _buildSection(
+          context: context,
+          accentColor: Colors.white24,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '🕐 Sistemske informacije',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[700],
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildStatRow('📅 Kreiran:', _formatDatum(createdAt)),
-              _buildStatRow('🔄 Ažuriran:', _formatDatum(updatedAt)),
-              _buildStatRow('✅ Status:', aktivan ? 'Aktivan' : 'Neaktivan'),
+              _buildSectionHeader(context, '🕐 Sistemske informacije', Colors.white54),
+              _buildStatRow(context, '📅 Kreiran:', _formatDatum(createdAt)),
+              _buildStatRow(context, '🔄 Ažuriran:', _formatDatum(updatedAt)),
+              _buildStatRow(context, '✅ Status:', aktivan ? 'Aktivan' : '⚠️ Neaktivan'),
             ],
           ),
         ),
@@ -364,53 +399,68 @@ class V2PutnikStatistikeHelper {
     );
   }
 
-  static Widget _buildFinancialSection(String putnikId, String tip, dynamic customCena) {
+  // HELPER: Sekcija kontejner
+  static Widget _buildSection({
+    required BuildContext context,
+    required Color accentColor,
+    required Widget child,
+  }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+        color: accentColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentColor.withValues(alpha: 0.25), width: 1),
       ),
+      child: child,
+    );
+  }
+
+  // HELPER: Sekcija naslov
+  static Widget _buildSectionHeader(BuildContext context, String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: color,
+          fontSize: 14,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildFinancialSection(BuildContext context, String putnikId, String tip, dynamic customCena) {
+    return _buildSection(
+      context: context,
+      accentColor: Colors.greenAccent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '💰 Finansijske informacije',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.green[700],
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
+          _buildSectionHeader(context, '💰 Finansijske informacije', Colors.greenAccent),
           // PRIKAZ CENE PO DANU
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 '🏷️ Vaša cena:',
-                style: TextStyle(
-                  color: Colors.green[900],
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500, fontSize: 13),
               ),
               Flexible(
                 child: Text(
                   (customCena != null && customCena > 0)
                       ? '${(customCena as num).toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'vožnja'}'
-                      : 'Cena nije postavljena',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                      : 'Nije postavljena',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
                   textAlign: TextAlign.end,
                 ),
               ),
             ],
           ),
-          const Divider(),
+          Divider(color: Colors.white.withValues(alpha: 0.12), height: 20),
           // Datum, iznos i vozač poslednjeg plaćanja
           FutureBuilder<Map<String, dynamic>?>(
             future: V2StatistikaIstorijaService.dohvatiPlacanja(putnikId).then((l) => l.isNotEmpty ? l.first : null),
@@ -423,14 +473,12 @@ class V2PutnikStatistikeHelper {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildStatRow(
+                    context,
                     '💵 Poslednje plaćanje:',
                     iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : 'Nema podataka',
                   ),
-                  _buildStatRow(
-                    '📅 Datum plaćanja:',
-                    datum ?? 'Nema podataka o datumu',
-                  ),
-                  _buildStatRow('🚗 Vozač (naplata):', vozacIme ?? 'Nema podataka'),
+                  _buildStatRow(context, '📅 Datum plaćanja:', datum ?? 'Nema podataka'),
+                  _buildStatRow(context, '🚗 Vozač (naplata):', vozacIme ?? 'Nema podataka'),
                 ],
               );
             },
@@ -440,53 +488,45 @@ class V2PutnikStatistikeHelper {
     );
   }
 
-  static Widget _buildPlaceniMeseciSection(String tip, Set<String> placeniMeseci) {
+  static Widget _buildPlaceniMeseciSection(BuildContext context, String tip, Set<String> placeniMeseci) {
     if (tip.toLowerCase() == 'dnevni' || tip.toLowerCase() == 'posiljka') {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blue.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-        ),
+      return _buildSection(
+        context: context,
+        accentColor: Colors.blueAccent,
         child: const Text(
-          '💡 Dnevni putnici i pošiljke plaćaju po pokupljenju. Detalji su prikazani u istoriji ispod.',
-          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+          '💡 Dnevni putnici i pošiljke plaćaju po pokupljenju.',
+          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.white70),
         ),
       );
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-      ),
+    return _buildSection(
+      context: context,
+      accentColor: Colors.greenAccent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '💰 Plaćeni meseci',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.green[700],
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
+          _buildSectionHeader(context, '✅ Plaćeni meseci', Colors.greenAccent),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: placeniMeseci.isEmpty
-                ? [const Text('Nema evidentiranih uplata', style: TextStyle(fontSize: 12))]
+                ? [
+                    const Text(
+                      'Nema evidentiranih uplata',
+                      style: TextStyle(fontSize: 12, color: Colors.white54),
+                    )
+                  ]
                 : placeniMeseci.map((m) {
-                    return Chip(
-                      label: Text(m, style: const TextStyle(fontSize: 11)),
-                      backgroundColor: Colors.green.shade100,
-                      padding: EdgeInsets.zero,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
+                      ),
+                      child: Text(m,
+                          style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
                     );
                   }).toList(),
           ),
@@ -496,20 +536,20 @@ class V2PutnikStatistikeHelper {
   }
 
   // HELPER METODA ZA KREIRANJE REDA STATISTIKE
-  static Widget _buildStatRow(String label, String value) {
+  static Widget _buildStatRow(BuildContext context, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 110,
             child: Text(
               label,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: Colors.white70,
               ),
             ),
           ),
@@ -518,7 +558,8 @@ class V2PutnikStatistikeHelper {
               value,
               style: const TextStyle(
                 fontSize: 13,
-                color: Colors.black54,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,

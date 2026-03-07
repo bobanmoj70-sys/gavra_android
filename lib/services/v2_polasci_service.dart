@@ -447,10 +447,11 @@ class V2PolasciService {
   static Future<void> v2OznaciPlaceno({
     String? putnikId,
     double? iznos,
-    String? vozacId,
+    String? vozacIme,
     String? grad,
     String? selectedVreme,
     String? selectedDan,
+    String? requestId,
     String? tipPutnika,
     String? putnikIme,
     String? putnikTabela,
@@ -459,10 +460,11 @@ class V2PolasciService {
     await _svc.v2OznaciPlaceno(
       putnikId,
       iznos ?? 0,
-      vozacId,
+      vozacIme,
       grad: grad,
       selectedVreme: selectedVreme,
       selectedDan: selectedDan,
+      requestId: requestId,
       tipPutnika: tipPutnika,
       putnikIme: putnikIme,
       putnikTabela: putnikTabela,
@@ -1216,6 +1218,7 @@ class V2PutnikStreamService {
       putnikTabela: putnikTabela,
       vozacId: vozacId,
       vozacImeParam: driver,
+      dan: selectedDan,
       grad: grad,
       vreme: selectedVreme,
     );

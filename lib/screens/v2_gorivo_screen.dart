@@ -8,6 +8,7 @@ import '../models/v2_vozilo_statistika.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_gorivo_service.dart';
 import '../services/v2_vozila_service.dart';
+import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
 /// > GORIVO SCREEN
@@ -78,21 +79,55 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('> Pumpa goriva', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        backgroundColor: _accent,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: Theme.of(context).backgroundGradient,
+            border: Border(
+              bottom: BorderSide(color: Theme.of(context).glassBorder),
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: _accent.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _accent.withValues(alpha: 0.5)),
+              ),
+              child: const Icon(Icons.local_gas_station, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Pumpa goriva',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings, color: Colors.white),
             onPressed: _showConfigDialog,
             tooltip: 'Podesi pumpu',
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
+          indicatorColor: _accent,
+          indicatorWeight: 3,
           labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          unselectedLabelColor: Colors.white54,
           tabs: const [
             Tab(text: '⛽ Stanje'),
             Tab(text: '🛢️ Punjenja'),
@@ -100,13 +135,16 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildStanjeTab(),
-          _buildPunjenjaTab(),
-          _buildTocenjaTab(),
-        ],
+      body: Container(
+        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildStanjeTab(),
+            _buildPunjenjaTab(),
+            _buildTocenjaTab(),
+          ],
+        ),
       ),
       floatingActionButton: _buildFab(),
     );
@@ -152,7 +190,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           color: _accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16, 16, 16),
             child: Column(
               children: [
                 _buildBrojcanik(stanje),
@@ -179,11 +217,14 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                 ? Colors.green
                 : Colors.orange;
 
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: barColor.withValues(alpha: 0.6), width: 2),
+        border: Border.all(color: barColor.withValues(alpha: 0.5), width: 2),
+        boxShadow: [
+          BoxShadow(color: barColor.withValues(alpha: 0.15), blurRadius: 16, spreadRadius: 1),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -193,10 +234,12 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '> Trenutno stanje',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  '⛽ Trenutno stanje',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Colors.white,
+                  ),
                 ),
                 if (stanje.ispodAlarma)
                   Container(
@@ -230,9 +273,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             ),
             Text(
               'od ${_fmt.format(stanje.kapacitetLitri)} L kapaciteta',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+              style: const TextStyle(color: Colors.white54, fontSize: 14),
             ),
             const SizedBox(height: 20),
 
@@ -250,21 +291,13 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('0 L',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                        )),
+                const Text('0 L', style: TextStyle(color: Colors.white38, fontSize: 12)),
                 Text(
                   '${stanje.procenatPune.toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: barColor,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: barColor),
                 ),
                 Text('${_fmt.format(stanje.kapacitetLitri)} L',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                        )),
+                    style: const TextStyle(color: Colors.white38, fontSize: 12)),
               ],
             ),
           ],
@@ -274,29 +307,33 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   }
 
   Widget _buildStanjeDetalji(V2PumpaStanje stanje) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).glassBorder),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Y"< Detalji',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    )),
+            const Text(
+              '📊 Detalji',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+            ),
             const SizedBox(height: 12),
-            _detaljiRow('YY Ukupno dopunjeno', '${_fmt.format(stanje.ukupnoPunjeno)} L', Colors.green),
-            _detaljiRow('Y" Ukupno utrošeno', '${_fmt.format(stanje.ukupnoUtroseno)} L', Colors.red),
+            _detaljiRow('🟢 Ukupno dopunjeno', '${_fmt.format(stanje.ukupnoPunjeno)} L', Colors.greenAccent),
+            _detaljiRow('🔴 Ukupno utrošeno', '${_fmt.format(stanje.ukupnoUtroseno)} L', Colors.redAccent),
             _detaljiRow(
-              'Y"" Alarm nivo',
+              '🔔 Alarm nivo',
               '${_fmt.format(stanje.alarmNivo)} L',
-              stanje.ispodAlarma ? Colors.red : Colors.grey,
+              stanje.ispodAlarma ? Colors.redAccent : Colors.white54,
             ),
             _detaljiRow(
-              'Y" Kapacitet',
+              '📦 Kapacitet',
               '${_fmt.format(stanje.kapacitetLitri)} L',
-              Theme.of(context).colorScheme.onSurface,
+              Colors.white70,
             ),
           ],
         ),
@@ -310,15 +347,8 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  )),
-          Text(value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: valueColor,
-                  )),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: valueColor, fontSize: 13)),
         ],
       ),
     );
