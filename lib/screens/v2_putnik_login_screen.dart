@@ -445,9 +445,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       if (putnikId != null) {
         await prefs.setString('registrovani_putnik_id', putnikId.toString());
         await prefs.setString('registrovani_putnik_ime', putnikIme.toString());
-      }
-
-      if (putnikId != null) {
         final tabela = response['_tabela'] as String? ?? response['putnik_tabela'] as String?;
         await V2PutnikPushService.registerPutnikToken(putnikId, putnikTabela: tabela);
         unawaited(V2StatistikaIstorijaService.logGeneric(
@@ -765,12 +762,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => _performLogin(
-                p,
-                _telefonController.text.trim(),
-                _pinController.text.trim(),
-                true,
-              ),
+              onTap: () async {
+                await _performLogin(
+                  p,
+                  _telefonController.text.trim(),
+                  _pinController.text.trim(),
+                  true,
+                );
+              },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -927,6 +926,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   /// Login sa biometrijom
   Future<void> _loginWithBiometric() async {
     final credentials = await V2BiometricService.getSavedCredentials();
+    if (!mounted) return;
     if (credentials == null) {
       setState(() => _errorMessage = 'Nema sacuvanih podataka za biometrijsku prijavu');
       return;
