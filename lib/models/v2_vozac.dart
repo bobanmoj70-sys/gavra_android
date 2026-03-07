@@ -14,8 +14,10 @@ class V2Vozac {
         id = id ?? const Uuid().v4();
 
   factory V2Vozac.fromMap(Map<String, dynamic> map) {
+    final id = map['id']?.toString() ?? '';
+    if (id.isEmpty) throw ArgumentError('V2Vozac.fromMap: id je null ili prazan');
     return V2Vozac(
-      id: map['id']?.toString() ?? '',
+      id: id,
       ime: map['ime']?.toString() ?? '',
       brojTelefona: map['telefon']?.toString(),
       email: map['email']?.toString(),
@@ -34,10 +36,10 @@ class V2Vozac {
     return {
       'id': id,
       'ime': ime,
-      'telefon': brojTelefona,
-      'email': email,
-      'boja': boja,
-      'sifra': sifra,
+      if (brojTelefona != null) 'telefon': brojTelefona,
+      if (email != null) 'email': email,
+      if (boja != null) 'boja': boja,
+      if (sifra != null) 'sifra': sifra,
     };
   }
 
@@ -92,27 +94,31 @@ class V2Vozac {
   /// Kreira kopiju vozača sa promenjenim vrednostima
   V2Vozac copyWith({
     String? ime,
-    String? brojTelefona,
-    String? email,
-    String? boja,
-    String? sifra,
+    Object? brojTelefona = _sentinel,
+    Object? email = _sentinel,
+    Object? boja = _sentinel,
+    Object? sifra = _sentinel,
   }) {
     return V2Vozac(
       id: id,
       ime: ime ?? this.ime,
-      brojTelefona: brojTelefona ?? this.brojTelefona,
-      email: email ?? this.email,
-      boja: boja ?? this.boja,
-      sifra: sifra ?? this.sifra,
+      brojTelefona: brojTelefona == _sentinel ? this.brojTelefona : brojTelefona as String?,
+      email: email == _sentinel ? this.email : email as String?,
+      boja: boja == _sentinel ? this.boja : boja as String?,
+      sifra: sifra == _sentinel ? this.sifra : sifra as String?,
     );
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is V2Vozac && other.id == id);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (runtimeType == other.runtimeType && other is V2Vozac && other.id == id);
 
   @override
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'V2Vozac(id: $id, ime: $ime)';
+  String toString() => 'V2Vozac(id: $id, ime: $ime, boja: $boja)';
 }
+
+const _sentinel = Object();
