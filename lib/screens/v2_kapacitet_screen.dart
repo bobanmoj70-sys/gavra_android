@@ -43,10 +43,10 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
         child: Container(
           constraints: const BoxConstraints(maxWidth: 320),
           decoration: BoxDecoration(
-            gradient: Theme.of(context).backgroundGradient,
+            gradient: Theme.of(ctx).backgroundGradient,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Theme.of(context).glassBorder,
+              color: Theme.of(ctx).glassBorder,
               width: 1.5,
             ),
             boxShadow: [
@@ -65,14 +65,14 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).glassContainer,
+                  color: Theme.of(ctx).glassContainer,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20),
                     topRight: Radius.circular(20),
                   ),
                   border: Border(
                     bottom: BorderSide(
-                      color: Theme.of(context).glassBorder,
+                      color: Theme.of(ctx).glassBorder,
                     ),
                   ),
                 ),
@@ -131,10 +131,10 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                     const SizedBox(height: 16),
                     Container(
                       decoration: BoxDecoration(
-                        color: Theme.of(context).glassContainer,
+                        color: Theme.of(ctx).glassContainer,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).glassBorder,
+                          color: Theme.of(ctx).glassBorder,
                         ),
                       ),
                       child: TextField(
@@ -182,7 +182,7 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                               if (value != null && value > 0 && value <= 20) {
                                 Navigator.pop(ctx, value);
                               } else {
-                                V2AppSnackBar.error(context, 'Unesite broj između 1 i 20');
+                                V2AppSnackBar.error(ctx, 'Unesite broj između 1 i 20');
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -223,13 +223,10 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
   }
 
   Widget _buildGradTab(String grad, List<String> vremena, Map<String, Map<String, int>> kapacitet) {
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: vremena.length,
-            itemBuilder: (ctx, index) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: vremena.length,
+      itemBuilder: (ctx, index) {
               final vreme = vremena[index];
               final maxMesta = kapacitet[grad]?[vreme] ?? 8;
 
@@ -301,14 +298,11 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                   onTap: () => _editKapacitet(grad, vreme, maxMesta),
                 ),
               );
-            },
-          ),
-        ),
-      ],
+      },
     );
   }
 
-  Color _getKapacitetBoja(int mesta) {
+  static Color _getKapacitetBoja(int mesta) {
     if (mesta >= 8) return Colors.green;
     if (mesta >= 5) return Colors.orange;
     return Colors.red;
