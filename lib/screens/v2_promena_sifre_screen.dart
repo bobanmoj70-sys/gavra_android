@@ -14,10 +14,10 @@ class V2PromenaSifreScreen extends StatefulWidget {
   const V2PromenaSifreScreen({super.key, required this.vozacIme});
 
   @override
-  State<V2PromenaSifreScreen> createState() => _PromenaSifreScreenState();
+  State<V2PromenaSifreScreen> createState() => _V2PromenaSifreScreenState();
 }
 
-class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
+class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
   final _formKey = GlobalKey<FormState>();
   final _staraSifraController = TextEditingController();
   final _novaSifraController = TextEditingController();
@@ -54,7 +54,7 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
         (v) => v['ime'].toString().toLowerCase() == widget.vozacIme.toLowerCase(),
         orElse: () => <String, dynamic>{},
       );
-      if (vozac.isNotEmpty) {
+      if (vozac.isNotEmpty && mounted) {
         setState(() {
           _trenutnaSifra = vozac['sifra']?.toString() ?? '';
         });
@@ -124,9 +124,7 @@ class _PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
     final bool imaSifru = _trenutnaSifra != null && _trenutnaSifra!.isNotEmpty;
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: tripleBlueFashionGradient,
-      ),
+      decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
