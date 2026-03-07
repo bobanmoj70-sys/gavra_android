@@ -100,6 +100,7 @@ class V2AdresaSupabaseService {
                 .eq('id', adresa.id)
                 .select('id, naziv, grad, gps_lat, gps_lng')
                 .single();
+            V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', response);
             return V2Adresa.fromMap(response);
           }
         }
