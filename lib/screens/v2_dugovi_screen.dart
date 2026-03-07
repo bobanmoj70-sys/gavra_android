@@ -16,11 +16,9 @@ class V2DugoviScreen extends StatefulWidget {
 }
 
 class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserver {
-  final TextEditingController _searchController = TextEditingController();
   final _putnikService = V2PutnikStreamService();
 
   late String _workingDateIso;
-  String _searchQuery = '';
   late Stream<List<V2Putnik>> _streamDugovi;
 
   @override
@@ -31,21 +29,20 @@ class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserv
     _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
       dan: V2DanUtils.odIso(_workingDateIso),
     );
-    _setupSearchListener();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _searchController.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      if (!mounted) return;
       final newIso = V2PutnikHelpers.getWorkingDateIso();
-      if (newIso != _workingDateIso && mounted) {
+      if (newIso != _workingDateIso) {
         setState(() {
           _workingDateIso = newIso;
           _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
@@ -56,13 +53,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserv
     }
   }
 
-  void _setupSearchListener() {
-    _searchController.addListener(() {
-      if (mounted) setState(() => _searchQuery = _searchController.text);
-    });
-  }
-
-  void _sortDugovi(List<V2Putnik> dugovi) {
+  static void _sortDugovi(List<V2Putnik> dugovi) {
     dugovi.sort((a, b) {
       final timeA = a.vremePokupljenja;
       final timeB = b.vremePokupljenja;
@@ -74,17 +65,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserv
   }
 
   List<V2Putnik> _applyFiltersAndSort(List<V2Putnik> input) {
-    var result = List<V2Putnik>.of(input);
-
-    final searchQuery = _searchQuery.toLowerCase();
-    if (searchQuery.isNotEmpty) {
-      result = result.where((duznik) {
-        return duznik.ime.toLowerCase().contains(searchQuery) ||
-            (duznik.pokupioVozac?.toLowerCase().contains(searchQuery) ?? false) ||
-            (duznik.grad.toLowerCase().contains(searchQuery));
-      }).toList();
-    }
-
+    final result = List<V2Putnik>.of(input);
     _sortDugovi(result);
     return result;
   }
@@ -103,12 +84,10 @@ class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserv
             )
             .toList();
 
-        final seenIds = <dynamic>{};
+        final seenIds = <String>{};
         final duzniciDeduplicated = duzniciRaw.where((p) {
-          final key = p.id ?? '${p.ime}_${p.dan}';
-          if (seenIds.contains(key)) return false;
-          seenIds.add(key);
-          return true;
+          final key = p.id?.toString() ?? '${p.ime}_${p.dan}';
+          return seenIds.add(key);
         }).toList();
 
         final filteredDugovi = _applyFiltersAndSort(duzniciDeduplicated);
@@ -127,7 +106,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserv
                 ),
                 Text(
                   'Svi neplaćeni putnici (Plava kartica)',
-                  style: TextStyle(fontSize: 12, color: Colors.white70.withValues(alpha: 0.8)),
+                  style: TextStyle(fontSize: 12, color: Colors.white70),
                 ),
               ],
             ),
