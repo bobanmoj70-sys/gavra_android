@@ -636,18 +636,18 @@ class V2MasterRealtimeManager {
       if (table == 'v2_polasci') {
         polasciCache.clear();
         await _loadPolasciCache();
-        _cacheChangeController.add('v2_polasci');
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add('v2_polasci');
       } else if (table == 'v2_statistika_istorija') {
         statistikaCache.clear();
         await v2LoadStatistikaCache();
-        _cacheChangeController.add('v2_statistika_istorija');
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add('v2_statistika_istorija');
       } else if (table == 'v2_racuni') {
         racuniCache.clear();
         await _loadRacuniCache();
-        _cacheChangeController.add('v2_racuni');
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add('v2_racuni');
       } else if (table == 'v2_audit_log') {
         await _loadAuditLogCache();
-        _cacheChangeController.add('v2_audit_log');
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add('v2_audit_log');
       } else {
         // Generički infra reload — direktan upit, fill u odgovarajući cache
         final targetCache = _cacheForTable(table);
@@ -671,13 +671,12 @@ class V2MasterRealtimeManager {
         const putnikTabelaSet = {'v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'};
         if (putnikTabelaSet.contains(table)) {
           for (final row in rows) {
-            final r = row;
-            targetCache[r['id'].toString()] = _tagRow(r, table);
+            targetCache[row['id'].toString()] = _tagRow(row, table);
           }
         } else {
           _fillCache(targetCache, rows);
         }
-        _cacheChangeController.add(table);
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
       }
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _reloadCacheForTable "$table": $e');
@@ -877,8 +876,10 @@ class V2MasterRealtimeManager {
       racuniCache.remove(id);
       if (racunId != null) _racuniIdToPutnikId.remove(racunId);
       if (!_cacheChangeController.isClosed) {
+        _cacheChangeController.add(tabela);
         _cacheChangeController.add('v2_polasci');
         _cacheChangeController.add('v2_vozac_putnik');
+        _cacheChangeController.add('v2_pin_zahtevi');
       }
       return true;
     } catch (e) {
@@ -934,7 +935,7 @@ class V2MasterRealtimeManager {
     String? firmaZiro,
     String? firmaAdresa,
   }) async {
-    await supabase.from('v2_racuni').upsert({
+    final data = {
       'putnik_id': putnikId,
       'putnik_tabela': putnikTabela,
       'firma_naziv': firmaNaziv,
@@ -943,18 +944,28 @@ class V2MasterRealtimeManager {
       'firma_ziro': firmaZiro,
       'firma_adresa': firmaAdresa,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, onConflict: 'putnik_id');
+    };
+    await supabase.from('v2_racuni').upsert(data, onConflict: 'putnik_id');
+    // Optimisticki azuriraj racuniCache odmah — ne cekaj Realtime event
+    final existing = racuniCache[putnikId];
+    racuniCache[putnikId] = {...?existing, ...data};
+    if (!_cacheChangeController.isClosed) _cacheChangeController.add('v2_racuni');
   }
 
   /// Dohvata putnika po PIN-u iz date tabele
   Future<Map<String, dynamic>?> v2GetByPin(String pin, String tabela) async {
-    final row = await supabase
-        .from(tabela)
-        .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
-        .eq('pin', pin)
-        .maybeSingle();
-    if (row == null) return null;
-    return {...row, '_tabela': tabela};
+    try {
+      final row = await supabase
+          .from(tabela)
+          .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
+          .eq('pin', pin)
+          .maybeSingle();
+      if (row == null) return null;
+      return {...row, '_tabela': tabela};
+    } catch (e) {
+      debugPrint('❌ [RM] v2GetByPin error ($tabela, pin=$pin): $e');
+      return null;
+    }
   }
 
   /// Dohvata putnika iz bilo koje od 4 tabele — prvo cache, pa DB
