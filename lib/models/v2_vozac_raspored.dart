@@ -19,26 +19,64 @@ class V2VozacRaspored {
   });
 
   factory V2VozacRaspored.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String?;
+    if (id == null || id.isEmpty) throw ArgumentError('V2VozacRaspored.fromJson: id je null ili prazan');
+    final vozacId = json['vozac_id'] as String?;
+    if (vozacId == null || vozacId.isEmpty)
+      throw ArgumentError('V2VozacRaspored.fromJson: vozac_id je null ili prazan');
     return V2VozacRaspored(
-      id: json['id'] as String? ?? '',
-      vozacId: json['vozac_id'] as String? ?? '',
+      id: id,
+      vozacId: vozacId,
       dan: json['dan'] as String? ?? '',
       grad: json['grad'] as String? ?? '',
       vreme: json['vreme'] as String? ?? '',
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '')?.toLocal(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '')?.toLocal(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'vozac_id': vozacId,
       'dan': dan,
       'grad': grad,
       'vreme': vreme,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
     };
   }
+
+  V2VozacRaspored copyWith({
+    String? id,
+    String? vozacId,
+    String? dan,
+    String? grad,
+    String? vreme,
+    Object? createdAt = _sentinel,
+    Object? updatedAt = _sentinel,
+  }) {
+    return V2VozacRaspored(
+      id: id ?? this.id,
+      vozacId: vozacId ?? this.vozacId,
+      dan: dan ?? this.dan,
+      grad: grad ?? this.grad,
+      vreme: vreme ?? this.vreme,
+      createdAt: createdAt == _sentinel ? this.createdAt : createdAt as DateTime?,
+      updatedAt: updatedAt == _sentinel ? this.updatedAt : updatedAt as DateTime?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (runtimeType == other.runtimeType &&
+          other is V2VozacRaspored &&
+          id == other.id);
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'V2VozacRaspored(id: $id, vozacId: $vozacId, '
+      'dan: $dan, grad: $grad, vreme: $vreme)';
 }
+
+const _sentinel = Object();
