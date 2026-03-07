@@ -18,7 +18,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
   late final Stream<List<V2Vozilo>> _streamVozila;
 
-  final _formatBroja = NumberFormat('#,###', 'sr');
+  static final _formatBroja = NumberFormat('#,###', 'sr');
 
   @override
   void initState() {
@@ -69,7 +69,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
   }
 
   // Boje vozila - 066 plava, 088 beli, 093 crvena, 097 bela, 102 plava
-  Color _getVoziloColor(String registarskiBroj) {
+  static Color _getVoziloColor(String registarskiBroj) {
     if (registarskiBroj.contains('066')) return Colors.blue;
     if (registarskiBroj.contains('088')) return Colors.white;
     if (registarskiBroj.contains('093')) return Colors.red;
@@ -79,13 +79,13 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
   }
 
   // Dani do isteka registracije
-  int? _getDanaDoIsteka(V2Vozilo vozilo) {
+  static int? _getDanaDoIsteka(V2Vozilo vozilo) {
     if (vozilo.registracijaVaziDo == null) return null;
     return vozilo.registracijaVaziDo!.difference(DateTime.now()).inDays;
   }
 
   // Informativna senka za 15-30 dana do isteka (žuta/limeta)
-  List<BoxShadow>? _getRegistracijaSenka(V2Vozilo vozilo) {
+  static List<BoxShadow>? _getRegistracijaSenka(V2Vozilo vozilo) {
     final danaDoIsteka = _getDanaDoIsteka(vozilo);
     if (danaDoIsteka == null) return null;
 
@@ -103,7 +103,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
   }
 
   // Slika tablice za vozilo
-  String _getTablicaImage(String registarskiBroj) {
+  static String _getTablicaImage(String registarskiBroj) {
     if (registarskiBroj.contains('066')) return 'assets/tablica_066.png';
     if (registarskiBroj.contains('088')) return 'assets/tablica_088.png';
     if (registarskiBroj.contains('093')) return 'assets/tablica_093.png';
@@ -113,7 +113,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
   }
 
   // Da li treba tamni okvir (za bele ikonice)
-  Color _getVoziloBorderColor(String registarskiBroj, bool isSelected, Color color) {
+  static Color _getVoziloBorderColor(String registarskiBroj, bool isSelected, Color color) {
     if (isSelected) return color == Colors.white ? Colors.black : color;
     if (color == Colors.white) {
       return Colors.grey.shade600; // Tamni okvir za belo
@@ -388,7 +388,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     );
   }
 
-  String _formatServis(DateTime? datum, int? km) {
+  static String _formatServis(DateTime? datum, int? km) {
     if (datum == null && km == null) return '-';
     final parts = <String>[];
     if (datum != null) parts.add(V2Vozilo.formatDatum(datum));
@@ -396,7 +396,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     return parts.join(' · ');
   }
 
-  String? _formatGumeSubtitle(DateTime? datum, int? km) {
+  static String? _formatGumeSubtitle(DateTime? datum, int? km) {
     if (datum == null && km == null) return null;
     final parts = <String>[];
     if (datum != null) parts.add('Menjane: ${V2Vozilo.formatDatum(datum)}');
@@ -404,7 +404,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     return parts.join(' · ');
   }
 
-  Widget _buildEditableField({
+  static Widget _buildEditableField({
     required String icon,
     required String label,
     required String? value,
@@ -436,7 +436,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                 if (badge != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
+                    decoration: BoxDecoration(
                       color: badgeColor?.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -515,14 +515,13 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
       helpText: label,
     );
 
-    if (picked != null && mounted) {
-      final success = await V2VozilaService.updateKolskaKnjiga(
-        _selectedVozilo!.id,
-        {field: picked.toIso8601String().split('T')[0]},
-      );
-      if (success && mounted) {
-        V2AppSnackBar.success(context, '🗸. Sačuvano');
-      }
+    if (picked == null || !mounted) return;
+    final success = await V2VozilaService.updateKolskaKnjiga(
+      _selectedVozilo!.id,
+      {field: picked.toIso8601String().split('T')[0]},
+    );
+    if (success && mounted) {
+      V2AppSnackBar.success(context, '🗸. Sačuvano');
     }
   }
 
@@ -873,7 +872,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     kmController.dispose();
   }
 
-  Widget _buildTipGumaChip(String label, String value, String? selected, Function(String?) onTap) {
+  static Widget _buildTipGumaChip(String label, String value, String? selected, Function(String?) onTap) {
     final isSelected = selected == value;
     return InkWell(
       onTap: () => onTap(isSelected ? null : value),
