@@ -168,7 +168,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     }
   }
 
-  Widget _buildGlassStatRow(String label, String value) {
+  static Widget _buildGlassStatRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -208,7 +208,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     if (!mounted) return;
 
     if (putnici.isEmpty) {
-      V2AppSnackBar.warning(context, 'Nema putnika kojima treba racun');
+      if (mounted) V2AppSnackBar.warning(context, 'Nema putnika kojima treba racun');
       return;
     }
 
@@ -330,11 +330,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                           children: [
                             IconButton(
                               icon: const Icon(Icons.chevron_left, color: Colors.white),
-                              onPressed: () {
+                              onPressed: () async {
                                 setDialogState(() {
                                   selectedDate = DateTime(selectedDate.year, selectedDate.month - 1);
                                 });
-                                osveziPodatke();
+                                await osveziPodatke();
                               },
                             ),
                             Container(
@@ -354,11 +354,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             ),
                             IconButton(
                               icon: const Icon(Icons.chevron_right, color: Colors.white),
-                              onPressed: () {
+                              onPressed: () async {
                                 setDialogState(() {
                                   selectedDate = DateTime(selectedDate.year, selectedDate.month + 1);
                                 });
-                                osveziPodatke();
+                                await osveziPodatke();
                               },
                             ),
                           ],
@@ -402,7 +402,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                       value: selected[p.id],
                                       activeColor: Colors.white,
                                       checkColor: Theme.of(context).colorScheme.primary,
-                                      side: BorderSide(color: Colors.white70),
+                                      side: const BorderSide(color: Colors.white70),
                                       onChanged: (val) {
                                         setDialogState(() {
                                           selected[p.id] = val ?? false;
@@ -456,11 +456,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                               isDense: true,
                                               contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                                               border:
-                                                  UnderlineInputBorder(borderSide: BorderSide(color: Colors.white70)),
+                                                  UnderlineInputBorder(borderSide: const BorderSide(color: Colors.white70)),
                                               enabledBorder:
-                                                  UnderlineInputBorder(borderSide: BorderSide(color: Colors.white70)),
+                                                  UnderlineInputBorder(borderSide: const BorderSide(color: Colors.white70)),
                                               focusedBorder:
-                                                  UnderlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+                                                  UnderlineInputBorder(borderSide: const BorderSide(color: Colors.white)),
                                             ),
                                             controller: danaControllers[p.id],
                                             onChanged: (val) {
@@ -663,7 +663,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                     V2AppSnackBar.warning(dialogContext, 'Unesite opis usluge');
                     return;
                   }
-                  final iznos = double.tryParse(iznosController.text.trim());
+                  final iznos = double.tryParse(iznosController.text.trim().replaceAll(',', '.'));
                   if (iznos == null || iznos <= 0) {
                     V2AppSnackBar.warning(dialogContext, 'Unesite validan iznos');
                     return;
