@@ -36,7 +36,7 @@ class V2AuthManager {
     V2FirebaseService.setCurrentDriver(driverName);
 
     // Ažuriraj push token u pozadini — ne blokira login flow
-    _updatePushTokenWithUserId(driverName);
+    unawaited(_updatePushTokenWithUserId(driverName));
   }
 
   /// Ažurira push token sa vozac_id vozača.
@@ -53,7 +53,7 @@ class V2AuthManager {
       // 1. FCM token (Google/Samsung uređaji)
       final fcmToken = await V2FirebaseService.getFCMToken();
       if (fcmToken != null && fcmToken.isNotEmpty) {
-        final success = await V2PushTokenService.registerToken(
+        await V2PushTokenService.registerToken(
           token: fcmToken,
           provider: 'fcm',
           vozacId: vozacId,
@@ -64,7 +64,7 @@ class V2AuthManager {
       try {
         final hmsToken = await V2HuaweiPushService().getHMSToken();
         if (hmsToken != null && hmsToken.isNotEmpty) {
-          final success = await V2PushTokenService.registerToken(
+          await V2PushTokenService.registerToken(
             token: hmsToken,
             provider: 'huawei',
             vozacId: vozacId,
@@ -85,13 +85,14 @@ class V2AuthManager {
       return _cachedDriverName;
     }
 
+    final prefs = await SharedPreferences.getInstance();
+
     // 1. Pokušaj Supabase (jedini izvor istine)
     try {
       final driverFromSupabase = await _getDriverFromSupabase();
       if (driverFromSupabase != null && driverFromSupabase.isNotEmpty) {
         _cachedDriverName = driverFromSupabase;
         // Spremi u SharedPreferences kao cache za offline fallback
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_driverKey, driverFromSupabase);
         return _cachedDriverName;
       }
@@ -100,7 +101,6 @@ class V2AuthManager {
     }
 
     // 2. Offline fallback — stari lokalni podatak
-    final prefs = await SharedPreferences.getInstance();
     final fromPrefs = prefs.getString(_driverKey);
     if (fromPrefs != null && fromPrefs.isNotEmpty) {
       _cachedDriverName = fromPrefs;
@@ -156,8 +156,8 @@ class V2AuthManager {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // 1. Pročitaj trenutnog vozača PRE brisanja sesije (potrebno za push token)
-      final currentDriver = await getCurrentDriver();
+      // 1. Pročitaj trenutnog vozača iz in-memory cache-a PRE brisanja sesije (potrebno za push token)
+      final currentDriver = _cachedDriverName;
 
       // 2. Obriši in-memory cache i SharedPreferences (vozač + putnik sesija)
       _cachedDriverName = null;
