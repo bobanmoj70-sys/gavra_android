@@ -58,7 +58,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
 
       // Auto-login sa biometrijom ako ima sačuvane kredencijale
       if (available && hasCreds) {
-        _loginWithBiometric();
+        await _loginWithBiometric();
       }
     }
   }
@@ -233,7 +233,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => _getScreenForDriver(widget.vozacIme),
+          builder: (_) => _getScreenForDriver(widget.vozacIme),
         ),
       );
     } catch (e) {
@@ -253,7 +253,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
 
   /// Normalizuje broj telefona za poređenje
   /// Uklanja razmake, crtice, zagrade i prefikse (+381, 00381)
-  String _normalizePhone(String telefon) {
+  static String _normalizePhone(String telefon) {
     var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
     if (cleaned.startsWith('+381')) {
       cleaned = '0${cleaned.substring(4)}';
@@ -455,8 +455,8 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon, bool isDark, dynamic currentTheme) {
-    final accentColor = isDark ? currentTheme.colorScheme.primary as Color : Colors.amber;
+  static InputDecoration _inputDecoration(String label, IconData icon, bool isDark, ThemeData currentTheme) {
+    final accentColor = isDark ? currentTheme.colorScheme.primary : Colors.amber;
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
