@@ -357,7 +357,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         final polazakH = polazakParts.isNotEmpty ? (int.tryParse(polazakParts[0]) ?? 0) : 0;
         final polazakM = polazakParts.length > 1 ? (int.tryParse(polazakParts[1]) ?? 0) : 0;
         final polazak = '$polazakH:${polazakM.toString().padLeft(2, '0')}';
-        if (polazak.isEmpty) continue;
 
         // Ako je danas radni dan, proveri da li je polazak prošao
         final danWd = daniOrder.indexOf(danKratica) + 1;
@@ -619,6 +618,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         tabela,
       );
 
+      // Sačuvaj stari status pre setState (za audit log)
+      final stariStatus = _putnikData['status']?.toString();
+
       setState(() {
         _putnikData['status'] = noviStatus;
       });
@@ -631,9 +633,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         aktorTip: 'putnik',
         putnikId: putnikId,
         putnikTabela: tabela,
-        staro: {'status': _putnikData['status']?.toString()},
+        staro: {'status': stariStatus},
         novo: {'status': noviStatus},
-        detalji: 'Status promijenjen: ${_putnikData['status']} → $noviStatus',
+        detalji: 'Status promijenjen: $stariStatus → $noviStatus',
       );
 
       if (mounted) {
@@ -1301,7 +1303,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
     // MERGE v2_polasci redova po danima
     final daniNedelje = ['pon', 'uto', 'sre', 'cet', 'pet'];
-    final now = DateTime.now();
 
     // Sortiramo: aktivni (odobreno/obrada) ZADNJI da pregaze otkazane
     // Redosljed: otkazano/bez_polaska/odbijeno → obrada → odobreno → pokupljen
