@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -82,7 +80,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     _initializeData();
   }
 
-  void _initializeData() async {
+  Future<void> _initializeData() async {
     try {
       await _initializeCurrentDriver();
       // Preskočiti redirect ako V2VozacCache još nije inicijalizovan (race condition)
@@ -113,9 +111,11 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       }
 
       if (mounted) {
-        _selectClosestDeparture();
         _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
-        setState(() => _isLoading = false);
+        setState(() {
+          _selectClosestDeparture();
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -127,10 +127,8 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     if (mounted) _currentDriver = driver;
   }
 
-  /// ?? Bira polazak koji je najbliži trenutnom vremenu
+  /// ?? Bira polazak koji je najbliži trenutnom vremenu (bez setState — poziva se unutar setState bloka)
   void _selectClosestDeparture() {
-    if (!mounted) return;
-
     final now = DateTime.now();
     final currentMinutes = now.hour * 60 + now.minute;
 
@@ -165,10 +163,8 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     }
 
     if (closestVreme != null && closestGrad != null) {
-      setState(() {
-        _selectedVreme = closestVreme!;
-        _selectedGrad = closestGrad!;
-      });
+      _selectedVreme = closestVreme;
+      _selectedGrad = closestGrad;
     }
   }
 
@@ -205,7 +201,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   }
 
   /// Prikazuje dijalog sa listom putnika kojima treba racun
-  Future<void> _showRacunDialog(BuildContext ctx) async {
+  Future<void> _showRacunDialog() async {
     final sviPutnici = V2StatistikaIstorijaService.getAllAktivniKaoModel();
     final putnici = sviPutnici.where((p) => p.trebaRacun).toList();
 
@@ -566,7 +562,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     });
   }
 
-  void _showNoviRacunDialog(BuildContext context) {
+  void _showNoviRacunDialog() {
     final imeController = TextEditingController();
     final iznosController = TextEditingController();
     final opisController = TextEditingController(text: 'Usluga prevoza putnika');
@@ -575,7 +571,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
+        builder: (dialogContext, setDialogState) {
           return AlertDialog(
             title: const Row(
               children: [
@@ -660,16 +656,16 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                 onPressed: () async {
                   // Validacija
                   if (imeController.text.trim().isEmpty) {
-                    V2AppSnackBar.warning(context, 'Unesite ime kupca');
+                    V2AppSnackBar.warning(dialogContext, 'Unesite ime kupca');
                     return;
                   }
                   if (opisController.text.trim().isEmpty) {
-                    V2AppSnackBar.warning(context, 'Unesite opis usluge');
+                    V2AppSnackBar.warning(dialogContext, 'Unesite opis usluge');
                     return;
                   }
                   final iznos = double.tryParse(iznosController.text.trim());
                   if (iznos == null || iznos <= 0) {
-                    V2AppSnackBar.warning(context, 'Unesite validan iznos');
+                    V2AppSnackBar.warning(dialogContext, 'Unesite validan iznos');
                     return;
                   }
 
@@ -789,7 +785,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     }
   }
 
-  void _showAddPutnikDialog() async {
+  Future<void> _showAddPutnikDialog() async {
     final adresaController = TextEditingController();
     final telefonController = TextEditingController();
     final searchPutnikController = TextEditingController();
@@ -2160,9 +2156,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                   context,
                                 );
                               } else if (value == 'racun_postojeci') {
-                                _showRacunDialog(context);
+                                _showRacunDialog();
                               } else if (value == 'racun_novi') {
-                                _showNoviRacunDialog(context);
+                                _showNoviRacunDialog();
                               }
                             },
                             itemBuilder: (context) => [
@@ -2242,7 +2238,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                           child: PopupMenuButton<String>(
                             onSelected: (value) async {
                               if (value == 'logout') {
-                                _logout();
+                                await _logout();
                               } else if (value == 'sifra') {
                                 final vozac = await V2AuthManager.getCurrentDriver();
                                 if (!mounted || vozac == null) return;
