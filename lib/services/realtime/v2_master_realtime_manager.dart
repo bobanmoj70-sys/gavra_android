@@ -392,11 +392,11 @@ class V2MasterRealtimeManager {
           'id, putnik_id, putnik_tabela, firma_naziv, firma_pib, firma_mb, firma_ziro, firma_adresa, updated_at');
       racuniCache.clear();
       _racuniIdToPutnikId.clear();
-      for (final row in (rows as List)) {
+      for (final row in rows) {
         final putnikId = row['putnik_id']?.toString();
         final rowId = row['id']?.toString();
         if (putnikId != null) {
-          racuniCache[putnikId] = Map<String, dynamic>.from(row as Map);
+          racuniCache[putnikId] = Map<String, dynamic>.from(row);
           if (rowId != null) _racuniIdToPutnikId[rowId] = putnikId;
         }
       }
@@ -690,7 +690,7 @@ class V2MasterRealtimeManager {
         // Ako je ovo reconnect (ne prvi subscribe), reload cache da popunimo stale podatke
         if ((_reconnectAttempts[table] ?? 0) > 0) {
           _reconnectAttempts.remove(table);
-          _reloadCacheForTable(table);
+          unawaited(_reloadCacheForTable(table));
         }
         break;
 
@@ -799,9 +799,9 @@ class V2MasterRealtimeManager {
   static String _today() => DateTime.now().toIso8601String().split('T')[0];
 
   /// Popuni cache mapu iz liste redova
-  static void _fillCache(Map<String, Map<String, dynamic>> cache, List rows) {
+  static void _fillCache(Map<String, Map<String, dynamic>> cache, List<Map<String, dynamic>> rows) {
     for (final row in rows) {
-      cache[row['id'].toString()] = Map<String, dynamic>.from(row as Map<String, dynamic>);
+      cache[row['id'].toString()] = Map<String, dynamic>.from(row);
     }
   }
 
@@ -915,7 +915,7 @@ class V2MasterRealtimeManager {
           .eq('putnik_id', putnikId)
           .maybeSingle();
       if (row != null) {
-        racuniCache[putnikId] = Map<String, dynamic>.from(row as Map);
+        racuniCache[putnikId] = Map<String, dynamic>.from(row);
       }
       return row;
     } catch (e) {
