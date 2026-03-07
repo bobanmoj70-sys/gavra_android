@@ -780,7 +780,10 @@ class V2PutnikStreamService {
     final String? vozacIme = naplatioVozac ?? (jePokupljen ? srRow['pokupio']?.toString() : null);
 
     final String? pokupioVozac = srRow['pokupio']?.toString();
-    final String? pokupioVozacId = _vozacIdZaIme(pokupioVozac);
+    final String? pokupioVozacId = srRow['pokupio_vozac_id']?.toString() ?? _vozacIdZaIme(pokupioVozac);
+
+    final String? otkazaoVozac = srRow['otkazao']?.toString();
+    final String? otkazaoVozacId = srRow['otkazao_vozac_id']?.toString() ?? _vozacIdZaIme(otkazaoVozac);
 
     String? nazivAdrese;
     final adresaId = srRow['adresa_id']?.toString();
@@ -799,6 +802,8 @@ class V2PutnikStreamService {
     if (vozacIme != null) map['vozac_ime'] = vozacIme;
     if (pokupioVozac != null) map['pokupioVozac'] = pokupioVozac;
     if (pokupioVozacId != null) map['pokupioVozacId'] = pokupioVozacId;
+    if (otkazaoVozac != null) map['otkazaoVozac'] = otkazaoVozac;
+    if (otkazaoVozacId != null) map['otkazaoVozacId'] = otkazaoVozacId;
     if (naplatioVozac != null) map['naplatioVozac'] = naplatioVozac;
     if (naplatioVozacId != null) map['naplatioVozacId'] = naplatioVozacId;
     if (vremeUplate != null) map['vreme_placanja'] = vremeUplate;
@@ -874,6 +879,7 @@ class V2PutnikStreamService {
         'updated_at': v2NowString(),
         'processed_at': v2NowString(),
         if (driver != null) 'pokupio': driver,
+        if (vozacId != null) 'pokupio_vozac_id': vozacId,
         'pokupljen_datum': targetDatum,
         'datum_akcije': targetDatum,
       };
@@ -1024,6 +1030,7 @@ class V2PutnikStreamService {
       'processed_at': v2NowString(),
       'updated_at': v2NowString(),
       if (driver != null) 'otkazao': driver,
+      if (vozacUuid != null) 'otkazao_vozac_id': vozacUuid,
     };
 
     bool polasciUpdated = false;
@@ -1154,24 +1161,24 @@ class V2PutnikStreamService {
       vozacId = rm.vozaciCache.values.firstWhere((v) => v['ime'] == driver, orElse: () => {})['id'] as String?;
     }
 
+    final placenPayload = {
+      'placen': true,
+      'placen_iznos': iznos.toDouble(),
+      if (vozacId != null) 'placen_vozac_id': vozacId,
+      if (driver != null) 'placen_vozac_ime': driver,
+      'datum_akcije': v2NowString(),
+      'placen_tip': tipPutnika ?? 'dnevni',
+      'placen_at': v2NowString(),
+      'updated_at': v2NowString(),
+    };
+
     bool polasciUpdated = false;
+    String? updatedId;
 
     if (requestId != null && requestId.isNotEmpty) {
-      final res = await supabase
-          .from('v2_polasci')
-          .update({
-            'placen': true,
-            'placen_iznos': iznos.toDouble(),
-            if (vozacId != null) 'placen_vozac_id': vozacId,
-            if (driver != null) 'placen_vozac_ime': driver,
-            'datum_akcije': v2NowString(),
-            'placen_tip': tipPutnika ?? 'dnevni',
-            'placen_at': v2NowString(),
-            'updated_at': v2NowString(),
-          })
-          .eq('id', requestId)
-          .select('id');
+      final res = await supabase.from('v2_polasci').update(placenPayload).eq('id', requestId).select('id');
       polasciUpdated = res.isNotEmpty;
+      if (polasciUpdated) updatedId = requestId;
     } else if (selectedDan != null && selectedVreme != null && grad != null) {
       final gradKey = V2GradAdresaValidator.normalizeGrad(grad);
       final vremeKey = V2GradAdresaValidator.normalizeTime(selectedVreme);
@@ -1187,27 +1194,24 @@ class V2PutnikStreamService {
       final danKey = daniMap[selectedDan.toLowerCase()] ?? selectedDan.toLowerCase();
       final res = await supabase
           .from('v2_polasci')
-          .update({
-            'placen': true,
-            'placen_iznos': iznos.toDouble(),
-            if (vozacId != null) 'placen_vozac_id': vozacId,
-            if (driver != null) 'placen_vozac_ime': driver,
-            'datum_akcije': v2NowString(),
-            'placen_tip': tipPutnika ?? 'dnevni',
-            'placen_at': v2NowString(),
-            'updated_at': v2NowString(),
-          })
+          .update(placenPayload)
           .eq('putnik_id', id.toString())
           .eq('dan', danKey)
           .eq('grad', gradKey)
           .eq('zeljeno_vreme', vremeKey)
           .select('id');
       polasciUpdated = res.isNotEmpty;
+      if (polasciUpdated) updatedId = res.first['id']?.toString();
     }
 
     // Upiši u statistiku SAMO ako je v2_polasci uspješno ažuriran
     if (!polasciUpdated) {
       return;
+    }
+
+    // Optimistički cache patch — UI se osvježava odmah, bez čekanja WebSocket event-a
+    if (updatedId != null) {
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_polasci', updatedId, placenPayload);
     }
 
     await V2StatistikaIstorijaService.dodajUplatu(
