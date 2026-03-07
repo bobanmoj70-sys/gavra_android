@@ -186,9 +186,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           return const Center(child: Text('Greška pri učitavanju stanja'));
         }
         return RefreshIndicator(
-          onRefresh: () async {
-            _loadAll();
-          },
+          onRefresh: () async => _loadAll(),
           color: _accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -343,7 +341,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _detaljiRow(String label, String value, Color valueColor) {
+  static Widget _detaljiRow(String label, String value, Color valueColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -445,12 +443,10 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           );
         }
         return RefreshIndicator(
-          onRefresh: () async {
-            _loadAll();
-          },
+          onRefresh: () async => _loadAll(),
           color: _accent,
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+            padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
             itemCount: lista.length,
             itemBuilder: (context, i) => _buildPunjenjeCard(lista[i]),
           ),
@@ -529,12 +525,10 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           );
         }
         return RefreshIndicator(
-          onRefresh: () async {
-            _loadAll();
-          },
+          onRefresh: () async => _loadAll(),
           color: _accent,
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+            padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
             itemCount: lista.length,
             itemBuilder: (context, i) => _buildTocenjeCard(lista[i]),
           ),
@@ -626,7 +620,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  final litri = double.tryParse(litriCtrl.text);
+                  final litri = double.tryParse(litriCtrl.text.replaceAll(',', '.'));
                   if (litri == null || litri <= 0) {
                     V2AppSnackBar.warning(context, 'Unesi broj litara!');
                     return;
@@ -634,13 +628,13 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                   final ok = await V2GorivoService.addPunjenje(
                     datum: datum,
                     litri: litri,
-                    cenaPoPLitru: double.tryParse(cenaCtrl.text),
+                    cenaPoPLitru: double.tryParse(cenaCtrl.text.replaceAll(',', '.')),
                     napomena: napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text,
                   );
                   if (!context.mounted) return;
                   Navigator.pop(ctx);
-                  if (ok) _loadAll();
                   if (ok) {
+                    _loadAll();
                     V2AppSnackBar.success(context, '✅ Punjenje dodato: $litri L');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
@@ -692,7 +686,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             const SizedBox(height: 12),
             DropdownButtonFormField<V2Vozilo>(
               value: selectedVozilo,
-              decoration: _inputDeco('V2Vozilo *'),
+              decoration: _inputDeco('Vozilo *'),
               items: vozila
                   .map((v) => DropdownMenuItem(
                         value: v,
@@ -721,7 +715,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  final litri = double.tryParse(litriCtrl.text);
+                  final litri = double.tryParse(litriCtrl.text.replaceAll(',', '.'));
                   if (litri == null || litri <= 0) {
                     V2AppSnackBar.warning(context, 'Unesi broj litara!');
                     return;
@@ -735,21 +729,21 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                     datum: datum,
                     voziloId: vozilo.id,
                     litri: litri,
-                    kmVozila: int.tryParse(kmCtrl.text),
+                    kmVozila: int.tryParse(kmCtrl.text.replaceAll(',', '.')),
                     napomena: napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text,
                     cenaPoPLitru: lastCena,
                   );
                   if (!context.mounted) return;
                   Navigator.pop(ctx);
-                  if (ok) _loadAll();
                   if (ok) {
+                    _loadAll();
                     V2AppSnackBar.success(context, '✅ Točenje zabeleženo: $litri L — ${vozilo.registarskiBroj}');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }
                 },
                 icon: const Icon(Icons.local_gas_station),
-                label: const Text('Zabeloži točenje'),
+                label: const Text('Zabeleži točenje'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _accent,
                   foregroundColor: Colors.white,
@@ -800,14 +794,14 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             child: ElevatedButton.icon(
               onPressed: () async {
                 final ok = await V2GorivoService.updateConfig(
-                  kapacitet: double.tryParse(kapacitetCtrl.text),
-                  alarmNivo: double.tryParse(alarmCtrl.text),
-                  pocetnoStanje: double.tryParse(pocetnoCtrl.text),
+                  kapacitet: double.tryParse(kapacitetCtrl.text.replaceAll(',', '.')),
+                  alarmNivo: double.tryParse(alarmCtrl.text.replaceAll(',', '.')),
+                  pocetnoStanje: double.tryParse(pocetnoCtrl.text.replaceAll(',', '.')),
                 );
                 if (!context.mounted) return;
                 Navigator.pop(ctx);
-                if (ok) _reloadStanje();
                 if (ok) {
+                  _reloadStanje();
                   V2AppSnackBar.success(context, '✅ Podešavanja sačuvana');
                 } else {
                   V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
@@ -846,10 +840,10 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
         ],
       ),
     );
-    if (ok == true) onConfirm();
+    if (ok == true && mounted) onConfirm();
   }
 
-  Widget _buildBottomSheet({
+  static Widget _buildBottomSheet({
     required String title,
     required Color accentColor,
     required List<Widget> children,
@@ -922,7 +916,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _inputField(
+  static Widget _inputField(
     TextEditingController ctrl,
     String label, {
     String? suffixText,
@@ -935,7 +929,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  InputDecoration _inputDeco(String label, {String? suffixText}) {
+  static InputDecoration _inputDeco(String label, {String? suffixText}) {
     return InputDecoration(
       labelText: label,
       suffixText: suffixText,
