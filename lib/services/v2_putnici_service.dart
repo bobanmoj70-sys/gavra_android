@@ -23,6 +23,7 @@ class V2RadniciService {
 
   static const String tabela = 'v2_radnici';
 
+  static SupabaseClient get _db => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
   static Map<String, dynamic> get _cache => _rm.radniciCache;
 
@@ -76,7 +77,7 @@ class V2RadniciService {
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
-      final row = await supabase
+      final row = await _db
           .from(tabela)
           .insert({
             'ime': ime,
@@ -106,7 +107,7 @@ class V2RadniciService {
   static Future<bool> update(String id, Map<String, dynamic> updates) async {
     try {
       updates['updated_at'] = DateTime.now().toUtc().toIso8601String();
-      await supabase.from(tabela).update(updates).eq('id', id);
+      await _db.from(tabela).update(updates).eq('id', id);
       _rm.v2PatchCache(tabela, id, updates);
       return true;
     } catch (e) {
@@ -119,7 +120,7 @@ class V2RadniciService {
 
   static Future<bool> delete(String id) async {
     try {
-      await supabase.from(tabela).delete().eq('id', id);
+      await _db.from(tabela).delete().eq('id', id);
       _rm.v2RemoveFromCache(tabela, id);
       return true;
     } catch (e) {
@@ -136,7 +137,7 @@ class V2UceniciService {
 
   static const String tabela = 'v2_ucenici';
 
-  static get _db => supabase;
+  static SupabaseClient get _db => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
   static Map<String, dynamic> get _cache => _rm.uceniciCache;
 
@@ -269,7 +270,7 @@ class V2DnevniService {
 
   static const String tabela = 'v2_dnevni';
 
-  static get _db => supabase;
+  static SupabaseClient get _db => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
   static Map<String, dynamic> get _cache => _rm.dnevniCache;
 
@@ -400,7 +401,7 @@ class V2PosiljkeService {
 
   static const String tabela = 'v2_posiljke';
 
-  static get _db => supabase;
+  static SupabaseClient get _db => supabase;
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
   static Map<String, dynamic> get _cache => _rm.posiljkeCache;
 
