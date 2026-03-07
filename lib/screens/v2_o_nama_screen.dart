@@ -60,6 +60,7 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
 
   Future<void> _sendEmail(String email) async {
     final Uri launchUri = Uri(scheme: 'mailto', path: email);
+    if (!mounted) return;
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else if (mounted) {
@@ -73,6 +74,7 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
     final Uri launchUri = Uri.parse(
       'https://share.here.com/r/44.8983,21.4152,Mihajla+Pupina+74+Bela+Crkva',
     );
+    if (!mounted) return;
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
@@ -220,9 +222,9 @@ class _ONamaScreenState extends State<V2ONamaScreen> {
                 ),
                 child: Column(
                   children: [
-                    Text(
+                    const Text(
                       '🕯️',
-                      style: const TextStyle(fontSize: 32),
+                      style: TextStyle(fontSize: 32),
                     ),
                     const SizedBox(height: 8),
                     Text(
