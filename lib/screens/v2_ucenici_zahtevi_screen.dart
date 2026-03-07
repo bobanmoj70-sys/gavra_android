@@ -70,13 +70,12 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
                           children: [
                             if (brObrada > 0) _summaryBadge('🟡 $brObrada obrada', Colors.amber),
-                            if (brObrada > 0) const SizedBox(width: 8),
                             if (brOdobreno > 0) _summaryBadge('🟢 $brOdobreno odobreno', Colors.green),
-                            if (brOdobreno > 0) const SizedBox(width: 8),
                             if (brOdbijeno > 0) _summaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
                             if (zahtevi.isEmpty)
                               Text('Nema aktivnih zahtjeva',
@@ -128,7 +127,7 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       itemCount: zahtevi.length,
-      itemBuilder: (context, index) => _buildKartica(zahtevi[index]),
+      itemBuilder: (_, index) => _buildKartica(zahtevi[index]),
     );
   }
 
@@ -194,7 +193,7 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
               runSpacing: 2,
               children: [
                 _vremeChip('Željeno', zeljeno, Colors.white70),
-                if (dodeljeno != null && dodeljeno.isNotEmpty) _vremeChip('', dodeljeno, Colors.green),
+                if (dodeljeno != null && dodeljeno.isNotEmpty) _vremeChip('', '→ $dodeljeno', Colors.green),
                 if (alt1 != null && alt1.isNotEmpty) _vremeChip('Alt 1', alt1, Colors.lightBlue),
                 if (alt2 != null && alt2.isNotEmpty) _vremeChip('Alt 2', alt2, Colors.lightBlue),
               ],
