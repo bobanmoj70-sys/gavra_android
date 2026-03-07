@@ -599,7 +599,8 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                                     : Theme.of(context).glassContainer.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isSelected ? Colors.white.withValues(alpha: 0.7) : Theme.of(context).glassBorder,
+                                  color:
+                                      isSelected ? Colors.white.withValues(alpha: 0.7) : Theme.of(context).glassBorder,
                                   width: 1.5,
                                 ),
                               ),
@@ -671,7 +672,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                                 vozacPutnikIme: individualnaEntry != null
                                     ? V2VozacCache.getImeByUuid(individualnaEntry.vozacId)
                                     : null,
-                                onTap: () => _showPutnikAssignDialog(p),
+                                onTap: () async => await _showPutnikAssignDialog(p),
                               );
                             },
                           ),
@@ -697,7 +698,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     final color = vozac != null ? V2VozacCache.getColor(vozac) : Colors.white24;
 
     return GestureDetector(
-      onTap: () => _showTerminAssignDialog(_selectedGrad, _selectedVreme),
+      onTap: () async { await _showTerminAssignDialog(_selectedGrad, _selectedVreme); },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
