@@ -337,7 +337,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          adresa.grad ?? '',
+          adresa.grad == 'BC' ? 'Bela Crkva' : adresa.grad == 'VS' ? 'Vrsac' : adresa.grad ?? '',
           style: TextStyle(color: Colors.grey[400], fontSize: 12),
         ),
         trailing: Row(
@@ -388,7 +388,8 @@ class _AdresaDialogState extends State<_AdresaDialog> {
     _nazivController = TextEditingController(text: widget.initialNaziv);
     _latitudeController = TextEditingController(text: widget.initialLatitude?.toString());
     _longitudeController = TextEditingController(text: widget.initialLongitude?.toString());
-    if (widget.initialGrad != null) {
+    const validniGradovi = ['BC', 'VS'];
+    if (widget.initialGrad != null && validniGradovi.contains(widget.initialGrad)) {
       _selectedGrad = widget.initialGrad!;
     }
   }
@@ -421,7 +422,7 @@ class _AdresaDialogState extends State<_AdresaDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedGrad.isNotEmpty ? _selectedGrad : null,
+              value: const ['BC', 'VS'].contains(_selectedGrad) ? _selectedGrad : null,
               decoration: const InputDecoration(labelText: 'Grad *'),
               items: [('BC', 'Bela Crkva'), ('VS', 'Vrsac')].map((e) {
                 return DropdownMenuItem(value: e.$1, child: Text(e.$2));
