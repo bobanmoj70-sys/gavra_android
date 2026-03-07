@@ -527,7 +527,7 @@ class V2PolasciService {
   /// Dohvata sve naplaćene vožnje za datog vozača na određeni datum.
   ///
   /// Koristi se isključivo u V2DnevnikNaplateScreen.
-  /// Filter: placen=true, placen_vozac_ime=vozacIme, placen_iznos>0, updated_at u opsegu datuma.
+  /// Filter: placen=true, placen_vozac_ime=vozacIme, placen_iznos>0, placen_at u opsegu datuma.
   ///
   /// NAPOMENA: polasciCache drži samo aktuelnu sedmicu — za prošle datume DB upit je neophodan.
   /// Servis je jedino dozvoljeno mjesto za direktan DB upit — screen ne sme da poziva supabase direktno.
@@ -542,8 +542,8 @@ class V2PolasciService {
           .eq('placen', true)
           .eq('placen_vozac_ime', vozacIme)
           .gt('placen_iznos', 0)
-          .gte('updated_at', '${dateStr}T00:00:00')
-          .lte('updated_at', '${dateStr}T23:59:59') as List;
+          .gte('placen_at', '${dateStr}T00:00:00')
+          .lte('placen_at', '${dateStr}T23:59:59') as List;
       return rows.cast<Map<String, dynamic>>();
     } catch (e) {
       debugPrint('[V2PolasciService] getNaplateZaVozacaDan greška: $e');

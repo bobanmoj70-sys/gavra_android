@@ -45,9 +45,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     super.initState();
     _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
     _subscribeRealtime();
-    _vozaciSub = V2MasterRealtimeManager.instance.onCacheChanged
-        .where((t) => t == 'v2_vozaci')
-        .listen((_) {
+    _vozaciSub = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_vozaci').listen((_) {
       if (!mounted) return;
       setState(() {
         _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
@@ -109,10 +107,16 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       vozacIme: _selectedVozacIme!,
       datum: _selectedDate,
     );
-    if (predaja != null && mounted) {
+    if (!mounted) return;
+    if (predaja != null) {
       setState(() {
         _predaoController.text = predaja.predaoIznos > 0 ? predaja.predaoIznos.toStringAsFixed(0) : '';
         _predaoSacuvan = predaja.predaoIznos > 0;
+      });
+    } else {
+      setState(() {
+        _predaoController.clear();
+        _predaoSacuvan = false;
       });
     }
   }
@@ -154,9 +158,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       final putnikId = r['putnik_id']?.toString() ?? '';
       final putnikTabela = r['putnik_tabela']?.toString() ?? '';
       // Ime iz RM cache-a — bez ijednog DB upita
-      final ime = (putnikId.isNotEmpty && putnikTabela.isNotEmpty)
-          ? (rm.getIme(putnikTabela, putnikId) ?? '?')
-          : '?';
+      final ime = (putnikId.isNotEmpty && putnikTabela.isNotEmpty) ? (rm.getIme(putnikTabela, putnikId) ?? '?') : '?';
       sve.add(_buildRow(r, ime));
     }
 
@@ -208,8 +210,8 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
   }
 
-  String _formatDatum() {
-    return '${_selectedDate.day.toString().padLeft(2, '0')}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.year}';
+  static String _formatDatum(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
   void _share() {
@@ -217,7 +219,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
 
     final buffer = StringBuffer();
     buffer.writeln('DNEVNIK NAPLATE — $_selectedVozacIme');
-    buffer.writeln('Datum: ${_formatDatum()}');
+    buffer.writeln('Datum: ${_formatDatum(_selectedDate)}');
     buffer.writeln('─────────────────────────');
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
@@ -268,7 +270,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
             pw.Text('DNEVNIK NAPLATE', style: titleStyle),
             pw.SizedBox(height: 4),
             pw.Text('Vozač: $_selectedVozacIme', style: headerStyle),
-            pw.Text('Datum: ${_formatDatum()}', style: normalStyle),
+            pw.Text('Datum: ${_formatDatum(_selectedDate)}', style: normalStyle),
             pw.SizedBox(height: 14),
             pw.Divider(),
             pw.SizedBox(height: 8),
@@ -351,9 +353,10 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final vozacStr = _selectedVozacIme?.replaceAll(' ', '_') ?? 'vozac';
-      final datumStr = _formatDatum().replaceAll('.', '-');
+      final datumStr = _formatDatum(_selectedDate).replaceAll('.', '-');
       final file = File('${dir.path}/dnevnik_${vozacStr}_$datumStr.pdf');
       await file.writeAsBytes(await doc.save());
+      if (!mounted) return;
       await OpenFilex.open(file.path);
     } catch (e) {
       if (mounted) V2AppSnackBar.error(context, 'Greška pri izvozu PDF: $e');
@@ -448,7 +451,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                             const Icon(Icons.calendar_today, color: Colors.white70, size: 16),
                             const SizedBox(width: 6),
                             Text(
-                              _formatDatum(),
+                              _formatDatum(_selectedDate),
                               style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -485,7 +488,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                             child: Text(
                               _selectedVozacIme == null
                                   ? 'Izaberi vozača i datum'
-                                  : 'Nema naplata za ${_formatDatum()}',
+                                  : 'Nema naplata za ${_formatDatum(_selectedDate)}',
                               style: const TextStyle(color: Colors.white54, fontSize: 16),
                             ),
                           )
