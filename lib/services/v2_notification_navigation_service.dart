@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,7 +35,7 @@ class V2NotificationNavigationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => V2PutnikProfilScreen(
+            builder: (_) => V2PutnikProfilScreen(
               putnikData: response,
             ),
           ),
@@ -52,7 +54,7 @@ class V2NotificationNavigationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const V2VozacScreen(),
+            builder: (_) => const V2VozacScreen(),
           ),
         );
       }
@@ -70,7 +72,7 @@ class V2NotificationNavigationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (context) => const V2PinZahteviScreen(),
+            builder: (_) => const V2PinZahteviScreen(),
           ),
         );
       }
@@ -182,15 +184,15 @@ class V2NotificationNavigationService {
   static void _navigateToAppropriateScreen(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => const V2HomeScreen(),
+        builder: (_) => const V2HomeScreen(),
       ),
     );
   }
 
   static void _showErrorDialog(BuildContext context, String message) {
-    showDialog<void>(
+    unawaited(showDialog<void>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogCtx) {
         return AlertDialog(
           title: const Row(
             children: [
@@ -202,12 +204,12 @@ class V2NotificationNavigationService {
           content: Text(message),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogCtx).pop(),
               child: const Text('U redu'),
             ),
           ],
         );
       },
-    );
+    ));
   }
 }
