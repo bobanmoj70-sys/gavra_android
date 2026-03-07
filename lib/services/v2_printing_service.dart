@@ -29,8 +29,7 @@ class V2PrintingService {
     BuildContext context,
   ) async {
     try {
-      List<V2Putnik> sviPutnici = await V2PutnikStreamService()
-          .streamKombinovaniPutniciFiltered(
+      List<V2Putnik> sviPutnici = await V2PolasciService.streamKombinovaniPutniciFiltered(
             dan: V2DanUtils.odPunogNaziva(selectedDay),
             grad: selectedGrad,
             vreme: selectedVreme,
@@ -41,39 +40,18 @@ class V2PrintingService {
 
       List<V2Putnik> putnici = sviPutnici.where((v2Putnik) {
         final normalizedStatus = V2TextUtils.normalizeText(v2Putnik.status ?? '');
+        final normalizedPutnikGrad = V2TextUtils.normalizeText(v2Putnik.grad);
+        final normalizedGrad = V2TextUtils.normalizeText(selectedGrad);
+        final odgovarajuciGrad =
+            normalizedPutnikGrad.contains(normalizedGrad) || normalizedGrad.contains(normalizedPutnikGrad);
+        final putnikPolazak = v2Putnik.polazak.toString().trim();
+        final odgovarajuciPolazak = V2GradAdresaValidator.normalizeTime(putnikPolazak) ==
+                V2GradAdresaValidator.normalizeTime(selectedVreme.trim()) ||
+            V2GradAdresaValidator.normalizeTime(putnikPolazak)
+                .startsWith(V2GradAdresaValidator.normalizeTime(selectedVreme.trim()));
+        final odgovarajuciDan = v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase());
 
-        if (v2Putnik.isRadnik || v2Putnik.isUcenik) {
-          final normalizedPutnikGrad = V2TextUtils.normalizeText(v2Putnik.grad);
-          final normalizedGrad = V2TextUtils.normalizeText(selectedGrad);
-          final odgovarajuciGrad =
-              normalizedPutnikGrad.contains(normalizedGrad) || normalizedGrad.contains(normalizedPutnikGrad);
-
-          final putnikPolazak = v2Putnik.polazak.toString().trim();
-          final selectedVremeStr = selectedVreme.trim();
-          final odgovarajuciPolazak = V2GradAdresaValidator.normalizeTime(putnikPolazak) ==
-                  V2GradAdresaValidator.normalizeTime(selectedVremeStr) ||
-              V2GradAdresaValidator.normalizeTime(putnikPolazak)
-                  .startsWith(V2GradAdresaValidator.normalizeTime(selectedVremeStr));
-
-          final odgovarajuciDan = v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase());
-
-          final result = odgovarajuciGrad && odgovarajuciPolazak && odgovarajuciDan && normalizedStatus != 'obrisan';
-
-          return result;
-        } else {
-          final normalizedPutnikGrad = V2TextUtils.normalizeText(v2Putnik.grad);
-          final normalizedGrad = V2TextUtils.normalizeText(selectedGrad);
-          final gradMatch =
-              normalizedPutnikGrad.contains(normalizedGrad) || normalizedGrad.contains(normalizedPutnikGrad);
-
-          final odgovara = gradMatch &&
-              V2GradAdresaValidator.normalizeTime(v2Putnik.polazak) ==
-                  V2GradAdresaValidator.normalizeTime(selectedVreme) &&
-              v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase()) &&
-              normalizedStatus != 'obrisan';
-
-          return odgovara;
-        }
+        return odgovarajuciGrad && odgovarajuciPolazak && odgovarajuciDan && normalizedStatus != 'obrisan';
       }).toList();
 
       if (putnici.isEmpty) {
@@ -86,22 +64,19 @@ class V2PrintingService {
         return;
       }
 
-      // Fonts loaded automatically via getters
-
-      final pdf = await _createPutniksPDF(
+      final pdfBytes = await _createPutniksPDF(
         putnici,
         selectedDay,
         selectedVreme,
         selectedGrad,
       );
 
-      final bytes = pdf;
       final tempDir = await getTemporaryDirectory();
       final fileName =
           'Spisak_putnika_${selectedDay}_${selectedVreme}_${selectedGrad}_${DateFormat('dd_MM_yyyy').format(DateTime.now())}.pdf'
               .replaceAll(' ', '_');
       final file = File('${tempDir.path}/$fileName');
-      await file.writeAsBytes(bytes, flush: true);
+      await file.writeAsBytes(pdfBytes, flush: true);
 
       await OpenFilex.open(file.path);
     } catch (e) {
@@ -137,7 +112,7 @@ class V2PrintingService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
         theme: theme,
-        build: (pw.Context context) {
+        build: (pw.Context pdfCtx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
