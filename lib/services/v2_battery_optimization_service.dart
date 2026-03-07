@@ -83,26 +83,25 @@ class V2BatteryOptimizationService {
 
   /// Open battery optimization settings
   /// Tries manufacturer-specific settings first, then falls back to Android default
-  static Future<void> openBatterySettings() async {
+  /// [manufacturer] je opcionalan — ako već imaš vrijednost, proslijedi je da izbjegneš dupli DeviceInfoPlugin poziv.
+  static Future<void> openBatterySettings({String? manufacturer}) async {
     if (!Platform.isAndroid) return;
 
-    final manufacturer = await getManufacturer();
+    final mfr = manufacturer ?? await getManufacturer();
 
     try {
       // Try manufacturer-specific intents first
-      if (manufacturer?.contains('huawei') == true || manufacturer?.contains('honor') == true) {
+      if (mfr?.contains('huawei') == true || mfr?.contains('honor') == true) {
         await _openHuaweiBatterySettings();
-      } else if (manufacturer?.contains('xiaomi') == true ||
-          manufacturer?.contains('redmi') == true ||
-          manufacturer?.contains('poco') == true) {
+      } else if (mfr?.contains('xiaomi') == true || mfr?.contains('redmi') == true || mfr?.contains('poco') == true) {
         await _openXiaomiBatterySettings();
-      } else if (manufacturer?.contains('oppo') == true || manufacturer?.contains('realme') == true) {
+      } else if (mfr?.contains('oppo') == true || mfr?.contains('realme') == true) {
         await _openOppoBatterySettings();
-      } else if (manufacturer?.contains('vivo') == true) {
+      } else if (mfr?.contains('vivo') == true) {
         await _openVivoBatterySettings();
-      } else if (manufacturer?.contains('oneplus') == true) {
+      } else if (mfr?.contains('oneplus') == true) {
         await _openOnePlusBatterySettings();
-      } else if (manufacturer?.contains('samsung') == true) {
+      } else if (mfr?.contains('samsung') == true) {
         await _openSamsungBatterySettings();
       } else {
         await _openDefaultBatterySettings();
@@ -123,8 +122,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     // 2. Try Power Intensity (newer EMUI)
     try {
@@ -135,8 +133,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     // 3. Try Protect Activity (Legacy)
     try {
@@ -147,8 +144,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     // Fallback to general battery settings
     await _openDefaultBatterySettings();
@@ -163,8 +159,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     // Try Security app
     try {
@@ -175,8 +170,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     await _openDefaultBatterySettings();
   }
@@ -190,8 +184,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     await _openDefaultBatterySettings();
   }
@@ -205,8 +198,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     await _openDefaultBatterySettings();
   }
@@ -220,8 +212,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     await _openDefaultBatterySettings();
   }
@@ -235,8 +226,7 @@ class V2BatteryOptimizationService {
       );
       await intent.launch();
       return;
-    } catch (_) {
-    }
+    } catch (_) {}
 
     await _openDefaultBatterySettings();
   }
@@ -247,8 +237,7 @@ class V2BatteryOptimizationService {
         action: 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
       );
       await intent.launch();
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   /// Zatraži sistemski popup za isključenje battery optimization
@@ -372,7 +361,7 @@ class V2BatteryOptimizationService {
             onPressed: () async {
               await markShown();
               if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
-              await openBatterySettings();
+              await openBatterySettings(manufacturer: manufacturer);
             },
             icon: const Icon(Icons.settings, size: 18),
             label: const Text('Otvori podešavanja'),
@@ -395,9 +384,9 @@ class V2BatteryOptimizationService {
           Container(
             width: 22,
             height: 22,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.blue,
-              borderRadius: BorderRadius.circular(11),
+              shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
