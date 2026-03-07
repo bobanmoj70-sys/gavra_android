@@ -19,7 +19,8 @@ class V2Putnik {
     this.vremePokupljenja,
     this.vremePlacanja,
     this.placeno,
-    this.cena, // STANDARDIZOVANO: cena umesto iznosPlacanja
+    this.cena,
+    this.iznosUplate,
     this.naplatioVozac,
     this.pokupioVozac,
     this.dodeljenVozac,
@@ -92,8 +93,9 @@ class V2Putnik {
   final DateTime? vremePokupljenja; // ? DateTime
   final DateTime? vremePlacanja; // ? DateTime
   final bool? placeno;
-  final double? cena; // STANDARDIZOVANO: cena umesto iznosPlacanja
-  double? get iznosPlacanja => cena; // backward compatibility
+  final double? cena; // standardna cena iz profila (za dialog i prikaz mjesta)
+  final double? iznosUplate; // stvarni iznos placanja iz v2_polasci.placen_iznos
+  double? get iznosPlacanja => iznosUplate;
   final String? naplatioVozac;
   final String? pokupioVozac;
   final String? dodeljenVozac;
@@ -213,10 +215,8 @@ class V2Putnik {
       pokupioVozacId: req['pokupioVozacId'] as String?,
       naplatioVozacId: req['naplatioVozacId'] as String?,
       otkazaoVozacId: req['otkazaoVozacId'] as String?,
-      // Za radnike/učenike: cena je cena_po_danu iz profila (ne iznos zadnje uplate)
-      // Za dnevne/pošiljke: cena je cena po vožnji iz profila
-      // req['cena'] = iznos zadnje uplate — NE koristiti kao cenu putnika
       cena: isDnevni ? (p['cena'])?.toDouble() : (p['cena_po_danu'])?.toDouble(),
+      iznosUplate: (req['placen_iznos'] as num?)?.toDouble(),
       vremePlacanja: req['vreme_placanja'] != null ? DateTime.parse(req['vreme_placanja']).toLocal() : null,
       vremeOtkazivanja: req['vreme_otkazivanja'] != null ? DateTime.parse(req['vreme_otkazivanja']).toLocal() : null,
       obrisan: false,
@@ -342,6 +342,7 @@ class V2Putnik {
     DateTime? vremePlacanja,
     bool? placeno,
     double? cena,
+    double? iznosUplate,
     String? naplatioVozac,
     String? pokupioVozac,
     String? dodeljenVozac,
@@ -375,6 +376,7 @@ class V2Putnik {
       vremePlacanja: vremePlacanja ?? this.vremePlacanja,
       placeno: placeno ?? this.placeno,
       cena: cena ?? this.cena,
+      iznosUplate: iznosUplate ?? this.iznosUplate,
       naplatioVozac: naplatioVozac ?? this.naplatioVozac,
       pokupioVozac: pokupioVozac ?? this.pokupioVozac,
       dodeljenVozac: dodeljenVozac ?? this.dodeljenVozac,

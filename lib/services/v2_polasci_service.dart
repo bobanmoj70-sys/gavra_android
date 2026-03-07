@@ -796,8 +796,6 @@ class V2PutnikStreamService {
     map['pokupljen_iz_loga'] = jePokupljen;
     map['otkazano_iz_loga'] = jeOtkazan;
     map['placeno_iz_loga'] = jePlacen;
-    if (iznos != null) map['cena'] = iznos;
-    if (iznos != null) map['iznos_placanja'] = iznos;
     if (vozacId != null) map['vozac_id'] = vozacId;
     if (vozacIme != null) map['vozac_ime'] = vozacIme;
     if (pokupioVozac != null) map['pokupioVozac'] = pokupioVozac;

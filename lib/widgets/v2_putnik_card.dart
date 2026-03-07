@@ -12,7 +12,6 @@ import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import '../services/v2_haptic_service.dart';
 import '../services/v2_permission_service.dart';
 import '../services/v2_polasci_service.dart';
-import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_unified_geocoding_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -100,29 +99,16 @@ class _PutnikCardState extends State<V2PutnikCard> {
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')} ${_formatVreme(dt)}';
   }
 
-  // Univerzalna metoda za placanje — koristi V2PlacanjeDialogHelper
+  // Placanje — prikaži dialog, sačuvaj, osveži karticu
   Future<void> _handlePayment() async {
-    final vozacUuid = V2VozacCache.getUuidByIme(widget.currentDriver);
-    if (vozacUuid == null) {
-      if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: Vozač nije definisan u sistemu');
-      }
-      return;
-    }
+    if (_globalProcessingLock || _isProcessing) return;
 
     if (_putnik.id == null || _putnik.id.toString().isEmpty) {
-      if (mounted) {
-        V2AppSnackBar.error(context, 'V2Putnik nema valjan ID — ne može se naplatiti');
-      }
+      if (mounted) V2AppSnackBar.error(context, 'V2Putnik nema valjan ID — ne može se naplatiti');
       return;
     }
 
-    // Cena: effectivePrice * brojMesta (0 = slobodan unos)
-    final cena = _putnik.effectivePrice;
-    final int brMesta = _putnik.brojMesta;
-
-    // Tabela iz tipPutnika
-    final tabela = const {
+    final putnikTabela = const {
           'radnik': 'v2_radnici',
           'ucenik': 'v2_ucenici',
           'dnevni': 'v2_dnevni',
@@ -134,120 +120,50 @@ class _PutnikCardState extends State<V2PutnikCard> {
       context: context,
       putnikId: _putnik.id.toString(),
       putnikIme: _putnik.ime,
-      putnikTabela: tabela,
-      cena: cena,
-      brojMesta: brMesta,
+      putnikTabela: putnikTabela,
+      cena: _putnik.effectivePrice,
+      brojMesta: _putnik.brojMesta,
     );
 
     if (rezultat == null || !mounted) return;
 
-    await _executePayment(
-      rezultat.iznos,
-      mesec: rezultat.mesec,
-      isRegistrovani: _putnik.isRadnik || _putnik.isUcenik,
-    );
-  }
-
-  // Izvr?avanje placanja - zajednicko za oba tipa
-  Future<void> _executePayment(
-    double iznos, {
-    required bool isRegistrovani,
-    String? mesec,
-  }) async {
-    // GLOBALNI LOCK - ako BILO KOJA kartica procesira, ignoriši
-    if (_globalProcessingLock) return;
-    // ZAŠTITA OD DUPLOG KLIKA - ako vec procesiramo, ignoriši
-    if (_isProcessing) return;
-
     try {
       _globalProcessingLock = true;
-      if (mounted) {
-        setState(() {
-          _isProcessing = true;
-        });
-      }
-
-      // KRATKA PAUZA - samo da se UI osveži
+      setState(() => _isProcessing = true);
       await Future<void>.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
 
-      if (!mounted) {
-        _globalProcessingLock = false;
-        return;
-      }
+      final uspeh = await V2PlacanjeDialogHelper.sacuvajPlacanje(
+        context: context,
+        putnikId: _putnik.id.toString(),
+        putnikIme: _putnik.ime,
+        putnikTabela: putnikTabela,
+        iznos: rezultat.iznos,
+        mesec: rezultat.mesec,
+        requestId: _putnik.requestId,
+        dan: _putnik.dan.isNotEmpty ? _putnik.dan : null,
+        grad: _putnik.grad.isNotEmpty ? _putnik.grad : null,
+        vreme: _putnik.polazak != '---' ? _putnik.polazak : null,
+      );
 
-      if (isRegistrovani && mesec != null) {
-        // Validacija da V2Putnik ime nije prazno
-        if (_putnik.ime.trim().isEmpty) {
-          throw Exception('Ime putnika je prazno - ne može se pronaci u bazi');
-        }
+      if (!uspeh) return;
 
-        // Za radnike/učenike koristi funkciju za mesecno placanje
-        final existingId = _putnik.id?.toString() ?? '';
-        final existingMap =
-            existingId.isNotEmpty ? await V2StatistikaIstorijaService.v2FindPutnikById(existingId) : null;
-        if (existingMap != null) {
-          final tabela = existingMap['_tabela'] as String? ?? 'v2_radnici';
-          // Koristi static funkciju za cuvanje placanja
-          await _sacuvajPlacanjeStatic(
-            putnikId: existingId,
-            putnikIme: _putnik.ime,
-            putnikTabela: tabela,
-            iznos: iznos,
-            mesec: mesec,
-            vozacIme: widget.currentDriver,
-            requestId: _putnik.requestId,
-            dan: _putnik.dan.isNotEmpty ? _putnik.dan : null,
-            grad: _putnik.grad.isNotEmpty ? _putnik.grad : null,
-            vreme: _putnik.polazak != '---' ? _putnik.polazak : null,
-          );
-        } else {
-          throw Exception('V2Putnik "${_putnik.ime}" nije pronaden u bazi');
-        }
-      } else {
-        // Za obicne putnike koristi postojeci servis
-        if (_putnik.id == null) {
-          throw Exception('V2Putnik nema valjan ID - ne može se naplatiti');
-        }
-
-        await V2PolasciService.v2OznaciPlaceno(
-          putnikId: _putnik.id!,
-          iznos: iznos,
-          vozacIme: widget.currentDriver,
-          grad: _putnik.grad,
-          selectedVreme: _putnik.polazak,
-          selectedDan: _putnik.dan,
-          requestId: _putnik.requestId,
-          tipPutnika: _putnik.tipPutnika,
-          putnikIme: _putnik.ime,
-          putnikTabela: const {
-            'dnevni': 'v2_dnevni',
-            'radnik': 'v2_radnici',
-            'ucenik': 'v2_ucenici',
-            'posiljka': 'v2_posiljke',
-          }[_putnik.tipPutnika],
-        );
-      }
-
-      // OSVEŽI STANJE PUTNIKA - postavi placeno na true + vreme placanja
       if (mounted) {
         setState(() {
-          _putnik = _putnik.copyWith(placeno: true, vremePlacanja: DateTime.now());
+          _putnik = _putnik.copyWith(
+            placeno: true,
+            iznosUplate: rezultat.iznos.toDouble(),
+            vremePlacanja: DateTime.now(),
+            naplatioVozac: widget.currentDriver,
+            naplatioVozacId: V2VozacCache.getUuidByIme(widget.currentDriver),
+          );
         });
-
-        V2AppSnackBar.payment(context, 'Placanje uspešno evidentirano: $iznos RSD');
       }
     } catch (e) {
-      if (mounted) {
-        V2AppSnackBar.error(context, 'Greška pri placanju: $e');
-      }
+      if (mounted) V2AppSnackBar.error(context, 'Greška pri placanju: $e');
     } finally {
-      // OBAVEZNO OSLOBODI LOCK
       _globalProcessingLock = false;
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -377,7 +293,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
     if (_globalProcessingLock || _isProcessing) return;
 
     _globalProcessingLock = true;
-    _isProcessing = true;
+    if (mounted) setState(() => _isProcessing = true);
 
     try {
       // Haptic feedback
@@ -1022,26 +938,21 @@ class _PutnikCardState extends State<V2PutnikCard> {
                           'Pokupljen: ${_putnik.vremePokupljenja!.hour.toString().padLeft(2, '0')}:${_putnik.vremePokupljenja!.minute.toString().padLeft(2, '0')}',
                           style: TextStyle(
                             fontSize: 13,
-                            color: V2VozacCache.getColorByUuid(_putnik.pokupioVozacId) != Colors.grey
-                                ? V2VozacCache.getColorByUuid(_putnik.pokupioVozacId)
-                                : V2VozacCache.getColor(_putnik.pokupioVozac ?? _putnik.vozac),
+                            color: V2VozacCache.getColor(_putnik.pokupioVozacId ?? _putnik.pokupioVozac),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       // Placeno info
                       if (_putnik.placeno == true && _putnik.iznosPlacanja != null) ...[
                         if (_putnik.vremePokupljenja != null) const SizedBox(width: 12),
-                        if (_putnik.naplatioVozac != null)
-                          Text(
-                            'Placeno: ${_putnik.iznosPlacanja!.toStringAsFixed(0)}${_putnik.vremePlacanja != null ? ' ${_formatDatumVreme(_putnik.vremePlacanja!)}' : ''}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: V2VozacCache.getColorByUuid(_putnik.naplatioVozacId) != Colors.grey
-                                  ? V2VozacCache.getColorByUuid(_putnik.naplatioVozacId)
-                                  : V2VozacCache.getColor(_putnik.naplatioVozac),
-                              fontWeight: FontWeight.w500,
-                            ),
+                        Text(
+                          'Placeno: ${_putnik.iznosPlacanja!.toStringAsFixed(0)}${_putnik.vremePlacanja != null ? ' ${_formatDatumVreme(_putnik.vremePlacanja!)}' : ''}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: V2VozacCache.getColor(_putnik.naplatioVozacId ?? _putnik.naplatioVozac),
+                            fontWeight: FontWeight.w500,
                           ),
+                        ),
                       ],
                       // Otkazano info
                       if (_putnik.jeOtkazan && _putnik.vremeOtkazivanja != null) ...[
@@ -1050,11 +961,9 @@ class _PutnikCardState extends State<V2PutnikCard> {
                           '${(_putnik.otkazaoVozac == null || _putnik.otkazaoVozac == 'V2Putnik') ? 'V2Putnik otkazao' : 'Otkazao'}: ${_formatOtkazivanje(_putnik.vremeOtkazivanja!)}',
                           style: TextStyle(
                             fontSize: 13,
-                            color: (_putnik.otkazaoVozac == null || _putnik.otkazaoVozac == 'V2Putnik')
+                            color: _putnik.otkazaoVozac == null
                                 ? Colors.red.shade900
-                                : (V2VozacCache.getColorByUuid(_putnik.otkazaoVozacId) != Colors.grey
-                                    ? V2VozacCache.getColorByUuid(_putnik.otkazaoVozacId)
-                                    : V2VozacCache.getColor(_putnik.otkazaoVozac)),
+                                : V2VozacCache.getColor(_putnik.otkazaoVozacId ?? _putnik.otkazaoVozac),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1085,77 +994,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
         ), // kraj Padding
       ), // kraj AnimatedContainer
     ); // kraj GestureDetector
-  }
-
-  // CUVANJE PLACANJA
-  Future<void> _sacuvajPlacanjeStatic({
-    required String putnikId,
-    required String putnikIme,
-    required String putnikTabela,
-    required double iznos,
-    required String mesec,
-    required String vozacIme,
-    String? requestId,
-    String? dan,
-    String? grad,
-    String? vreme,
-  }) async {
-    try {
-      // Parsiraj izabrani mesec (format: "Septembar 2025")
-      final parts = mesec.split(' ');
-      if (parts.length != 2) {
-        throw Exception('Neispravno format meseca: $mesec');
-      }
-
-      final monthName = parts[0];
-      final year = int.tryParse(parts[1]);
-      if (year == null) {
-        throw Exception('Neispravna godina: ${parts[1]}');
-      }
-
-      const _monthMap = {
-        'Januar': 1, 'Februar': 2, 'Mart': 3, 'April': 4, 'Maj': 5, 'Jun': 6,
-        'Jul': 7, 'Avgust': 8, 'Septembar': 9, 'Oktobar': 10, 'Novembar': 11, 'Decembar': 12,
-      };
-      final monthNumber = _monthMap[monthName] ?? 0;
-      if (monthNumber == 0) {
-        throw Exception('Neispravno ime meseca: $monthName');
-      }
-
-      // Kreiraj DateTime za pocetak izabranog meseca
-      final pocetakMeseca = DateTime(year, monthNumber);
-      final krajMeseca = DateTime(year, monthNumber + 1, 0, 23, 59, 59);
-
-      // FIX: Prosleduj IME vozaca, ne UUID - konverzija se radi u servisu
-      // datum = danas (kad je uplata izvršena), placeniMesec/placenaGodina = izabrani mesec
-      final uspeh = await V2StatistikaIstorijaService.upisPlacanjaULog(
-        putnikId: putnikId,
-        putnikIme: putnikIme,
-        putnikTabela: putnikTabela,
-        iznos: iznos,
-        vozacIme: vozacIme,
-        datum: DateTime.now(),
-        placeniMesec: pocetakMeseca.month,
-        placenaGodina: pocetakMeseca.year,
-        requestId: requestId,
-        dan: dan,
-        grad: grad,
-        vreme: vreme,
-      );
-
-      if (uspeh) {
-        if (mounted) {
-          V2AppSnackBar.payment(context, '💰 Placanje od ${iznos.toStringAsFixed(0)} RSD za $mesec je sacuvano');
-        }
-      } else {
-        // FIX: Baci exception da _executePayment ne prikaže uspešnu poruku
-        throw Exception('Greška pri cuvanju placanja u bazu');
-      }
-    } catch (e) {
-      if (mounted) {
-        V2AppSnackBar.error(context, '❌ Greška: $e');
-      }
-    }
   }
 
   // ADMIN POPUP MENI - jedinstven pristup svim admin funkcijama
@@ -1304,9 +1142,14 @@ class _PutnikCardState extends State<V2PutnikCard> {
         // Ažuriraj lokalni _putnik sa novim statusom
         if (mounted) {
           setState(() {
-            _putnik = _putnik.copyWith(status: 'otkazano');
+            _putnik = _putnik.copyWith(
+              status: 'otkazano',
+              vremeOtkazivanja: DateTime.now(),
+              otkazaoVozac: widget.currentDriver,
+              otkazaoVozacId: V2VozacCache.getUuidByIme(widget.currentDriver),
+            );
           });
-          V2AppSnackBar.error(context, 'V2Putnik oznacen kao otkazan.');
+          V2AppSnackBar.error(context, 'Otkazano: ${_putnik.ime}');
           widget.onChanged?.call();
         }
       } catch (e) {
