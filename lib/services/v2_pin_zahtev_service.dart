@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
+import '../models/v2_pin_zahtev.dart';
 import '../models/v2_putnik.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_realtime_notification_service.dart';
@@ -23,7 +24,7 @@ class V2PinZahtevService {
           .from('v2_pin_zahtevi')
           .select('id')
           .eq('putnik_id', putnikId)
-          .eq('status', 'ceka')
+          .eq('status', V2PinZahtev.statusCeka)
           .maybeSingle();
 
       if (existing != null) {
@@ -34,7 +35,7 @@ class V2PinZahtevService {
         'putnik_id': putnikId,
         'email': email,
         'telefon': telefon,
-        'status': 'ceka',
+        'status': V2PinZahtev.statusCeka,
         if (putnikTabela != null) 'putnik_tabela': putnikTabela,
       });
 
@@ -62,7 +63,7 @@ class V2PinZahtevService {
   /// Izgradi enriched listu iz pinCache
   static List<Map<String, dynamic>> _buildEnrichedList() {
     final rm = V2MasterRealtimeManager.instance;
-    final zahtevi = rm.pinCache.values.where((z) => z['status'] == 'ceka').toList()
+    final zahtevi = rm.pinCache.values.where((z) => z['status'] == V2PinZahtev.statusCeka).toList()
       ..sort((a, b) {
         final ca = a['created_at'] as String? ?? '';
         final cb = b['created_at'] as String? ?? '';
@@ -82,7 +83,7 @@ class V2PinZahtevService {
   }
 
   static int brojZahtevaKojiCekaju() {
-    return V2MasterRealtimeManager.instance.pinCache.values.where((z) => z['status'] == 'ceka').length;
+    return V2MasterRealtimeManager.instance.pinCache.values.where((z) => z['status'] == V2PinZahtev.statusCeka).length;
   }
 
   static Future<bool> odobriZahtev({
@@ -104,11 +105,11 @@ class V2PinZahtevService {
       }
 
       await supabase.from('v2_pin_zahtevi').update({
-        'status': 'odobren',
+        'status': V2PinZahtev.statusOdobren,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
       // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
-      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': 'odobren'});
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': V2PinZahtev.statusOdobren});
 
       // Pošalji push notifikaciju putniku da je PIN odobren
       unawaited(V2RealtimeNotificationService.sendNotificationToPutnik(
@@ -128,11 +129,11 @@ class V2PinZahtevService {
   static Future<bool> odbijZahtev(String zahtevId) async {
     try {
       await supabase.from('v2_pin_zahtevi').update({
-        'status': 'odbijen',
+        'status': V2PinZahtev.statusOdbijen,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', zahtevId);
       // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
-      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': 'odbijen'});
+      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': V2PinZahtev.statusOdbijen});
 
       return true;
     } catch (e) {
@@ -148,14 +149,14 @@ class V2PinZahtevService {
 
   static bool imaZahtevKojiCeka(String putnikId) {
     return V2MasterRealtimeManager.instance.pinCache.values
-        .any((z) => z['putnik_id'] == putnikId && z['status'] == 'ceka');
+        .any((z) => z['putnik_id'] == putnikId && z['status'] == V2PinZahtev.statusCeka);
   }
 
   /// Async verzija — provjerava cache, a ako je prazan pada na DB.
   /// Koristi se pri loginovanju da ne prikaže dialog ako je zahtev već poslat.
   static Future<bool> imaZahtevKojiCekuAsync(String putnikId) async {
     final izCachea = V2MasterRealtimeManager.instance.pinCache.values
-        .any((z) => z['putnik_id'] == putnikId && z['status'] == 'ceka');
+        .any((z) => z['putnik_id'] == putnikId && z['status'] == V2PinZahtev.statusCeka);
     if (izCachea) return true;
 
     try {
@@ -163,7 +164,7 @@ class V2PinZahtevService {
           .from('v2_pin_zahtevi')
           .select('id')
           .eq('putnik_id', putnikId)
-          .eq('status', 'ceka')
+          .eq('status', V2PinZahtev.statusCeka)
           .maybeSingle();
       return row != null;
     } catch (e) {
@@ -182,7 +183,7 @@ class V2PinZahtevService {
       await supabase.from('v2_pin_zahtevi').insert({
         'putnik_id': putnikId,
         'putnik_tabela': putnikTabela,
-        'status': 'direktna_izmena',
+        'status': V2PinZahtev.statusDirektnaIzmena,
         'email': null,
         'telefon': null,
       });
