@@ -372,7 +372,7 @@ class V2FinansijeService {
 
     // Debounce 1s — finansije se ne moraju ažurirati svaki event (radi 4 DB upita)
     final sub =
-        rm.onCacheChanged.where((t) => t == 'v2_statistika_istorija' || t == 'v2_finansije_troskovi').listen((_) {
+        rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_finansije_troskovi').listen((_) {
       debounce?.cancel();
       debounce = Timer(const Duration(seconds: 1), emit);
     });
@@ -544,7 +544,11 @@ class V2FinansijskiIzvestaj {
 
   /// Formatiran datum nedelje
   String get nedeljaPeriod {
-    return '${startNedelja.day}.${startNedelja.month}. - ${endNedelja.day}.${endNedelja.month}.';
+    final sd = startNedelja.day.toString().padLeft(2, '0');
+    final sm = startNedelja.month.toString().padLeft(2, '0');
+    final ed = endNedelja.day.toString().padLeft(2, '0');
+    final em = endNedelja.month.toString().padLeft(2, '0');
+    return '$sd.$sm. - $ed.$em.';
   }
 
   @override

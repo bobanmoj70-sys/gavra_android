@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -17,11 +19,24 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
 
   late Stream<V2FinansijskiIzvestaj> _streamIzvestaj;
+  StreamSubscription<V2FinansijskiIzvestaj>? _streamSub;
 
   @override
   void initState() {
     super.initState();
+    _prijaviStream();
+  }
+
+  void _prijaviStream() {
+    _streamSub?.cancel();
     _streamIzvestaj = V2FinansijeService.streamIzvestaj();
+    _streamSub = _streamIzvestaj.listen((_) {});
+  }
+
+  @override
+  void dispose() {
+    _streamSub?.cancel();
+    super.dispose();
   }
 
   String _formatIznos(double iznos) {
@@ -62,7 +77,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                       key: _refreshKey,
                       onRefresh: () async {
                         setState(() {
-                          _streamIzvestaj = V2FinansijeService.streamIzvestaj();
+                          _prijaviStream();
                         });
                       },
                       child: SingleChildScrollView(
