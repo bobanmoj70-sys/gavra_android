@@ -455,31 +455,31 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       ),
     );
 
-    if (confirm == true) {
-      final putnikId = _putnikData['id']?.toString();
-      if (putnikId != null) {
-        try {
-          await V2StatistikaIstorijaService.logGeneric(
-            tip: 'logout',
-            putnikId: putnikId,
-            detalji: 'Putnik se odjavio',
-          );
-        } catch (e) {}
-        // Audit log — putnik se odjavio
-        V2AuditLogService.log(
-          tip: 'putnik_logout',
-          aktorId: putnikId,
-          aktorTip: 'putnik',
+    if (confirm != true || !mounted) return;
+    final putnikId = _putnikData['id']?.toString();
+    if (putnikId != null) {
+      try {
+        await V2StatistikaIstorijaService.logGeneric(
+          tip: 'logout',
           putnikId: putnikId,
           detalji: 'Putnik se odjavio',
         );
-        try {
-          await V2PushTokenService.clearToken(putnikId: putnikId);
-        } catch (e) {}
-      }
-      if (mounted) {
-        await V2AuthManager.logout(context);
-      }
+      } catch (e) {}
+      if (!mounted) return;
+      // Audit log — putnik se odjavio
+      V2AuditLogService.log(
+        tip: 'putnik_logout',
+        aktorId: putnikId,
+        aktorTip: 'putnik',
+        putnikId: putnikId,
+        detalji: 'Putnik se odjavio',
+      );
+      try {
+        await V2PushTokenService.clearToken(putnikId: putnikId);
+      } catch (e) {}
+    }
+    if (mounted) {
+      await V2AuthManager.logout(context);
     }
   }
 
@@ -512,7 +512,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
             style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
           trailing: const Icon(Icons.chevron_right, color: Colors.white54),
-          onTap: () => _pokaziOdsustvoDialog(jeNaOdsustvu),
+          onTap: () async { await _pokaziOdsustvoDialog(jeNaOdsustvu); },
         ),
       ),
     );
@@ -545,9 +545,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         ),
       );
 
-      if (confirm == true) {
-        await _postaviStatus('aktivan');
-      }
+      if (confirm != true || !mounted) return;
+      await _postaviStatus('aktivan');
     } else {
       // Odabir tipa odsustva
       final odabraniStatus = await showDialog<String>(
@@ -599,9 +598,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         ),
       );
 
-      if (odabraniStatus != null) {
-        await _postaviStatus(odabraniStatus);
-      }
+      if (odabraniStatus == null || !mounted) return;
+      await _postaviStatus(odabraniStatus);
     }
   }
 
@@ -621,6 +619,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       // Sačuvaj stari status pre setState (za audit log)
       final stariStatus = _putnikData['status']?.toString();
 
+      if (!mounted) return;
       setState(() {
         _putnikData['status'] = noviStatus;
       });
@@ -1302,8 +1301,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
 
     // MERGE v2_polasci redova po danima
-    final daniNedelje = ['pon', 'uto', 'sre', 'cet', 'pet'];
-
     // Sortiramo: aktivni (odobreno/obrada) ZADNJI da pregaze otkazane
     // Redosljed: otkazano/bez_polaska/odbijeno → obrada → odobreno → pokupljen
     final putnikId = _putnikData['id']?.toString();
@@ -1325,7 +1322,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     for (final req in sortedRequests) {
       try {
         final danKratica = (req['dan'] as String?)?.toLowerCase();
-        if (danKratica == null || !daniNedelje.contains(danKratica)) continue;
+        if (danKratica == null || !const ['pon', 'uto', 'sre', 'cet', 'pet'].contains(danKratica)) continue;
 
         final gradRaw = (req['grad'] ?? '').toString().toLowerCase();
         // Normalizuj grad na 'bc' ili 'vs'
@@ -1430,8 +1427,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         dayName: dan,
                         tipPutnika: tip.toString(),
                         tipPrikazivanja: tipPrikazivanja,
-                        onChanged: (newValue) =>
-                            _updatePolazak(dan, 'bc', newValue, trenutnoVreme: bcDisplayVreme?.toString()),
+                        onChanged: (newValue) async =>
+                            await _updatePolazak(dan, 'bc', newValue, trenutnoVreme: bcDisplayVreme?.toString()),
                       ),
                     ),
                   ),
@@ -1444,8 +1441,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         dayName: dan,
                         tipPutnika: tip.toString(),
                         tipPrikazivanja: tipPrikazivanja,
-                        onChanged: (newValue) =>
-                            _updatePolazak(dan, 'vs', newValue, trenutnoVreme: vsDisplayVreme?.toString()),
+                        onChanged: (newValue) async =>
+                            await _updatePolazak(dan, 'vs', newValue, trenutnoVreme: vsDisplayVreme?.toString()),
                       ),
                     ),
                   ),
