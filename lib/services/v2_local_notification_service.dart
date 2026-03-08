@@ -272,7 +272,7 @@ class V2LocalNotificationService {
         }
       }
 
-      if (dedupeKey.isEmpty) dedupeKey = '$title|$body|${payload ?? ''}';
+      if (dedupeKey.isEmpty) dedupeKey = '$title|$body';
 
       // MUTEX LOCK - Sprečava race condition kada foreground i background handleri rade istovremeno
       if (_processingLocks[dedupeKey] == true) {
@@ -475,8 +475,6 @@ class V2LocalNotificationService {
           V2AppSnackBar.success(context, message);
         } else if (bgColor == Colors.red) {
           V2AppSnackBar.error(context, message);
-        } else if (bgColor == Colors.orange) {
-          V2AppSnackBar.warning(context, message);
         } else {
           V2AppSnackBar.info(context, message);
         }
@@ -500,8 +498,7 @@ class V2LocalNotificationService {
   ) async {
     try {
       final danas = DateTime.now();
-      const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-      final danKratica = dani[danas.weekday - 1];
+      final danKratica = _dani[danas.weekday - 1];
 
       // Traži putnika po imenu iz cache-a — 0 DB querija
       final rm = V2MasterRealtimeManager.instance;
@@ -537,25 +534,11 @@ class V2LocalNotificationService {
     }
   }
 
+  static const _dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+
   static String _getDanNedelje(int weekday) {
-    switch (weekday) {
-      case 1:
-        return 'pon';
-      case 2:
-        return 'uto';
-      case 3:
-        return 'sre';
-      case 4:
-        return 'cet';
-      case 5:
-        return 'pet';
-      case 6:
-        return 'sub';
-      case 7:
-        return 'ned';
-      default:
-        return 'pon';
-    }
+    if (weekday >= 1 && weekday <= 7) return _dani[weekday - 1];
+    return 'pon';
   }
 
   /// Handler za BC alternativa action button - sačuva izabrani termin
@@ -698,7 +681,7 @@ class V2LocalNotificationService {
       // Dodaj prve dve alternative kao dugmiće
       for (int i = 0; i < alternatives.length && i < 2; i++) {
         final alt = alternatives[i];
-        final displayTime = alt.contains(':') ? '${alt.split(':')[0]}:${alt.split(':')[1]}' : alt;
+        final displayTime = alt.length >= 5 ? alt.substring(0, 5) : alt;
         actions.add(AndroidNotificationAction(
           'prihvati_alt_$alt',
           '✅ $displayTime',
