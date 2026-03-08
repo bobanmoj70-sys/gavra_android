@@ -17,20 +17,23 @@ class V2KapacitetService {
   static List<String> get vsVremena => V2RouteConfig.getVremenaByNavType('VS');
 
   /// Sva moguca vremena (zimska + letnja + praznicna) - za kapacitet tabelu
-  static List<String> get svaVremenaBc {
-    return {...V2RouteConfig.bcVremenaZimski, ...V2RouteConfig.bcVremenaLetnji, ...V2RouteConfig.bcVremenaPraznici}
-        .toList();
-  }
+  static final List<String> svaVremenaBc = {
+    ...V2RouteConfig.bcVremenaZimski,
+    ...V2RouteConfig.bcVremenaLetnji,
+    ...V2RouteConfig.bcVremenaPraznici,
+  }.toList();
 
-  static List<String> get svaVremenaVs {
-    return {...V2RouteConfig.vsVremenaZimski, ...V2RouteConfig.vsVremenaLetnji, ...V2RouteConfig.vsVremenaPraznici}
-        .toList();
-  }
+  static final List<String> svaVremenaVs = {
+    ...V2RouteConfig.vsVremenaZimski,
+    ...V2RouteConfig.vsVremenaLetnji,
+    ...V2RouteConfig.vsVremenaPraznici,
+  }.toList();
 
   /// Dohvati vremena za grad (sezonski)
   static List<String> getVremenaZaGrad(String grad) {
     if (grad == 'BC') return bcVremena;
     if (grad == 'VS') return vsVremena;
+    debugPrint('[V2KapacitetService] getVremenaZaGrad: nepoznat grad "$grad"');
     assert(false, 'getVremenaZaGrad: nepoznat grad "$grad"');
     return bcVremena;
   }
@@ -39,6 +42,7 @@ class V2KapacitetService {
   static List<String> getSvaVremenaZaGrad(String grad) {
     if (grad == 'BC') return svaVremenaBc;
     if (grad == 'VS') return svaVremenaVs;
+    debugPrint('[V2KapacitetService] getSvaVremenaZaGrad: nepoznat grad "$grad"');
     assert(false, 'getSvaVremenaZaGrad: nepoznat grad "$grad"');
     return svaVremenaBc;
   }
@@ -90,8 +94,9 @@ class V2KapacitetService {
     final rm = V2MasterRealtimeManager.instance;
     for (final row in rm.kapacitetCache.values) {
       final rowGrad = row['grad'] as String? ?? '';
+      if (rowGrad != gradKey) continue;
       final rawVreme = row['vreme'] as String? ?? '';
-      if (rowGrad == gradKey && V2GradAdresaValidator.normalizeTime(rawVreme) == normalizedVreme) {
+      if (V2GradAdresaValidator.normalizeTime(rawVreme) == normalizedVreme) {
         return (row['max_mesta'] as int?) ?? 8;
       }
     }
