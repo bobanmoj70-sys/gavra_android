@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../theme.dart';
 // V2ThemeRegistry i V2ThemeDefinition se nalaze na dnu ovog fajla (spojeni sa v2_theme_registry.dart)
@@ -12,6 +12,7 @@ class V2ThemeManager extends ChangeNotifier {
   }
   static final V2ThemeManager _instance = V2ThemeManager._internal();
 
+  static const _secureStorage = FlutterSecureStorage();
   static const String _themePrefsKey = 'selected_theme_id';
 
   String _currentThemeId = 'triple_blue_fashion';
@@ -39,8 +40,7 @@ class V2ThemeManager extends ChangeNotifier {
   /// Initialize - učitaj poslednju selekciju
   Future<void> initialize() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedThemeId = prefs.getString(_themePrefsKey);
+      final savedThemeId = await _secureStorage.read(key: _themePrefsKey);
 
       if (savedThemeId != null && V2ThemeRegistry.hasTheme(savedThemeId)) {
         // Učitaj sačuvanu temu
@@ -69,10 +69,9 @@ class V2ThemeManager extends ChangeNotifier {
       throw Exception('Tema $themeId ne postoji!');
     }
 
-    // Sačuvaj izbor u SharedPreferences PRE nego ažuriramo state
+    // Sačuvaj izbor u SecureStorage PRE nego ažuriramo state
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_themePrefsKey, themeId);
+      await _secureStorage.write(key: _themePrefsKey, value: themeId);
     } catch (e) {
       debugPrint('[V2ThemeManager] changeTheme spremi greška: $e');
     }

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Service that handles battery optimization warnings for phones that
 /// aggressively kill background apps (Huawei, Xiaomi, Oppo, Vivo, etc.)
@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class V2BatteryOptimizationService {
   V2BatteryOptimizationService._();
 
+  static const _secureStorage = FlutterSecureStorage();
   static const String _shownKey = 'battery_optimization_warning_shown';
   static const String _dismissedKey = 'battery_optimization_dismissed';
 
@@ -22,15 +23,11 @@ class V2BatteryOptimizationService {
   static Future<bool> shouldShowWarning() async {
     if (!Platform.isAndroid) return false;
 
-    final prefs = await SharedPreferences.getInstance();
+    final dismissed = await _secureStorage.read(key: _dismissedKey);
+    if (dismissed == 'true') return false;
 
-    if (prefs.getBool(_dismissedKey) ?? false) {
-      return false;
-    }
-
-    if (prefs.getBool(_shownKey) ?? false) {
-      return false;
-    }
+    final shown = await _secureStorage.read(key: _shownKey);
+    if (shown == 'true') return false;
 
     final deviceInfo = DeviceInfoPlugin();
     final androidInfo = await deviceInfo.androidInfo;
@@ -62,14 +59,12 @@ class V2BatteryOptimizationService {
 
   /// Mark that we've shown the warning this session
   static Future<void> markShown() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_shownKey, true);
+    await _secureStorage.write(key: _shownKey, value: 'true');
   }
 
   /// Mark that user has dismissed the warning permanently
   static Future<void> markDismissedPermanently() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_dismissedKey, true);
+    await _secureStorage.write(key: _dismissedKey, value: 'true');
   }
 
   /// Get manufacturer-specific settings intent

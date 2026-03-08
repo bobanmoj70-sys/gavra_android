@@ -51,6 +51,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   bool _isLoadingDrivers = true;
   String _appVersion = '';
   StreamSubscription<String>? _cacheReadySub;
+  bool _autoLoginDone = false; // sprečava dvostruku navigaciju
 
   @override
   void initState() {
@@ -161,6 +162,9 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
 
   // "" AUTO-LOGIN BEZ PESME - Proveri da li je vozač ve logovan
   Future<void> _checkAutoLogin() async {
+    if (_autoLoginDone) return;
+    _autoLoginDone = true;
+
     // ZPREKINI PESMU ako se auto-login aktivira
     await _stopAudio();
 

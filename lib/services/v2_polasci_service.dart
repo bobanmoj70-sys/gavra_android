@@ -809,6 +809,54 @@ class V2PutnikStreamService {
     }).toList();
   }
 
+  /// Sinhrono čita putnike za [dan] (kratica npr. 'pon') iz in-memory RM cache-a.
+  /// Nema await, nema DB upita — identična logika kao _fetchPutnici s dan: path-om.
+  /// Koristi se za initialData u StreamBuilder-u da putnici budu vidljivi odmah.
+  List<V2Putnik> fetchPutniciSync({required String dan, String? vozacId}) {
+    final rm = V2MasterRealtimeManager.instance;
+    if (!rm.isInitialized) return [];
+
+    final isoZaDan = V2DanUtils.isoZaDan(dan);
+    final sviPutnici = rm.polasciCache.values
+        .where((sr) => sr['dan']?.toString() == dan)
+        .map((sr) {
+          final putnikId = sr['putnik_id']?.toString();
+          final rp = putnikId != null ? rm.v2GetPutnikById(putnikId) : null;
+          return _buildPutnik(sr, rp, isoZaDan);
+        })
+        .where((p) => p.status != 'bez_polaska')
+        .toList();
+
+    if (vozacId == null) return sviPutnici;
+
+    return sviPutnici.where((p) {
+      final putnikIdStr = p.id?.toString() ?? '';
+      final gradNorm = V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
+      final vremeNorm = V2GradAdresaValidator.normalizeTime(p.polazak);
+
+      final sveDodjele = rm.vozacPutnikCache.values
+          .where((vp) =>
+              vp['putnik_id']?.toString() == putnikIdStr &&
+              vp['dan']?.toString() == dan &&
+              vp['grad']?.toString().toUpperCase() == gradNorm &&
+              V2GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) == vremeNorm)
+          .toList();
+
+      if (sveDodjele.isNotEmpty) {
+        return sveDodjele.any((vp) => vp['vozac_id']?.toString() == vozacId);
+      }
+
+      final rasporedZaTermin = rm.rasporedCache.values
+          .where((vr) =>
+              vr['dan']?.toString() == dan &&
+              vr['grad']?.toString().toUpperCase() == gradNorm &&
+              V2GradAdresaValidator.normalizeTime(vr['vreme']?.toString()) == vremeNorm)
+          .toList();
+      if (rasporedZaTermin.isEmpty) return false;
+      return rasporedZaTermin.any((vr) => vr['vozac_id']?.toString() == vozacId);
+    }).toList();
+  }
+
   static V2Putnik _buildPutnik(
     Map<String, dynamic> srRow,
     Map<String, dynamic>? rp,

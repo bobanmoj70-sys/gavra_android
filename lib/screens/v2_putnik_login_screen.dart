@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
@@ -47,8 +47,12 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   @override
   void initState() {
     super.initState();
-    _checkBiometric();
-    _checkSavedLogin();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _checkBiometric();
+    if (mounted) await _checkSavedLogin();
   }
 
   /// Proveri dostupnost biometrije
@@ -66,41 +70,24 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     }
   }
 
-  /// Proveri da li je V2Putnik vec ulogovan
+  /// Proveri da li je V2Putnik vec ulogovan — samo biometrija, bez SharedPreferences fallback-a
   Future<void> _checkSavedLogin() async {
-    if (_biometricAvailable && _biometricEnabled) {
-      final credentials = await V2BiometricService.getSavedCredentials();
-      if (credentials != null) {
-        // Pokušaj biometrijsku autentifikaciju
-        final authenticated = await V2BiometricService.authenticate(
-          reason: 'Prijavite se pomocu $_biometricTypeText',
-        );
+    if (!_biometricAvailable || !_biometricEnabled) return;
 
-        if (authenticated && mounted) {
-          // Ako je obavezno ažuriranje aktivno — ne raditi auto-login
-          if (updateInfoNotifier.value?.isForced == true) return;
-          _telefonController.text = credentials['phone']!;
-          _pinController.text = credentials['pin']!;
-          if (!mounted) return;
-          await _loginWithPin(showBiometricPrompt: false);
-          return;
-        }
-      }
-    }
+    final credentials = await V2BiometricService.getSavedCredentials();
+    if (credentials == null) return;
 
-    // Fallback na SharedPreferences auto-login
-    final prefs = await SharedPreferences.getInstance();
-    final savedPhone = prefs.getString('registrovani_putnik_telefon');
-    final savedPin = prefs.getString('registrovani_putnik_pin');
+    // Ako je obavezno ažuriranje aktivno — ne raditi auto-login
+    if (updateInfoNotifier.value?.isForced == true) return;
 
-    if (savedPhone != null && savedPhone.isNotEmpty && savedPin != null && savedPin.isNotEmpty) {
-      // Ako je obavezno ažuriranje aktivno — ne raditi auto-login
-      if (updateInfoNotifier.value?.isForced == true) return;
-      // Automatski probaj login
-      _telefonController.text = savedPhone;
-      _pinController.text = savedPin;
-      if (!mounted) return;
-      await _loginWithPin(showBiometricPrompt: true);
+    final authenticated = await V2BiometricService.authenticate(
+      reason: 'Prijavite se pomocu $_biometricTypeText',
+    );
+
+    if (authenticated && mounted) {
+      _telefonController.text = credentials['phone']!;
+      _pinController.text = credentials['pin']!;
+      await _loginWithPin(showBiometricPrompt: false);
     }
   }
 
@@ -436,17 +423,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     bool showBiometricPrompt,
   ) async {
     try {
-      // Sacuvaj za auto-login
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('registrovani_putnik_telefon', telefon);
-      await prefs.setString('registrovani_putnik_pin', pin);
-
       final putnikId = response['id'];
       final putnikIme = response['putnik_ime'] ?? response['ime_prezime'] ?? 'Putnik';
 
       if (putnikId != null) {
-        await prefs.setString('registrovani_putnik_id', putnikId.toString());
-        await prefs.setString('registrovani_putnik_ime', putnikIme.toString());
+        // Sacuvaj id i ime — koriste ih push notifikacijski servisi
+        final secureStorage = FlutterSecureStorage();
+        await secureStorage.write(key: 'registrovani_putnik_id', value: putnikId.toString());
+        await secureStorage.write(key: 'registrovani_putnik_ime', value: putnikIme.toString());
         final tabela = response['_tabela'] as String? ?? response['putnik_tabela'] as String?;
         await V2PutnikPushService.registerPutnikToken(putnikId, putnikTabela: tabela);
         unawaited(V2StatistikaIstorijaService.logGeneric(

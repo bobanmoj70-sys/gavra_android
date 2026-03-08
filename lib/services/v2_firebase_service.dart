@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../utils/v2_vozac_cache.dart';
 import 'v2_auth_manager.dart';
@@ -118,8 +118,8 @@ class V2FirebaseService {
 
       // Ako nije vozac, proveri da li je registrovani putnik
       if (driverName == null || driverName.isEmpty) {
-        final prefs = await SharedPreferences.getInstance();
-        putnikId = prefs.getString('registrovani_putnik_id');
+        final secureStorage = FlutterSecureStorage();
+        putnikId = await secureStorage.read(key: 'registrovani_putnik_id');
       }
     } catch (e) {
       debugPrint('[V2FirebaseService] _registerTokenWithServer dohvat vozaca greška: $e');

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../services/v2_auth_manager.dart';
 import '../services/v2_biometric_service.dart';
@@ -13,7 +13,7 @@ import 'v2_home_screen.dart';
 import 'v2_vozac_screen.dart';
 
 /// VOZAČ LOGIN SCREEN
-/// Lokalni login - proverava email/telefon/šifru iz SharedPreferences
+/// Lokalni login - provjerava email/telefon/šifru iz RM cache-a
 class V2VozacLoginScreen extends StatefulWidget {
   final String vozacIme;
 
@@ -28,6 +28,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
   final _emailController = TextEditingController();
   final _telefonController = TextEditingController();
   final _sifraController = TextEditingController();
+  static const _secureStorage = FlutterSecureStorage();
 
   bool _isLoading = false;
   bool _sifraVisible = false;
@@ -65,18 +66,15 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
 
   /// Proveri da li ima sačuvane kredencijale za ovog vozača
   Future<bool> _hasBiometricCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'biometric_vozac_${widget.vozacIme}';
-    final savedVozac = prefs.getString(key);
-    return savedVozac != null;
+    final val = await _secureStorage.read(key: 'biometric_vozac_${widget.vozacIme}');
+    return val != null;
   }
 
   /// Login sa biometrijom
   Future<void> _loginWithBiometric() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedData = prefs.getString('biometric_vozac_${widget.vozacIme}');
+    final raw = await _secureStorage.read(key: 'biometric_vozac_${widget.vozacIme}');
 
-    if (savedData == null) {
+    if (raw == null) {
       if (mounted) {
         V2AppSnackBar.warning(context, '❌ Nema sačuvanih kredencijala. Prijavi se prvo ručno.');
       }
@@ -94,30 +92,25 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
       return;
     }
 
-    // Dekoduj sačuvane podatke
-    final data = jsonDecode(savedData);
-
     if (!mounted) return;
 
-    _emailController.text = data['email'] ?? '';
-    _telefonController.text = data['telefon'] ?? '';
-    _sifraController.text = data['sifra'] ?? '';
+    final data = jsonDecode(raw) as Map<String, dynamic>;
+    _emailController.text = data['email']?.toString() ?? '';
+    _telefonController.text = data['telefon']?.toString() ?? '';
+    _sifraController.text = data['sifra']?.toString() ?? '';
 
-    // Login
     await _login(saveBiometric: false);
   }
 
   /// Sačuvaj kredencijale za biometriju
   Future<void> _saveBiometricCredentials() async {
     if (!_biometricAvailable) return;
-
-    final prefs = await SharedPreferences.getInstance();
     final data = jsonEncode({
       'email': _emailController.text.trim(),
       'telefon': _telefonController.text.trim(),
       'sifra': _sifraController.text,
     });
-    await prefs.setString('biometric_vozac_${widget.vozacIme}', data);
+    await _secureStorage.write(key: 'biometric_vozac_${widget.vozacIme}', value: data);
   }
 
   @override
@@ -128,7 +121,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
     super.dispose();
   }
 
-  /// Učitaj vozače iz rm cache-a, sa fallback na SharedPreferences
+  /// Učitaj vozače iz RM cache-a
   Future<List<Map<String, dynamic>>> _loadVozaci() async {
     try {
       // Čita direktno iz rm cache-a — sync, bez timeout-a
@@ -160,18 +153,10 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
         return vozaciMaps;
       }
     } catch (e) {
-      // Nastavi sa SharedPreferences fallback-om
+      debugPrint('[VozacLoginScreen] _loadVozaci greška: $e');
     }
 
-    // FALLBACK: Ako Supabase fails, koristi SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final vozaciJson = prefs.getString('auth_vozaci');
-    if (vozaciJson != null) {
-      final List<dynamic> decoded = jsonDecode(vozaciJson);
-      return decoded.map((v) => Map<String, dynamic>.from(v)).toList();
-    }
-
-    return <Map<String, dynamic>>[];
+    return [];
   }
 
   /// Proveri login
@@ -233,7 +218,8 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => _getScreenForDriver(widget.vozacIme),
+          builder: (_) =>
+              V2VozacCache.prefersVozacScreen(widget.vozacIme) ? const V2VozacScreen() : const V2HomeScreen(),
         ),
       );
     } catch (e) {
@@ -241,14 +227,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  static Widget _getScreenForDriver(String driverName) {
-    // Vozači koji koriste V2VozacScreen umesto V2HomeScreen
-    if (V2VozacCache.prefersVozacScreen(driverName)) {
-      return const V2VozacScreen();
-    }
-    return const V2HomeScreen();
   }
 
   /// Normalizuje broj telefona za poređenje

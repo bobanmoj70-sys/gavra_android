@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
 import '../screens/v2_home_screen.dart';
@@ -19,8 +19,8 @@ class V2NotificationNavigationService {
     if (context == null) return;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final putnikId = prefs.getString('registrovani_putnik_id');
+      final secureStorage = FlutterSecureStorage();
+      final putnikId = await secureStorage.read(key: 'registrovani_putnik_id');
 
       if (putnikId == null) {
         return;

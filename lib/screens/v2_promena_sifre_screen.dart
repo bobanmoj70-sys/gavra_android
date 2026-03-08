@@ -1,8 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../globals.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
@@ -45,20 +43,15 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
   }
 
   Future<void> _loadTrenutnaSifra() async {
-    final prefs = await SharedPreferences.getInstance();
-    final vozaciJson = prefs.getString('auth_vozaci');
-    if (vozaciJson != null) {
-      final List<dynamic> decoded = jsonDecode(vozaciJson);
-      final vozaci = decoded.map((v) => Map<String, dynamic>.from(v)).toList();
-      final vozac = vozaci.firstWhere(
-        (v) => v['ime'].toString().toLowerCase() == widget.vozacIme.toLowerCase(),
-        orElse: () => <String, dynamic>{},
-      );
-      if (vozac.isNotEmpty && mounted) {
+    try {
+      final row = await supabase.from('v2_vozaci').select('sifra').ilike('ime', widget.vozacIme).maybeSingle();
+      if (row != null && mounted) {
         setState(() {
-          _trenutnaSifra = vozac['sifra']?.toString() ?? '';
+          _trenutnaSifra = row['sifra']?.toString() ?? '';
         });
       }
+    } catch (e) {
+      debugPrint('[PromenaSifre] _loadTrenutnaSifra greška: $e');
     }
   }
 
@@ -68,38 +61,13 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final vozaciJson = prefs.getString('auth_vozaci');
-
-      if (vozaciJson == null) {
-        _showError('Greška: Nema podataka o vozačima.');
-        return;
-      }
-
-      final List<dynamic> decoded = jsonDecode(vozaciJson);
-      final vozaci = decoded.map((v) => Map<String, dynamic>.from(v)).toList();
-
-      // Pronađi vozača
-      final index = vozaci.indexWhere(
-        (v) => v['ime'].toString().toLowerCase() == widget.vozacIme.toLowerCase(),
-      );
-
-      if (index == -1) {
-        _showError('Vozač nije pronađen.');
-        return;
-      }
-
       final staraSifra = _staraSifraController.text;
       if (_trenutnaSifra != null && _trenutnaSifra!.isNotEmpty && _trenutnaSifra != staraSifra) {
         _showError('Pogrešna trenutna šifra.');
         return;
       }
 
-      // Ažuriraj šifru
-      vozaci[index]['sifra'] = _novaSifraController.text;
-
-      // Sačuvaj nazad u SharedPreferences
-      await prefs.setString('auth_vozaci', jsonEncode(vozaci));
+      await supabase.from('v2_vozaci').update({'sifra': _novaSifraController.text}).ilike('ime', widget.vozacIme);
 
       if (!mounted) return;
 
