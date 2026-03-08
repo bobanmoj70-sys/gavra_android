@@ -104,13 +104,12 @@ class V2FinansijeService {
         supabase
             .from('v2_statistika_istorija')
             .select('putnik_id')
-            .inFilter('tip', ['uplata'])
+            .eq('tip', 'uplata')
             .filter('datum', 'gte', mesecOd)
             .filter('datum', 'lte', mesecDo),
       ]);
 
-      final putnikIds =
-          voznjeResp.map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet().toList();
+      final putnikIds = voznjeResp.map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet().toList();
 
       if (putnikIds.isEmpty) return 0;
 
@@ -124,6 +123,7 @@ class V2FinansijeService {
       // Odvoji mesečne od dnevnih — dnevni trebaju broj vožnji iz DB-a
       double ukupnoDug = 0;
       final List<String> dnevniDuznici = [];
+      final Map<String, Map<String, dynamic>> dnevniPutnikMap = {};
 
       for (final id in duznici) {
         final p = V2MasterRealtimeManager.instance.v2GetPutnikById(id);
@@ -137,12 +137,12 @@ class V2FinansijeService {
                     ? 'dnevni'
                     : 'posiljka';
         final cenaPoDanu = (p['cena_po_danu'] as num?)?.toDouble() ?? (p['cena'] as num?)?.toDouble();
-
-        if (tip == 'mesecni' || tip == 'radnik' || tip == 'ucenik') {
+        if (tip == 'radnik' || tip == 'ucenik') {
           // Mesečni - paušal 6000 ako nema cenu
           ukupnoDug += cenaPoDanu != null ? cenaPoDanu * 22 : 6000;
         } else {
           dnevniDuznici.add(id);
+          dnevniPutnikMap[id] = p;
         }
       }
 
@@ -163,7 +163,7 @@ class V2FinansijeService {
         }
 
         for (final id in dnevniDuznici) {
-          final p = V2MasterRealtimeManager.instance.v2GetPutnikById(id);
+          final p = dnevniPutnikMap[id];
           if (p == null) continue;
           final cenaPoDanu = (p['cena_po_danu'] as num?)?.toDouble() ?? (p['cena'] as num?)?.toDouble();
           final brojVoznji = voznjePoId[id] ?? 0;
@@ -268,11 +268,12 @@ class V2FinansijeService {
     }
   }
 
+  static const _prihodTipovi = {'uplata'};
+
   /// Sumira iznose uplata (tip = 'uplata')
   static double _sumirajPrihode(List<Map<String, dynamic>> rows) {
-    const prihodTipovi = {'uplata'};
     return rows
-        .where((r) => prihodTipovi.contains(r['tip'] as String?))
+        .where((r) => _prihodTipovi.contains(r['tip'] as String?))
         .fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
   }
 
@@ -322,11 +323,8 @@ class V2FinansijeService {
       final fromStr = _fmtDate(from);
       final toStr = _fmtDate(to);
 
-      final voznjeRows = await supabase
-          .from('v2_statistika_istorija')
-          .select('tip, iznos')
-          .gte('datum', fromStr)
-          .lte('datum', toStr);
+      final voznjeRows =
+          await supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', fromStr).lte('datum', toStr);
 
       // Troškovi za period iz cache-a (aktivan=true, godina i mesec u opsegu from..to)
       final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values.where((r) {
@@ -372,10 +370,12 @@ class V2FinansijeService {
     }
 
     // Inicijalna emisija
-    Future.microtask(emit);
+    unawaited(Future.microtask(emit));
 
     // Debounce 1s — finansije se ne moraju ažurirati svaki event (radi 4 DB upita)
-    final sub = rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_finansije_troskovi').listen((_) {
+    final sub = rm.onCacheChanged
+        .where((t) => t == 'v2_polasci' || t == 'v2_finansije_troskovi' || t == 'v2_statistika_istorija')
+        .listen((_) {
       debounce?.cancel();
       debounce = Timer(const Duration(seconds: 1), emit);
     });
