@@ -2,6 +2,9 @@
   xmlns:tools="http://schemas.android.com/tools"
   package="com.gavra013.gavra_android">
 
+  <!-- 🚫 Remove AD_ID permission - not needed, Firebase Messaging works without it -->
+  <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
+
   <!-- 🚫 Remove unused media permissions added by plugins (flutter_contacts) -->
   <!-- Google Play rejects apps that request photo/video permissions without using them -->
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
