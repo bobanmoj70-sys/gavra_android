@@ -37,46 +37,23 @@ Future<void> backgroundNotificationHandler(Map<String, dynamic> payload) async {
 }
 
 class V2FirebaseService {
-  static String? _currentDriver;
   static StreamSubscription<String>? _tokenRefreshSubscription;
+  static StreamSubscription<RemoteMessage>? _onMessageSubscription;
+  static StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
 
-  /// Inicijalizuje Firebase
+  /// Inicijalizuje Firebase i registruje background handler
   static Future<void> initialize() async {
     try {
       if (Firebase.apps.isEmpty) return;
-
-      final messaging = FirebaseMessaging.instance;
-
       // Background Handler Registration
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-      // Request notification permission
-      try {
-        await messaging.requestPermission();
-      } catch (e) {
-        debugPrint('[V2FirebaseService] initialize requestPermission greška: $e');
-      }
     } catch (e) {
       debugPrint('[V2FirebaseService] initialize greška: $e');
     }
   }
 
-  /// Dobija trenutnog vozaca - DELEGIRA NA V2AuthManager
-  /// V2AuthManager cita iz Supabase (push_tokens tabela) kao izvor istine
-  static Future<String?> getCurrentDriver() async {
-    _currentDriver = await V2AuthManager.getCurrentDriver();
-    return _currentDriver;
-  }
-
-  /// Postavlja trenutnog vozaca
-  static void setCurrentDriver(String driver) {
-    _currentDriver = driver;
-  }
-
-  /// Brise trenutnog vozaca
-  static void clearCurrentDriver() {
-    _currentDriver = null;
-  }
+  /// Dobija trenutnog vozaca — delegira na V2AuthManager
+  static Future<String?> getCurrentDriver() => V2AuthManager.getCurrentDriver();
 
   /// Dobija FCM token
   static Future<String?> getFCMToken() async {
@@ -135,18 +112,14 @@ class V2FirebaseService {
   static Future<void> _registerTokenWithServer(String token) async {
     String? driverName;
     String? putnikId;
-    String? putnikIme;
 
     try {
       driverName = await V2AuthManager.getCurrentDriver();
 
-      // Ako nije vozac, proveri da li je V2Putnik
+      // Ako nije vozac, proveri da li je registrovani putnik
       if (driverName == null || driverName.isEmpty) {
         final prefs = await SharedPreferences.getInstance();
-        // Ovi kljucevi se koriste u RegistrovaniPutnikProfilScreen za auto-login i identifikaciju
-        // Moramo naci putnikId - obicno se dobija iz baze pri prijavi, ali ga mozemo kesirati
         putnikId = prefs.getString('registrovani_putnik_id');
-        putnikIme = prefs.getString('registrovani_putnik_ime');
       }
     } catch (e) {
       debugPrint('[V2FirebaseService] _registerTokenWithServer dohvat vozaca greška: $e');
@@ -178,15 +151,18 @@ class V2FirebaseService {
   /// Flag da sprecimo visestruko registrovanje FCM listenera
   static bool _fcmListenerRegistered = false;
 
-  /// Postavlja FCM listener
+  /// Postavlja FCM listenere
   static void setupFCMListeners() {
     // Sprecava visestruko registrovanje (duplirane notifikacije)
     if (_fcmListenerRegistered) return;
-    _fcmListenerRegistered = true;
 
+    // Firebase mora biti inicijalizovan — ako nije, ne postavljamo flag
+    // da bismo mogli pokusati ponovo kad Firebase postane dostupan
     if (Firebase.apps.isEmpty) return;
 
-    FirebaseMessaging.onMessage.listen(
+    _fcmListenerRegistered = true;
+
+    _onMessageSubscription = FirebaseMessaging.onMessage.listen(
       (RemoteMessage message) {
         // Emituj dogadjaj unutar aplikacije
         V2RealtimeNotificationService.onForegroundNotification(message.data);
@@ -210,7 +186,7 @@ class V2FirebaseService {
       },
     );
 
-    FirebaseMessaging.onMessageOpenedApp.listen(
+    _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
       (RemoteMessage message) {
         try {
           // Navigate or handle tap
@@ -223,5 +199,16 @@ class V2FirebaseService {
         debugPrint('[V2FirebaseService] setupFCMListeners onMessageOpenedApp onError: $error');
       },
     );
+  }
+
+  /// Otkazuje sve aktivne FCM stream subscriptions
+  static Future<void> dispose() async {
+    await _tokenRefreshSubscription?.cancel();
+    _tokenRefreshSubscription = null;
+    await _onMessageSubscription?.cancel();
+    _onMessageSubscription = null;
+    await _onMessageOpenedAppSubscription?.cancel();
+    _onMessageOpenedAppSubscription = null;
+    _fcmListenerRegistered = false;
   }
 }
