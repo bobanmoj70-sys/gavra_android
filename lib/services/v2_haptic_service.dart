@@ -8,6 +8,9 @@ import 'package:vibration/vibration.dart';
 class V2HapticService {
   V2HapticService._();
 
+  /// Keširan rezultat Vibration.hasVibrator() — ne mijenja se tokom sesije
+  static bool? _hasVibrator;
+
   /// Light impact - za obicne tap-ove
   static void lightImpact() {
     try {
@@ -39,7 +42,7 @@ class V2HapticService {
   /// Success feedback - dupli light impact (bip-bip)
   static void success() {
     try {
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       unawaited(
         Future.delayed(const Duration(milliseconds: 100), () {
           try {
@@ -60,18 +63,18 @@ class V2HapticService {
   /// Jaca vibracija kad se V2Putnik pokupi — dva kratka pulsa (150ms + 150ms)
   static Future<void> putnikPokupljen() async {
     try {
-      final hasVibrator = await Vibration.hasVibrator();
-      if (hasVibrator == true) {
+      _hasVibrator ??= await Vibration.hasVibrator();
+      if (_hasVibrator == true) {
         // Dva kratka pulsa - "bip-bip" efekat
         await Vibration.vibrate(pattern: [0, 150, 100, 150], intensities: [0, 255, 0, 255]);
       } else {
         // Fallback na haptic feedback
-        HapticFeedback.heavyImpact();
+        unawaited(HapticFeedback.heavyImpact());
       }
     } catch (e) {
       // Fallback
       try {
-        HapticFeedback.heavyImpact();
+        unawaited(HapticFeedback.heavyImpact());
       } catch (_) {}
     }
   }
