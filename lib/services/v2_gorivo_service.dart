@@ -92,23 +92,31 @@ class V2GorivoService {
       );
       if (!ok) return false;
 
-      // Ažuriraj kilometražu vozila ako je unesena
+      // Ažuriraj kilometražu vozila ako je unesena — greška ne poništava točenje
       if (kmVozila != null) {
-        await supabase.from('v2_vozila').update({'kilometraza': kmVozila}).eq('id', voziloId);
-        // Optimistički cache patch — streamVozila se odmah osvježava
-        V2MasterRealtimeManager.instance.v2PatchCache('v2_vozila', voziloId, {'kilometraza': kmVozila});
+        try {
+          await supabase.from('v2_vozila').update({'kilometraza': kmVozila}).eq('id', voziloId);
+          // Optimistički cache patch — streamVozila se odmah osvježava
+          V2MasterRealtimeManager.instance.v2PatchCache('v2_vozila', voziloId, {'kilometraza': kmVozila});
+        } catch (e) {
+          debugPrint('[V2GorivoService] addTocenje updateKilometraza greška: $e');
+        }
       }
 
-      // Kreiraj trošak u finansijama (ako postoji cijena)
+      // Kreiraj trošak u finansijama (ako postoji cijena) — greška ne poništava točenje
       if (cenaPoPLitru != null && cenaPoPLitru > 0) {
-        final iznos = litri * cenaPoPLitru;
-        await V2FinansijeService.addTrosak(
-          'Gorivo',
-          'gorivo',
-          iznos,
-          mesec: datum.month,
-          godina: datum.year,
-        );
+        try {
+          final iznos = litri * cenaPoPLitru;
+          await V2FinansijeService.addTrosak(
+            'Gorivo',
+            'gorivo',
+            iznos,
+            mesec: datum.month,
+            godina: datum.year,
+          );
+        } catch (e) {
+          debugPrint('[V2GorivoService] addTocenje addTrosak greška: $e');
+        }
       }
 
       return true;
