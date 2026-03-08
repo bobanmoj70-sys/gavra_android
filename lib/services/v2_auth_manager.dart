@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
 import '../models/v2_vozac.dart';
@@ -16,11 +16,14 @@ import 'v2_push_token_service.dart';
 /// Upravlja lokalnim auth operacijama kroz SharedPreferences.
 /// Koristi push token recognition i session management bez Supabase Auth.
 class V2AuthManager {
-  static const String _driverKey = 'current_driver';
   static const String _authSessionKey = 'auth_session';
+  static const _secureStorage = FlutterSecureStorage();
 
   // In-memory cache — jedan Supabase poziv po sesiji
   static String? _cachedDriverName;
+
+  /// Sinhron pristup in-memory cache-u — bez async, koristi se za brzi initState
+  static String? get cachedDriverName => _cachedDriverName;
 
   // ── DRIVER SESSION MANAGEMENT ─────────────────────────────────────────────────
 
@@ -77,33 +80,24 @@ class V2AuthManager {
     }
   }
 
-  /// Dobij trenutnog vozača — in-memory cache, pa Supabase, pa SharedPreferences
+  /// Dobij trenutnog vozača — in-memory cache, pa Supabase
   static Future<String?> getCurrentDriver() async {
     // 0. In-memory cache — nema Supabase poziva ako već znamo
     if (_cachedDriverName != null && _cachedDriverName!.isNotEmpty) {
       return _cachedDriverName;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-
     // 1. Pokušaj Supabase (jedini izvor istine)
     try {
       final driverFromSupabase = await _getDriverFromSupabase();
       if (driverFromSupabase != null && driverFromSupabase.isNotEmpty) {
         _cachedDriverName = driverFromSupabase;
-        // Spremi u SharedPreferences kao cache za offline fallback
-        await prefs.setString(_driverKey, driverFromSupabase);
         return _cachedDriverName;
       }
     } catch (e) {
       debugPrint('[V2AuthManager] getCurrentDriver Supabase greška: $e');
     }
 
-    // 2. Offline fallback — stari lokalni podatak
-    final fromPrefs = prefs.getString(_driverKey);
-    if (fromPrefs != null && fromPrefs.isNotEmpty) {
-      _cachedDriverName = fromPrefs;
-    }
     return _cachedDriverName;
   }
 
@@ -153,19 +147,19 @@ class V2AuthManager {
   /// Centralizovan logout — briše sve session podatke.
   static Future<void> logout(BuildContext context) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-
       // 1. Pročitaj trenutnog vozača iz in-memory cache-a PRE brisanja sesije (potrebno za push token)
       final currentDriver = _cachedDriverName;
 
-      // 2. Obriši in-memory cache i SharedPreferences (vozač + putnik sesija)
+      // 2. Obriši in-memory cache i SecureStorage (vozač + putnik sesija)
       _cachedDriverName = null;
-      await prefs.remove(_driverKey);
-      await prefs.remove(_authSessionKey);
-      await prefs.remove('registrovani_putnik_telefon');
-      await prefs.remove('registrovani_putnik_pin');
-      await prefs.remove('registrovani_putnik_id');
-      await prefs.remove('registrovani_putnik_ime');
+      await _secureStorage.delete(key: _authSessionKey);
+      await _secureStorage.delete(key: 'registrovani_putnik_id');
+      await _secureStorage.delete(key: 'registrovani_putnik_ime');
+
+      // 2b. Obriši biometrijske kredencijale vozača iz SecureStorage
+      if (currentDriver != null) {
+        unawaited(_secureStorage.delete(key: 'biometric_vozac_$currentDriver'));
+      }
 
       // 3. Obriši push tokene iz Supabase baze
       try {
@@ -210,27 +204,42 @@ class V2AuthManager {
 
   static const String _rememberedEmailKey = 'remembered_email';
   static const String _rememberedDriverNameKey = 'remembered_driver_name';
+  static const String _rememberedTimestampKey = 'remembered_timestamp';
 
-  /// Zapamti uređaj — snima email i ime vozača za auto-login.
+  /// Zapamti uređaj — snima email, ime vozača i timestamp za auto-login.
   static Future<void> rememberDevice(String email, String driverName) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_rememberedEmailKey, email);
-    await prefs.setString(_rememberedDriverNameKey, driverName);
+    await _secureStorage.write(key: _rememberedEmailKey, value: email);
+    await _secureStorage.write(key: _rememberedDriverNameKey, value: driverName);
+    await _secureStorage.write(key: _rememberedTimestampKey, value: DateTime.now().toUtc().toIso8601String());
   }
 
-  /// Vrati zapamćene kredencijale uređaja ili null ako nisu sačuvani.
+  /// Vrati zapamćene kredencijale uređaja ili null ako nisu sačuvani ili su stariji od 30 dana.
   static Future<Map<String, String>?> getRememberedDevice() async {
-    final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString(_rememberedEmailKey);
-    final driverName = prefs.getString(_rememberedDriverNameKey);
+    final email = await _secureStorage.read(key: _rememberedEmailKey);
+    final driverName = await _secureStorage.read(key: _rememberedDriverNameKey);
     if (email == null || driverName == null) return null;
+
+    // Provjeri expiry — 30 dana
+    final tsStr = await _secureStorage.read(key: _rememberedTimestampKey);
+    if (tsStr != null) {
+      try {
+        final ts = DateTime.parse(tsStr);
+        if (DateTime.now().toUtc().difference(ts).inDays >= 30) {
+          // Isteklo — obriši i vrati null
+          await _secureStorage.delete(key: _rememberedEmailKey);
+          await _secureStorage.delete(key: _rememberedDriverNameKey);
+          await _secureStorage.delete(key: _rememberedTimestampKey);
+          return null;
+        }
+      } catch (_) {}
+    }
+
     return {'email': email, 'driverName': driverName};
   }
 
   /// Provjeri da li je sesija aktivna (timestamp unutar 30 dana).
   static Future<bool> isSessionActive() async {
-    final prefs = await SharedPreferences.getInstance();
-    final sessionStr = prefs.getString(_authSessionKey);
+    final sessionStr = await _secureStorage.read(key: _authSessionKey);
     if (sessionStr == null) return false;
     try {
       final sessionTime = DateTime.parse(sessionStr);
@@ -244,9 +253,7 @@ class V2AuthManager {
   // ── PRIVATE HELPERS ─────────────────────────────────────────────────────────────
 
   static Future<void> _saveDriverSession(String driverName) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_driverKey, driverName);
-    await prefs.setString(_authSessionKey, DateTime.now().toUtc().toIso8601String());
+    await _secureStorage.write(key: _authSessionKey, value: DateTime.now().toUtc().toIso8601String());
   }
 }
 
