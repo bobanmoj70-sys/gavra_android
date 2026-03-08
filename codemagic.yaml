@@ -55,7 +55,6 @@ workflows:
         track: alpha
         submit_as_draft: false
         changes_not_sent_for_review: false
-        metadata_path: distribution
       email:
         recipients:
           - bgavrilovic@gmail.com
