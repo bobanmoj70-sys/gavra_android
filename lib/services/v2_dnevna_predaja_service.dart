@@ -73,8 +73,7 @@ class V2DnevnaPredajaService {
   /// Lista svih predaja za vozača (sve dane).
   static Future<List<V2DnevnaPredaja>> getByVozac(String vozacIme) async {
     try {
-      final rows =
-          await supabase.from(_tabela).select().eq('vozac_ime', vozacIme).order('datum', ascending: false);
+      final rows = await supabase.from(_tabela).select().eq('vozac_ime', vozacIme).order('datum', ascending: false);
       return rows.map((r) => V2DnevnaPredaja.fromJson(r)).toList();
     } catch (e) {
       debugPrint('[V2DnevnaPredajaService] getByVozac greška: $e');

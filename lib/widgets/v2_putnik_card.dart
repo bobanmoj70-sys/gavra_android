@@ -104,7 +104,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
     if (_globalProcessingLock || _isProcessing) return;
 
     if (_putnik.id == null || _putnik.id.toString().isEmpty) {
-      if (mounted) V2AppSnackBar.error(context, 'V2Putnik nema valjan ID — ne može se naplatiti');
+      if (mounted) V2AppSnackBar.error(context, 'Putnik nema valjan ID — ne može se naplatiti');
       return;
     }
 
@@ -345,17 +345,18 @@ class _PutnikCardState extends State<V2PutnikCard> {
       if (await canLaunchUrl(launchUri)) {
         await launchUrl(launchUri);
       }
-    } catch (e) {}
+    } catch (e, st) {
+      debugPrint('[V2PutnikCard._pozovi] Greška: $e\n$st');
+    }
   }
+
+  // Singleton za ceo zivot widgeta — V2CardColorHelper nema stanje, nema potrebe za novom instancom na svakom rebuild-u
+  static final _colorHelper = V2CardColorHelper();
 
   @override
   Widget build(BuildContext context) {
-    // Odredi ko je "vlasnik" ovog putnika za potrebe bojenja (siva vs bela)
-    String displayDodeljenVozac = _putnik.dodeljenVozac ?? '';
-
-    // BOJE KARTICE - privremeni V2Putnik sa ispravnim vozacem za kalkulaciju boja
-    final _colorHelper = V2CardColorHelper();
-    final displayPutnik = _putnik.copyWith(dodeljenVozac: displayDodeljenVozac);
+    // BOJE KARTICE
+    final displayPutnik = _putnik.copyWith(dodeljenVozac: _putnik.dodeljenVozac ?? '');
 
     final BoxDecoration finalDecoration = _colorHelper.getCardDecorationWithDriver(
       displayPutnik,
@@ -376,10 +377,6 @@ class _PutnikCardState extends State<V2PutnikCard> {
     final String driver = widget.currentDriver;
     final bool isAdmin = V2AdminSecurityService.isAdmin(driver);
     final bool isVozac = V2VozacCache.imenaVozaca.contains(driver);
-
-    if (_putnik.ime.toLowerCase().contains('rado') ||
-        _putnik.ime.toLowerCase().contains('radovic') ||
-        _putnik.ime.toLowerCase().contains('radosev')) {}
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque, // FIX: Hvata tap na celoj kartici
@@ -829,7 +826,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                       // IKONA ZA PLACANJE - za sve korisnike (3. po redu)
                                       if (!_putnik.jeOtkazan) ...[
                                         GestureDetector(
-                                          onTap: () => _handlePayment(),
+                                          onTap: _handlePayment,
                                           child: Container(
                                             width: iconSize,
                                             height: iconSize,
@@ -958,7 +955,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                       if (_putnik.jeOtkazan && _putnik.vremeOtkazivanja != null) ...[
                         if (_putnik.vremePokupljenja != null || (_putnik.placeno == true)) const SizedBox(width: 12),
                         Text(
-                          '${(_putnik.otkazaoVozac == null || _putnik.otkazaoVozac == 'V2Putnik') ? 'V2Putnik otkazao' : 'Otkazao'}: ${_formatOtkazivanje(_putnik.vremeOtkazivanja!)}',
+                          '${(_putnik.otkazaoVozac == null || _putnik.otkazaoVozac == 'V2Putnik') ? 'Putnik otkazao' : 'Otkazao'}: ${_formatOtkazivanje(_putnik.vremeOtkazivanja!)}',
                           style: TextStyle(
                             fontSize: 13,
                             color: _putnik.otkazaoVozac == null
@@ -1161,6 +1158,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
   }
 
   // POMOCNA METODA: Dobij koordinate za adresu (sa keširanjem i validacijom)
+  // Napomena: grad i adresaId su rezervisani za buducu upotrebu u V2UnifiedGeocodingService
   Future<Position?> _getKoordinateZaAdresu(String? grad, String? adresa, String? adresaId) async {
     if (adresa == null || adresa.isEmpty || adresa == 'Adresa nije definisana') return null;
 
@@ -1174,7 +1172,9 @@ class _PutnikCardState extends State<V2PutnikCard> {
       if (result.isNotEmpty && result.containsKey(_putnik)) {
         return result[_putnik];
       }
-    } catch (e) {}
+    } catch (e, st) {
+      debugPrint('[V2PutnikCard._getKoordinateZaAdresu] Greška: $e\n$st');
+    }
     return null;
   }
 
@@ -1222,7 +1222,9 @@ class _PutnikCardState extends State<V2PutnikCard> {
           );
         }
       }
-    } catch (e) {}
+    } catch (e, st) {
+      debugPrint('[V2PutnikCard._otvoriNavigaciju] Greška: $e\n$st');
+    }
   }
 
   // PICKER ZA ODSUSTVO (Bolovanje / Godišnji)

@@ -14,7 +14,7 @@ class V2TextUtils {
         .replaceAll('đ', 'd');
   }
 
-  /// Kategorije statusa za lakše korišćenje
+  /// Kategorije statusa za lakše korišćenje (originalni stringovi)
   static const List<String> bolovanjeGodisnji = [
     'bolovanje',
     'godišnji',
@@ -24,14 +24,26 @@ class V2TextUtils {
   static const List<String> pokupljeni = ['pokupljen'];
   static const List<String> neaktivni = ['obrisan', 'neaktivan'];
 
-  /// Proverava da li je V2Putnik u aktivnom statusu (nije otkazan, na bolovanju itd.)
-  /// Koristi se za BROJANJE zauzetih mesta
+  // Pre-normalizovani setovi za O(1) lookup u isStatusActive
+  // Izračunati jednom umesto ponovnog pozivanja normalizeText() na svakom .any() pozivu
+  static final Set<String> _neaktivniSet = {
+    ...neaktivni.map(normalizeText),
+  };
+  static final Set<String> _otkazaniSet = {
+    ...otkazani.map(normalizeText),
+  };
+  static final Set<String> _bolovanjeGodisnjiSet = {
+    ...bolovanjeGodisnji.map(normalizeText),
+  };
+
+  /// Proverava da li je putnik u aktivnom statusu (nije otkazan, na bolovanju itd.)
+  /// Koristi se za BROJANJE zauzetih mesta.
+  /// NAPOMENA: null status se tretira kao aktivan (putnik bez statusa = aktivan).
   static bool isStatusActive(String? status) {
     if (status == null) return true;
     final normalized = normalizeText(status);
-
-    return !otkazani.any((s) => normalizeText(s) == normalized) &&
-        !bolovanjeGodisnji.any((s) => normalizeText(s) == normalized) &&
-        !neaktivni.any((s) => normalizeText(s) == normalized);
+    return !_otkazaniSet.contains(normalized) &&
+        !_bolovanjeGodisnjiSet.contains(normalized) &&
+        !_neaktivniSet.contains(normalized);
   }
 }

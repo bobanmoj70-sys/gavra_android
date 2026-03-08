@@ -62,11 +62,11 @@ enum CardState {
 ///
 /// ## Primer korišćenja:
 /// ```dart
-/// final decoration = V2CardColorHelper.getCardDecoration(V2Putnik);
-/// final textColor = V2CardColorHelper.getTextColorWithTheme(
-/// V2Putnik,
-/// context,
-/// successPrimary: Theme.of(context).colorScheme.successPrimary,
+/// final helper = V2CardColorHelper();
+/// final decoration = helper.getCardDecorationWithDriver(putnik, currentDriver);
+/// final textColor = helper.getTextColorWithDriver(
+///   putnik, currentDriver, context,
+///   successPrimary: Theme.of(context).colorScheme.successPrimary,
 /// );
 /// ```
 class V2CardColorHelper {
@@ -76,7 +76,7 @@ class V2CardColorHelper {
 
   // ODSUSTVO (godišnji/bolovanje) - NAJVEĆI PRIORITET
   static const Color odsustvoBackground = Color(0xFFFFF59D);
-  static const Color odsusuvoBorder = Color(0xFFFFC107);
+  static const Color odsustovoBorder = Color(0xFFFFC107);
   static const Color odsustvoText = Color(0xFFF57C00); // Colors.orange[700]
 
   // OTKAZANO - DRUGI PRIORITET
@@ -148,7 +148,7 @@ class V2CardColorHelper {
       borderRadius: BorderRadius.circular(18),
       border: Border.all(
         color: _getBorderForState(state),
-        width: _getBorderWidthForState(state),
+        width: _borderWidth,
       ),
       boxShadow: [
         BoxShadow(
@@ -246,21 +246,14 @@ class V2CardColorHelper {
           end: Alignment.bottomRight,
         );
       case CardState.nepokupljeno:
-        return LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.98),
-            Colors.white.withOpacity(0.98),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
+        return null; // koristi color fallback: defaultBackground.withOpacity(0.70)
     }
   }
 
   Color _getBorderForState(CardState state) {
     switch (state) {
       case CardState.odsustvo:
-        return odsusuvoBorder.withOpacity(0.6);
+        return odsustovoBorder.withOpacity(0.6);
       case CardState.otkazano:
         return otkazanoBorder.withOpacity(0.25);
       case CardState.placeno:
@@ -274,14 +267,12 @@ class V2CardColorHelper {
     }
   }
 
-  double _getBorderWidthForState(CardState state) {
-    return 1.2;
-  }
+  static const double _borderWidth = 1.2;
 
   Color _getShadowForState(CardState state) {
     switch (state) {
       case CardState.odsustvo:
-        return odsusuvoBorder.withOpacity(0.2);
+        return odsustovoBorder.withOpacity(0.2);
       case CardState.otkazano:
         return otkazanoBorder.withOpacity(0.08);
       case CardState.placeno:

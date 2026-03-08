@@ -25,6 +25,7 @@ class V2PutnikList extends StatelessWidget {
   });
   final bool showActions;
   final String currentDriver;
+  // Rezervisano za buducu upotrebu - trenutno se ne koristi u logici prikaza
   final bool isDugovanjaMode;
   final Stream<List<V2Putnik>>? putniciStream;
   final List<V2Putnik>? putnici;
@@ -94,19 +95,24 @@ class V2PutnikList extends StatelessWidget {
         p.dodeljenVozac != currentDriver);
   }
 
-  // Helper za proveru da li V2Putnik treba da ima redni broj
-  // REFAKTORISANO: Koristi V2PutnikHelpers za konzistentnu logiku
-  bool _imaRedniBroj(V2Putnik p) {
-    return V2PutnikHelpers.shouldHaveOrdinalNumber(p);
+  // Helper za deduplikaciju po id + grad + polazak (za slucaj vise polazaka istog putnika)
+  List<V2Putnik> _deduplicatePutnici(List<V2Putnik> putnici) {
+    final seen = <String, bool>{};
+    return putnici.where((p) {
+      final key = '${p.id}_${p.grad}_${p.polazak}';
+      if (seen.containsKey(key)) return false;
+      seen[key] = true;
+      return true;
+    }).toList(growable: false);
   }
 
   // Vraća početni redni broj za putnika (prvi broj od njegovih mesta)
+  // O(n) akumulacijom umesto O(n²) iteracijom od pocetka
   int _pocetniRedniBroj(List<V2Putnik> putnici, int currentIndex) {
     int redniBroj = 1;
     for (int i = 0; i < currentIndex; i++) {
-      final p = putnici[i];
-      if (_imaRedniBroj(p)) {
-        redniBroj += p.brojMesta;
+      if (V2PutnikHelpers.shouldHaveOrdinalNumber(putnici[i])) {
+        redniBroj += putnici[i].brojMesta;
       }
     }
     return redniBroj;
@@ -114,26 +120,6 @@ class V2PutnikList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool prikaziPutnika(V2Putnik p) {
-      // Prikazuj SVE putnike, ali otkazane šalji na dno i ne broji u rednim brojevima
-      return true;
-    }
-
-    // Helper za deduplikaciju po id + grad + polazak (za slucaj vise polazaka istog putnika)
-    List<V2Putnik> deduplicatePutnici(List<V2Putnik> putnici) {
-      final seen = <dynamic, bool>{};
-      return putnici.where((p) {
-        // Ključ mora biti unikatan za grad i vreme polaska
-        final key = '${p.id}_${p.grad}_${p.polazak}';
-        if (seen.containsKey(key)) {
-          return false;
-        } else {
-          seen[key] = true;
-          return true;
-        }
-      }).toList();
-    }
-
     if (putniciStream != null) {
       return StreamBuilder<List<V2Putnik>>(
         stream: putniciStream,
@@ -144,8 +130,7 @@ class V2PutnikList extends StatelessWidget {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('Nema putnika za prikaz.'));
           }
-          var filteredPutnici = snapshot.data!.where(prikaziPutnika).toList();
-          filteredPutnici = deduplicatePutnici(filteredPutnici);
+          var filteredPutnici = _deduplicatePutnici(snapshot.data!);
 
           final imaSivih = _imaSivihKartica(filteredPutnici, currentDriver);
 
@@ -172,7 +157,7 @@ class V2PutnikList extends StatelessWidget {
               final v2Putnik = prikaz[index];
               // Redni broj: računa sa brojem mesta svakog putnika
               int? redniBroj;
-              if (_imaRedniBroj(v2Putnik)) {
+              if (V2PutnikHelpers.shouldHaveOrdinalNumber(v2Putnik)) {
                 redniBroj = _pocetniRedniBroj(prikaz, index);
               }
 
@@ -197,8 +182,7 @@ class V2PutnikList extends StatelessWidget {
       if (putnici!.isEmpty) {
         return const Center(child: Text('Nema putnika za prikaz.'));
       }
-      var filteredPutnici = putnici!.where(prikaziPutnika).toList();
-      filteredPutnici = deduplicatePutnici(filteredPutnici);
+      var filteredPutnici = _deduplicatePutnici(putnici!);
       // VIZUELNI REDOSLED U LISTI:
       // 1) BELE - Nepokupljeni (na vrhu)
       // 2) PLAVE - Pokupljeni neplaćeni (svi tipovi)
@@ -258,7 +242,7 @@ class V2PutnikList extends StatelessWidget {
             final v2Putnik = prikaz[index];
             // Redni broj: računa sa brojem mesta svakog putnika
             int? redniBroj;
-            if (_imaRedniBroj(v2Putnik)) {
+            if (V2PutnikHelpers.shouldHaveOrdinalNumber(v2Putnik)) {
               redniBroj = _pocetniRedniBroj(prikaz, index);
             }
             return V2PutnikCard(
@@ -270,6 +254,7 @@ class V2PutnikList extends StatelessWidget {
               vsVremena: vsVremena,
               selectedGrad: selectedGrad,
               selectedVreme: selectedVreme,
+              selectedDay: selectedDay,
               onChanged: onPutnikStatusChanged,
               onPokupljen: onPokupljen,
             );
@@ -298,7 +283,7 @@ class V2PutnikList extends StatelessWidget {
           final v2Putnik = filteredPutnici[index];
           // Redni broj: računa sa brojem mesta svakog putnika
           int? redniBroj;
-          if (_imaRedniBroj(v2Putnik)) {
+          if (V2PutnikHelpers.shouldHaveOrdinalNumber(v2Putnik)) {
             redniBroj = _pocetniRedniBroj(filteredPutnici, index);
           }
           return V2PutnikCard(

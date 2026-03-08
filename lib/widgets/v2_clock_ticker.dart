@@ -21,7 +21,7 @@ class V2ClockTicker extends StatefulWidget {
 
 class _ClockTickerState extends State<V2ClockTicker> with WidgetsBindingObserver {
   Timer? _timer;
-  DateTime _now = DateTime.now();
+  late DateTime _now;
 
   @override
   void initState() {
@@ -33,12 +33,15 @@ class _ClockTickerState extends State<V2ClockTicker> with WidgetsBindingObserver
   void _startTimer() {
     _timer?.cancel();
     _now = DateTime.now();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        setState(() {
-          _now = DateTime.now();
-        });
-      }
+    // Poravnaj prvi tick na sledecu punu sekundu da bi prikaz bio ujednacen
+    final msUntilNextSecond = 1000 - _now.millisecond;
+    _timer = Timer(Duration(milliseconds: msUntilNextSecond), () {
+      if (!mounted) return;
+      setState(() => _now = DateTime.now());
+      // Nakon prvog poravnatog tick-a, nastavi sa periodicnim tick-ovima
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _now = DateTime.now());
+      });
     });
   }
 
@@ -49,7 +52,7 @@ class _ClockTickerState extends State<V2ClockTicker> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       _stopTimer();
     } else if (state == AppLifecycleState.resumed) {
       _startTimer();
@@ -67,8 +70,7 @@ class _ClockTickerState extends State<V2ClockTicker> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     final h = _now.hour.toString().padLeft(2, '0');
     final m = _now.minute.toString().padLeft(2, '0');
-    final s = _now.second.toString().padLeft(2, '0');
-    final display = widget.showSeconds ? '$h:$m:$s' : '$h:$m';
+    final display = widget.showSeconds ? '$h:$m:${_now.second.toString().padLeft(2, '0')}' : '$h:$m';
 
     return Text(
       display,

@@ -698,7 +698,9 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     final color = vozac != null ? V2VozacCache.getColor(vozac) : Colors.white24;
 
     return GestureDetector(
-      onTap: () async { await _showTerminAssignDialog(_selectedGrad, _selectedVreme); },
+      onTap: () async {
+        await _showTerminAssignDialog(_selectedGrad, _selectedVreme);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),

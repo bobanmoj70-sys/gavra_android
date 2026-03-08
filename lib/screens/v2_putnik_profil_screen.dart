@@ -512,7 +512,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
             style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
           trailing: const Icon(Icons.chevron_right, color: Colors.white54),
-          onTap: () async { await _pokaziOdsustvoDialog(jeNaOdsustvu); },
+          onTap: () async {
+            await _pokaziOdsustvoDialog(jeNaOdsustvu);
+          },
         ),
       ),
     );

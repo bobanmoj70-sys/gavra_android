@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import '../models/v2_putnik.dart';
 import 'v2_grad_adresa_validator.dart';
 import 'v2_putnik_helpers.dart';
@@ -9,10 +11,11 @@ class V2PutnikCountHelper {
   final Map<String, int> brojPutnikaBC;
   final Map<String, int> brojPutnikaVS;
 
-  V2PutnikCountHelper._({
-    required this.brojPutnikaBC,
-    required this.brojPutnikaVS,
-  });
+  V2PutnikCountHelper._(
+    Map<String, int> bc,
+    Map<String, int> vs,
+  )   : brojPutnikaBC = UnmodifiableMapView(bc),
+        brojPutnikaVS = UnmodifiableMapView(vs);
 
   /// Izračunaj broj putnika za dati datum iz liste putnika
   /// [putnici] - lista svih putnika
@@ -25,15 +28,18 @@ class V2PutnikCountHelper {
     final brojPutnikaBC = <String, int>{};
     final brojPutnikaVS = <String, int>{};
 
+    // Normalizuj jednom van petlje
+    final targetDay = targetDayAbbr.toLowerCase();
+
     for (final p in putnici) {
       // KORISTIMO centralizovanu logiku za utvrđivanje ko zauzima mesto
-      // Napomena: V2PutnikHelpers.shouldCountInSeats uključuje đake (ucenik) što je ovde požljno
+      // Napomena: V2PutnikHelpers.shouldCountInSeats uključuje đake (ucenik) što je ovde poželjno
       // jer za Nav Bar želimo da vidimo punu fizičku popunjenost vozila.
       if (!V2PutnikHelpers.shouldCountInSeats(p)) continue;
 
-      // Provera dana — koristimo sr.dan (kratica: pon, uto...) jer datum nije pouzdano polje
-      final dayMatch = p.dan.toLowerCase().contains(targetDayAbbr.toLowerCase());
-      if (!dayMatch) continue;
+      // Provera dana — koristimo p.dan (kratica: pon, uto...) jer datum nije pouzdano polje
+      // Koristimo == umesto contains jer su p.dan i targetDay oba kratice (exaktan match)
+      if (p.dan.toLowerCase() != targetDay) continue;
 
       final normVreme = V2GradAdresaValidator.normalizeTime(p.polazak);
 
@@ -45,10 +51,7 @@ class V2PutnikCountHelper {
       }
     }
 
-    return V2PutnikCountHelper._(
-      brojPutnikaBC: brojPutnikaBC,
-      brojPutnikaVS: brojPutnikaVS,
-    );
+    return V2PutnikCountHelper._(brojPutnikaBC, brojPutnikaVS);
   }
 
   /// Dohvati broj putnika za grad i vreme

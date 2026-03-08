@@ -106,7 +106,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
           .replaceAll('c', 'c~~')
           .replaceAll('d', 'd~')
           .replaceAll('š', 's~')
-          .replaceAll('š', 'z~');
+          .replaceAll('ž', 'z~');
     }
 
     return normalize(a).compareTo(normalize(b));
@@ -165,7 +165,8 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         _firmaZiroController.text = firma['firma_ziro'] as String? ?? '';
         _firmaAdresaController.text = firma['firma_adresa'] as String? ?? '';
       });
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2PutnikDialog._loadFirmaPodatke] Greška: $e\n$st');
     }
   }
 
@@ -226,28 +227,23 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
   @override
   void dispose() {
-    try {
-      _imeController.dispose();
-      _tipSkoleController.dispose();
-      _brojTelefonaController.dispose();
-      _brojTelefona2Controller.dispose();
-      _brojTelefonaOcaController.dispose();
-      _brojTelefonaMajkeController.dispose();
-      _adresaBelaCrkvaController.dispose();
-      _adresaVrsacController.dispose();
-      _brojMestaController.dispose();
-      _cenaPoDanuController.dispose();
-      _emailController.dispose();
-      _firmaNazivController.dispose();
-      _firmaPibController.dispose();
-      _firmaMbController.dispose();
-      _firmaZiroController.dispose();
-      _firmaAdresaController.dispose();
-
-      super.dispose();
-    } catch (e) {
-      super.dispose();
-    }
+    _imeController.dispose();
+    _tipSkoleController.dispose();
+    _brojTelefonaController.dispose();
+    _brojTelefona2Controller.dispose();
+    _brojTelefonaOcaController.dispose();
+    _brojTelefonaMajkeController.dispose();
+    _adresaBelaCrkvaController.dispose();
+    _adresaVrsacController.dispose();
+    _brojMestaController.dispose();
+    _cenaPoDanuController.dispose();
+    _emailController.dispose();
+    _firmaNazivController.dispose();
+    _firmaPibController.dispose();
+    _firmaMbController.dispose();
+    _firmaZiroController.dispose();
+    _firmaAdresaController.dispose();
+    super.dispose();
   }
 
   @override
@@ -1297,21 +1293,22 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
     final telefon = _brojTelefonaController.text.trim();
     if (telefon.isEmpty) return null;
 
-    // Normalizuj broj za poredenje (ukloni +381, 00381, vodecu 0)
-    final normalized = _normalizePhoneNumber(telefon);
+    // Pretraga po normalizovanom broju (ukloni +381, 00381, vodecu 0)
+    final normalizedTelefon = _normalizePhoneNumber(telefon);
 
     try {
-      final existing = await V2MasterRealtimeManager.instance.v2FindByTelefon(telefon);
+      final existing = await V2MasterRealtimeManager.instance.v2FindByTelefon(normalizedTelefon);
       if (existing != null) {
         final existingId = existing['id'] as String;
-        // U edit modu preskoci ako je isti V2Putnik
+        // U edit modu preskoci ako je isti putnik
         if (widget.isEditing && widget.existingPutnik?.id == existingId) {
           return null;
         }
         final existingName = existing['ime'] as String? ?? 'Nepoznat';
-        return 'Broj telefona već koristi V2Putnik: $existingName';
+        return 'Broj telefona već koristi putnik: $existingName';
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2PutnikDialog._checkDuplicatePhone] Greška: $e\n$st');
       // Ako ne možemo proveriti, nastavi (bolje nego blokirati)
     }
 
@@ -1384,20 +1381,20 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         // Sacuvaj parent context PRE pop-a (dijalog context postaje invalid nakon pop-a)
         final parentContext = Navigator.of(context).context;
         Navigator.of(context).pop();
-        if (widget.onSaved != null) widget.onSaved!();
+        widget.onSaved?.call();
         if (parentContext.mounted) {
-          V2AppSnackBar.success(parentContext, '✅ V2Putnik uspešno sacuvan!');
+          V2AppSnackBar.success(parentContext, '✅ Putnik uspešno sacuvan!');
         }
       }
     } catch (e) {
-
       // LOG GRESKE ZA ADMINA
       try {
         await V2StatistikaIstorijaService.logGreska(
           putnikId: widget.existingPutnik?.id,
           greska: '[$_tip | ${_imeController.text}] ${e.toString()}',
         );
-      } catch (e) {
+      } catch (logErr, logSt) {
+        debugPrint('[V2PutnikDialog._savePutnik] logGreska neuspešno: $logErr\n$logSt');
       }
 
       if (mounted) {
@@ -1531,6 +1528,12 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
   void initState() {
     super.initState();
     _filteredContacts = widget.contacts;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _filterContacts(String query) {

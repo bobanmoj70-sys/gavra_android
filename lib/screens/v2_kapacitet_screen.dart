@@ -227,77 +227,77 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
       padding: const EdgeInsets.all(16),
       itemCount: vremena.length,
       itemBuilder: (ctx, index) {
-              final vreme = vremena[index];
-              final maxMesta = kapacitet[grad]?[vreme] ?? 8;
+        final vreme = vremena[index];
+        final maxMesta = kapacitet[grad]?[vreme] ?? 8;
 
-              return Card(
-                color: Theme.of(ctx).glassContainer,
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(
-                    vreme,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Kapacitet: $maxMesta mesta',
-                    style: TextStyle(
-                      color: maxMesta < 8 ? Colors.orange : Colors.white70,
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: maxMesta > 1
-                            ? () async {
-                                final success = await V2KapacitetService.setKapacitet(grad, vreme, maxMesta - 1);
-                                if (!mounted) return;
-                                if (!success) {
-                                  V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
-                                }
-                              }
-                            : null,
-                        icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
-                      ),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: _getKapacitetBoja(maxMesta),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$maxMesta',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: maxMesta < 20
-                            ? () async {
-                                final success = await V2KapacitetService.setKapacitet(grad, vreme, maxMesta + 1);
-                                if (!mounted) return;
-                                if (!success) {
-                                  V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
-                                }
-                              }
-                            : null,
-                        icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
-                      ),
-                    ],
-                  ),
-                  onTap: () => _editKapacitet(grad, vreme, maxMesta),
+        return Card(
+          color: Theme.of(ctx).glassContainer,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(
+              vreme,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            subtitle: Text(
+              'Kapacitet: $maxMesta mesta',
+              style: TextStyle(
+                color: maxMesta < 8 ? Colors.orange : Colors.white70,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: maxMesta > 1
+                      ? () async {
+                          final success = await V2KapacitetService.setKapacitet(grad, vreme, maxMesta - 1);
+                          if (!mounted) return;
+                          if (!success) {
+                            V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
+                          }
+                        }
+                      : null,
+                  icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
                 ),
-              );
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _getKapacitetBoja(maxMesta),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$maxMesta',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: maxMesta < 20
+                      ? () async {
+                          final success = await V2KapacitetService.setKapacitet(grad, vreme, maxMesta + 1);
+                          if (!mounted) return;
+                          if (!success) {
+                            V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
+                          }
+                        }
+                      : null,
+                  icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
+                ),
+              ],
+            ),
+            onTap: () => _editKapacitet(grad, vreme, maxMesta),
+          ),
+        );
       },
     );
   }

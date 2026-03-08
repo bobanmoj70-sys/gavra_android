@@ -66,10 +66,7 @@ class V2VozacRaspored {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (runtimeType == other.runtimeType &&
-          other is V2VozacRaspored &&
-          id == other.id);
+      identical(this, other) || (runtimeType == other.runtimeType && other is V2VozacRaspored && id == other.id);
 
   @override
   int get hashCode => id.hashCode;

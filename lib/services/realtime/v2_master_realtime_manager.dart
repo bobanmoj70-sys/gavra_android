@@ -957,7 +957,8 @@ class V2MasterRealtimeManager {
     try {
       final row = await supabase
           .from(tabela)
-          .select('id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
+          .select(
+              'id,ime,status,telefon,telefon_2,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,created_at,updated_at')
           .eq('pin', pin)
           .maybeSingle();
       if (row == null) return null;

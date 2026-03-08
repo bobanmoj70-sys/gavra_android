@@ -23,7 +23,10 @@ class V2TimePickerCell extends StatelessWidget {
   final String? dayName; // Dan u nedelji (pon, uto, sre...) za zaključavanje prošlih dana
   final String? tipPutnika; // Tip putnika: radnik, ucenik, dnevni
   final String? tipPrikazivanja; // Režim prikaza: standard, DNEVNI
-  final DateTime? datumKrajaMeseca; // Datum do kog je plaćeno
+  final DateTime? datumKrajaMeseca; // Datum do kog je plaćeno (rezervisano za buducu upotrebu)
+
+  // Staticki map za efikasno resolvovanje dana - kreira se jednom, ne po pozivu
+  static const _daniMap = {'pon': 1, 'uto': 2, 'sre': 3, 'cet': 4, 'pet': 5, 'sub': 6, 'ned': 7};
 
   const V2TimePickerCell({
     super.key,
@@ -59,8 +62,7 @@ class V2TimePickerCell extends StatelessWidget {
 
     final now = DateTime.now();
 
-    const daniMap = {'pon': 1, 'uto': 2, 'sre': 3, 'cet': 4, 'pet': 5, 'sub': 6, 'ned': 7};
-    final targetWeekday = daniMap[dayName!.toLowerCase()];
+    final targetWeekday = _daniMap[dayName!.toLowerCase()];
     if (targetWeekday == null) return null;
 
     // Aktivna nedelja: sub >= 02:00 ili ned → sledeća nedelja
@@ -114,9 +116,6 @@ class V2TimePickerCell extends StatelessWidget {
     // Ima zakazano vreme — zaključano čim nastupi vreme polaska
     return now.isAtSameMomentAs(polazak) || now.isAfter(polazak);
   }
-
-  /// Da li je vreme polaska (value) nastupilo — alias za isLocked kada ima vrednost.
-  bool _isTimePassed() => isLocked;
 
   /// Da li je specifično vreme u listi pickera već prošlo.
   bool _isSpecificTimePassed(String vreme) {
@@ -181,15 +180,22 @@ class V2TimePickerCell extends StatelessWidget {
     return GestureDetector(
       onTap: () async {
         // Omogućavamo otkazanim terminima da se ponovo aktiviraju ukoliko vreme nije prošlo
-        if (isOtkazano && _isTimePassed()) return;
+        if (isOtkazano && locked) return;
 
         // VREME POLASKA JE NASTUPILO
-        if (_isTimePassed()) {
-          V2AppSnackBar.warning(context, '🔒 Vreme polaska je nastupilo. Izmene nisu moguće do subote.');
+        if (locked) {
+          // EKSPLICITNA PORUKA DNEVNIM PUTNICIMA AKO JE ZAKLJUČANO
+          if (tipPutnika == 'dnevni' || tipPrikazivanja == 'DNEVNI') {
+            V2AppSnackBar.blocked(context,
+                'Zbog optimizacije kapaciteta, rezervacije za dnevne putnike su moguće samo za tekući dan i sutrašnji dan. Hvala na razumevanju! 🚌');
+            return;
+          }
+          final msg = hasTime
+              ? '🔒 Vreme polaska je nastupilo. Izmene nisu moguće do subote.'
+              : '🔒 Zakazivanje za ovo vreme je prošlo. Od subote kreće novi ciklus.';
+          V2AppSnackBar.warning(context, msg);
           return;
         }
-
-        final now = DateTime.now();
 
         // BLOKADA ZA OBRADA STATUS
         if (isObrada && hasTime) {
@@ -200,21 +206,6 @@ class V2TimePickerCell extends StatelessWidget {
         // BLOKADA ZA ODBIJENO STATUS
         if (isOdbijeno) {
           V2AppSnackBar.error(context, '❌ Ovaj termin je popunjen. Izaberite neko drugo slobodno vreme.');
-          return;
-        }
-
-        // EKSPLICITNA PORUKA DNEVNIM PUTNICIMA AKO JE ZAKLJUČANO
-        if ((tipPutnika == 'dnevni' || tipPrikazivanja == 'DNEVNI') && isLocked) {
-          V2AppSnackBar.blocked(context,
-              'Zbog optimizacije kapaciteta, rezervacije za dnevne putnike su moguće samo za tekući dan i sutrašnji dan. Hvala na razumevanju! 🚌');
-          return;
-        }
-
-        if (locked) {
-          final msg = hasTime
-              ? '🔒 Vreme polaska je nastupilo. Izmene nisu moguće do subote.'
-              : '🔒 Zakazivanje za ovo vreme je prošlo. Od subote kreće novi ciklus.';
-          V2AppSnackBar.warning(context, msg);
           return;
         }
 
@@ -296,7 +287,9 @@ class V2TimePickerCell extends StatelessWidget {
   }
 
   Future<void> _showTimePickerDialog(BuildContext context) async {
-    final timePassed = _isTimePassed();
+    // isLocked je već izračunat u build() kao 'locked'; ponovo koristimo isLocked
+    // jer je _showTimePickerDialog async i build() se mogao promeniti u medjuvremenu
+    final timePassed = isLocked;
 
     final navType = navBarTypeNotifier.value;
     List<String> vremena;

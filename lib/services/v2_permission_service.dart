@@ -26,6 +26,8 @@ class V2PermissionService {
       return true; // Sve dozvole su već date, preskoči dialog
     }
 
+    if (!context.mounted) return false;
+
     // Prikaži dialog samo ako nedostaju dozvole
     return await _showPermissionSetupDialog(context);
   }
@@ -87,7 +89,7 @@ class V2PermissionService {
                   ),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      maxHeight: MediaQuery.of(dialogCtx).size.height * 0.8,
                     ),
                     child: SingleChildScrollView(
                       child: Column(
@@ -543,11 +545,11 @@ class V2PermissionService {
 
       return result.isGranted || result.isLimited;
     } catch (e) {
+      debugPrint('[V2PermissionService] ensurePhonePermissionHuawei greška: $e');
       return true;
     }
   }
 
-  /// Safe gradient - fallback za startup kad V2ThemeManager nije inicijalizovan
   static LinearGradient _getSafeGradient() {
     try {
       return V2ThemeManager().currentGradient;

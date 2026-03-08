@@ -169,8 +169,7 @@ class V2RegistrovaniPutnik {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (runtimeType == other.runtimeType && other is V2RegistrovaniPutnik && other.id == id);
+      identical(this, other) || (runtimeType == other.runtimeType && other is V2RegistrovaniPutnik && other.id == id);
 
   @override
   int get hashCode => id.hashCode;

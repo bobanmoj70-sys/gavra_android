@@ -29,9 +29,13 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
       builder: (context, snapshot) {
         final svi = snapshot.data ?? [];
 
-        // Bez datumskog filtera — prikazuje sve učeničke zahteve iz cache-a
-        // Time picker logika zaključavanja kontroliše kad zahtevi ulaze u bazu
-        final zahtevi = svi.where((z) => (z.tipPutnika ?? '').toLowerCase() == 'ucenik').toList();
+        // Prikaži samo: obrada (čeka kronom) + odobreno/odbijeno/otkazano od kronosa (odobrio != null)
+        // Sakrij ručno upisane termine (status=odobreno, odobrio=null)
+        final zahtevi = svi.where((z) {
+          if ((z.tipPutnika ?? '').toLowerCase() != 'ucenik') return false;
+          if (z.status == 'obrada') return true;
+          return z.approvedBy != null || z.cancelledBy != null;
+        }).toList();
 
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
         final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;

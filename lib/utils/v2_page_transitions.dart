@@ -7,18 +7,19 @@ class V2SmoothPageRoute<T> extends PageRouteBuilder<T> {
   }) : super(
           pageBuilder: (context, animation, secondaryAnimation) => child,
           transitionDuration: duration,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          reverseTransitionDuration: duration,
+          transitionsBuilder: (context, animation, secondaryAnimation, pageChild) {
             // Slide and fade transition
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
             const curve = Curves.easeInOutCubic;
 
-            var tween = Tween(begin: begin, end: end).chain(
+            final tween = Tween(begin: begin, end: end).chain(
               CurveTween(curve: curve),
             );
-            var offsetAnimation = animation.drive(tween);
+            final offsetAnimation = animation.drive(tween);
 
-            var fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
+            final fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
               CurvedAnimation(parent: animation, curve: curve),
             );
 
@@ -26,7 +27,7 @@ class V2SmoothPageRoute<T> extends PageRouteBuilder<T> {
               position: offsetAnimation,
               child: FadeTransition(
                 opacity: fadeAnimation,
-                child: child,
+                child: pageChild,
               ),
             );
           },
@@ -39,7 +40,7 @@ class V2SmoothPageRoute<T> extends PageRouteBuilder<T> {
 class V2AnimatedNavigation {
   V2AnimatedNavigation._();
 
-  static Future<T?> pushSmooth<T extends Object?>(
+  static Future<T?> pushSmooth<T>(
     BuildContext context,
     Widget page,
   ) {
@@ -49,7 +50,7 @@ class V2AnimatedNavigation {
     );
   }
 
-  static Future<T?> pushReplacementSmooth<T extends Object?, TO extends Object?>(
+  static Future<T?> pushReplacementSmooth<T, TO>(
     BuildContext context,
     Widget page,
   ) {

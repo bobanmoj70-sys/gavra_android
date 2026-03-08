@@ -30,11 +30,10 @@ class V2PrintingService {
   ) async {
     try {
       List<V2Putnik> sviPutnici = await V2PolasciService.streamKombinovaniPutniciFiltered(
-            dan: V2DanUtils.odPunogNaziva(selectedDay),
-            grad: selectedGrad,
-            vreme: selectedVreme,
-          )
-          .first;
+        dan: V2DanUtils.odPunogNaziva(selectedDay),
+        grad: selectedGrad,
+        vreme: selectedVreme,
+      ).first;
 
       final danBaza = V2DanUtils.odPunogNaziva(selectedDay);
 

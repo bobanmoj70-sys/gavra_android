@@ -94,10 +94,7 @@ class V2AdresaSupabaseService {
           final lng = double.tryParse(parts[1].trim());
 
           if (lat != null && lng != null) {
-            await supabase
-                .from('v2_adrese')
-                .update({'gps_lat': lat, 'gps_lng': lng})
-                .eq('id', adresa.id);
+            await supabase.from('v2_adrese').update({'gps_lat': lat, 'gps_lng': lng}).eq('id', adresa.id);
             // Spreada stari cache red pa override koordinate — ne gube se ostala polja
             final rm = V2MasterRealtimeManager.instance;
             final existing = rm.adreseCache[adresa.id] ?? {};

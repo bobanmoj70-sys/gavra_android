@@ -31,9 +31,13 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
       builder: (context, snapshot) {
         final svi = snapshot.data ?? [];
 
-        // Bez datumskog filtera — prikazuje sve radničke zahteve iz cache-a
-        // Time picker logika zaključavanja kontroliše kad zahtevi ulaze u bazu
-        final zahtevi = svi.where((z) => (z.tipPutnika ?? '').toLowerCase() == 'radnik').toList();
+        // Prikaži samo: obrada (čeka kronom) + odobreno/odbijeno/otkazano od kronosa (odobrio != null)
+        // Sakrij ručno upisane termine (status=odobreno, odobrio=null)
+        final zahtevi = svi.where((z) {
+          if ((z.tipPutnika ?? '').toLowerCase() != 'radnik') return false;
+          if (z.status == 'obrada') return true;
+          return z.approvedBy != null || z.cancelledBy != null;
+        }).toList();
 
         // Grupiši po statusu za summary u AppBaru
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;

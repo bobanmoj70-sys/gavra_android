@@ -61,7 +61,8 @@ class _V2PinDialogState extends State<V2PinDialog> {
       if (mounted) {
         V2AppSnackBar.success(context, 'PIN sačuvan!');
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2PinDialog._savePin] Greška: $e\n$st');
       setState(() => _isLoading = false);
       if (mounted) {
         V2AppSnackBar.error(context, 'Greška: $e');
@@ -72,12 +73,12 @@ class _V2PinDialogState extends State<V2PinDialog> {
   /// Pošalji PIN putem SMS-a
   Future<void> _sendSms() async {
     if (widget.brojTelefona == null || widget.brojTelefona!.isEmpty) {
-      V2AppSnackBar.warning(context, 'V2Putnik nema broj telefona!');
+      if (mounted) V2AppSnackBar.warning(context, 'Putnik nema broj telefona!');
       return;
     }
 
     if (_pin == null || _pin!.isEmpty) {
-      V2AppSnackBar.warning(context, 'Prvo generiši PIN!');
+      if (mounted) V2AppSnackBar.warning(context, 'Prvo generiši PIN!');
       return;
     }
 
@@ -95,11 +96,13 @@ class _V2PinDialogState extends State<V2PinDialog> {
       if (await canLaunchUrl(smsUri)) {
         await launchUrl(smsUri);
       } else {
-        throw Exception('Ne mogu da otvorim SMS aplikaciju');
+        debugPrint('[V2PinDialog._sendSms] canLaunchUrl vratio false za: $smsUri');
+        if (mounted) V2AppSnackBar.error(context, 'Ne mogu da otvorim SMS aplikaciju');
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2PinDialog._sendSms] Greška: $e\n$st');
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: $e');
+        V2AppSnackBar.error(context, 'Greška pri slanju SMS-a: $e');
       }
     }
   }
@@ -108,7 +111,7 @@ class _V2PinDialogState extends State<V2PinDialog> {
   void _copyPin() {
     if (_pin != null && _pin!.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: _pin!));
-      V2AppSnackBar.info(context, 'PIN kopiran!');
+      if (mounted) V2AppSnackBar.info(context, 'PIN kopiran!');
     }
   }
 
@@ -156,11 +159,11 @@ class _V2PinDialogState extends State<V2PinDialog> {
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: _copyPin,
-                      child: Row(
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.copy, color: Colors.white54, size: 16),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'Kopiraj',
                             style: TextStyle(color: Colors.white54, fontSize: 12),
@@ -232,8 +235,8 @@ class _V2PinDialogState extends State<V2PinDialog> {
                     const Icon(Icons.warning, color: Colors.orange, size: 16),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'V2Putnik nema broj telefona',
+                      child: const Text(
+                        'Putnik nema broj telefona',
                         style: TextStyle(color: Colors.orange, fontSize: 12),
                       ),
                     ),

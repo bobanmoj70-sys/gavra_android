@@ -25,7 +25,7 @@ class V2ThemeManager extends ChangeNotifier {
   ValueNotifier<ThemeData> get themeNotifier => _themeNotifier;
 
   /// Trenutna tema definicija
-  V2ThemeDefinition get currentTheme => _currentTheme!;
+  V2ThemeDefinition get currentTheme => _currentTheme ?? V2ThemeRegistry.defaultTheme;
 
   /// Trenutni ThemeData
   ThemeData get currentThemeData => currentTheme.themeData;
@@ -78,7 +78,7 @@ class V2ThemeManager extends ChangeNotifier {
     }
 
     _currentThemeId = themeId;
-    _currentTheme = V2ThemeRegistry.getTheme(themeId);
+    _currentTheme = V2ThemeRegistry.getTheme(themeId) ?? V2ThemeRegistry.defaultTheme;
 
     // Obavesti listenere
     _themeNotifier.value = currentThemeData;
@@ -88,7 +88,9 @@ class V2ThemeManager extends ChangeNotifier {
   /// Sledeća tema u listi (za cycling)
   Future<void> nextTheme() async {
     final themeNames = V2ThemeRegistry.themeNames;
+    if (themeNames.isEmpty) return;
     final currentIndex = themeNames.indexOf(_currentThemeId);
+    // indexOf vraca -1 ako tema nije nadjena — (0) % length = prva tema, sigurno
     final nextIndex = (currentIndex + 1) % themeNames.length;
     await changeTheme(themeNames[nextIndex]);
   }

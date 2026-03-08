@@ -31,7 +31,8 @@ class V2DnevnaPredaja {
       id: id,
       vozacIme: j['vozac_ime'] as String? ?? '',
       datum: datum,
-      predaoIznos: (j['predao_iznos'] as num?)?.toDouble() ?? (throw ArgumentError('V2DnevnaPredaja.fromJson: predao_iznos je null')),
+      predaoIznos: (j['predao_iznos'] as num?)?.toDouble() ??
+          (throw ArgumentError('V2DnevnaPredaja.fromJson: predao_iznos je null')),
       ukupnoNaplaceno: (j['ukupno_naplaceno'] as num?)?.toDouble(),
       razlika: (j['razlika'] as num?)?.toDouble(),
       napomena: j['napomena'] as String?,
@@ -79,8 +80,7 @@ class V2DnevnaPredaja {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is V2DnevnaPredaja && runtimeType == other.runtimeType && id == other.id;
+      identical(this, other) || other is V2DnevnaPredaja && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;

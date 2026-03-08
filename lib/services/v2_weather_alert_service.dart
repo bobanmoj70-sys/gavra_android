@@ -22,9 +22,13 @@ class V2WeatherAlertService {
         return;
       }
 
-      // Dohvati prognozu za oba grada
-      final bcWeather = await V2WeatherService.getWeatherData('BC');
-      final vsWeather = await V2WeatherService.getWeatherData('VS');
+      // Dohvati prognozu za oba grada paralelno
+      final results = await Future.wait([
+        V2WeatherService.getWeatherData('BC'),
+        V2WeatherService.getWeatherData('VS'),
+      ]);
+      final bcWeather = results[0];
+      final vsWeather = results[1];
 
       final alerts = <String>[];
 
@@ -88,14 +92,9 @@ class V2WeatherAlertService {
   /// Proverava da li je upozorenje vec poslato danas
   static Future<bool> _isAlertAlreadySentToday() async {
     try {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
+      final today = DateTime.now().toIso8601String().split('T')[0];
 
-      final response = await supabase
-          .from('v2_weather_alerts_log')
-          .select('id')
-          .eq('alert_date', today.toIso8601String().split('T')[0])
-          .maybeSingle();
+      final response = await supabase.from('v2_weather_alerts_log').select('id').eq('alert_date', today).maybeSingle();
 
       return response != null;
     } catch (e) {
@@ -123,7 +122,10 @@ class V2WeatherAlertService {
       await V2RealtimeNotificationService.sendPushNotification(
         title: title,
         body: body,
-        tokens: vozacTokens.map((t) => {'token': t['token']!, 'provider': t['provider']!}).toList(),
+        tokens: vozacTokens
+            .where((t) => t['token'] != null && t['provider'] != null)
+            .map((t) => {'token': t['token']!, 'provider': t['provider']!})
+            .toList(),
         data: {
           'type': 'weather_alert',
           'alerts': alerts.join('|'),
@@ -148,11 +150,10 @@ class V2WeatherAlertService {
   /// Oznaci da je upozorenje poslato danas
   static Future<void> _markAlertSent(String alertTypes) async {
     try {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
+      final today = DateTime.now().toIso8601String().split('T')[0];
 
       await supabase.from('v2_weather_alerts_log').insert({
-        'alert_date': today.toIso8601String().split('T')[0],
+        'alert_date': today,
         'alert_types': alertTypes,
       });
     } catch (e) {

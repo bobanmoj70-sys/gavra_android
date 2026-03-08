@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../globals.dart';
 import '../models/v2_vozac.dart';
 import 'realtime/v2_master_realtime_manager.dart';
@@ -20,25 +22,39 @@ class V2VozacService {
       _rm.v2UpsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
+      debugPrint('[V2VozacService] addVozac greška: $e');
       rethrow;
     }
   }
 
-  /// Ažurira postojećeg vozača
+  /// Ažurira postojećeg vozača (bez sifra — za promenu šifre koristiti updateSifra)
   static Future<V2Vozac> updateVozac(V2Vozac vozac) async {
     try {
-      final response = await supabase.from('v2_vozaci').update(vozac.toMap()).eq('id', vozac.id).select().single();
+      final payload = {
+        'ime': vozac.ime,
+        'telefon': vozac.brojTelefona,
+        'email': vozac.email,
+        'boja': vozac.boja,
+      };
+      final response = await supabase.from('v2_vozaci').update(payload).eq('id', vozac.id).select().single();
       _rm.v2UpsertToCache('v2_vozaci', response);
       return V2Vozac.fromMap(response);
     } catch (e) {
+      debugPrint('[V2VozacService] updateVozac greška: $e');
       rethrow;
     }
   }
 
   /// Menja samo šifru vozača (koristi vozač za self-service promenu šifre)
   static Future<void> updateSifra(String vozacId, String novaSifra) async {
-    final response = await supabase.from('v2_vozaci').update({'sifra': novaSifra}).eq('id', vozacId).select().single();
-    _rm.v2UpsertToCache('v2_vozaci', response);
+    try {
+      final response =
+          await supabase.from('v2_vozaci').update({'sifra': novaSifra}).eq('id', vozacId).select().single();
+      _rm.v2UpsertToCache('v2_vozaci', response);
+    } catch (e) {
+      debugPrint('[V2VozacService] updateSifra greška: $e');
+      rethrow;
+    }
   }
 
   static Stream<List<V2Vozac>> streamAllVozaci() => _rm.v2StreamFromCache(tables: ['v2_vozaci'], build: getAllVozaci);

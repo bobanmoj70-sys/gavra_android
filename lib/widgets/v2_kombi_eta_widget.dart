@@ -44,9 +44,19 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   DateTime? _vremePokupljenja;
   bool _jePokupljenIzBaze = false;
 
+  // Kesirane normalizacije — widget.grad i widget.vreme su nepromenjivi
+  // tokom zivota widgeta, pa nema potrebe normalizovati na svakom pozivu.
+  late final String _normGrad;
+  late final String? _normVreme;
+
+  // Konstanta da bi se izbegla rekacija liste na svakom pozivu _loadPokupljenjeIzBaze
+  static const List<String> _dani = ['ned', 'pon', 'uto', 'sre', 'cet', 'pet', 'sub'];
+
   @override
   void initState() {
     super.initState();
+    _normGrad = V2GradAdresaValidator.normalizeGrad(widget.grad);
+    _normVreme = widget.vreme != null ? V2GradAdresaValidator.normalizeTime(widget.vreme!) : null;
     _startListening();
   }
 
@@ -67,9 +77,6 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   Future<void> _loadGpsData() async {
     if (!mounted) return;
     try {
-      final normalizedGrad = V2GradAdresaValidator.normalizeGrad(widget.grad);
-      final normVreme = widget.vreme != null ? V2GradAdresaValidator.normalizeTime(widget.vreme!) : null;
-
       // PRIMARNI PUT: citaj iz lokacijeCache (0 DB upita)
       final cacheValues = V2MasterRealtimeManager.instance.lokacijeCache.values.toList();
       List<dynamic> list;
@@ -94,10 +101,10 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
 
       final filteredList = list.where((driver) {
         final driverGrad = (driver as Map<String, dynamic>)['grad'] as String? ?? '';
-        if (V2GradAdresaValidator.normalizeGrad(driverGrad) != normalizedGrad) return false;
-        if (normVreme != null) {
+        if (V2GradAdresaValidator.normalizeGrad(driverGrad) != _normGrad) return false;
+        if (_normVreme != null) {
           final driverVreme = driver['vreme_polaska'] as String? ?? '';
-          if (V2GradAdresaValidator.normalizeTime(driverVreme) != normVreme) return false;
+          if (V2GradAdresaValidator.normalizeTime(driverVreme) != _normVreme) return false;
         }
         return true;
       }).toList();
@@ -160,7 +167,8 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
         _vozacIme = driver['vozac_ime'] as String?;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2KombiEtaWidget._loadGpsData] Greška: $e\n$st');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -191,10 +199,7 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   Future<void> _loadPokupljenjeIzBaze() async {
     if (widget.putnikId == null) return;
     try {
-      const dani = ['ned', 'pon', 'uto', 'sre', 'cet', 'pet', 'sub'];
-      final danasKratica = dani[DateTime.now().weekday % 7];
-      final normVreme = widget.vreme != null ? V2GradAdresaValidator.normalizeTime(widget.vreme!) : null;
-      final gradNorm = widget.grad.isNotEmpty ? V2GradAdresaValidator.normalizeGrad(widget.grad) : null;
+      final danasKratica = _dani[DateTime.now().weekday % 7];
 
       // Čita direktno iz polasciCache — 0 DB upita
       final rm = V2MasterRealtimeManager.instance;
@@ -202,8 +207,8 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
         if (r['putnik_id']?.toString() != widget.putnikId) return false;
         if (r['status'] != 'pokupljen') return false;
         if (r['dan']?.toString() != danasKratica) return false;
-        if (gradNorm != null && r['grad']?.toString() != gradNorm) return false;
-        if (normVreme != null && V2GradAdresaValidator.normalizeTime(r['dodeljeno_vreme']?.toString()) != normVreme)
+        if (widget.grad.isNotEmpty && r['grad']?.toString() != _normGrad) return false;
+        if (_normVreme != null && V2GradAdresaValidator.normalizeTime(r['dodeljeno_vreme']?.toString()) != _normVreme)
           return false;
         return true;
       }).fold<Map<String, dynamic>?>(
@@ -230,7 +235,9 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
           _vremePokupljenja = null;
         });
       }
-    } catch (e) {}
+    } catch (e, st) {
+      debugPrint('[V2KombiEtaWidget._loadPokupljenjeIzBaze] Greška: $e\n$st');
+    }
   }
 
   Widget _buildFaza1() {
@@ -309,8 +316,8 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
 
   Widget _buildContainer(
     Color baseColor, {
-    required IconData icon,
-    required String title,
+    required IconData icon, // koristi se samo kada showHeader: true
+    required String title, // koristi se samo kada showHeader: true
     required String message,
     String? subtitle,
     bool bigMessage = false,
@@ -346,7 +353,7 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
             )
           : Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
+              // crossAxisAlignment je Center po defaultu — eksplicitno navodjenje uklonjeneno
               children: [
                 if (showHeader) ...[
                   Icon(icon, color: Colors.white.withOpacity(0.8), size: 18),
@@ -385,9 +392,15 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   }
 
   String _formatEta(int minutes) {
-    if (minutes < 1) return '< 1 min';
+    if (minutes <= 0) return '< 1 min';
     if (minutes == 1) return '~1 minut';
-    if (minutes < 5) return '~$minutes minuta';
-    return '~$minutes min';
+    if (minutes <= 21) return '~$minutes minuta';
+    // Za >= 22: srpski padezi zavise od poslednje cifre
+    final lastDigit = minutes % 10;
+    final lastTwo = minutes % 100;
+    if (lastTwo >= 11 && lastTwo <= 19) return '~$minutes minuta';
+    if (lastDigit == 1) return '~$minutes minut';
+    if (lastDigit >= 2 && lastDigit <= 4) return '~$minutes minuta';
+    return '~$minutes minuta';
   }
 }

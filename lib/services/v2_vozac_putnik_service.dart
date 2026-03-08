@@ -31,7 +31,7 @@ class V2VozacPutnikEntry {
 
   factory V2VozacPutnikEntry.fromMap(Map<String, dynamic> map) {
     final vremeRaw = map['vreme']?.toString() ?? '';
-    final vreme = vremeRaw.length > 5 ? vremeRaw.substring(0, 5) : vremeRaw;
+    final vreme = V2GradAdresaValidator.normalizeTime(vremeRaw);
     return V2VozacPutnikEntry(
       id: map['id']?.toString(),
       putnikId: map['putnik_id']?.toString() ?? '',
@@ -95,7 +95,8 @@ class V2VozacPutnikService {
     required String grad,
     required String vreme,
   }) async {
-    if (vozacIme.isEmpty) return delete(putnikId: putnikId);
+    // Prazan vozacIme = brisi samo konkretni termin, ne sve dodjele za putnika
+    if (vozacIme.isEmpty) return delete(putnikId: putnikId, dan: dan, grad: grad, vreme: vreme);
 
     final vozacId = V2VozacCache.getUuidByIme(vozacIme);
     if (vozacId == null) {
@@ -190,16 +191,6 @@ class V2VozacPutnikService {
     required String Function(T) getGrad,
     required String Function(T) getPolazak,
   }) {
-    // Helper: da li je termin-unos za ovog vozača?
-    bool jeTerminVozacov(V2VozacRasporedEntry r) {
-      return r.vozacId == vozacId;
-    }
-
-    // Helper: da li je individualna dodjela za ovog vozača?
-    bool jeDodjelajeVozacova(V2VozacPutnikEntry e) {
-      return e.vozacId == vozacId;
-    }
-
     return sviPutnici.where((p) {
       final id = getId(p);
       final grad = getGrad(p);
@@ -207,28 +198,23 @@ class V2VozacPutnikService {
       final vreme = V2GradAdresaValidator.normalizeTime(getPolazak(p));
 
       // 1. Provjeri per-V2Putnik individualnu dodjelu
+      // e.vreme je vec normalizovano u fromMap; grad je uvek 'BC'/'VS' iz normalizeGrad
       final putnikDodjele = individualneDodjele
-          .where((e) =>
-              e.putnikId == id &&
-              e.dan == targetDan &&
-              e.grad.toUpperCase() == grad.toUpperCase() &&
-              V2GradAdresaValidator.normalizeTime(e.vreme) == vreme)
+          .where((e) => e.putnikId == id && e.dan == targetDan && e.grad == grad && e.vreme == vreme)
           .toList();
       if (putnikDodjele.isNotEmpty) {
         // Individualna dodjela postoji za ovaj dan+grad+vreme — prikaži samo ako je dodeljen MENI
-        return putnikDodjele.any(jeDodjelajeVozacova);
+        return putnikDodjele.any((e) => e.vozacId == vozacId);
       }
 
       // 2. Nema individualne dodjele → provjeri termin-raspored
+      // r.vreme iz fromMap nije normalizovano — pozivamo normalizeTime
       final terminEntries = raspored
-          .where((r) =>
-              r.dan == targetDan &&
-              r.grad.toUpperCase() == grad.toUpperCase() &&
-              V2GradAdresaValidator.normalizeTime(r.vreme) == vreme)
+          .where((r) => r.dan == targetDan && r.grad == grad && V2GradAdresaValidator.normalizeTime(r.vreme) == vreme)
           .toList();
       // Nema rasporeda za termin → vozač ne vidi ove putnike (termin nije dodeljen njemu)
       if (terminEntries.isEmpty) return false;
-      return terminEntries.any(jeTerminVozacov);
+      return terminEntries.any((r) => r.vozacId == vozacId);
     }).toList();
   }
 }

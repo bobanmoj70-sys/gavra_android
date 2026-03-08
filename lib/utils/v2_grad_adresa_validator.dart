@@ -16,11 +16,12 @@ class V2GradAdresaValidator {
   static bool isVrsac(String? grad) {
     if (grad == null || grad.trim().isEmpty) return false;
     final normalized = normalizeString(grad); // uvek lowercase
-    return normalized.contains('vrsac') || normalized.contains('vr') || normalized == 'vs';
+    return normalized == 'vs' || normalized.startsWith('vrs') || normalized.contains('vrsac');
   }
 
-  /// JEDNOSTAVNO GRAD POREŠENJE - samo 2 glavna grada
+  /// JEDNOSTAVNO GRAD POREĐENJE - samo 2 glavna grada
   /// LOGIKA: Bela Crkva ili Vrsac - filtrira po gradu putnika
+  /// NAPOMENA: [putnikAdresa] se trenutno ne koristi, rezervisano za buducnost
   static bool isGradMatch(
     String? putnikGrad,
     String? putnikAdresa,
@@ -36,14 +37,10 @@ class V2GradAdresaValidator {
     return false; // Gradovi se ne poklapaju
   }
 
-  /// Normalizuj srpske karaktere
-  /// Koristi V2TextUtils.normalizeText() kao bazu i dodaje specificne zamene
+  /// Normalizuj srpske karaktere - delegira na V2TextUtils.normalizeText()
+  /// Vraca lowercase string bez dijakritika.
   static String normalizeString(String? input) {
-    if (input == null) {
-      return '';
-    }
-
-    // Koristi centralizovanu normalizaciju iz V2TextUtils
+    if (input == null) return '';
     return V2TextUtils.normalizeText(input);
   }
 
@@ -53,7 +50,10 @@ class V2GradAdresaValidator {
   static String normalizeGrad(String? grad) {
     if (grad == null || grad.trim().isEmpty) return 'BC';
     final normalized = normalizeString(grad); // lowercase, bez dijakritika
-    if (normalized.contains('vr') || normalized == 'vs') return 'VS';
+    if (normalized == 'vs' || normalized.startsWith('vrs') || normalized.contains('vrsac')) return 'VS';
+    if (normalized == 'bc' || normalized.contains('bela') || normalized.contains('crkva')) return 'BC';
+    // Nepoznat grad - u debug modu upozori, u release-u fallback na BC
+    assert(false, '[V2GradAdresaValidator.normalizeGrad] Nepoznat grad: "$grad" - fallback na BC');
     return 'BC';
   }
 

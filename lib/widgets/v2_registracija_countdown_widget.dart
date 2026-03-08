@@ -8,6 +8,7 @@ class _RegistracijaData {
   static V2Vozilo? najblizeVozilo;
   static int? danaDoIsteka;
   static bool isLoading = true;
+  static bool _isLoadingInProgress = false; // Race condition guard
   static final List<VoidCallback> _listeners = [];
 
   static void addListener(VoidCallback callback) {
@@ -25,15 +26,18 @@ class _RegistracijaData {
   }
 
   static Future<void> load() async {
+    if (_isLoadingInProgress) return; // Sprecava paralelne pozive
+    _isLoadingInProgress = true;
     try {
       final vozila = V2VozilaService.getVozila();
+      final now = DateTime.now(); // Jednom pre petlje
 
       V2Vozilo? najblize;
       int? minDana;
 
       for (final v in vozila) {
         if (v.registracijaVaziDo != null) {
-          final dana = v.registracijaVaziDo!.difference(DateTime.now()).inDays;
+          final dana = v.registracijaVaziDo!.difference(now).inDays;
           if (minDana == null || dana < minDana) {
             minDana = dana;
             najblize = v;
@@ -45,10 +49,24 @@ class _RegistracijaData {
       danaDoIsteka = minDana;
       isLoading = false;
       _notifyListeners();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[_RegistracijaData.load] Greška: $e\n$st');
       isLoading = false;
       _notifyListeners();
+    } finally {
+      _isLoadingInProgress = false;
     }
+  }
+
+  /// Treba sakriti widget (nema podataka ili vise od 14 dana do isteka)
+  static bool get shouldHide => isLoading || najblizeVozilo == null || (danaDoIsteka != null && danaDoIsteka! > 14);
+
+  /// Otvori kolsku knjigu i ponovo ucitaj podatke posle zatvaranja
+  static void openKolskaKnjiga(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const V2OdrzavanjeScreen()),
+    ).then((_) => load());
   }
 
   // Slika tablice za vozilo
@@ -103,28 +121,16 @@ class _RegistracijaTablicaWidgetState extends State<V2RegistracijaTablicaWidget>
     if (mounted) setState(() {});
   }
 
-  void _openKolskaKnjiga() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const V2OdrzavanjeScreen()),
-    ).then((_) => _RegistracijaData.load());
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Sakrij ako nema podataka ili ako je vise od 14 dana do isteka
-    if (_RegistracijaData.isLoading ||
-        _RegistracijaData.najblizeVozilo == null ||
-        (_RegistracijaData.danaDoIsteka != null && _RegistracijaData.danaDoIsteka! > 14)) {
-      return const SizedBox.shrink();
-    }
+    if (_RegistracijaData.shouldHide) return const SizedBox.shrink();
 
     final tablicaImage = _RegistracijaData.getTablicaImage(
       _RegistracijaData.najblizeVozilo!.registarskiBroj,
     );
 
     return GestureDetector(
-      onTap: _openKolskaKnjiga,
+      onTap: () => _RegistracijaData.openKolskaKnjiga(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(2),
         child: Image.asset(
@@ -138,7 +144,7 @@ class _RegistracijaTablicaWidgetState extends State<V2RegistracijaTablicaWidget>
   }
 }
 
-/// "S BROJA WIDGET - samo broj dana (desna strana)
+/// Brojac widget - samo broj dana (desna strana)
 class V2RegistracijaBrojacWidget extends StatefulWidget {
   const V2RegistracijaBrojacWidget({super.key});
 
@@ -166,34 +172,22 @@ class _RegistracijaBrojacWidgetState extends State<V2RegistracijaBrojacWidget> {
     if (mounted) setState(() {});
   }
 
-  void _openKolskaKnjiga() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const V2OdrzavanjeScreen()),
-    ).then((_) => _RegistracijaData.load());
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Sakrij ako nema podataka ili ako je vise od 14 dana do isteka
-    if (_RegistracijaData.isLoading ||
-        _RegistracijaData.najblizeVozilo == null ||
-        (_RegistracijaData.danaDoIsteka != null && _RegistracijaData.danaDoIsteka! > 14)) {
-      return const SizedBox.shrink();
-    }
+    if (_RegistracijaData.shouldHide) return const SizedBox.shrink();
 
     final danaDoIsteka = _RegistracijaData.danaDoIsteka!;
     final danaText = danaDoIsteka < 0 ? '-${danaDoIsteka.abs()}d' : '${danaDoIsteka}d';
 
     return GestureDetector(
-      onTap: _openKolskaKnjiga,
+      onTap: () => _RegistracijaData.openKolskaKnjiga(context),
       child: Text(
         danaText,
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.bold,
           color: _RegistracijaData.getDanaColor(),
-          shadows: [
+          shadows: const [
             Shadow(
               blurRadius: 4,
               color: Colors.black54,

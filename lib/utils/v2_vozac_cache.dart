@@ -23,6 +23,7 @@ class V2VozacCache {
   // ═══════════════════════════════════════════════════════════════════════════
 
   static List<V2Vozac> _vozaci = [];
+  static List<String> _imenaVozacaCache = const [];
 
   // Primarni lookup map-ovi
   static Map<String, Color> _imeToColor = {};
@@ -47,7 +48,8 @@ class V2VozacCache {
   static Future<void> initialize() async {
     try {
       await _load();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2VozacCache] initialize() greška: $e\n$st');
       _clear();
     }
   }
@@ -56,7 +58,9 @@ class V2VozacCache {
   static Future<void> refresh() async {
     try {
       await _load();
-    } catch (e) {}
+    } catch (e, st) {
+      debugPrint('[V2VozacCache] refresh() greška: $e\n$st');
+    }
   }
 
   static Future<void> _load() async {
@@ -80,6 +84,7 @@ class V2VozacCache {
     }
 
     _vozaci = vozaci;
+    _imenaVozacaCache = List.unmodifiable(imeToUuid.keys);
     _imeToColor = Map.unmodifiable(imeToColor);
     _uuidToColor = Map.unmodifiable(uuidToColor);
     _imeToUuid = Map.unmodifiable(imeToUuid);
@@ -89,6 +94,7 @@ class V2VozacCache {
 
   static void _clear() {
     _vozaci = [];
+    _imenaVozacaCache = const [];
     _imeToColor = {};
     _uuidToColor = {};
     _imeToUuid = {};
@@ -137,6 +143,7 @@ class V2VozacCache {
   }
 
   /// Ako je input UUID, vrati ime. Ako je ime, vrati ime. Null ako prazno.
+  /// NAPOMENA: ako UUID nije pronađen u cache-u, vraća originalni UUID string (graceful fallback).
   static String? resolveIme(String? imeIliUuid) {
     if (imeIliUuid == null || imeIliUuid.isEmpty) return null;
     if (_uuidRegex.hasMatch(imeIliUuid)) {
@@ -162,8 +169,8 @@ class V2VozacCache {
   /// Svi V2Vozac objekti.
   static List<V2Vozac> get vozaci => _vozaci;
 
-  /// Sva registrovana imena.
-  static List<String> get imenaVozaca => _imeToUuid.keys.toList();
+  /// Sva registrovana imena. Lista je unmodifiable i ne alocira se pri svakom pozivu.
+  static List<String> get imenaVozaca => _imenaVozacaCache;
 
   /// Mapa ime → Color (za backwards compat s VozacBoja.bojeSync).
   static Map<String, Color> get bojeSync => _imeToColor;
@@ -223,14 +230,15 @@ class V2VozacCache {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Dohvati UUID vozača po imenu async (direktno iz baze ako nije u cache-u).
+  /// Ako cache nije inicijalizovan, učitava i kešira za buduće pozive.
   static Future<String?> getUuidByImeAsync(String? ime) async {
     if (ime == null || ime.isEmpty) return null;
     final fromCache = _imeToUuid[ime];
     if (fromCache != null) return fromCache;
+    // Pokusaj osvježiti cijeli cache - rezultat će biti keširan za buduće pozive
     try {
-      final rm = V2MasterRealtimeManager.instance;
-      final vozaci = rm.vozaciCache.values.map((r) => V2Vozac.fromMap(r)).toList();
-      return vozaci.firstWhere((v) => v.ime == ime).id;
+      await _load();
+      return _imeToUuid[ime];
     } catch (_) {
       return null;
     }

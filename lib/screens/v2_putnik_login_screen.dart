@@ -148,7 +148,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           });
         } else if (pin == null || pin.isEmpty) {
           // Ima email ali nema PIN
-          final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekuAsync(response['id']);
+          final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekaAsync(response['id']);
           if (imaZahtev) {
             setState(() {
               _currentStep = _LoginStep.zahtevPoslat;
@@ -394,7 +394,9 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         final found = await V2MasterRealtimeManager.instance.v2GetByPin(pin, tabela);
         if (found != null) {
           final storedPhone = found['telefon'] as String? ?? '';
-          if (_normalizePhone(storedPhone) == normalizedInput) {
+          final storedPhone2 = found['telefon_2'] as String? ?? '';
+          if (_normalizePhone(storedPhone) == normalizedInput ||
+              (storedPhone2.isNotEmpty && _normalizePhone(storedPhone2) == normalizedInput)) {
             matches.add(found);
           }
         }
@@ -992,7 +994,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final telefon = _putnikData!['telefon'] as String? ?? _telefonController.text.trim();
       final putnikTabela = _putnikData!['_tabela'] as String?;
 
-      final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekuAsync(putnikId);
+      final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekaAsync(putnikId);
       if (imaZahtev) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;

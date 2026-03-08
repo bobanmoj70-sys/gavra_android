@@ -62,9 +62,9 @@ class _BottomNavBarZimskiState extends State<V2BottomNavBarZimski> {
   void _scrollToSelected() {
     const double itemWidth = 60.0; // width + margin
 
-    // Koristi prosleđena vremena ili fallback na Zimski raspored
-    final bcVremena = widget.bcVremena ?? V2RouteConfig.bcVremenaZimski;
-    final vsVremena = widget.vsVremena ?? V2RouteConfig.vsVremenaZimski;
+    // Koristi prosledeđena vremena ili aktivnu sezonu iz V2RouteConfig
+    final bcVremena = widget.bcVremena ?? V2RouteConfig.getVremenaByNavType('BC');
+    final vsVremena = widget.vsVremena ?? V2RouteConfig.getVremenaByNavType('VS');
 
     if (widget.selectedGrad == 'BC') {
       final index = bcVremena.indexOf(widget.selectedVreme);

@@ -120,93 +120,100 @@ class V2WeatherService {
 
       final response = await http.get(url).timeout(const Duration(seconds: 5));
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final temp = (data['current']['temperature_2m'] as num).toDouble();
-        final code = (data['current']['weather_code'] as num).toInt();
-        final isDay = (data['current']['is_day'] as num).toInt() == 1;
+      if (response.statusCode != 200) {
+        debugPrint('[V2WeatherService] getWeatherData HTTP ${response.statusCode} za $grad');
+        return null;
+      }
 
-        // Dnevni podaci
-        double? tempMin;
-        double? tempMax;
-        double? precipSum;
-        int? precipProb;
-        int? dailyCode;
-        String? precipStartTime;
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final current = data['current'] as Map<String, dynamic>?;
+      if (current == null) {
+        debugPrint('[V2WeatherService] getWeatherData: nema \'current\' polja u odgovoru za $grad');
+        return null;
+      }
 
-        if (data['daily'] != null) {
-          final daily = data['daily'];
-          if (daily['temperature_2m_min'] != null && (daily['temperature_2m_min'] as List).isNotEmpty) {
-            tempMin = (daily['temperature_2m_min'][0] as num?)?.toDouble();
-          }
-          if (daily['temperature_2m_max'] != null && (daily['temperature_2m_max'] as List).isNotEmpty) {
-            tempMax = (daily['temperature_2m_max'][0] as num?)?.toDouble();
-          }
-          if (daily['precipitation_sum'] != null && (daily['precipitation_sum'] as List).isNotEmpty) {
-            precipSum = (daily['precipitation_sum'][0] as num?)?.toDouble();
-          }
-          if (daily['precipitation_probability_max'] != null &&
-              (daily['precipitation_probability_max'] as List).isNotEmpty) {
-            precipProb = (daily['precipitation_probability_max'][0] as num?)?.toInt();
-          }
-          if (daily['weather_code'] != null && (daily['weather_code'] as List).isNotEmpty) {
-            dailyCode = (daily['weather_code'][0] as num?)?.toInt();
-          }
-        }
+      final temp = (current['temperature_2m'] as num).toDouble();
+      final code = (current['weather_code'] as num).toInt();
+      final isDay = (current['is_day'] as num).toInt() == 1;
 
-        // Nađi prvi sat sa padavinama (kiša: 51-82, sneg: 71-77, 85-86)
-        if (data['hourly'] != null && data['hourly']['weather_code'] != null && data['hourly']['time'] != null) {
-          final hourlyTimes = data['hourly']['time'] as List;
-          final hourlyCodes = data['hourly']['weather_code'] as List;
-          final now = DateTime.now();
+      // Dnevni podaci
+      double? tempMin;
+      double? tempMax;
+      double? precipSum;
+      int? precipProb;
+      int? dailyCode;
+      String? precipStartTime;
 
-          for (int i = 0; i < hourlyCodes.length && i < hourlyTimes.length; i++) {
-            final hourCode = (hourlyCodes[i] as num?)?.toInt() ?? 0;
-            final isPrecip = (hourCode >= 51 && hourCode <= 82) || (hourCode >= 85 && hourCode <= 86);
-            if (isPrecip) {
-              // Parsiraj vreme i proveri da li je u budućnosti
-              try {
-                final timeStr = hourlyTimes[i] as String;
-                final hourTime = DateTime.parse(timeStr);
-                if (hourTime.isAfter(now.subtract(const Duration(hours: 1)))) {
-                  precipStartTime = '${hourTime.hour.toString().padLeft(2, '0')}:00';
-                  break;
-                }
-              } catch (e) {
-                debugPrint('[V2WeatherService] parse hourTime greška: $e');
+      // Helper: sigurno dohvati prvi element daily liste
+      T? dailyFirst<T>(dynamic list, T? Function(num) convert) {
+        if (list == null) return null;
+        final l = list as List;
+        if (l.isEmpty) return null;
+        final v = l[0];
+        if (v == null) return null;
+        return convert(v as num);
+      }
+
+      if (data['daily'] != null) {
+        final daily = data['daily'] as Map<String, dynamic>;
+        tempMin = dailyFirst(daily['temperature_2m_min'], (n) => n.toDouble());
+        tempMax = dailyFirst(daily['temperature_2m_max'], (n) => n.toDouble());
+        precipSum = dailyFirst(daily['precipitation_sum'], (n) => n.toDouble());
+        precipProb = dailyFirst(daily['precipitation_probability_max'], (n) => n.toInt());
+        dailyCode = dailyFirst(daily['weather_code'], (n) => n.toInt());
+      }
+
+      // Nađi prvi sat sa padavinama (kiša: 51-82, sneg: 71-77, 85-86)
+      if (data['hourly'] != null && data['hourly']['weather_code'] != null && data['hourly']['time'] != null) {
+        final hourlyTimes = data['hourly']['time'] as List;
+        final hourlyCodes = data['hourly']['weather_code'] as List;
+        final now = DateTime.now();
+
+        for (int i = 0; i < hourlyCodes.length && i < hourlyTimes.length; i++) {
+          final hourCode = (hourlyCodes[i] as num?)?.toInt() ?? 0;
+          final isPrecip = (hourCode >= 51 && hourCode <= 82) || (hourCode >= 85 && hourCode <= 86);
+          if (isPrecip) {
+            // Parsiraj vreme i proveri da li je u budućnosti
+            try {
+              final timeStr = hourlyTimes[i]?.toString();
+              if (timeStr == null) continue;
+              final hourTime = DateTime.parse(timeStr);
+              if (hourTime.isAfter(now.subtract(const Duration(hours: 1)))) {
+                precipStartTime = '${hourTime.hour.toString().padLeft(2, '0')}:00';
+                break;
               }
+            } catch (e) {
+              debugPrint('[V2WeatherService] parse hourTime greška: $e');
             }
           }
         }
-
-        final weatherData = V2WeatherData(
-          temperature: temp,
-          weatherCode: code,
-          isDay: isDay,
-          icon: V2WeatherData.getIconForCode(code, isDay: isDay),
-          tempMin: tempMin,
-          tempMax: tempMax,
-          precipitationSum: precipSum,
-          precipitationProbability: precipProb,
-          dailyWeatherCode: dailyCode,
-          precipitationStartTime: precipStartTime,
-        );
-
-        // Emituj na stream
-        if (grad == 'BC') {
-          if (!_bcController.isClosed) _bcController.add(weatherData);
-        } else if (grad == 'VS') {
-          if (!_vsController.isClosed) _vsController.add(weatherData);
-        }
-
-        return weatherData;
       }
+
+      final weatherData = V2WeatherData(
+        temperature: temp,
+        weatherCode: code,
+        isDay: isDay,
+        icon: V2WeatherData.getIconForCode(code, isDay: isDay),
+        tempMin: tempMin,
+        tempMax: tempMax,
+        precipitationSum: precipSum,
+        precipitationProbability: precipProb,
+        dailyWeatherCode: dailyCode,
+        precipitationStartTime: precipStartTime,
+      );
+
+      // Emituj na stream
+      if (grad == 'BC') {
+        if (!_bcController.isClosed) _bcController.add(weatherData);
+      } else if (grad == 'VS') {
+        if (!_vsController.isClosed) _vsController.add(weatherData);
+      }
+
+      return weatherData;
     } catch (e) {
       debugPrint('[V2WeatherService] getWeatherData greška: $e');
       return null;
     }
-
-    return null;
   }
 
   /// Osvezi podatke za oba grada

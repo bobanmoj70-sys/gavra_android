@@ -85,39 +85,44 @@ class V2StatistikaIstorijaService {
       }
     } else if (vozacImeParam != null && vozacImeParam.isNotEmpty) {
       vozacIme = vozacImeParam;
-    } else {}
+    }
 
-    await supabase.from('v2_statistika_istorija').insert({
-      'putnik_id': putnikId,
-      'putnik_ime': putnikIme,
-      'putnik_tabela': putnikTabela,
-      'datum': datum.toIso8601String().split('T')[0],
-      'tip': tipUplate,
-      'iznos': iznos,
-      'vozac_id': vozacId,
-      'vozac_ime': vozacIme,
-      if (dan != null) 'dan': dan,
-      'grad': gradKod,
-      'vreme': vremeNormalizovano,
-      'placeni_mesec': placeniMesec ?? datum.month,
-      'placena_godina': placenaGodina ?? datum.year,
-    });
+    try {
+      await supabase.from('v2_statistika_istorija').insert({
+        'putnik_id': putnikId,
+        'putnik_ime': putnikIme,
+        'putnik_tabela': putnikTabela,
+        'datum': datum.toIso8601String().split('T')[0],
+        'tip': tipUplate,
+        'iznos': iznos,
+        'vozac_id': vozacId,
+        'vozac_ime': vozacIme,
+        if (dan != null) 'dan': dan,
+        'grad': gradKod,
+        'vreme': vremeNormalizovano,
+        'placeni_mesec': placeniMesec ?? datum.month,
+        'placena_godina': placenaGodina ?? datum.year,
+      });
 
-    // Audit log — uplata dodana
-    V2AuditLogService.log(
-      tip: 'uplata_dodana',
-      aktorId: vozacId,
-      aktorIme: vozacIme,
-      aktorTip: 'vozac',
-      putnikId: putnikId,
-      putnikIme: putnikIme,
-      putnikTabela: putnikTabela,
-      dan: dan,
-      grad: gradKod,
-      vreme: vremeNormalizovano,
-      novo: {'iznos': iznos, 'tip': tipUplate},
-      detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
-    );
+      // Audit log — uplata dodana
+      V2AuditLogService.log(
+        tip: 'uplata_dodana',
+        aktorId: vozacId,
+        aktorIme: vozacIme,
+        aktorTip: 'vozac',
+        putnikId: putnikId,
+        putnikIme: putnikIme,
+        putnikTabela: putnikTabela,
+        dan: dan,
+        grad: gradKod,
+        vreme: vremeNormalizovano,
+        novo: {'iznos': iznos, 'tip': tipUplate},
+        detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
+      );
+    } catch (e) {
+      debugPrint('[V2StatistikaIstorijaService] dodajUplatu greška: $e');
+      rethrow;
+    }
   }
 
   /// Logovanje generičke akcije u statistika_istorija tabelu.
@@ -151,7 +156,10 @@ class V2StatistikaIstorijaService {
       }
 
       final datumParsed = DateTime.tryParse(datumStr);
-      if (datumParsed == null) {}
+      if (datumParsed == null) {
+        debugPrint(
+            '[V2StatistikaIstorijaService] logGeneric: neispravan datum="$datumStr", placeni_mesec/godina se ne upisuju');
+      }
       await supabase.from('v2_statistika_istorija').insert({
         'tip': tip,
         'putnik_id': putnikId,
@@ -290,7 +298,7 @@ class V2StatistikaIstorijaService {
     controller.onCancel = () {
       debounce?.cancel();
       sub.cancel();
-      controller.close();
+      if (!controller.isClosed) controller.close();
     };
     return controller.stream;
   }
@@ -341,6 +349,7 @@ class V2StatistikaIstorijaService {
           .order('datum', ascending: false);
       return List<Map<String, dynamic>>.from(rows);
     } catch (e) {
+      debugPrint('[V2StatistikaIstorijaService] getSveZapisiGodina greška: $e');
       rethrow;
     }
   }
@@ -475,6 +484,7 @@ class V2StatistikaIstorijaService {
     try {
       final rm = V2MasterRealtimeManager.instance;
       final now = datum ?? DateTime.now();
+      final nowUtc = now.toUtc().toIso8601String();
       final datumStr = now.toIso8601String().split('T')[0];
       String? vozacId;
       if (vozacIme != null) {
@@ -487,8 +497,8 @@ class V2StatistikaIstorijaService {
         if (vozacIme != null) 'placen_vozac_ime': vozacIme,
         'datum_akcije': datumStr,
         'placen_tip': V2Putnik.tipIzTabele(putnikTabela) ?? 'radnik',
-        'placen_at': DateTime.now().toUtc().toIso8601String(),
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'placen_at': nowUtc,
+        'updated_at': nowUtc,
       };
 
       // 1. v2_polasci
@@ -499,6 +509,8 @@ class V2StatistikaIstorijaService {
       }
 
       // 2. v2_statistika_istorija
+      final gradNorm = grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null;
+      final vremeNorm = vreme != null ? V2GradAdresaValidator.normalizeTime(vreme) : null;
       await supabase.from('v2_statistika_istorija').insert({
         'putnik_id': putnikId,
         'putnik_ime': putnikIme,
@@ -509,11 +521,11 @@ class V2StatistikaIstorijaService {
         'vozac_ime': vozacIme,
         'datum': datumStr,
         if (dan != null) 'dan': dan,
-        if (grad != null) 'grad': V2GradAdresaValidator.normalizeGrad(grad),
-        if (vreme != null) 'vreme': V2GradAdresaValidator.normalizeTime(vreme),
+        if (gradNorm != null) 'grad': gradNorm,
+        if (vremeNorm != null) 'vreme': vremeNorm,
         'placeni_mesec': placeniMesec ?? now.month,
         'placena_godina': placenaGodina ?? now.year,
-        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'created_at': nowUtc,
       });
 
       // 3. v2_audit_log
@@ -526,8 +538,8 @@ class V2StatistikaIstorijaService {
         putnikIme: putnikIme,
         putnikTabela: putnikTabela,
         dan: dan,
-        grad: grad != null ? V2GradAdresaValidator.normalizeGrad(grad) : null,
-        vreme: vreme != null ? V2GradAdresaValidator.normalizeTime(vreme) : null,
+        grad: gradNorm,
+        vreme: vremeNorm,
         polazakId: requestId,
         novo: {'iznos': iznos, 'tip': 'uplata'},
         detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',

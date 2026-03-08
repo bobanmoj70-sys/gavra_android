@@ -81,7 +81,8 @@ class V2OsrmService {
         coordinates: coordinates,
         putniciEta: parseResult.putniciEta, // ETA za svakog putnika
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2OsrmService] optimizeRoute greška: $e\n$st');
       return V2OsrmResult.error('Greška pri optimizaciji: $e');
     }
   }
@@ -158,6 +159,7 @@ class V2OsrmService {
       // Kreiraj listu parova (V2Putnik, waypoint_index) - preskacemo START (index 0)
       final putniciWithWaypointIndex = <MapEntry<V2Putnik, int>>[];
       for (int i = 1; i < waypointsToProcess; i++) {
+        if (waypoints[i] is! Map<String, dynamic>) continue;
         final wp = waypoints[i] as Map<String, dynamic>;
         final waypointIndex = wp['waypoint_index'] as int;
         final putnikIndex = i - 1; // waypoints[1] = putnici[0], waypoints[2] = putnici[1], itd.
@@ -180,7 +182,8 @@ class V2OsrmService {
         final legsToProcess = hasEndDestination ? legs.length - 1 : legs.length;
 
         for (int i = 0; i < legsToProcess && i < orderedPutnici.length; i++) {
-          final leg = legs[i] as Map<String, dynamic>;
+          final leg = legs[i];
+          if (leg is! Map<String, dynamic>) continue;
           final legDuration = (leg['duration'] as num?)?.toDouble() ?? 0;
           cumulativeDurationSec += legDuration;
 
@@ -199,7 +202,8 @@ class V2OsrmService {
         durationMin: duration / 60,
         putniciEta: putniciEta,
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2OsrmService] _parseOsrmResponse greška: $e\n$st');
       return null;
     }
   }
@@ -266,8 +270,13 @@ class V2OsrmResult {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is V2OsrmResult && success == other.success && message == other.message;
+      identical(this, other) ||
+      other is V2OsrmResult &&
+          success == other.success &&
+          message == other.message &&
+          totalDistanceKm == other.totalDistanceKm &&
+          totalDurationMin == other.totalDurationMin;
 
   @override
-  int get hashCode => Object.hash(success, message);
+  int get hashCode => Object.hash(success, message, totalDistanceKm, totalDurationMin);
 }

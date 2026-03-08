@@ -65,8 +65,8 @@ class _BottomNavBarPrazniciState extends State<V2BottomNavBarPraznici> {
   void _scrollToSelected() {
     const double itemWidth = 60.0;
 
-    final bcVremena = widget.bcVremena ?? V2RouteConfig.bcVremenaPraznici;
-    final vsVremena = widget.vsVremena ?? V2RouteConfig.vsVremenaPraznici;
+    final bcVremena = widget.bcVremena ?? V2RouteConfig.getVremenaByNavType('BC');
+    final vsVremena = widget.vsVremena ?? V2RouteConfig.getVremenaByNavType('VS');
 
     if (widget.selectedGrad == 'BC') {
       final index = bcVremena.indexOf(widget.selectedVreme);
@@ -100,8 +100,8 @@ class _BottomNavBarPrazniciState extends State<V2BottomNavBarPraznici> {
 
   @override
   Widget build(BuildContext context) {
-    final bcVremena = widget.bcVremena ?? V2RouteConfig.bcVremenaPraznici;
-    final vsVremena = widget.vsVremena ?? V2RouteConfig.vsVremenaPraznici;
+    final bcVremena = widget.bcVremena ?? V2RouteConfig.getVremenaByNavType('BC');
+    final vsVremena = widget.vsVremena ?? V2RouteConfig.getVremenaByNavType('VS');
     final currentThemeId = V2ThemeManager().currentThemeId;
 
     return Container(

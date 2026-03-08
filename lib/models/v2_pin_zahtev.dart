@@ -44,12 +44,8 @@ class V2PinZahtev {
       email: json['email'] as String?,
       telefon: json['telefon'] as String?,
       status: json['status'] as String? ?? statusCeka,
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String)?.toLocal()
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'] as String)?.toLocal()
-          : null,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String)?.toLocal() : null,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String)?.toLocal() : null,
     );
   }
 
@@ -88,8 +84,7 @@ class V2PinZahtev {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is V2PinZahtev && runtimeType == other.runtimeType && id == other.id;
+      identical(this, other) || other is V2PinZahtev && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;

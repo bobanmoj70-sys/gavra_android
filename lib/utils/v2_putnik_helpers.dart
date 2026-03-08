@@ -30,8 +30,8 @@ class V2PutnikHelpers {
     // Ne računaj ako je na odsustvu (bolovanje/godišnji)
     if (p.jeOdsustvo) return false;
 
-    // POŠILJKE NE ZAUZIMAJU MESTA
-    if (p.tipPutnika == 'posiljka') return false;
+    // POŠILJKE NE ZAUZIMAJU MESTA - koristi model getter za case-insensitive proveru
+    if (p.isPosiljka) return false;
 
     return true;
   }
@@ -47,12 +47,14 @@ class V2PutnikHelpers {
   /// Vraća radni ISO datum (yyyy-MM-dd)
   static String getWorkingDateIso() {
     final now = DateTime.now();
+    // Radimo samo sa datumom (bez sata) da izbjegnemo DST greške
+    final today = DateTime(now.year, now.month, now.day);
     // Vikend (sub=6, ned=7) → naredni ponedeljak
-    if (now.weekday == DateTime.saturday) {
-      return now.add(const Duration(days: 2)).toIso8601String().split('T')[0];
-    } else if (now.weekday == DateTime.sunday) {
-      return now.add(const Duration(days: 1)).toIso8601String().split('T')[0];
+    if (today.weekday == DateTime.saturday) {
+      return today.add(const Duration(days: 2)).toIso8601String().split('T')[0];
+    } else if (today.weekday == DateTime.sunday) {
+      return today.add(const Duration(days: 1)).toIso8601String().split('T')[0];
     }
-    return now.toIso8601String().split('T')[0];
+    return today.toIso8601String().split('T')[0];
   }
 }

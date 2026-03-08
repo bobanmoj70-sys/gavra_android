@@ -77,12 +77,13 @@ class V2UnifiedGeocodingService {
     final List<Future<V2GeocodingResult> Function()> tasks = [];
     int completed = 0;
     final int total = putniciSaAdresama.length;
-
+    // Mutex nije potreban u Dart (single-threaded), ali koristimo lokalni
+    // counter koji se inkrementira tek nakon await — bez interleaving rizika.
     for (final putnik in putniciSaAdresama) {
       tasks.add(() async {
         final result = await _getCoordinatesForPutnik(putnik, saveToDatabase);
-        completed++;
-        onProgress?.call(completed, total, putnik.adresa ?? putnik.ime);
+        // Inkrement i callback su sinhroni — nema race conditiona
+        onProgress?.call(++completed, total, putnik.adresa ?? putnik.ime);
         return result;
       });
     }
@@ -234,16 +235,25 @@ class V2UnifiedGeocodingService {
   }) async {
     try {
       if (putnik.adresaId != null && putnik.adresaId!.isNotEmpty) {
+        // Vec postoji adresaId — samo azuriraj koordinate
         await V2AdresaSupabaseService.updateKoordinate(
           putnik.adresaId!,
           lat: lat,
           lng: lng,
         );
       } else if (putnik.adresa != null && putnik.adresa!.isNotEmpty) {
-        await V2AdresaSupabaseService.createOrGetAdresa(
+        // Kreiraj ili nadji adresu, pa odmah upisi koordinate
+        final adresa = await V2AdresaSupabaseService.createOrGetAdresa(
           naziv: putnik.adresa!,
           grad: putnik.grad,
         );
+        if (adresa != null && adresa.id.isNotEmpty) {
+          await V2AdresaSupabaseService.updateKoordinate(
+            adresa.id,
+            lat: lat,
+            lng: lng,
+          );
+        }
       }
     } catch (e) {
       debugPrint('[V2UnifiedGeocodingService] _saveCoordinatesToDatabase greška: $e');
@@ -306,7 +316,11 @@ class V2UnifiedGeocodingService {
     final requestKey = '${grad}_$adresa';
 
     if (_processingRequests.contains(requestKey)) {
-      return await (_pendingRequests[requestKey]?.future ?? Future.value(null));
+      // Sacekaj na isti in-flight zahtev — ne saljemo duplikat
+      final pending = _pendingRequests[requestKey];
+      if (pending != null) return pending.future;
+      // Completer je vec uklonjen (race), vrati null
+      return null;
     }
 
     final completer = Completer<String?>();
@@ -338,7 +352,7 @@ class V2UnifiedGeocodingService {
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         final query = '$adresa, $grad, Serbia';
-        final encodedQuery = Uri.encodeComponent(query);
+        final encodedQuery = Uri.encodeQueryComponent(query);
         final url = '$baseUrl?q=$encodedQuery&format=json&limit=1&countrycodes=rs';
 
         final response = await http.get(
@@ -367,7 +381,7 @@ class V2UnifiedGeocodingService {
   static Future<String?> _fetchFromPhoton(String grad, String adresa) async {
     try {
       final query = '$adresa, $grad';
-      final encodedQuery = Uri.encodeComponent(query);
+      final encodedQuery = Uri.encodeQueryComponent(query);
       const String bbox = '&bbox=18.82,41.85,23.01,46.19';
       final url = 'https://photon.komoot.io/api/?q=$encodedQuery&limit=1$bbox';
 
@@ -384,8 +398,8 @@ class V2UnifiedGeocodingService {
           final geometry = feature['geometry'] as Map<String, dynamic>?;
           final coordinates = geometry?['coordinates'] as List<dynamic>?;
           if (coordinates != null && coordinates.length >= 2) {
-            final lon = coordinates[0];
-            final lat = coordinates[1];
+            final lon = (coordinates[0] as num?)?.toDouble();
+            final lat = (coordinates[1] as num?)?.toDouble();
             if (lat != null && lon != null) return '$lat,$lon';
           }
         }

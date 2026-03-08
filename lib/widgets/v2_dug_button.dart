@@ -19,7 +19,17 @@ class V2DugButton extends StatelessWidget {
   final Color? iconColor;
   final Color? textColor;
   final bool wide;
+  // TODO: isLoading nije jos implementiran — dodati spinner i onTap blokadu kada je true
   final bool isLoading;
+
+  // Pre-computed konstante da bi se izbegao ponovni MaterialColor[] lookup na svakom rebuild-u
+  static const Color _defaultBg = Color(0xFFFFEBEE); // Colors.red[50]
+  static const Color _defaultBorder = Color(0xFFE57373); // Colors.red[300]
+  static const Color _defaultAccent = Color(0xFFD32F2F); // Colors.red[700]
+  static const BorderRadius _borderRadius = BorderRadius.all(Radius.circular(8));
+
+  /// Prikaz broja dužnika: pozitivan broj ili '-' ako nema dužnika.
+  String get _labelBroj => brojDuznika > 0 ? brojDuznika.toString() : '-';
 
   @override
   Widget build(BuildContext context) {
@@ -27,37 +37,37 @@ class V2DugButton extends StatelessWidget {
       // Kompaktni prikaz (za sve ekrane osim admin)
       return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: _borderRadius,
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: backgroundColor ?? Colors.red[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.red[300]!),
+            color: backgroundColor ?? _defaultBg,
+            borderRadius: _borderRadius,
+            border: Border.all(color: _defaultBorder),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.warning,
-                color: iconColor ?? Colors.red[700],
+                color: iconColor ?? _defaultAccent,
                 size: 18,
               ),
               const SizedBox(height: 2),
-              Text(
+              const Text(
                 'Dug',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: textColor ?? Colors.red[700],
+                  color: _defaultAccent,
                 ),
               ),
               Text(
-                brojDuznika > 0 ? brojDuznika.toString() : '-',
+                _labelBroj,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: textColor ?? Colors.red[700],
+                  color: textColor ?? _defaultAccent,
                 ),
               ),
             ],
@@ -68,7 +78,7 @@ class V2DugButton extends StatelessWidget {
       // Široki prikaz (kocka kao za admin screen)
       return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: _borderRadius,
         child: Container(
           width: double.infinity,
           height: 60,
@@ -76,7 +86,7 @@ class V2DugButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: backgroundColor ?? Theme.of(context).glassContainer, // Glassmorphism
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: _borderRadius,
             border: Border.all(
               color: Theme.of(context).glassBorder, // Transparentni border
               width: 1.5,
@@ -92,7 +102,7 @@ class V2DugButton extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: iconColor ?? Colors.red[700],
+                backgroundColor: iconColor ?? _defaultAccent,
                 radius: 16,
                 child: const Icon(Icons.warning, color: Colors.white, size: 18),
               ),
@@ -106,14 +116,14 @@ class V2DugButton extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: textColor ?? Colors.red[700],
+                        color: textColor ?? _defaultAccent,
                       ),
                     ),
-                    Text(
+                    const Text(
                       'Dug',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.grey[600],
+                        color: Color(0xFF757575), // Colors.grey[600]
                       ),
                     ),
                   ],
@@ -123,16 +133,16 @@ class V2DugButton extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.monetization_on,
-                    color: iconColor ?? Colors.red[700],
+                    color: iconColor ?? _defaultAccent,
                     size: 16,
                   ),
                   const SizedBox(width: 2),
                   Text(
-                    brojDuznika > 0 ? brojDuznika.toString() : '-',
+                    _labelBroj,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: textColor ?? Colors.red[700],
+                      color: textColor ?? _defaultAccent,
                     ),
                   ),
                 ],

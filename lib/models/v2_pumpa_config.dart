@@ -59,5 +59,6 @@ class V2PumpaConfig {
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'V2PumpaConfig(id: $id, kapacitet: $kapacitetLitri L, alarm: $alarmNivo L, pocetno: $pocetnoStanje L)';
+  String toString() =>
+      'V2PumpaConfig(id: $id, kapacitet: $kapacitetLitri L, alarm: $alarmNivo L, pocetno: $pocetnoStanje L)';
 }

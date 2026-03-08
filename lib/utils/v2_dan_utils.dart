@@ -5,6 +5,16 @@ class V2DanUtils {
 
   static const List<String> kratice = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
 
+  static const Map<String, int> _kraticeOffsets = {
+    'pon': 0,
+    'uto': 1,
+    'sre': 2,
+    'cet': 3,
+    'pet': 4,
+    'sub': 5,
+    'ned': 6,
+  };
+
   static const List<String> puniNazivi = [
     'Ponedeljak',
     'Utorak',
@@ -21,7 +31,10 @@ class V2DanUtils {
   /// ISO string '2026-03-05' → kratica ('cet')
   static String odIso(String iso) {
     final dt = DateTime.tryParse(iso);
-    if (dt == null) return '';
+    if (dt == null) {
+      assert(false, '[V2DanUtils.odIso] Neispravan ISO datum: "$iso"');
+      return '';
+    }
     return kratice[dt.weekday - 1];
   }
 
@@ -31,20 +44,14 @@ class V2DanUtils {
       (n) => n.toLowerCase() == punNaziv.toLowerCase(),
     );
     if (i >= 0) return kratice[i];
-    // fallback: prvih 3 slova
+    // fallback: mapa za alternativne oblike koji nisu u puniNazivi
+    // (puniNazivi.indexWhere + toLowerCase vec pokriva standardne oblike)
     final lower = punNaziv.toLowerCase();
-    const map = {
-      'ponedeljak': 'pon',
-      'utorak': 'uto',
-      'sreda': 'sre',
-      'cetvrtak': 'cet',
-      'četvrtak': 'cet',
-      'petak': 'pet',
-      'subota': 'sub',
-      'nedelja': 'ned',
-      'nedjelja': 'ned',
+    const altMap = {
+      'četvrtak': 'cet', // sa č umjesto c
+      'nedjelja': 'ned', // ijekavski oblik
     };
-    return map[lower] ?? lower.substring(0, lower.length >= 3 ? 3 : lower.length);
+    return altMap[lower] ?? lower.substring(0, lower.length >= 3 ? 3 : lower.length);
   }
 
   /// Kratica → puno ime ('cet' → 'Cetvrtak')
@@ -61,13 +68,14 @@ class V2DanUtils {
   /// Ako je vikend, koristi sledeću sedmicu.
   static String isoZaDan(String kratica) {
     final now = DateTime.now();
-    final int todayWd = now.weekday; // 1=pon ... 7=ned
+    // Radimo samo sa datumom (bez sata) da izbjegnemo DST greške
+    final today = DateTime(now.year, now.month, now.day);
+    final int todayWd = today.weekday; // 1=pon ... 7=ned
     final int daysToMonday = (todayWd == 6 || todayWd == 7)
         ? (8 - todayWd) // vikend → sledeći pon
         : (1 - todayWd); // radni dan → ovaj pon
-    final monday = now.add(Duration(days: daysToMonday));
-    const offsets = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4, 'sub': 5, 'ned': 6};
-    final offset = offsets[kratica.toLowerCase()] ?? 0;
+    final monday = today.add(Duration(days: daysToMonday));
+    final offset = _kraticeOffsets[kratica.toLowerCase()] ?? 0;
     return monday.add(Duration(days: offset)).toIso8601String().split('T').first;
   }
 

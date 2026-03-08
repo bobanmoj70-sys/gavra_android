@@ -20,6 +20,15 @@ class V2PinZahtevService {
     String? putnikTabela,
   }) async {
     try {
+      // Provjeri cache PRVO — izbjegava DB round-trip ako zahtev već postoji
+      if (_imaZahtevUCacheu(putnikId)) return true;
+
+      if (putnikTabela == null || putnikTabela.isEmpty) {
+        debugPrint(
+            '[V2PinZahtevService] posaljiZahtev: putnikTabela nije proslijeđena za putnikId=$putnikId — PIN odobrenje neće moći upisati tabelu!');
+      }
+
+      // Cache mogao biti prazan (tek inicijalizovan) — padamo na DB provjeru
       final existing = await supabase
           .from('v2_pin_zahtevi')
           .select('id')
@@ -36,7 +45,7 @@ class V2PinZahtevService {
         'email': email,
         'telefon': telefon,
         'status': V2PinZahtev.statusCeka,
-        if (putnikTabela != null) 'putnik_tabela': putnikTabela,
+        if (putnikTabela != null && putnikTabela.isNotEmpty) 'putnik_tabela': putnikTabela,
       });
 
       // Pošalji notifikaciju adminima (fire-and-forget — ne blokira zahtev)
@@ -74,7 +83,7 @@ class V2PinZahtevService {
       final putnikId = z['putnik_id'] as String?;
       final putnikData = putnikId != null ? rm.v2GetPutnikById(putnikId) : null;
       return <String, dynamic>{
-        ...Map<String, dynamic>.from(z),
+        ...z,
         'putnik_ime': putnikData?['ime'],
         'broj_telefona': putnikData?['telefon'],
         'tip': V2Putnik.tipIzTabele(z['putnik_tabela'] as String?),
@@ -100,16 +109,21 @@ class V2PinZahtevService {
 
       if (putnikTabela.isNotEmpty) {
         await supabase.from(putnikTabela).update({'pin': pin}).eq('id', putnikId);
+        // Ažuriraj putnik cache odmah — Realtime event može kasniti
+        V2MasterRealtimeManager.instance.v2PatchCache(putnikTabela, putnikId, {'pin': pin});
       } else {
         debugPrint('[V2PinZahtevService] odobriZahtev: putnikTabela je prazan — PIN nije upisan u bazu!');
+        return false;
       }
 
+      final now = DateTime.now().toUtc().toIso8601String();
       await supabase.from('v2_pin_zahtevi').update({
         'status': V2PinZahtev.statusOdobren,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': now,
       }).eq('id', zahtevId);
       // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
-      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': V2PinZahtev.statusOdobren});
+      V2MasterRealtimeManager.instance
+          .v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': V2PinZahtev.statusOdobren, 'updated_at': now});
 
       // Pošalji push notifikaciju putniku da je PIN odobren
       unawaited(V2RealtimeNotificationService.sendNotificationToPutnik(
@@ -128,12 +142,20 @@ class V2PinZahtevService {
 
   static Future<bool> odbijZahtev(String zahtevId) async {
     try {
+      final zahtev = V2MasterRealtimeManager.instance.pinCache[zahtevId];
+      if (zahtev == null) {
+        debugPrint('[V2PinZahtevService] odbijZahtev: zahtevId=$zahtevId nije u cache-u');
+        return false;
+      }
+
+      final now = DateTime.now().toUtc().toIso8601String();
       await supabase.from('v2_pin_zahtevi').update({
         'status': V2PinZahtev.statusOdbijen,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': now,
       }).eq('id', zahtevId);
       // patchCache → upsertToCache logika uklanja red jer status != 'ceka'
-      V2MasterRealtimeManager.instance.v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': V2PinZahtev.statusOdbijen});
+      V2MasterRealtimeManager.instance
+          .v2PatchCache('v2_pin_zahtevi', zahtevId, {'status': V2PinZahtev.statusOdbijen, 'updated_at': now});
 
       return true;
     } catch (e) {
@@ -147,17 +169,18 @@ class V2PinZahtevService {
     return (1000 + Random.secure().nextInt(9000)).toString();
   }
 
-  static bool imaZahtevKojiCeka(String putnikId) {
+  /// Brza sync provjera u pinCache-u — koristi se interno i iz imaZahtevKojiCeka
+  static bool _imaZahtevUCacheu(String putnikId) {
     return V2MasterRealtimeManager.instance.pinCache.values
         .any((z) => z['putnik_id'] == putnikId && z['status'] == V2PinZahtev.statusCeka);
   }
 
+  static bool imaZahtevKojiCeka(String putnikId) => _imaZahtevUCacheu(putnikId);
+
   /// Async verzija — provjerava cache, a ako je prazan pada na DB.
   /// Koristi se pri loginovanju da ne prikaže dialog ako je zahtev već poslat.
-  static Future<bool> imaZahtevKojiCekuAsync(String putnikId) async {
-    final izCachea = V2MasterRealtimeManager.instance.pinCache.values
-        .any((z) => z['putnik_id'] == putnikId && z['status'] == V2PinZahtev.statusCeka);
-    if (izCachea) return true;
+  static Future<bool> imaZahtevKojiCekaAsync(String putnikId) async {
+    if (_imaZahtevUCacheu(putnikId)) return true;
 
     try {
       final row = await supabase
@@ -168,7 +191,7 @@ class V2PinZahtevService {
           .maybeSingle();
       return row != null;
     } catch (e) {
-      debugPrint('[V2PinZahtevService] imaZahtevKojiCekuAsync greška: $e');
+      debugPrint('[V2PinZahtevService] imaZahtevKojiCekaAsync greška: $e');
       return false;
     }
   }
@@ -201,6 +224,8 @@ class V2PinZahtevService {
     try {
       if (putnikTabela.isNotEmpty) {
         await supabase.from(putnikTabela).update({'email': email}).eq('id', putnikId);
+        // Ažuriraj putnik cache odmah — Realtime event može kasniti
+        V2MasterRealtimeManager.instance.v2PatchCache(putnikTabela, putnikId, {'email': email});
       }
       return true;
     } catch (e) {

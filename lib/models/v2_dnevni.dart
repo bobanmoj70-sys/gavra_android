@@ -50,12 +50,8 @@ class V2Dnevni {
       pin: json['pin'] as String?,
       email: json['email'] as String?,
       brojMesta: (json['broj_mesta'] as num?)?.toInt(),
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String)?.toLocal()
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'] as String)?.toLocal()
-          : null,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String)?.toLocal() : null,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String)?.toLocal() : null,
     );
   }
 
@@ -95,8 +91,7 @@ class V2Dnevni {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is V2Dnevni && runtimeType == other.runtimeType && id == other.id;
+      identical(this, other) || other is V2Dnevni && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;

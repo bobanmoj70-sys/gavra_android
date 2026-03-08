@@ -76,7 +76,7 @@ class V2PumpaPunjenjaService {
           .order('datum', ascending: false)
           .order('created_at', ascending: false)
           .limit(limit);
-      return (response as List).map((r) => V2PumpaPunjenje.fromJson(r)).toList();
+      return response.map((r) => V2PumpaPunjenje.fromJson(r)).toList();
     } catch (e) {
       debugPrint('[V2PumpaPunjenjaService] getPunjenja greška: $e');
       return [];
@@ -160,7 +160,7 @@ class V2PumpaTocenjaService {
           .order('datum', ascending: false)
           .order('created_at', ascending: false)
           .limit(limit);
-      return (response as List).map((r) => V2PumpaTocenje.fromJson(r)).toList();
+      return response.map((r) => V2PumpaTocenje.fromJson(r)).toList();
     } catch (e) {
       debugPrint('[V2PumpaTocenjaService] getTocenja greška: $e');
       return [];
