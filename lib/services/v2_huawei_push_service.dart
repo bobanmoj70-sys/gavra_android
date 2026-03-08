@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:huawei_push/huawei_push.dart';
 
+import '../utils/v2_device_utils.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'v2_auth_manager.dart';
 import 'v2_local_notification_service.dart';
@@ -51,20 +51,9 @@ class V2HuaweiPushService {
 
     // Provera da li je HMS dostupan (zastita od HMSSDK logova na non-Huawei uredajima)
     try {
-      if (Platform.isAndroid) {
-        final deviceInfo = DeviceInfoPlugin();
-        final androidInfo = await deviceInfo.androidInfo;
-        final manufacturer = androidInfo.manufacturer.toLowerCase();
-        final brand = androidInfo.brand.toLowerCase();
-
-        // Ako nije Huawei/Honor, preskacemo HMS inicijalizaciju
-        if (!manufacturer.contains('huawei') &&
-            !brand.contains('huawei') &&
-            !manufacturer.contains('honor') &&
-            !brand.contains('honor')) {
-          _initialized = true;
-          return null;
-        }
+      if (Platform.isAndroid && !await V2DeviceUtils.isHuaweiDevice()) {
+        _initialized = true;
+        return null;
       }
     } catch (e) {
       debugPrint('[V2HuaweiPushService] initialize deviceInfo greška: $e');
@@ -90,7 +79,7 @@ class V2HuaweiPushService {
     try {
       // a successful registration with Huawei HMS. The plugin APIs vary across
       // versions, so the stream-based approach is resilient.
-      _tokenSub?.cancel();
+      await _tokenSub?.cancel();
       _tokenSub = Push.getTokenStream.listen(
         (String? newToken) async {
           if (newToken != null && newToken.isNotEmpty) {
