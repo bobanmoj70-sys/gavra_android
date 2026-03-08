@@ -127,7 +127,7 @@ class V2NotificationNavigationService {
                   ),
                 ),
                 const SizedBox(height: 8),
-                if (putnikDan is String && putnikDan.isNotEmpty)
+                if (putnikDan.isNotEmpty)
                   Text(
                     '📅 Dan: $putnikDan',
                     style: const TextStyle(fontSize: 14),
@@ -153,7 +153,7 @@ class V2NotificationNavigationService {
                   ),
                 const SizedBox(height: 12),
                 Text(
-                  'Vreme: ${DateTime.now().toString().substring(0, 19)}',
+                  'Vreme: ${DateTime.now().toLocal().toString().split('.').first}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
