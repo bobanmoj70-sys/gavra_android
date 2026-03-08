@@ -76,7 +76,8 @@ class V2OpenRouteService {
         return V2RealtimeEtaResult.failure('Nema rute');
       }
 
-      final segmentsRaw = routesRaw[0] is Map ? (routesRaw[0] as Map)['segments'] : null;
+      final segmentsRaw =
+          routesRaw[0] is Map<String, dynamic> ? (routesRaw[0] as Map<String, dynamic>)['segments'] : null;
       if (segmentsRaw is! List || segmentsRaw.isEmpty) {
         return V2RealtimeEtaResult.failure('Nema segmenata');
       }
@@ -93,8 +94,13 @@ class V2OpenRouteService {
         putniciEta[validPutnici[i]] = (cumulativeSec / 60).round();
       }
 
+      if (putniciEta.isEmpty) {
+        return V2RealtimeEtaResult.failure('Nije moguće izračunati ETA');
+      }
+
       return V2RealtimeEtaResult.success(putniciEta);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[V2OpenRouteService] getRealtimeEta greška: $e\n$st');
       return V2RealtimeEtaResult.failure('Greška: $e');
     }
   }
@@ -122,8 +128,22 @@ class V2RealtimeEtaResult {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is V2RealtimeEtaResult && success == other.success && error == other.error;
+      identical(this, other) ||
+      other is V2RealtimeEtaResult &&
+          success == other.success &&
+          error == other.error &&
+          _mapsEqual(putniciEta, other.putniciEta);
 
   @override
-  int get hashCode => Object.hash(success, error);
+  int get hashCode => Object.hash(success, error, putniciEta);
+
+  static bool _mapsEqual(Map<String, int>? a, Map<String, int>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (a[key] != b[key]) return false;
+    }
+    return true;
+  }
 }
