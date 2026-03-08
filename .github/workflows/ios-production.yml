@@ -35,9 +35,9 @@ jobs:
     name: 🚀 Build & Submit to App Store
     runs-on: macos-latest
     env:
-      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
-      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APPSTORE_KEY_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APPSTORE_API_KEY_P8 }}
       CERTIFICATE_PRIVATE_KEY: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
     
     steps:
@@ -76,6 +76,9 @@ jobs:
 
       - name: Create .env file
         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+      - name: Create GoogleService-Info.plist
+        run: echo "${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}" > ios/Runner/GoogleService-Info.plist
 
       - name: Get dependencies
         run: flutter pub get
