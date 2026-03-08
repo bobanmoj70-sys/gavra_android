@@ -43,7 +43,10 @@
 
   <!-- 🛰️ GPS PERMISSIONS (foreground only - no background tracking) -->
   <!-- ACCESS_BACKGROUND_LOCATION removed - not used, avoids Google Play video requirement -->
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <!-- FOREGROUND_SERVICE removed - geolocator/background_service plugins add it via merge, -->
+  <!-- but we remove it to avoid Google Play Foreground Service declaration requirement -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" tools:node="remove" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
   <!-- 🔊 VOICE NAVIGATION PERMISSIONS -->
