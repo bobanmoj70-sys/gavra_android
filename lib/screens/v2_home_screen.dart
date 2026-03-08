@@ -34,7 +34,6 @@ import '../widgets/v2_bottom_nav_bar_praznici.dart';
 import '../widgets/v2_bottom_nav_bar_zimski.dart';
 import '../widgets/v2_putnik_list.dart';
 import '../widgets/v2_registracija_countdown_widget.dart';
-import '../widgets/v2_shimmer_widgets.dart';
 import 'v2_admin_screen.dart';
 import 'v2_polasci_screen.dart';
 import 'v2_promena_sifre_screen.dart';
@@ -77,6 +76,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
     _cachedDan = _selectedDay;
+    // Kreira stream odmah u initState — da ne propustimo inicijalni emit broadcast streama
+    // koji dolazi pre nego sto StreamBuilder postane aktivan (shimmer faza)
+    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
     _initializeData();
   }
 
@@ -111,7 +113,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       }
 
       if (mounted) {
-        _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
         setState(() {
           _selectClosestDeparture();
           _isLoading = false;
@@ -455,12 +456,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                             decoration: InputDecoration(
                                               isDense: true,
                                               contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                                              border:
-                                                  UnderlineInputBorder(borderSide: const BorderSide(color: Colors.white70)),
-                                              enabledBorder:
-                                                  UnderlineInputBorder(borderSide: const BorderSide(color: Colors.white70)),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(borderSide: const BorderSide(color: Colors.white)),
+                                              border: UnderlineInputBorder(
+                                                  borderSide: const BorderSide(color: Colors.white70)),
+                                              enabledBorder: UnderlineInputBorder(
+                                                  borderSide: const BorderSide(color: Colors.white70)),
+                                              focusedBorder: UnderlineInputBorder(
+                                                  borderSide: const BorderSide(color: Colors.white)),
                                             ),
                                             controller: danaControllers[p.id],
                                             onChanged: (val) {
@@ -1596,132 +1597,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    // ? PROVERAVAJ LOADING STANJE ODMAH
-    if (_isLoading) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: Scaffold(
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(74),
-            child: Container(
-              decoration: BoxDecoration(
-                // Keep appbar fully transparent so underlying gradient shows
-                color: Theme.of(context).glassContainer,
-                border: Border.all(
-                  color: Theme.of(context).glassBorder,
-                  width: 1.5,
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(25),
-                  bottomRight: Radius.circular(25),
-                ),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      // REZERVACIJE - levo
-                      Expanded(
-                        flex: 3,
-                        child: Container(
-                          height: 35,
-                          alignment: Alignment.centerLeft,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Rezervacije',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                letterSpacing: 0.5,
-                                shadows: const [
-                                  Shadow(
-                                    offset: Offset(1, 1),
-                                    blurRadius: 3,
-                                    color: Colors.black54,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          height: 35,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Theme.of(context).colorScheme.onPrimary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  'Ucitavam...',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                    color: Theme.of(context).colorScheme.onPrimary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // PRAZAN PROSTOR - desno
-                      Expanded(
-                        flex: 3,
-                        child: Container(
-                          height: 35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: V2ThemeManager().currentGradient,
-            ),
-            child: V2ShimmerWidgets.putnikListShimmer(itemCount: 8),
-          ),
-          bottomNavigationBar: ValueListenableBuilder<String>(
-            valueListenable: navBarTypeNotifier,
-            builder: (context, navType, _) {
-              return _buildBottomNavBar(navType, (grad, vreme) => 0);
-            },
-          ),
-        ),
-      );
-    }
-
     // Kreira stream za selektovani dan — samo kad se dan promeni
     if (_cachedDan != _selectedDay) {
       _cachedDan = _selectedDay;

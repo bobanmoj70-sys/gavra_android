@@ -32,7 +32,6 @@ import '../widgets/v2_bottom_nav_bar_praznici.dart';
 import '../widgets/v2_bottom_nav_bar_zimski.dart';
 import '../widgets/v2_clock_ticker.dart';
 import '../widgets/v2_putnik_list.dart';
-import '../widgets/v2_shimmer_widgets.dart';
 
 /// ?? VOZAC SCREEN
 /// Prikazuje putnike koristeci isti PutnikService stream kao DanasScreen
@@ -1061,16 +1060,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
             body: _currentDriver == null
                 ? const Center(child: CircularProgressIndicator(color: Colors.white))
                 : Builder(builder: (context) {
-                    if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
-                      return Column(
-                        children: [
-                          V2ShimmerWidgets.vozacHeaderShimmer(context),
-                          const SizedBox(height: 8),
-                          V2ShimmerWidgets.statistikaShimmer(context),
-                          Expanded(child: V2ShimmerWidgets.putnikListShimmer(itemCount: 5)),
-                        ],
-                      );
-                    }
                     final filteredByGradVreme = mojiPutnici.where((p) {
                       // Filter po gradu
                       final gradMatch =
