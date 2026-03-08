@@ -33,6 +33,9 @@ class V2HereWeGoNavigationService {
 
         final shouldInstall = await _showInstallDialog(context);
         if (shouldInstall) {
+          if (!context.mounted) {
+            return V2HereWeGoNavResult.error('HERE WeGo nije instaliran.');
+          }
           await _openStore();
         }
         return V2HereWeGoNavResult.error('Molimo instalirajte HERE WeGo aplikaciju pre nastavka.');
@@ -198,8 +201,8 @@ class V2HereWeGoNavigationService {
         final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (success) {
           return V2HereWeGoNavResult.success(
-            message: 'HERE WeGo: ${putnici.length} putnika',
-            launchedPutnici: putnici,
+            message: 'HERE WeGo: ${validPutnici.length} putnika',
+            launchedPutnici: validPutnici,
             remainingPutnici: [],
           );
         }
