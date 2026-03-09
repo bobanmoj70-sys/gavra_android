@@ -24,6 +24,9 @@ concurrency:
 env:
   FLUTTER_VERSION: '3.35.6'
 
+permissions:
+  contents: write
+
 jobs:
   build-and-upload-huawei:
     name: 🚀 Build & Upload to Huawei

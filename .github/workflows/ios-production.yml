@@ -24,6 +24,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 env:
   FLUTTER_VERSION: '3.35.6'
   BUNDLE_ID: 'com.gavra013.gavra013ios'
