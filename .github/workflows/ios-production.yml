@@ -103,25 +103,24 @@ jobs:
 
       - name: Create ExportOptions.plist
         run: |
-          PROVISIONING_PROFILE=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | xargs basename | sed 's/.mobileprovision//')
-          echo "Found Profile: $PROVISIONING_PROFILE"
-          
-          # Create plist using printf to avoid heredoc indentation issues
-          cat <<EOF > $HOME/export_options.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>$BUNDLE_ID</key>
-              <string>$PROVISIONING_PROFILE</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
+          # Find provisioning profile saved by codemagic-cli-tools (stored in Xcode/UserData, not MobileDevice)
+          PROFILE_PATH=$(find ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles ~/Library/MobileDevice/Provisioning\ Profiles -name "*.mobileprovision" 2>/dev/null | head -n1 || true)
+          if [ -z "$PROFILE_PATH" ]; then
+            echo "⚠️ No provisioning profile found, using minimal ExportOptions"
+            PROVISIONING_PROFILE=""
+          else
+            PROVISIONING_PROFILE=$(basename "$PROFILE_PATH" .mobileprovision)
+            echo "Found Profile: $PROVISIONING_PROFILE at $PROFILE_PATH"
+          fi
+
+          # Write ExportOptions.plist using printf (no heredoc indentation issues)
+          if [ -n "$PROVISIONING_PROFILE" ]; then
+            printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>method</key>\n  <string>app-store</string>\n  <key>signingStyle</key>\n  <string>manual</string>\n  <key>provisioningProfiles</key>\n  <dict>\n    <key>%s</key>\n    <string>%s</string>\n  </dict>\n</dict>\n</plist>\n' "$BUNDLE_ID" "$PROVISIONING_PROFILE" > $HOME/export_options.plist
+          else
+            printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n  <key>method</key>\n  <string>app-store</string>\n</dict>\n</plist>\n' > $HOME/export_options.plist
+          fi
+          echo "--- ExportOptions.plist content ---"
+          cat $HOME/export_options.plist
 
       - name: Update Info.plist
         run: |
