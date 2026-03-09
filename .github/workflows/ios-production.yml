@@ -31,7 +31,7 @@ env:
   FLUTTER_VERSION: '3.35.6'
   BUNDLE_ID: 'com.gavra013.gavra013ios'
   APP_ID: '6757114361'
-  VERSION_ID: 'a4397448-6ed5-4220-82df-1b84e1a63657'
+  VERSION_ID: '2fad2478-eaad-4456-9a79-aa16054d542e'
 
 jobs:
   build-and-submit:
@@ -163,6 +163,14 @@ jobs:
           echo "⏳ Waiting 5 minutes for Apple to process build..."
           sleep 300
           echo "✅ Build should be processed now"
+
+      - name: Rename App Store version string to match pubspec
+        run: |
+          VERSION_NAME="${{ steps.version_bump.outputs.VERSION_NAME }}"
+          echo "🏷️ Renaming App Store version to $VERSION_NAME..."
+          app-store-connect app-store-versions modify "$VERSION_ID" \
+            --version-string "$VERSION_NAME" || echo "⚠️ Version rename failed (may already match)"
+          echo "✅ Version string updated to $VERSION_NAME"
 
       - name: Find and link build to version
         id: link_build
