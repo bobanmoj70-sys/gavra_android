@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../globals.dart';
 import '../models/v2_adresa.dart';
 import 'realtime/v2_master_realtime_manager.dart';
-import 'v2_unified_geocoding_service.dart';
 
 /// Servis za rad sa normalizovanim adresama iz Supabase tabele.
 /// Read metode čitaju iz rm.adreseCache — nema DB upita.
@@ -52,78 +51,6 @@ class V2AdresaSupabaseService {
       if (row != null) result[uuid] = V2Adresa.fromMap(row);
     }
     return result;
-  }
-
-  /// Pronađi adresu po nazivu i gradu — iz rm.adreseCache
-  static V2Adresa? findAdresaByNazivAndGrad(String naziv, String grad) {
-    final rm = V2MasterRealtimeManager.instance;
-    final row = rm.adreseCache.values.where((r) => r['naziv'] == naziv && r['grad'] == grad).firstOrNull;
-    if (row == null) return null;
-    return V2Adresa.fromMap(row);
-  }
-
-  /// Pronalazi postojeću adresu — ne kreira nove.
-  /// Nove adrese može dodati samo admin direktno u bazi.
-  static Future<V2Adresa?> createOrGetAdresa({
-    required String naziv,
-    required String grad,
-  }) async {
-    final postojeca = findAdresaByNazivAndGrad(naziv, grad);
-    if (postojeca != null) {
-      if (!postojeca.hasValidCoordinates) {
-        final updated = await _geocodeAndUpdateAdresa(postojeca, grad);
-        if (updated != null) return updated;
-      }
-      return postojeca;
-    }
-    return null;
-  }
-
-  /// Geocodira adresu i ažurira koordinate u bazi.
-  static Future<V2Adresa?> _geocodeAndUpdateAdresa(V2Adresa adresa, String grad) async {
-    try {
-      final coordsString = await V2UnifiedGeocodingService.getKoordinateZaAdresu(
-        grad,
-        adresa.naziv,
-      );
-
-      if (coordsString != null) {
-        final parts = coordsString.split(',');
-        if (parts.length == 2) {
-          final lat = double.tryParse(parts[0].trim());
-          final lng = double.tryParse(parts[1].trim());
-
-          if (lat != null && lng != null) {
-            await supabase.from('v2_adrese').update({'gps_lat': lat, 'gps_lng': lng}).eq('id', adresa.id);
-            // Spreada stari cache red pa override koordinate — ne gube se ostala polja
-            final rm = V2MasterRealtimeManager.instance;
-            final existing = rm.adreseCache[adresa.id] ?? {};
-            final updatedRow = <String, dynamic>{...existing, 'gps_lat': lat, 'gps_lng': lng};
-            rm.v2UpsertToCache('v2_adrese', updatedRow);
-            return V2Adresa.fromMap(updatedRow);
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('[V2AdresaSupabaseService] _geocodeAndUpdateAdresa greška: $e');
-    }
-    return null;
-  }
-
-  /// Ažurira GPS koordinate za postojeću adresu.
-  static Future<bool> updateKoordinate(
-    String uuid, {
-    required double lat,
-    required double lng,
-  }) async {
-    try {
-      await supabase.from('v2_adrese').update({'gps_lat': lat, 'gps_lng': lng}).eq('id', uuid);
-      V2MasterRealtimeManager.instance.v2PatchCache('v2_adrese', uuid, {'gps_lat': lat, 'gps_lng': lng});
-      return true;
-    } catch (e) {
-      debugPrint('[V2AdresaSupabaseService] updateKoordinate greška: $e');
-      return false;
-    }
   }
 
   /// Dodaje novu adresu, osvježava cache, vraća kreiranu adresu.
