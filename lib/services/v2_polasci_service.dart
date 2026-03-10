@@ -427,19 +427,6 @@ class V2PolasciService {
         vozacId: vozacId,
       );
 
-  static void v2RefreshStreams() => _svc.v2RefreshStreams();
-
-  static Future<int> v2GlobalniBezPolaska({
-    String? dan,
-    String? grad,
-    String? vreme,
-  }) =>
-      _svc.v2GlobalniBezPolaska(
-        dan: dan ?? '',
-        grad: grad ?? '',
-        vreme: vreme ?? '',
-      );
-
   static Future<void> v2DodajPutnika({
     String? putnikId,
     String? dan,
@@ -461,33 +448,6 @@ class V2PolasciService {
       putnikTabela: tabela,
       customAdresaId: adresaId,
       brojMesta: brojMesta,
-    );
-  }
-
-  static Future<void> v2OznaciPlaceno({
-    String? putnikId,
-    double? iznos,
-    String? vozacIme,
-    String? grad,
-    String? selectedVreme,
-    String? selectedDan,
-    String? requestId,
-    String? tipPutnika,
-    String? putnikIme,
-    String? putnikTabela,
-  }) async {
-    if (putnikId == null) return;
-    await _svc.v2OznaciPlaceno(
-      putnikId,
-      iznos ?? 0,
-      vozacIme,
-      grad: grad,
-      selectedVreme: selectedVreme,
-      selectedDan: selectedDan,
-      requestId: requestId,
-      tipPutnika: tipPutnika,
-      putnikIme: putnikIme,
-      putnikTabela: putnikTabela,
     );
   }
 

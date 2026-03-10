@@ -52,9 +52,6 @@ class V2FirebaseService {
     }
   }
 
-  /// Dobija trenutnog vozaca — delegira na V2AuthManager
-  static Future<String?> getCurrentDriver() => V2AuthManager.getCurrentDriver();
-
   /// Dobija FCM token
   static Future<String?> getFCMToken() async {
     try {
