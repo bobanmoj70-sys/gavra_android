@@ -417,17 +417,14 @@ class V2PolasciService {
     String? dan,
     String? grad,
     String? vreme,
-    String? selectedVreme,
-    String? selectedDan,
-    String? datum,
-    String? requestId,
-    String? status,
+    String? vozacId,
   }) =>
       _svc.streamKombinovaniPutniciFiltered(
         isoDate: isoDate,
         dan: dan,
         grad: grad,
-        vreme: vreme ?? selectedVreme,
+        vreme: vreme,
+        vozacId: vozacId,
       );
 
   static void v2RefreshStreams() => _svc.v2RefreshStreams();
@@ -688,9 +685,9 @@ class V2PutnikStreamService {
     final putnikId = rpEntry['id']?.toString();
     if (putnikId == null) return null;
 
-    final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
-    if (srRow != null) {
-      return _buildPutnik(srRow, rpEntry, todayStr);
+    final polazak = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
+    if (polazak != null) {
+      return _buildPutnik(polazak, rpEntry, todayStr);
     }
     return V2Putnik.v2FromProfil(rpEntry);
   }
@@ -701,37 +698,16 @@ class V2PutnikStreamService {
       final String idStr = id.toString();
       final rm = V2MasterRealtimeManager.instance;
 
-      final srRow = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == idStr).firstOrNull;
+      final polazak = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == idStr).firstOrNull;
       final rp = rm.v2GetPutnikById(idStr);
 
-      if (srRow != null) {
-        return _buildPutnik(srRow, rp, todayStr);
+      if (polazak != null) {
+        return _buildPutnik(polazak, rp, todayStr);
       }
       if (rp != null) return V2Putnik.v2FromProfil(rp);
       return null;
     } catch (e) {
       return null;
-    }
-  }
-
-  Future<List<V2Putnik>> getPutniciByIds(List<dynamic> ids, {String? targetDan, String? isoDate}) async {
-    if (ids.isEmpty) return [];
-    try {
-      final String danasStr = (isoDate ?? DateTime.now().toIso8601String()).split('T')[0];
-      final idStrings = ids.map((id) => id.toString()).toSet();
-      final svi = await getPutniciByDayIso(danasStr);
-      return svi.where((p) => idStrings.contains(p.id?.toString())).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<List<V2Putnik>> v2GetAllPutnici({String? targetDay, String? isoDate}) async {
-    try {
-      final String danasStr = (isoDate ?? DateTime.now().toIso8601String()).split('T')[0];
-      return await getPutniciByDayIso(danasStr);
-    } catch (e) {
-      return [];
     }
   }
 
@@ -858,37 +834,36 @@ class V2PutnikStreamService {
   }
 
   static V2Putnik _buildPutnik(
-    Map<String, dynamic> srRow,
+    Map<String, dynamic> polazak,
     Map<String, dynamic>? rp,
     String isoDate,
   ) {
-    final bool jePokupljen = srRow['status'] == V2Polazak.statusPokupljen;
-    final bool jeOtkazan = srRow['status'] == V2Polazak.statusOtkazano;
+    final bool jePokupljen = polazak['status'] == V2Polazak.statusPokupljen;
+    final bool jeOtkazan = polazak['status'] == V2Polazak.statusOtkazano;
 
-    final bool jePlacen = srRow['placen'] == true;
-    final double? iznos = (srRow['placen_iznos'] as num?)?.toDouble();
-    final String? naplatioVozac = srRow['placen_vozac_ime']?.toString();
-    final String? naplatioVozacId = srRow['placen_vozac_id']?.toString();
+    final bool jePlacen = polazak['placen'] == true;
+    final String? naplatioVozac = polazak['placen_vozac_ime']?.toString();
+    final String? naplatioVozacId = polazak['placen_vozac_id']?.toString();
     final String? vremeUplate = jePlacen
-        ? (srRow['placen_at']?.toString() ?? srRow['updated_at']?.toString() ?? srRow['datum_akcije']?.toString())
+        ? (polazak['placen_at']?.toString() ?? polazak['updated_at']?.toString() ?? polazak['datum_akcije']?.toString())
         : null;
 
-    final String? vozacId = naplatioVozacId ?? (jePokupljen ? _vozacIdZaIme(srRow['pokupio']?.toString()) : null);
-    final String? vozacIme = naplatioVozac ?? (jePokupljen ? srRow['pokupio']?.toString() : null);
+    final String? vozacId = naplatioVozacId ?? (jePokupljen ? _vozacIdZaIme(polazak['pokupio']?.toString()) : null);
+    final String? vozacIme = naplatioVozac ?? (jePokupljen ? polazak['pokupio']?.toString() : null);
 
-    final String? pokupioVozac = srRow['pokupio']?.toString();
-    final String? pokupioVozacId = srRow['pokupio_vozac_id']?.toString() ?? _vozacIdZaIme(pokupioVozac);
+    final String? pokupioVozac = polazak['pokupio']?.toString();
+    final String? pokupioVozacId = polazak['pokupio_vozac_id']?.toString() ?? _vozacIdZaIme(pokupioVozac);
 
-    final String? otkazaoVozac = srRow['otkazao']?.toString();
-    final String? otkazaoVozacId = srRow['otkazao_vozac_id']?.toString() ?? _vozacIdZaIme(otkazaoVozac);
+    final String? otkazaoVozac = polazak['otkazao']?.toString();
+    final String? otkazaoVozacId = polazak['otkazao_vozac_id']?.toString() ?? _vozacIdZaIme(otkazaoVozac);
 
-    final adresaId = srRow['adresa_id']?.toString();
+    final adresaId = polazak['adresa_id']?.toString();
     String? nazivAdrese;
     if (adresaId != null && adresaId.isNotEmpty) {
       nazivAdrese = V2MasterRealtimeManager.instance.adreseCache[adresaId]?['naziv']?.toString();
     }
 
-    final map = Map<String, dynamic>.from(srRow);
+    final map = Map<String, dynamic>.from(polazak);
     if (adresaId != null && adresaId.isNotEmpty) map['custom_adresa_id'] = adresaId;
     map['datum'] = isoDate;
     map['pokupljen_iz_loga'] = jePokupljen;
