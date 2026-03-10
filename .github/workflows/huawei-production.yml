@@ -45,13 +45,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # - name: Setup Flutter
-      #   uses: subosito/flutter-action@v2
-      #   with:
-      #     flutter-version: ${{ env.FLUTTER_VERSION }}
-      #     channel: 'stable'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
 
-      - name: Prepare Secrets (Windows)
+      - name: Prepare Secrets
+        shell: pwsh
         env:
           AGC_BASE64: ${{ secrets.AGC_BASE64 }}
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
