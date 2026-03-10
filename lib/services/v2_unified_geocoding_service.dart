@@ -130,9 +130,6 @@ class V2UnifiedGeocodingService {
   // API GEOCODING — Photon primarno, Nominatim fallback
   // ──────────────────────────────────────────────────────────────────────────
 
-  /// Javna metoda — koristi se u v2_adresa_supabase_service.dart
-  static Future<String?> getKoordinateZaAdresu(String grad, String adresa) => _getKoordinateZaAdresu(grad, adresa);
-
   static Future<String?> _getKoordinateZaAdresu(String grad, String adresa) async {
     String? coords = await _fetchFromPhoton(grad, adresa);
     coords ??= await _fetchFromNominatim(grad, adresa);

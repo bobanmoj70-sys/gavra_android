@@ -42,12 +42,11 @@ class V2PolasciService {
     String? customAdresaId,
     String? putnikTabela, // v2_radnici / v2_ucenici / v2_dnevni / v2_posiljke
   }) async {
-    try {
-      final gradKey = V2GradAdresaValidator.normalizeGrad(grad);
-      final normVreme = V2GradAdresaValidator.normalizeTime(vreme);
-      final danKey = dan.toLowerCase();
-      final nowStr = DateTime.now().toUtc().toIso8601String();
-      final status = isAdmin ? V2Polazak.statusOdobreno : V2Polazak.statusObrada;
+    final gradKey = V2GradAdresaValidator.normalizeGrad(grad);
+    final normVreme = V2GradAdresaValidator.normalizeTime(vreme);
+    final danKey = dan.toLowerCase();
+    final nowStr = DateTime.now().toUtc().toIso8601String();
+    final status = isAdmin ? V2Polazak.statusOdobreno : V2Polazak.statusObrada;
 
       final rm = V2MasterRealtimeManager.instance;
 
@@ -150,9 +149,6 @@ class V2PolasciService {
           detalji: 'Zahtev za vožnju: $danKey $gradKey $normVreme',
         );
       }
-    } catch (e) {
-      rethrow;
-    }
   }
 
   /// Ažurira broj_mesta za postojeći polazak (vozač označava da putnik povede više osoba)
@@ -1006,10 +1002,9 @@ class V2PutnikStreamService {
   }
 
   Future<void> v2OznaciStatus(String putnikId, String status, String actor) async {
-    try {
-      final rm = V2MasterRealtimeManager.instance;
-      final putnikData = rm.v2GetPutnikById(putnikId);
-      final tabela = putnikData?['_tabela'] as String?;
+    final rm = V2MasterRealtimeManager.instance;
+    final putnikData = rm.v2GetPutnikById(putnikId);
+    final tabela = putnikData?['_tabela'] as String?;
       final statusPayload = {'status': status, 'updated_at': v2NowString()};
       if (tabela != null) {
         await supabase.from(tabela).update(statusPayload).eq('id', putnikId);
@@ -1042,9 +1037,6 @@ class V2PutnikStreamService {
           datum: DateTime.now().toIso8601String().split('T')[0],
         );
       }
-    } catch (e) {
-      rethrow;
-    }
   }
 
   Future<void> v2OtkaziPutnika(
@@ -1111,8 +1103,7 @@ class V2PutnikStreamService {
       final gradKey = V2GradAdresaValidator.normalizeGrad(finalGrad);
       final normalizedTime = V2GradAdresaValidator.normalizeTime(finalVreme);
 
-      try {
-        if (normalizedTime.isNotEmpty) {
+      if (normalizedTime.isNotEmpty) {
           var res = await supabase
               .from('v2_polasci')
               .update(updatePayload)
@@ -1136,9 +1127,6 @@ class V2PutnikStreamService {
             if (polasciUpdated) updatedId = res.first['id']?.toString();
           }
         }
-      } catch (e) {
-        rethrow;
-      }
     }
 
     if (!polasciUpdated) {
