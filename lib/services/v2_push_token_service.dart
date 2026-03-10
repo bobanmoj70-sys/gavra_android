@@ -98,14 +98,6 @@ class V2PushTokenService {
     }
   }
 
-  /// Sačuvaj token lokalno za kasniju registraciju
-  static Future<void> savePendingToken({
-    required String token,
-    required String provider,
-    String? vozacId,
-    String? putnikId,
-  }) async {}
-
   /// Pokušaj registrovati pending token.
   /// Poziva se nakon što Supabase postane dostupan.
   static Future<bool> tryRegisterPendingToken() async {
