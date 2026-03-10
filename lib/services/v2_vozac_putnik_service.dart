@@ -79,11 +79,6 @@ class V2VozacPutnikService {
 
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
-  /// Učitaj sve individualne dodjele iz rm cache-a (sync)
-  static List<V2VozacPutnikEntry> loadAll() {
-    return _rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
-  }
-
   /// Postavi (ili zamijeni) individualnu dodjelu za putnika.
   ///
   /// Ako [vozacIme] je prazan string → briše dodjelu (vidi [delete]).
@@ -151,21 +146,6 @@ class V2VozacPutnikService {
     } catch (e) {
       debugPrint('[V2VozacPutnikService] delete greška: $e');
       return false;
-    }
-  }
-
-  static Future<void> deleteForVozac({required String vozacId}) async {
-    try {
-      await supabase.from('v2_vozac_putnik').delete().eq('vozac_id', vozacId);
-      final toRemove = _rm.vozacPutnikCache.entries
-          .where((e) => e.value['vozac_id']?.toString() == vozacId)
-          .map((e) => e.key)
-          .toList();
-      for (final id in toRemove) {
-        _rm.v2RemoveFromCache('v2_vozac_putnik', id);
-      }
-    } catch (e) {
-      debugPrint('[V2VozacPutnikService] deleteForVozac greška: $e');
     }
   }
 

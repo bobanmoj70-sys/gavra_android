@@ -58,10 +58,6 @@ class V2VozacRasporedService {
 
   static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
-  static List<V2VozacRasporedEntry> loadAll() {
-    return _rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
-  }
-
   static Future<void> upsert(V2VozacRasporedEntry entry) async {
     try {
       final row = await supabase

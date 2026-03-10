@@ -16,19 +16,6 @@ class V2KapacitetService {
   /// Vremena polazaka za Vrsac (prema navBarType)
   static List<String> get vsVremena => V2RouteConfig.getVremenaByNavType('VS');
 
-  /// Sva moguca vremena (zimska + letnja + praznicna) - za kapacitet tabelu
-  static final List<String> svaVremenaBc = {
-    ...V2RouteConfig.bcVremenaZimski,
-    ...V2RouteConfig.bcVremenaLetnji,
-    ...V2RouteConfig.bcVremenaPraznici,
-  }.toList();
-
-  static final List<String> svaVremenaVs = {
-    ...V2RouteConfig.vsVremenaZimski,
-    ...V2RouteConfig.vsVremenaLetnji,
-    ...V2RouteConfig.vsVremenaPraznici,
-  }.toList();
-
   /// Dohvati vremena za grad (sezonski)
   static List<String> getVremenaZaGrad(String grad) {
     if (grad == 'BC') return bcVremena;
@@ -36,15 +23,6 @@ class V2KapacitetService {
     debugPrint('[V2KapacitetService] getVremenaZaGrad: nepoznat grad "$grad"');
     assert(false, 'getVremenaZaGrad: nepoznat grad "$grad"');
     return bcVremena;
-  }
-
-  /// Dohvati sva moguca vremena za grad (obe sezone) - za kapacitet tabelu
-  static List<String> getSvaVremenaZaGrad(String grad) {
-    if (grad == 'BC') return svaVremenaBc;
-    if (grad == 'VS') return svaVremenaVs;
-    debugPrint('[V2KapacitetService] getSvaVremenaZaGrad: nepoznat grad "$grad"');
-    assert(false, 'getSvaVremenaZaGrad: nepoznat grad "$grad"');
-    return svaVremenaBc;
   }
 
   /// Admin: Promeni kapacitet za odredeni polazak (atomski upsert — nema race condition)
@@ -101,15 +79,5 @@ class V2KapacitetService {
       }
     }
     return 8;
-  }
-
-  /// Inicijalizuj cache pri startu — sada je no-op jer rm vec ucitava kapacitetCache.
-  static Future<void> initializeKapacitetCache() async {
-    // rm.initialize() je vec ucitao kapacitetCache — nema posla ovde.
-  }
-
-  /// Zaustavi globalni listener — sada je no-op jer rm drzi kanal stalno.
-  static void stopGlobalRealtimeListener() {
-    // no-op: rm drzi v2_kapacitet_polazaka kanal stalno.
   }
 }
