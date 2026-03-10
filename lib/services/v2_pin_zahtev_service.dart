@@ -91,10 +91,6 @@ class V2PinZahtevService {
     }).toList();
   }
 
-  static int brojZahtevaKojiCekaju() {
-    return V2MasterRealtimeManager.instance.pinCache.values.where((z) => z['status'] == V2PinZahtev.statusCeka).length;
-  }
-
   static Future<bool> odobriZahtev({
     required String zahtevId,
     required String pin,
@@ -169,13 +165,11 @@ class V2PinZahtevService {
     return (1000 + Random.secure().nextInt(9000)).toString();
   }
 
-  /// Brza sync provjera u pinCache-u — koristi se interno i iz imaZahtevKojiCeka
+  /// Brza sync provjera u pinCache-u — koristi se interno iz imaZahtevKojiCekaAsync
   static bool _imaZahtevUCacheu(String putnikId) {
     return V2MasterRealtimeManager.instance.pinCache.values
         .any((z) => z['putnik_id'] == putnikId && z['status'] == V2PinZahtev.statusCeka);
   }
-
-  static bool imaZahtevKojiCeka(String putnikId) => _imaZahtevUCacheu(putnikId);
 
   /// Async verzija — provjerava cache, a ako je prazan pada na DB.
   /// Koristi se pri loginovanju da ne prikaže dialog ako je zahtev već poslat.
