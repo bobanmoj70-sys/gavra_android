@@ -368,27 +368,6 @@ class V2StatistikaIstorijaService {
     ]..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  /// Traži putnika po ID-u kroz sva 4 cache-a, sa DB fallback-om
-  static Future<Map<String, dynamic>?> v2FindPutnikById(String id) async {
-    final rm = V2MasterRealtimeManager.instance;
-    final row = rm.v2GetPutnikById(id);
-    if (row != null) return row;
-    for (final tabela in [
-      V2RadniciService.tabela,
-      V2UceniciService.tabela,
-      V2DnevniService.tabela,
-      V2PosiljkeService.tabela,
-    ]) {
-      try {
-        final res = await supabase.from(tabela).select().eq('id', id).maybeSingle();
-        if (res != null) return {...res, '_tabela': tabela};
-      } catch (e) {
-        debugPrint('[V2StatistikaIstorijaService] _fetchPutnikById tabela=$tabela greška: $e');
-      }
-    }
-    return null;
-  }
-
   /// Dohvata sva plaćanja (tip='uplata') za putnika
   static Future<List<Map<String, dynamic>>> dohvatiPlacanja(String putnikId) async {
     try {
@@ -418,50 +397,6 @@ class V2StatistikaIstorijaService {
       return ukupno;
     } catch (e) {
       return 0.0;
-    }
-  }
-
-  /// Broji vožnje (tip='voznja') za putnika u zadatom ili tekućem mesecu
-  static Future<int> izracunajBrojVoznji(String putnikId, {int? mesec, int? godina}) async {
-    try {
-      final now = DateTime.now();
-      final m = mesec ?? now.month;
-      final g = godina ?? now.year;
-      final mesecStart = '$g-${m.toString().padLeft(2, '0')}-01';
-      final mesecEnd = DateTime(g, m + 1, 1).toIso8601String().split('T')[0];
-      final res = await supabase
-          .from('v2_statistika_istorija')
-          .select('id')
-          .eq('putnik_id', putnikId)
-          .eq('tip', 'voznja')
-          .gte('datum', mesecStart)
-          .lt('datum', mesecEnd);
-      return res.length;
-    } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] izracunajBrojVoznji greška: $e');
-      return 0;
-    }
-  }
-
-  /// Broji otkazivanja (tip='otkazivanje') za putnika u zadatom ili tekućem mesecu
-  static Future<int> izracunajBrojOtkazivanja(String putnikId, {int? mesec, int? godina}) async {
-    try {
-      final now = DateTime.now();
-      final m = mesec ?? now.month;
-      final g = godina ?? now.year;
-      final mesecStart = '$g-${m.toString().padLeft(2, '0')}-01';
-      final mesecEnd = DateTime(g, m + 1, 1).toIso8601String().split('T')[0];
-      final res = await supabase
-          .from('v2_statistika_istorija')
-          .select('id')
-          .eq('putnik_id', putnikId)
-          .eq('tip', 'otkazivanje')
-          .gte('datum', mesecStart)
-          .lt('datum', mesecEnd);
-      return res.length;
-    } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] izracunajBrojOtkazivanja greška: $e');
-      return 0;
     }
   }
 

@@ -7,45 +7,6 @@ import 'realtime/v2_master_realtime_manager.dart';
 
 /// Servis za računanje prihoda, troškova i neto zarade
 class V2FinansijeService {
-  /// Dohvati sve aktivne troškove za određeni mesec/godinu (čita iz cache-a)
-  static Future<List<V2Trosak>> getTroskovi({int? mesec, int? godina}) async {
-    try {
-      final rm = V2MasterRealtimeManager.instance;
-      var rows = rm.troskoviCache.values.where((r) => r['aktivan'] == true);
-      if (mesec != null) rows = rows.where((r) => r['mesec'] == mesec);
-      if (godina != null) rows = rows.where((r) => r['godina'] == godina);
-
-      return rows.map((row) {
-        // Resolviraj ime vozača iz vozaciCache (umjesto PostgREST join-a)
-        String? vozacIme;
-        final vozacId = row['vozac_id']?.toString();
-        if (vozacId != null) {
-          vozacIme = rm.vozaciCache[vozacId]?['ime'] as String?;
-        }
-        return V2Trosak.fromJson({
-          ...row,
-          if (vozacIme != null) 'v2_vozaci': {'ime': vozacIme}
-        });
-      }).toList()
-        ..sort((a, b) => a.tip.compareTo(b.tip));
-    } catch (e) {
-      debugPrint('[V2FinansijeService] getTroskovi greška: $e');
-      return [];
-    }
-  }
-
-  /// Ažuriraj trošak
-  static Future<bool> updateTrosak(String id, double noviIznos) async {
-    try {
-      await supabase.from('v2_finansije_troskovi').update({'iznos': noviIznos}).eq('id', id);
-      V2MasterRealtimeManager.instance.v2PatchCache('v2_finansije_troskovi', id, {'iznos': noviIznos});
-      return true;
-    } catch (e) {
-      debugPrint('[V2FinansijeService] updateTrosak greška: $e');
-      return false;
-    }
-  }
-
   /// Dodaj novi trošak za određeni mesec/godinu
   static Future<bool> addTrosak(String naziv, String tip, double iznos, {int? mesec, int? godina}) async {
     try {
@@ -68,18 +29,6 @@ class V2FinansijeService {
       return true;
     } catch (e) {
       debugPrint('[V2FinansijeService] addTrosak greška: $e');
-      return false;
-    }
-  }
-
-  /// Obriši trošak (soft delete)
-  static Future<bool> deleteTrosak(String id) async {
-    try {
-      await supabase.from('v2_finansije_troskovi').update({'aktivan': false}).eq('id', id);
-      V2MasterRealtimeManager.instance.v2PatchCache('v2_finansije_troskovi', id, {'aktivan': false});
-      return true;
-    } catch (e) {
-      debugPrint('[V2FinansijeService] deleteTrosak greška: $e');
       return false;
     }
   }
