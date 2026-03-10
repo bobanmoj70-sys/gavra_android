@@ -80,21 +80,6 @@ class V2RacunService {
     }
   }
 
-  /// Vraća trenutni broj računa BEZ uvećavanja (za prikaz)
-  static Future<String> getTrenutniBrojRacuna() async {
-    final godina = DateTime.now().year;
-
-    try {
-      final response =
-          await supabase.from('v2_racun_sequence').select('poslednji_broj').eq('godina', godina).maybeSingle();
-
-      final trenutniBroj = response?['poslednji_broj'] as int? ?? 0;
-      return '${trenutniBroj + 1}/$godina';
-    } catch (e) {
-      return '?/$godina';
-    }
-  }
-
   /// Štampa račun za fizičko lice
   static Future<void> stampajRacun({
     required String brojRacuna,

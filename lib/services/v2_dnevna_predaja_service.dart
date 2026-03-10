@@ -59,25 +59,4 @@ class V2DnevnaPredajaService {
     }
   }
 
-  /// Lista svih predaja za određeni datum (svi vozači).
-  static Future<List<V2DnevnaPredaja>> getByDatum(DateTime datum) async {
-    try {
-      final rows = await supabase.from(_tabela).select().eq('datum', V2DnevnaPredaja.datumStr(datum));
-      return rows.map((r) => V2DnevnaPredaja.fromJson(r)).toList();
-    } catch (e) {
-      debugPrint('[V2DnevnaPredajaService] getByDatum greška: $e');
-      return [];
-    }
-  }
-
-  /// Lista svih predaja za vozača (sve dane).
-  static Future<List<V2DnevnaPredaja>> getByVozac(String vozacIme) async {
-    try {
-      final rows = await supabase.from(_tabela).select().eq('vozac_ime', vozacIme).order('datum', ascending: false);
-      return rows.map((r) => V2DnevnaPredaja.fromJson(r)).toList();
-    } catch (e) {
-      debugPrint('[V2DnevnaPredajaService] getByVozac greška: $e');
-      return [];
-    }
-  }
 }
