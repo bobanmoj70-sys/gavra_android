@@ -882,13 +882,14 @@ class V2PutnikStreamService {
     final String? otkazaoVozac = srRow['otkazao']?.toString();
     final String? otkazaoVozacId = srRow['otkazao_vozac_id']?.toString() ?? _vozacIdZaIme(otkazaoVozac);
 
-    String? nazivAdrese;
     final adresaId = srRow['adresa_id']?.toString();
+    String? nazivAdrese;
     if (adresaId != null && adresaId.isNotEmpty) {
       nazivAdrese = V2MasterRealtimeManager.instance.adreseCache[adresaId]?['naziv']?.toString();
     }
 
     final map = Map<String, dynamic>.from(srRow);
+    if (adresaId != null && adresaId.isNotEmpty) map['custom_adresa_id'] = adresaId;
     map['datum'] = isoDate;
     map['pokupljen_iz_loga'] = jePokupljen;
     map['otkazano_iz_loga'] = jeOtkazan;
