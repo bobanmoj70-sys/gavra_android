@@ -303,33 +303,6 @@ class V2StatistikaIstorijaService {
   }
 
   // ---------------------------------------------------------------------------
-  // BATCH QUERY — za prikaz stanja plaćanja za listu putnika (v2_putnici_screen)
-  // ---------------------------------------------------------------------------
-
-  /// Dohvata istorijska plaćanja za batch putnika iz tekuće godine.
-  /// Vraća listu redova sa kolonama: putnik_id, iznos, placeni_mesec, placena_godina.
-  static Future<List<Map<String, dynamic>>> getPlacanjaBatch({
-    required List<String> putnikIds,
-    required String thisYear,
-  }) async {
-    try {
-      final rows = await supabase
-          .from('v2_statistika_istorija')
-          .select('putnik_id, iznos, placeni_mesec, placena_godina')
-          .inFilter('putnik_id', putnikIds)
-          .inFilter('tip', ['uplata'])
-          .not('placeni_mesec', 'is', null)
-          .not('placena_godina', 'is', null)
-          .gte('datum', '$thisYear-01-01')
-          .order('datum', ascending: false);
-      return List<Map<String, dynamic>>.from(rows);
-    } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] getPlacanjaBatch greška: $e');
-      return [];
-    }
-  }
-
-  // ---------------------------------------------------------------------------
   // SINGLE PUTNIK — svi zapisi od početka godine (v2_putnik_profil_screen)
   // ---------------------------------------------------------------------------
 
@@ -361,10 +334,18 @@ class V2StatistikaIstorijaService {
   static List<V2RegistrovaniPutnik> getAllAktivniKaoModel() {
     final rm = V2MasterRealtimeManager.instance;
     return [
-      ...rm.radniciCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_radnici'})),
-      ...rm.uceniciCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_ucenici'})),
-      ...rm.dnevniCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_dnevni'})),
-      ...rm.posiljkeCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_posiljke'})),
+      ...rm.radniciCache.values
+          .where((r) => r['status'] == 'aktivan')
+          .map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_radnici'})),
+      ...rm.uceniciCache.values
+          .where((r) => r['status'] == 'aktivan')
+          .map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_ucenici'})),
+      ...rm.dnevniCache.values
+          .where((r) => r['status'] == 'aktivan')
+          .map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_dnevni'})),
+      ...rm.posiljkeCache.values
+          .where((r) => r['status'] == 'aktivan')
+          .map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_posiljke'})),
     ]..sort((a, b) => a.ime.compareTo(b.ime));
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
-import '../models/v2_vozila_servis.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 // V2VozilaServisService se nalazi na dnu ovog fajla (spojen sa v2_vozila_servis_service.dart)
 
@@ -232,21 +231,6 @@ class V2VozilaServisService {
 
   static const String tabela = 'v2_vozila_servis';
 
-  /// Dohvati servisnu istoriju za vozilo
-  static Future<List<V2VozilaServis>> getIstorijuServisa(String voziloId) async {
-    try {
-      final response = await supabase
-          .from(tabela)
-          .select('id,vozilo_id,tip,datum,km,opis,cena,pozicija,created_at')
-          .eq('vozilo_id', voziloId)
-          .order('datum', ascending: false);
-      return List<Map<String, dynamic>>.from(response).map((r) => V2VozilaServis.fromJson(r)).toList();
-    } catch (e) {
-      debugPrint('[V2VozilaServisService] getIstorijuServisa greška: $e');
-      return [];
-    }
-  }
-
   /// Dodaj zapis u servisnu istoriju
   static Future<bool> addIstorijuServisa({
     required String voziloId,
@@ -270,17 +254,6 @@ class V2VozilaServisService {
       return true;
     } catch (e) {
       debugPrint('[V2VozilaServisService] addIstorijuServisa greška: $e');
-      return false;
-    }
-  }
-
-  /// Obriši servisni zapis
-  static Future<bool> deleteIstorijuServisa(String id) async {
-    try {
-      await supabase.from(tabela).delete().eq('id', id);
-      return true;
-    } catch (e) {
-      debugPrint('[V2VozilaServisService] deleteIstorijuServisa greška: $e');
       return false;
     }
   }
