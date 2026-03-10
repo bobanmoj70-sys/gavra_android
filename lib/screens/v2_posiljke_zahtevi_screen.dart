@@ -5,14 +5,14 @@ import '../services/v2_polasci_service.dart';
 import '../theme.dart';
 import '../utils/v2_vozac_cache.dart';
 
-class V2UceniciZahteviScreen extends StatefulWidget {
-  const V2UceniciZahteviScreen({super.key});
+class V2PosiljkeZahteviScreen extends StatefulWidget {
+  const V2PosiljkeZahteviScreen({super.key});
 
   @override
-  State<V2UceniciZahteviScreen> createState() => _V2UceniciZahteviScreenState();
+  State<V2PosiljkeZahteviScreen> createState() => _V2PosiljkeZahteviScreenState();
 }
 
-class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
+class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
   late final Stream<List<V2Polazak>> _stream;
 
   @override
@@ -30,12 +30,8 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
       builder: (context, snapshot) {
         final svi = snapshot.data ?? [];
 
-        // Samo zahtevi koji su prošli kroz kronom:
-        // - status='obrada' → čeka kronom
-        // - odobrio='sistem' → kronom odobrio
-        // - otkazao='sistem' → kronom odbio
         final zahtevi = svi.where((z) {
-          if ((z.tipPutnika ?? '').toLowerCase() != 'ucenik') return false;
+          if ((z.tipPutnika ?? '').toLowerCase() != 'posiljka') return false;
           return z.status == 'obrada' || z.approvedBy == 'sistem' || z.cancelledBy == 'sistem';
         }).toList();
 
@@ -68,7 +64,7 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
-                          'Monitoring Učenika',
+                          'Pošiljke Zahtevi',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -86,7 +82,7 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
                             if (brOdbijeno > 0) _summaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
                             if (brOtkazano > 0) _summaryBadge('⛔ $brOtkazano otkazano', Colors.orange),
                             if (zahtevi.isEmpty)
-                              Text('Nema aktivnih zahtjeva',
+                              Text('Nema zahteva',
                                   style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
                           ],
                         ),
@@ -122,10 +118,10 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_outlined, size: 72, color: Colors.white.withValues(alpha: 0.4)),
+            Icon(Icons.local_shipping_outlined, size: 72, color: Colors.white.withValues(alpha: 0.4)),
             const SizedBox(height: 14),
             Text(
-              'Nema zahteva učenika',
+              'Nema zahteva pošiljki',
               style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 17, fontWeight: FontWeight.w500),
             ),
           ],

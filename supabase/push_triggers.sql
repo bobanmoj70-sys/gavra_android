@@ -38,13 +38,13 @@ DECLARE
     v_grad_display text;
 BEGIN
     -- Novi dnevni zahtev → obavijesti admina
-    IF (TG_OP = 'INSERT' AND NEW.status = 'obrada' AND NEW.putnik_tabela = 'dnevni') THEN
+    IF (TG_OP = 'INSERT' AND NEW.status = 'obrada' AND NEW.putnik_tabela = 'v2_dnevni') THEN
         SELECT ime INTO v_putnik_ime FROM v2_dnevni WHERE id = NEW.putnik_id;
         v_grad_display := CASE WHEN NEW.grad = 'BC' THEN 'Bela Crkva' WHEN NEW.grad = 'VS' THEN 'Vršac' ELSE NEW.grad END;
         SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
         INTO v_tokens
         FROM v2_push_tokens
-        WHERE user_id IN (SELECT ime FROM vozaci WHERE ime = 'Bojan');
+        WHERE vozac_id = (SELECT id FROM v2_vozaci WHERE ime = 'Bojan' LIMIT 1);
         IF v_tokens IS NOT NULL AND jsonb_array_length(v_tokens) > 0 THEN
             PERFORM notify_push(
                 v_tokens,
@@ -144,3 +144,41 @@ DROP TRIGGER IF EXISTS tr_v2_polazak_notification ON v2_polasci;
 CREATE TRIGGER tr_v2_polazak_notification
 AFTER INSERT OR UPDATE ON v2_polasci
 FOR EACH ROW EXECUTE FUNCTION notify_v2_polazak_update();
+
+-- 4. FUNKCIJA: PIN zahtev → obavijesti admina
+CREATE OR REPLACE FUNCTION notify_v2_pin_zahtev()
+RETURNS trigger AS $$
+DECLARE
+    v_tokens jsonb;
+    v_putnik_ime text;
+BEGIN
+    IF (TG_OP = 'INSERT' AND NEW.status = 'ceka') THEN
+        SELECT ime INTO v_putnik_ime FROM v2_dnevni WHERE id = NEW.putnik_id;
+        IF v_putnik_ime IS NULL THEN SELECT ime INTO v_putnik_ime FROM v2_radnici WHERE id = NEW.putnik_id; END IF;
+        IF v_putnik_ime IS NULL THEN SELECT ime INTO v_putnik_ime FROM v2_ucenici WHERE id = NEW.putnik_id; END IF;
+        IF v_putnik_ime IS NULL THEN SELECT ime INTO v_putnik_ime FROM v2_posiljke WHERE id = NEW.putnik_id; END IF;
+
+        SELECT jsonb_agg(jsonb_build_object('token', token, 'provider', provider))
+        INTO v_tokens
+        FROM v2_push_tokens
+        WHERE vozac_id = (SELECT id FROM v2_vozaci WHERE ime = 'Bojan' LIMIT 1);
+
+        IF v_tokens IS NOT NULL AND jsonb_array_length(v_tokens) > 0 THEN
+            PERFORM notify_push(
+                v_tokens,
+                '🔔 Novi zahtev za PIN',
+                COALESCE(v_putnik_ime, 'Putnik') || ' traži PIN za pristup aplikaciji',
+                jsonb_build_object('type', 'pin_zahtev', 'putnik_id', NEW.putnik_id)
+            );
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 5. TRIGGER: Aktiviraj na tabeli v2_pin_zahtevi
+DROP TRIGGER IF EXISTS tr_v2_pin_zahtev_notification ON v2_pin_zahtevi;
+CREATE TRIGGER tr_v2_pin_zahtev_notification
+AFTER INSERT ON v2_pin_zahtevi
+FOR EACH ROW EXECUTE FUNCTION notify_v2_pin_zahtev();

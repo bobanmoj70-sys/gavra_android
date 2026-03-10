@@ -625,17 +625,23 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                     V2AppSnackBar.warning(context, 'Unesi broj litara!');
                     return;
                   }
+                  final litriVal = litri;
+                  final cenaVal = double.tryParse(cenaCtrl.text.replaceAll(',', '.'));
+                  final napomenaVal = napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text;
                   final ok = await V2GorivoService.addPunjenje(
                     datum: datum,
-                    litri: litri,
-                    cenaPoPLitru: double.tryParse(cenaCtrl.text.replaceAll(',', '.')),
-                    napomena: napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text,
+                    litri: litriVal,
+                    cenaPoPLitru: cenaVal,
+                    napomena: napomenaVal,
                   );
                   if (!context.mounted) return;
+                  litriCtrl.dispose();
+                  cenaCtrl.dispose();
+                  napomenaCtrl.dispose();
                   Navigator.pop(ctx);
                   if (ok) {
                     _loadAll();
-                    V2AppSnackBar.success(context, '✅ Punjenje dodato: $litri L');
+                    V2AppSnackBar.success(context, '✅ Punjenje dodato: $litriVal L');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }
@@ -652,11 +658,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           ],
         ),
       ),
-    ).then((_) {
-      litriCtrl.dispose();
-      cenaCtrl.dispose();
-      napomenaCtrl.dispose();
-    });
+    );
   }
 
   Future<void> _showDodajTocenjeDialog() async {
@@ -725,19 +727,25 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                     V2AppSnackBar.warning(context, 'Izaberi vozilo!');
                     return;
                   }
+                  final litriVal = litri;
+                  final kmVal = int.tryParse(kmCtrl.text.replaceAll(',', '.'));
+                  final napomenaVal = napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text;
                   final ok = await V2GorivoService.addTocenje(
                     datum: datum,
                     voziloId: vozilo.id,
-                    litri: litri,
-                    kmVozila: int.tryParse(kmCtrl.text.replaceAll(',', '.')),
-                    napomena: napomenaCtrl.text.isEmpty ? null : napomenaCtrl.text,
+                    litri: litriVal,
+                    kmVozila: kmVal,
+                    napomena: napomenaVal,
                     cenaPoPLitru: lastCena,
                   );
                   if (!context.mounted) return;
+                  litriCtrl.dispose();
+                  kmCtrl.dispose();
+                  napomenaCtrl.dispose();
                   Navigator.pop(ctx);
                   if (ok) {
                     _loadAll();
-                    V2AppSnackBar.success(context, '✅ Točenje zabeleženo: $litri L — ${vozilo.registarskiBroj}');
+                    V2AppSnackBar.success(context, '✅ Točenje zabeleženo: $litriVal L — ${vozilo.registarskiBroj}');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
                   }
@@ -754,11 +762,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           ],
         ),
       ),
-    ).then((_) {
-      litriCtrl.dispose();
-      kmCtrl.dispose();
-      napomenaCtrl.dispose();
-    });
+    );
   }
 
   void _showConfigDialog() {
@@ -793,12 +797,18 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () async {
+                final kapacitetVal = double.tryParse(kapacitetCtrl.text.replaceAll(',', '.'));
+                final alarmVal = double.tryParse(alarmCtrl.text.replaceAll(',', '.'));
+                final pocetnoVal = double.tryParse(pocetnoCtrl.text.replaceAll(',', '.'));
                 final ok = await V2GorivoService.updateConfig(
-                  kapacitet: double.tryParse(kapacitetCtrl.text.replaceAll(',', '.')),
-                  alarmNivo: double.tryParse(alarmCtrl.text.replaceAll(',', '.')),
-                  pocetnoStanje: double.tryParse(pocetnoCtrl.text.replaceAll(',', '.')),
+                  kapacitet: kapacitetVal,
+                  alarmNivo: alarmVal,
+                  pocetnoStanje: pocetnoVal,
                 );
                 if (!context.mounted) return;
+                kapacitetCtrl.dispose();
+                alarmCtrl.dispose();
+                pocetnoCtrl.dispose();
                 Navigator.pop(ctx);
                 if (ok) {
                   _reloadStanje();
@@ -818,11 +828,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
           ),
         ],
       ),
-    ).then((_) {
-      kapacitetCtrl.dispose();
-      alarmCtrl.dispose();
-      pocetnoCtrl.dispose();
-    });
+    );
   }
 
   Future<void> _confirmDelete(String title, String subtitle, VoidCallback onConfirm) async {

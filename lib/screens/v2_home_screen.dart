@@ -36,7 +36,6 @@ import '../widgets/v2_putnik_list.dart';
 import '../widgets/v2_registracija_countdown_widget.dart';
 import 'v2_admin_screen.dart';
 import 'v2_polasci_screen.dart';
-import 'v2_promena_sifre_screen.dart';
 import 'v2_vozac_screen.dart';
 import 'v2_welcome_screen.dart';
 
@@ -706,84 +705,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       iznosController.dispose();
       opisController.dispose();
     });
-  }
-
-  Future<void> _logout() async {
-    // Prikaži confirmation dialog
-    final bool? shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Theme.of(dialogContext).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: Theme.of(dialogContext).colorScheme.dangerPrimary.withValues(alpha: 0.5),
-            width: 2,
-          ),
-        ),
-        title: Column(
-          children: [
-            Icon(
-              Icons.logout,
-              color: Theme.of(dialogContext).colorScheme.error,
-              size: 40,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Logout',
-              style: TextStyle(
-                color: Theme.of(dialogContext).colorScheme.onSurface,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Da li ste sigurni da se želite odjaviti?',
-          style: TextStyle(
-            color: Theme.of(dialogContext).colorScheme.onSurface.withValues(alpha: 0.8),
-            fontSize: 16,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Otkaži',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-          V2HapticElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-              foregroundColor: Theme.of(dialogContext).colorScheme.onError,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            hapticType: HapticType.medium,
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldLogout == true && mounted) {
-      // Izvrši logout
-      try {
-        await V2AuthManager.logout(context);
-      } catch (e) {
-        // Ako logout fail, pokreni navigaciju rucno
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute<void>(builder: (_) => const V2WelcomeScreen()),
-            (route) => false,
-          );
-        }
-      }
-    }
   }
 
   Future<void> _showAddPutnikDialog() async {
@@ -1946,7 +1867,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                             ),
                           ),
                         if (V2AdminSecurityService.isAdmin(_currentDriver)) ...[
-                          const SizedBox(width: 4),
                           Expanded(
                             child: StreamBuilder<int>(
                               stream: _streamBrojZahteva,
@@ -2095,86 +2015,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                       fit: BoxFit.scaleDown,
                                       child: Text(
                                         'štampaj',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: PopupMenuButton<String>(
-                            onSelected: (value) async {
-                              if (value == 'logout') {
-                                await _logout();
-                              } else if (value == 'sifra') {
-                                final vozac = await V2AuthManager.getCurrentDriver();
-                                if (!mounted || vozac == null) return;
-                                if (context.mounted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (ctx) => V2PromenaSifreScreen(vozacIme: vozac),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'sifra',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.lock, color: Colors.amber),
-                                    SizedBox(width: 8),
-                                    Text('Promeni šifru'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'logout',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.logout, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Logout'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).glassContainer,
-                                border: Border.all(
-                                  color: Theme.of(context).glassBorder,
-                                  width: 1.5,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.settings,
-                                    color: Theme.of(context).colorScheme.onPrimary,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const SizedBox(
-                                    height: 16,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        'Opcije',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 12,

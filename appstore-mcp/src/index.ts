@@ -287,6 +287,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
             },
             {
+                name: "ios_modify_version_string",
+                description: "Change the versionString (e.g. 6.0.65 → 6.0.113) of an App Store version that is in PREPARE_FOR_SUBMISSION state.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        versionId: {
+                            type: "string",
+                            description: "The App Store version ID",
+                        },
+                        versionString: {
+                            type: "string",
+                            description: "New version string, e.g. '6.0.113'",
+                        },
+                    },
+                    required: ["versionId", "versionString"],
+                },
+            },
+            {
                 name: "ios_set_build_for_version",
                 description: "Set/change the build for an App Store version. The version must be in PREPARE_FOR_SUBMISSION state.",
                 inputSchema: {
@@ -1445,6 +1463,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                             }, null, 2),
                         },
                     ],
+                };
+            }
+
+            case "ios_modify_version_string": {
+                const { versionId: vsVersionId, versionString: newVersionString } = args as { versionId: string; versionString: string };
+                const result = await apiPatchRequest<any>(`/appStoreVersions/${vsVersionId}`, {
+                    data: {
+                        type: "appStoreVersions",
+                        id: vsVersionId,
+                        attributes: {
+                            versionString: newVersionString,
+                        },
+                    },
+                });
+                return {
+                    content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            success: true,
+                            newVersionString: result.data?.attributes?.versionString,
+                            versionId: result.data?.id,
+                        }, null, 2),
+                    }],
                 };
             }
 

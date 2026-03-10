@@ -18,7 +18,6 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
 
   // Filteri — primenjuju se klijentski na cache podatke
   String? _filterTip;
-  String? _filterAktorTip; // vozac / putnik / admin
 
   @override
   void initState() {
@@ -29,14 +28,11 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
   static List<Map<String, dynamic>> _applyFilters(
     List<Map<String, dynamic>> logs,
     String? filterTip,
-    String? filterAktorTip,
   ) {
-    if (filterTip == null && filterAktorTip == null) return logs;
-    return logs.where((log) {
-      if (filterTip != null && log['tip']?.toString() != filterTip) return false;
-      if (filterAktorTip != null && log['aktor_tip']?.toString() != filterAktorTip) return false;
-      return true;
-    }).toList();
+    // Uvijek samo vozači — putnici imaju svoje ekrane
+    final vozacLogs = logs.where((log) => log['aktor_tip']?.toString() == 'vozac').toList();
+    if (filterTip == null) return vozacLogs;
+    return vozacLogs.where((log) => log['tip']?.toString() == filterTip).toList();
   }
 
   static Color _tipColor(String tip) {
@@ -102,10 +98,15 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
           stream: _stream,
           builder: (context, snapshot) {
             final allLogs = snapshot.data ?? [];
-            final logs = _applyFilters(allLogs, _filterTip, _filterAktorTip);
+            final logs = _applyFilters(allLogs, _filterTip);
             final isLoading = snapshot.connectionState == ConnectionState.waiting && allLogs.isEmpty;
-            // Dinamički tipovi iz stvarnih podataka — uvijek aktualni
-            final dostupniTipovi = allLogs.map((l) => l['tip']?.toString()).whereType<String>().toSet().toList()
+            // Dinamički tipovi — samo od vozača
+            final dostupniTipovi = allLogs
+                .where((l) => l['aktor_tip']?.toString() == 'vozac')
+                .map((l) => l['tip']?.toString())
+                .whereType<String>()
+                .toSet()
+                .toList()
               ..sort();
 
             return Column(
@@ -143,42 +144,11 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Aktor tip filter
-                      Expanded(
-                        child: Container(
-                          height: 36,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white24),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String?>(
-                              value: _filterAktorTip,
-                              hint: const Text('Ko', style: TextStyle(color: Colors.white54, fontSize: 13)),
-                              dropdownColor: const Color(0xFF1A1A2E),
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                              isExpanded: true,
-                              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 18),
-                              items: const [
-                                DropdownMenuItem<String?>(value: null, child: Text('Svi')),
-                                DropdownMenuItem<String?>(value: 'vozac', child: Text('Vozač')),
-                                DropdownMenuItem<String?>(value: 'putnik', child: Text('Putnik')),
-                                DropdownMenuItem<String?>(value: 'admin', child: Text('Admin')),
-                              ],
-                              onChanged: (v) => setState(() => _filterAktorTip = v),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       // Clear filter dugme
-                      if (_filterTip != null || _filterAktorTip != null)
+                      if (_filterTip != null)
                         InkWell(
                           onTap: () => setState(() {
                             _filterTip = null;
-                            _filterAktorTip = null;
                           }),
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
@@ -216,6 +186,9 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                                 final vreme = log['vreme']?.toString();
                                 final createdAt = log['created_at']?.toString();
                                 final color = _tipColor(tip);
+                                // Sakrij detalji ako samo ponavlja aktorIme (npr. "Putnik pokupljen od: Bruda")
+                                final prikaziDetalji =
+                                    detalji != null && (aktorIme == null || !detalji.contains(aktorIme));
 
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 6),
@@ -245,8 +218,22 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
+                                            // RED 1: ime putnika + badge
                                             Row(
                                               children: [
+                                                if (putnikIme != null) ...[
+                                                  Flexible(
+                                                    child: Text(
+                                                      putnikIme,
+                                                      style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 13,
+                                                          fontWeight: FontWeight.bold),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                ],
                                                 Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                   decoration: BoxDecoration(
@@ -263,37 +250,37 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                                                     ),
                                                   ),
                                                 ),
-                                                if (aktorIme != null) ...[
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    aktorIme,
-                                                    style: const TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w600),
-                                                  ),
-                                                ],
                                               ],
                                             ),
-                                            if (putnikIme != null) ...[
+                                            // RED 2: vozač + dan · grad · vreme
+                                            if (aktorIme != null || dan != null || grad != null || vreme != null) ...[
                                               const SizedBox(height: 3),
-                                              Text(
-                                                '👤 $putnikIme',
-                                                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                              Row(
+                                                children: [
+                                                  if (aktorIme != null) ...[
+                                                    Text(
+                                                      aktorIme,
+                                                      style: const TextStyle(
+                                                          color: Colors.white70,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w600),
+                                                    ),
+                                                    if (dan != null || grad != null || vreme != null)
+                                                      const SizedBox(width: 8),
+                                                  ],
+                                                  if (dan != null || grad != null || vreme != null)
+                                                    Text(
+                                                      [dan, grad, vreme].whereType<String>().join(' · '),
+                                                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                                    ),
+                                                ],
                                               ),
                                             ],
-                                            if (detalji != null) ...[
+                                            if (prikaziDetalji) ...[
                                               const SizedBox(height: 3),
                                               Text(
                                                 detalji,
                                                 style: const TextStyle(color: Colors.white38, fontSize: 11),
-                                              ),
-                                            ],
-                                            if (dan != null || grad != null || vreme != null) ...[
-                                              const SizedBox(height: 3),
-                                              Text(
-                                                [dan, grad, vreme].whereType<String>().join(' · '),
-                                                style: const TextStyle(color: Colors.white24, fontSize: 10),
                                               ),
                                             ],
                                           ],

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import 'dotenv/config.js';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
+import 'dotenv/config.js';
 import * as fs from "fs";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
@@ -222,6 +222,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                         },
                     },
                     required: ["versionId"],
+                },
+            },
+            {
+                name: "ios_modify_version_string",
+                description: "Change the versionString (e.g. 6.0.65 → 6.0.113) of an App Store version that is in PREPARE_FOR_SUBMISSION state.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        versionId: {
+                            type: "string",
+                            description: "The App Store version ID",
+                        },
+                        versionString: {
+                            type: "string",
+                            description: "New version string, e.g. '6.0.113'",
+                        },
+                    },
+                    required: ["versionId", "versionString"],
                 },
             },
             {
@@ -1325,6 +1343,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                             }, null, 2),
                         },
                     ],
+                };
+            }
+            case "ios_modify_version_string": {
+                const { versionId: vsVersionId, versionString: newVersionString } = args;
+                const result = await apiPatchRequest(`/appStoreVersions/${vsVersionId}`, {
+                    data: {
+                        type: "appStoreVersions",
+                        id: vsVersionId,
+                        attributes: {
+                            versionString: newVersionString,
+                        },
+                    },
+                });
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                success: true,
+                                newVersionString: result.data?.attributes?.versionString,
+                                versionId: result.data?.id,
+                            }, null, 2),
+                        }],
                 };
             }
             case "ios_set_build_for_version": {

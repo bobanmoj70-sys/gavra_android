@@ -58,70 +58,80 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
               ),
             ],
           ),
-          body: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : izvestaj == null
-                  ? const Center(child: Text('Greška pri učitavanju'))
-                  : RefreshIndicator(
-                      key: _refreshKey,
-                      onRefresh: () async {
-                        setState(_prijaviStream);
-                      },
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildPotrazivanjaCard(izvestaj.potrazivanja),
-                            const SizedBox(height: 16),
-                            _buildPeriodCard(
-                              icon: '📅',
-                              naslov: 'Ova nedelja',
-                              podnaslov: izvestaj.nedeljaPeriod,
-                              prihod: izvestaj.prihodNedelja,
-                              troskovi: izvestaj.troskoviNedelja,
-                              neto: izvestaj.netoNedelja,
-                              voznjiLabel: '${izvestaj.voznjiNedelja} vožnji',
-                              color: Colors.blue,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildPeriodCard(
-                              icon: '🗓️',
-                              naslov: 'Ovaj mesec',
-                              podnaslov: _getMesecNaziv(izvestaj.startNedelja.month),
-                              prihod: izvestaj.prihodMesec,
-                              troskovi: izvestaj.troskoviMesec,
-                              neto: izvestaj.netoMesec,
-                              voznjiLabel: '${izvestaj.voznjiMesec} vožnji',
-                              color: Colors.green,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildPeriodCard(
-                              icon: '📊',
-                              naslov: 'Prošla godina (${izvestaj.proslaGodina})',
-                              podnaslov: 'Ceo godišnji bilans',
-                              prihod: izvestaj.prihodProslaGodina,
-                              troskovi: izvestaj.troskoviProslaGodina,
-                              neto: izvestaj.netoProslaGodina,
-                              voznjiLabel: '${izvestaj.voznjiProslaGodina} vožnji',
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildTroskoviDetailsList(izvestaj.troskoviPoTipu),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () => _showTroskoviDialog(izvestaj.troskoviPoTipu),
-                                icon: const Icon(Icons.edit),
-                                label: const Text('Podesi troškove'),
+          body: Container(
+            color: const Color(0xFF0F1221),
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : izvestaj == null
+                    ? const Center(child: Text('Greška pri učitavanju', style: TextStyle(color: Colors.white70)))
+                    : RefreshIndicator(
+                        key: _refreshKey,
+                        onRefresh: () async {
+                          setState(_prijaviStream);
+                        },
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildPotrazivanjaCard(izvestaj.potrazivanja),
+                              const SizedBox(height: 16),
+                              _buildPeriodCard(
+                                icon: '📅',
+                                naslov: 'Ova nedelja',
+                                podnaslov: izvestaj.nedeljaPeriod,
+                                prihod: izvestaj.prihodNedelja,
+                                troskovi: izvestaj.troskoviNedelja,
+                                neto: izvestaj.netoNedelja,
+                                voznjiLabel: '${izvestaj.voznjiNedelja} vožnji',
+                                color: Colors.blue,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              _buildPeriodCard(
+                                icon: '🗓️',
+                                naslov: 'Ovaj mesec',
+                                podnaslov: _getMesecNaziv(izvestaj.startNedelja.month),
+                                prihod: izvestaj.prihodMesec,
+                                troskovi: izvestaj.troskoviMesec,
+                                neto: izvestaj.netoMesec,
+                                voznjiLabel: '${izvestaj.voznjiMesec} vožnji',
+                                color: Colors.green,
+                              ),
+                              const SizedBox(height: 16),
+                              _buildPeriodCard(
+                                icon: '📊',
+                                naslov: 'Prošla godina (${izvestaj.proslaGodina})',
+                                podnaslov: 'Ceo godišnji bilans',
+                                prihod: izvestaj.prihodProslaGodina,
+                                troskovi: izvestaj.troskoviProslaGodina,
+                                neto: izvestaj.netoProslaGodina,
+                                voznjiLabel: '${izvestaj.voznjiProslaGodina} vožnji',
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(height: 16),
+                              _buildTroskoviDetailsList(izvestaj.troskoviPoTipu),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _showTroskoviDialog(izvestaj.troskoviPoTipu),
+                                  icon: const Icon(Icons.edit, color: Colors.white70),
+                                  label: const Text('Podesi troškove', style: TextStyle(color: Colors.white70)),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Colors.white24),
+                                    padding: const EdgeInsets.symmetric(vertical: 13),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+          ),
         );
       },
     );
@@ -138,23 +148,38 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
     required Color color,
   }) {
     final isPositive = neto >= 0;
+    final netoColor = isPositive ? const Color(0xFF4ADE80) : const Color(0xFFF87171);
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withValues(alpha: 0.3), width: 2),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2235),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+      child: Column(
+        children: [
+          // Header sa gradijentom
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
               children: [
-                Text(icon, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 8),
+                Text(icon, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,82 +187,86 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                       Text(
                         naslov,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                       Text(
                         podnaslov,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
+                    color: color.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: color.withValues(alpha: 0.5)),
                   ),
                   child: Text(
                     voznjiLabel,
                     style: TextStyle(
-                      color: color,
+                      color: color == Colors.grey ? Colors.white70 : color,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-
-            _buildRow('Prihod', prihod, Colors.green.shade700, isPlus: true),
-            const SizedBox(height: 8),
-
-            _buildRow('Troškovi', troskovi, Colors.red.shade700, isMinus: true),
-
-            const SizedBox(height: 8),
-            Divider(color: Colors.grey.shade300),
-            const SizedBox(height: 8),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          // Body
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: Column(
               children: [
-                const Text(
-                  'NETO',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                _buildRow('Prihod', prihod, const Color(0xFF4ADE80), isPlus: true),
+                const SizedBox(height: 8),
+                _buildRow('Troškovi', troskovi, const Color(0xFFF87171), isMinus: true),
+                const SizedBox(height: 10),
+                Divider(color: Colors.white.withValues(alpha: 0.1)),
+                const SizedBox(height: 8),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(
-                      isPositive ? Icons.trending_up : Icons.trending_down,
-                      color: isPositive ? Colors.green : Colors.red,
-                    ),
-                    const SizedBox(width: 8),
                     Text(
-                      _formatIznos(neto.abs()),
+                      'NETO',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          isPositive ? Icons.trending_up : Icons.trending_down,
+                          color: netoColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _formatIznos(neto.abs()),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: netoColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -252,16 +281,16 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
-            color: Colors.grey.shade700,
+            color: Colors.white60,
           ),
         ),
         Text(
           '$prefix${_formatIznos(iznos)}',
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
             color: color,
           ),
         ),
@@ -272,58 +301,84 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   Widget _buildTroskoviDetailsList(Map<String, double> troskoviPoTipu) {
     final ukupnoMesecniTroskovi = troskoviPoTipu.values.fold(0.0, (sum, item) => sum + item);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2235),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.red.withValues(alpha: 0.3), Colors.red.withValues(alpha: 0.1)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   '📋 Mesečni troškovi',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 Text(
                   _formatIznos(ukupnoMesecniTroskovi),
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: const TextStyle(
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: Colors.red.shade700,
+                    color: Color(0xFFF87171),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            ...troskoviPoTipu.entries.map(
-              (entry) => _buildTrosakRow(entry.key, entry.value),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+            child: Column(
+              children: [
+                ...troskoviPoTipu.entries.map(
+                  (entry) => _buildTrosakRow(entry.key, entry.value),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildTrosakRow(String label, double iznos) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 14, color: Colors.white70),
+          ),
           Text(
             _formatIznos(iznos),
             style: TextStyle(
-              fontWeight: FontWeight.w500,
-              color: iznos > 0 ? Colors.red.shade600 : Colors.grey,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: iznos > 0 ? const Color(0xFFF87171) : Colors.white38,
             ),
           ),
         ],
@@ -400,44 +455,69 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   }
 
   Widget _buildPotrazivanjaCard(double iznos) {
-    return Card(
-      elevation: 4,
-      color: Colors.orange.shade50,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.orange.shade200, width: 2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Text('💰', style: TextStyle(fontSize: 32)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Potraživanja (Dugovi)',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  Text(
-                    'Neplaćene vožnje svih putnika',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              _formatIznos(iznos),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.orange.shade900,
-              ),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.orange.shade800, Colors.orange.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withValues(alpha: 0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: Text('💰', style: TextStyle(fontSize: 26)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Potraživanja (Dugovi)',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Neplaćene vožnje svih putnika',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            _formatIznos(iznos),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1356,8 +1356,16 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
 
       if (widget.isEditing) {
         putnikId = widget.existingPutnik!.id;
-        putnikTabela = widget.existingPutnik!.v2Tabela;
-        await _rm.v2UpdatePutnik(putnikId, putnikData, putnikTabela);
+        final staraTabela = widget.existingPutnik!.v2Tabela;
+        final novaTabela = putnikData['_tabela'] as String? ?? staraTabela;
+        if (novaTabela != staraTabela) {
+          // Tip putnika promenjen — migracija u novu tabelu sa istim UUID-om
+          await _rm.v2MigratePutnikTabela(putnikId, putnikData, staraTabela, novaTabela);
+          putnikTabela = novaTabela;
+        } else {
+          await _rm.v2UpdatePutnik(putnikId, putnikData, staraTabela);
+          putnikTabela = staraTabela;
+        }
       } else {
         putnikTabela = putnikData['_tabela'] as String? ?? 'v2_radnici';
         final row = await _rm.v2CreatePutnik(putnikData, putnikTabela);

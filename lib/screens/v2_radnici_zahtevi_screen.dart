@@ -31,15 +31,14 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
       builder: (context, snapshot) {
         final svi = snapshot.data ?? [];
 
-        // Prikaži samo: obrada (čeka kronom) + odobreno/odbijeno/otkazano od kronosa (odobrio != null)
-        // Sakrij ručno upisane termine (status=odobreno, odobrio=null)
+        // Samo zahtevi koji su prošli kroz kronom:
+        // - status='obrada' → čeka kronom
+        // - odobrio='sistem' → kronom odobrio
+        // - otkazao='sistem' → kronom odbio
         final zahtevi = svi.where((z) {
           if ((z.tipPutnika ?? '').toLowerCase() != 'radnik') return false;
-          if (z.status == 'obrada') return true;
-          return z.approvedBy != null || z.cancelledBy != null;
-        }).toList();
-
-        // Grupiši po statusu za summary u AppBaru
+          return z.status == 'obrada' || z.approvedBy == 'sistem' || z.cancelledBy == 'sistem';
+        }).toList(); // Grupiši po statusu za summary u AppBaru
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
         final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
         final brOdbijeno = zahtevi.where((z) => z.status == 'odbijeno').length;
@@ -186,7 +185,11 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
                 Expanded(
                   child: Row(
                     children: [
-                      Text(ime, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Flexible(
+                        child: Text(ime,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                            overflow: TextOverflow.ellipsis),
+                      ),
                       const SizedBox(width: 8),
                       Icon(Icons.calendar_today, size: 12, color: Colors.amber.withValues(alpha: 0.8)),
                       const SizedBox(width: 3),
