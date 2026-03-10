@@ -264,19 +264,15 @@ class _VozacScreenState extends State<V2VozacScreen> {
     // Subscribeuj odmah nakon kreiranja — broadcast stream, ne smije kasniti
     _latestPutniciSub ??= _streamPutnici!.listen((putnici) {
       _latestPutnici = putnici;
-      debugPrint('🟢 [VozacScreen] stream emit: ${putnici.length} putnika');
     });
     // Sinhronizovano pre-populiši putnike iz cache-a — prikazuju se odmah,
     // bez čekanja na stream emit(). Stream će ih osvježiti čim emituje.
     final rm = V2MasterRealtimeManager.instance;
-    debugPrint(
-        '🔍 [VozacScreen] isInitialized=${rm.isInitialized} polasciCache=${rm.polasciCache.length} vozacId=${V2VozacCache.getUuidByIme(_currentDriver ?? '')} dan=${V2DanUtils.odIso(_workingDateIso)}');
     if (rm.isInitialized && _latestPutnici.isEmpty) {
       _latestPutnici = _putnikService.fetchPutniciSync(
         dan: V2DanUtils.odIso(_workingDateIso),
         vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
       );
-      debugPrint('🔍 [VozacScreen] fetchPutniciSync vratio: ${_latestPutnici.length} putnika');
     }
     if (mounted) {
       setState(() {});

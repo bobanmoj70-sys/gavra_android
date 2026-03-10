@@ -13,7 +13,6 @@ import '../services/v2_polasci_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
-import '../utils/v2_text_utils.dart';
 
 class V2PrintingService {
   V2PrintingService._();
@@ -29,29 +28,11 @@ class V2PrintingService {
     BuildContext context,
   ) async {
     try {
-      List<V2Putnik> sviPutnici = await V2PolasciService.streamKombinovaniPutniciFiltered(
+      final List<V2Putnik> putnici = await V2PolasciService.streamKombinovaniPutniciFiltered(
         dan: V2DanUtils.odPunogNaziva(selectedDay),
         grad: selectedGrad,
         vreme: selectedVreme,
       ).first;
-
-      final danBaza = V2DanUtils.odPunogNaziva(selectedDay);
-
-      List<V2Putnik> putnici = sviPutnici.where((v2Putnik) {
-        final normalizedStatus = V2TextUtils.normalizeText(v2Putnik.status ?? '');
-        final normalizedPutnikGrad = V2TextUtils.normalizeText(v2Putnik.grad);
-        final normalizedGrad = V2TextUtils.normalizeText(selectedGrad);
-        final odgovarajuciGrad =
-            normalizedPutnikGrad.contains(normalizedGrad) || normalizedGrad.contains(normalizedPutnikGrad);
-        final putnikPolazak = v2Putnik.polazak.toString().trim();
-        final odgovarajuciPolazak = V2GradAdresaValidator.normalizeTime(putnikPolazak) ==
-                V2GradAdresaValidator.normalizeTime(selectedVreme.trim()) ||
-            V2GradAdresaValidator.normalizeTime(putnikPolazak)
-                .startsWith(V2GradAdresaValidator.normalizeTime(selectedVreme.trim()));
-        final odgovarajuciDan = v2Putnik.dan.toLowerCase().contains(danBaza.toLowerCase());
-
-        return odgovarajuciGrad && odgovarajuciPolazak && odgovarajuciDan && normalizedStatus != 'obrisan';
-      }).toList();
 
       if (putnici.isEmpty) {
         if (context.mounted) {
