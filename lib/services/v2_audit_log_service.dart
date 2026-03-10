@@ -78,41 +78,6 @@ class V2AuditLogService {
     ));
   }
 
-  /// Ista kao [log] ali async — čeka potvrdu DB-a.
-  /// Koristiti samo gdje redoslijed upisa mora biti garantovan.
-  static Future<void> logAndWait({
-    required String tip,
-    String? aktorId,
-    String? aktorIme,
-    String? aktorTip,
-    String? putnikId,
-    String? putnikIme,
-    String? putnikTabela,
-    String? dan,
-    String? grad,
-    String? vreme,
-    String? polazakId,
-    Map<String, dynamic>? staro,
-    Map<String, dynamic>? novo,
-    String? detalji,
-  }) =>
-      _insert(
-        tip: tip,
-        aktorId: aktorId,
-        aktorIme: aktorIme,
-        aktorTip: aktorTip,
-        putnikId: putnikId,
-        putnikIme: putnikIme,
-        putnikTabela: putnikTabela,
-        dan: dan,
-        grad: grad,
-        vreme: vreme,
-        polazakId: polazakId,
-        staro: staro,
-        novo: novo,
-        detalji: detalji,
-      );
-
   // ---------------------------------------------------------------------------
   // INTERN
   // ---------------------------------------------------------------------------
@@ -159,67 +124,4 @@ class V2AuditLogService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // QUERY METODE — za buduće admin pregledanje historije
-  // ---------------------------------------------------------------------------
-
-  /// Dohvati posljednjih [limit] zapisa za putnika (najnoviji prvi).
-  static Future<List<Map<String, dynamic>>> zahtevPutnika(
-    String putnikId, {
-    int limit = 50,
-  }) async {
-    try {
-      final rows = await supabase
-          .from('v2_audit_log')
-          .select('id, tip, aktor_ime, aktor_tip, dan, grad, vreme, staro, novo, detalji, created_at')
-          .eq('putnik_id', putnikId)
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return rows;
-    } catch (e) {
-      debugPrint('[V2AuditLog] zahtevPutnika error: $e');
-      return [];
-    }
-  }
-
-  /// Dohvati posljednjih [limit] zapisa koje je uradio aktor (vozač/admin).
-  static Future<List<Map<String, dynamic>>> zahtevAktora(
-    String aktorId, {
-    int limit = 50,
-  }) async {
-    try {
-      final rows = await supabase
-          .from('v2_audit_log')
-          .select('id, tip, putnik_ime, putnik_tabela, dan, grad, vreme, staro, novo, detalji, created_at')
-          .eq('aktor_id', aktorId)
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return rows;
-    } catch (e) {
-      debugPrint('[V2AuditLog] zahtevAktora error: $e');
-      return [];
-    }
-  }
-
-  /// Dohvati posljednjih [limit] zapisa određenog tipa.
-  static Future<List<Map<String, dynamic>>> zahtevTipa(
-    String tip, {
-    int limit = 100,
-    DateTime? od,
-    DateTime? do_,
-  }) async {
-    try {
-      var query = supabase
-          .from('v2_audit_log')
-          .select('id, tip, aktor_ime, putnik_ime, dan, grad, vreme, detalji, created_at')
-          .eq('tip', tip);
-      if (od != null) query = query.gte('created_at', od.toUtc().toIso8601String());
-      if (do_ != null) query = query.lte('created_at', do_.toUtc().toIso8601String());
-      final rows = await query.order('created_at', ascending: false).limit(limit);
-      return rows;
-    } catch (e) {
-      debugPrint('[V2AuditLog] zahtevTipa error: $e');
-      return [];
-    }
-  }
 }
