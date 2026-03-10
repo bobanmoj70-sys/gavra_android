@@ -52,29 +52,28 @@ jobs:
           channel: 'stable'
 
       - name: Prepare Secrets
-        shell: pwsh
-        env:
-          AGC_BASE64: ${{ secrets.AGC_BASE64 }}
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          # 1. Restore agconnect
-          $agcBytes = [System.Convert]::FromBase64String($env:AGC_BASE64)
-          New-Item -ItemType Directory -Force -Path "android/app"
-          New-Item -ItemType Directory -Force -Path "assets"
-          [System.IO.File]::WriteAllBytes("$(Get-Location)\android\app\agconnect-services.json", $agcBytes)
-          [System.IO.File]::WriteAllBytes("$(Get-Location)\assets\agconnect-services.json", $agcBytes)
+          # 1. Restore Keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/gavra-release-key-production.keystore
 
-          # 2. Restore Keystore
-          $keystoreBytes = [System.Convert]::FromBase64String($env:KEYSTORE_BASE64)
-          [System.IO.File]::WriteAllBytes("$(Get-Location)\android\app\upload-keystore.jks", $keystoreBytes)
+          # 2. Create key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=gavra-release-key-production.keystore" >> android/key.properties
 
-          # 3. Create key.properties
-          $keyProps = "storePassword=$env:STORE_PASSWORD`nkeyPassword=$env:KEY_PASSWORD`nkeyAlias=$env:KEY_ALIAS`nstoreFile=upload-keystore.jks"
-          Set-Content -Path "android/key.properties" -Value $keyProps
-          Write-Host "[OK] Secrets configured"
+          # 3. Restore agconnect-services.json
+          mkdir -p android/app assets
+          echo "${{ secrets.AGC_BASE64 }}" | base64 -d > android/app/agconnect-services.json
+          echo "${{ secrets.AGC_BASE64 }}" | base64 -d > assets/agconnect-services.json
+
+          # 4. Restore google-services.json
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+
+          # 5. Restore .env
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+          echo "[OK] Secrets configured"
 
       - name: Get dependencies
         run: flutter pub get
