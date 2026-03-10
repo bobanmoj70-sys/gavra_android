@@ -21,7 +21,7 @@ class V2HereWeGoNavigationService {
   static Future<V2HereWeGoNavResult> startNavigation({
     required BuildContext context,
     required List<V2Putnik> putnici,
-    required Map<V2Putnik, Position> coordinates,
+    required Map<String, Position> coordinates,
     Position? endDestination,
   }) async {
     try {
@@ -42,7 +42,9 @@ class V2HereWeGoNavigationService {
       }
 
       // FILTRIRAJ PUTNIKE SA VALIDNIM KOORDINATAMA
-      final validPutnici = putnici.where((p) => coordinates.containsKey(p)).toList();
+      final validPutnici = putnici
+          .where((p) => coordinates.containsKey(p.adresaId ?? p.id?.toString() ?? ''))
+          .toList();
 
       if (validPutnici.isEmpty) {
         return V2HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
@@ -173,10 +175,12 @@ class V2HereWeGoNavigationService {
   /// Pokreni HERE WeGo navigaciju
   static Future<V2HereWeGoNavResult> _launchNavigation({
     required List<V2Putnik> putnici,
-    required Map<V2Putnik, Position> coordinates,
+    required Map<String, Position> coordinates,
     Position? endDestination,
   }) async {
-    final validPutnici = putnici.where((p) => coordinates.containsKey(p)).toList();
+    final validPutnici = putnici
+        .where((p) => coordinates.containsKey(p.adresaId ?? p.id?.toString() ?? ''))
+        .toList();
 
     if (validPutnici.isEmpty) {
       return V2HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
@@ -186,11 +190,11 @@ class V2HereWeGoNavigationService {
     final Position dest;
 
     if (endDestination != null) {
-      waypoints = validPutnici.map((p) => coordinates[p]!).toList();
+      waypoints = validPutnici.map((p) => coordinates[p.adresaId ?? p.id?.toString() ?? '']!).toList();
       dest = endDestination;
     } else {
-      waypoints = validPutnici.take(validPutnici.length - 1).map((p) => coordinates[p]!).toList();
-      dest = coordinates[validPutnici.last]!;
+      waypoints = validPutnici.take(validPutnici.length - 1).map((p) => coordinates[p.adresaId ?? p.id?.toString() ?? '']!).toList();
+      dest = coordinates[validPutnici.last.adresaId ?? validPutnici.last.id?.toString() ?? '']!;
     }
 
     final url = _buildUrl(waypoints, dest);
@@ -217,7 +221,7 @@ class V2HereWeGoNavigationService {
   static Future<V2HereWeGoNavResult> _launchSegmentedNavigation({
     required BuildContext context,
     required List<V2Putnik> putnici,
-    required Map<V2Putnik, Position> coordinates,
+    required Map<String, Position> coordinates,
     Position? endDestination,
   }) async {
     final segments = <List<V2Putnik>>[];

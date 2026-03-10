@@ -26,8 +26,8 @@ class V2Adresa {
       id: id,
       naziv: map['naziv'] as String? ?? '',
       grad: _normalizeGrad(map['grad'] as String?),
-      gpsLat: (map['gps_lat'] as num?)?.toDouble(),
-      gpsLng: (map['gps_lng'] as num?)?.toDouble(),
+      gpsLat: double.tryParse(map['gps_lat']?.toString() ?? ''),
+      gpsLng: double.tryParse(map['gps_lng']?.toString() ?? ''),
       createdAt: DateTime.tryParse(map['created_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       updatedAt: DateTime.tryParse(map['updated_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
     );

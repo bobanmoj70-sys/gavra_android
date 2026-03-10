@@ -93,10 +93,12 @@ class V2SmartNavigationService {
 
       // OSRM uspešan
       final List<V2Putnik> optimizedRoute = osrmResult.optimizedPutnici!;
-      final Map<V2Putnik, Position> coordinates = osrmResult.coordinates ?? {};
+      final Map<String, Position> coordinates = osrmResult.coordinates ?? {};
 
       // Nadi preskocene putnike (nemaju koordinate)
-      final skipped = putnici.where((p) => !coordinates.containsKey(p)).toList();
+      final skipped = putnici
+          .where((p) => !coordinates.containsKey(p.adresaId ?? p.id?.toString() ?? ''))
+          .toList();
 
       // 3. VRATI OPTIMIZOVANU RUTU
       return V2NavigationResult.success(
@@ -193,7 +195,7 @@ class V2SmartNavigationService {
   static double _calculateTotalDistance(
     Position start,
     List<V2Putnik> route,
-    Map<V2Putnik, Position> coordinates,
+    Map<String, Position> coordinates,
   ) {
     if (route.isEmpty) return 0.0;
 
@@ -201,7 +203,7 @@ class V2SmartNavigationService {
     Position currentPos = start;
 
     for (final putnik in route) {
-      final nextPos = coordinates[putnik];
+      final nextPos = coordinates[putnik.adresaId ?? putnik.id?.toString() ?? ''];
       if (nextPos == null) continue;
       totalDistance += _calculateDistance(currentPos, nextPos);
       currentPos = nextPos;

@@ -34,13 +34,13 @@ class V2OsrmService {
       }
 
       final coordsList = <String>[];
-
       coordsList.add('${startPosition.longitude},${startPosition.latitude}');
 
       final putniciWithCoords = <V2Putnik>[];
       for (final v2Putnik in putnici) {
-        if (coordinates.containsKey(v2Putnik)) {
-          final pos = coordinates[v2Putnik]!;
+        final key = v2Putnik.adresaId ?? v2Putnik.id?.toString() ?? '';
+        if (coordinates.containsKey(key)) {
+          final pos = coordinates[key]!;
           coordsList.add('${pos.longitude},${pos.latitude}');
           putniciWithCoords.add(v2Putnik);
         }
@@ -134,7 +134,7 @@ class V2OsrmService {
   static _OsrmParseResult? _parseOsrmResponse(
     Map<String, dynamic> data,
     List<V2Putnik> putniciWithCoords,
-    Map<V2Putnik, Position> coordinates, {
+    Map<String, Position> coordinates, {
     bool hasEndDestination = false,
   }) {
     try {
@@ -239,7 +239,7 @@ class V2OsrmResult {
     required List<V2Putnik> optimizedPutnici,
     required double totalDistanceKm,
     required double totalDurationMin,
-    Map<V2Putnik, Position>? coordinates,
+    Map<String, Position>? coordinates,
     Map<String, int>? putniciEta,
   }) {
     return V2OsrmResult._(
@@ -265,7 +265,7 @@ class V2OsrmResult {
   final List<V2Putnik>? optimizedPutnici;
   final double? totalDistanceKm;
   final double? totalDurationMin;
-  final Map<V2Putnik, Position>? coordinates;
+  final Map<String, Position>? coordinates;
   final Map<String, int>? putniciEta;
 
   @override

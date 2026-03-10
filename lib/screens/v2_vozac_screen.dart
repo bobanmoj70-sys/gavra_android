@@ -701,8 +701,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
   Widget _buildOptimizeButton(List<V2Putnik> mojiAktivniPutnici) {
     final normFilterTime = V2GradAdresaValidator.normalizeTime(_selectedVreme);
     final filtriraniPutnici = mojiAktivniPutnici.where((p) {
-      final pTime = V2GradAdresaValidator.normalizeTime(p.polazak);
-      if (pTime != normFilterTime) return false;
+      if (normFilterTime.isNotEmpty) {
+        final pTime = V2GradAdresaValidator.normalizeTime(p.polazak);
+        if (pTime != normFilterTime) return false;
+      }
       if (p.jeOtkazan || p.jeBezPolaska || p.jePokupljen || p.jeOdsustvo) return false;
       if (!V2TextUtils.isStatusActive(p.status)) return false;
       // Iskljuci putnike u obradi (još nisu obrađeni)
