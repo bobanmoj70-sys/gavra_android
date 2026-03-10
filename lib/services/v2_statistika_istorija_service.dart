@@ -9,7 +9,6 @@ import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_audit_log_service.dart';
-import 'v2_putnici_service.dart';
 
 /// Servis za upravljanje istorijom vožnji.
 /// Tabela: putnik_id, datum, tip (voznja/otkazivanje/uplata), iznos, vozac_id
@@ -360,11 +359,12 @@ class V2StatistikaIstorijaService {
 
   /// Vraca sve aktivne putnike iz sva 4 cache-a (radnici + ucenici + dnevni + posiljke)
   static List<V2RegistrovaniPutnik> getAllAktivniKaoModel() {
+    final rm = V2MasterRealtimeManager.instance;
     return [
-      ...V2RadniciService.getAktivne(),
-      ...V2UceniciService.getAktivne(),
-      ...V2DnevniService.getAktivne(),
-      ...V2PosiljkeService.getAktivne(),
+      ...rm.radniciCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_radnici'})),
+      ...rm.uceniciCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_ucenici'})),
+      ...rm.dnevniCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_dnevni'})),
+      ...rm.posiljkeCache.values.where((r) => r['status'] == 'aktivan').map((r) => V2RegistrovaniPutnik.fromMap({...r, '_tabela': 'v2_posiljke'})),
     ]..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
