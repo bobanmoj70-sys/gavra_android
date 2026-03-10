@@ -791,6 +791,16 @@ class V2MasterRealtimeManager {
     return adreseCache[adresaId]?['naziv'] as String?;
   }
 
+  /// Vraća GPS koordinate adrese iz cache-a (null ako nisu upisane)
+  Map<String, double>? getAdresaKoordinate(String adresaId) {
+    final row = adreseCache[adresaId];
+    if (row == null) return null;
+    final lat = double.tryParse(row['gps_lat']?.toString() ?? '');
+    final lng = double.tryParse(row['gps_lng']?.toString() ?? '');
+    if (lat == null || lng == null) return null;
+    return {'lat': lat, 'lng': lng};
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // PRIVATE HELPERS
   // ──────────────────────────────────────────────────────────────────────────
@@ -851,6 +861,50 @@ class V2MasterRealtimeManager {
     final row = await supabase.from(tabela).insert(d).select().single();
     final result = {...row, '_tabela': tabela};
     v2UpsertToCache(tabela, result);
+    return result;
+  }
+
+  /// Migrira putnika iz jedne tabele u drugu (isti UUID, novi tip).
+  /// Čuva v2_vozac_putnik, v2_polasci i v2_pin_zahtevi — samo menja tabelu putnika.
+  Future<Map<String, dynamic>> v2MigratePutnikTabela(
+    String id,
+    Map<String, dynamic> data,
+    String staraTabela,
+    String novaTabela,
+  ) async {
+    final d = Map<String, dynamic>.from(data);
+    final now = DateTime.now().toUtc().toIso8601String();
+    d['id'] = id;
+    d['created_at'] = now;
+    d['updated_at'] = now;
+    d.remove('_tabela');
+    d.remove('tip');
+
+    // 1. Obriši iz stare tabele (vezane tabele se NE brišu — putnik_id ostaje isti)
+    await supabase.from(staraTabela).delete().eq('id', id);
+    v2RemoveFromCache(staraTabela, id);
+
+    // 2. Insertuj u novu tabelu sa istim UUID-om
+    final row = await supabase.from(novaTabela).insert(d).select().single();
+    final result = {...row, '_tabela': novaTabela};
+    v2UpsertToCache(novaTabela, result);
+
+    // 3. Ažuriraj putnik_tabela u v2_racuni ako postoji
+    try {
+      await supabase.from('v2_racuni').update({'putnik_tabela': novaTabela, 'updated_at': now}).eq('putnik_id', id);
+      final cached = racuniCache[id];
+      if (cached != null) {
+        racuniCache[id] = {...cached, 'putnik_tabela': novaTabela};
+      }
+    } catch (_) {
+      // v2_racuni nije obavezan — ignoriši ako ne postoji
+    }
+
+    if (!_cacheChangeController.isClosed) {
+      _cacheChangeController.add(staraTabela);
+      _cacheChangeController.add(novaTabela);
+    }
+
     return result;
   }
 

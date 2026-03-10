@@ -413,7 +413,10 @@ class V2UnifiedGeocodingService {
   static bool _isCityBlocked(String grad) {
     final normalizedGrad = grad.toLowerCase().trim();
     const allowedCities = [
+      'bc', // skraćenica za Bela Crkva
+      'vs', // skraćenica za Vršac
       'vrsac',
+      'vršac',
       'straza',
       'straža',
       'vojvodinci',

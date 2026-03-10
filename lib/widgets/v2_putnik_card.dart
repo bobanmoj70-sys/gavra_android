@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../helpers/v2_placanje_dialog_helper.dart';
 import '../models/v2_putnik.dart';
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import '../services/v2_haptic_service.dart';
 import '../services/v2_permission_service.dart';
@@ -1157,21 +1158,40 @@ class _PutnikCardState extends State<V2PutnikCard> {
     }
   }
 
-  // POMOCNA METODA: Dobij koordinate za adresu (sa keširanjem i validacijom)
-  // Napomena: grad i adresaId su rezervisani za buducu upotrebu u V2UnifiedGeocodingService
+  // POMOCNA METODA: Dobij koordinate za adresu
+  // PRIORITET 1: Direktno iz adreseCache (sinhrono, bez await) — via V2MasterRealtimeManager
+  // PRIORITET 2: Fallback na V2UnifiedGeocodingService (API)
   Future<Position?> _getKoordinateZaAdresu(String? grad, String? adresa, String? adresaId) async {
+    // PRIORITET 1: adresaId → direktno iz rm.adreseCache
+    if (adresaId != null && adresaId.isNotEmpty) {
+      final koord = V2MasterRealtimeManager.instance.getAdresaKoordinate(adresaId);
+      if (koord != null) {
+        return Position(
+          latitude: koord['lat']!,
+          longitude: koord['lng']!,
+          timestamp: DateTime.fromMillisecondsSinceEpoch(0),
+          accuracy: 0,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
+      }
+    }
+
+    // PRIORITET 2: Fallback — API geocoding (samo ako nema koordinata u bazi)
     if (adresa == null || adresa.isEmpty || adresa == 'Adresa nije definisana') return null;
 
     try {
-      // Koristi V2UnifiedGeocodingService koji ima saVrsenu logiku (Baza -> API)
+      // Snapshot putnika pre await-a da izbegnemo problem promene reference
+      final snapshot = _putnik;
       final result = await V2UnifiedGeocodingService.getCoordinatesForPutnici(
-        [_putnik],
-        saveToDatabase: true, // Automatski sacuvaj u bazu ako nadež preko API-ja
+        [snapshot],
+        saveToDatabase: true,
       );
-
-      if (result.isNotEmpty && result.containsKey(_putnik)) {
-        return result[_putnik];
-      }
+      if (result.isNotEmpty) return result.values.first;
     } catch (e, st) {
       debugPrint('[V2PutnikCard._getKoordinateZaAdresu] Greška: $e\n$st');
     }
