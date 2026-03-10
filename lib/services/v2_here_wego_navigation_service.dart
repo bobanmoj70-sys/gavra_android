@@ -42,9 +42,7 @@ class V2HereWeGoNavigationService {
       }
 
       // FILTRIRAJ PUTNIKE SA VALIDNIM KOORDINATAMA
-      final validPutnici = putnici
-          .where((p) => coordinates.containsKey(p.adresaId ?? p.id?.toString() ?? ''))
-          .toList();
+      final validPutnici = putnici.where((p) => coordinates.containsKey(p.adresaId ?? p.id?.toString() ?? '')).toList();
 
       if (validPutnici.isEmpty) {
         return V2HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
@@ -178,9 +176,7 @@ class V2HereWeGoNavigationService {
     required Map<String, Position> coordinates,
     Position? endDestination,
   }) async {
-    final validPutnici = putnici
-        .where((p) => coordinates.containsKey(p.adresaId ?? p.id?.toString() ?? ''))
-        .toList();
+    final validPutnici = putnici.where((p) => coordinates.containsKey(p.adresaId ?? p.id?.toString() ?? '')).toList();
 
     if (validPutnici.isEmpty) {
       return V2HereWeGoNavResult.error('Nema putnika sa validnim koordinatama');
@@ -193,7 +189,10 @@ class V2HereWeGoNavigationService {
       waypoints = validPutnici.map((p) => coordinates[p.adresaId ?? p.id?.toString() ?? '']!).toList();
       dest = endDestination;
     } else {
-      waypoints = validPutnici.take(validPutnici.length - 1).map((p) => coordinates[p.adresaId ?? p.id?.toString() ?? '']!).toList();
+      waypoints = validPutnici
+          .take(validPutnici.length - 1)
+          .map((p) => coordinates[p.adresaId ?? p.id?.toString() ?? '']!)
+          .toList();
       dest = coordinates[validPutnici.last.adresaId ?? validPutnici.last.id?.toString() ?? '']!;
     }
 

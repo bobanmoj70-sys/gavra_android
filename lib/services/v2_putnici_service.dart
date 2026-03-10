@@ -2,10 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
-import '../models/v2_dnevni.dart';
-import '../models/v2_posiljka.dart';
 import '../models/v2_registrovani_putnik.dart';
-import '../models/v2_ucenik.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
 // =============================================================================
@@ -174,20 +171,6 @@ class V2UceniciService {
     }
   }
 
-  static V2Ucenik? getUcenikById(String id) {
-    final row = _cache[id];
-    if (row == null) return null;
-    return V2Ucenik.fromJson(Map<String, dynamic>.from(row));
-  }
-
-  static List<V2Ucenik> getAktivneKaoModele() {
-    return _cache.values
-        .where((r) => r['status'] == 'aktivan')
-        .map((r) => V2Ucenik.fromJson(Map<String, dynamic>.from(r)))
-        .toList()
-      ..sort((a, b) => a.ime.compareTo(b.ime));
-  }
-
   static Stream<List<V2RegistrovaniPutnik>> streamAktivne() =>
       _rm.v2StreamFromCache(tables: [tabela], build: getAktivne);
 
@@ -307,20 +290,6 @@ class V2DnevniService {
     }
   }
 
-  static V2Dnevni? getDnevniById(String id) {
-    final row = _cache[id];
-    if (row == null) return null;
-    return V2Dnevni.fromJson(Map<String, dynamic>.from(row));
-  }
-
-  static List<V2Dnevni> getAktivneKaoModele() {
-    return _cache.values
-        .where((r) => r['status'] == 'aktivan')
-        .map((r) => V2Dnevni.fromJson(Map<String, dynamic>.from(r)))
-        .toList()
-      ..sort((a, b) => a.ime.compareTo(b.ime));
-  }
-
   static Stream<List<V2RegistrovaniPutnik>> streamAktivne() =>
       _rm.v2StreamFromCache(tables: [tabela], build: getAktivne);
 
@@ -430,26 +399,12 @@ class V2PosiljkeService {
   static V2RegistrovaniPutnik? v2GetByPin(String pin) {
     try {
       final row = _cache.values.firstWhere(
-        (r) => r['pin'] == pin && r['status'] == V2Posiljka.statusAktivan,
+        (r) => r['pin'] == pin && r['status'] == 'aktivan',
       );
       return V2RegistrovaniPutnik.fromMap({...row, '_tabela': tabela});
     } catch (_) {
       return null;
     }
-  }
-
-  static V2Posiljka? getPosiljkaById(String id) {
-    final row = _cache[id];
-    if (row == null) return null;
-    return V2Posiljka.fromJson(Map<String, dynamic>.from(row));
-  }
-
-  static List<V2Posiljka> getAktivneKaoModele() {
-    return _cache.values
-        .where((r) => r['status'] == V2Posiljka.statusAktivan)
-        .map((r) => V2Posiljka.fromJson(Map<String, dynamic>.from(r)))
-        .toList()
-      ..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
   static Stream<List<V2RegistrovaniPutnik>> streamAktivne() =>
@@ -464,7 +419,7 @@ class V2PosiljkeService {
     bool trebaRacun = false,
     String? pin,
     String? email,
-    String status = V2Posiljka.statusAktivan,
+    String status = 'aktivan',
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();

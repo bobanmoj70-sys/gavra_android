@@ -131,8 +131,7 @@ class V2UnifiedGeocodingService {
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Javna metoda — koristi se u v2_adresa_supabase_service.dart
-  static Future<String?> getKoordinateZaAdresu(String grad, String adresa) =>
-      _getKoordinateZaAdresu(grad, adresa);
+  static Future<String?> getKoordinateZaAdresu(String grad, String adresa) => _getKoordinateZaAdresu(grad, adresa);
 
   static Future<String?> _getKoordinateZaAdresu(String grad, String adresa) async {
     String? coords = await _fetchFromPhoton(grad, adresa);
@@ -145,9 +144,8 @@ class V2UnifiedGeocodingService {
       try {
         final query = Uri.encodeQueryComponent('$adresa, $grad, Serbia');
         final url = 'https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1&countrycodes=rs';
-        final response = await http
-            .get(Uri.parse(url), headers: {'User-Agent': 'GavraAndroidApp/1.0 (transport app)'})
-            .timeout(const Duration(seconds: 10));
+        final response = await http.get(Uri.parse(url),
+            headers: {'User-Agent': 'GavraAndroidApp/1.0 (transport app)'}).timeout(const Duration(seconds: 10));
         if (response.statusCode == 200) {
           final results = json.decode(response.body) as List<dynamic>;
           if (results.isNotEmpty) {
@@ -170,8 +168,7 @@ class V2UnifiedGeocodingService {
       const bbox = '&bbox=18.82,41.85,23.01,46.19';
       final url = 'https://photon.komoot.io/api/?q=$query&limit=1$bbox';
       final response = await http
-          .get(Uri.parse(url), headers: {'User-Agent': 'GavraAndroid/1.0'})
-          .timeout(const Duration(seconds: 5));
+          .get(Uri.parse(url), headers: {'User-Agent': 'GavraAndroid/1.0'}).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         final features = data['features'] as List<dynamic>?;
