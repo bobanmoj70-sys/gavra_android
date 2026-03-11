@@ -18,31 +18,12 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
   String _filterGrad = 'Svi';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  late final Stream<List<V2Adresa>> _streamAdrese;
-
-  @override
-  void initState() {
-    super.initState();
-    _streamAdrese = V2AdresaSupabaseService.streamSveAdrese();
-  }
+  final Stream<List<V2Adresa>> _streamAdrese = V2AdresaSupabaseService.streamSveAdrese();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  List<V2Adresa> _getFilteredAdrese(List<V2Adresa> adrese) {
-    final query = _searchQuery.toLowerCase();
-    return adrese.where((adresa) {
-      final naziv = adresa.naziv.toLowerCase();
-      final grad = adresa.grad ?? '';
-
-      final matchesSearch = query.isEmpty || naziv.contains(query);
-      final matchesGrad = _filterGrad == 'Svi' || grad == _filterGrad;
-
-      return matchesSearch && matchesGrad;
-    }).toList();
   }
 
   Future<void> _addAdresa() async {
@@ -152,7 +133,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         final belaCrkvaCount = adrese.where((a) => a.grad == 'BC').length;
         final vrsacCount = adrese.where((a) => a.grad == 'VS').length;
         // filteredAdrese zavisi od _searchQuery i _filterGrad — mora ostati u builderu
-        final filteredAdrese = _getFilteredAdrese(adrese);
+        final filteredAdrese = _adreseFilter(adrese, _filterGrad, _searchQuery);
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -182,9 +163,9 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildStatCard('Ukupno', adrese.length.toString(), Colors.blue),
-                            _buildStatCard('B. Crkva', belaCrkvaCount.toString(), Colors.green),
-                            _buildStatCard('Vrsac', vrsacCount.toString(), Colors.orange),
+                            _adresaStatCard('Ukupno', adrese.length.toString(), Colors.blue),
+                            _adresaStatCard('B. Crkva', belaCrkvaCount.toString(), Colors.green),
+                            _adresaStatCard('Vrsac', vrsacCount.toString(), Colors.orange),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -225,11 +206,11 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildFilterChip('Svi', _filterGrad == 'Svi', value: 'Svi'),
+                            _adresaFilterChip('Svi', _filterGrad == 'Svi', onTap: () => setState(() => _filterGrad = 'Svi')),
                             const SizedBox(width: 8),
-                            _buildFilterChip('Bela Crkva', _filterGrad == 'BC', value: 'BC'),
+                            _adresaFilterChip('Bela Crkva', _filterGrad == 'BC', onTap: () => setState(() => _filterGrad = 'BC')),
                             const SizedBox(width: 8),
-                            _buildFilterChip('Vrsac', _filterGrad == 'VS', value: 'VS'),
+                            _adresaFilterChip('Vrsac', _filterGrad == 'VS', onTap: () => setState(() => _filterGrad = 'VS')),
                           ],
                         ),
                       ],
@@ -248,10 +229,11 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                             : ListView.builder(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                                 itemCount: filteredAdrese.length,
-                                itemBuilder: (context, index) {
-                                  final adresa = filteredAdrese[index];
-                                  return _buildAdresaCard(adresa);
-                                },
+                                itemBuilder: (context, index) => _adresaCard(
+                                  filteredAdrese[index],
+                                  onEdit: _editAdresa,
+                                  onDelete: _deleteAdresa,
+                                ),
                               ),
                   ),
                 ],
@@ -273,32 +255,30 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color) {
-    return Column(
+}
+
+// ─── top-level helperi (bez state pristupa) ───────────────────────────────────
+
+List<V2Adresa> _adreseFilter(List<V2Adresa> adrese, String filterGrad, String searchQuery) {
+  final query = searchQuery.toLowerCase();
+  return adrese.where((a) {
+    final matchesSearch = query.isEmpty || a.naziv.toLowerCase().contains(query);
+    final matchesGrad = filterGrad == 'Svi' || (a.grad ?? '') == filterGrad;
+    return matchesSearch && matchesGrad;
+  }).toList();
+}
+
+Widget _adresaStatCard(String label, String value, Color color) => Column(
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
-        ),
+        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
       ],
     );
-  }
 
-  Widget _buildFilterChip(String label, bool selected, {String? value}) {
-    return FilterChip(
+Widget _adresaFilterChip(String label, bool selected, {required VoidCallback onTap}) => FilterChip(
       label: Text(label),
       selected: selected,
-      onSelected: (v) {
-        setState(() => _filterGrad = value ?? label);
-      },
+      onSelected: (_) => onTap(),
       backgroundColor: Colors.black.withValues(alpha: 0.3),
       selectedColor: Colors.blue.withValues(alpha: 0.6),
       checkmarkColor: Colors.white,
@@ -312,10 +292,13 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         fontSize: 14,
       ),
     );
-  }
 
-  Widget _buildAdresaCard(V2Adresa adresa) {
-    return Container(
+Widget _adresaCard(
+  V2Adresa adresa, {
+  required void Function(V2Adresa) onEdit,
+  required void Function(V2Adresa) onDelete,
+}) =>
+    Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
@@ -327,40 +310,22 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         leading: CircleAvatar(
           backgroundColor:
               adresa.grad == 'BC' ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
-          child: Icon(
-            Icons.location_on,
-            color: adresa.grad == 'BC' ? Colors.green : Colors.orange,
-          ),
+          child: Icon(Icons.location_on, color: adresa.grad == 'BC' ? Colors.green : Colors.orange),
         ),
-        title: Text(
-          adresa.naziv,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: Text(adresa.naziv, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         subtitle: Text(
-          adresa.grad == 'BC'
-              ? 'Bela Crkva'
-              : adresa.grad == 'VS'
-                  ? 'Vrsac'
-                  : adresa.grad ?? '',
+          adresa.grad == 'BC' ? 'Bela Crkva' : adresa.grad == 'VS' ? 'Vrsac' : adresa.grad ?? '',
           style: TextStyle(color: Colors.grey[400], fontSize: 12),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
-              onPressed: () => _editAdresa(adresa),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-              onPressed: () => _deleteAdresa(adresa),
-            ),
+            IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () => onEdit(adresa)),
+            IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => onDelete(adresa)),
           ],
         ),
       ),
     );
-  }
-}
 
 /// Dialog za dodavanje/uređivanje adrese
 class _AdresaDialog extends StatefulWidget {
