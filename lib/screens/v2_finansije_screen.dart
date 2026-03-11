@@ -15,14 +15,7 @@ class V2FinansijeScreen extends StatefulWidget {
 
 class _FinansijeScreenState extends State<V2FinansijeScreen> {
   final _formatBroja = NumberFormat('#,###', 'sr');
-
-  late final Stream<V2FinansijskiIzvestaj> _stream;
-
-  @override
-  void initState() {
-    super.initState();
-    _stream = V2FinansijeService.streamIzvestaj();
-  }
+  final Stream<V2FinansijskiIzvestaj> _stream = V2FinansijeService.streamIzvestaj();
 
   String _formatIznos(double iznos) {
     return '${_formatBroja.format(iznos.round())} din';
@@ -403,24 +396,18 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   }) async {
     // Paralelni INSERT-i za sve kategorije sa iznosom != 0
     await Future.wait([
-      _addTrosakIfPositive('Plate', 'plata', plate),
-      _addTrosakIfPositive('Kredit', 'kredit', kredit),
-      _addTrosakIfPositive('Gorivo', 'gorivo', gorivo),
-      _addTrosakIfPositive('Amortizacija', 'amortizacija', amortizacija),
-      _addTrosakIfPositive('Registracija', 'registracija', registracija),
-      _addTrosakIfPositive('YU auto', 'yu_auto', yuAuto),
-      _addTrosakIfPositive('Majstori', 'majstori', majstori),
-      _addTrosakIfPositive('Porez', 'porez', porez),
-      _addTrosakIfPositive('Alimentacija', 'alimentacija', alimentacija),
-      _addTrosakIfPositive('Računi', 'racuni', racuni),
-      _addTrosakIfPositive('Ostalo', 'ostalo', ostalo),
+      _finansijeAddTrosakIfPositive('Plate', 'plata', plate),
+      _finansijeAddTrosakIfPositive('Kredit', 'kredit', kredit),
+      _finansijeAddTrosakIfPositive('Gorivo', 'gorivo', gorivo),
+      _finansijeAddTrosakIfPositive('Amortizacija', 'amortizacija', amortizacija),
+      _finansijeAddTrosakIfPositive('Registracija', 'registracija', registracija),
+      _finansijeAddTrosakIfPositive('YU auto', 'yu_auto', yuAuto),
+      _finansijeAddTrosakIfPositive('Majstori', 'majstori', majstori),
+      _finansijeAddTrosakIfPositive('Porez', 'porez', porez),
+      _finansijeAddTrosakIfPositive('Alimentacija', 'alimentacija', alimentacija),
+      _finansijeAddTrosakIfPositive('Računi', 'racuni', racuni),
+      _finansijeAddTrosakIfPositive('Ostalo', 'ostalo', ostalo),
     ]);
-  }
-
-  static Future<void> _addTrosakIfPositive(String naziv, String tip, double iznos) async {
-    if (iznos != 0) {
-      await V2FinansijeService.addTrosak(naziv, tip, iznos);
-    }
   }
 
   Widget _buildPotrazivanjaCard(double iznos) {
@@ -778,5 +765,13 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
         ),
       ),
     );
+  }
+}
+
+// ─── top-level helperi (bez state pristupa) ───────────────────────────────────
+
+Future<void> _finansijeAddTrosakIfPositive(String naziv, String tip, double iznos) async {
+  if (iznos != 0) {
+    await V2FinansijeService.addTrosak(naziv, tip, iznos);
   }
 }
