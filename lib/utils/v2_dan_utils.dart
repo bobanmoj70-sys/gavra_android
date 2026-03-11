@@ -25,6 +25,20 @@ class V2DanUtils {
     'Nedelja',
   ];
 
+  /// Srpski nazivi meseci (index 0 je prazan, index 1=Januar ... 12=Decembar)
+  static const List<String> mesecNazivi = [
+    '',
+    'Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun',
+    'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar',
+  ];
+
+  /// Broj meseca → srpski naziv (1 → 'Januar')
+  static String mesecNaziv(int month) =>
+      month >= 1 && month <= 12 ? mesecNazivi[month] : '';
+
+  /// Srpski naziv → broj meseca ('Januar' → 1), 0 ako nije nađen
+  static int mesecBroj(String naziv) => mesecNazivi.indexOf(naziv).clamp(0, 12);
+
   /// DateTime → kratica ('pon', 'uto', ...)
   static String odDatuma(DateTime date) => kratice[date.weekday - 1];
 

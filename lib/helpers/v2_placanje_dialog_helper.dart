@@ -6,6 +6,7 @@ import '../services/v2_auth_manager.dart';
 import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_vozac_cache.dart';
 
 /// Rezultat koji helper vraca pozivaocu
@@ -129,25 +130,9 @@ class V2PlacanjeDialogHelper {
     return options;
   }
 
-  static const List<String> _kMonthNames = [
-    '',
-    'Januar',
-    'Februar',
-    'Mart',
-    'April',
-    'Maj',
-    'Jun',
-    'Jul',
-    'Avgust',
-    'Septembar',
-    'Oktobar',
-    'Novembar',
-    'Decembar',
-  ];
+  static int _getMonthNumber(String name) => V2DanUtils.mesecBroj(name);
 
-  static int _getMonthNumber(String name) => _kMonthNames.indexOf(name).clamp(0, 12);
-
-  static String _getMonthName(int month) => month >= 1 && month <= 12 ? _kMonthNames[month] : '';
+  static String _getMonthName(int month) => V2DanUtils.mesecNaziv(month);
 
   static String _tipOpis(String tabela, String ime, double ukupnaCena, int brojMesta) {
     final imeLower = ime.toLowerCase();

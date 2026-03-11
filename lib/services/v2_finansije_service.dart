@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
 import '../utils/v2_dan_utils.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
 /// Servis za računanje prihoda, troškova i neto zarade
@@ -174,14 +175,14 @@ class V2FinansijeService {
 
       // Troškovi iz finansije_troskovi
       final troskoviNedelja = 0.0; // troškovi nemaju dnevnu granularnost
-      final troskoviMesec = mesTroskRows.fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
-      final troskoviProsla = proslaTroskRows.fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
+      final troskoviMesec = mesTroskRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
+      final troskoviProsla = proslaTroskRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
 
       // Troškovi po tipu (za tekući mesec)
       final Map<String, double> troskoviPoTipu = {};
       for (final r in mesTroskRows) {
         final tip = r['tip'] as String? ?? 'ostalo';
-        troskoviPoTipu[tip] = (troskoviPoTipu[tip] ?? 0) + _toDouble(r['iznos']);
+        troskoviPoTipu[tip] = (troskoviPoTipu[tip] ?? 0) + V2GradAdresaValidator.parseDouble(r['iznos']);
       }
 
       // Potraživanja (frontend calculation)
@@ -223,7 +224,7 @@ class V2FinansijeService {
   static double _sumirajPrihode(List<Map<String, dynamic>> rows) {
     return rows
         .where((r) => _prihodTipovi.contains(r['tip'] as String?))
-        .fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
+        .fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
   }
 
   /// Broji redove određenog tipa
@@ -232,11 +233,6 @@ class V2FinansijeService {
   /// Formatiraj datum kao YYYY-MM-DD
   static String _fmtDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  static double _toDouble(dynamic val) {
-    if (val == null) return 0;
-    return (val is num) ? val.toDouble() : double.tryParse(val.toString()) ?? 0;
-  }
 
   static V2FinansijskiIzvestaj _getEmptyIzvestaj() {
     final now = DateTime.now();
@@ -288,7 +284,7 @@ class V2FinansijeService {
 
       final prihod = _sumirajPrihode(voznjeRows);
       final voznje = _broji(voznjeRows, 'voznja');
-      final troskovi = troskoviRows.fold<double>(0, (s, r) => s + _toDouble(r['iznos']));
+      final troskovi = troskoviRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
 
       return {
         'prihod': prihod,

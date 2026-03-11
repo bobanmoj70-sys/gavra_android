@@ -57,6 +57,15 @@ class V2GradAdresaValidator {
     return 'BC';
   }
 
+  /// Sigurno parsiranje broja iz Supabase-a (može biti num ili String).
+  /// Jedino kanonsko mjesto — koristi se svuda umjesto inline double.tryParse.
+  static double parseDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val) ?? 0.0;
+    return 0.0;
+  }
+
   /// Normalizuje broj telefona za poređenje — uklanja razmake/crtice/zagrade
   /// i konvertuje +381/00381 prefiks u lokalni format (06x...).
   /// Jedino kanonsko mjesto — koristi se svuda gdje se porede telefoni.

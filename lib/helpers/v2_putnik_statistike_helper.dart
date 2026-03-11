@@ -5,6 +5,7 @@ import '../models/v2_registrovani_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
+import '../utils/v2_dan_utils.dart';
 
 /// Helper za prikazivanje detaljnih statistika putnika
 /// Koristi se i u admin ekranu i u profilu putnika
@@ -584,59 +585,16 @@ class V2PutnikStatistikeHelper {
 
   static String _getCurrentMonthYear() {
     final now = DateTime.now();
-    return '${_getMonthName(now.month)} ${now.year}';
+    return '${V2DanUtils.mesecNaziv(now.month)} ${now.year}';
   }
 
   static List<String> _getMonthOptions() {
     final now = DateTime.now();
     List<String> options = [];
     for (int month = 1; month <= 12; month++) {
-      options.add('${_getMonthName(month)} ${now.year}');
+      options.add('${V2DanUtils.mesecNaziv(month)} ${now.year}');
     }
     return options;
-  }
-
-  static String _getMonthName(int month) {
-    const months = [
-      '',
-      'Januar',
-      'Februar',
-      'Mart',
-      'April',
-      'Maj',
-      'Jun',
-      'Jul',
-      'Avgust',
-      'Septembar',
-      'Oktobar',
-      'Novembar',
-      'Decembar',
-    ];
-    return months[month];
-  }
-
-  static int _getMonthNumber(String monthName) {
-    const months = [
-      '',
-      'Januar',
-      'Februar',
-      'Mart',
-      'April',
-      'Maj',
-      'Jun',
-      'Jul',
-      'Avgust',
-      'Septembar',
-      'Oktobar',
-      'Novembar',
-      'Decembar',
-    ];
-    for (int i = 1; i < months.length; i++) {
-      if (months[i] == monthName) {
-        return i;
-      }
-    }
-    return 0;
   }
 
   static Future<Map<String, dynamic>> _getStatistikeForPeriod(String putnikId, String period, String tipPutnika) async {
@@ -658,7 +616,7 @@ class V2PutnikStatistikeHelper {
           final monthName = parts[0];
           final year = int.tryParse(parts[1]);
           if (year != null) {
-            final monthNumber = _getMonthNumber(monthName);
+            final monthNumber = V2DanUtils.mesecBroj(monthName);
             if (monthNumber > 0) {
               stats = await _getStatistikeZaMesec(putnikId, monthNumber, year, tipPutnika);
             }

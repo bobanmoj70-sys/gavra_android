@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/v2_polazak.dart';
+import '../widgets/v2_summary_badge.dart';
 import '../services/v2_polasci_service.dart';
 import '../theme.dart';
 import '../utils/v2_vozac_cache.dart';
@@ -77,10 +78,10 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
                           alignment: WrapAlignment.center,
                           spacing: 8,
                           children: [
-                            if (brObrada > 0) _summaryBadge('🟡 $brObrada obrada', Colors.amber),
-                            if (brOdobreno > 0) _summaryBadge('🟢 $brOdobreno odobreno', Colors.green),
-                            if (brOdbijeno > 0) _summaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
-                            if (brOtkazano > 0) _summaryBadge('⛔ $brOtkazano otkazano', Colors.orange),
+                            if (brObrada > 0) v2SummaryBadge('🟡 $brObrada obrada', Colors.amber),
+                            if (brOdobreno > 0) v2SummaryBadge('🟢 $brOdobreno odobreno', Colors.green),
+                            if (brOdbijeno > 0) v2SummaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
+                            if (brOtkazano > 0) v2SummaryBadge('⛔ $brOtkazano otkazano', Colors.orange),
                             if (zahtevi.isEmpty)
                               Text('Nema zahteva',
                                   style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
@@ -101,16 +102,6 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
       },
     );
   }
-
-  static Widget _summaryBadge(String label, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
-      );
 
   Widget _buildLista(List<V2Polazak> zahtevi) {
     if (zahtevi.isEmpty) {

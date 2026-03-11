@@ -16,6 +16,7 @@ import '../services/v2_theme_manager.dart';
 import '../services/v2_weather_service.dart'; // Vremenska prognoza
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 import '../widgets/v2_kombi_eta_widget.dart'; // 🆕 Jednostavan ETA widget
 import '../widgets/v2_time_picker_cell.dart';
 
@@ -155,14 +156,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   // Brisanje v2_polasci redova nije dozvoljeno iz klijentskog koda (videti PRAVILA.md).
   // Cleanup se radi server-side putem Supabase cron job-ova.
 
-  /// Helperi za sigurno parsiranje brojeva iz Supabase-a (koji mogu biti String)
-  static double _toDouble(dynamic v) {
-    if (v == null) return 0.0;
-    if (v is num) return v.toDouble();
-    if (v is String) return double.tryParse(v) ?? 0.0;
-    return 0.0;
-  }
-
   /// Učitava statistike za profil (vožnje i otkazivanja)
   Future<void> _loadStatistike() async {
     final now = DateTime.now();
@@ -276,13 +269,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final uplateGodina = sveZapisiGodina.where((r) => r['tip'] == 'uplata');
       double ukupnoUplaceno = 0;
       for (final u in uplateGodina) {
-        ukupnoUplaceno += _toDouble(u['iznos']);
+        ukupnoUplaceno += V2GradAdresaValidator.parseDouble(u['iznos']);
       }
 
       // Istorija plaćanja za UI prikaz (iz iste kolekcije — nema DB upita)
       final istorija = _izracunajIstorijuIzKolekcije(sveZapisiGodina);
 
-      final pocetniDugRaw = _toDouble(_putnikData['dug']);
+      final pocetniDugRaw = V2GradAdresaValidator.parseDouble(_putnikData['dug']);
       final zaduzenje = pocetniDugRaw + (ukupnoZaplacanje - ukupnoUplaceno);
 
       if (mounted) {
@@ -404,7 +397,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         final datum = DateTime.tryParse(datumStr);
         if (datum == null) continue;
         final mesecKey = '${datum.year}-${datum.month.toString().padLeft(2, '0')}';
-        poMesecima[mesecKey] = (poMesecima[mesecKey] ?? 0.0) + _toDouble(p['iznos']);
+        poMesecima[mesecKey] = (poMesecima[mesecKey] ?? 0.0) + V2GradAdresaValidator.parseDouble(p['iznos']);
         if (!poslednjeDatum.containsKey(mesecKey) || datum.isAfter(poslednjeDatum[mesecKey]!)) {
           poslednjeDatum[mesecKey] = datum;
         }
