@@ -170,38 +170,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     }
   }
 
-  static Widget _buildGlassStatRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Colors.white70,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Prikazuje dijalog sa listom putnika kojima treba racun
   Future<void> _showRacunDialog() async {
     final sviPutnici = V2StatistikaIstorijaService.getAllAktivniKaoModel();
@@ -896,9 +864,9 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                _buildGlassStatRow('⏰ Vreme:', _selectedVreme),
-                                _buildGlassStatRow('📍 Grad:', _selectedGrad),
-                                _buildGlassStatRow('📅 Dan:', V2DanUtils.puniNaziv(_selectedDay)),
+                                _homeGlassStatRow('⏰ Vreme:', _selectedVreme),
+                                _homeGlassStatRow('📍 Grad:', _selectedGrad),
+                                _homeGlassStatRow('📅 Dan:', V2DanUtils.puniNaziv(_selectedDay)),
                               ],
                             ),
                           ),
@@ -2185,4 +2153,36 @@ class _HomeScreenButton extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _homeGlassStatRow(String label, String value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white70,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
