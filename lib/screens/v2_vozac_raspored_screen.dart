@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
@@ -38,6 +40,10 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
   late Stream<List<V2Putnik>> _putnikStream;
 
+  /// Subscription na onCacheChanged — okida setState kad se rasporedCache
+  /// ili vozacPutnikCache promijeni (Realtime WebSocket ili optimistički patch).
+  StreamSubscription<String>? _cacheChangeSub;
+
   List<String> get _days => V2DanUtils.kratice;
 
   List<String> get _sviPolasci {
@@ -54,6 +60,19 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     _selectedDay = (today == 'sub' || today == 'ned') ? 'pon' : today;
     _autoSelectNajblizeVreme();
     _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
+
+    // Automatski refresh kad se raspored ili individualne dodjele promijene
+    _cacheChangeSub = V2MasterRealtimeManager.instance.onCacheChanged
+        .where((table) => table == 'v2_vozac_raspored' || table == 'v2_vozac_putnik')
+        .listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _cacheChangeSub?.cancel();
+    super.dispose();
   }
 
   void _onDayChanged(String day) {
@@ -265,15 +284,17 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   Future<void> _showPutnikAssignDialog(V2Putnik putnik) async {
     final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
     final rm = V2MasterRealtimeManager.instance;
+    final sedmica = getPocetakSedmiceVozacPutnik();
     final vozacPutnikList = rm.vozacPutnikCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).toList();
-    // PronaÄ‘i trenutnu individualnu dodjelu za ovog putnika, SAMO za ovaj dan+grad+vreme
+    // Pronađi trenutnu individualnu dodjelu za ovog putnika, SAMO za ovaj dan+grad+vreme+sedmica
     final trenutniEntry = vozacPutnikList
         .where(
           (e) =>
               e.putnikId == putnik.id?.toString() &&
               e.dan == dan &&
               e.grad.toUpperCase() == _selectedGrad.toUpperCase() &&
-              V2GradAdresaValidator.normalizeTime(e.vreme) == V2GradAdresaValidator.normalizeTime(_selectedVreme),
+              V2GradAdresaValidator.normalizeTime(e.vreme) == V2GradAdresaValidator.normalizeTime(_selectedVreme) &&
+              e.datumSedmice == sedmica,
         )
         .firstOrNull;
     final trenutni = trenutniEntry != null ? V2VozacCache.getImeByUuid(trenutniEntry.vozacId) : null;
@@ -647,8 +668,9 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                               final p = filteredByGradVreme[i];
                               // Da li je termin dodeljen (vozac_raspored)?
                               final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
-                              // Individualna dodjela putnika za OVAJ dan+grad+vreme (vozac_putnik)
+                              // Individualna dodjela putnika za OVAJ dan+grad+vreme+sedmica (vozac_putnik)
                               final dan = targetDay;
+                              final sedmicaItem = getPocetakSedmiceVozacPutnik();
                               final rmCache = V2MasterRealtimeManager.instance.vozacPutnikCache;
                               final individualnaEntry =
                                   rmCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).where((e) {
@@ -656,7 +678,8 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                                     e.dan == dan &&
                                     e.grad.toUpperCase() == _selectedGrad.toUpperCase() &&
                                     V2GradAdresaValidator.normalizeTime(e.vreme) ==
-                                        V2GradAdresaValidator.normalizeTime(_selectedVreme);
+                                        V2GradAdresaValidator.normalizeTime(_selectedVreme) &&
+                                    e.datumSedmice == sedmicaItem;
                               }).firstOrNull;
                               // Boja: individualna dodjela ima prioritet nad termin bojom
                               final vozacColor = individualnaEntry != null

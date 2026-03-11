@@ -681,12 +681,14 @@ class V2PutnikStreamService {
         final gradNormP = V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
         final vremeNormP = V2GradAdresaValidator.normalizeTime(p.polazak);
 
+        final sedmica = _getPocetakSedmice();
         final sveDodjele = rm.vozacPutnikCache.values
             .where((vp) =>
                 vp['putnik_id']?.toString() == putnikIdStr &&
                 vp['dan']?.toString() == danKratica &&
                 vp['grad']?.toString().toUpperCase() == gradNormP &&
-                V2GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) == vremeNormP)
+                V2GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) == vremeNormP &&
+                vp['datum_sedmice']?.toString() == sedmica)
             .toList();
 
         if (sveDodjele.isNotEmpty) {
@@ -729,12 +731,14 @@ class V2PutnikStreamService {
       final gradNorm = V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
       final vremeNorm = V2GradAdresaValidator.normalizeTime(p.polazak);
 
+      final sedmicaSync = _getPocetakSedmice();
       final sveDodjele = rm.vozacPutnikCache.values
           .where((vp) =>
               vp['putnik_id']?.toString() == putnikIdStr &&
               vp['dan']?.toString() == dan &&
               vp['grad']?.toString().toUpperCase() == gradNorm &&
-              V2GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) == vremeNorm)
+              V2GradAdresaValidator.normalizeTime(vp['vreme']?.toString()) == vremeNorm &&
+              vp['datum_sedmice']?.toString() == sedmicaSync)
           .toList();
 
       if (sveDodjele.isNotEmpty) {

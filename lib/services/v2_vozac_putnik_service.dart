@@ -1,17 +1,28 @@
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_vozac_raspored_service.dart';
 
+/// Vraća datum ponedeljka tekuće sedmice u formatu 'yyyy-MM-dd'.
+/// Javna top-level funkcija — koristi se i u servisima i u screenu za filtriranje
+/// v2_vozac_putnik dodjela samo na tekuću sedmicu.
+String getPocetakSedmiceVozacPutnik() {
+  final now = DateTime.now();
+  final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
+  return '${ponedeljak.year}-${ponedeljak.month.toString().padLeft(2, '0')}-${ponedeljak.day.toString().padLeft(2, '0')}';
+}
+
 /// Model za jedan red iz vozac_putnik tabele.
 ///
 /// Čuva per-V2Putnik raspored: koji vozač vozi određenog putnika
-/// za određeni dan/grad/vreme.
+/// za određeni dan/grad/vreme — važi samo za konkretnu sedmicu (datum_sedmice).
 ///
-/// Jedan V2Putnik može imati najviše jednu aktivnu individualnu dodjelu (UNIQUE putnik_id).
+/// Jedan V2Putnik može imati najviše jednu aktivnu individualnu dodjelu
+/// per (putnik_id, dan, grad, vreme, datum_sedmice).
 class V2VozacPutnikEntry {
   final String? id; // uuid PK, null prije inserata
   final String putnikId; // FK → registrovani_putnici.id
@@ -19,6 +30,7 @@ class V2VozacPutnikEntry {
   final String dan; // 'pon','uto','sre','cet','pet'
   final String grad; // 'BC' ili 'VS'
   final String vreme; // '07:00', '08:00', ...
+  final String datumSedmice; // ponedeljak sedmice 'yyyy-MM-dd'
 
   const V2VozacPutnikEntry({
     this.id,
@@ -27,11 +39,13 @@ class V2VozacPutnikEntry {
     required this.dan,
     required this.grad,
     required this.vreme,
+    required this.datumSedmice,
   });
 
   factory V2VozacPutnikEntry.fromMap(Map<String, dynamic> map) {
     final vremeRaw = map['vreme']?.toString() ?? '';
     final vreme = V2GradAdresaValidator.normalizeTime(vremeRaw);
+    final datumSedmice = map['datum_sedmice']?.toString() ?? getPocetakSedmiceVozacPutnik();
     return V2VozacPutnikEntry(
       id: map['id']?.toString(),
       putnikId: map['putnik_id']?.toString() ?? '',
@@ -39,6 +53,7 @@ class V2VozacPutnikEntry {
       dan: map['dan']?.toString() ?? '',
       grad: map['grad']?.toString() ?? '',
       vreme: vreme,
+      datumSedmice: datumSedmice,
     );
   }
 
@@ -49,6 +64,7 @@ class V2VozacPutnikEntry {
         'dan': dan,
         'grad': grad,
         'vreme': vreme,
+        'datum_sedmice': datumSedmice,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
@@ -61,10 +77,11 @@ class V2VozacPutnikEntry {
           vozacId == other.vozacId &&
           dan == other.dan &&
           grad == other.grad &&
-          vreme == other.vreme;
+          vreme == other.vreme &&
+          datumSedmice == other.datumSedmice;
 
   @override
-  int get hashCode => Object.hash(putnikId, vozacId, dan, grad, vreme);
+  int get hashCode => Object.hash(putnikId, vozacId, dan, grad, vreme, datumSedmice);
 }
 
 /// Servis za upravljanje per-V2Putnik individualnom dodjelom vozača.
@@ -98,6 +115,7 @@ class V2VozacPutnikService {
       return false; // vozač ne postoji u cache-u
     }
 
+    final datumSedmice = getPocetakSedmiceVozacPutnik();
     try {
       final row = await supabase
           .from('v2_vozac_putnik')
@@ -108,9 +126,10 @@ class V2VozacPutnikService {
               'dan': dan,
               'grad': grad,
               'vreme': vreme,
+              'datum_sedmice': datumSedmice,
               'updated_at': DateTime.now().toUtc().toIso8601String(),
             },
-            onConflict: 'putnik_id,dan,grad,vreme', // UNIQUE (putnik_id, dan, grad, vreme)
+            onConflict: 'putnik_id,dan,grad,vreme,datum_sedmice', // UNIQUE per sedmica
           )
           .select()
           .single();
@@ -122,18 +141,20 @@ class V2VozacPutnikService {
     }
   }
 
-  /// Briše individualnu dodjelu za putnika za konkretni dan+grad+vreme.
+  /// Briše individualnu dodjelu za putnika za konkretni dan+grad+vreme tekuće sedmice.
   static Future<bool> delete({required String putnikId, String? dan, String? grad, String? vreme}) async {
+    final datumSedmice = getPocetakSedmiceVozacPutnik();
     try {
-      var q = supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId);
+      var q = supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId).eq('datum_sedmice', datumSedmice);
       if (dan != null) q = q.eq('dan', dan);
       if (grad != null) q = q.eq('grad', grad);
       if (vreme != null) q = q.eq('vreme', vreme);
       await q;
-      // Ukloni iz cache-a sve redove koji odgovaraju filteru
+      // Ukloni iz cache-a sve redove koji odgovaraju filteru (samo tekuća sedmica)
       final toRemove = _rm.vozacPutnikCache.entries
           .where((e) =>
               e.value['putnik_id']?.toString() == putnikId &&
+              e.value['datum_sedmice']?.toString() == datumSedmice &&
               (dan == null || e.value['dan'] == dan) &&
               (grad == null || e.value['grad'] == grad) &&
               (vreme == null || e.value['vreme'] == vreme))

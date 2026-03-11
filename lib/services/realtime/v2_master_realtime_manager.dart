@@ -359,7 +359,7 @@ class V2MasterRealtimeManager {
         supabase.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id, created_at, updated_at'),
         supabase
             .from('v2_vozac_putnik')
-            .select('id, putnik_id, putnik_tabela, vozac_id, dan, grad, vreme, created_at, updated_at'),
+            .select('id, putnik_id, putnik_tabela, vozac_id, dan, grad, vreme, datum_sedmice, created_at, updated_at'),
         supabase
             .from('v2_finansije_troskovi')
             .select('id, naziv, iznos, tip, aktivan, mesecno, vozac_id, mesec, godina, created_at')
