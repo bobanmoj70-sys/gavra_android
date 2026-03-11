@@ -36,7 +36,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   // Lista vozača — osvježava se kada RM emituje promjenu vozaciCache
   List<String> _vozaciImena = [];
 
-  StreamSubscription<String>? _realtimeSub;
+  StreamSubscription<String>? _polasciSub;
   StreamSubscription<String>? _vozaciSub;
   Timer? _refreshDebounce;
 
@@ -44,18 +44,13 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   void initState() {
     super.initState();
     _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
-    _subscribeRealtime();
     _vozaciSub = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_vozaci').listen((_) {
       if (!mounted) return;
       setState(() {
         _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
       });
     });
-  }
-
-  void _subscribeRealtime() {
-    _realtimeSub?.cancel();
-    _realtimeSub = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
+    _polasciSub = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
       if (_selectedVozacIme == null) return;
       final today = DateTime.now();
       final isToday =
@@ -70,7 +65,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
 
   @override
   void dispose() {
-    _realtimeSub?.cancel();
+    _polasciSub?.cancel();
     _vozaciSub?.cancel();
     _refreshDebounce?.cancel();
     _predaoController.dispose();
@@ -161,34 +156,12 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       final putnikTabela = r['putnik_tabela']?.toString() ?? '';
       // Ime iz RM cache-a — bez ijednog DB upita
       final ime = (putnikId.isNotEmpty && putnikTabela.isNotEmpty) ? (rm.getIme(putnikTabela, putnikId) ?? '?') : '?';
-      sve.add(_buildRow(r, ime));
+      sve.add(_dnevnikBuildRow(r, ime));
     }
 
     sve.sort((a, b) => (a['sort_ts'] as String).compareTo(b['sort_ts'] as String));
 
     return sve;
-  }
-
-  static Map<String, dynamic> _buildRow(Map<String, dynamic> r, String ime) {
-    final placenAt = r['placen_at'] as String?;
-    final updatedAt = r['updated_at'] as String?;
-    final tsStr = placenAt ?? updatedAt ?? '';
-    String vremeNaplate = '-';
-    if (tsStr.isNotEmpty) {
-      final dt = DateTime.tryParse(tsStr)?.toLocal();
-      if (dt != null) {
-        vremeNaplate = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      }
-    }
-    return {
-      'ime': ime,
-      'grad': r['grad'] as String? ?? '-',
-      'polazak': r['dodeljeno_vreme'] as String? ?? '-',
-      'iznos': (r['placen_iznos'] as num?)?.toDouble() ?? 0.0,
-      'vreme_naplate': vremeNaplate,
-      // Prazni sort_ts idu na kraj (sentinel '9999' > svaka ISO vrijednost)
-      'sort_ts': tsStr.isNotEmpty ? tsStr : '9999',
-    };
   }
 
   Future<void> _pickDate() async {
@@ -213,16 +186,12 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
   }
 
-  static String _formatDatum(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
-  }
-
   void _share() {
     if (_naplate.isEmpty) return;
 
     final buffer = StringBuffer();
     buffer.writeln('DNEVNIK NAPLATE — $_selectedVozacIme');
-    buffer.writeln('Datum: ${_formatDatum(_selectedDate)}');
+    buffer.writeln('Datum: ${_dnevnikFormatDatum(_selectedDate)}');
     buffer.writeln('─────────────────────────');
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
@@ -273,7 +242,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
             pw.Text('DNEVNIK NAPLATE', style: titleStyle),
             pw.SizedBox(height: 4),
             pw.Text('Vozač: $_selectedVozacIme', style: headerStyle),
-            pw.Text('Datum: ${_formatDatum(_selectedDate)}', style: normalStyle),
+            pw.Text('Datum: ${_dnevnikFormatDatum(_selectedDate)}', style: normalStyle),
             pw.SizedBox(height: 14),
             pw.Divider(),
             pw.SizedBox(height: 8),
@@ -292,11 +261,11 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                   children: [
-                    _pdfCell('#', style: boldStyle),
-                    _pdfCell('Ime', style: boldStyle),
-                    _pdfCell('Grad / Polazak', style: boldStyle),
-                    _pdfCell('Iznos', style: boldStyle),
-                    _pdfCell('Vreme', style: boldStyle),
+                    _dnevnikPdfCell('#', style: boldStyle),
+                    _dnevnikPdfCell('Ime', style: boldStyle),
+                    _dnevnikPdfCell('Grad / Polazak', style: boldStyle),
+                    _dnevnikPdfCell('Iznos', style: boldStyle),
+                    _dnevnikPdfCell('Vreme', style: boldStyle),
                   ],
                 ),
                 for (int i = 0; i < _naplate.length; i++)
@@ -305,11 +274,11 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                       color: i.isEven ? PdfColors.white : PdfColors.grey50,
                     ),
                     children: [
-                      _pdfCell('${i + 1}.', style: baseStyle),
-                      _pdfCell(_naplate[i]['ime']?.toString() ?? '?', style: baseStyle),
-                      _pdfCell('${_naplate[i]['grad']} ${_naplate[i]['polazak']}', style: baseStyle),
-                      _pdfCell('${(_naplate[i]['iznos'] as double).toStringAsFixed(0)} din', style: baseStyle),
-                      _pdfCell(_naplate[i]['vreme_naplate'] as String, style: baseStyle),
+                      _dnevnikPdfCell('${i + 1}.', style: baseStyle),
+                      _dnevnikPdfCell(_naplate[i]['ime']?.toString() ?? '?', style: baseStyle),
+                      _dnevnikPdfCell('${_naplate[i]['grad']} ${_naplate[i]['polazak']}', style: baseStyle),
+                      _dnevnikPdfCell('${(_naplate[i]['iznos'] as double).toStringAsFixed(0)} din', style: baseStyle),
+                      _dnevnikPdfCell(_naplate[i]['vreme_naplate'] as String, style: baseStyle),
                     ],
                   ),
               ],
@@ -356,7 +325,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final vozacStr = _selectedVozacIme?.replaceAll(' ', '_') ?? 'vozac';
-      final datumStr = _formatDatum(_selectedDate).replaceAll('.', '-');
+      final datumStr = _dnevnikFormatDatum(_selectedDate).replaceAll('.', '-');
       final file = File('${dir.path}/dnevnik_${vozacStr}_$datumStr.pdf');
       await file.writeAsBytes(await doc.save());
       if (!mounted) return;
@@ -364,13 +333,6 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     } catch (e) {
       if (mounted) V2AppSnackBar.error(context, 'Greška pri izvozu PDF: $e');
     }
-  }
-
-  static pw.Widget _pdfCell(String text, {required pw.TextStyle style}) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      child: pw.Text(text, style: style),
-    );
   }
 
   @override
@@ -454,7 +416,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                             const Icon(Icons.calendar_today, color: Colors.white70, size: 16),
                             const SizedBox(width: 6),
                             Text(
-                              _formatDatum(_selectedDate),
+                              _dnevnikFormatDatum(_selectedDate),
                               style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -491,7 +453,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                             child: Text(
                               _selectedVozacIme == null
                                   ? 'Izaberi vozača i datum'
-                                  : 'Nema naplata za ${_formatDatum(_selectedDate)}',
+                                  : 'Nema naplata za ${_dnevnikFormatDatum(_selectedDate)}',
                               style: const TextStyle(color: Colors.white54, fontSize: 16),
                             ),
                           )
@@ -684,4 +646,39 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       ),
     );
   }
+}
+
+// ─── top-level helperi (bez state pristupa) ───────────────────────────────────
+
+Map<String, dynamic> _dnevnikBuildRow(Map<String, dynamic> r, String ime) {
+  final placenAt = r['placen_at'] as String?;
+  final updatedAt = r['updated_at'] as String?;
+  final tsStr = placenAt ?? updatedAt ?? '';
+  String vremeNaplate = '-';
+  if (tsStr.isNotEmpty) {
+    final dt = DateTime.tryParse(tsStr)?.toLocal();
+    if (dt != null) {
+      vremeNaplate = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+  }
+  return {
+    'ime': ime,
+    'grad': r['grad'] as String? ?? '-',
+    'polazak': r['dodeljeno_vreme'] as String? ?? '-',
+    'iznos': (r['placen_iznos'] as num?)?.toDouble() ?? 0.0,
+    'vreme_naplate': vremeNaplate,
+    // Prazni sort_ts idu na kraj (sentinel '9999' > svaka ISO vrijednost)
+    'sort_ts': tsStr.isNotEmpty ? tsStr : '9999',
+  };
+}
+
+String _dnevnikFormatDatum(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+}
+
+pw.Widget _dnevnikPdfCell(String text, {required pw.TextStyle style}) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+    child: pw.Text(text, style: style),
+  );
 }
