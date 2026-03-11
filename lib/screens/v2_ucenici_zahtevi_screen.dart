@@ -106,26 +106,6 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
     );
   }
 
-  Widget _buildLista(List<V2Polazak> zahtevi) {
-    if (zahtevi.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 72, color: Colors.white.withValues(alpha: 0.4)),
-            const SizedBox(height: 14),
-            Text(
-              'Nema zahteva učenika',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 17, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-      itemCount: zahtevi.length,
-      itemBuilder: (_, index) => v2ZahtjevKartica(context, zahtevi[index]),
-    );
-  }
+  Widget _buildLista(List<V2Polazak> zahtevi) =>
+      v2ZahtjevLista(context, zahtevi, Icons.inbox_outlined, 'Nema zahteva učenika');
 }

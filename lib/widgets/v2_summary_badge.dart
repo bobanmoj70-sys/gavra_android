@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/v2_polazak.dart';
 import '../theme.dart';
+import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_vozac_cache.dart';
 
 /// Zajednički badge widget za prikaz statusa u zahtjev-screenima.
@@ -110,8 +111,8 @@ Widget v2ZahtjevKartica(BuildContext context, V2Polazak z) {
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: statusColor.withValues(alpha: 0.5)),
                 ),
-                child: Text(statusLabel,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
+                child:
+                    Text(statusLabel, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
               ),
             ],
           ),
@@ -133,13 +134,50 @@ Widget v2ZahtjevKartica(BuildContext context, V2Polazak z) {
             children: [
               if (poslatStr != null) v2TimelineChip('📨 poslato', poslatStr, Colors.white54),
               if (obradjenoStr != null) v2TimelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
-              if (obradjenoStr == null && status == 'obrada')
-                v2TimelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
+              if (obradjenoStr == null && status == 'obrada') v2TimelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
               if (koObradio != null) v2TimelineChip('👤', koObradio, koObradioColor),
             ],
           ),
         ],
       ),
     ),
+  );
+}
+
+/// Prikazuje error snackbar — identično u svim screen-ima.
+/// Zamjenjuje privatni _showError(String) koji je bio kopiran u više screena.
+void v2ShowError(BuildContext context, String message) {
+  if (context.mounted) {
+    V2AppSnackBar.error(context, message);
+  }
+}
+
+/// Lista zahtjeva sa praznim stanjem — identična u posiljke/radnici/ucenici zahtjev-screenima.
+/// Razlika između screena je samo [emptyIcon] i [emptyText].
+Widget v2ZahtjevLista(
+  BuildContext context,
+  List<V2Polazak> zahtevi,
+  IconData emptyIcon,
+  String emptyText,
+) {
+  if (zahtevi.isEmpty) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(emptyIcon, size: 72, color: Colors.white.withValues(alpha: 0.4)),
+          const SizedBox(height: 14),
+          Text(
+            emptyText,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 17, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+  return ListView.builder(
+    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+    itemCount: zahtevi.length,
+    itemBuilder: (_, index) => v2ZahtjevKartica(context, zahtevi[index]),
   );
 }

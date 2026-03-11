@@ -10,6 +10,7 @@ import '../services/v2_vozac_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
+import '../widgets/v2_summary_badge.dart';
 import 'v2_home_screen.dart';
 import 'v2_vozac_screen.dart';
 
@@ -176,7 +177,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
       );
 
       if (vozac.isEmpty) {
-        _showError('Vozač "${widget.vozacIme}" nije pronađen u sistemu.');
+        v2ShowError(context, 'Vozač "${widget.vozacIme}" nije pronađen u sistemu.');
         return;
       }
 
@@ -185,20 +186,20 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
       final sifra = _sifraController.text;
 
       if (vozac['email'].toString().toLowerCase() != email) {
-        _showError('Pogrešan email.');
+        v2ShowError(context, 'Pogrešan email.');
         return;
       }
 
       final normalizedInput = V2GradAdresaValidator.normalizePhone(telefon);
       final normalizedStored = V2GradAdresaValidator.normalizePhone(vozac['telefon'].toString());
       if (normalizedInput != normalizedStored) {
-        _showError('Pogrešan broj telefona.');
+        v2ShowError(context, 'Pogrešan broj telefona.');
         return;
       }
 
       final vozacSifra = vozac['sifra']?.toString() ?? '';
       if (vozacSifra.isNotEmpty && vozacSifra != sifra) {
-        _showError('Pogrešna šifra.');
+        v2ShowError(context, 'Pogrešna šifra.');
         return;
       }
 
@@ -224,17 +225,12 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
         ),
       );
     } catch (e) {
-      _showError('Greška: $e');
+      v2ShowError(context, 'Greška: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showError(String message) {
-    if (mounted) {
-      V2AppSnackBar.error(context, message);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

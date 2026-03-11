@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../widgets/v2_summary_badge.dart';
 
 /// PROMENA ŠIFRE SCREEN
 /// Vozač može da promeni svoju šifru nakon uspešnog logina
@@ -63,7 +64,7 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
     try {
       final staraSifra = _staraSifraController.text;
       if (_trenutnaSifra != null && _trenutnaSifra!.isNotEmpty && _trenutnaSifra != staraSifra) {
-        _showError('Pogrešna trenutna šifra.');
+                v2ShowError(context, 'Pogrešna trenutna šifra.');
         return;
       }
 
@@ -75,17 +76,12 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
 
       Navigator.pop(context);
     } catch (e) {
-      _showError('Greška: $e');
+      v2ShowError(context, 'Greška: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showError(String message) {
-    if (mounted) {
-      V2AppSnackBar.error(context, message);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
