@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ==========================================
 // APP SNACK BAR - CENTRALIZOVANE PORUKE
 // ==========================================
-// NE MIJENJATI - ZACEMENTIRANI STILOVI 
+// NE MIJENJATI - ZACEMENTIRANI STILOVI
 // Sve SnackBar poruke u aplikaciji moraju koristiti ovu klasu.
 // Zabranjeno je direktno kreiranje SnackBar(...) ili pozivanje
 // ScaffoldMessenger.of(context).showSnackBar(...) van ove klase.
@@ -22,7 +22,7 @@ import 'package:flutter/material.dart';
 // V2AppSnackBar.error(context, 'Greška: $e');
 // V2AppSnackBar.warning(context, '⏳ Zahtev je u obradi...');
 // V2AppSnackBar.info(context, 'ℹ Rezervacije su moguće samo za danas i sutra.');
-// KRAJ SPECIFIKACIJE 
+// KRAJ SPECIFIKACIJE
 
 class V2AppSnackBar {
   V2AppSnackBar._(); // Ne instancirati
@@ -55,7 +55,7 @@ class V2AppSnackBar {
             message,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -73,23 +73,31 @@ class V2AppSnackBar {
 
   // ─── Javne metode ─────────────────────────────────────────────
 
-  /// Uspješna akcija (zelena, 2s)
+  /// Uspješna akcija (zelena, 5s)
   static void success(BuildContext context, String message) =>
-      _show(context, message, backgroundColor: _colorSuccess, duration: _short);
+      _show(context, message, backgroundColor: _colorSuccess, duration: _long);
 
-  /// Greška (crvena, 3s)
-  static void error(BuildContext context, String message) => _show(context, message, backgroundColor: _colorError);
+  /// Greška (crvena, 5s)
+  static void error(BuildContext context, String message) =>
+      _show(context, message, backgroundColor: _colorError, duration: _long);
 
-  /// Upozorenje / blokada (narandžasta, 3s)
-  static void warning(BuildContext context, String message) => _show(context, message, backgroundColor: _colorWarning);
+  /// Upozorenje / blokada (narandžasta, 5s)
+  static void warning(BuildContext context, String message) =>
+      _show(context, message, backgroundColor: _colorWarning, duration: _long);
 
-  /// ℹ Informacija / neutralna poruka (plava, 3s)
-  static void info(BuildContext context, String message) => _show(context, message, backgroundColor: _colorInfo);
+  /// ℹ Informacija / neutralna poruka (plava, 5s)
+  static void info(BuildContext context, String message) =>
+      _show(context, message, backgroundColor: _colorInfo, duration: _long);
+
+  /// ℹ Informacija sa dužim trajanjem (plava, 5s)
+  static void infoLong(BuildContext context, String message) =>
+      _show(context, message, backgroundColor: _colorInfo, duration: _long);
 
   /// ⏳ Blokada sa dužim objašnjenjem (narandžasta, 5s)
   static void blocked(BuildContext context, String message) =>
       _show(context, message, backgroundColor: _colorWarning, duration: _long);
 
-  /// Plaćanje uspješno (zelena, 3s)
-  static void payment(BuildContext context, String message) => _show(context, message, backgroundColor: _colorSuccess);
+  /// Plaćanje uspješno (zelena, 5s)
+  static void payment(BuildContext context, String message) =>
+      _show(context, message, backgroundColor: _colorSuccess, duration: _long);
 }

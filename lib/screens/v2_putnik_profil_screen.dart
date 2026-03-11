@@ -597,7 +597,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
     } catch (e) {
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: $e');
+        V2AppSnackBar.error(context, '❌ Greška: $e');
       }
     }
   }
@@ -1402,7 +1402,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         );
       } catch (e) {
         debugPrint('❌ _updatePolazak (otkazano): $e');
-        if (mounted) V2AppSnackBar.error(context, 'Greška pri otkazivanju polaska.');
+        if (mounted) V2AppSnackBar.error(context, '❌ Greška pri otkazivanju polaska.');
         return;
       }
     } else {
@@ -1425,15 +1425,19 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         );
       } catch (e) {
         debugPrint('❌ _updatePolazak: $e');
-        if (mounted) V2AppSnackBar.error(context, 'Greška pri čuvanju promene.');
+        if (mounted) V2AppSnackBar.error(context, '❌ Greška pri čuvanju promene.');
         return;
       }
     }
 
     await _refreshPutnikData();
     if (mounted) {
-      V2AppSnackBar.success(
-          context, 'Polazak ažuriran: $dan $gradKey${novoVreme != null ? " $novoVreme" : " otkazan"}.');
+      if (novoVreme != null) {
+        V2AppSnackBar.success(context,
+            '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.');
+      } else {
+        V2AppSnackBar.success(context, '✅ Polazak otkazan: $dan $gradKey.');
+      }
     }
   }
 

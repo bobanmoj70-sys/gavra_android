@@ -193,19 +193,19 @@ class V2TimePickerCell extends StatelessWidget {
           final msg = hasTime
               ? '🔒 Vreme polaska je nastupilo. Izmene nisu moguće do subote.'
               : '🔒 Zakazivanje za ovo vreme je prošlo. Od subote kreće novi ciklus.';
-          V2AppSnackBar.warning(context, msg);
+          V2AppSnackBar.blocked(context, msg);
           return;
         }
 
         // BLOKADA ZA OBRADA STATUS
         if (isObrada && hasTime) {
-          V2AppSnackBar.warning(context, '⏳ Vaš zahtev za ovo vreme je već u obradi. Molimo sačekajte odgovor.');
+          V2AppSnackBar.blocked(context, '⏳ Vaš zahtev za ovo vreme je već u obradi. Molimo sačekajte odgovor.');
           return;
         }
 
         // BLOKADA ZA ODBIJENO STATUS
         if (isOdbijeno) {
-          V2AppSnackBar.error(context, '❌ Ovaj termin je popunjen. Izaberite neko drugo slobodno vreme.');
+          V2AppSnackBar.infoLong(context, 'ℹ️ Ovaj termin je popunjen. Izaberite neko drugo slobodno vreme.');
           return;
         }
 
@@ -371,64 +371,102 @@ class V2TimePickerCell extends StatelessWidget {
                   ),
                 ),
                 // Content
-                SizedBox(
-                  height: 350,
-                  child: ListView(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      ListTile(
-                        title: Text(
-                          'Otkaži',
-                          style: TextStyle(color: Colors.red.shade300),
+                      // Otkaži dugme — puni red
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: Icon(
+                            value == null || value!.isEmpty ? Icons.check_circle : Icons.circle_outlined,
+                            color: value == null || value!.isEmpty ? Colors.green : Colors.red.shade300,
+                            size: 18,
+                          ),
+                          label: Text(
+                            'Otkaži',
+                            style: TextStyle(color: Colors.red.shade300, fontSize: 15),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.red.shade300.withOpacity(0.5)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () async {
+                            if (value != null && value!.isNotEmpty) {
+                              Navigator.of(dialogContext).pop();
+                              onChanged(null);
+                            } else {
+                              V2AppSnackBar.infoLong(context, 'Vreme polaska je već prazno.');
+                              if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                            }
+                          },
                         ),
-                        leading: Icon(
-                          value == null || value!.isEmpty ? Icons.check_circle : Icons.circle_outlined,
-                          color: value == null || value!.isEmpty ? Colors.green : Colors.red.shade300,
-                        ),
-                        onTap: () async {
-                          if (value != null && value!.isNotEmpty) {
-                            Navigator.of(dialogContext).pop();
-                            onChanged(null);
-                          } else {
-                            V2AppSnackBar.info(context, 'Vreme polaska je već prazno.');
-                            if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-                          }
-                        },
                       ),
-                      const Divider(color: Colors.white24),
-                      // Time options
-                      ...vremena.map((vreme) {
-                        final isSelected = value == vreme;
-                        final isTimePassedIndividual = _isSpecificTimePassed(vreme);
-                        final isDisabled = isTimePassedIndividual;
+                      const SizedBox(height: 10),
+                      const Divider(color: Colors.white24, height: 1),
+                      const SizedBox(height: 10),
+                      // Vremena — Wrap grid
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: vremena.map((vreme) {
+                          final isSelected = value == vreme;
+                          final isDisabled = _isSpecificTimePassed(vreme);
 
-                        return ListTile(
-                          enabled: !isDisabled,
-                          title: Text(
-                            vreme,
-                            style: TextStyle(
-                              color: isDisabled ? Colors.white38 : (isSelected ? Colors.white : Colors.white70),
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              decoration: isDisabled ? TextDecoration.lineThrough : null,
+                          return SizedBox(
+                            width: 82,
+                            child: OutlinedButton(
+                              onPressed: isDisabled
+                                  ? null
+                                  : () {
+                                      onChanged(vreme);
+                                      Navigator.of(dialogContext).pop();
+                                    },
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: isSelected
+                                    ? Colors.green.withOpacity(0.25)
+                                    : isDisabled
+                                        ? Colors.white.withOpacity(0.05)
+                                        : Colors.white.withOpacity(0.1),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? Colors.green
+                                      : isDisabled
+                                          ? Colors.white24
+                                          : Colors.white38,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isSelected) const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                  if (isDisabled) const Icon(Icons.lock_clock, color: Colors.white24, size: 14),
+                                  Text(
+                                    vreme,
+                                    style: TextStyle(
+                                      color: isDisabled
+                                          ? Colors.white24
+                                          : isSelected
+                                              ? Colors.white
+                                              : Colors.white70,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 14,
+                                      decoration: isDisabled ? TextDecoration.lineThrough : null,
+                                      decorationColor: Colors.white24,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          leading: Icon(
-                            isDisabled ? Icons.lock_clock : (isSelected ? Icons.check_circle : Icons.circle_outlined),
-                            color: isDisabled ? Colors.white38 : (isSelected ? Colors.green : Colors.white54),
-                          ),
-                          subtitle: isDisabled
-                              ? const Text(
-                                  '⏰ Vreme je prošlo',
-                                  style: TextStyle(color: Colors.red, fontSize: 11),
-                                )
-                              : null,
-                          onTap: isDisabled
-                              ? null
-                              : () {
-                                  onChanged(vreme);
-                                  Navigator.of(dialogContext).pop();
-                                },
-                        );
-                      }),
+                          );
+                        }).toList(),
+                      ),
                     ],
                   ),
                 ),

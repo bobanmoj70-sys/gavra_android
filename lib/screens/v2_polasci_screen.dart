@@ -210,7 +210,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
       if (success) {
         V2AppSnackBar.success(context, '✅ Zahtev uspešno odobren');
       } else {
-        V2AppSnackBar.error(context, '⚠️ Greška pri odobravanju, pokušaj ponovo');
+        V2AppSnackBar.error(context, '❌ Greška pri odobravanju, pokušaj ponovo');
       }
     } finally {
       if (mounted) setState(() => _loadingIds.remove(id));
@@ -223,9 +223,9 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
       final success = await V2PolasciService.v2OdbijZahtev(id, rejectedBy: _currentDriver);
       if (!mounted) return;
       if (success) {
-        V2AppSnackBar.warning(context, 'Zahtev odbijen');
+        V2AppSnackBar.warning(context, '🚫 Zahtev odbijen');
       } else {
-        V2AppSnackBar.error(context, '⚠️ Greška pri odbijanju, pokušaj ponovo');
+        V2AppSnackBar.error(context, '❌ Greška pri odbijanju, pokušaj ponovo');
       }
     } finally {
       if (mounted) setState(() => _loadingIds.remove(id));
