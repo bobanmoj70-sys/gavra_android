@@ -17,44 +17,19 @@ class V2DugoviScreen extends StatefulWidget {
 }
 
 class _DugoviScreenState extends State<V2DugoviScreen> {
-  late final String _danKratica;
-  late final Stream<List<V2Putnik>> _stream;
-
-  @override
-  void initState() {
-    super.initState();
-    final iso = V2PutnikHelpers.getWorkingDateIso();
-    _danKratica = V2DanUtils.odIso(iso);
-    _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<List<V2Putnik>>(
-      tables: const [
-        'v2_polasci',
-        'v2_dnevni',
-        'v2_radnici',
-        'v2_ucenici',
-        'v2_posiljke',
-        'v2_vozac_raspored',
-        'v2_vozac_putnik',
-      ],
-      build: () => V2PolasciService.fetchPutniciSyncStatic(dan: _danKratica),
-    );
-  }
-
-  static void _sortDugovi(List<V2Putnik> dugovi) {
-    dugovi.sort((a, b) {
-      final timeA = a.vremePokupljenja;
-      final timeB = b.vremePokupljenja;
-      if (timeA == null && timeB == null) return 0;
-      if (timeA == null) return 1;
-      if (timeB == null) return -1;
-      return timeB.compareTo(timeA);
-    });
-  }
-
-  List<V2Putnik> _applyFiltersAndSort(List<V2Putnik> input) {
-    final result = List<V2Putnik>.of(input);
-    _sortDugovi(result);
-    return result;
-  }
+  late final String _danKratica = V2DanUtils.odIso(V2PutnikHelpers.getWorkingDateIso());
+  late final Stream<List<V2Putnik>> _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<List<V2Putnik>>(
+    tables: const [
+      'v2_polasci',
+      'v2_dnevni',
+      'v2_radnici',
+      'v2_ucenici',
+      'v2_posiljke',
+      'v2_vozac_raspored',
+      'v2_vozac_putnik',
+    ],
+    build: () => V2PolasciService.fetchPutniciSyncStatic(dan: _danKratica),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +51,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
           return seenIds.add(key);
         }).toList();
 
-        final filteredDugovi = _applyFiltersAndSort(duzniciDeduplicated);
+        final filteredDugovi = _dugoviSorted(duzniciDeduplicated);
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -127,4 +102,19 @@ class _DugoviScreenState extends State<V2DugoviScreen> {
       },
     );
   }
+}
+
+// ─── top-level helperi (bez state pristupa) ───────────────────────────────────
+
+List<V2Putnik> _dugoviSorted(List<V2Putnik> input) {
+  final result = List<V2Putnik>.of(input);
+  result.sort((a, b) {
+    final timeA = a.vremePokupljenja;
+    final timeB = b.vremePokupljenja;
+    if (timeA == null && timeB == null) return 0;
+    if (timeA == null) return 1;
+    if (timeB == null) return -1;
+    return timeB.compareTo(timeA);
+  });
+  return result;
 }
