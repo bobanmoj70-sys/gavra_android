@@ -37,14 +37,8 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     const Color(0xFF9C27B0), // tamno ljubicasta
   ];
 
-  // Master realtime stream — inicijalizovan jednom u initState()
-  late final Stream<List<V2Vozac>> _streamVozaci;
-
-  @override
-  void initState() {
-    super.initState();
-    _streamVozaci = V2VozacService.streamAllVozaci();
-  }
+  // Master realtime stream — v2StreamFromCache, automatski refresh
+  final Stream<List<V2Vozac>> _streamVozaci = V2VozacService.streamAllVozaci();
 
   @override
   void dispose() {
@@ -162,7 +156,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                 TextFormField(
                   controller: _imeController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Ime vozaca', Icons.person),
+                  decoration: _vozaciAdminInputDecoration('Ime vozaca', Icons.person),
                   validator: (v) => v?.isEmpty == true ? 'Unesite ime' : null,
                 ),
                 const SizedBox(height: 12),
@@ -170,7 +164,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   controller: _emailController,
                   style: const TextStyle(color: Colors.white),
                   keyboardType: TextInputType.emailAddress,
-                  decoration: _inputDecoration('Email', Icons.email),
+                  decoration: _vozaciAdminInputDecoration('Email', Icons.email),
                   validator: (v) {
                     if (v?.isEmpty == true) return 'Unesite email';
                     if (!v!.contains('@')) return 'Neispravan email';
@@ -182,14 +176,14 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   controller: _sifraController,
                   style: const TextStyle(color: Colors.white),
                   obscureText: true,
-                  decoration: _inputDecoration('Sifra', Icons.lock),
+                  decoration: _vozaciAdminInputDecoration('Sifra', Icons.lock),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _telefonController,
                   style: const TextStyle(color: Colors.white),
                   keyboardType: TextInputType.phone,
-                  decoration: _inputDecoration('Telefon', Icons.phone),
+                  decoration: _vozaciAdminInputDecoration('Telefon', Icons.phone),
                 ),
                 const SizedBox(height: 16),
                 const Text('Izaberi boju:', style: TextStyle(color: Colors.white70)),
@@ -244,28 +238,6 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             child: const Text('Sacuvaj'),
           ),
         ],
-      ),
-    );
-  }
-
-  static InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-      prefixIcon: Icon(icon, color: Colors.blue),
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.1),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.blue),
       ),
     );
   }
@@ -475,4 +447,28 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
       ),
     );
   }
+}
+
+// ─── Top-level helper funkcije ───────────────────────────────────────────────
+
+InputDecoration _vozaciAdminInputDecoration(String label, IconData icon) {
+  return InputDecoration(
+    labelText: label,
+    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+    prefixIcon: Icon(icon, color: Colors.blue),
+    filled: true,
+    fillColor: Colors.white.withValues(alpha: 0.1),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.3)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Colors.blue),
+    ),
+  );
 }
