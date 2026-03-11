@@ -17,9 +17,7 @@ import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_putnik_count_helper.dart';
 import '../utils/v2_vozac_cache.dart';
-import '../widgets/v2_bottom_nav_bar_letnji.dart';
-import '../widgets/v2_bottom_nav_bar_praznici.dart';
-import '../widgets/v2_bottom_nav_bar_zimski.dart';
+import '../widgets/v2_bottom_nav_bar.dart';
 
 /// Ekran za upravljanje rasporedom vozaÄa
 /// Admin moÅ¾e dodijeliti vozaÄa po terminu (vozac_raspored) i po putniku (vozac_putnik).
@@ -759,44 +757,17 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   Widget _buildBottomNavBar(String navType, int Function(String, String) getPutnikCount, String targetDay) {
     int getKapacitet(String grad, String vreme) => V2KapacitetService.getKapacitetSync(grad, vreme);
 
-    switch (navType) {
-      case 'praznici':
-        return V2BottomNavBarPraznici(
-          sviPolasci: _sviPolasci,
-          selectedGrad: _selectedGrad,
-          selectedVreme: _selectedVreme,
-          getPutnikCount: getPutnikCount,
-          getKapacitet: getKapacitet,
-          onPolazakChanged: _onPolazakChanged,
-          selectedDan: targetDay,
-          showVozacBoja: true,
-          getVozacColor: _getVozacColorForTermin,
-        );
-      case 'zimski':
-        return V2BottomNavBarZimski(
-          sviPolasci: _sviPolasci,
-          selectedGrad: _selectedGrad,
-          selectedVreme: _selectedVreme,
-          getPutnikCount: getPutnikCount,
-          getKapacitet: getKapacitet,
-          onPolazakChanged: _onPolazakChanged,
-          selectedDan: targetDay,
-          showVozacBoja: true,
-          getVozacColor: _getVozacColorForTermin,
-        );
-      default:
-        return V2BottomNavBarLetnji(
-          sviPolasci: _sviPolasci,
-          selectedGrad: _selectedGrad,
-          selectedVreme: _selectedVreme,
-          getPutnikCount: getPutnikCount,
-          getKapacitet: getKapacitet,
-          onPolazakChanged: _onPolazakChanged,
-          selectedDan: targetDay,
-          showVozacBoja: true,
-          getVozacColor: _getVozacColorForTermin,
-        );
-    }
+    return V2BottomNavBar(
+      sviPolasci: _sviPolasci,
+      selectedGrad: _selectedGrad,
+      selectedVreme: _selectedVreme,
+      getPutnikCount: getPutnikCount,
+      getKapacitet: getKapacitet,
+      onPolazakChanged: _onPolazakChanged,
+      selectedDan: targetDay,
+      showVozacBoja: true,
+      getVozacColor: _getVozacColorForTermin,
+    );
   }
 }
 

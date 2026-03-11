@@ -27,9 +27,7 @@ import '../utils/v2_putnik_count_helper.dart';
 import '../utils/v2_putnik_helpers.dart';
 import '../utils/v2_text_utils.dart'; // Za V2TextUtils.isStatusActive
 import '../utils/v2_vozac_cache.dart'; // Za validaciju vozaca
-import '../widgets/v2_bottom_nav_bar_letnji.dart';
-import '../widgets/v2_bottom_nav_bar_praznici.dart';
-import '../widgets/v2_bottom_nav_bar_zimski.dart';
+import '../widgets/v2_bottom_nav_bar.dart';
 import '../widgets/v2_clock_ticker.dart';
 import '../widgets/v2_putnik_list.dart';
 
@@ -1000,41 +998,16 @@ class _VozacScreenState extends State<V2VozacScreen> {
           int getKapacitet(String grad, String vreme) => V2KapacitetService.getKapacitetSync(grad, vreme);
 
           Widget buildNavBarForType(String navType) {
-            switch (navType) {
-              case 'praznici':
-                return V2BottomNavBarPraznici(
-                  sviPolasci: _sviPolasci,
-                  selectedGrad: _selectedGrad,
-                  selectedVreme: _selectedVreme,
-                  getPutnikCount: getPutnikCount,
-                  getKapacitet: getKapacitet,
-                  onPolazakChanged: _onPolazakChanged,
-                  bcVremena: bcVremenaToShow,
-                  vsVremena: vsVremenaToShow,
-                );
-              case 'zimski':
-                return V2BottomNavBarZimski(
-                  sviPolasci: _sviPolasci,
-                  selectedGrad: _selectedGrad,
-                  selectedVreme: _selectedVreme,
-                  getPutnikCount: getPutnikCount,
-                  getKapacitet: getKapacitet,
-                  onPolazakChanged: _onPolazakChanged,
-                  bcVremena: bcVremenaToShow,
-                  vsVremena: vsVremenaToShow,
-                );
-              default:
-                return V2BottomNavBarLetnji(
-                  sviPolasci: _sviPolasci,
-                  selectedGrad: _selectedGrad,
-                  selectedVreme: _selectedVreme,
-                  getPutnikCount: getPutnikCount,
-                  getKapacitet: getKapacitet,
-                  onPolazakChanged: _onPolazakChanged,
-                  bcVremena: bcVremenaToShow,
-                  vsVremena: vsVremenaToShow,
-                );
-            }
+            return V2BottomNavBar(
+              sviPolasci: _sviPolasci,
+              selectedGrad: _selectedGrad,
+              selectedVreme: _selectedVreme,
+              getPutnikCount: getPutnikCount,
+              getKapacitet: getKapacitet,
+              onPolazakChanged: _onPolazakChanged,
+              bcVremena: bcVremenaToShow,
+              vsVremena: vsVremenaToShow,
+            );
           }
 
           // -----------------------------------------------------------------

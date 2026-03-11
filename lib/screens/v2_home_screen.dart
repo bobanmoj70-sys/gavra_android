@@ -29,9 +29,7 @@ import '../utils/v2_page_transitions.dart';
 import '../utils/v2_putnik_count_helper.dart';
 import '../utils/v2_text_utils.dart';
 import '../utils/v2_vozac_cache.dart';
-import '../widgets/v2_bottom_nav_bar_letnji.dart';
-import '../widgets/v2_bottom_nav_bar_praznici.dart';
-import '../widgets/v2_bottom_nav_bar_zimski.dart';
+import '../widgets/v2_bottom_nav_bar.dart';
 import '../widgets/v2_putnik_list.dart';
 import '../widgets/v2_registracija_countdown_widget.dart';
 import 'v2_admin_screen.dart';
@@ -2099,44 +2097,17 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
       }
     }
 
-    switch (navType) {
-      case 'praznici':
-        return V2BottomNavBarPraznici(
-          sviPolasci: _sviPolasci,
-          selectedGrad: _selectedGrad,
-          selectedVreme: _selectedVreme,
-          getPutnikCount: getPutnikCount,
-          getKapacitet: (grad, vreme) => V2KapacitetService.getKapacitetSync(grad, vreme),
-          onPolazakChanged: onChanged,
-          selectedDan: _selectedDay,
-          showVozacBoja: true,
-          getVozacColor: _getVozacColorForTermin,
-        );
-      case 'zimski':
-        return V2BottomNavBarZimski(
-          sviPolasci: _sviPolasci,
-          selectedGrad: _selectedGrad,
-          selectedVreme: _selectedVreme,
-          getPutnikCount: getPutnikCount,
-          getKapacitet: (grad, vreme) => V2KapacitetService.getKapacitetSync(grad, vreme),
-          onPolazakChanged: onChanged,
-          selectedDan: _selectedDay,
-          showVozacBoja: true,
-          getVozacColor: _getVozacColorForTermin,
-        );
-      default: // 'letnji' ili nepoznato
-        return V2BottomNavBarLetnji(
-          sviPolasci: _sviPolasci,
-          selectedGrad: _selectedGrad,
-          selectedVreme: _selectedVreme,
-          getPutnikCount: getPutnikCount,
-          getKapacitet: (grad, vreme) => V2KapacitetService.getKapacitetSync(grad, vreme),
-          onPolazakChanged: onChanged,
-          selectedDan: _selectedDay,
-          showVozacBoja: true,
-          getVozacColor: _getVozacColorForTermin,
-        );
-    }
+    return V2BottomNavBar(
+      sviPolasci: _sviPolasci,
+      selectedGrad: _selectedGrad,
+      selectedVreme: _selectedVreme,
+      getPutnikCount: getPutnikCount,
+      getKapacitet: (grad, vreme) => V2KapacitetService.getKapacitetSync(grad, vreme),
+      onPolazakChanged: onChanged,
+      selectedDan: _selectedDay,
+      showVozacBoja: true,
+      getVozacColor: _getVozacColorForTermin,
+    );
   }
 }
 

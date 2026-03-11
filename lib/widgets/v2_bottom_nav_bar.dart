@@ -4,8 +4,11 @@ import '../config/v2_route_config.dart';
 import '../services/v2_theme_manager.dart';
 import '../theme.dart';
 
-class V2BottomNavBarLetnji extends StatefulWidget {
-  const V2BottomNavBarLetnji({
+/// Jedinstveni bottom navigation bar koji zamjenjuje
+/// V2BottomNavBarLetnji, V2BottomNavBarZimski i V2BottomNavBarPraznici.
+/// navType se prosleđuje iz V2RouteConfig (npr. 'letnji', 'zimski', 'praznici').
+class V2BottomNavBar extends StatefulWidget {
+  const V2BottomNavBar({
     super.key,
     required this.sviPolasci,
     required this.selectedGrad,
@@ -17,10 +20,11 @@ class V2BottomNavBarLetnji extends StatefulWidget {
     this.bcVremena,
     this.vsVremena,
     this.selectedDan,
-    this.showVozacBoja = false, // Default je false (samo za Dodeli ekran)
-    this.getVozacColor, // Callback za boju vozaca po terminu
+    this.showVozacBoja = false,
+    this.getVozacColor,
   });
-  // ignore: unused_field — zadržano za API paritet sa zimski/praznici varijantama
+
+  // ignore: unused_field — zadržano za API paritet
   final List<String> sviPolasci;
   final String selectedGrad;
   final String selectedVreme;
@@ -35,10 +39,10 @@ class V2BottomNavBarLetnji extends StatefulWidget {
   final Color? Function(String grad, String vreme)? getVozacColor;
 
   @override
-  State<V2BottomNavBarLetnji> createState() => _BottomNavBarLetnjiState();
+  State<V2BottomNavBar> createState() => _V2BottomNavBarState();
 }
 
-class _BottomNavBarLetnjiState extends State<V2BottomNavBarLetnji> {
+class _V2BottomNavBarState extends State<V2BottomNavBar> {
   final ScrollController _bcScrollController = ScrollController();
   final ScrollController _vsScrollController = ScrollController();
 
@@ -51,7 +55,7 @@ class _BottomNavBarLetnjiState extends State<V2BottomNavBarLetnji> {
   }
 
   @override
-  void didUpdateWidget(V2BottomNavBarLetnji oldWidget) {
+  void didUpdateWidget(V2BottomNavBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedVreme != widget.selectedVreme || oldWidget.selectedGrad != widget.selectedGrad) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -61,9 +65,8 @@ class _BottomNavBarLetnjiState extends State<V2BottomNavBarLetnji> {
   }
 
   void _scrollToSelected() {
-    const double itemWidth = 60.0; // width + margin
+    const double itemWidth = 60.0;
 
-    // Koristi prosledeđena vremena ili aktivnu sezonu iz V2RouteConfig
     final bcVremena = widget.bcVremena ?? V2RouteConfig.getVremenaByNavType('BC');
     final vsVremena = widget.vsVremena ?? V2RouteConfig.getVremenaByNavType('VS');
 
@@ -100,7 +103,6 @@ class _BottomNavBarLetnjiState extends State<V2BottomNavBarLetnji> {
   @override
   Widget build(BuildContext context) {
     final currentThemeId = V2ThemeManager().currentThemeId;
-    // Koristi prosleđena vremena ili aktivnu sezonu iz V2RouteConfig
     final bcVremena = widget.bcVremena ?? V2RouteConfig.getVremenaByNavType('BC');
     final vsVremena = widget.vsVremena ?? V2RouteConfig.getVremenaByNavType('VS');
 
@@ -130,7 +132,6 @@ class _BottomNavBarLetnjiState extends State<V2BottomNavBarLetnji> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // top-right total removed (per user request)
                 _PolazakRow(
                   label: 'BC',
                   vremena: bcVremena,
@@ -148,7 +149,6 @@ class _BottomNavBarLetnjiState extends State<V2BottomNavBarLetnji> {
                   getVozacColor: widget.getVozacColor,
                 ),
                 const Divider(height: 1),
-                // VS Red
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _PolazakRow(
@@ -194,6 +194,7 @@ class _PolazakRow extends StatelessWidget {
     this.showVozacBoja = false,
     this.getVozacColor,
   });
+
   final String label;
   final List<String> vremena;
   final String selectedGrad;
@@ -209,7 +210,6 @@ class _PolazakRow extends StatelessWidget {
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
 
-  /// Boja akcenta za aktivni termin, u zavisnosti od teme.
   static Color _colorForTheme(String themeId) {
     switch (themeId) {
       case 'dark_steel_grey':
@@ -247,7 +247,6 @@ class _PolazakRow extends StatelessWidget {
               child: Row(
                 children: vremena.map((vreme) {
                   final bool selected = selectedGrad == grad && selectedVreme == vreme;
-                  // Boja vozaca za termin (iz raspored cache-a)
                   final vozacBorderColor = showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
                   final hasVozac = vozacBorderColor != null;
 
@@ -256,9 +255,7 @@ class _PolazakRow extends StatelessWidget {
                     child: Container(
                       width: 60.0,
                       margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: selected
                             ? accentColor.withOpacity(0.3)
@@ -267,7 +264,6 @@ class _PolazakRow extends StatelessWidget {
                                 : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          // Ako ima dodeljen vozac, koristi njegovu boju za border
                           color: hasVozac
                               ? vozacBorderColor
                               : selected
