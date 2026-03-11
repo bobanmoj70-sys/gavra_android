@@ -13,15 +13,10 @@ class V2UceniciZahteviScreen extends StatefulWidget {
 }
 
 class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
-  late final Stream<List<V2Polazak>> _stream;
-
-  @override
-  void initState() {
-    super.initState();
-    _stream = V2PolasciService.v2StreamZahteviObrada(
-      statusFilter: const ['obrada', 'odobreno', 'odbijeno', 'otkazano'],
-    );
-  }
+  // obrada + odobreno + odbijeno + otkazano — kompletan lifecycle zahteva
+  final Stream<List<V2Polazak>> _stream = V2PolasciService.v2StreamZahteviObrada(
+    statusFilter: const ['obrada', 'odobreno', 'odbijeno', 'otkazano'],
+  );
 
   @override
   Widget build(BuildContext context) {
