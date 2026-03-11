@@ -1195,50 +1195,19 @@ class _PutnikCardState extends State<V2PutnikCard> {
 
   // NAVIGACIJA ž samo HERE WeGo
   Future<void> _otvoriNavigaciju(Position position) async {
-    final lat = position.latitude;
-    final lng = position.longitude;
+    final destLat = position.latitude;
+    final destLng = position.longitude;
 
-    // HERE WeGo native URL scheme
-    final hereUrl = Uri.parse('here-route://mylocation/$lat,$lng/now');
+    // HERE WeGo share URL — Android ga prosledi HERE WeGo nativno (deep link)
+    final hereUrl = Uri.parse('https://share.here.com/r/$destLat,$destLng,Destinacija?m=d');
 
     try {
-      if (await canLaunchUrl(hereUrl)) {
-        await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
-      } else {
-        // HERE WeGo nije instaliran ž prikaži dialog
-        if (mounted) {
-          showDialog<void>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('HERE WeGo nije instaliran'),
-              content: const Text(
-                'Da biste koristili navigaciju, potrebno je da instalirate HERE WeGo aplikaciju iz Google Play prodavnice.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Otkaži'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    final playUrl = Uri.parse('market://details?id=com.here.app.maps');
-                    final playWebUrl = Uri.parse('https://play.google.com/store/apps/details?id=com.here.app.maps');
-                    if (await canLaunchUrl(playUrl)) {
-                      await launchUrl(playUrl, mode: LaunchMode.externalApplication);
-                    } else {
-                      await launchUrl(playWebUrl, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  child: const Text('Instaliraj'),
-                ),
-              ],
-            ),
-          );
-        }
-      }
+      await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
     } catch (e, st) {
       debugPrint('[V2PutnikCard._otvoriNavigaciju] Greška: $e\n$st');
+      if (mounted) {
+        V2AppSnackBar.error(context, '❌ HERE WeGo nije instaliran');
+      }
     }
   }
 

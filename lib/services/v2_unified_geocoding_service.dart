@@ -58,7 +58,7 @@ class V2UnifiedGeocodingService {
         }
       }
 
-      // PRIORITET 2: API (samo dnevni/bez adresaId)
+      // PRIORITET 2: API fallback — poziva se ako adresaId nema koordinate u cache-u, ili ako putnik nema adresaId
       final adresa = putnik.adresa ?? '';
       if (adresa.isEmpty || adresa == putnik.grad) continue;
 
