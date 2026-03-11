@@ -594,6 +594,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
       if (p.jeOdsustvo) return false;
       final hasValidAddress = (p.adresaId != null && p.adresaId!.isNotEmpty) ||
           (p.adresa != null && p.adresa!.isNotEmpty && p.adresa != p.grad);
+      debugPrint('[START] ${p.ime} adresaId=${p.adresaId} adresa=${p.adresa} grad=${p.grad} valid=$hasValidAddress');
       return hasValidAddress;
     }).toList();
 
@@ -602,7 +603,8 @@ class _VozacScreenState extends State<V2VozacScreen> {
         setState(() {
           _isOptimizing = false;
         });
-        V2AppSnackBar.warning(context, '⚠️ Nema putnika sa adresama za optimizaciju');
+        final bezAdrese = putnici.where((p) => !p.jeOtkazan && !p.jePokupljen && !p.jeOdsustvo).length;
+        V2AppSnackBar.warning(context, '⚠️ Nema putnika sa adresama za optimizaciju\n(${putnici.length} ušlo, $bezAdrese aktivnih, 0 sa adresom)');
       }
       return;
     }

@@ -108,11 +108,17 @@ class V2DanUtils {
   /// Proveri da li je dan vikend
   static bool jeVikend(String kratica) => kratica == 'sub' || kratica == 'ned';
 
-  /// Datum ponedeljka tekuće sedmice u formatu 'yyyy-MM-dd'.
+  /// Datum ponedeljka tekuće/sledeće sedmice u formatu 'yyyy-MM-dd'.
   /// Koristi se kao ključ za sedmično opseg v2_vozac_putnik dodjela.
+  /// Konzistentno sa isoZaDan() — vikend (sub/ned) → sledeći ponedeljak.
   static String pocetakTekuceSedmice() {
     final now = DateTime.now();
-    final ponedeljak = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final today = DateTime(now.year, now.month, now.day);
+    final int todayWd = today.weekday; // 1=pon ... 7=ned
+    final int daysToMonday = (todayWd == 6 || todayWd == 7)
+        ? (8 - todayWd) // vikend → sledeći pon
+        : (1 - todayWd); // radni dan → ovaj pon
+    final ponedeljak = today.add(Duration(days: daysToMonday));
     return '${ponedeljak.year}-${ponedeljak.month.toString().padLeft(2, '0')}-${ponedeljak.day.toString().padLeft(2, '0')}';
   }
 }

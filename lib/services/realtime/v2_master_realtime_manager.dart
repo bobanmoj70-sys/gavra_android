@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../globals.dart';
 import '../../models/v2_registrovani_putnik.dart';
 import '../../services/v2_app_settings_service.dart';
+import '../../utils/v2_dan_utils.dart';
 import '../../utils/v2_grad_adresa_validator.dart';
 import '../../utils/v2_vozac_cache.dart';
 
@@ -248,12 +249,13 @@ class V2MasterRealtimeManager {
 
   Future<void> _loadPolasciCache() async {
     try {
+      final sedmica = V2DanUtils.pocetakTekuceSedmice();
       final rows = await supabase
           .from('v2_polasci')
           .select('id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
               'status, created_at, updated_at, processed_at, broj_mesta, '
               'alternativno_vreme_1, alternativno_vreme_2, adresa_id, '
-              'otkazao, odobrio, pokupio, dan, '
+              'otkazao, odobrio, pokupio, dan, datum_sedmice, '
               'placen, placen_iznos, placen_vozac_id, placen_vozac_ime, pokupljen_datum, datum_akcije, placen_tip')
           .inFilter('status', [
         'obrada',
@@ -261,9 +263,13 @@ class V2MasterRealtimeManager {
         'otkazano',
         'odbijeno',
         'pokupljen',
-      ]);
+      ]).eq('datum_sedmice', sedmica);
       for (final row in rows) {
-        polasciCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+        final normalized = Map<String, dynamic>.from(row);
+        if (normalized['datum_sedmice'] != null) {
+          normalized['datum_sedmice'] = normalized['datum_sedmice'].toString().split('T').first;
+        }
+        polasciCache[normalized['id'].toString()] = normalized;
       }
     } catch (e) {
       debugPrint('❌ [V2MasterRealtimeManager] _loadPolasciCache: $e');
@@ -491,11 +497,22 @@ class V2MasterRealtimeManager {
       if (datum != null && datum != _loadedDate) return;
     }
 
-    // polasciCache drži samo aktivne statuse — ukloni zapis ako dobijemo status koji nije u inicijalnoj listi
+    // polasciCache drži samo aktivne statuse za tekuću sedmicu — ukloni zapis ako status nije aktivan ili je iz druge sedmice
     if (table == 'v2_polasci') {
       const aktivniStatusi = {'obrada', 'odobreno', 'otkazano', 'odbijeno', 'pokupljen'};
       final status = record['status']?.toString();
       if (status != null && !aktivniStatusi.contains(status)) {
+        target.remove(id);
+        if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
+        return;
+      }
+      // Normalizuj datum_sedmice na yyyy-MM-dd (Realtime šalje ISO sa sekundama)
+      if (record['datum_sedmice'] != null) {
+        record = {...record, 'datum_sedmice': record['datum_sedmice'].toString().split('T').first};
+      }
+      // Ignoriši zapise koji nisu iz tekuće sedmice
+      final recordSedmica = record['datum_sedmice']?.toString();
+      if (recordSedmica != null && recordSedmica != V2DanUtils.pocetakTekuceSedmice()) {
         target.remove(id);
         if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
         return;
@@ -850,6 +867,41 @@ class V2MasterRealtimeManager {
   Map<String, dynamic>? v2GetPutnikById(String id) {
     return radniciCache[id] ?? uceniciCache[id] ?? dnevniCache[id] ?? posiljkeCache[id];
   }
+
+  /// Sync čitanje polasciCache za dati dan (kratica 'pon'/'uto'/...) — 0 DB upita.
+  /// Enrichuje svaki polazak podacima putnika iz odgovarajućeg cache-a.
+  /// Koristi se direktno iz StreamBuilder-a u HomeScreen-u.
+  List<Map<String, dynamic>> v2GetPutniciZaDan(String dan) {
+    final danKey = dan.toLowerCase();
+    final result = <Map<String, dynamic>>[];
+    for (final polazak in polasciCache.values) {
+      if (polazak['dan']?.toString() != danKey) continue;
+      final putnikId = polazak['putnik_id']?.toString();
+      final rp = putnikId != null ? v2GetPutnikById(putnikId) : null;
+      result.add({
+        ...polazak,
+        if (rp != null) 'registrovani_putnici': rp,
+        if (rp != null && rp['ime'] != null) 'putnik_ime': rp['ime'],
+      });
+    }
+    return result;
+  }
+
+  /// Stream putnika za dati dan — reaguje na sve relevantne cache promjene.
+  /// Jedan stream po pozivu; koristi v2StreamFromCache pa ne zatvara controller.
+  /// HomeScreen kreira JEDAN ovakav stream i mijenja dan kroz setState.
+  Stream<List<Map<String, dynamic>>> v2StreamPutniciZaDan(String dan) => v2StreamFromCache<List<Map<String, dynamic>>>(
+        tables: const [
+          'v2_polasci',
+          'v2_radnici',
+          'v2_ucenici',
+          'v2_dnevni',
+          'v2_posiljke',
+          'v2_vozac_raspored',
+          'v2_vozac_putnik',
+        ],
+        build: () => v2GetPutniciZaDan(dan),
+      );
 
   /// Vraća ime vozača iz cache-a
   String? getVozacIme(String vozacId) {

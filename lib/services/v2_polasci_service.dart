@@ -52,6 +52,7 @@ class V2PolasciService {
         .eq('putnik_id', putnikId)
         .eq('grad', gradKey)
         .eq('dan', danKey)
+        .eq('datum_sedmice', V2DanUtils.pocetakTekuceSedmice())
         .neq('zeljeno_vreme', normVreme)
         .inFilter('status', [
           V2Polazak.statusObrada,
@@ -65,7 +66,7 @@ class V2PolasciService {
       rm.v2PatchCache('v2_polasci', row['id'].toString(), {'status': cancelledStatus, 'updated_at': nowStr});
     }
 
-    // 2. Upsert po (putnik_id, grad, dan, zeljeno_vreme) — uvijek ide ispočetka kroz obradu
+    // 2. Upsert po (putnik_id, grad, dan, zeljeno_vreme, datum_sedmice) — uvijek ide ispočetka kroz obradu
     final existing = await supabase
         .from('v2_polasci')
         .select('id')
@@ -73,6 +74,7 @@ class V2PolasciService {
         .eq('grad', gradKey)
         .eq('dan', danKey)
         .eq('zeljeno_vreme', normVreme)
+        .eq('datum_sedmice', V2DanUtils.pocetakTekuceSedmice())
         .maybeSingle();
 
     if (existing != null) {
@@ -86,6 +88,7 @@ class V2PolasciService {
         'alternativno_vreme_2': null,
         if (putnikTabela != null) 'putnik_tabela': putnikTabela,
         if (customAdresaId != null) 'adresa_id': customAdresaId,
+        'datum_sedmice': V2DanUtils.pocetakTekuceSedmice(),
         'updated_at': nowStr,
       };
       final updated =
@@ -336,6 +339,7 @@ class V2PolasciService {
           'zeljeno_vreme': novoVreme, // cekaonica → premestamo na novi termin
           'dodeljeno_vreme': novoVreme, // stvarni termin putovanja → novi termin
           'status': V2Polazak.statusOdobreno,
+          'datum_sedmice': V2DanUtils.pocetakTekuceSedmice(),
           'processed_at': nowStr,
           'updated_at': nowStr,
         };
@@ -374,6 +378,20 @@ class V2PolasciService {
 
   /// Sync wrapper — čita putnike za [dan] iz cache-a, 0 DB upita
   static List<V2Putnik> fetchPutniciSyncStatic({required String dan}) => _svc.fetchPutniciSync(dan: dan);
+
+  /// Stream putnika za konkretan dan — jedan stream, koristi v2StreamFromCache u RM-u.
+  /// Ne zatvara se kad nema listenera (broadcast + onListen/onCancel pattern u RM).
+  /// HomeScreen kreira JEDAN stream i swap-uje dan kroz setState bez rekreiranja streama.
+  static Stream<List<V2Putnik>> streamPutniciZaDan(String dan) {
+    final rm = V2MasterRealtimeManager.instance;
+    return rm.v2StreamPutniciZaDan(dan).map((rows) {
+      final isoZaDan = V2DanUtils.isoZaDan(dan);
+      return rows
+          .map((row) =>
+              V2PutnikStreamService._buildPutnik(row, row['registrovani_putnici'] as Map<String, dynamic>?, isoZaDan))
+          .toList();
+    });
+  }
 
   static Stream<List<V2Putnik>> v2StreamPutnici() => _svc.v2StreamPutnici();
 
@@ -895,6 +913,7 @@ class V2PutnikStreamService {
             .eq('putnik_id', id.toString())
             .eq('dan', danKey)
             .eq('grad', gradKey)
+            .eq('datum_sedmice', V2DanUtils.pocetakTekuceSedmice())
             .eq('zeljeno_vreme', vremeKey)
             .select('id');
         polasciUpdated = res.isNotEmpty;
@@ -979,6 +998,7 @@ class V2PutnikStreamService {
           .from('v2_polasci')
           .update(polasciPayload)
           .eq('putnik_id', putnikId)
+          .eq('datum_sedmice', V2DanUtils.pocetakTekuceSedmice())
           .inFilter('dan', [danasKratica, sutraKratica]).inFilter(
               'status', [V2Polazak.statusObrada, V2Polazak.statusOdobreno]).select('id');
       // Batch cache patch za sve pogođene polasci redove
@@ -1060,6 +1080,7 @@ class V2PutnikStreamService {
             .update(updatePayload)
             .match({'putnik_id': id.toString(), 'dan': danKey})
             .eq('grad', gradKey)
+            .eq('datum_sedmice', V2DanUtils.pocetakTekuceSedmice())
             .eq('zeljeno_vreme', normalizedTime)
             .select('id');
 
@@ -1072,6 +1093,7 @@ class V2PutnikStreamService {
               .update(updatePayload)
               .match({'putnik_id': id.toString(), 'dan': danKey})
               .eq('grad', gradKey)
+              .eq('datum_sedmice', V2DanUtils.pocetakTekuceSedmice())
               .eq('dodeljeno_vreme', normalizedTime)
               .select('id');
           polasciUpdated = res.isNotEmpty;
@@ -1182,6 +1204,7 @@ class V2PutnikStreamService {
           .eq('putnik_id', id.toString())
           .eq('dan', danKey)
           .eq('grad', gradKey)
+          .eq('datum_sedmice', V2DanUtils.pocetakTekuceSedmice())
           .eq('zeljeno_vreme', vremeKey)
           .select('id');
       polasciUpdated = res.isNotEmpty;

@@ -53,7 +53,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   String? _currentDriver;
 
   late final Stream<int> _streamBrojZahteva;
-  late final Map<String, Stream<List<V2Putnik>>> _streamsPoDanima;
+  late Stream<List<V2Putnik>> _putniciStream;
 
   List<String> get _sviPolasci {
     final bcList = V2RouteConfig.getVremenaByNavType('BC').map((v) => '$v BC').toList();
@@ -70,20 +70,18 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
-    // Kreira streamove za SVE radne dane odjednom u initState — cache za cijelu nedelju.
-    // Svaki stream ostaje aktivan tokom cijelog životnog vijeka ekrana,
-    // pa switch dana ne zahtijeva novi DB poziv ni novu inicijalizaciju streama.
-    _streamsPoDanima = {
-      for (final dan in ['pon', 'uto', 'sre', 'cet', 'pet'])
-        dan: V2PolasciService.streamKombinovaniPutniciFiltered(dan: dan),
-    };
+    // Jedan stream po trenutnom danu — v2StreamFromCache u RM-u ne zatvara controller
+    // kad nema listenera, pa swap dana u _onDayChanged kreira novi .map() wrapper
+    // koji se zakači na isti aktivni RM broadcast.
+    _putniciStream = V2PolasciService.streamPutniciZaDan(_selectedDay);
     _initializeData();
   }
 
   void _onDayChanged(String day) {
     setState(() {
       _selectedDay = day;
-      // Stream za ovaj dan je već aktivan iz _streamsPoDanima — samo mijenjamo dan.
+      // Kreira novi .map() wrapper na isti RM broadcast stream — 0 DB upita, 0 WebSocket konekcija.
+      _putniciStream = V2PolasciService.streamPutniciZaDan(day);
     });
   }
 
@@ -1495,7 +1493,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V2Putnik>>(
-        stream: _streamsPoDanima[_selectedDay],
+        stream: _putniciStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Scaffold(
@@ -1547,7 +1545,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
           final Map<String, V2Putnik> uniqueZaPrikaz = {};
 
           for (final p in allPutnici) {
-            if (!p.dan.toLowerCase().contains(_selectedDay)) continue;
+            // Dan je već filtriran u streamPutniciZaDan — svi putnici su za _selectedDay
             final key = '${p.id}_${p.polazak}_${p.dan}';
             uniqueZaDan[key] = p;
             final normalizedStatus = V2TextUtils.normalizeText(p.status ?? '');
