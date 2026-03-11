@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../services/v2_finansije_service.dart';
+import '../utils/v2_dan_utils.dart';
 
 /// FINANSIJE SCREEN
 /// Prikazuje prihode, troškove i neto zaradu
@@ -80,7 +81,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                             _buildPeriodCard(
                               icon: '🗓️',
                               naslov: 'Ovaj mesec',
-                              podnaslov: _getMesecNaziv(izvestaj.startNedelja.month),
+                              podnaslov: V2DanUtils.mesecNaziv(izvestaj.startNedelja.month),
                               prihod: izvestaj.prihodMesec,
                               troskovi: izvestaj.troskoviMesec,
                               neto: izvestaj.netoMesec,
@@ -372,26 +373,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
         ],
       ),
     );
-  }
-
-  static String _getMesecNaziv(int mesec) {
-    assert(mesec >= 1 && mesec <= 12, 'Mesec mora biti izmedju 1 i 12, dobijeno: $mesec');
-    const meseci = [
-      '',
-      'Januar',
-      'Februar',
-      'Mart',
-      'April',
-      'Maj',
-      'Jun',
-      'Jul',
-      'Avgust',
-      'Septembar',
-      'Oktobar',
-      'Novembar',
-      'Decembar'
-    ];
-    return meseci[mesec];
   }
 
   void _showTroskoviDialog(Map<String, double> poTipu) {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/v2_polazak.dart';
-import '../widgets/v2_summary_badge.dart';
 import '../services/v2_polasci_service.dart';
 import '../theme.dart';
 import '../utils/v2_vozac_cache.dart';
+import '../widgets/v2_summary_badge.dart';
 
 class V2RadniciZahteviScreen extends StatefulWidget {
   const V2RadniciZahteviScreen({super.key});
@@ -188,7 +188,7 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
                     ],
                   ),
                 ),
-                _gradBadge(grad),
+                v2GradBadge(grad),
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -208,10 +208,10 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
               spacing: 14,
               runSpacing: 2,
               children: [
-                _vremeChip('Željeno', zeljeno, Colors.white70),
-                if (dodeljeno != null && dodeljeno.isNotEmpty) _vremeChip('', '→ $dodeljeno', Colors.green),
-                if (alt1 != null && alt1.isNotEmpty) _vremeChip('Alt 1', alt1, Colors.lightBlue),
-                if (alt2 != null && alt2.isNotEmpty) _vremeChip('Alt 2', alt2, Colors.lightBlue),
+                v2VremeChip('Željeno', zeljeno, Colors.white70),
+                if (dodeljeno != null && dodeljeno.isNotEmpty) v2VremeChip('', '→ $dodeljeno', Colors.green),
+                if (alt1 != null && alt1.isNotEmpty) v2VremeChip('Alt 1', alt1, Colors.lightBlue),
+                if (alt2 != null && alt2.isNotEmpty) v2VremeChip('Alt 2', alt2, Colors.lightBlue),
               ],
             ),
             const SizedBox(height: 4),
@@ -220,11 +220,11 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
               spacing: 12,
               runSpacing: 2,
               children: [
-                if (poslatStr != null) _timelineChip('📨 poslato', poslatStr, Colors.white54),
-                if (obradjenoStr != null) _timelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
+                if (poslatStr != null) v2TimelineChip('📨 poslato', poslatStr, Colors.white54),
+                if (obradjenoStr != null) v2TimelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
                 if (obradjenoStr == null && status == 'obrada')
-                  _timelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
-                if (koObradio != null) _timelineChip('👤', koObradio, koObradioColor),
+                  v2TimelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
+                if (koObradio != null) v2TimelineChip('👤', koObradio, koObradioColor),
               ],
             ),
           ],
@@ -233,30 +233,4 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
     );
   }
 
-  static Widget _vremeChip(String label, String vreme, Color color) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (label.isNotEmpty)
-            Text('$label: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
-          Text(vreme, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
-        ],
-      );
-
-  static Widget _timelineChip(String label, String value, Color color) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('$label ', style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11)),
-          Text(value, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
-        ],
-      );
-
-  static Widget _gradBadge(String grad) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        ),
-        child: Text(grad, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-      );
 }
