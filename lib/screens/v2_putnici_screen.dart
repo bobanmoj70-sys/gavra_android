@@ -23,15 +23,9 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
   final _rm = V2MasterRealtimeManager.instance;
 
-  // Master realtime stream — inicijalizovan jednom u initState()
-  late final Stream<List<V2RegistrovaniPutnik>> _streamPutnici;
-
-  @override
-  void initState() {
-    super.initState();
-    _streamPutnici = _rm.streamAktivniPutnici();
-    // Nema addListener/setState — ValueListenableBuilder reaguje direktno na promjene
-  }
+  // Master realtime stream — broadcast, reaguje na svaki onCacheChanged event
+  final Stream<List<V2RegistrovaniPutnik>> _streamPutnici =
+      V2MasterRealtimeManager.instance.streamAktivniPutnici();
 
   @override
   void dispose() {
@@ -118,7 +112,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           Positioned(
                               right: 0,
                               top: 0,
-                              child: _buildBadge(
+                              child: _putniciiBuildBadge(
                                   brRadnici, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
                         ]),
                         Stack(children: [
@@ -133,7 +127,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           Positioned(
                               right: 0,
                               top: 0,
-                              child: _buildBadge(
+                              child: _putniciiBuildBadge(
                                   brUcenici, const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
                         ]),
                         Stack(children: [
@@ -149,7 +143,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                               right: 0,
                               top: 0,
                               child:
-                                  _buildBadge(brDnevni, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
+                                  _putniciiBuildBadge(brDnevni, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
                         ]),
                         Stack(children: [
                           IconButton(
@@ -163,7 +157,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           Positioned(
                               right: 0,
                               top: 0,
-                              child: _buildBadge(
+                              child: _putniciiBuildBadge(
                                   brPosiljke, const Color(0xFFFF8C00), const Color(0xFFE65C00), Colors.orange)),
                         ]),
                         IconButton(
@@ -335,24 +329,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     );
   }
 
-  static Widget _buildBadge(int count, Color c1, Color c2, Color shadow) {
-    if (count == 0) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [c1, c2]),
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: shadow.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
   Widget _buildPutnikCard(V2RegistrovaniPutnik v2Putnik, int redniBroj) {
     final bool bolovanje = v2Putnik.status == 'bolovanje';
 
@@ -504,7 +480,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildCompactActionButton(
+                      child: _putniciiBuildCompactActionButton(
                         onPressed: () => _toggleAktivnost(v2Putnik),
                         icon: switch (v2Putnik.status) {
                           'aktivan' => Icons.toggle_on_outlined,
@@ -531,7 +507,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: _buildCompactActionButton(
+                      child: _putniciiBuildCompactActionButton(
                         onPressed: () => _prikaziDetaljneStatistike(v2Putnik),
                         icon: Icons.analytics_outlined,
                         label: 'Detalji',
@@ -545,7 +521,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                   children: [
                     if (v2Putnik.telefon != null || v2Putnik.telefonOca != null || v2Putnik.telefonMajke != null) ...[
                       Expanded(
-                        child: _buildCompactActionButton(
+                        child: _putniciiBuildCompactActionButton(
                           onPressed: () => _pokaziKontaktOpcije(v2Putnik),
                           icon: Icons.phone,
                           label: 'Pozovi',
@@ -555,7 +531,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                       const SizedBox(width: 6),
                     ],
                     Expanded(
-                      child: _buildCompactActionButton(
+                      child: _putniciiBuildCompactActionButton(
                         onPressed: () => _editPutnik(v2Putnik),
                         icon: Icons.edit_outlined,
                         label: 'Uredi',
@@ -564,7 +540,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: _buildCompactActionButton(
+                      child: _putniciiBuildCompactActionButton(
                         onPressed: () => _showPinDialog(v2Putnik),
                         icon: Icons.lock_outline,
                         label: 'PIN',
@@ -573,7 +549,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: _buildCompactActionButton(
+                      child: _putniciiBuildCompactActionButton(
                         onPressed: () => _obrisiPutnika(v2Putnik),
                         icon: Icons.delete_outline,
                         label: 'Obriši',
@@ -584,63 +560,6 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static Widget _buildCompactActionButton({
-    required VoidCallback? onPressed,
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return SizedBox(
-      height: 32,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              color.withValues(alpha: 0.15),
-              color.withValues(alpha: 0.08),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: color.withValues(alpha: 0.3),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 14, color: color),
-          label: Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            foregroundColor: color,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           ),
         ),
       ),
@@ -993,4 +912,81 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       aktivan: v2Putnik.aktivan,
     );
   }
+}
+
+// ─── Top-level helpers ────────────────────────────────────────────────────────
+
+Widget _putniciiBuildBadge(int count, Color c1, Color c2, Color shadow) {
+  if (count == 0) return const SizedBox.shrink();
+  return Container(
+    padding: const EdgeInsets.all(3),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: [c1, c2]),
+      shape: BoxShape.circle,
+      boxShadow: [BoxShadow(color: shadow.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2))],
+    ),
+    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+    child: Text(
+      count > 99 ? '99+' : '$count',
+      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+      textAlign: TextAlign.center,
+    ),
+  );
+}
+
+Widget _putniciiBuildCompactActionButton({
+  required VoidCallback? onPressed,
+  required IconData icon,
+  required String label,
+  required Color color,
+}) {
+  return SizedBox(
+    height: 32,
+    child: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withValues(alpha: 0.15),
+            color.withValues(alpha: 0.08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 14, color: color),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: color,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        ),
+      ),
+    ),
+  );
 }
