@@ -42,7 +42,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<_GorivoData>(
       tables: ['v2_pumpa_config', 'v2_pumpa_punjenja', 'v2_pumpa_tocenja', 'v2_vozila'],
       build: _buildGorivoData,
-    ).asBroadcastStream();
+    );
   }
 
   _GorivoData _buildGorivoData() {
@@ -99,7 +99,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     return StreamBuilder<_GorivoData>(
       stream: _stream,
-      initialData: _buildGorivoData(),
       builder: (context, snapshot) {
         final data = snapshot.data ?? _buildGorivoData();
         return _buildScaffold(context, data);
@@ -341,33 +340,20 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
               style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
             ),
             const SizedBox(height: 12),
-            _detaljiRow('🟢 Ukupno dopunjeno', '${_fmt.format(stanje.ukupnoPunjeno)} L', Colors.greenAccent),
-            _detaljiRow('🔴 Ukupno utrošeno', '${_fmt.format(stanje.ukupnoUtroseno)} L', Colors.redAccent),
-            _detaljiRow(
+            _gorivoDetaljiRow('🟢 Ukupno dopunjeno', '${_fmt.format(stanje.ukupnoPunjeno)} L', Colors.greenAccent),
+            _gorivoDetaljiRow('🔴 Ukupno utrošeno', '${_fmt.format(stanje.ukupnoUtroseno)} L', Colors.redAccent),
+            _gorivoDetaljiRow(
               '🔔 Alarm nivo',
               '${_fmt.format(stanje.alarmNivo)} L',
               stanje.ispodAlarma ? Colors.redAccent : Colors.white54,
             ),
-            _detaljiRow(
+            _gorivoDetaljiRow(
               '📦 Kapacitet',
               '${_fmt.format(stanje.kapacitetLitri)} L',
               Colors.white70,
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  static Widget _detaljiRow(String label, String value, Color valueColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: valueColor, fontSize: 13)),
-        ],
       ),
     );
   }
@@ -589,17 +575,17 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => _buildBottomSheet(
+        builder: (ctx, setLocal) => _gorivoBuildBottomSheet(
           title: '🛢️ Novo punjenje pumpe',
           accentColor: Colors.green,
           children: [
             _datumRow(datum, (d) => setLocal(() => datum = d)),
             const SizedBox(height: 12),
-            _inputField(litriCtrl, 'Litri *', suffixText: 'L', keyboardType: TextInputType.number),
+            _gorivoInputField(litriCtrl, 'Litri *', suffixText: 'L', keyboardType: TextInputType.number),
             const SizedBox(height: 12),
-            _inputField(cenaCtrl, 'Cena po litru', suffixText: 'din/L', keyboardType: TextInputType.number),
+            _gorivoInputField(cenaCtrl, 'Cena po litru', suffixText: 'din/L', keyboardType: TextInputType.number),
             const SizedBox(height: 12),
-            _inputField(napomenaCtrl, 'Napomena'),
+            _gorivoInputField(napomenaCtrl, 'Napomena'),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -665,7 +651,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => _buildBottomSheet(
+        builder: (ctx, setLocal) => _gorivoBuildBottomSheet(
           title: '🚗 Novo točenje',
           accentColor: _accent,
           children: [
@@ -673,7 +659,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             const SizedBox(height: 12),
             DropdownButtonFormField<V2Vozilo>(
               value: selectedVozilo,
-              decoration: _inputDeco('Vozilo *'),
+              decoration: _gorivoInputDeco('Vozilo *'),
               items: vozila
                   .map((v) => DropdownMenuItem(
                         value: v,
@@ -685,11 +671,11 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
               onChanged: (v) => setLocal(() => selectedVozilo = v),
             ),
             const SizedBox(height: 12),
-            _inputField(litriCtrl, 'Litri *', suffixText: 'L', keyboardType: TextInputType.number),
+            _gorivoInputField(litriCtrl, 'Litri *', suffixText: 'L', keyboardType: TextInputType.number),
             const SizedBox(height: 12),
-            _inputField(kmCtrl, 'Km vozila', suffixText: 'km', keyboardType: TextInputType.number),
+            _gorivoInputField(kmCtrl, 'Km vozila', suffixText: 'km', keyboardType: TextInputType.number),
             const SizedBox(height: 12),
-            _inputField(napomenaCtrl, 'Napomena'),
+            _gorivoInputField(napomenaCtrl, 'Napomena'),
             if (lastCena != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -762,15 +748,15 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _buildBottomSheet(
+      builder: (ctx) => _gorivoBuildBottomSheet(
         title: '⚙️ Podešavanja pumpe',
         accentColor: Colors.blueGrey,
         children: [
-          _inputField(kapacitetCtrl, 'Kapacitet pumpe', suffixText: 'L', keyboardType: TextInputType.number),
+          _gorivoInputField(kapacitetCtrl, 'Kapacitet pumpe', suffixText: 'L', keyboardType: TextInputType.number),
           const SizedBox(height: 12),
-          _inputField(alarmCtrl, 'Alarm — upozorenje ispod', suffixText: 'L', keyboardType: TextInputType.number),
+          _gorivoInputField(alarmCtrl, 'Alarm — upozorenje ispod', suffixText: 'L', keyboardType: TextInputType.number),
           const SizedBox(height: 12),
-          _inputField(pocetnoCtrl, 'Početno stanje (koliko ima sad)',
+          _gorivoInputField(pocetnoCtrl, 'Početno stanje (koliko ima sad)',
               suffixText: 'L', keyboardType: TextInputType.number),
           const SizedBox(height: 8),
           Text(
@@ -834,57 +820,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     if (ok == true && mounted) onConfirm();
   }
 
-  static Widget _buildBottomSheet({
-    required String title,
-    required Color accentColor,
-    required List<Widget> children,
-  }) {
-    return Builder(
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: SafeArea(
-          top: false,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(ctx).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade400,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: accentColor,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ...children,
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _datumRow(DateTime datum, ValueChanged<DateTime> onChanged) {
     return InkWell(
       onTap: () async {
@@ -898,7 +833,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       },
       borderRadius: BorderRadius.circular(12),
       child: InputDecorator(
-        decoration: _inputDeco('Datum'),
+        decoration: _gorivoInputDeco('Datum'),
         child: Text(
           DateFormat('dd.MM.yyyy', 'sr').format(datum),
           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -906,28 +841,94 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       ),
     );
   }
+}
 
-  static Widget _inputField(
-    TextEditingController ctrl,
-    String label, {
-    String? suffixText,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: keyboardType,
-      decoration: _inputDeco(label, suffixText: suffixText),
-    );
-  }
+// ─── top-level helperi (bez state pristupa) ───────────────────────────────────
 
-  static InputDecoration _inputDeco(String label, {String? suffixText}) {
-    return InputDecoration(
-      labelText: label,
-      suffixText: suffixText,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    );
-  }
+Widget _gorivoDetaljiRow(String label, String value, Color valueColor) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: valueColor, fontSize: 13)),
+      ],
+    ),
+  );
+}
+
+Widget _gorivoBuildBottomSheet({
+  required String title,
+  required Color accentColor,
+  required List<Widget> children,
+}) {
+  return Builder(
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ...children,
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _gorivoInputField(
+  TextEditingController ctrl,
+  String label, {
+  String? suffixText,
+  TextInputType keyboardType = TextInputType.text,
+}) {
+  return TextField(
+    controller: ctrl,
+    keyboardType: keyboardType,
+    decoration: _gorivoInputDeco(label, suffixText: suffixText),
+  );
+}
+
+InputDecoration _gorivoInputDeco(String label, {String? suffixText}) {
+  return InputDecoration(
+    labelText: label,
+    suffixText: suffixText,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  );
 }
 
 /// Snapshot svih gorivo podataka za jedan StreamBuilder rebuild
