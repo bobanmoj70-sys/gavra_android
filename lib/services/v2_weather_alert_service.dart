@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
+import '../utils/v2_dan_utils.dart';
 import 'v2_realtime_notification_service.dart';
 import 'v2_weather_service.dart';
 
@@ -91,7 +92,7 @@ class V2WeatherAlertService {
   /// Proverava da li je upozorenje vec poslato danas
   static Future<bool> _isAlertAlreadySentToday() async {
     try {
-      final today = DateTime.now().toIso8601String().split('T')[0];
+      final today = V2DanUtils.today();
 
       final response = await supabase.from('v2_weather_alerts_log').select('id').eq('alert_date', today).maybeSingle();
 
@@ -134,7 +135,7 @@ class V2WeatherAlertService {
   /// Oznaci da je upozorenje poslato danas
   static Future<void> _markAlertSent(String alertTypes) async {
     try {
-      final today = DateTime.now().toIso8601String().split('T')[0];
+      final today = V2DanUtils.today();
 
       await supabase.from('v2_weather_alerts_log').insert({
         'alert_date': today,

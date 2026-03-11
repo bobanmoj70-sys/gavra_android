@@ -568,7 +568,7 @@ class V2PutnikStreamService {
 
   /// Stream svih putnika za danas.
   Stream<List<V2Putnik>> v2StreamPutnici() {
-    final todayDate = DateTime.now().toIso8601String().split('T')[0];
+    final todayDate = V2DanUtils.today();
     return streamKombinovaniPutniciFiltered(isoDate: todayDate);
   }
 
@@ -598,7 +598,7 @@ class V2PutnikStreamService {
   }
 
   Future<V2Putnik?> getPutnikByName(String ime, {String? grad}) async {
-    final String todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final String todayStr = V2DanUtils.today();
     final rm = V2MasterRealtimeManager.instance;
 
     final rpEntry = rm.v2GetAllPutnici().where((r) => r['ime']?.toString() == ime).firstOrNull;
@@ -615,7 +615,7 @@ class V2PutnikStreamService {
 
   Future<V2Putnik?> getPutnikFromAnyTable(dynamic id) async {
     try {
-      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      final todayStr = V2DanUtils.today();
       final String idStr = id.toString();
       final rm = V2MasterRealtimeManager.instance;
 
@@ -851,7 +851,7 @@ class V2PutnikStreamService {
     if (_isDuplicateAction('pickup_$id')) return;
     if (!value) return;
 
-    final targetDatum = datum ?? DateTime.now().toIso8601String().split('T')[0];
+    final targetDatum = datum ?? V2DanUtils.today();
 
     String? vozacId;
     final rm = V2MasterRealtimeManager.instance;
@@ -989,7 +989,7 @@ class V2PutnikStreamService {
         tip: status, // 'bolovanje' ili 'godisnji'
         putnikId: putnikId,
         detalji: 'Polasci automatski ukloneni zbog: $status',
-        datum: DateTime.now().toIso8601String().split('T')[0],
+        datum: V2DanUtils.today(),
       );
     }
   }
@@ -1135,7 +1135,7 @@ class V2PutnikStreamService {
     String? putnikIme,
     String? putnikTabela,
   }) async {
-    final dateStr = DateTime.now().toIso8601String().split('T')[0];
+    final dateStr = V2DanUtils.today();
 
     String? vozacId;
     if (driver != null) {

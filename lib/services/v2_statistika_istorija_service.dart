@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../models/v2_registrovani_putnik.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
@@ -267,7 +268,7 @@ class V2StatistikaIstorijaService {
     Future<void> emit() async {
       if (controller.isClosed) return;
       try {
-        final today = DateTime.now().toIso8601String().split('T')[0];
+        final today = V2DanUtils.today();
         final Map<String, double> result;
         if (isoDate == today && rm.isInitialized) {
           // Tekuci dan — citaj direktno iz polasciCache (realtime, 0 DB upita)

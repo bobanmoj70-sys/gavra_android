@@ -87,6 +87,9 @@ class V2DanUtils {
   /// Danasnja kratica
   static String danas() => odDatuma(DateTime.now());
 
+  /// Danasnji datum kao ISO string 'yyyy-MM-dd'
+  static String today() => DateTime.now().toIso8601String().split('T')[0];
+
   /// ISO datum za selektovani dan u OVOJ sedmici (ponedeljak=baza).
   /// Ako je vikend, koristi sledeću sedmicu.
   static String isoZaDan(String kratica) {

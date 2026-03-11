@@ -56,7 +56,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
     V2VozacCache.refresh();
 
     _todayKratica = V2DanUtils.danas();
-    _todayIso = DateTime.now().toIso8601String().split('T')[0];
+    _todayIso = V2DanUtils.today();
 
     _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<_AdminData>(
       tables: const [
