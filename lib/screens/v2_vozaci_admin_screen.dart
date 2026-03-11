@@ -65,7 +65,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
       await V2VozacService.addVozac(noviVozac);
     } catch (e) {
       if (!mounted) return;
-      V2AppSnackBar.error(context, 'Greska: $e');
+      V2AppSnackBar.error(context, '❌ Greška: $e');
       return;
     }
 
@@ -77,7 +77,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
 
     if (mounted) {
       Navigator.pop(context);
-      V2AppSnackBar.success(context, 'Vozac ${noviVozac.ime} dodat!');
+      V2AppSnackBar.success(context, '✅ Vozač ${noviVozac.ime} dodat!');
     }
   }
 
@@ -114,7 +114,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     showDialog(
       context: context,
       builder: (ctx) => _buildVozacDialog(
-        title: 'Izmeni vozaca',
+        title: 'Izmeni vozača',
         onSave: () async {
           if (!_formKey.currentState!.validate()) return;
 
@@ -131,10 +131,10 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             await V2VozacService.updateVozac(updatedVozac);
             if (!mounted) return;
             Navigator.pop(ctx);
-            V2AppSnackBar.info(context, 'Vozac azuriran');
+            V2AppSnackBar.info(context, 'Vozač ažuriran');
           } catch (e) {
             if (!mounted) return;
-            V2AppSnackBar.error(context, 'Greska: $e');
+            V2AppSnackBar.error(context, '❌ Greška: $e');
           }
         },
       ),
@@ -156,7 +156,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                 TextFormField(
                   controller: _imeController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: _vozaciAdminInputDecoration('Ime vozaca', Icons.person),
+                  decoration: _vozaciAdminInputDecoration('Ime vozača', Icons.person),
                   validator: (v) => v?.isEmpty == true ? 'Unesite ime' : null,
                 ),
                 const SizedBox(height: 12),
@@ -176,7 +176,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   controller: _sifraController,
                   style: const TextStyle(color: Colors.white),
                   obscureText: true,
-                  decoration: _vozaciAdminInputDecoration('Sifra', Icons.lock),
+                  decoration: _vozaciAdminInputDecoration('Šifra', Icons.lock),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -230,12 +230,12 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
               _telefonController.clear();
               Navigator.pop(ctx);
             },
-            child: const Text('Otkazi'),
+            child: const Text('Otkaži'),
           ),
           ElevatedButton(
             onPressed: onSave,
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Sacuvaj'),
+            child: const Text('Sačuvaj'),
           ),
         ],
       ),
@@ -260,7 +260,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                ' Vozaci Admin',
+                ' Vozači Admin',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 12),
@@ -276,7 +276,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                   showDialog(
                     context: context,
                     builder: (ctx) => _buildVozacDialog(
-                      title: 'Dodaj vozaca',
+                      title: 'Dodaj vozača',
                       onSave: _addVozac,
                     ),
                   );
@@ -295,7 +295,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             if (snapshot.hasError) {
               return Center(
                 child: Text(
-                  'Greska pri ucitavanju vozaca: ${snapshot.error}',
+                  'Greška pri učitavanju vozača: ${snapshot.error}',
                   style: const TextStyle(color: Colors.white),
                 ),
               );
@@ -309,7 +309,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                 Row(
                   children: [
                     const Text(
-                      ' VOZACI',
+                      ' VOZAČI',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -336,7 +336,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                     child: Padding(
                       padding: EdgeInsets.all(20),
                       child: Text(
-                        'Nema vozaca.\nKlikni + da dodas.',
+                        'Nema vozača.\nKlikni + da dodaš.',
                         style: TextStyle(color: Colors.white70, fontSize: 18),
                         textAlign: TextAlign.center,
                       ),

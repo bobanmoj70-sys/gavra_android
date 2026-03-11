@@ -161,7 +161,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
         });
       }
     } catch (e) {
-      if (mounted) V2AppSnackBar.error(context, 'Greška pri placanju: $e');
+      if (mounted) V2AppSnackBar.error(context, '❌ Greška pri plaćanju: $e');
     } finally {
       _globalProcessingLock = false;
       if (mounted) setState(() => _isProcessing = false);
@@ -282,7 +282,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
         );
         widget.onChanged?.call();
       } else if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: nije pronaden aktivan zahtev');
+        V2AppSnackBar.error(context, '❌ Greška: nije pronađen aktivan zahtev');
       }
     } catch (e) {
       if (mounted) V2AppSnackBar.error(context, 'Greška: $e');
@@ -711,16 +711,12 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                                         );
 
                                                         if (mounted && context.mounted) {
-                                                          ScaffoldMessenger.of(
-                                                            context,
-                                                          ).hideCurrentSnackBar();
-
                                                           if (koordinate != null) {
                                                             V2AppSnackBar.success(context, '🧭 Otvaram navigaciju...');
                                                             await _otvoriNavigaciju(koordinate);
                                                           } else {
                                                             V2AppSnackBar.warning(context,
-                                                                '⚠️ Lokacija nije pronadena za: ${adresaZaNav ?? _putnik.adresa}');
+                                                                '⚠️ Lokacija nije pronađena za: ${adresaZaNav ?? _putnik.adresa}');
                                                           }
                                                         }
                                                       } catch (e) {

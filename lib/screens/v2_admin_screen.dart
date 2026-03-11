@@ -90,7 +90,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
       if (!mounted) return;
 
       if (vozaci.isEmpty) {
-        V2AppSnackBar.error(context, '⚠️ Nema ucitanih vozaca');
+        V2AppSnackBar.error(context, '⚠️ Nema učitanih vozača');
         return;
       }
 
@@ -220,7 +220,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      V2AppSnackBar.error(context, '❌ Greška pri ucitavanju vozaca');
+      V2AppSnackBar.error(context, '❌ Greška pri učitavanju vozača');
     }
   }
 

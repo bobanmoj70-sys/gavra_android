@@ -357,7 +357,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
               if (!dialogCtx.mounted) return;
               Navigator.pop(dialogCtx);
               if (success && mounted) {
-                V2AppSnackBar.success(context, '🗸. Sačuvano');
+                V2AppSnackBar.success(context, '✅ Sačuvano');
               }
             },
             child: const Text('Sačuvaj'),
@@ -382,7 +382,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
       {field: picked.toIso8601String().split('T')[0]},
     );
     if (success && mounted) {
-      V2AppSnackBar.success(context, '🗸. Sačuvano');
+      V2AppSnackBar.success(context, '✅ Sačuvano');
     }
   }
 
@@ -494,7 +494,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                         if (!context.mounted) return;
                         Navigator.pop(context);
                         if (success) {
-                          V2AppSnackBar.success(context, '🗸. Sačuvano');
+                          V2AppSnackBar.success(context, '✅ Sačuvano');
                         }
                       },
                       icon: const Icon(Icons.save),

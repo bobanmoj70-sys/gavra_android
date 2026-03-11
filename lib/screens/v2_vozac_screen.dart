@@ -546,7 +546,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
   Future<void> _optimizeCurrentRoute(List<V2Putnik> putnici, {bool isAlreadyOptimized = false}) async {
     if (_currentDriver == null || !V2VozacCache.isValidIme(_currentDriver)) {
       if (mounted) {
-        V2AppSnackBar.warning(context, 'Morate biti ulogovani i ovlašceni da biste koristili optimizaciju rute.');
+        V2AppSnackBar.warning(context, 'Morate biti ulogovani i ovlašćeni da biste koristili optimizaciju rute.');
       }
       return;
     }

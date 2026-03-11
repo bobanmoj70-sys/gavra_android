@@ -1378,7 +1378,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         Navigator.of(context).pop();
         widget.onSaved?.call();
         if (parentContext.mounted) {
-          V2AppSnackBar.success(parentContext, '✅ Putnik uspešno sacuvan!');
+          V2AppSnackBar.success(parentContext, '✅ Putnik uspješno sačuvan!');
         }
       }
     } catch (e) {
