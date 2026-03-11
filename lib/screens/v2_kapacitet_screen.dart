@@ -267,7 +267,7 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: _getKapacitetBoja(maxMesta),
+                    color: _kapacitetGetBoja(maxMesta),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
@@ -300,12 +300,6 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
         );
       },
     );
-  }
-
-  static Color _getKapacitetBoja(int mesta) {
-    if (mesta >= 8) return Colors.green;
-    if (mesta >= 5) return Colors.orange;
-    return Colors.red;
   }
 
   @override
@@ -357,4 +351,10 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
       ),
     );
   }
+}
+
+Color _kapacitetGetBoja(int mesta) {
+  if (mesta >= 8) return Colors.green;
+  if (mesta >= 5) return Colors.orange;
+  return Colors.red;
 }
