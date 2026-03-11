@@ -63,6 +63,24 @@ class V2NotificationNavigationService {
     }
   }
 
+  /// Navigiraj na Vozač Screen i automatski pokreni optimizaciju rute
+  /// (koristi se za GPS podsjetnik push notifikacije)
+  static Future<void> navigateToVozacScreenWithOptimize() async {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+    try {
+      if (context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const V2VozacScreen(autoOptimize: true),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[V2NotificationNavigationService] navigateToVozacScreenWithOptimize greška: $e');
+    }
+  }
+
   /// Navigiraj na PIN zahtevi ekran (za admina)
   static Future<void> navigateToPinZahtevi() async {
     final context = navigatorKey.currentContext;

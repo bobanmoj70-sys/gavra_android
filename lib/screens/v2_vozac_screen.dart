@@ -38,7 +38,11 @@ class V2VozacScreen extends StatefulWidget {
   /// Ako je prosleden, prikazuje ekran kao da je taj vozac ulogovan (admin preview)
   final String? previewAsDriver;
 
-  const V2VozacScreen({super.key, this.previewAsDriver});
+  /// Ako je true, automatski pokreće optimizaciju rute čim se putnici učitaju
+  /// (koristi se pri tapanju GPS podsjetnik push notifikacije)
+  final bool autoOptimize;
+
+  const V2VozacScreen({super.key, this.previewAsDriver, this.autoOptimize = false});
 
   @override
   State<V2VozacScreen> createState() => _VozacScreenState();
@@ -60,6 +64,9 @@ class _VozacScreenState extends State<V2VozacScreen> {
   List<V2Putnik> _optimizedRoute = [];
   Map<String, int>? _putniciEta; // ETA po imenu putnika (minuti) nakon optimizacije
   bool _isOptimizing = false; // ? Loading state specificno za optimizaciju rute
+
+  /// Flag — true dok autoOptimize nije još pokrenut (resetuje se pri prvom pozivu)
+  bool _autoOptimizePending = false;
 
   /// ?? HELPER: Dobij dodeljena vremena za trenutnog vozaca.
   ///
@@ -121,6 +128,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
   void initState() {
     super.initState();
     _workingDateIso = V2PutnikHelpers.getWorkingDateIso();
+    _autoOptimizePending = widget.autoOptimize;
 
     // Pre-populiši vozača i putnike odmah iz in-memory cache-a (0 async čekanja)
     // Ovo eliminuje bijeli ekran pri povratku na ekran
@@ -972,6 +980,14 @@ class _VozacScreenState extends State<V2VozacScreen> {
         builder: (context, snapshot) {
           // Osvježi _latestPutnici iz builder-a — zamjena za ručni StreamSubscription
           if (snapshot.hasData) _latestPutnici = snapshot.data!;
+
+          // Auto-optimizacija pri otvaranju ekrana via GPS podsjetnik notifikacije
+          if (_autoOptimizePending && snapshot.hasData && snapshot.data!.isNotEmpty) {
+            _autoOptimizePending = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _optimizeCurrentRoute(snapshot.data!);
+            });
+          }
           // -- Zajednicki podaci za body i nav bar --------------------------
           final sviPutnici = snapshot.data ?? <V2Putnik>[];
           final targetDan = V2DanUtils.odIso(_workingDateIso); // jednom, dijeli se svuda

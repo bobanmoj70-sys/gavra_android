@@ -443,6 +443,12 @@ class V2LocalNotificationService {
         } catch (_) {}
       }
 
+      // GPS podsjetnik — otvori vozač ekran i auto-optimizuj rutu
+      if (notificationType == 'gps_podsetnik') {
+        await V2NotificationNavigationService.navigateToVozacScreenWithOptimize();
+        return;
+      }
+
       // Handle transport_started notifikacije - otvori putnikov profil
       if (notificationType == 'transport_started') {
         await V2NotificationNavigationService.navigateToPassengerProfile();
