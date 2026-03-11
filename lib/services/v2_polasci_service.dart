@@ -13,13 +13,6 @@ import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_audit_log_service.dart';
 import 'v2_statistika_istorija_service.dart';
 
-/// Vraća datum ponedeljka tekuće sedmice u formatu 'yyyy-MM-dd'
-String _getPocetakSedmice() {
-  final now = DateTime.now();
-  final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-  return '${ponedeljak.year}-${ponedeljak.month.toString().padLeft(2, '0')}-${ponedeljak.day.toString().padLeft(2, '0')}';
-}
-
 /// Servis za upravljanje aktivnim zahtevima za sedišta (v2_polasci tabela)
 class V2PolasciService {
   V2PolasciService._();
@@ -111,7 +104,7 @@ class V2PolasciService {
             'broj_mesta': brojMesta,
             if (putnikTabela != null) 'putnik_tabela': putnikTabela,
             if (customAdresaId != null) 'adresa_id': customAdresaId,
-            'datum_sedmice': _getPocetakSedmice(),
+            'datum_sedmice': V2DanUtils.pocetakTekuceSedmice(),
             'created_at': nowStr,
             'updated_at': nowStr,
           })
@@ -359,7 +352,7 @@ class V2PolasciService {
               'zeljeno_vreme': novoVreme, // cekaonica
               'dodeljeno_vreme': novoVreme, // stvarni termin putovanja
               'status': V2Polazak.statusOdobreno,
-              'datum_sedmice': _getPocetakSedmice(),
+              'datum_sedmice': V2DanUtils.pocetakTekuceSedmice(),
               'processed_at': nowStr,
             })
             .select()
@@ -681,7 +674,7 @@ class V2PutnikStreamService {
         final gradNormP = V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
         final vremeNormP = V2GradAdresaValidator.normalizeTime(p.polazak);
 
-        final sedmica = _getPocetakSedmice();
+        final sedmica = V2DanUtils.pocetakTekuceSedmice();
         final sveDodjele = rm.vozacPutnikCache.values
             .where((vp) =>
                 vp['putnik_id']?.toString() == putnikIdStr &&
@@ -731,7 +724,7 @@ class V2PutnikStreamService {
       final gradNorm = V2GradAdresaValidator.normalizeGrad(p.grad).toUpperCase();
       final vremeNorm = V2GradAdresaValidator.normalizeTime(p.polazak);
 
-      final sedmicaSync = _getPocetakSedmice();
+      final sedmicaSync = V2DanUtils.pocetakTekuceSedmice();
       final sveDodjele = rm.vozacPutnikCache.values
           .where((vp) =>
               vp['putnik_id']?.toString() == putnikIdStr &&

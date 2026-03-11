@@ -7,15 +7,6 @@ import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_vozac_raspored_service.dart';
 
-/// Vraća datum ponedeljka tekuće sedmice u formatu 'yyyy-MM-dd'.
-/// Javna top-level funkcija — koristi se i u servisima i u screenu za filtriranje
-/// v2_vozac_putnik dodjela samo na tekuću sedmicu.
-String getPocetakSedmiceVozacPutnik() {
-  final now = DateTime.now();
-  final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-  return '${ponedeljak.year}-${ponedeljak.month.toString().padLeft(2, '0')}-${ponedeljak.day.toString().padLeft(2, '0')}';
-}
-
 /// Model za jedan red iz vozac_putnik tabele.
 ///
 /// Čuva per-V2Putnik raspored: koji vozač vozi određenog putnika
@@ -45,7 +36,7 @@ class V2VozacPutnikEntry {
   factory V2VozacPutnikEntry.fromMap(Map<String, dynamic> map) {
     final vremeRaw = map['vreme']?.toString() ?? '';
     final vreme = V2GradAdresaValidator.normalizeTime(vremeRaw);
-    final datumSedmice = map['datum_sedmice']?.toString() ?? getPocetakSedmiceVozacPutnik();
+    final datumSedmice = map['datum_sedmice']?.toString() ?? V2DanUtils.pocetakTekuceSedmice();
     return V2VozacPutnikEntry(
       id: map['id']?.toString(),
       putnikId: map['putnik_id']?.toString() ?? '',
@@ -115,7 +106,7 @@ class V2VozacPutnikService {
       return false; // vozač ne postoji u cache-u
     }
 
-    final datumSedmice = getPocetakSedmiceVozacPutnik();
+    final datumSedmice = V2DanUtils.pocetakTekuceSedmice();
     try {
       final row = await supabase
           .from('v2_vozac_putnik')
@@ -143,7 +134,7 @@ class V2VozacPutnikService {
 
   /// Briše individualnu dodjelu za putnika za konkretni dan+grad+vreme tekuće sedmice.
   static Future<bool> delete({required String putnikId, String? dan, String? grad, String? vreme}) async {
-    final datumSedmice = getPocetakSedmiceVozacPutnik();
+    final datumSedmice = V2DanUtils.pocetakTekuceSedmice();
     try {
       var q = supabase.from('v2_vozac_putnik').delete().eq('putnik_id', putnikId).eq('datum_sedmice', datumSedmice);
       if (dan != null) q = q.eq('dan', dan);

@@ -284,7 +284,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   Future<void> _showPutnikAssignDialog(V2Putnik putnik) async {
     final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
     final rm = V2MasterRealtimeManager.instance;
-    final sedmica = getPocetakSedmiceVozacPutnik();
+    final sedmica = V2DanUtils.pocetakTekuceSedmice();
     final vozacPutnikList = rm.vozacPutnikCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).toList();
     // Pronađi trenutnu individualnu dodjelu za ovog putnika, SAMO za ovaj dan+grad+vreme+sedmica
     final trenutniEntry = vozacPutnikList
@@ -670,7 +670,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                               final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
                               // Individualna dodjela putnika za OVAJ dan+grad+vreme+sedmica (vozac_putnik)
                               final dan = targetDay;
-                              final sedmicaItem = getPocetakSedmiceVozacPutnik();
+                              final sedmicaItem = V2DanUtils.pocetakTekuceSedmice();
                               final rmCache = V2MasterRealtimeManager.instance.vozacPutnikCache;
                               final individualnaEntry =
                                   rmCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).where((e) {
