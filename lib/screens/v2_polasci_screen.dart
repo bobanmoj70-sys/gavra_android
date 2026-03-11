@@ -17,12 +17,11 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
   final Set<String> _loadingIds = {};
   String? _currentDriver;
 
-  late final Stream<List<V2Polazak>> _streamDnevni;
+  final Stream<List<V2Polazak>> _streamDnevni = V2PolasciService.v2StreamZahteviObrada();
 
   @override
   void initState() {
     super.initState();
-    _streamDnevni = V2PolasciService.v2StreamZahteviObrada();
     V2AuthManager.getCurrentDriver().then((d) {
       if (mounted) setState(() => _currentDriver = d);
     }).catchError((_) {});
@@ -86,7 +85,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
 
   Widget _buildDnevniLista(List<V2Polazak> zahtevi) {
     if (zahtevi.isEmpty) {
-      return _buildPrazno('Nema dnevnih zahteva na čekanju');
+      return _polasciBuildPrazno('Nema dnevnih zahteva na čekanju');
     }
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
@@ -134,14 +133,14 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
                         Wrap(
                           spacing: 6,
                           children: [
-                            _tipBadge('🎟️ DNEVNI', Colors.blue),
-                            if (brojMesta > 1) _infoBadge('👥 $brojMesta mesta', Colors.purple),
+                            _polasciTipBadge('🎟️ DNEVNI', Colors.blue),
+                            if (brojMesta > 1) _polasciInfoBadge('👥 $brojMesta mesta', Colors.purple),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  _gradBadge(grad),
+                  _polasciGradBadge(grad),
                 ],
               ),
               if (telefon.isNotEmpty) ...[
@@ -201,52 +200,6 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
     );
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-
-  static Widget _tipBadge(String label, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10)),
-      );
-
-  static Widget _gradBadge(String grad) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        ),
-        child: Text(grad, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-      );
-
-  static Widget _infoBadge(String label, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        child: Text(label,
-            style: TextStyle(color: color.withValues(alpha: 0.9), fontWeight: FontWeight.bold, fontSize: 10)),
-      );
-
-  static Widget _buildPrazno(String poruka) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_outline, size: 72, color: Colors.white.withValues(alpha: 0.4)),
-            const SizedBox(height: 14),
-            Text(poruka,
-                style:
-                    TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 17, fontWeight: FontWeight.w500)),
-          ],
-        ),
-      );
-
   // ─── Akcije (samo dnevni tab) ─────────────────────────────────────────────
 
   Future<void> _approveZahtev(String id, V2Polazak zahtev) async {
@@ -279,3 +232,48 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
     }
   }
 }
+
+// ─── Top-level helpers ────────────────────────────────────────────────────────
+
+Widget _polasciTipBadge(String label, Color color) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10)),
+    );
+
+Widget _polasciGradBadge(String grad) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Text(grad, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+    );
+
+Widget _polasciInfoBadge(String label, Color color) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child:
+          Text(label, style: TextStyle(color: color.withValues(alpha: 0.9), fontWeight: FontWeight.bold, fontSize: 10)),
+    );
+
+Widget _polasciBuildPrazno(String poruka) => Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_outline, size: 72, color: Colors.white.withValues(alpha: 0.4)),
+          const SizedBox(height: 14),
+          Text(poruka,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 17, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
