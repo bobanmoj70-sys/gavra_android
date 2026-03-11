@@ -46,7 +46,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         }
       } catch (e) {
         if (mounted) {
-          V2AppSnackBar.error(context, 'Greška: $e');
+          V2AppSnackBar.error(context, '❌ Greška: $e');
         }
       }
     }
@@ -78,7 +78,7 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
         }
       } catch (e) {
         if (mounted) {
-          V2AppSnackBar.error(context, 'Greška: $e');
+          V2AppSnackBar.error(context, '❌ Greška: $e');
         }
       }
     }

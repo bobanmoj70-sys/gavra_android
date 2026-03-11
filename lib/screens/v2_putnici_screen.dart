@@ -661,7 +661,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       }
     } catch (e) {
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška pri promeni statusa');
+        V2AppSnackBar.error(context, '❌ Greška pri promeni statusa');
       }
     }
   }
@@ -775,11 +775,11 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       if (success && mounted) {
         V2AppSnackBar.success(context, '${v2Putnik.ime} je uspešno obrisan');
       } else if (mounted) {
-        V2AppSnackBar.error(context, 'Greška pri brisanju putnika');
+        V2AppSnackBar.error(context, '❌ Greška pri brisanju putnika');
       }
     } catch (e) {
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: $e');
+        V2AppSnackBar.error(context, '❌ Greška: $e');
       }
     }
   }
@@ -893,7 +893,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       }
     } catch (e) {
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška pri pozivanju: $e');
+        V2AppSnackBar.error(context, '❌ Greška pri pozivanju: $e');
       }
     }
   }

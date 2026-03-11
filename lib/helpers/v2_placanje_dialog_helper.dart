@@ -108,7 +108,7 @@ class V2PlacanjeDialogHelper {
     } catch (e, st) {
       debugPrint('[V2PlacanjeDialogHelper] sacuvajPlacanje greška: $e\n$st');
       if (context.mounted) {
-        V2AppSnackBar.error(context, '\u274c Gre\u0161ka: $e');
+        V2AppSnackBar.error(context, '❌ Greška: $e');
       }
       return false;
     }

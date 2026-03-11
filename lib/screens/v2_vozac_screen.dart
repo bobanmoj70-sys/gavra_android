@@ -324,7 +324,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
   Future<void> _promeniSifru() async {
     final vozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
     if (vozacId == null) {
-      V2AppSnackBar.error(context, 'Greška: ne mogu da nađem vozača');
+      V2AppSnackBar.error(context, '❌ Greška: ne mogu da nađem vozača');
       return;
     }
 
@@ -469,7 +469,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
           );
           if (mounted) V2AppSnackBar.success(context, '✅ Šifra uspešno promenjena');
         } catch (e) {
-          if (mounted) V2AppSnackBar.error(context, 'Greška pri čuvanju šifre: $e');
+          if (mounted) V2AppSnackBar.error(context, '❌ Greška pri čuvanju šifre: $e');
         }
       }
     } finally {

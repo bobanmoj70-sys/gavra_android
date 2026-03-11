@@ -285,11 +285,10 @@ class _PutnikCardState extends State<V2PutnikCard> {
         V2AppSnackBar.error(context, '❌ Greška: nije pronađen aktivan zahtev');
       }
     } catch (e) {
-      if (mounted) V2AppSnackBar.error(context, 'Greška: $e');
+      if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
     }
   }
 
-  // Metoda za pokupljenje putnika
   Future<void> _handlePickup() async {
     if (_globalProcessingLock || _isProcessing) return;
 
@@ -322,7 +321,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
       }
     } catch (e) {
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška pri pokupljenju: $e');
+        V2AppSnackBar.error(context, '❌ Greška pri pokupljenju: $e');
       }
     } finally {
       // OBAVEZNO OSLOBODI LOCK
@@ -690,7 +689,7 @@ class _PutnikCardState extends State<V2PutnikCard> {
                                                           await V2PermissionService.ensureGpsForNavigation();
                                                       if (!hasPermission) {
                                                         if (mounted && context.mounted) {
-                                                          V2AppSnackBar.error(
+                                                          V2AppSnackBar.warning(
                                                               context, '⚠️ GPS dozvole su potrebne za navigaciju');
                                                         }
                                                         return;
@@ -1143,12 +1142,12 @@ class _PutnikCardState extends State<V2PutnikCard> {
               otkazaoVozacId: V2VozacCache.getUuidByIme(widget.currentDriver),
             );
           });
-          V2AppSnackBar.error(context, 'Otkazano: ${_putnik.ime}');
+          V2AppSnackBar.warning(context, '⚠️ Otkazano: ${_putnik.ime}');
           widget.onChanged?.call();
         }
       } catch (e) {
         if (mounted) {
-          V2AppSnackBar.error(context, 'Greška: $e');
+          V2AppSnackBar.error(context, '❌ Greška: $e');
         }
       }
     }

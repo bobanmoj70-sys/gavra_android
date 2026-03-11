@@ -65,7 +65,7 @@ class _V2PinDialogState extends State<V2PinDialog> {
       debugPrint('[V2PinDialog._savePin] Greška: $e\n$st');
       setState(() => _isLoading = false);
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška: $e');
+        V2AppSnackBar.error(context, '❌ Greška: $e');
       }
     }
   }
@@ -102,7 +102,7 @@ class _V2PinDialogState extends State<V2PinDialog> {
     } catch (e, st) {
       debugPrint('[V2PinDialog._sendSms] Greška: $e\n$st');
       if (mounted) {
-        V2AppSnackBar.error(context, 'Greška pri slanju SMS-a: $e');
+        V2AppSnackBar.error(context, '❌ Greška pri slanju SMS-a: $e');
       }
     }
   }

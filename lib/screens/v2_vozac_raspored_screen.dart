@@ -36,7 +36,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   String _selectedVreme = '';
   String? _selectedDay;
 
-  late Stream<List<V2Putnik>> _putnikStream;
+  late final Map<String, Stream<List<V2Putnik>>> _streamsPoDanima;
 
   /// Subscription na onCacheChanged — okida setState kad se rasporedCache
   /// ili vozacPutnikCache promijeni (Realtime WebSocket ili optimistički patch).
@@ -57,7 +57,11 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     final today = V2DanUtils.odDatuma(DateTime.now());
     _selectedDay = (today == 'sub' || today == 'ned') ? 'pon' : today;
     _autoSelectNajblizeVreme();
-    _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
+    // Kreira streamove za SVE radne dane odjednom — cache za cijelu nedelju.
+    _streamsPoDanima = {
+      for (final dan in ['pon', 'uto', 'sre', 'cet', 'pet'])
+        dan: _putnikStreamService.streamKombinovaniPutniciFiltered(dan: dan),
+    };
 
     // Automatski refresh kad se raspored ili individualne dodjele promijene
     _cacheChangeSub = V2MasterRealtimeManager.instance.onCacheChanged
@@ -76,7 +80,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   void _onDayChanged(String day) {
     setState(() {
       _selectedDay = day;
-      _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(dan: day);
+      // Stream za ovaj dan je već aktivan iz _streamsPoDanima — samo mijenjamo dan.
     });
   }
 
@@ -545,7 +549,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<V2Putnik>>(
-      stream: _putnikStream,
+      stream: _streamsPoDanima[_selectedDay],
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
           return const Center(child: CircularProgressIndicator(color: Colors.white));

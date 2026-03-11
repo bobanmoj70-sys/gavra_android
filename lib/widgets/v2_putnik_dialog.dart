@@ -1139,7 +1139,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
                 }
               } catch (e) {
                 if (mounted) {
-                  V2AppSnackBar.error(context, 'Greška pri izboru kontakta: $e');
+                  V2AppSnackBar.error(context, '❌ Greška pri izboru kontakta: $e');
                 }
               }
             },
@@ -1397,7 +1397,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
         if (errorMsg.contains('Exception:')) {
           errorMsg = errorMsg.split('Exception:').last.trim();
         }
-        V2AppSnackBar.error(context, 'Greška: $errorMsg');
+        V2AppSnackBar.error(context, '❌ Greška: $errorMsg');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

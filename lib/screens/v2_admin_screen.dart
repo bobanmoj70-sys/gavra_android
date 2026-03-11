@@ -90,7 +90,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
       if (!mounted) return;
 
       if (vozaci.isEmpty) {
-        V2AppSnackBar.error(context, '⚠️ Nema učitanih vozača');
+        V2AppSnackBar.error(context, '❌ Nema učitanih vozača');
         return;
       }
 

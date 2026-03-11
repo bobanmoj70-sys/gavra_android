@@ -94,7 +94,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        V2AppSnackBar.error(context, 'Greška: $e');
+        V2AppSnackBar.error(context, '❌ Greška: $e');
       }
     }
   }
@@ -132,7 +132,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
         setState(() => _predaoSacuvan = true);
         V2AppSnackBar.success(context, '✅ Predaja sačuvana');
       } else {
-        V2AppSnackBar.error(context, 'Greška pri čuvanju');
+        V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
       }
     }
   }
@@ -331,7 +331,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
       if (!mounted) return;
       await OpenFilex.open(file.path);
     } catch (e) {
-      if (mounted) V2AppSnackBar.error(context, 'Greška pri izvozu PDF: $e');
+      if (mounted) V2AppSnackBar.error(context, '❌ Greška pri izvozu PDF: $e');
     }
   }
 

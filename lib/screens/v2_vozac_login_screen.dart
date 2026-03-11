@@ -78,7 +78,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
 
     if (raw == null) {
       if (mounted) {
-        V2AppSnackBar.warning(context, '❌ Nema sačuvanih kredencijala. Prijavi se prvo ručno.');
+        V2AppSnackBar.info(context, 'ℹ️ Nema sačuvanih kredencijala. Prijavi se prvo ručno.');
       }
       return;
     }

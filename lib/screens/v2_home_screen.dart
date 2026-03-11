@@ -53,7 +53,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   String? _currentDriver;
 
   late final Stream<int> _streamBrojZahteva;
-  late Stream<List<V2Putnik>> _streamPutnici;
+  late final Map<String, Stream<List<V2Putnik>>> _streamsPoDanima;
 
   List<String> get _sviPolasci {
     final bcList = V2RouteConfig.getVremenaByNavType('BC').map((v) => '$v BC').toList();
@@ -70,16 +70,20 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
-    // Kreira stream odmah u initState — da ne propustimo inicijalni emit broadcast streama
-    // koji dolazi pre nego sto StreamBuilder postane aktivan (shimmer faza)
-    _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
+    // Kreira streamove za SVE radne dane odjednom u initState — cache za cijelu nedelju.
+    // Svaki stream ostaje aktivan tokom cijelog životnog vijeka ekrana,
+    // pa switch dana ne zahtijeva novi DB poziv ni novu inicijalizaciju streama.
+    _streamsPoDanima = {
+      for (final dan in ['pon', 'uto', 'sre', 'cet', 'pet'])
+        dan: V2PolasciService.streamKombinovaniPutniciFiltered(dan: dan),
+    };
     _initializeData();
   }
 
   void _onDayChanged(String day) {
     setState(() {
       _selectedDay = day;
-      _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: day);
+      // Stream za ovaj dan je već aktivan iz _streamsPoDanima — samo mijenjamo dan.
     });
   }
 
@@ -1314,12 +1318,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                   : () async {
                                       // Validacija - mora biti odabrani V2Putnik
                                       if (selectedPutnik == null) {
-                                        V2AppSnackBar.error(dialogCtx, '⚠️ Morate odabrati putnika iz liste');
+                                        V2AppSnackBar.error(dialogCtx, '❌ Morate odabrati putnika iz liste');
                                         return;
                                       }
 
                                       if (_selectedVreme.isEmpty || _selectedGrad.isEmpty) {
-                                        V2AppSnackBar.error(dialogCtx, '⚠️ Greška: Nije odabrano vreme polaska');
+                                        V2AppSnackBar.error(dialogCtx, '❌ Greška: Nije odabrano vreme polaska');
                                         return;
                                       }
 
@@ -1491,7 +1495,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V2Putnik>>(
-        stream: _streamPutnici,
+        stream: _streamsPoDanima[_selectedDay],
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Scaffold(
