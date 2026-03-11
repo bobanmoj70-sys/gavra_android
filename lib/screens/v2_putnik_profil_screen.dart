@@ -1115,7 +1115,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         Row(
                           children: [
                             Expanded(
-                              child: _profilBuildStatCard('🚌', 'Vožnje', _brojVoznji.toString(), Colors.blue, 'ovaj mesec'),
+                              child: _profilBuildStatCard(
+                                  '🚌', 'Vožnje', _brojVoznji.toString(), Colors.blue, 'ovaj mesec'),
                             ),
                             const SizedBox(width: 12),
                             Expanded(

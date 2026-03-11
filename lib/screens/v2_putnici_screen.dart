@@ -24,8 +24,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   final _rm = V2MasterRealtimeManager.instance;
 
   // Master realtime stream — broadcast, reaguje na svaki onCacheChanged event
-  final Stream<List<V2RegistrovaniPutnik>> _streamPutnici =
-      V2MasterRealtimeManager.instance.streamAktivniPutnici();
+  final Stream<List<V2RegistrovaniPutnik>> _streamPutnici = V2MasterRealtimeManager.instance.streamAktivniPutnici();
 
   @override
   void dispose() {
@@ -142,8 +141,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                           Positioned(
                               right: 0,
                               top: 0,
-                              child:
-                                  _putniciiBuildBadge(brDnevni, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
+                              child: _putniciiBuildBadge(
+                                  brDnevni, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
                         ]),
                         Stack(children: [
                           IconButton(
