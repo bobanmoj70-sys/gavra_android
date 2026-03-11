@@ -61,17 +61,15 @@ class _AdminScreenState extends State<V2AdminScreen> {
     _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<_AdminData>(
       tables: const [
         'v2_polasci',
-        'v2_dnevni',
         'v2_radnici',
         'v2_ucenici',
         'v2_posiljke',
         'v2_vozac_raspored',
         'v2_vozac_putnik',
-        'v2_statistika_istorija',
         'v2_pin_zahtevi',
       ],
       build: _buildAdminData,
-    ).asBroadcastStream();
+    );
 
     _loadCurrentDriver();
 
@@ -397,7 +395,6 @@ class _AdminScreenState extends State<V2AdminScreen> {
   Widget build(BuildContext context) {
     return StreamBuilder<_AdminData>(
       stream: _stream,
-      initialData: _buildAdminData(),
       builder: (context, snapshot) {
         final data = snapshot.data ?? _buildAdminData();
         return _buildScaffold(context, data);
