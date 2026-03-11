@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
-import 'v2_push_token_service.dart';
 import 'v2_realtime_notification_service.dart';
 import 'v2_weather_service.dart';
 
@@ -104,28 +103,13 @@ class V2WeatherAlertService {
     }
   }
 
-  /// šalje push notifikaciju svim vozacima
+  /// Šalje push notifikaciju svim vozačima — tokeni se resolviraju server-side
   static Future<void> _sendWeatherAlert(List<String> alerts) async {
     try {
-      // Dohvati tokene svih vozaca
-      final vozacTokens = await V2PushTokenService.getTokensForVozaci();
-
-      if (vozacTokens.isEmpty) {
-        return;
-      }
-
-      // Kreiraj poruku
-      final title = '⚠️ Upozorenje - Vremenski uslovi';
-      final body = _createAlertMessage(alerts);
-
-      // Pošalji push
       await V2RealtimeNotificationService.sendPushNotification(
-        title: title,
-        body: body,
-        tokens: vozacTokens
-            .where((t) => t['token'] != null && t['provider'] != null)
-            .map((t) => {'token': t['token']!, 'provider': t['provider']!})
-            .toList(),
+        title: '⚠️ Upozorenje - Vremenski uslovi',
+        body: _createAlertMessage(alerts),
+        broadcastVozaci: true,
         data: {
           'type': 'weather_alert',
           'alerts': alerts.join('|'),

@@ -262,8 +262,6 @@ class V2Putnik {
           status?.toLowerCase() == 'otkazan' ||
           status?.toLowerCase() == 'cancelled');
 
-  bool get jeBezPolaska => status?.toLowerCase() == 'bez_polaska';
-
   bool get jeBolovanje => status != null && status!.toLowerCase() == 'bolovanje';
 
   bool get jeGodisnji => status != null && (status!.toLowerCase() == 'godišnji' || status!.toLowerCase() == 'godisnji');

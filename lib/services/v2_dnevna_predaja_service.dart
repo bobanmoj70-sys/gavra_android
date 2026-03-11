@@ -58,5 +58,4 @@ class V2DnevnaPredajaService {
       return false;
     }
   }
-
 }

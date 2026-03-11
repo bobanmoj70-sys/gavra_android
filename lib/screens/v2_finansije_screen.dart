@@ -14,18 +14,13 @@ class V2FinansijeScreen extends StatefulWidget {
 
 class _FinansijeScreenState extends State<V2FinansijeScreen> {
   final _formatBroja = NumberFormat('#,###', 'sr');
-  final _refreshKey = GlobalKey<RefreshIndicatorState>();
 
-  late Stream<V2FinansijskiIzvestaj> _streamIzvestaj;
+  late final Stream<V2FinansijskiIzvestaj> _stream;
 
   @override
   void initState() {
     super.initState();
-    _prijaviStream();
-  }
-
-  void _prijaviStream() {
-    _streamIzvestaj = V2FinansijeService.streamIzvestaj();
+    _stream = V2FinansijeService.streamIzvestaj();
   }
 
   String _formatIznos(double iznos) {
@@ -35,7 +30,7 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<V2FinansijskiIzvestaj>(
-      stream: _streamIzvestaj,
+      stream: _stream,
       builder: (context, snapshot) {
         final izvestaj = snapshot.data;
         final isLoading = snapshot.connectionState == ConnectionState.waiting && izvestaj == null;
@@ -64,71 +59,64 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : izvestaj == null
                     ? const Center(child: Text('Greška pri učitavanju', style: TextStyle(color: Colors.white70)))
-                    : RefreshIndicator(
-                        key: _refreshKey,
-                        onRefresh: () async {
-                          setState(_prijaviStream);
-                        },
-                        child: SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildPotrazivanjaCard(izvestaj.potrazivanja),
-                              const SizedBox(height: 16),
-                              _buildPeriodCard(
-                                icon: '📅',
-                                naslov: 'Ova nedelja',
-                                podnaslov: izvestaj.nedeljaPeriod,
-                                prihod: izvestaj.prihodNedelja,
-                                troskovi: izvestaj.troskoviNedelja,
-                                neto: izvestaj.netoNedelja,
-                                voznjiLabel: '${izvestaj.voznjiNedelja} vožnji',
-                                color: Colors.blue,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildPeriodCard(
-                                icon: '🗓️',
-                                naslov: 'Ovaj mesec',
-                                podnaslov: _getMesecNaziv(izvestaj.startNedelja.month),
-                                prihod: izvestaj.prihodMesec,
-                                troskovi: izvestaj.troskoviMesec,
-                                neto: izvestaj.netoMesec,
-                                voznjiLabel: '${izvestaj.voznjiMesec} vožnji',
-                                color: Colors.green,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildPeriodCard(
-                                icon: '📊',
-                                naslov: 'Prošla godina (${izvestaj.proslaGodina})',
-                                podnaslov: 'Ceo godišnji bilans',
-                                prihod: izvestaj.prihodProslaGodina,
-                                troskovi: izvestaj.troskoviProslaGodina,
-                                neto: izvestaj.netoProslaGodina,
-                                voznjiLabel: '${izvestaj.voznjiProslaGodina} vožnji',
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTroskoviDetailsList(izvestaj.troskoviPoTipu),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _showTroskoviDialog(izvestaj.troskoviPoTipu),
-                                  icon: const Icon(Icons.edit, color: Colors.white70),
-                                  label: const Text('Podesi troškove', style: TextStyle(color: Colors.white70)),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: Colors.white24),
-                                    padding: const EdgeInsets.symmetric(vertical: 13),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildPotrazivanjaCard(izvestaj.potrazivanja),
+                            const SizedBox(height: 16),
+                            _buildPeriodCard(
+                              icon: '📅',
+                              naslov: 'Ova nedelja',
+                              podnaslov: izvestaj.nedeljaPeriod,
+                              prihod: izvestaj.prihodNedelja,
+                              troskovi: izvestaj.troskoviNedelja,
+                              neto: izvestaj.netoNedelja,
+                              voznjiLabel: '${izvestaj.voznjiNedelja} vožnji',
+                              color: Colors.blue,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildPeriodCard(
+                              icon: '🗓️',
+                              naslov: 'Ovaj mesec',
+                              podnaslov: _getMesecNaziv(izvestaj.startNedelja.month),
+                              prihod: izvestaj.prihodMesec,
+                              troskovi: izvestaj.troskoviMesec,
+                              neto: izvestaj.netoMesec,
+                              voznjiLabel: '${izvestaj.voznjiMesec} vožnji',
+                              color: Colors.green,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildPeriodCard(
+                              icon: '📊',
+                              naslov: 'Prošla godina (${izvestaj.proslaGodina})',
+                              podnaslov: 'Ceo godišnji bilans',
+                              prihod: izvestaj.prihodProslaGodina,
+                              troskovi: izvestaj.troskoviProslaGodina,
+                              neto: izvestaj.netoProslaGodina,
+                              voznjiLabel: '${izvestaj.voznjiProslaGodina} vožnji',
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTroskoviDetailsList(izvestaj.troskoviPoTipu),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _showTroskoviDialog(izvestaj.troskoviPoTipu),
+                                icon: const Icon(Icons.edit, color: Colors.white70),
+                                label: const Text('Podesi troškove', style: TextStyle(color: Colors.white70)),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.white24),
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
           ),

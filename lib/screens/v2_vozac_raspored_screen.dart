@@ -36,8 +36,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   String _selectedVreme = '';
   String? _selectedDay;
 
-  Stream<List<V2Putnik>>? _putnikStream;
-  String? _cachedDan;
+  late Stream<List<V2Putnik>> _putnikStream;
 
   List<String> get _days => V2DanUtils.kratice;
 
@@ -54,6 +53,14 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     final today = V2DanUtils.odDatuma(DateTime.now());
     _selectedDay = (today == 'sub' || today == 'ned') ? 'pon' : today;
     _autoSelectNajblizeVreme();
+    _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
+  }
+
+  void _onDayChanged(String day) {
+    setState(() {
+      _selectedDay = day;
+      _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(dan: day);
+    });
   }
 
   /// Automatski selektuje najbliÅ¾e vreme polaska za trenutni Äas.
@@ -518,16 +525,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Izracunaj jednom - koristi se za stream, countHelper i filter
-    final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
-
-    if (_putnikStream == null || _cachedDan != dan) {
-      _cachedDan = dan;
-      _putnikStream = _putnikStreamService.streamKombinovaniPutniciFiltered(
-        dan: dan,
-      );
-    }
-
     return StreamBuilder<List<V2Putnik>>(
       stream: _putnikStream,
       builder: (context, snapshot) {
@@ -551,12 +548,12 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
           }
         }
 
-        // Filtriraj po gradu, vremenu, danu i statusu (bez otkazanih/bez_polaska)
+        // Filtriraj po gradu, vremenu, danu i statusu (bez otkazanih)
         final filteredByGradVreme = allPutnici.where((p) {
           final gradMatch = _selectedGrad.isEmpty || V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad);
           final vremeMatch = _selectedVreme.isEmpty || p.polazak == _selectedVreme;
           final danMatch = targetDay.isEmpty || p.dan == targetDay;
-          final statusMatch = p.status != 'otkazano' && p.status != 'bez_polaska';
+          final statusMatch = p.status != 'otkazano';
           return gradMatch && vremeMatch && danMatch && statusMatch;
         }).toList();
 
@@ -588,7 +585,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(
-                            onTap: () => setState(() => _selectedDay = day),
+                            onTap: () => _onDayChanged(day),
                             borderRadius: BorderRadius.circular(12),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),

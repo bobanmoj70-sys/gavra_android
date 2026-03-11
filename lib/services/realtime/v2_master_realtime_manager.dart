@@ -98,6 +98,12 @@ class V2MasterRealtimeManager {
   /// v2_pumpa_config
   final Map<String, Map<String, dynamic>> pumpaCache = {};
 
+  /// v2_pumpa_punjenja — sva punjenja kućne pumpe, sortirana po datum DESC
+  final Map<String, Map<String, dynamic>> punjenjaCache = {};
+
+  /// v2_pumpa_tocenja — sva točenja po vozilu, sortirana po datum DESC
+  final Map<String, Map<String, dynamic>> tocenjaCache = {};
+
   /// v2_pin_zahtevi
   final Map<String, Map<String, dynamic>> pinCache = {};
 
@@ -162,6 +168,8 @@ class V2MasterRealtimeManager {
       'v2_vozac_lokacije', 'v2_pin_zahtevi',
       'v2_racuni',
       'v2_audit_log',
+      // Gorivo — pumpa punjenja i točenja (autorefresh za v2_gorivo_screen)
+      'v2_pumpa_punjenja', 'v2_pumpa_tocenja',
     ];
     for (final tabela in staticTabele) {
       _staticSubscriptions.add(subscribe(tabela).listen((_) {}));
@@ -174,6 +182,7 @@ class V2MasterRealtimeManager {
       _loadInfraCache(),
       _loadRacuniCache(),
       _loadAuditLogCache(),
+      _loadPumpaGorivoCache(),
     ]).timeout(
       const Duration(seconds: 30),
       onTimeout: () {
@@ -220,13 +229,16 @@ class V2MasterRealtimeManager {
     _loadedDate = today;
     polasciCache.clear();
     statistikaCache.clear();
+    auditLogCache.clear();
     await Future.wait([
       _loadPolasciCache(),
       v2LoadStatistikaCache(),
+      _loadAuditLogCache(),
     ]);
     if (!_cacheChangeController.isClosed) {
       _cacheChangeController.add('v2_polasci');
       _cacheChangeController.add('v2_statistika_istorija');
+      _cacheChangeController.add('v2_audit_log');
     }
   }
 
@@ -247,7 +259,6 @@ class V2MasterRealtimeManager {
         'odobreno',
         'otkazano',
         'odbijeno',
-        'bez_polaska',
         'pokupljen',
       ]);
       for (final row in rows) {
@@ -423,6 +434,34 @@ class V2MasterRealtimeManager {
     }
   }
 
+  /// Učitava v2_pumpa_punjenja i v2_pumpa_tocenja u cache (gorivo screen autorefresh)
+  Future<void> _loadPumpaGorivoCache() async {
+    try {
+      final results = await Future.wait([
+        supabase
+            .from('v2_pumpa_punjenja')
+            .select('id, datum, litri, cena_po_litru, ukupno_cena, napomena, created_at')
+            .order('datum', ascending: false)
+            .order('created_at', ascending: false),
+        supabase
+            .from('v2_pumpa_tocenja')
+            .select('id, datum, vozilo_id, litri, km_vozila, napomena, created_at')
+            .order('datum', ascending: false)
+            .order('created_at', ascending: false),
+      ]);
+      punjenjaCache.clear();
+      for (final row in results[0]) {
+        punjenjaCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+      tocenjaCache.clear();
+      for (final row in results[1]) {
+        tocenjaCache[row['id'].toString()] = Map<String, dynamic>.from(row);
+      }
+    } catch (e) {
+      debugPrint('❌ [V2MasterRealtimeManager] _loadPumpaGorivoCache: $e');
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -453,7 +492,7 @@ class V2MasterRealtimeManager {
 
     // polasciCache drži samo aktivne statuse — ukloni zapis ako dobijemo status koji nije u inicijalnoj listi
     if (table == 'v2_polasci') {
-      const aktivniStatusi = {'obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen'};
+      const aktivniStatusi = {'obrada', 'odobreno', 'otkazano', 'odbijeno', 'pokupljen'};
       final status = record['status']?.toString();
       if (status != null && !aktivniStatusi.contains(status)) {
         target.remove(id);
@@ -474,7 +513,13 @@ class V2MasterRealtimeManager {
 
     // Sačuvaj postojeći _tabela tag — realtime payload ne sadrži _tabela
     final existingTabela = target[id]?['_tabela'] ?? table;
-    target[id] = {...record, '_tabela': existingTabela};
+    // Putnik tabele zahtijevaju _tagRow — dodaje '_tabela' i 'broj_telefona' alias
+    // (važno za Realtime INSERT koji ne prolazi kroz _loadPutniciCaches)
+    if (putnikTabele.contains(table)) {
+      target[id] = _tagRow({...record, '_tabela': existingTabela}, table);
+    } else {
+      target[id] = {...record, '_tabela': existingTabela};
+    }
     // Poništi cached listu putnika ako se promijenio putnik cache
     if (putnikTabele.contains(table)) _invalidatePutniciCache();
     if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
@@ -533,6 +578,8 @@ class V2MasterRealtimeManager {
     'v2_vozac_lokacije': lokacijeCache,
     'v2_finansije_troskovi': troskoviCache,
     'v2_pumpa_config': pumpaCache,
+    'v2_pumpa_punjenja': punjenjaCache,
+    'v2_pumpa_tocenja': tocenjaCache,
     'v2_pin_zahtevi': pinCache,
     'v2_app_settings': settingsCache,
     'v2_audit_log': auditLogCache,
@@ -648,17 +695,39 @@ class V2MasterRealtimeManager {
       } else if (table == 'v2_audit_log') {
         await _loadAuditLogCache();
         if (!_cacheChangeController.isClosed) _cacheChangeController.add('v2_audit_log');
+      } else if (table == 'v2_pumpa_punjenja' || table == 'v2_pumpa_tocenja') {
+        await _loadPumpaGorivoCache();
+        if (!_cacheChangeController.isClosed) {
+          _cacheChangeController.add('v2_pumpa_punjenja');
+          _cacheChangeController.add('v2_pumpa_tocenja');
+        }
       } else {
         // Generički infra reload — direktan upit, fill u odgovarajući cache
         final targetCache = _cacheForTable(table);
         if (targetCache == null) return;
         // Primijeni iste filtere kao pri inicijalnom učitavanju
         final query = switch (table) {
-          'v2_radnici' ||
-          'v2_ucenici' ||
-          'v2_dnevni' ||
-          'v2_posiljke' =>
-            supabase.from(table).select().eq('status', 'aktivan'),
+          'v2_radnici' => supabase
+              .from(table)
+              .select('id, ime, status, telefon, telefon_2, adresa_bc_id, adresa_vs_id, '
+                  'pin, email, cena_po_danu, broj_mesta, treba_racun, created_at, updated_at')
+              .eq('status', 'aktivan'),
+          'v2_ucenici' => supabase
+              .from(table)
+              .select('id, ime, status, telefon, telefon_oca, telefon_majke, '
+                  'adresa_bc_id, adresa_vs_id, pin, email, cena_po_danu, broj_mesta, '
+                  'treba_racun, created_at, updated_at')
+              .eq('status', 'aktivan'),
+          'v2_dnevni' => supabase
+              .from(table)
+              .select('id, ime, status, telefon, telefon_2, adresa_bc_id, adresa_vs_id, '
+                  'pin, email, cena, broj_mesta, treba_racun, created_at, updated_at')
+              .eq('status', 'aktivan'),
+          'v2_posiljke' => supabase
+              .from(table)
+              .select('id, ime, status, telefon, adresa_bc_id, adresa_vs_id, '
+                  'pin, email, cena, treba_racun, created_at, updated_at')
+              .eq('status', 'aktivan'),
           'v2_kapacitet_polazaka' => supabase.from(table).select().eq('aktivan', true),
           'v2_vozac_lokacije' => supabase.from(table).select().eq('aktivan', true),
           'v2_finansije_troskovi' => supabase.from(table).select().eq('aktivan', true),
@@ -1059,12 +1128,13 @@ class V2MasterRealtimeManager {
       }
     }
 
-    // Fallback: DB upit (cache prazan ili putnik neaktivan)
+    // Fallback: DB upit (cache prazan ili putnik nije aktivan u memoriji)
     for (final tabela in putnikTabele) {
       final svi = await supabase
           .from(tabela)
           .select(
               'id, ime, telefon, telefon_2, adresa_bc_id, adresa_vs_id, status, pin, email, treba_racun, created_at, updated_at')
+          .eq('status', 'aktivan')
           .or('telefon.ilike.%${normalized.replaceAll('+', '')},telefon_2.ilike.%${normalized.replaceAll('+', '')}');
       for (final row in svi) {
         final t = row['telefon'] as String? ?? '';
@@ -1104,6 +1174,7 @@ class V2MasterRealtimeManager {
 
     controller = StreamController<T>.broadcast(
       onListen: () {
+        if (sub != null) return; // Guard: ne dodaj novi sub ako vec postoji
         emit();
         sub = onCacheChanged.where(tables.contains).listen((_) => scheduleEmit());
       },
@@ -1120,8 +1191,25 @@ class V2MasterRealtimeManager {
 
   /// Stream aktivnih putnika iz cache-a — 0 DB upita
   Stream<List<V2RegistrovaniPutnik>> streamAktivniPutnici() => v2StreamFromCache<List<V2RegistrovaniPutnik>>(
-        tables: putnikTabele,
-        build: () => v2GetAllPutnici().map((row) => V2RegistrovaniPutnik.fromMap(row)).toList()
+        tables: [...putnikTabele, 'v2_adrese'],
+        build: () => v2GetAllPutnici().map((row) {
+          // Fix #6: Enrichuj adresu iz adreseCache umjesto JOIN-a koji ne postoji u cache-u
+          final adresaBcId = row['adresa_bc_id']?.toString();
+          final adresaVsId = row['adresa_vs_id']?.toString();
+          String? adresaNaziv;
+          String? grad;
+          if (adresaBcId != null && adreseCache.containsKey(adresaBcId)) {
+            adresaNaziv = adreseCache[adresaBcId]!['naziv']?.toString();
+            grad = 'BC';
+          } else if (adresaVsId != null && adreseCache.containsKey(adresaVsId)) {
+            adresaNaziv = adreseCache[adresaVsId]!['naziv']?.toString();
+            grad = 'VS';
+          }
+          return V2RegistrovaniPutnik.fromMap({
+            ...row,
+            if (adresaNaziv != null) 'adresa_bc': {'naziv': adresaNaziv},
+          });
+        }).toList()
           ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase())),
       );
 

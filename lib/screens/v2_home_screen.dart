@@ -55,9 +55,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   String? _currentDriver;
 
   late final Stream<int> _streamBrojZahteva;
-
-  Stream<List<V2Putnik>>? _streamPutnici;
-  String? _cachedDan;
+  late Stream<List<V2Putnik>> _streamPutnici;
 
   List<String> get _sviPolasci {
     final bcList = V2RouteConfig.getVremenaByNavType('BC').map((v) => '$v BC').toList();
@@ -74,11 +72,17 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
-    _cachedDan = _selectedDay;
     // Kreira stream odmah u initState — da ne propustimo inicijalni emit broadcast streama
     // koji dolazi pre nego sto StreamBuilder postane aktivan (shimmer faza)
     _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
     _initializeData();
+  }
+
+  void _onDayChanged(String day) {
+    setState(() {
+      _selectedDay = day;
+      _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: day);
+    });
   }
 
   Future<void> _initializeData() async {
@@ -1518,12 +1522,6 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    // Kreira stream za selektovani dan — samo kad se dan promeni
-    if (_cachedDan != _selectedDay) {
-      _cachedDan = _selectedDay;
-      _streamPutnici = V2PolasciService.streamKombinovaniPutniciFiltered(dan: _selectedDay);
-    }
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V2Putnik>>(
@@ -1583,7 +1581,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
             final key = '${p.id}_${p.polazak}_${p.dan}';
             uniqueZaDan[key] = p;
             final normalizedStatus = V2TextUtils.normalizeText(p.status ?? '');
-            if (normalizedStatus == 'obrada' || normalizedStatus == 'bez_polaska') continue;
+            if (normalizedStatus == 'obrada') continue;
             if (p.polazak.toString().trim().isEmpty) continue;
             if (p.grad.toString().trim().isEmpty) continue;
             if (!V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad)) continue;
@@ -1821,9 +1819,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
                                           .toList(),
                                       onChanged: (value) {
                                         if (value == null || !mounted) return;
-                                        setState(() {
-                                          _selectedDay = value;
-                                        });
+                                        _onDayChanged(value);
                                       },
                                     ),
                                   ),

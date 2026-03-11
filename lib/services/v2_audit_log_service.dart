@@ -26,7 +26,6 @@ import '../globals.dart';
 //     uklonjen_termin      — admin ukloni termin iz rasporeda
 //     dodeljen_vozac       — admin dodijeli putnika vozaču
 //     uklonjen_vozac       — admin ukloni putnika od vozača
-//     bez_polaska_globalni — admin pritisne "Bez polaska" (bulk akcija)
 //     promena_sifre        — vozač promijeni šifru
 //   PUTNIK:
 //     zahtev_poslan        — putnik pošalje zahtev za vožnju
@@ -123,5 +122,4 @@ class V2AuditLogService {
       debugPrint('[V2AuditLog] GREŠKA pri upisu (tip=$tip): $e\n$st');
     }
   }
-
 }

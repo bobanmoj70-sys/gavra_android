@@ -46,9 +46,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   late final Animation<double> _fadeAnimation;
   bool _updateDialogShown = false;
 
-  // Lista vozača učitana iz baze
-  List<V2Vozac> _drivers = [];
-  bool _isLoadingDrivers = true;
   String _appVersion = '';
   StreamSubscription<String>? _cacheReadySub;
   bool _autoLoginDone = false; // sprečava dvostruku navigaciju
@@ -59,7 +56,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
     WidgetsBinding.instance.addObserver(this); // Dodano za lifecycle
 
     _setupAnimations();
-    _loadDrivers(fromInitState: true);
     _loadAppVersion();
     updateInfoNotifier.addListener(_onUpdateInfo);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
@@ -80,25 +76,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       if (!mounted) return;
       _checkBatteryOptimization();
     });
-  }
-
-  /// Učitaj vozače direktno iz master cache-a (0 DB upita).
-  /// [fromInitState] = true: postavlja fields direktno bez setState (widget još nije build-ovan).
-  void _loadDrivers({bool fromInitState = false}) {
-    final rm = V2MasterRealtimeManager.instance;
-    final vozaci = rm.vozaciCache.values.map((row) => V2Vozac.fromMap(row)).toList()
-      ..sort((a, b) => a.ime.compareTo(b.ime));
-    if (fromInitState) {
-      _drivers = vozaci;
-      _isLoadingDrivers = false;
-    } else {
-      if (mounted) {
-        setState(() {
-          _drivers = vozaci;
-          _isLoadingDrivers = false;
-        });
-      }
-    }
   }
 
   Future<void> _loadAppVersion() async {
@@ -129,7 +106,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   void _checkAutoLoginWhenReady() {
     if (V2MasterRealtimeManager.instance.isInitialized) {
       // RM je već spreman — V2VozacCache.initialize() je sigurno pozvan
-      _loadDrivers();
       _checkAutoLogin();
       return;
     }
@@ -140,7 +116,6 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
       _cacheReadySub?.cancel();
       _cacheReadySub = null;
       if (mounted) {
-        _loadDrivers(); // osvježi listu vozača na welcome screenu
         _checkAutoLogin();
       }
     });

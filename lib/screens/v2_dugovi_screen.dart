@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/v2_putnik.dart';
+import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_polasci_service.dart';
 import '../theme.dart';
 import '../utils/v2_dan_utils.dart';
@@ -15,42 +16,27 @@ class V2DugoviScreen extends StatefulWidget {
   State<V2DugoviScreen> createState() => _DugoviScreenState();
 }
 
-class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserver {
-  final _putnikService = V2PutnikStreamService();
-
-  late String _workingDateIso;
-  late Stream<List<V2Putnik>> _streamDugovi;
+class _DugoviScreenState extends State<V2DugoviScreen> {
+  late final String _danKratica;
+  late final Stream<List<V2Putnik>> _stream;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _workingDateIso = V2PutnikHelpers.getWorkingDateIso();
-    _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
-      dan: V2DanUtils.odIso(_workingDateIso),
+    final iso = V2PutnikHelpers.getWorkingDateIso();
+    _danKratica = V2DanUtils.odIso(iso);
+    _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<List<V2Putnik>>(
+      tables: const [
+        'v2_polasci',
+        'v2_dnevni',
+        'v2_radnici',
+        'v2_ucenici',
+        'v2_posiljke',
+        'v2_vozac_raspored',
+        'v2_vozac_putnik',
+      ],
+      build: () => V2PolasciService.fetchPutniciSyncStatic(dan: _danKratica),
     );
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (!mounted) return;
-      final newIso = V2PutnikHelpers.getWorkingDateIso();
-      if (newIso != _workingDateIso) {
-        setState(() {
-          _workingDateIso = newIso;
-          _streamDugovi = _putnikService.streamKombinovaniPutniciFiltered(
-            dan: V2DanUtils.odIso(_workingDateIso),
-          );
-        });
-      }
-    }
   }
 
   static void _sortDugovi(List<V2Putnik> dugovi) {
@@ -73,7 +59,7 @@ class _DugoviScreenState extends State<V2DugoviScreen> with WidgetsBindingObserv
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<V2Putnik>>(
-      stream: _streamDugovi,
+      stream: _stream,
       builder: (context, snapshot) {
         final putnici = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting && putnici.isEmpty;

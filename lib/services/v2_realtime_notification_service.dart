@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart';
 import '../globals.dart';
 import 'v2_auth_manager.dart'; // V2AdminSecurityService spojen ovde
 import 'v2_notification_navigation_service.dart';
-import 'v2_vozac_service.dart';
 
 class V2RealtimeNotificationService {
   V2RealtimeNotificationService._();
@@ -23,28 +22,34 @@ class V2RealtimeNotificationService {
     _notificationStreamController.add(data);
   }
 
-  /// Pošalji push notifikaciju na specifične tokene
+  /// Pošalji push notifikaciju — svi tokeni se resolviraju SERVER-SIDE u edge funkciji.
+  ///
+  /// Načini targetiranja (jedno od):
+  ///   - [putnikId]  — notifikacija jednom putniku
+  ///   - [vozacIds]  — notifikacija jednom ili više vozača
+  ///   - [adminNames]— notifikacija vozačima po imenu (admin lista)
+  ///   - [broadcastVozaci] — notifikacija SVIM vozačima
+  ///   - [tokens]    — direktni tokeni (legacy / SQL trigger pozivi)
   static Future<bool> sendPushNotification({
     required String title,
     required String body,
-    String? playerId,
-    List<String>? externalUserIds,
-    List<String>? driverIds,
+    String? putnikId,
+    List<String>? vozacIds,
+    List<String>? adminNames,
+    bool broadcastVozaci = false,
     List<Map<String, dynamic>>? tokens,
-    String? topic,
     Map<String, dynamic>? data,
-    bool broadcast = false,
-    String? excludeSender,
   }) async {
     try {
-      final payload = {
-        if (tokens != null && tokens.isNotEmpty) 'tokens': tokens,
-        if (topic != null) 'topic': topic,
-        if (broadcast) 'broadcast': true,
-        if (excludeSender != null) 'exclude_sender': excludeSender,
+      final payload = <String, dynamic>{
         'title': title,
         'body': body,
         'data': data ?? {},
+        if (putnikId != null && putnikId.isNotEmpty) 'putnik_id': putnikId,
+        if (vozacIds != null && vozacIds.isNotEmpty) 'vozac_ids': vozacIds,
+        if (adminNames != null && adminNames.isNotEmpty) 'admin_names': adminNames,
+        if (broadcastVozaci) 'broadcast_vozaci': true,
+        if (tokens != null && tokens.isNotEmpty) 'tokens': tokens,
       };
 
       final response = await supabase.functions.invoke(
@@ -52,50 +57,26 @@ class V2RealtimeNotificationService {
         body: payload,
       );
 
-      if (response.data != null && response.data['success'] == true) {
-        return true;
-      } else {
-        return false;
-      }
+      return response.data != null && response.data['success'] == true;
     } catch (e) {
       debugPrint('[V2RealtimeNotificationService] sendPushNotification greška: $e');
       return false;
     }
   }
 
-  /// Pošalji notifikaciju samo adminima
+  /// Pošalji notifikaciju samo adminima — tokeni se resolviraju server-side
   static Future<void> sendNotificationToAdmins({
     required String title,
     required String body,
     Map<String, dynamic>? data,
   }) async {
     try {
-      // Dinamičko učitavanje admin vozača po imenu iz centralizovanog servisa
       final adminNames = V2AdminSecurityService.adminUsers;
-      final allVozaci = V2VozacService.getAllVozaci();
-      final adminVozacIds = allVozaci.where((v) => adminNames.contains(v.ime)).map((v) => v.id).toList();
-
-      if (adminVozacIds.isEmpty) return;
-
-      final response =
-          await supabase.from('v2_push_tokens').select('token, provider').inFilter('vozac_id', adminVozacIds);
-
-      if (response.isEmpty) return;
-
-      final tokens = response
-          .where((t) => t['token']?.toString().isNotEmpty == true)
-          .map<Map<String, dynamic>>((t) => {
-                'token': t['token']!.toString(),
-                'provider': t['provider']?.toString() ?? '',
-              })
-          .toList();
-
-      if (tokens.isEmpty) return;
-
+      if (adminNames.isEmpty) return;
       await sendPushNotification(
         title: title,
         body: body,
-        tokens: tokens,
+        adminNames: adminNames,
         data: data,
       );
     } catch (e) {
@@ -103,7 +84,7 @@ class V2RealtimeNotificationService {
     }
   }
 
-  /// Pošalji push notifikaciju putniku
+  /// Pošalji push notifikaciju putniku — tokeni se resolviraju server-side
   static Future<bool> sendNotificationToPutnik({
     required String putnikId,
     required String title,
@@ -111,24 +92,10 @@ class V2RealtimeNotificationService {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final response = await supabase.from('v2_push_tokens').select('token, provider').eq('putnik_id', putnikId);
-
-      if (response.isEmpty) {
-        return false;
-      }
-
-      final tokens = response
-          .where((t) => t['token']?.toString().isNotEmpty == true)
-          .map<Map<String, dynamic>>((t) => {
-                'token': t['token']!.toString(),
-                'provider': t['provider']?.toString() ?? '',
-              })
-          .toList();
-
       return await sendPushNotification(
         title: title,
         body: body,
-        tokens: tokens,
+        putnikId: putnikId,
         data: data,
       );
     } catch (e) {

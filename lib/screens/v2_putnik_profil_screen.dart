@@ -57,9 +57,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     _checkNotificationPermission(); // Proveri dozvolu za notifikacije
 
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
-    // v2_app_settings pokrije i promjenu sezone (nav_bar_type) — nije potreban poseban listener
+    // Sve tabele koje utiču na prikaz: polasci (raspored), putnik tabele (ime/status),
+    // app_settings (sezona/nav_bar_type)
     _cacheStream = V2MasterRealtimeManager.instance.v2StreamFromCache(
-      tables: ['v2_polasci', 'v2_app_settings'],
+      tables: const ['v2_polasci', 'v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke', 'v2_app_settings'],
       build: () {},
     );
     _refreshPutnikData();
@@ -120,27 +121,18 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final putnikId = _putnikData['id']?.toString();
       if (putnikId == null) return;
 
-      // Prvo pokušaj iz v2 cache-a
+      // Prvo pokušaj iz v2 cache-a (0 DB upita)
       final cached = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
-      if (cached != null && mounted) {
-        setState(() {
-          _putnikData = Map<String, dynamic>.from(cached);
-          _isLoading = false;
-        });
+      if (cached != null) {
+        _putnikData = Map<String, dynamic>.from(cached);
         _loadStatistike();
         return;
       }
 
-      // Fallback: pretraži sve v2 tabele
+      // Fallback: pretraži sve v2 tabele (jednom pri prvom otvaranju kad cache još nije popunjen)
       final response = await V2MasterRealtimeManager.instance.v2FindPutnikById(putnikId);
-
-      if (response != null && mounted) {
-        setState(() {
-          _putnikData = Map<String, dynamic>.from(response);
-          _isLoading = false;
-        });
-      } else if (mounted) {
-        setState(() => _isLoading = false);
+      if (response != null) {
+        _putnikData = Map<String, dynamic>.from(response);
       }
       // Uvijek učitaj statistike (sa svežim ili postojećim podacima)
       _loadStatistike();
@@ -883,25 +875,32 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
   @override
   Widget build(BuildContext context) {
-    // Ime može biti u 'putnik_ime' ili odvojeno 'ime'/'prezime'
-    final putnikIme = _putnikData['putnik_ime'] as String? ?? '';
-    final ime = _putnikData['ime'] as String? ?? '';
-    final prezime = _putnikData['prezime'] as String? ?? '';
-    final fullName = putnikIme.isNotEmpty ? putnikIme : '$ime $prezime'.trim();
-
-    // Razdvoji ime i prezime za avatar
-    final nameParts = fullName.split(' ');
-    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-    final lastName = nameParts.length > 1 ? nameParts.last : '';
-
-    final telefon = _putnikData['broj_telefona'] as String? ?? '-';
-    final grad = _putnikData['grad'] as String? ?? 'BC';
-    final tip = V2Putnik.tipIzTabele(_putnikData['_tabela']?.toString()) ?? 'radnik';
-    final tipPrikazivanja = _putnikData['tip_prikazivanja'] as String? ?? 'standard';
-
     return StreamBuilder<void>(
       stream: _cacheStream,
       builder: (context, __) {
+        // Osvježi putnikData iz cache-a pri svakom rebuildu (reaguje na promjene RM-a)
+        final putnikId = _putnikData['id']?.toString();
+        if (putnikId != null) {
+          final cached = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
+          if (cached != null) _putnikData = Map<String, dynamic>.from(cached);
+        }
+
+        // Ime može biti u 'putnik_ime' ili odvojeno 'ime'/'prezime'
+        final putnikIme = _putnikData['putnik_ime'] as String? ?? '';
+        final ime = _putnikData['ime'] as String? ?? '';
+        final prezime = _putnikData['prezime'] as String? ?? '';
+        final fullName = putnikIme.isNotEmpty ? putnikIme : '$ime $prezime'.trim();
+
+        // Razdvoji ime i prezime za avatar
+        final nameParts = fullName.split(' ');
+        final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+        final lastName = nameParts.length > 1 ? nameParts.last : '';
+
+        final telefon = _putnikData['broj_telefona'] as String? ?? '-';
+        final grad = _putnikData['grad'] as String? ?? 'BC';
+        final tip = V2Putnik.tipIzTabele(_putnikData['_tabela']?.toString()) ?? 'radnik';
+        final tipPrikazivanja = _putnikData['tip_prikazivanja'] as String? ?? 'standard';
+
         return Container(
           decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
           child: Scaffold(
@@ -1277,7 +1276,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   static const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
   static const _names2 = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
   static const _statusPrioritet = {
-    'bez_polaska': 0,
     'odbijeno': 1,
     'otkazano': 2,
     'obrada': 3,
@@ -1304,9 +1302,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
     // MERGE v2_polasci redova po danima
     // Sortiramo: aktivni (odobreno/obrada) ZADNJI da pregaze otkazane
-    // Redosljed: otkazano/bez_polaska/odbijeno → obrada → odobreno → pokupljen
+    // Redosljed: otkazano/odbijeno → obrada → odobreno → pokupljen
     final putnikId = _putnikData['id']?.toString();
-    const aktivniStatusi = ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'bez_polaska', 'pokupljen'];
+    const aktivniStatusi = ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'pokupljen'];
     final sortedRequests = V2MasterRealtimeManager.instance.polasciCache.values
         .where((r) => r['putnik_id']?.toString() == putnikId && aktivniStatusi.contains(r['status'] as String?))
         .toList();
@@ -1336,17 +1334,12 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
         final existing = polasci[danKratica]!;
 
-        if (status == 'otkazano' || status == 'bez_polaska' || status == 'odbijeno') {
+        if (status == 'otkazano' || status == 'odbijeno') {
           // Postavi otkazano SAMO ako još nema aktivnog zahtjeva za ovaj grad
           // (aktivni zahtjev dolazi zadnji zbog sortiranja pa će ga pregaziti)
           existing['${grad}_status'] = status;
-          existing['${grad}_otkazano'] = status != 'bez_polaska';
+          existing['${grad}_otkazano'] = true;
           existing['${grad}_otkazano_vreme'] = vreme;
-          // bez_polaska: čuvamo vreme u grad ključu da TimePickerCell može prikazati
-          // dugme "Bez polaska" kao aktivan izbor (value != null → onChanged se može pozvati)
-          if (status == 'bez_polaska' && vreme.isNotEmpty) {
-            existing[grad] = vreme;
-          }
         } else {
           // Aktivan zahtjev — uvijek pregazuje otkazano
           existing[grad] = vreme;

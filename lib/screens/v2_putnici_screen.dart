@@ -30,9 +30,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
   void initState() {
     super.initState();
     _streamPutnici = _rm.streamAktivniPutnici();
-    _searchController.addListener(() {
-      if (mounted) setState(() {});
-    });
+    // Nema addListener/setState — ValueListenableBuilder reaguje direktno na promjene
   }
 
   @override
@@ -72,255 +70,268 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: Theme.of(context).backgroundGradient,
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(80),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).glassContainer,
-              border: Border.all(
-                color: Theme.of(context).glassBorder,
-                width: 1.5,
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(25),
-                bottomRight: Radius.circular(25),
-              ),
-              // No boxShadow - keep AppBar fully transparent and only glassBorder
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Stack(children: [
-                      IconButton(
-                        icon: Icon(Icons.engineering,
-                            color: _selectedFilter == 'v2_radnici' ? Colors.white : Colors.white70,
-                            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                        onPressed: () =>
-                            setState(() => _selectedFilter = _selectedFilter == 'v2_radnici' ? 'svi' : 'v2_radnici'),
-                        tooltip: 'Radnici',
-                      ),
-                      Positioned(
-                          right: 0,
-                          top: 0,
-                          child: _buildBadge(_rm.radniciCache.values.where((r) => r['status'] == 'aktivan').length,
-                              const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
-                    ]),
-                    Stack(children: [
-                      IconButton(
-                        icon: Icon(Icons.school,
-                            color: _selectedFilter == 'v2_ucenici' ? Colors.white : Colors.white70,
-                            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                        onPressed: () =>
-                            setState(() => _selectedFilter = _selectedFilter == 'v2_ucenici' ? 'svi' : 'v2_ucenici'),
-                        tooltip: 'Učenici',
-                      ),
-                      Positioned(
-                          right: 0,
-                          top: 0,
-                          child: _buildBadge(_rm.uceniciCache.values.where((r) => r['status'] == 'aktivan').length,
-                              const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
-                    ]),
-                    Stack(children: [
-                      IconButton(
-                        icon: Icon(Icons.today,
-                            color: _selectedFilter == 'v2_dnevni' ? Colors.white : Colors.white70,
-                            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                        onPressed: () =>
-                            setState(() => _selectedFilter = _selectedFilter == 'v2_dnevni' ? 'svi' : 'v2_dnevni'),
-                        tooltip: 'Dnevni',
-                      ),
-                      Positioned(
-                          right: 0,
-                          top: 0,
-                          child: _buildBadge(_rm.dnevniCache.values.where((r) => r['status'] == 'aktivan').length,
-                              const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
-                    ]),
-                    Stack(children: [
-                      IconButton(
-                        icon: Icon(Icons.local_shipping,
-                            color: _selectedFilter == 'v2_posiljke' ? Colors.white : Colors.white70,
-                            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                        onPressed: () =>
-                            setState(() => _selectedFilter = _selectedFilter == 'v2_posiljke' ? 'svi' : 'v2_posiljke'),
-                        tooltip: 'Pošiljke',
-                      ),
-                      Positioned(
-                          right: 0,
-                          top: 0,
-                          child: _buildBadge(_rm.posiljkeCache.values.where((r) => r['status'] == 'aktivan').length,
-                              const Color(0xFFFF8C00), const Color(0xFFE65C00), Colors.orange)),
-                    ]),
-                    IconButton(
-                      icon: const Icon(Icons.add,
-                          color: Colors.white,
-                          shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                      onPressed: _pokaziDijalogZaDodavanje,
-                      tooltip: 'Dodaj novog putnika',
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    return StreamBuilder<List<V2RegistrovaniPutnik>>(
+      stream: _streamPutnici,
+      builder: (context, snapshot) {
+        final sviPutnici = snapshot.data ?? [];
+        // Badge-ovi direktno iz cache-a — reaguju na svaki realtime event
+        final int brRadnici = _rm.radniciCache.values.where((r) => r['status'] == 'aktivan').length;
+        final int brUcenici = _rm.uceniciCache.values.where((r) => r['status'] == 'aktivan').length;
+        final int brDnevni = _rm.dnevniCache.values.where((r) => r['status'] == 'aktivan').length;
+        final int brPosiljke = _rm.posiljkeCache.values.where((r) => r['status'] == 'aktivan').length;
+
+        return Container(
+          decoration: BoxDecoration(
+            gradient: Theme.of(context).backgroundGradient,
           ),
-        ),
-        body: Column(
-          children: [
-            // SEARCH BAR
-            Container(
-              padding: const EdgeInsets.all(16),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(80),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  color: Theme.of(context).glassContainer,
                   border: Border.all(
-                    color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                    color: Theme.of(context).glassBorder,
+                    width: 1.5,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(25),
+                    bottomRight: Radius.circular(25),
                   ),
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    hintText: 'Pretraži putnike...',
-                    hintStyle: TextStyle(color: Colors.grey[600]),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(
-                              Icons.clear,
-                              color: Colors.grey[600],
-                            ),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // LISTA PUTNIKA — master realtime cache stream
-            Expanded(
-              child: StreamBuilder<List<V2RegistrovaniPutnik>>(
-                stream: _streamPutnici,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-
-                  if (snapshot.hasError) {
-                    return const Center(
-                      child: Text(
-                        'Greška pri učitavanju mesečnih putnika',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    );
-                  }
-
-                  final sviPutnici = snapshot.data ?? [];
-
-                  // Filtriraj lokalno
-                  final filteredPutnici = _filterPutniciDirect(
-                    sviPutnici,
-                    _searchController.text,
-                  );
-
-                  // Prikaži samo prvih 50 rezultata
-                  final prikazaniPutnici =
-                      filteredPutnici.length > 50 ? filteredPutnici.sublist(0, 50) : filteredPutnici;
-
-                  if (prikazaniPutnici.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _searchController.text.isNotEmpty ? Icons.search_off : Icons.group_off,
-                            size: 64,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _searchController.text.isNotEmpty ? 'Nema rezultata pretrage' : 'Nema putnika',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          if (_searchController.text.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              'Pokušajte sa drugim terminom',
-                              style: TextStyle(color: Colors.grey.shade500),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    key: ValueKey(prikazaniPutnici.length),
+                child: SafeArea(
+                  child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: prikazaniPutnici.length,
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Stack(children: [
+                          IconButton(
+                            icon: Icon(Icons.engineering,
+                                color: _selectedFilter == 'v2_radnici' ? Colors.white : Colors.white70,
+                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                            onPressed: () => setState(
+                                () => _selectedFilter = _selectedFilter == 'v2_radnici' ? 'svi' : 'v2_radnici'),
+                            tooltip: 'Radnici',
+                          ),
+                          Positioned(
+                              right: 0,
+                              top: 0,
+                              child: _buildBadge(
+                                  brRadnici, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
+                        ]),
+                        Stack(children: [
+                          IconButton(
+                            icon: Icon(Icons.school,
+                                color: _selectedFilter == 'v2_ucenici' ? Colors.white : Colors.white70,
+                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                            onPressed: () => setState(
+                                () => _selectedFilter = _selectedFilter == 'v2_ucenici' ? 'svi' : 'v2_ucenici'),
+                            tooltip: 'Učenici',
+                          ),
+                          Positioned(
+                              right: 0,
+                              top: 0,
+                              child: _buildBadge(
+                                  brUcenici, const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
+                        ]),
+                        Stack(children: [
+                          IconButton(
+                            icon: Icon(Icons.today,
+                                color: _selectedFilter == 'v2_dnevni' ? Colors.white : Colors.white70,
+                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                            onPressed: () =>
+                                setState(() => _selectedFilter = _selectedFilter == 'v2_dnevni' ? 'svi' : 'v2_dnevni'),
+                            tooltip: 'Dnevni',
+                          ),
+                          Positioned(
+                              right: 0,
+                              top: 0,
+                              child:
+                                  _buildBadge(brDnevni, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
+                        ]),
+                        Stack(children: [
+                          IconButton(
+                            icon: Icon(Icons.local_shipping,
+                                color: _selectedFilter == 'v2_posiljke' ? Colors.white : Colors.white70,
+                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                            onPressed: () => setState(
+                                () => _selectedFilter = _selectedFilter == 'v2_posiljke' ? 'svi' : 'v2_posiljke'),
+                            tooltip: 'Pošiljke',
+                          ),
+                          Positioned(
+                              right: 0,
+                              top: 0,
+                              child: _buildBadge(
+                                  brPosiljke, const Color(0xFFFF8C00), const Color(0xFFE65C00), Colors.orange)),
+                        ]),
+                        IconButton(
+                          icon: const Icon(Icons.add,
+                              color: Colors.white,
+                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                          onPressed: _pokaziDijalogZaDodavanje,
+                          tooltip: 'Dodaj novog putnika',
+                        ),
+                      ],
                     ),
-                    itemBuilder: (context, index) {
-                      final v2Putnik = prikazaniPutnici[index];
-                      return TweenAnimationBuilder<double>(
-                        key: ValueKey(v2Putnik.id),
-                        duration: Duration(milliseconds: 300 + (index * 50)),
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, value, child) {
-                          return Transform.translate(
-                            offset: Offset(0, 30 * (1 - value)),
-                            child: Opacity(
-                              opacity: value,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: _buildPutnikCard(v2Putnik, index + 1),
-                      );
-                    },
-                  );
-                },
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+            body: Column(
+              children: [
+                // SEARCH BAR
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        hintText: 'Pretraži putnike...',
+                        hintStyle: TextStyle(color: Colors.grey[600]),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: Colors.grey[600],
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // LISTA PUTNIKA — jedan StreamBuilder za cijeli ekran + ValueListenableBuilder za pretragu
+                Expanded(
+                  child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
+                      ? const Center(child: CircularProgressIndicator())
+                      : snapshot.hasError
+                          ? const Center(
+                              child: Text(
+                                'Greška pri učitavanju putnika',
+                                style: TextStyle(fontSize: 16, color: Colors.grey),
+                              ),
+                            )
+                          : ValueListenableBuilder<TextEditingValue>(
+                              valueListenable: _searchController,
+                              builder: (context, searchValue, _) {
+                                final filteredPutnici = _filterPutniciDirect(sviPutnici, searchValue.text);
+                                const int _limit = 50;
+                                final bool isTruncated = filteredPutnici.length > _limit;
+                                final prikazaniPutnici =
+                                    isTruncated ? filteredPutnici.sublist(0, _limit) : filteredPutnici;
+
+                                if (prikazaniPutnici.isEmpty) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          searchValue.text.isNotEmpty ? Icons.search_off : Icons.group_off,
+                                          size: 64,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          searchValue.text.isNotEmpty ? 'Nema rezultata pretrage' : 'Nema putnika',
+                                          style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                                        ),
+                                        if (searchValue.text.isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Pokušajte sa drugim terminom',
+                                            style: TextStyle(color: Colors.grey.shade500),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                return Column(
+                                  children: [
+                                    // Fix #3: Prikaži info ako je lista truncated
+                                    if (isTruncated)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Prikazano $_limit od ${filteredPutnici.length} — precizíraj pretragu',
+                                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: ListView.builder(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        itemCount: prikazaniPutnici.length,
+                                        physics: const AlwaysScrollableScrollPhysics(
+                                          parent: BouncingScrollPhysics(),
+                                        ),
+                                        itemBuilder: (context, index) {
+                                          final v2Putnik = prikazaniPutnici[index];
+                                          // Fix #4: TweenAnimationBuilder samo za svježe dodane elemente
+                                          // key: ValueKey(id) garantuje da se animacija pokreće samo jednom po putnik-u
+                                          return TweenAnimationBuilder<double>(
+                                            key: ValueKey(v2Putnik.id),
+                                            duration: const Duration(milliseconds: 300),
+                                            tween: Tween(begin: 0.0, end: 1.0),
+                                            curve: Curves.easeOutCubic,
+                                            builder: (context, value, child) => Transform.translate(
+                                              offset: Offset(0, 20 * (1 - value)),
+                                              child: Opacity(opacity: value, child: child),
+                                            ),
+                                            child: _buildPutnikCard(v2Putnik, index + 1),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -742,14 +753,8 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       context: context,
       builder: (dialogCtx) => V2PutnikDialog(
         existingPutnik: v2Putnik,
-        onSaved: () {
-          if (mounted) {
-            setState(() {
-              _selectedFilter = 'svi';
-              _searchController.clear();
-            });
-          }
-        },
+        // Ne resetujemo filter/pretragu — korisnik ostaje u svom kontekstu
+        onSaved: () {},
       ),
     );
   }
@@ -773,15 +778,9 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) => V2PutnikDialog(
-        existingPutnik: null, // null indicates adding mode
-        onSaved: () {
-          if (mounted) {
-            setState(() {
-              _selectedFilter = 'svi';
-              _searchController.clear();
-            });
-          }
-        },
+        existingPutnik: null,
+        // Realtime će automatski dodati novog putnika u stream — nema potrebe za setState
+        onSaved: () {},
       ),
     );
   }
@@ -941,6 +940,7 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              // opcije koriste sheetCtx za Navigator.pop
               ...opcije,
               const SizedBox(height: 10),
               TextButton(

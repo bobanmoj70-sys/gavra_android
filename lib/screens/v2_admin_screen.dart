@@ -9,7 +9,6 @@ import '../services/v2_auth_manager.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_polasci_service.dart';
-import '../services/v2_statistika_istorija_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_service.dart';
 import '../theme.dart';
@@ -42,18 +41,12 @@ class V2AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<V2AdminScreen> {
-  static const List<String> _defaultVozaciRedosled = ['Bruda', 'Bilevski', 'Bojan', 'Voja'];
-
   String? _currentDriver;
   // Izračunato jednom u initState — dan se ne mijenja za života ovog widgeta
   late final String _todayKratica;
-  late final Stream<List<V2Putnik>> _streamPutnici;
-  late final Stream<Map<String, double>> _streamPazar;
-  late final Stream<int> _streamRadniciObrada;
-  late final Stream<int> _streamUceniciObrada;
-  late final Stream<List<Map<String, dynamic>>> _streamPinZahtevi;
-  // Shared broadcast stream za zahteve — jedan poziv, dvije pretplate
-  late final Stream<List<V2Polazak>> _streamZahteviObradaShared;
+  late final String _todayIso;
+  // Jedan broadcast stream koji sluša sve relevantne tabele
+  late final Stream<_AdminData> _stream;
 
   @override
   void initState() {
@@ -63,15 +56,22 @@ class _AdminScreenState extends State<V2AdminScreen> {
     V2VozacCache.refresh();
 
     _todayKratica = V2DanUtils.danas();
+    _todayIso = DateTime.now().toIso8601String().split('T')[0];
 
-    final todayIso = DateTime.now().toIso8601String().split('T')[0];
-    _streamPutnici = V2PolasciService.v2StreamPutnici();
-    _streamPazar = V2StatistikaIstorijaService.streamPazarIzCachea(isoDate: todayIso);
-    _streamZahteviObradaShared = V2PolasciService.v2StreamZahteviObrada();
-    _streamRadniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'radnik').length);
-    _streamUceniciObrada = _streamZahteviObradaShared.map((list) => list.where((z) => z.tipPutnika == 'ucenik').length);
-
-    _streamPinZahtevi = V2PinZahtevService.streamZahteviKojiCekaju();
+    _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<_AdminData>(
+      tables: const [
+        'v2_polasci',
+        'v2_dnevni',
+        'v2_radnici',
+        'v2_ucenici',
+        'v2_posiljke',
+        'v2_vozac_raspored',
+        'v2_vozac_putnik',
+        'v2_statistika_istorija',
+        'v2_pin_zahtevi',
+      ],
+      build: _buildAdminData,
+    ).asBroadcastStream();
 
     _loadCurrentDriver();
 
@@ -235,6 +235,92 @@ class _AdminScreenState extends State<V2AdminScreen> {
     }
   }
 
+  _AdminData _buildAdminData() {
+    final rm = V2MasterRealtimeManager.instance;
+
+    // Putnici za danas — sync iz RM cache-a
+    final putnici = V2PolasciService.fetchPutniciSyncStatic(dan: _todayKratica);
+
+    // Pazar — sync iz polasciCache
+    final today = _todayIso;
+    final Map<String, double> pazar = {};
+    double ukupnoPazar = 0;
+    for (final row in rm.polasciCache.values) {
+      final placen = row['placen'];
+      if (placen != true && placen.toString() != 'true') continue;
+      final datumAkcije = row['datum_akcije']?.toString();
+      if (datumAkcije == null || !datumAkcije.startsWith(today)) continue;
+      final iznos =
+          (row['placen_iznos'] as num?)?.toDouble() ?? (double.tryParse(row['placen_iznos']?.toString() ?? '') ?? 0);
+      if (iznos <= 0) continue;
+      final vozacIme = row['placen_vozac_ime']?.toString() ?? 'Nepoznat';
+      pazar[vozacIme] = (pazar[vozacIme] ?? 0) + iznos;
+      ukupnoPazar += iznos;
+    }
+    pazar['_ukupno'] = ukupnoPazar;
+
+    // Zahtevi u obradi — sync iz polasciCache
+    final zahteviObrada = rm.polasciCache.values.where((r) => r['status'] == V2Polazak.statusObrada).map((row) {
+      final putnikId = row['putnik_id']?.toString();
+      final putnikTabela = row['putnik_tabela']?.toString();
+      final putnikRow = putnikId == null
+          ? null
+          : switch (putnikTabela) {
+              'v2_radnici' => rm.radniciCache[putnikId],
+              'v2_ucenici' => rm.uceniciCache[putnikId],
+              _ => null,
+            };
+      final enriched = putnikRow == null ? row : {...row, 'putnik_ime': putnikRow['ime']};
+      return V2Polazak.fromJson(enriched);
+    }).toList();
+
+    // Brojači
+    final uceniciObrada = zahteviObrada.where((z) => z.tipPutnika == 'ucenik').length;
+    final radniciObrada = zahteviObrada.where((z) => z.tipPutnika == 'radnik').length;
+
+    // PIN zahtevi — sync iz pinCache (public wrapper)
+    final pinZahtevi = V2PinZahtevService.buildEnrichedListSync();
+
+    // saVS/ukBC — učenici koji idu u BC sa VS povratkom
+    final danKratica = V2DanUtils.odDatuma(DateTime.now());
+    final Map<String, Set<String>> smerovi = {};
+    for (final sr in rm.polasciCache.values) {
+      if (sr['putnik_tabela']?.toString() != 'v2_ucenici') continue;
+      final dan = sr['dan']?.toString();
+      final datum = sr['datum_akcije']?.toString().split('T')[0];
+      if (dan != danKratica && datum != _todayIso) continue;
+      final st = sr['status']?.toString().toLowerCase() ?? '';
+      if (st == 'otkazano' ||
+          st == 'otkazan' ||
+          st == 'cancelled' ||
+          st == 'bolovanje' ||
+          st == 'godišnji' ||
+          st == 'godisnji' ||
+          st == 'odbijeno') continue;
+      final id = sr['putnik_id']?.toString();
+      if (id == null) continue;
+      final g = (sr['grad']?.toString() ?? '').toUpperCase();
+      smerovi.putIfAbsent(id, () => {});
+      smerovi[id]!.add(g == 'BC' ? 'bc' : 'vs');
+    }
+    int ukBC = 0, saVS = 0;
+    smerovi.forEach((_, s) {
+      if (!s.contains('bc')) return;
+      ukBC++;
+      if (s.contains('vs')) saVS++;
+    });
+
+    return _AdminData(
+      putnici: putnici,
+      pazar: pazar,
+      uceniciObrada: uceniciObrada,
+      radniciObrada: radniciObrada,
+      pinZahtevi: pinZahtevi,
+      saVS: saVS,
+      ukBC: ukBC,
+    );
+  }
+
   /// ⚠️ DIJALOG ZA GLOBALNO UKLANJANJE POLASKA
   void _showStatistikeMenu(BuildContext context) {
     showModalBottomSheet(
@@ -309,6 +395,17 @@ class _AdminScreenState extends State<V2AdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<_AdminData>(
+      stream: _stream,
+      initialData: _buildAdminData(),
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? _buildAdminData();
+        return _buildScaffold(context, data);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, _AdminData data) {
     return Container(
       decoration: BoxDecoration(
         gradient: V2ThemeManager().currentGradient,
@@ -674,57 +771,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Builder(builder: (context) {
-                      final rm = V2MasterRealtimeManager.instance;
-                      final danKratica = V2DanUtils.odDatuma(DateTime.now());
-                      final todayIso = DateTime.now().toIso8601String().split('T')[0];
-                      final Map<String, Set<String>> smerovi = {};
-                      for (final sr in rm.polasciCache.values) {
-                        if (sr['putnik_tabela']?.toString() != 'v2_ucenici') continue;
-                        final dan = sr['dan']?.toString();
-                        final datum = sr['datum_akcije']?.toString().split('T')[0];
-                        if (dan != danKratica && datum != todayIso) continue;
-                        final st = sr['status']?.toString().toLowerCase() ?? '';
-                        if (st == 'otkazano' ||
-                            st == 'otkazan' ||
-                            st == 'cancelled' ||
-                            st == 'bolovanje' ||
-                            st == 'godišnji' ||
-                            st == 'godisnji' ||
-                            st == 'odbijeno') continue;
-                        final id = sr['putnik_id']?.toString();
-                        if (id == null) continue;
-                        final g = (sr['grad']?.toString() ?? '').toUpperCase();
-                        smerovi.putIfAbsent(id, () => {});
-                        smerovi[id]!.add(g == 'BC' ? 'bc' : 'vs');
-                      }
-                      int ukBC = 0, saVS = 0;
-                      smerovi.forEach((_, s) {
-                        if (!s.contains('bc')) return;
-                        ukBC++;
-                        if (s.contains('vs')) saVS++;
-                      });
-                      return Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange.withValues(alpha: 0.6), width: 1.5),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$saVS/$ukBC',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.orange,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
+                    child: _buildSaVsUkBc(data),
                   ),
                 ],
               ),
@@ -735,102 +782,10 @@ class _AdminScreenState extends State<V2AdminScreen> {
               child: Row(
                 children: [
                   // LEVO: Učenici zahtevi
-                  Expanded(
-                    child: StreamBuilder<int>(
-                      stream: _streamUceniciObrada,
-                      builder: (context, snapshot) {
-                        final count = snapshot.data ?? 0;
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            InkWell(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (context) => const V2UceniciZahteviScreen(),
-                                ),
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: Colors.lightBlue.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.lightBlue.withValues(alpha: 0.6), width: 1.5),
-                                ),
-                                child: const Center(
-                                  child: Text('🎓', style: TextStyle(fontSize: 22)),
-                                ),
-                              ),
-                            ),
-                            if (count > 0)
-                              Positioned(
-                                right: 4,
-                                top: -4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(5),
-                                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                  child: Text('$count',
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+                  Expanded(child: _buildUceniciButton(data)),
                   const SizedBox(width: 8),
                   // SREDINA: Radnici zahtevi
-                  Expanded(
-                    child: StreamBuilder<int>(
-                      stream: _streamRadniciObrada,
-                      builder: (context, snapshot) {
-                        final count = snapshot.data ?? 0;
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            InkWell(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (context) => const V2RadniciZahteviScreen(),
-                                ),
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.green.withValues(alpha: 0.6), width: 1.5),
-                                ),
-                                child: const Center(
-                                  child: Text('👷', style: TextStyle(fontSize: 22)),
-                                ),
-                              ),
-                            ),
-                            if (count > 0)
-                              Positioned(
-                                right: 4,
-                                top: -4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(5),
-                                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                  child: Text('$count',
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+                  Expanded(child: _buildRadniciButton(data)),
                   const SizedBox(width: 8),
                   // DESNO: Pošiljke zahtevi
                   Expanded(
@@ -857,313 +812,182 @@ class _AdminScreenState extends State<V2AdminScreen> {
                   ),
                   const SizedBox(width: 8),
                   // DESNO+1: PIN zahtevi
-                  Expanded(
-                    child: StreamBuilder<List<Map<String, dynamic>>>(
-                      stream: _streamPinZahtevi,
-                      initialData: const [],
-                      builder: (context, snapshot) {
-                        final broj = snapshot.data?.length ?? 0;
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            InkWell(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (context) => const V2PinZahteviScreen(),
-                                ),
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: broj > 0
-                                          ? Colors.orange.withValues(alpha: 0.9)
-                                          : Colors.orange.withValues(alpha: 0.4),
-                                      width: 1.5),
-                                ),
-                                child: const Center(
-                                  child: Text('🔐', style: TextStyle(fontSize: 22)),
-                                ),
-                              ),
-                            ),
-                            if (broj > 0)
-                              Positioned(
-                                right: 4,
-                                top: -4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(5),
-                                  decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-                                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                  child: Text('$broj',
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+                  Expanded(child: _buildPinButton(data)),
                 ],
               ),
             ),
             const SizedBox(height: 6),
             Expanded(
-              child: StreamBuilder<List<V2Putnik>>(
-                stream: _streamPutnici,
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error, color: Colors.red, size: 64),
-                          const SizedBox(height: 16),
-                          Text('Greška: ${snapshot.error}'),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (mounted) setState(() {});
-                            },
-                            child: const Text('Pokušaj ponovo'),
-                          ),
-                        ],
+              child: _buildGlavniSadrzaj(context, data),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────
+  // WIDGET HELPERI — primaju data direktno
+  // ────────────────────────────────────────────────────────
+
+  Widget _buildGlavniSadrzaj(BuildContext context, _AdminData data) {
+    final allPutnici = data.putnici;
+    final pazarMap = data.pazar;
+    final ukupno = pazarMap['_ukupno'] ?? 0.0;
+    final Map<String, double> pazar = Map.from(pazarMap)..remove('_ukupno');
+
+    final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == _todayKratica).toList();
+
+    const iskljuceniStatusiDuznici = {'otkazano', 'otkazan', 'odbijeno', 'cancelled'};
+    final filteredDuznici = filteredPutnici.where((p) {
+      if (p.isRadnik || p.isUcenik) return false;
+      final st = p.status?.toLowerCase() ?? '';
+      return p.placeno != true && !iskljuceniStatusiDuznici.contains(st) && p.jePokupljen;
+    }).toList();
+
+    if (_currentDriver == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('⏳ Ucitavanje...'),
+        ),
+      );
+    }
+
+    final bool isAdmin = V2AdminSecurityService.isAdmin(_currentDriver!);
+    final Map<String, double> filteredPazar = V2AdminSecurityService.filterPazarByPrivileges(
+      _currentDriver!,
+      pazar,
+    );
+    final double mojUkupanPazar = filteredPazar.values.fold(0.0, (sum, val) => sum + val);
+
+    final Map<String, Color> vozacBoje = V2VozacCache.bojeSync;
+    final List<String> vozaciRedosled = V2VozacCache.imenaVozaca;
+
+    final List<String> prikazaniVozaci = V2AdminSecurityService.getVisibleDrivers(
+      _currentDriver!,
+      vozaciRedosled,
+    );
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom + 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isAdmin)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.person, color: Colors.green[600], size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Prikazuju se samo VAŠE naplate, vozac: $_currentDriver',
+                        style: TextStyle(color: Colors.green[700], fontSize: 12, fontWeight: FontWeight.w500),
                       ),
-                    );
-                  }
-
-                  final allPutnici = snapshot.data ?? [];
-
-                  final filteredPutnici = allPutnici.where((p) => p.dan.toLowerCase() == _todayKratica).toList();
-
-                  // Dužnici — pokupljeni, neplaćeni, samo dnevni i posiljke (ne radnici/ucenici)
-                  final filteredDuznici = filteredPutnici.where((p) {
-                    if (p.isRadnik || p.isUcenik) return false;
-                    return p.placeno != true && (p.status?.toLowerCase() != 'otkazano') && p.jePokupljen;
-                  }).toList();
-
-                  return StreamBuilder<Map<String, double>>(
-                    stream: _streamPazar,
-                    builder: (context, pazarSnapshot) {
-                      final pazarMap = pazarSnapshot.data ?? <String, double>{'_ukupno': 0};
-                      final ukupno = pazarMap['_ukupno'] ?? 0.0;
-                      final Map<String, double> pazar = Map.from(pazarMap)..remove('_ukupno');
-
-                      if (_currentDriver == null) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Text('⏳ Ucitavanje...'),
-                          ),
-                        );
-                      }
-
-                      final bool isAdmin = V2AdminSecurityService.isAdmin(_currentDriver!);
-                      final Map<String, double> filteredPazar = V2AdminSecurityService.filterPazarByPrivileges(
-                        _currentDriver!,
-                        pazar,
-                      );
-                      final double mojUkupanPazar = filteredPazar.values.fold(0.0, (sum, val) => sum + val);
-
-                      final Map<String, Color> vozacBoje = V2VozacCache.bojeSync;
-                      final List<String> vozaciRedosled =
-                          V2VozacCache.imenaVozaca.isNotEmpty ? V2VozacCache.imenaVozaca : _defaultVozaciRedosled;
-
-                      final List<String> prikazaniVozaci = V2AdminSecurityService.getVisibleDrivers(
-                        _currentDriver!,
-                        vozaciRedosled,
-                      );
-                      return SingleChildScrollView(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom + 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Info box za individualnog vozaca
-                              if (!isAdmin)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[50],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.green[200]!),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.person,
-                                        color: Colors.green[600],
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Prikazuju se samo VAŠE naplate, vozac: $_currentDriver',
-                                          style: TextStyle(
-                                            color: Colors.green[700],
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              const SizedBox(height: 12),
-                              Column(
-                                children: prikazaniVozaci
-                                    .map(
-                                      (vozac) => Container(
-                                        width: double.infinity,
-                                        height: 60,
-                                        margin: const EdgeInsets.only(bottom: 4),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: (vozacBoje[vozac] ?? Colors.blueGrey).withValues(alpha: 60 / 255),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: (vozacBoje[vozac] ?? Colors.blueGrey).withValues(alpha: 120 / 255),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            CircleAvatar(
-                                              backgroundColor: vozacBoje[vozac] ?? Colors.blueGrey,
-                                              radius: 16,
-                                              child: Text(
-                                                vozac[0],
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Text(
-                                                vozac,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: vozacBoje[vozac] ?? Colors.blueGrey,
-                                                ),
-                                              ),
-                                            ),
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.monetization_on,
-                                                  color: vozacBoje[vozac] ?? Colors.blueGrey,
-                                                  size: 16,
-                                                ),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  '${(filteredPazar[vozac] ?? 0.0).toStringAsFixed(0)} RSD',
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: vozacBoje[vozac] ?? Colors.blueGrey,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                              V2DugButton(
-                                brojDuznika: filteredDuznici.length,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<void>(
-                                      builder: (context) => V2DugoviScreen(
-                                        currentDriver: _currentDriver!,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                wide: true,
-                              ),
-                              const SizedBox(height: 4),
-                              // UKUPAN PAZAR
-                              Container(
-                                width: double.infinity,
-                                height: 76,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Theme.of(context).glassBorder,
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.green.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.account_balance_wallet,
-                                      color: Colors.green[700],
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          isAdmin ? 'UKUPAN PAZAR' : 'MOJ UKUPAN PAZAR',
-                                          style: TextStyle(
-                                            color: Colors.green[800],
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${(isAdmin ? ukupno : mojUkupanPazar).toStringAsFixed(0)} RSD',
-                                          style: TextStyle(
-                                            color: Colors.green[900],
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 12),
+            Column(
+              children: prikazaniVozaci
+                  .map((vozac) => Container(
+                        width: double.infinity,
+                        height: 60,
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: (vozacBoje[vozac] ?? Colors.blueGrey).withValues(alpha: 60 / 255),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: (vozacBoje[vozac] ?? Colors.blueGrey).withValues(alpha: 120 / 255)),
                         ),
-                      );
-                    },
-                  );
-                },
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: vozacBoje[vozac] ?? Colors.blueGrey,
+                              radius: 16,
+                              child: Text(vozac[0],
+                                  style:
+                                      const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(vozac,
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: vozacBoje[vozac] ?? Colors.blueGrey)),
+                            ),
+                            Row(
+                              children: [
+                                Icon(Icons.monetization_on, color: vozacBoje[vozac] ?? Colors.blueGrey, size: 16),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${(filteredPazar[vozac] ?? 0.0).toStringAsFixed(0)} RSD',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: vozacBoje[vozac] ?? Colors.blueGrey),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ))
+                  .toList(),
+            ),
+            V2DugButton(
+              brojDuznika: filteredDuznici.length,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (context) => V2DugoviScreen(currentDriver: _currentDriver!)),
+              ),
+              wide: true,
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              height: 76,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                boxShadow: [
+                  BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.account_balance_wallet, color: Colors.green[700], size: 20),
+                  const SizedBox(width: 8),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isAdmin ? 'UKUPAN PAZAR' : 'MOJ UKUPAN PAZAR',
+                        style: TextStyle(color: Colors.green[800], fontWeight: FontWeight.bold, letterSpacing: 1),
+                      ),
+                      Text(
+                        '${(isAdmin ? ukupno : mojUkupanPazar).toStringAsFixed(0)} RSD',
+                        style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold, fontSize: 18),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -1171,4 +995,165 @@ class _AdminScreenState extends State<V2AdminScreen> {
       ),
     );
   }
+
+  Widget _buildUceniciButton(_AdminData data) {
+    final count = data.uceniciObrada;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (context) => const V2UceniciZahteviScreen()),
+          ),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.lightBlue.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.lightBlue.withValues(alpha: 0.6), width: 1.5),
+            ),
+            child: const Center(child: Text('🎓', style: TextStyle(fontSize: 22))),
+          ),
+        ),
+        if (count > 0)
+          Positioned(
+            right: 4,
+            top: -4,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              child: Text('$count',
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRadniciButton(_AdminData data) {
+    final count = data.radniciObrada;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (context) => const V2RadniciZahteviScreen()),
+          ),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.6), width: 1.5),
+            ),
+            child: const Center(child: Text('👷', style: TextStyle(fontSize: 22))),
+          ),
+        ),
+        if (count > 0)
+          Positioned(
+            right: 4,
+            top: -4,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              child: Text('$count',
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPinButton(_AdminData data) {
+    final broj = data.pinZahtevi.length;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (context) => const V2PinZahteviScreen()),
+          ),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: broj > 0 ? Colors.orange.withValues(alpha: 0.9) : Colors.orange.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+            ),
+            child: const Center(child: Text('🔐', style: TextStyle(fontSize: 22))),
+          ),
+        ),
+        if (broj > 0)
+          Positioned(
+            right: 4,
+            top: -4,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              child: Text('$broj',
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSaVsUkBc(_AdminData data) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.6), width: 1.5),
+      ),
+      child: Center(
+        child: Text(
+          '${data.saVS}/${data.ukBC}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: Colors.orange,
+            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Snapshot svih admin podataka — jedan StreamBuilder rebuild
+class _AdminData {
+  final List<V2Putnik> putnici;
+  final Map<String, double> pazar;
+  final int uceniciObrada;
+  final int radniciObrada;
+  final List<Map<String, dynamic>> pinZahtevi;
+  final int saVS;
+  final int ukBC;
+
+  const _AdminData({
+    required this.putnici,
+    required this.pazar,
+    required this.uceniciObrada,
+    required this.radniciObrada,
+    required this.pinZahtevi,
+    required this.saVS,
+    required this.ukBC,
+  });
 }

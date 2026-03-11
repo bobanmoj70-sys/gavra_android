@@ -42,7 +42,6 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
     if (tip.contains('logout') || tip.contains('sifre')) return Colors.purpleAccent;
     if (tip.contains('termin') || tip.contains('vozac')) return Colors.lightBlueAccent;
     if (tip.contains('odsustvo')) return Colors.orangeAccent;
-    if (tip.contains('bez_polaska')) return Colors.orange;
     return Colors.white70;
   }
 
@@ -55,7 +54,6 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
     'otkazano_vozac': '❌',
     'naplata': '💳',
     'uplata_dodana': '💰',
-    'bez_polaska_globalni': '⚠️',
     'odsustvo_postavljeno': '🏥',
     'odsustvo_uklonjeno': '✅',
     'putnik_logout': '🚪',

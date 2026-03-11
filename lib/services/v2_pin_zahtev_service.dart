@@ -69,6 +69,9 @@ class V2PinZahtevService {
         build: _buildEnrichedList,
       );
 
+  /// Public sync wrapper — enriched lista PIN zahteva koji čekaju, 0 DB upita
+  static List<Map<String, dynamic>> buildEnrichedListSync() => _buildEnrichedList();
+
   /// Izgradi enriched listu iz pinCache
   static List<Map<String, dynamic>> _buildEnrichedList() {
     final rm = V2MasterRealtimeManager.instance;

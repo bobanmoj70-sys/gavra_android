@@ -21,20 +21,42 @@ class V2GorivoService {
   // STANJE PUMPE (v2_pumpa_stanje VIEW)
   // ─────────────────────────────────────────────────────────────
 
-  /// Dohvati trenutno stanje pumpe
-  static Future<V2PumpaStanje?> getStanje() async {
-    try {
-      final response = await supabase
-          .from('v2_pumpa_stanje')
-          .select(
-              'kapacitet_litri,alarm_nivo,pocetno_stanje,ukupno_punjeno,ukupno_utroseno,trenutno_stanje,procenat_pune')
-          .single();
-      return V2PumpaStanje.fromJson(response);
-    } catch (e) {
-      debugPrint('[V2GorivoService] getStanje greška: $e');
-      return null;
-    }
+  /// Stanje pumpe — kalkulisano iz RM cache-a (0 DB upita, instant)
+  /// Replasira DB VIEW v2_pumpa_stanje: pocetno_stanje + ukupno_punjeno - ukupno_utroseno
+  static V2PumpaStanje? getStanjeSync() {
+    final rm = V2MasterRealtimeManager.instance;
+    final config = rm.pumpaCache.values.firstOrNull;
+    if (config == null) return null;
+
+    final kapacitet = (config['kapacitet_litri'] as num?)?.toDouble() ?? 0.0;
+    final alarmNivo = (config['alarm_nivo'] as num?)?.toDouble() ?? 0.0;
+    final pocetnoStanje = (config['pocetno_stanje'] as num?)?.toDouble() ?? 0.0;
+
+    final ukupnoPunjeno = rm.punjenjaCache.values.fold(0.0, (s, r) => s + ((r['litri'] as num?)?.toDouble() ?? 0.0));
+    final ukupnoUtroseno = rm.tocenjaCache.values.fold(0.0, (s, r) => s + ((r['litri'] as num?)?.toDouble() ?? 0.0));
+
+    final trenutnoStanje = pocetnoStanje + ukupnoPunjeno - ukupnoUtroseno;
+    final procenat = kapacitet > 0 ? (trenutnoStanje / kapacitet * 100.0).clamp(0.0, 100.0) : 0.0;
+
+    return V2PumpaStanje(
+      kapacitetLitri: kapacitet,
+      alarmNivo: alarmNivo,
+      pocetnoStanje: pocetnoStanje,
+      ukupnoPunjeno: ukupnoPunjeno,
+      ukupnoUtroseno: ukupnoUtroseno,
+      trenutnoStanje: trenutnoStanje,
+      procenatPune: procenat,
+    );
   }
+
+  /// Async wrapper za kompatibilnost sa postojećim pozivima
+  static Future<V2PumpaStanje?> getStanje() async => getStanjeSync();
+
+  /// Stream stanja pumpe — autorefresh pri svakoj promjeni cache-a
+  static Stream<V2PumpaStanje?> streamStanje() => V2MasterRealtimeManager.instance.v2StreamFromCache<V2PumpaStanje?>(
+        tables: ['v2_pumpa_config', 'v2_pumpa_punjenja', 'v2_pumpa_tocenja'],
+        build: getStanjeSync,
+      );
 
   static Future<bool> updateConfig({
     double? kapacitet,

@@ -7,6 +7,7 @@ import '../models/v2_pumpa_tocenje.dart';
 import '../models/v2_vozilo_statistika.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_gorivo_service.dart';
+import '../services/v2_pumpa_service.dart';
 import '../services/v2_vozila_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
@@ -28,46 +29,64 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   final _fmt = NumberFormat('#,##0.0', 'sr');
   final _fmtInt = NumberFormat('#,###', 'sr');
 
-  late Future<V2PumpaStanje?> _futureStanje;
-  late Future<List<V2VoziloStatistika>> _futureStatistike;
-  late Future<List<V2PumpaPunjenje>> _futurePunjenja;
-  late Future<List<V2PumpaTocenje>> _futureTocenja;
+  /// Stream koji emituje kad se bilo koja od ove 4 tabele promijeni u cache-u
+  late final Stream<_GorivoData> _stream;
+
+  /// Filter za statistike — od prvog dana tekućeg meseca
+  final DateTime _statsOd = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadAll();
+    _stream = V2MasterRealtimeManager.instance.v2StreamFromCache<_GorivoData>(
+      tables: ['v2_pumpa_config', 'v2_pumpa_punjenja', 'v2_pumpa_tocenja', 'v2_vozila'],
+      build: _buildGorivoData,
+    ).asBroadcastStream();
   }
 
-  /// Puni sve 4 futures odjednom (parallelno)
-  void _loadAll() {
-    final now = DateTime.now();
-    final results = Future.wait([
-      V2GorivoService.getStanje(),
-      V2GorivoService.getStatistikePoVozilu(
-        od: DateTime(now.year, now.month, 1),
-      ),
-      V2GorivoService.getPunjenja(),
-      V2GorivoService.getTocenja(),
-    ]);
-    setState(() {
-      _futureStanje = results.then((r) => r[0] as V2PumpaStanje?);
-      _futureStatistike = results.then((r) => r[1] as List<V2VoziloStatistika>);
-      _futurePunjenja = results.then((r) => r[2] as List<V2PumpaPunjenje>);
-      _futureTocenja = results.then((r) => r[3] as List<V2PumpaTocenje>);
-    });
+  _GorivoData _buildGorivoData() {
+    return _GorivoData(
+      stanje: V2GorivoService.getStanjeSync(),
+      punjenja: V2PumpaPunjenjaService.getPunjenjaSync(),
+      tocenja: V2PumpaTocenjaService.getTocenjaSync(),
+      statistike: _getStatistikeSync(_statsOd),
+    );
   }
 
-  /// Samo osvježi stanje pumpe i statistike — za config dialog
-  void _reloadStanje() {
-    final now = DateTime.now();
-    setState(() {
-      _futureStanje = V2GorivoService.getStanje();
-      _futureStatistike = V2GorivoService.getStatistikePoVozilu(
-        od: DateTime(now.year, now.month, 1),
-      );
-    });
+  List<V2VoziloStatistika> _getStatistikeSync(DateTime od) {
+    final odStr = od.toIso8601String().split('T')[0];
+    final rm = V2MasterRealtimeManager.instance;
+    final Map<String, V2VoziloStatistika> mapa = {};
+    for (final r in rm.tocenjaCache.values) {
+      final d = r['datum']?.toString() ?? '';
+      if (d.compareTo(odStr) < 0) continue;
+      final voziloId = r['vozilo_id']?.toString() ?? '';
+      final litri = (r['litri'] as num?)?.toDouble() ?? 0.0;
+      final voziloRow = rm.vozilaCache[voziloId];
+      final regBroj = voziloRow?['registarski_broj']?.toString() ?? voziloId;
+      final marka = voziloRow?['marka']?.toString() ?? '';
+      final model = voziloRow?['model']?.toString() ?? '';
+      final existing = mapa[voziloId];
+      if (existing != null) {
+        mapa[voziloId] = existing.copyWith(
+          ukupnoLitri: existing.ukupnoLitri + litri,
+          brojTocenja: existing.brojTocenja + 1,
+        );
+      } else {
+        mapa[voziloId] = V2VoziloStatistika(
+          voziloId: voziloId,
+          registarskiBroj: regBroj,
+          marka: marka,
+          model: model,
+          ukupnoLitri: litri,
+          brojTocenja: 1,
+        );
+      }
+    }
+    final lista = mapa.values.toList();
+    lista.sort((a, b) => b.ukupnoLitri.compareTo(a.ukupnoLitri));
+    return lista;
   }
 
   @override
@@ -78,6 +97,17 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<_GorivoData>(
+      stream: _stream,
+      initialData: _buildGorivoData(),
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? _buildGorivoData();
+        return _buildScaffold(context, data);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, _GorivoData data) {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
@@ -140,9 +170,9 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
         child: TabBarView(
           controller: _tabController,
           children: [
-            _buildStanjeTab(),
-            _buildPunjenjaTab(),
-            _buildTocenjaTab(),
+            _buildStanjeTab(data),
+            _buildPunjenjaTab(data.punjenja),
+            _buildTocenjaTab(data.tocenja),
           ],
         ),
       ),
@@ -174,35 +204,23 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildStanjeTab() {
-    return FutureBuilder<V2PumpaStanje?>(
-      future: _futureStanje,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: _accent));
-        }
-        final stanje = snapshot.data;
-        if (stanje == null) {
-          return const Center(child: Text('Greška pri učitavanju stanja'));
-        }
-        return RefreshIndicator(
-          onRefresh: () async => _loadAll(),
-          color: _accent,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16, 16, 16),
-            child: Column(
-              children: [
-                _buildBrojcanik(stanje),
-                const SizedBox(height: 16),
-                _buildStanjeDetalji(stanje),
-                const SizedBox(height: 16),
-                _buildStatistikePoVozilu(),
-              ],
-            ),
-          ),
-        );
-      },
+  Widget _buildStanjeTab(_GorivoData data) {
+    final stanje = data.stanje;
+    if (stanje == null) {
+      return const Center(child: Text('Konfiguracija pumpe nije pronađena'));
+    }
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16, 16, 16),
+      child: Column(
+        children: [
+          _buildBrojcanik(stanje),
+          const SizedBox(height: 16),
+          _buildStanjeDetalji(stanje),
+          const SizedBox(height: 16),
+          _buildStatistikePoVozilu(data.statistike),
+        ],
+      ),
     );
   }
 
@@ -354,31 +372,24 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildStatistikePoVozilu() {
-    return FutureBuilder<List<V2VoziloStatistika>>(
-      future: _futureStatistike,
-      builder: (context, snapshot) {
-        final lista = snapshot.data ?? [];
-        if (lista.isEmpty) return const SizedBox.shrink();
-
-        return Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('📊 Potrošnja ovog meseca po vozilu',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        )),
-                const SizedBox(height: 12),
-                ...lista.map((v) => _statVoziloRow(v, lista.first.ukupnoLitri)),
-              ],
-            ),
-          ),
-        );
-      },
+  Widget _buildStatistikePoVozilu(List<V2VoziloStatistika> lista) {
+    if (lista.isEmpty) return const SizedBox.shrink();
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('📊 Potrošnja ovog meseca po vozilu',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    )),
+            const SizedBox(height: 12),
+            ...lista.map((v) => _statVoziloRow(v, lista.first.ukupnoLitri)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -417,41 +428,28 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildPunjenjaTab() {
-    return FutureBuilder<List<V2PumpaPunjenje>>(
-      future: _futurePunjenja,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: _accent));
-        }
-        final lista = snapshot.data ?? [];
-        if (lista.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.local_gas_station, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
-                const SizedBox(height: 16),
-                Text('Nema zabeleženih punjenja',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey,
-                        )),
-                const SizedBox(height: 8),
-                const Text('Klikni + da dodaš prvo punjenje', style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async => _loadAll(),
-          color: _accent,
-          child: ListView.builder(
-            padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
-            itemCount: lista.length,
-            itemBuilder: (context, i) => _buildPunjenjeCard(lista[i]),
-          ),
-        );
-      },
+  Widget _buildPunjenjaTab(List<V2PumpaPunjenje> lista) {
+    if (lista.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.local_gas_station, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+            const SizedBox(height: 16),
+            Text('Nema zabeleženih punjenja',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey,
+                    )),
+            const SizedBox(height: 8),
+            const Text('Klikni + da dodaš prvo punjenje', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
+      itemCount: lista.length,
+      itemBuilder: (context, i) => _buildPunjenjeCard(lista[i]),
     );
   }
 
@@ -491,7 +489,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             '${_fmt.format(p.litri)} L od $datumStr',
             () async {
               await V2GorivoService.deletePunjenje(p.id);
-              setState(_loadAll);
+              // Stream se automatski osvježava kroz RM Realtime event
             },
           ),
         ),
@@ -499,41 +497,28 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildTocenjaTab() {
-    return FutureBuilder<List<V2PumpaTocenje>>(
-      future: _futureTocenja,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: _accent));
-        }
-        final lista = snapshot.data ?? [];
-        if (lista.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.directions_car, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
-                const SizedBox(height: 16),
-                Text('Nema zabeleženih točenja',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey,
-                        )),
-                const SizedBox(height: 8),
-                const Text('Klikni + da dodaš točenje', style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async => _loadAll(),
-          color: _accent,
-          child: ListView.builder(
-            padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
-            itemCount: lista.length,
-            itemBuilder: (context, i) => _buildTocenjeCard(lista[i]),
-          ),
-        );
-      },
+  Widget _buildTocenjaTab(List<V2PumpaTocenje> lista) {
+    if (lista.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.directions_car, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+            const SizedBox(height: 16),
+            Text('Nema zabeleženih točenja',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey,
+                    )),
+            const SizedBox(height: 8),
+            const Text('Klikni + da dodaš točenje', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
+      itemCount: lista.length,
+      itemBuilder: (context, i) => _buildTocenjeCard(lista[i]),
     );
   }
 
@@ -585,7 +570,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
             '${_fmt.format(t.litri)} L — ${t.voziloNaziv} — $datumStr',
             () async {
               await V2GorivoService.deleteTocenje(t.id);
-              setState(_loadAll);
+              // Stream se automatski osvježava kroz RM Realtime event
             },
           ),
         ),
@@ -640,7 +625,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                   napomenaCtrl.dispose();
                   Navigator.pop(ctx);
                   if (ok) {
-                    _loadAll();
+                    // Stream se automatski osvježava kroz RM Realtime event
                     V2AppSnackBar.success(context, '✅ Punjenje dodato: $litriVal L');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
@@ -744,7 +729,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                   napomenaCtrl.dispose();
                   Navigator.pop(ctx);
                   if (ok) {
-                    _loadAll();
+                    // Stream se automatski osvježava kroz RM Realtime event
                     V2AppSnackBar.success(context, '✅ Točenje zabeleženo: $litriVal L — ${vozilo.registarskiBroj}');
                   } else {
                     V2AppSnackBar.error(context, '❌ Greška pri dodavanju');
@@ -811,7 +796,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
                 pocetnoCtrl.dispose();
                 Navigator.pop(ctx);
                 if (ok) {
-                  _reloadStanje();
+                  // Stream se automatski osvježava kada RM primi Realtime event za v2_pumpa_config
                   V2AppSnackBar.success(context, '✅ Podešavanja sačuvana');
                 } else {
                   V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
@@ -943,4 +928,19 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );
   }
+}
+
+/// Snapshot svih gorivo podataka za jedan StreamBuilder rebuild
+class _GorivoData {
+  final V2PumpaStanje? stanje;
+  final List<V2PumpaPunjenje> punjenja;
+  final List<V2PumpaTocenje> tocenja;
+  final List<V2VoziloStatistika> statistike;
+
+  const _GorivoData({
+    required this.stanje,
+    required this.punjenja,
+    required this.tocenja,
+    required this.statistike,
+  });
 }

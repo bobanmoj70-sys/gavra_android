@@ -104,6 +104,14 @@ class V2PushTokenService {
     return false;
   }
 
+  /// Sačuvaj token kao pending (za retry kada Supabase postane dostupan)
+  static Future<void> savePendingToken({
+    required String token,
+    required String provider,
+    String? vozacId,
+    String? putnikId,
+  }) async {}
+
   /// Obrisi pending token iz SharedPreferences
   static Future<void> _clearPendingToken() async {}
 

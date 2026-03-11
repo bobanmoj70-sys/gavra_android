@@ -110,11 +110,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
   bool _isGpsTracking = false;
 
   Stream<List<V2Putnik>>? _streamPutnici; // Inicijalizuje se u _initializeCurrentDriver()
-  List<V2Putnik> _latestPutnici = []; // Poslednji podaci iz stream listenera — koristi _reoptimizeAfterStatusChange
-  StreamSubscription<List<V2Putnik>>? _latestPutniciSub; // listener za _latestPutnici
-  // Cache za _rasporedVozaca() rezultat — izbjegava ponovnu iteraciju u svakom build()
-  List<Map<String, String>>? _cachedDodeljenaVremena;
-  List<V2Putnik>? _lastMojiPutniciForCache;
+  List<V2Putnik> _latestPutnici = []; // Svježi putnici — osvježava se u StreamBuilder builder
   late final String _workingDateIso; // Radni datum — izracunava se jednom u initState
 
   List<String> get _sviPolasci {
@@ -140,9 +136,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
         dan: V2DanUtils.odIso(_workingDateIso),
         vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
       );
-      _latestPutniciSub = _streamPutnici!.listen((putnici) {
-        _latestPutnici = putnici;
-      });
       if (rm.isInitialized) {
         _latestPutnici = _putnikService.fetchPutniciSync(
           dan: V2DanUtils.odIso(_workingDateIso),
@@ -224,7 +217,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
     _vozacPutnikRealtimeSub?.cancel();
     _rasporedDebounce?.cancel();
     _vozacPutnikDebounce?.cancel();
-    _latestPutniciSub?.cancel();
     super.dispose();
   }
 
@@ -235,10 +227,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
         dan: V2DanUtils.odIso(_workingDateIso),
         vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
       );
-      // Subscribeuj odmah nakon kreiranja — broadcast stream, ne smije kasniti
-      _latestPutniciSub ??= _streamPutnici!.listen((putnici) {
-        _latestPutnici = putnici;
-      });
       // Sinhronizovano pre-populiši putnike iz cache-a — prikazuju se odmah,
       // bez čekanja na stream emit(). Stream će ih osvježiti čim emituje.
       final rmPrev = V2MasterRealtimeManager.instance;
@@ -261,10 +249,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
       dan: V2DanUtils.odIso(_workingDateIso),
       vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
     );
-    // Subscribeuj odmah nakon kreiranja — broadcast stream, ne smije kasniti
-    _latestPutniciSub ??= _streamPutnici!.listen((putnici) {
-      _latestPutnici = putnici;
-    });
     // Sinhronizovano pre-populiši putnike iz cache-a — prikazuju se odmah,
     // bez čekanja na stream emit(). Stream će ih osvježiti čim emituje.
     final rm = V2MasterRealtimeManager.instance;
@@ -507,11 +491,11 @@ class _VozacScreenState extends State<V2VozacScreen> {
     // Razdvoji pokupljene/otkazane od preostalih
     // Ekran je vec filtriran po vozacu - nema potrebe za dodeljenVozac filterom
     final pokupljeniIOtkazani = sveziPutnici.where((p) {
-      return p.jePokupljen || p.jeOtkazan || p.jeOdsustvo || p.jeBezPolaska;
+      return p.jePokupljen || p.jeOtkazan || p.jeOdsustvo;
     }).toList();
 
     final preostaliPutnici = sveziPutnici.where((p) {
-      return !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo && !p.jeBezPolaska;
+      return !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo;
     }).toList();
 
     if (preostaliPutnici.isEmpty) {
@@ -605,7 +589,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
     // Ekran je vec filtriran po vozacu - nema potrebe za dodeljenVozac filterom ovde
     final filtriraniPutnici = putnici.where((p) {
       // Iskljuci otkazane putnike
-      if (p.jeOtkazan || p.jeBezPolaska) return false;
+      if (p.jeOtkazan) return false;
       // Iskljuci vec pokupljene putnike
       if (p.jePokupljen) return false;
       // Iskljuci odsutne putnike (bolovanje/godisnji)
@@ -701,7 +685,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
         final pTime = V2GradAdresaValidator.normalizeTime(p.polazak);
         if (pTime != normFilterTime) return false;
       }
-      if (p.jeOtkazan || p.jeBezPolaska || p.jePokupljen || p.jeOdsustvo) return false;
+      if (p.jeOtkazan || p.jePokupljen || p.jeOdsustvo) return false;
       if (!V2TextUtils.isStatusActive(p.status)) return false;
       // Iskljuci putnike u obradi (još nisu obrađeni)
       if (p.status?.toLowerCase() == 'obrada') return false;
@@ -920,7 +904,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
       if (putnikId == null) continue;
 
       // Ako V2Putnik nema ID ili je vec pokupljen/otkazan, preskoci
-      if (v2Putnik.jePokupljen || v2Putnik.jeOtkazan || v2Putnik.jeOdsustvo || v2Putnik.jeBezPolaska) continue;
+      if (v2Putnik.jePokupljen || v2Putnik.jeOtkazan || v2Putnik.jeOdsustvo) continue;
 
       // ETA za ovog putnika (po imenu)
       final etaMinuta = _putniciEta?[v2Putnik.ime];
@@ -982,6 +966,8 @@ class _VozacScreenState extends State<V2VozacScreen> {
         stream: _streamPutnici,
         initialData: _latestPutnici.isNotEmpty ? _latestPutnici : null,
         builder: (context, snapshot) {
+          // Osvježi _latestPutnici iz builder-a — zamjena za ručni StreamSubscription
+          if (snapshot.hasData) _latestPutnici = snapshot.data!;
           // -- Zajednicki podaci za body i nav bar --------------------------
           final sviPutnici = snapshot.data ?? <V2Putnik>[];
           final targetDan = V2DanUtils.odIso(_workingDateIso); // jednom, dijeli se svuda
@@ -1000,12 +986,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
                 );
 
           // -- Nav bar: samo dodeljena vremena vozaca ------------------------
-          // Memoizuj — rekalkuliraj samo kad se mojiPutnici promijeni (izbjegava iteraciju u svakom frame)
-          if (!identical(_lastMojiPutniciForCache, mojiPutnici)) {
-            _lastMojiPutniciForCache = mojiPutnici;
-            _cachedDodeljenaVremena = _rasporedVozaca(sviPutnici: mojiPutnici);
-          }
-          final dodeljenaVremena = _cachedDodeljenaVremena ?? _rasporedVozaca(sviPutnici: mojiPutnici);
+          final dodeljenaVremena = _rasporedVozaca(sviPutnici: mojiPutnici);
           final bcVremenaToShow =
               (dodeljenaVremena.where((v) => v['grad'] == 'BC').map((v) => v['vreme']!).toList()..sort());
           final vsVremenaToShow =
@@ -1129,11 +1110,11 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
                       // Broj belih putnika (nepokupljenih) u obe liste
                       final trenutniBeli = filteredByGradVreme
-                          .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo && !p.jeBezPolaska)
+                          .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo)
                           .map((p) => p.id)
                           .toSet();
                       final optimizedBeli = _optimizedRoute
-                          .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo && !p.jeBezPolaska)
+                          .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo)
                           .map((p) => p.id)
                           .toSet();
 

@@ -21,8 +21,7 @@ class V2PutnikHelpers {
   /// Koristi za: brojčanike na tabovima, slobodna mesta, optimizaciju rute
   static bool shouldCountInSeats(V2Putnik p) {
     // Ne računaj ako je otkazan (uključuje obrisan flag i otkazanZaPolazak)
-    // Takođe ne računaj ako je uklonjen polazak (bez_polaska)
-    if (p.jeOtkazan || p.jeBezPolaska) return false;
+    if (p.jeOtkazan) return false;
 
     // Ne računaj ako je na čekanju (obrada) - zauzima mesto tek kad je odobreno
     if (p.status?.toLowerCase() == 'obrada') return false;

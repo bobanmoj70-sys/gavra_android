@@ -1,13 +1,22 @@
-import { createHttpError } from "https://deno.land/std@0.168.0/http/http_errors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 // 🔑 Tipovi podataka za zahtev
+// Podržava:
+//   - tokens: direktni tokeni (legacy / SQL triggers)
+//   - putnik_id: dohvati tokene putnika server-side
+//   - vozac_ids: dohvati tokene jednog ili više vozača server-side
+//   - broadcast_vozaci: dohvati tokene SVIH vozača server-side
+//   - admin_names: dohvati tokene vozača po imenu (admin lista)
 interface PushPayload {
-    tokens: { token: string; provider: string }[]
+    tokens?: { token: string; provider: string }[]
+    putnik_id?: string
+    vozac_ids?: string[]
+    broadcast_vozaci?: boolean
+    admin_names?: string[]
     title: string
     body: string
-    data?: Record<string, string>
+    data?: Record<string, any>
 }
 
 // 🛡️ CORS Headers
@@ -24,7 +33,7 @@ serve(async (req: any) => {
 
     try {
         const payload: PushPayload = await req.json()
-        const { tokens, title, body, data } = payload
+        const { title, body, data } = payload
 
         // 🔐 DOBAVLJANJE TAJNI IZ BAZE (Umesto Dashboard-a)
         const supabaseClient = createClient(
@@ -41,15 +50,66 @@ serve(async (req: any) => {
             secrets[s.key] = s.value
         })
 
-        if (!tokens || tokens.length === 0) {
-            throw createHttpError(400, "Nema tokena za slanje.")
+        // 🎯 RESOLVING TOKENA SERVER-SIDE
+        let resolvedTokens: { token: string; provider: string }[] = []
+
+        if (payload.tokens && payload.tokens.length > 0) {
+            // Direktni tokeni — legacy / SQL trigger pozivi
+            resolvedTokens = payload.tokens
+
+        } else if (payload.putnik_id) {
+            // Dohvati tokene jednog putnika
+            const { data: rows } = await supabaseClient
+                .from('v2_push_tokens')
+                .select('token, provider')
+                .eq('putnik_id', payload.putnik_id)
+            resolvedTokens = (rows ?? []).filter((r: any) => r.token)
+
+        } else if (payload.vozac_ids && payload.vozac_ids.length > 0) {
+            // Dohvati tokene tačno određenih vozača
+            const { data: rows } = await supabaseClient
+                .from('v2_push_tokens')
+                .select('token, provider')
+                .in('vozac_id', payload.vozac_ids)
+            resolvedTokens = (rows ?? []).filter((r: any) => r.token)
+
+        } else if (payload.broadcast_vozaci) {
+            // Dohvati tokene SVIH vozača
+            const { data: rows } = await supabaseClient
+                .from('v2_push_tokens')
+                .select('token, provider')
+                .not('vozac_id', 'is', null)
+            resolvedTokens = (rows ?? []).filter((r: any) => r.token)
+
+        } else if (payload.admin_names && payload.admin_names.length > 0) {
+            // Dohvati tokene vozača po imenu (admin lista)
+            const { data: vozaci } = await supabaseClient
+                .from('v2_vozaci')
+                .select('id')
+                .in('ime', payload.admin_names)
+            const adminIds = (vozaci ?? []).map((v: any) => v.id)
+            if (adminIds.length > 0) {
+                const { data: rows } = await supabaseClient
+                    .from('v2_push_tokens')
+                    .select('token, provider')
+                    .in('vozac_id', adminIds)
+                resolvedTokens = (rows ?? []).filter((r: any) => r.token)
+            }
+        }
+
+        if (resolvedTokens.length === 0) {
+            console.log('[send-push-notification] Nema tokena za slanje.')
+            return new Response(
+                JSON.stringify({ success: true, results: [], skipped: 'no_tokens' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
         }
 
         const results = []
 
         // 🚀 RAZDVAJANJE PO PROVAJDERIMA (case-insensitive: 'fcm'/'FCM', 'huawei'/'hms'/'HMS')
-        const fcmTokens = tokens.filter(t => t.provider?.toUpperCase() === 'FCM').map(t => t.token)
-        const hmsTokens = tokens.filter(t => ['HMS', 'HUAWEI'].includes(t.provider?.toUpperCase())).map(t => t.token)
+        const fcmTokens = resolvedTokens.filter(t => t.provider?.toUpperCase() === 'FCM').map(t => t.token)
+        const hmsTokens = resolvedTokens.filter(t => ['HMS', 'HUAWEI'].includes(t.provider?.toUpperCase())).map(t => t.token)
 
         // 1. 🟢 SLANJE PREKO FCM (Google/Apple)
         if (fcmTokens.length > 0) {

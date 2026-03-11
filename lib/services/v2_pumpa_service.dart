@@ -66,22 +66,30 @@ class V2PumpaPunjenjaService {
   V2PumpaPunjenjaService._();
 
   static const String tabela = 'v2_pumpa_punjenja';
+  static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
-  /// Dohvati sva punjenja (najnovija prva)
-  static Future<List<V2PumpaPunjenje>> getPunjenja({int limit = 50}) async {
-    try {
-      final response = await supabase
-          .from(tabela)
-          .select('id,datum,litri,cena_po_litru,ukupno_cena,napomena,created_at')
-          .order('datum', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return response.map((r) => V2PumpaPunjenje.fromJson(r)).toList();
-    } catch (e) {
-      debugPrint('[V2PumpaPunjenjaService] getPunjenja greška: $e');
-      return [];
-    }
+  /// Dohvati sva punjenja iz RM cache-a — 0 DB upita, sortirana po datum DESC
+  static List<V2PumpaPunjenje> getPunjenjaSync() {
+    final rows = _rm.punjenjaCache.values.toList()
+      ..sort((a, b) {
+        final da = a['datum']?.toString() ?? '';
+        final db = b['datum']?.toString() ?? '';
+        final ca = a['created_at']?.toString() ?? '';
+        final cb = b['created_at']?.toString() ?? '';
+        final cmp = db.compareTo(da);
+        return cmp != 0 ? cmp : cb.compareTo(ca);
+      });
+    return rows.map((r) => V2PumpaPunjenje.fromJson(r)).toList();
   }
+
+  /// Async wrapper za kompatibilnost sa postojećim pozivima
+  static Future<List<V2PumpaPunjenje>> getPunjenja({int limit = 50}) async => getPunjenjaSync().take(limit).toList();
+
+  /// Stream punjenja — autorefresh kada se cache promijeni
+  static Stream<List<V2PumpaPunjenje>> streamPunjenja({int limit = 50}) => _rm.v2StreamFromCache<List<V2PumpaPunjenje>>(
+        tables: [tabela],
+        build: () => getPunjenjaSync().take(limit).toList(),
+      );
 
   /// Dodaj punjenje pumpe
   static Future<bool> addPunjenje({
@@ -91,13 +99,18 @@ class V2PumpaPunjenjaService {
     String? napomena,
   }) async {
     try {
-      await supabase.from(tabela).insert({
-        'datum': datum.toIso8601String().split('T')[0],
-        'litri': litri,
-        'cena_po_litru': cenaPoPLitru,
-        'ukupno_cena': (cenaPoPLitru != null) ? litri * cenaPoPLitru : null,
-        'napomena': napomena,
-      });
+      final row = await supabase
+          .from(tabela)
+          .insert({
+            'datum': datum.toIso8601String().split('T')[0],
+            'litri': litri,
+            'cena_po_litru': cenaPoPLitru,
+            'ukupno_cena': (cenaPoPLitru != null) ? litri * cenaPoPLitru : null,
+            'napomena': napomena,
+          })
+          .select()
+          .single();
+      _rm.v2UpsertToCache(tabela, row);
       return true;
     } catch (e) {
       debugPrint('[V2PumpaPunjenjaService] addPunjenje greška: $e');
@@ -109,6 +122,7 @@ class V2PumpaPunjenjaService {
   static Future<bool> deletePunjenje(String id) async {
     try {
       await supabase.from(tabela).delete().eq('id', id);
+      _rm.v2RemoveFromCache(tabela, id);
       return true;
     } catch (e) {
       debugPrint('[V2PumpaPunjenjaService] deletePunjenje greška: $e');
@@ -116,23 +130,10 @@ class V2PumpaPunjenjaService {
     }
   }
 
-  /// Posljednja cijena po litru
+  /// Posljednja cijena po litru — iz cache-a
   static Future<double?> getPoslednaCenaPoPLitru() async {
-    try {
-      final response = await supabase
-          .from(tabela)
-          .select('cena_po_litru')
-          .not('cena_po_litru', 'is', null)
-          .order('datum', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-      if (response == null) return null;
-      return (response['cena_po_litru'] as num?)?.toDouble();
-    } catch (e) {
-      debugPrint('[V2PumpaPunjenjaService] getPoslednaCenaPoPLitru greška: $e');
-      return null;
-    }
+    final rows = getPunjenjaSync();
+    return rows.firstOrNull?.cenaPoPLitru;
   }
 }
 
@@ -145,27 +146,45 @@ class V2PumpaTocenjaService {
   V2PumpaTocenjaService._();
 
   static const String tabela = 'v2_pumpa_tocenja';
+  static V2MasterRealtimeManager get _rm => V2MasterRealtimeManager.instance;
 
-  /// Dohvati sva točenja (najnovija prva), opcionalno filtrirano po vozilu
-  static Future<List<V2PumpaTocenje>> getTocenja({
-    int limit = 100,
-    String? voziloId,
-  }) async {
-    try {
-      var query = supabase
-          .from(tabela)
-          .select('id,datum,vozilo_id,litri,km_vozila,napomena,created_at,v2_vozila(registarski_broj,marka,model)');
-
-      final response = await (voziloId != null ? query.eq('vozilo_id', voziloId) : query)
-          .order('datum', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return response.map((r) => V2PumpaTocenje.fromJson(r)).toList();
-    } catch (e) {
-      debugPrint('[V2PumpaTocenjaService] getTocenja greška: $e');
-      return [];
-    }
+  /// Dohvati sva točenja iz RM cache-a — 0 DB upita, sortirana po datum DESC
+  static List<V2PumpaTocenje> getTocenjaSync({String? voziloId}) {
+    final rows =
+        _rm.tocenjaCache.values.where((r) => voziloId == null || r['vozilo_id']?.toString() == voziloId).toList()
+          ..sort((a, b) {
+            final da = a['datum']?.toString() ?? '';
+            final db = b['datum']?.toString() ?? '';
+            final ca = a['created_at']?.toString() ?? '';
+            final cb = b['created_at']?.toString() ?? '';
+            final cmp = db.compareTo(da);
+            return cmp != 0 ? cmp : cb.compareTo(ca);
+          });
+    // Enrichuj sa vozilo podacima iz vozilaCache
+    return rows.map((r) {
+      final voziloRow = _rm.vozilaCache[r['vozilo_id']?.toString()];
+      return V2PumpaTocenje.fromJson({
+        ...r,
+        if (voziloRow != null)
+          'v2_vozila': {
+            'registarski_broj': voziloRow['registarski_broj'],
+            'marka': voziloRow['marka'],
+            'model': voziloRow['model'],
+          },
+      });
+    }).toList();
   }
+
+  /// Async wrapper za kompatibilnost sa postojećim pozivima
+  static Future<List<V2PumpaTocenje>> getTocenja({int limit = 100, String? voziloId}) async =>
+      getTocenjaSync(voziloId: voziloId).take(limit).toList();
+
+  /// Stream točenja — autorefresh kada se cache promijeni
+  static Stream<List<V2PumpaTocenje>> streamTocenja({int limit = 100, String? voziloId}) =>
+      _rm.v2StreamFromCache<List<V2PumpaTocenje>>(
+        tables: [tabela, 'v2_vozila'],
+        build: () => getTocenjaSync(voziloId: voziloId).take(limit).toList(),
+      );
 
   /// Dodaj točenje
   static Future<bool> addTocenje({
@@ -176,13 +195,18 @@ class V2PumpaTocenjaService {
     String? napomena,
   }) async {
     try {
-      await supabase.from(tabela).insert({
-        'datum': datum.toIso8601String().split('T')[0],
-        'vozilo_id': voziloId,
-        'litri': litri,
-        'km_vozila': kmVozila,
-        'napomena': napomena,
-      });
+      final row = await supabase
+          .from(tabela)
+          .insert({
+            'datum': datum.toIso8601String().split('T')[0],
+            'vozilo_id': voziloId,
+            'litri': litri,
+            'km_vozila': kmVozila,
+            'napomena': napomena,
+          })
+          .select()
+          .single();
+      _rm.v2UpsertToCache(tabela, row);
       return true;
     } catch (e) {
       debugPrint('[V2PumpaTocenjaService] addTocenje greška: $e');
@@ -194,6 +218,7 @@ class V2PumpaTocenjaService {
   static Future<bool> deleteTocenje(String id) async {
     try {
       await supabase.from(tabela).delete().eq('id', id);
+      _rm.v2RemoveFromCache(tabela, id);
       return true;
     } catch (e) {
       debugPrint('[V2PumpaTocenjaService] deleteTocenje greška: $e');
@@ -201,22 +226,29 @@ class V2PumpaTocenjaService {
     }
   }
 
-  /// Potrošnja po vozilu za period — raw data za statistike
+  /// Potrošnja po vozilu za period — iz cache-a
   static Future<List<Map<String, dynamic>>> getTocenjaZaStatistike({
     DateTime? od,
     DateTime? do_,
   }) async {
-    try {
-      var query =
-          supabase.from(tabela).select('vozilo_id, litri, km_vozila, v2_vozila(registarski_broj, marka, model)');
-
-      if (od != null) query = query.gte('datum', od.toIso8601String().split('T')[0]);
-      if (do_ != null) query = query.lte('datum', do_.toIso8601String().split('T')[0]);
-
-      return List<Map<String, dynamic>>.from(await query);
-    } catch (e) {
-      debugPrint('[V2PumpaTocenjaService] getTocenjaZaStatistike greška: $e');
-      return [];
-    }
+    final odStr = od?.toIso8601String().split('T')[0];
+    final doStr = do_?.toIso8601String().split('T')[0];
+    return _rm.tocenjaCache.values.where((r) {
+      final d = r['datum']?.toString() ?? '';
+      if (odStr != null && d.compareTo(odStr) < 0) return false;
+      if (doStr != null && d.compareTo(doStr) > 0) return false;
+      return true;
+    }).map((r) {
+      final voziloRow = _rm.vozilaCache[r['vozilo_id']?.toString()];
+      return <String, dynamic>{
+        ...r,
+        if (voziloRow != null)
+          'v2_vozila': {
+            'registarski_broj': voziloRow['registarski_broj'],
+            'marka': voziloRow['marka'],
+            'model': voziloRow['model'],
+          },
+      };
+    }).toList();
   }
 }
