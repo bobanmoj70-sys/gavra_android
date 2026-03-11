@@ -1514,7 +1514,7 @@ List<Map<String, dynamic>> _profilIzracunajIstorijuIzKolekcije(List<dynamic> svi
       if (datumStr == null) continue;
       final datum = DateTime.tryParse(datumStr);
       if (datum == null) continue;
-      final mesecKey = '\${datum.year}-\${datum.month.toString().padLeft(2, '0')}';
+      final mesecKey = '${datum.year}-${datum.month.toString().padLeft(2, '0')}';
       poMesecima[mesecKey] = (poMesecima[mesecKey] ?? 0.0) + V2GradAdresaValidator.parseDouble(p['iznos']);
       if (!poslednjeDatum.containsKey(mesecKey) || datum.isAfter(poslednjeDatum[mesecKey]!)) {
         poslednjeDatum[mesecKey] = datum;
