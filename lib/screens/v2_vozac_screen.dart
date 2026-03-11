@@ -962,7 +962,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
       ),
       child: StreamBuilder<List<V2Putnik>>(
         stream: _streamPutnici,
-        initialData: _latestPutnici.isNotEmpty ? _latestPutnici : null,
         builder: (context, snapshot) {
           // Osvježi _latestPutnici iz builder-a — zamjena za ručni StreamSubscription
           if (snapshot.hasData) _latestPutnici = snapshot.data!;
