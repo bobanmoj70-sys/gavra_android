@@ -273,7 +273,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
 
       // Istorija plaćanja za UI prikaz (iz iste kolekcije — nema DB upita)
-      final istorija = _izracunajIstorijuIzKolekcije(sveZapisiGodina);
+      final istorija = _profilIzracunajIstorijuIzKolekcije(sveZapisiGodina);
 
       final pocetniDugRaw = V2GradAdresaValidator.parseDouble(_putnikData['dug']);
       final zaduzenje = pocetniDugRaw + (ukupnoZaplacanje - ukupnoUplaceno);
@@ -381,44 +381,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       return (req['dodeljeno_vreme'] ?? '').toString().trim();
     } catch (e) {
       return null;
-    }
-  }
-
-  /// Izračunaj istoriju plaćanja iz već učitane kolekcije zapisa (nema DB upita)
-  static List<Map<String, dynamic>> _izracunajIstorijuIzKolekcije(List<dynamic> sviZapisi) {
-    try {
-      final Map<String, double> poMesecima = {};
-      final Map<String, DateTime> poslednjeDatum = {};
-      for (final p in sviZapisi) {
-        final tip = p['tip'] as String?;
-        if (tip != 'uplata') continue;
-        final datumStr = p['datum'] as String?;
-        if (datumStr == null) continue;
-        final datum = DateTime.tryParse(datumStr);
-        if (datum == null) continue;
-        final mesecKey = '${datum.year}-${datum.month.toString().padLeft(2, '0')}';
-        poMesecima[mesecKey] = (poMesecima[mesecKey] ?? 0.0) + V2GradAdresaValidator.parseDouble(p['iznos']);
-        if (!poslednjeDatum.containsKey(mesecKey) || datum.isAfter(poslednjeDatum[mesecKey]!)) {
-          poslednjeDatum[mesecKey] = datum;
-        }
-      }
-      final result = poMesecima.entries.map((e) {
-        final parts = e.key.split('-');
-        return {
-          'mesec': int.parse(parts[1]),
-          'godina': int.parse(parts[0]),
-          'iznos': e.value,
-          'datum': poslednjeDatum[e.key]
-        };
-      }).toList();
-      result.sort((a, b) {
-        final dateA = DateTime(a['godina'] as int, a['mesec'] as int);
-        final dateB = DateTime(b['godina'] as int, b['mesec'] as int);
-        return dateB.compareTo(dateA);
-      });
-      return result;
-    } catch (e) {
-      return [];
     }
   }
 
@@ -832,7 +794,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                           const SizedBox(height: 16),
                           // Opis baziran na weather code
                           Text(
-                            _getWeatherDescription(data.dailyWeatherCode ?? data.weatherCode),
+                            _profilGetWeatherDescription(data.dailyWeatherCode ?? data.weatherCode),
                             style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w500),
                             textAlign: TextAlign.center,
                           ),
@@ -847,23 +809,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         ),
       ),
     );
-  }
-
-  static String _getWeatherDescription(int code) {
-    if (code == 0) return 'Vedro nebo';
-    if (code == 1) return 'Pretežno vedro';
-    if (code == 2) return 'Delimično oblačno';
-    if (code == 3) return 'Oblačno';
-    if (code >= 45 && code <= 48) return 'Magla';
-    if (code >= 51 && code <= 55) return 'Sitna kiša';
-    if (code >= 56 && code <= 57) return 'Ledena kiša';
-    if (code >= 61 && code <= 65) return 'Kiša';
-    if (code >= 66 && code <= 67) return 'Ledena kiša';
-    if (code >= 71 && code <= 77) return 'Sneg';
-    if (code >= 80 && code <= 82) return 'Pljuskovi';
-    if (code >= 85 && code <= 86) return 'Snežni pljuskovi';
-    if (code >= 95 && code <= 99) return 'Grmljavina';
-    return '';
   }
 
   @override
@@ -1170,11 +1115,11 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         Row(
                           children: [
                             Expanded(
-                              child: _buildStatCard('🚌', 'Vožnje', _brojVoznji.toString(), Colors.blue, 'ovaj mesec'),
+                              child: _profilBuildStatCard('🚌', 'Vožnje', _brojVoznji.toString(), Colors.blue, 'ovaj mesec'),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: _buildStatCard(
+                              child: _profilBuildStatCard(
                                 '❌',
                                 'Otkazano',
                                 _brojOtkazivanja.toString(),
@@ -1265,17 +1210,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       },
     );
   }
-
-  static const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-  static const _names2 = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
-  static const _statusPrioritet = {
-    'odbijeno': 1,
-    'otkazano': 2,
-    'obrada': 3,
-    'odobreno': 4,
-    'pokupljen': 5,
-  };
-  static const _daniRedosled = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4};
 
   /// Widget za prikaz rasporeda polazaka po danima
   Widget _buildRasporedCard() {
@@ -1502,48 +1436,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  static Widget _buildStatCard(String icon, String title, String value, Color color, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  title,
-                  style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            subtitle,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Dugme za otvaranje detaljnih statistika
   Widget _buildDetaljneStatistikeDugme() {
     return Card(
@@ -1593,4 +1485,107 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
   /// v2 helper: čita tip putnika iz '_tabela' ključa (v2 sistem)
   /// Fallback na stari 'tip' ključ radi kompatibilnosti
+}
+
+// ─── Top-level konstante ────────────────────────────────────────────────────
+
+const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+const _names2 = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
+const _statusPrioritet = {
+  'odbijeno': 1,
+  'otkazano': 2,
+  'obrada': 3,
+  'odobreno': 4,
+  'pokupljen': 5,
+};
+const _daniRedosled = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4};
+
+// ─── Top-level helper funkcije ───────────────────────────────────────────────
+
+/// Izračunaj istoriju plaćanja iz već učitane kolekcije zapisa (nema DB upita)
+List<Map<String, dynamic>> _profilIzracunajIstorijuIzKolekcije(List<dynamic> sviZapisi) {
+  try {
+    final Map<String, double> poMesecima = {};
+    final Map<String, DateTime> poslednjeDatum = {};
+    for (final p in sviZapisi) {
+      final tip = p['tip'] as String?;
+      if (tip != 'uplata') continue;
+      final datumStr = p['datum'] as String?;
+      if (datumStr == null) continue;
+      final datum = DateTime.tryParse(datumStr);
+      if (datum == null) continue;
+      final mesecKey = '\${datum.year}-\${datum.month.toString().padLeft(2, '0')}';
+      poMesecima[mesecKey] = (poMesecima[mesecKey] ?? 0.0) + V2GradAdresaValidator.parseDouble(p['iznos']);
+      if (!poslednjeDatum.containsKey(mesecKey) || datum.isAfter(poslednjeDatum[mesecKey]!)) {
+        poslednjeDatum[mesecKey] = datum;
+      }
+    }
+    final result = poMesecima.entries.map((e) {
+      final parts = e.key.split('-');
+      return {
+        'mesec': int.parse(parts[1]),
+        'godina': int.parse(parts[0]),
+        'iznos': e.value,
+        'datum': poslednjeDatum[e.key],
+      };
+    }).toList();
+    result.sort((a, b) {
+      final dateA = DateTime(a['godina'] as int, a['mesec'] as int);
+      final dateB = DateTime(b['godina'] as int, b['mesec'] as int);
+      return dateB.compareTo(dateA);
+    });
+    return result;
+  } catch (e) {
+    return [];
+  }
+}
+
+String _profilGetWeatherDescription(int code) {
+  if (code == 0) return 'Vedro nebo';
+  if (code == 1) return 'Pretežno vedro';
+  if (code == 2) return 'Delimično oblačno';
+  if (code == 3) return 'Oblačno';
+  if (code >= 45 && code <= 48) return 'Magla';
+  if (code >= 51 && code <= 55) return 'Sitna kiša';
+  if (code >= 56 && code <= 57) return 'Ledena kiša';
+  if (code >= 61 && code <= 65) return 'Kiša';
+  if (code >= 66 && code <= 67) return 'Ledena kiša';
+  if (code >= 71 && code <= 77) return 'Sneg';
+  if (code >= 80 && code <= 82) return 'Pljuskovi';
+  if (code >= 85 && code <= 86) return 'Snežni pljuskovi';
+  if (code >= 95 && code <= 99) return 'Grmljavina';
+  return '';
+}
+
+Widget _profilBuildStatCard(String icon, String title, String value, Color color, String subtitle) {
+  return Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 18)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(title, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
+      ],
+    ),
+  );
 }
