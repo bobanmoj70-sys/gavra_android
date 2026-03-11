@@ -12,6 +12,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'globals.dart';
 import 'screens/v2_welcome_screen.dart';
 import 'services/realtime/v2_master_realtime_manager.dart';
+import 'services/v2_background_gps_service.dart';
 import 'services/v2_firebase_service.dart';
 import 'services/v2_huawei_push_service.dart';
 import 'services/v2_realtime_gps_service.dart';
@@ -56,6 +57,13 @@ Future<void> _doStartupTasks() async {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   } catch (e) {
     debugPrint('⚠️ [main] Wakelock/SystemChrome greška: $e');
+  }
+
+  // Inicijalizuj background GPS foreground service (registracija, ne pokretanje)
+  try {
+    await V2BackgroundGpsService.initialize();
+  } catch (e) {
+    debugPrint('⚠️ [main] BackgroundGpsService init greška: $e');
   }
 
   // Locale - UTF-8 podrska za dijakritiku

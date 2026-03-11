@@ -11,7 +11,6 @@ class V2DugButton extends StatelessWidget {
     this.iconColor,
     this.textColor,
     this.wide = false,
-    this.isLoading = false,
   });
   final int brojDuznika;
   final VoidCallback? onTap;
@@ -19,8 +18,6 @@ class V2DugButton extends StatelessWidget {
   final Color? iconColor;
   final Color? textColor;
   final bool wide;
-  // TODO: isLoading nije jos implementiran — dodati spinner i onTap blokadu kada je true
-  final bool isLoading;
 
   // Pre-computed konstante da bi se izbegao ponovni MaterialColor[] lookup na svakom rebuild-u
   static const Color _defaultBg = Color(0xFFFFEBEE); // Colors.red[50]

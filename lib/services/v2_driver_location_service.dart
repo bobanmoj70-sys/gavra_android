@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../globals.dart';
 import '../utils/v2_grad_adresa_validator.dart';
+import 'v2_background_gps_service.dart';
 import 'v2_openrouteservice.dart';
 import 'v2_permission_service.dart';
 
@@ -22,9 +23,9 @@ class V2DriverLocationService {
   // Lokacija (lat/lng) → Supabase svake 30s (bez API poziva).
   // ORS ETA korekcija → svake 60s (odvojeni timer, ~900 poziva/dan).
   static const Duration _etaUpdateInterval = Duration(minutes: 1);
+  static final _notifPlugin = FlutterLocalNotificationsPlugin();
   static const int _gpsNotifId = 9001;
   static const String _gpsChannelId = 'gavra_gps_tracking';
-  static final _notifPlugin = FlutterLocalNotificationsPlugin();
 
   // State
   Timer? _etaTimer;
@@ -88,15 +89,17 @@ class V2DriverLocationService {
 
     await _sendCurrentLocation();
 
-    // Lokacija (lat/lng) se šalje svake 30s putem V2RealtimeGpsService (bez API).
-    // ORS ETA se racuna odvojeno svake 60s.
+    // ORS ETA korekcija — svake 60s (ne šalje lokaciju, samo ETA)
     _etaTimer = Timer.periodic(_etaUpdateInterval, (_) => unawaited(_refreshEta()));
 
-    // Prikaži persistent notifikaciju — drži app živ dok vozač prikuplja putnike
-    await _showGpsNotif(
+    // Pokreni Android foreground service — GPS ostaje aktivan i kada app ide u pozadinu
+    await V2BackgroundGpsService.start(
+      vozacId: vozacId,
       grad: grad,
-      vreme: vremePolaska ?? '',
-      putniciCount: remainingPassengers,
+      vremePolaska: vremePolaska ?? '',
+      smer: smer ?? '',
+      putniciEta: putniciEta,
+      putniciRedosled: putniciRedosled,
     );
 
     return true;
@@ -109,7 +112,10 @@ class V2DriverLocationService {
     // Postavi flag odmah da spriječi novi _sendCurrentLocation
     _isTracking = false;
 
-    // Ukloni persistent notifikaciju iz status bara
+    // Zaustavi foreground service (on sam markira vozača neaktivnim u Supabase i uklanja notifikaciju)
+    await V2BackgroundGpsService.stop();
+
+    // Ukloni i lokalnu notifikaciju ako je još prikazana
     await _cancelGpsNotif();
 
     // Uvijek pokušaj update bez obzira na _isTracking flag
@@ -142,6 +148,8 @@ class V2DriverLocationService {
     if (!_isTracking) return;
 
     _currentPutniciEta = Map.from(newPutniciEta);
+    // Ažuriraj ETA i u background servisu
+    await V2BackgroundGpsService.updateEta(newPutniciEta);
     await _sendCurrentLocation();
 
     final activeCount = _currentPutniciEta!.values.where((v) => v >= 0).length;
@@ -191,45 +199,7 @@ class V2DriverLocationService {
     return await V2PermissionService.ensureGpsForNavigation();
   }
 
-  /// Prikaži ongoing notifikaciju u status baru
-  Future<void> _showGpsNotif({
-    required String grad,
-    required String vreme,
-    required int putniciCount,
-  }) async {
-    await _notifPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(
-          const AndroidNotificationChannel(
-            _gpsChannelId,
-            'Gavra GPS Tracking',
-            description: 'Aktivna ruta — vozač prati putnike',
-            importance: Importance.low,
-            playSound: false,
-            enableVibration: false,
-          ),
-        );
-    await _notifPlugin.show(
-      _gpsNotifId,
-      '🚌 Gavra 013 — $grad $vreme',
-      putniciCount > 0 ? 'Preostalo putnika: $putniciCount' : 'GPS tracking aktivan',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _gpsChannelId,
-          'Gavra GPS Tracking',
-          importance: Importance.low,
-          priority: Priority.low,
-          ongoing: true,
-          autoCancel: false,
-          playSound: false,
-          enableVibration: false,
-          icon: '@mipmap/ic_launcher',
-        ),
-      ),
-    );
-  }
-
-  /// Ukloni ongoing notifikaciju
+  /// Ukloni ongoing notifikaciju (fallback, background service sam uklanja svoju)
   Future<void> _cancelGpsNotif() async {
     await _notifPlugin.cancel(_gpsNotifId);
   }

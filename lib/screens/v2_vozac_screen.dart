@@ -522,9 +522,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
       if (result.success && result.optimizedPutnici != null) {
         if (mounted) {
+          final skippedPutnici = result.skippedPutnici ?? [];
           setState(() {
-            // ? KOMBINUJ: optimizovani preostali + pokupljeni/otkazani na kraju
-            _optimizedRoute = [...result.optimizedPutnici!, ...pokupljeniIOtkazani];
+            // KOMBINUJ: preskoceni (bez adrese) na vrhu, zatim optimizovani, pokupljeni/otkazani na kraju
+            _optimizedRoute = [...skippedPutnici, ...result.optimizedPutnici!, ...pokupljeniIOtkazani];
           });
 
           if (V2DriverLocationService.instance.isTracking && result.putniciEta != null) {
@@ -535,6 +536,12 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
           final sledeci = result.optimizedPutnici!.isNotEmpty ? result.optimizedPutnici!.first.ime : 'N/A';
           V2AppSnackBar.info(context, '🔄 Ruta ažurirana! Sledeci: $sledeci (${preostaliPutnici.length} preostalo)');
+
+          if (skippedPutnici.isNotEmpty) {
+            final skippedNames = skippedPutnici.take(5).map((p) => p.ime).join(', ');
+            final moreText = skippedPutnici.length > 5 ? ' +${skippedPutnici.length - 5} više' : '';
+            V2AppSnackBar.warning(context, '⚠️ ${skippedPutnici.length} putnika BEZ adrese: $skippedNames$moreText');
+          }
         }
       }
     } catch (e) {
@@ -594,7 +601,6 @@ class _VozacScreenState extends State<V2VozacScreen> {
       if (p.jeOdsustvo) return false;
       final hasValidAddress = (p.adresaId != null && p.adresaId!.isNotEmpty) ||
           (p.adresa != null && p.adresa!.isNotEmpty && p.adresa != p.grad);
-      debugPrint('[START] ${p.ime} adresaId=${p.adresaId} adresa=${p.adresa} grad=${p.grad} valid=$hasValidAddress');
       return hasValidAddress;
     }).toList();
 
@@ -603,8 +609,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
         setState(() {
           _isOptimizing = false;
         });
-        final bezAdrese = putnici.where((p) => !p.jeOtkazan && !p.jePokupljen && !p.jeOdsustvo).length;
-        V2AppSnackBar.warning(context, '⚠️ Nema putnika sa adresama za optimizaciju\n(${putnici.length} ušlo, $bezAdrese aktivnih, 0 sa adresom)');
+        V2AppSnackBar.warning(context, '⚠️ Nema putnika sa adresama za optimizaciju');
       }
       return;
     }
@@ -631,7 +636,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
           });
         }
 
-        if (_currentDriver != null && result.putniciEta != null) {
+        if (_currentDriver != null) {
           await _startGpsTracking();
         }
 

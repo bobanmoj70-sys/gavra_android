@@ -44,12 +44,9 @@
   <uses-permission android:name="android.permission.USE_BIOMETRIC" />
   <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
-  <!-- 🛰️ GPS PERMISSIONS (foreground only - no background tracking) -->
-  <!-- ACCESS_BACKGROUND_LOCATION removed - not used, avoids Google Play video requirement -->
-  <!-- FOREGROUND_SERVICE removed - geolocator/background_service plugins add it via merge, -->
-  <!-- but we remove it to avoid Google Play Foreground Service declaration requirement -->
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" tools:node="remove" />
+  <!-- 🛰️ GPS PERMISSIONS - FOREGROUND_SERVICE_LOCATION odobren od Google Play (video verifikacija poslana) -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
   <!-- 🔊 VOICE NAVIGATION PERMISSIONS -->
@@ -124,6 +121,13 @@
         <action android:name="android.service.notification.NotificationListenerService" />
       </intent-filter>
     </service>
+
+    <!-- 🛰️ GPS FOREGROUND SERVICE - background GPS tracking dok vozač prikuplja putnike -->
+    <service
+      android:name="id.flutter.flutter_background_service.BackgroundService"
+      android:foregroundServiceType="location"
+      android:exported="false"
+      tools:replace="android:foregroundServiceType,android:exported" />
 
     <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
