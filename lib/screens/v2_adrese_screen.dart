@@ -206,11 +206,14 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _adresaFilterChip('Svi', _filterGrad == 'Svi', onTap: () => setState(() => _filterGrad = 'Svi')),
+                            _adresaFilterChip('Svi', _filterGrad == 'Svi',
+                                onTap: () => setState(() => _filterGrad = 'Svi')),
                             const SizedBox(width: 8),
-                            _adresaFilterChip('Bela Crkva', _filterGrad == 'BC', onTap: () => setState(() => _filterGrad = 'BC')),
+                            _adresaFilterChip('Bela Crkva', _filterGrad == 'BC',
+                                onTap: () => setState(() => _filterGrad = 'BC')),
                             const SizedBox(width: 8),
-                            _adresaFilterChip('Vrsac', _filterGrad == 'VS', onTap: () => setState(() => _filterGrad = 'VS')),
+                            _adresaFilterChip('Vrsac', _filterGrad == 'VS',
+                                onTap: () => setState(() => _filterGrad = 'VS')),
                           ],
                         ),
                       ],
@@ -254,7 +257,6 @@ class _AdreseScreenState extends State<V2AdreseScreen> {
       },
     );
   }
-
 }
 
 // ─── top-level helperi (bez state pristupa) ───────────────────────────────────
@@ -314,7 +316,11 @@ Widget _adresaCard(
         ),
         title: Text(adresa.naziv, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         subtitle: Text(
-          adresa.grad == 'BC' ? 'Bela Crkva' : adresa.grad == 'VS' ? 'Vrsac' : adresa.grad ?? '',
+          adresa.grad == 'BC'
+              ? 'Bela Crkva'
+              : adresa.grad == 'VS'
+                  ? 'Vrsac'
+                  : adresa.grad ?? '',
           style: TextStyle(color: Colors.grey[400], fontSize: 12),
         ),
         trailing: Row(

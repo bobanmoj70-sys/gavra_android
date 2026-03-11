@@ -231,7 +231,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final themeManager = V2ThemeManager();

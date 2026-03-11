@@ -64,7 +64,7 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
     try {
       final staraSifra = _staraSifraController.text;
       if (_trenutnaSifra != null && _trenutnaSifra!.isNotEmpty && _trenutnaSifra != staraSifra) {
-                v2ShowError(context, 'Pogrešna trenutna šifra.');
+        v2ShowError(context, 'Pogrešna trenutna šifra.');
         return;
       }
 
@@ -81,7 +81,6 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

@@ -14,8 +14,7 @@ class V2AuditLogScreen extends StatefulWidget {
 }
 
 class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
-  final Stream<List<Map<String, dynamic>>> _stream =
-      V2MasterRealtimeManager.instance.streamAuditLog();
+  final Stream<List<Map<String, dynamic>>> _stream = V2MasterRealtimeManager.instance.streamAuditLog();
 
   // Filteri — primenjuju se klijentski na cache podatke
   String? _filterTip;
