@@ -14,71 +14,11 @@ class V2AuditLogScreen extends StatefulWidget {
 }
 
 class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
-  late final Stream<List<Map<String, dynamic>>> _stream;
+  final Stream<List<Map<String, dynamic>>> _stream =
+      V2MasterRealtimeManager.instance.streamAuditLog();
 
   // Filteri — primenjuju se klijentski na cache podatke
   String? _filterTip;
-
-  @override
-  void initState() {
-    super.initState();
-    _stream = V2MasterRealtimeManager.instance.streamAuditLog();
-  }
-
-  static List<Map<String, dynamic>> _applyFilters(
-    List<Map<String, dynamic>> logs,
-    String? filterTip,
-  ) {
-    // Uvijek samo vozači — putnici imaju svoje ekrane
-    final vozacLogs = logs.where((log) => log['aktor_tip']?.toString() == 'vozac').toList();
-    if (filterTip == null) return vozacLogs;
-    return vozacLogs.where((log) => log['tip']?.toString() == filterTip).toList();
-  }
-
-  static Color _tipColor(String tip) {
-    if (tip.contains('zahtev') || tip == 'pokupljen') return Colors.greenAccent;
-    if (tip.contains('otkazan') || tip.contains('otkazano') || tip.contains('odbijen')) return Colors.redAccent;
-    if (tip.contains('uplata') || tip == 'naplata') return Colors.amberAccent;
-    if (tip.contains('logout') || tip.contains('sifre')) return Colors.purpleAccent;
-    if (tip.contains('termin') || tip.contains('vozac')) return Colors.lightBlueAccent;
-    if (tip.contains('odsustvo')) return Colors.orangeAccent;
-    return Colors.white70;
-  }
-
-  static const _tipEmojiMap = {
-    'odobren_zahtev': '✅',
-    'odbijen_zahtev': '❌',
-    'zahtev_poslan': '📤',
-    'zahtev_otkazan': '🚫',
-    'pokupljen': '🚗',
-    'otkazano_vozac': '❌',
-    'naplata': '💳',
-    'uplata_dodana': '💰',
-    'odsustvo_postavljeno': '🏥',
-    'odsustvo_uklonjeno': '✅',
-    'putnik_logout': '🚪',
-    'dodat_termin': '📅',
-    'uklonjen_termin': '🗑️',
-    'dodeljen_vozac': '👤',
-    'uklonjen_vozac': '👤',
-    'promena_sifre': '🔑',
-  };
-
-  static String _tipEmoji(String tip) => _tipEmojiMap[tip] ?? '📋';
-
-  static String _formatDatum(String? iso) {
-    if (iso == null) return '—';
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      final d = dt.day.toString().padLeft(2, '0');
-      final mo = dt.month.toString().padLeft(2, '0');
-      final h = dt.hour.toString().padLeft(2, '0');
-      final mi = dt.minute.toString().padLeft(2, '0');
-      return '$d.$mo. $h:$mi';
-    } catch (_) {
-      return iso;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +36,7 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
           stream: _stream,
           builder: (context, snapshot) {
             final allLogs = snapshot.data ?? [];
-            final logs = _applyFilters(allLogs, _filterTip);
+            final logs = _auditApplyFilters(allLogs, _filterTip);
             final isLoading = snapshot.connectionState == ConnectionState.waiting && allLogs.isEmpty;
             // Dinamički tipovi — samo od vozača
             final dostupniTipovi = allLogs
@@ -183,7 +123,7 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                                 final grad = log['grad']?.toString();
                                 final vreme = log['vreme']?.toString();
                                 final createdAt = log['created_at']?.toString();
-                                final color = _tipColor(tip);
+                                final color = _auditTipColor(tip);
                                 // Sakrij detalji ako samo ponavlja aktorIme (npr. "Putnik pokupljen od: Bruda")
                                 final prikaziDetalji =
                                     detalji != null && (aktorIme == null || !detalji.contains(aktorIme));
@@ -202,10 +142,10 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
                                       // Emoji + datum
                                       Column(
                                         children: [
-                                          Text(_tipEmoji(tip), style: const TextStyle(fontSize: 18)),
+                                          Text(_auditTipEmoji(tip), style: const TextStyle(fontSize: 18)),
                                           const SizedBox(height: 4),
                                           Text(
-                                            _formatDatum(createdAt),
+                                            _auditFormatDatum(createdAt),
                                             style: const TextStyle(color: Colors.white38, fontSize: 10),
                                           ),
                                         ],
@@ -296,5 +236,58 @@ class _V2AuditLogScreenState extends State<V2AuditLogScreen> {
         ),
       ),
     );
+  }
+}
+
+// ─── top-level helperi ─────────────────────────────────────────────────────
+
+List<Map<String, dynamic>> _auditApplyFilters(List<Map<String, dynamic>> logs, String? filterTip) {
+  final vozacLogs = logs.where((log) => log['aktor_tip']?.toString() == 'vozac').toList();
+  if (filterTip == null) return vozacLogs;
+  return vozacLogs.where((log) => log['tip']?.toString() == filterTip).toList();
+}
+
+Color _auditTipColor(String tip) {
+  if (tip.contains('zahtev') || tip == 'pokupljen') return Colors.greenAccent;
+  if (tip.contains('otkazan') || tip.contains('otkazano') || tip.contains('odbijen')) return Colors.redAccent;
+  if (tip.contains('uplata') || tip == 'naplata') return Colors.amberAccent;
+  if (tip.contains('logout') || tip.contains('sifre')) return Colors.purpleAccent;
+  if (tip.contains('termin') || tip.contains('vozac')) return Colors.lightBlueAccent;
+  if (tip.contains('odsustvo')) return Colors.orangeAccent;
+  return Colors.white70;
+}
+
+const _auditTipEmojiMap = {
+  'odobren_zahtev': '✅',
+  'odbijen_zahtev': '❌',
+  'zahtev_poslan': '📤',
+  'zahtev_otkazan': '🚫',
+  'pokupljen': '🚗',
+  'otkazano_vozac': '❌',
+  'naplata': '💳',
+  'uplata_dodana': '💰',
+  'odsustvo_postavljeno': '🏥',
+  'odsustvo_uklonjeno': '✅',
+  'putnik_logout': '🚺',
+  'dodat_termin': '📅',
+  'uklonjen_termin': '🗑️',
+  'dodeljen_vozac': '👤',
+  'uklonjen_vozac': '👤',
+  'promena_sifre': '🔑',
+};
+
+String _auditTipEmoji(String tip) => _auditTipEmojiMap[tip] ?? '📋';
+
+String _auditFormatDatum(String? iso) {
+  if (iso == null) return '—';
+  try {
+    final dt = DateTime.parse(iso).toLocal();
+    final d = dt.day.toString().padLeft(2, '0');
+    final mo = dt.month.toString().padLeft(2, '0');
+    final h = dt.hour.toString().padLeft(2, '0');
+    final mi = dt.minute.toString().padLeft(2, '0');
+    return '$d.$mo. $h:$mi';
+  } catch (_) {
+    return iso;
   }
 }
