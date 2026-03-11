@@ -232,5 +232,4 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
       ),
     );
   }
-
 }

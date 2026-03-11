@@ -6,12 +6,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_biometric_service.dart';
-import '../utils/v2_grad_adresa_validator.dart';
 import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_push_token_service.dart'; // V2PutnikPushService spojen ovde
 import '../services/v2_realtime_notification_service.dart';
 import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 import 'v2_putnik_profil_screen.dart';
 
 class V2PutnikLoginScreen extends StatefulWidget {

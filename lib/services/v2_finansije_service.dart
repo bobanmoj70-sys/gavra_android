@@ -176,7 +176,8 @@ class V2FinansijeService {
       // Troškovi iz finansije_troskovi
       final troskoviNedelja = 0.0; // troškovi nemaju dnevnu granularnost
       final troskoviMesec = mesTroskRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
-      final troskoviProsla = proslaTroskRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
+      final troskoviProsla =
+          proslaTroskRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
 
       // Troškovi po tipu (za tekući mesec)
       final Map<String, double> troskoviPoTipu = {};

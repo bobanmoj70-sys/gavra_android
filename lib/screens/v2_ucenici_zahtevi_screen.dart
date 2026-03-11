@@ -230,5 +230,4 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
       ),
     );
   }
-
 }

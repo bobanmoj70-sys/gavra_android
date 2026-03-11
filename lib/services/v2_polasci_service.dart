@@ -1039,18 +1039,19 @@ class V2PutnikStreamService {
 
       String danKey;
       if (finalDan != null && finalDan.isNotEmpty) {
-          danKey = finalDan.toLowerCase();
-        } else if (datum != null) {
-          try {
-            final dt = DateTime.parse(datum);
-            danKey = V2DanUtils.odDatuma(dt);
-          } catch (e) {
-            debugPrint('[V2PutnikStreamService] v2OtkaziPutnika: ne mogu parsirati datum "$datum", koristim danas: $e');
-            danKey = V2DanUtils.danas();
-          }
-        } else {
+        danKey = finalDan.toLowerCase();
+      } else if (datum != null) {
+        try {
+          final dt = DateTime.parse(datum);
+          danKey = V2DanUtils.odDatuma(dt);
+        } catch (e) {
+          debugPrint('[V2PutnikStreamService] v2OtkaziPutnika: ne mogu parsirati datum "$datum", koristim danas: $e');
           danKey = V2DanUtils.danas();
-        }      final gradKey = V2GradAdresaValidator.normalizeGrad(finalGrad);
+        }
+      } else {
+        danKey = V2DanUtils.danas();
+      }
+      final gradKey = V2GradAdresaValidator.normalizeGrad(finalGrad);
       final normalizedTime = V2GradAdresaValidator.normalizeTime(finalVreme);
 
       if (normalizedTime.isNotEmpty) {

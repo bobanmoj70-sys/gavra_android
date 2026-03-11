@@ -182,7 +182,7 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
                     ],
                   ),
                 ),
-                _gradBadge(grad),
+                v2GradBadge(grad),
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -197,26 +197,28 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
               ],
             ),
             const SizedBox(height: 5),
+            // RED 3: željeno → odobreno (+ alt1/alt2 ako postoje)
             Wrap(
               spacing: 14,
               runSpacing: 2,
               children: [
-                _vremeChip('Željeno', zeljeno, Colors.white70),
-                if (dodeljeno != null && dodeljeno.isNotEmpty) _vremeChip('', '→ $dodeljeno', Colors.green),
-                if (alt1 != null && alt1.isNotEmpty) _vremeChip('Alt 1', alt1, Colors.lightBlue),
-                if (alt2 != null && alt2.isNotEmpty) _vremeChip('Alt 2', alt2, Colors.lightBlue),
+                v2VremeChip('Željeno', zeljeno, Colors.white70),
+                if (dodeljeno != null && dodeljeno.isNotEmpty) v2VremeChip('', '→ $dodeljeno', Colors.green),
+                if (alt1 != null && alt1.isNotEmpty) v2VremeChip('Alt 1', alt1, Colors.lightBlue),
+                if (alt2 != null && alt2.isNotEmpty) v2VremeChip('Alt 2', alt2, Colors.lightBlue),
               ],
             ),
             const SizedBox(height: 4),
+            // RED 4: timeline — kada poslato / kada obrađeno / ko obradio
             Wrap(
               spacing: 12,
               runSpacing: 2,
               children: [
-                if (poslatStr != null) _timelineChip('📨 poslato', poslatStr, Colors.white54),
-                if (obradjenoStr != null) _timelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
+                if (poslatStr != null) v2TimelineChip('📨 poslato', poslatStr, Colors.white54),
+                if (obradjenoStr != null) v2TimelineChip('⚙️ obrađeno', obradjenoStr, Colors.lightBlueAccent),
                 if (obradjenoStr == null && status == 'obrada')
-                  _timelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
-                if (koObradio != null) _timelineChip('👤', koObradio, koObradioColor),
+                  v2TimelineChip('⏳', 'čeka kronom', Colors.amber.shade200),
+                if (koObradio != null) v2TimelineChip('👤', koObradio, koObradioColor),
               ],
             ),
           ],
@@ -224,5 +226,4 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
       ),
     );
   }
-
 }
