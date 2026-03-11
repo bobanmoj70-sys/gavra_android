@@ -57,6 +57,19 @@ class V2GradAdresaValidator {
     return 'BC';
   }
 
+  /// Normalizuje broj telefona za poređenje — uklanja razmake/crtice/zagrade
+  /// i konvertuje +381/00381 prefiks u lokalni format (06x...).
+  /// Jedino kanonsko mjesto — koristi se svuda gdje se porede telefoni.
+  static String normalizePhone(String telefon) {
+    var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if (cleaned.startsWith('+381')) {
+      cleaned = '0${cleaned.substring(4)}';
+    } else if (cleaned.startsWith('00381')) {
+      cleaned = '0${cleaned.substring(5)}';
+    }
+    return cleaned;
+  }
+
   /// NORMALIZUJ VREME - konvertuj "05:00:00" ili "5:00" u "05:00" (HH:MM format)
   /// Delegira na TimeValidator.normalizeTimeFormat() za konzistentnost
   static String normalizeTime(String? time) {

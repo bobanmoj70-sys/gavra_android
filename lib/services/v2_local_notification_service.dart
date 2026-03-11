@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../globals.dart';
 import '../screens/v2_home_screen.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_notification_navigation_service.dart';
@@ -498,7 +499,7 @@ class V2LocalNotificationService {
   ) async {
     try {
       final danas = DateTime.now();
-      final danKratica = _dani[danas.weekday - 1];
+      final danKratica = V2DanUtils.danas();
 
       // Traži putnika po imenu iz cache-a — 0 DB querija
       final rm = V2MasterRealtimeManager.instance;
@@ -523,7 +524,7 @@ class V2LocalNotificationService {
         return {
           'grad': grad,
           'polazak': vreme,
-          'dan': _getDanNedelje(DateTime.now().weekday),
+          'dan': V2DanUtils.danas(),
           'tip': 'registrovani',
         };
       }
@@ -532,13 +533,6 @@ class V2LocalNotificationService {
     } catch (e) {
       return null;
     }
-  }
-
-  static const _dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-
-  static String _getDanNedelje(int weekday) {
-    if (weekday >= 1 && weekday <= 7) return _dani[weekday - 1];
-    return 'pon';
   }
 
   /// Handler za BC alternativa action button - sačuva izabrani termin

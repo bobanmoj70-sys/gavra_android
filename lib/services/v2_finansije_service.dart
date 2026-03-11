@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../globals.dart';
+import '../utils/v2_dan_utils.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
 /// Servis za računanje prihoda, troškova i neto zarade
@@ -131,8 +132,7 @@ class V2FinansijeService {
   static Future<V2FinansijskiIzvestaj> getIzvestaj() async {
     try {
       final now = DateTime.now();
-      final weekday = now.weekday;
-      final mondayThisWeek = now.subtract(Duration(days: weekday - 1));
+      final mondayThisWeek = DateTime.parse(V2DanUtils.pocetakTekuceSedmice());
       final sundayThisWeek = mondayThisWeek.add(const Duration(days: 6));
 
       // Datumi za filtre

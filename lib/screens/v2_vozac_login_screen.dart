@@ -8,6 +8,7 @@ import '../services/v2_biometric_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_service.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
 import 'v2_home_screen.dart';
 import 'v2_vozac_screen.dart';
@@ -188,8 +189,8 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
         return;
       }
 
-      final normalizedInput = _normalizePhone(telefon);
-      final normalizedStored = _normalizePhone(vozac['telefon'].toString());
+      final normalizedInput = V2GradAdresaValidator.normalizePhone(telefon);
+      final normalizedStored = V2GradAdresaValidator.normalizePhone(vozac['telefon'].toString());
       if (normalizedInput != normalizedStored) {
         _showError('Pogrešan broj telefona.');
         return;
@@ -227,18 +228,6 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  /// Normalizuje broj telefona za poređenje
-  /// Uklanja razmake, crtice, zagrade i prefikse (+381, 00381)
-  static String _normalizePhone(String telefon) {
-    var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-    if (cleaned.startsWith('+381')) {
-      cleaned = '0${cleaned.substring(4)}';
-    } else if (cleaned.startsWith('00381')) {
-      cleaned = '0${cleaned.substring(5)}';
-    }
-    return cleaned;
   }
 
   void _showError(String message) {

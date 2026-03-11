@@ -884,8 +884,7 @@ class V2PutnikStreamService {
         String? danKey;
         try {
           final dt = DateTime.parse(targetDatum);
-          const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-          danKey = dani[dt.weekday - 1];
+          danKey = V2DanUtils.odDatuma(dt);
         } catch (_) {}
         if (gradKey == null || vremeKey == null || danKey == null) {
           return;
@@ -947,8 +946,7 @@ class V2PutnikStreamService {
       dan: () {
         try {
           final dt = DateTime.parse(targetDatum);
-          const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-          return dani[dt.weekday - 1];
+          return V2DanUtils.odDatuma(dt);
         } catch (_) {
           return null;
         }
@@ -973,11 +971,8 @@ class V2PutnikStreamService {
     }
 
     if (status == 'bolovanje' || status == 'godisnji') {
-      final danasDay = DateTime.now().weekday;
-      final sutraDay = DateTime.now().add(const Duration(days: 1)).weekday;
-      const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-      final danasKratica = dani[danasDay - 1];
-      final sutraKratica = dani[sutraDay - 1];
+      final danasKratica = V2DanUtils.danas();
+      final sutraKratica = V2DanUtils.odDatuma(DateTime.now().add(const Duration(days: 1)));
       final polasciPayload = {'status': V2Polazak.statusOtkazano, 'updated_at': v2NowString()};
 
       final res = await supabase
@@ -1044,23 +1039,18 @@ class V2PutnikStreamService {
 
       String danKey;
       if (finalDan != null && finalDan.isNotEmpty) {
-        danKey = finalDan.toLowerCase();
-      } else if (datum != null) {
-        try {
-          final dt = DateTime.parse(datum);
-          const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-          danKey = dani[dt.weekday - 1];
-        } catch (e) {
-          debugPrint('[V2PutnikStreamService] v2OtkaziPutnika: ne mogu parsirati datum "$datum", koristim danas: $e');
-          const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-          danKey = dani[DateTime.now().weekday - 1];
-        }
-      } else {
-        const dani = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-        danKey = dani[DateTime.now().weekday - 1];
-      }
-
-      final gradKey = V2GradAdresaValidator.normalizeGrad(finalGrad);
+          danKey = finalDan.toLowerCase();
+        } else if (datum != null) {
+          try {
+            final dt = DateTime.parse(datum);
+            danKey = V2DanUtils.odDatuma(dt);
+          } catch (e) {
+            debugPrint('[V2PutnikStreamService] v2OtkaziPutnika: ne mogu parsirati datum "$datum", koristim danas: $e');
+            danKey = V2DanUtils.danas();
+          }
+        } else {
+          danKey = V2DanUtils.danas();
+        }      final gradKey = V2GradAdresaValidator.normalizeGrad(finalGrad);
       final normalizedTime = V2GradAdresaValidator.normalizeTime(finalVreme);
 
       if (normalizedTime.isNotEmpty) {

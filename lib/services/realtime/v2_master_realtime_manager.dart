@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../globals.dart';
 import '../../models/v2_registrovani_putnik.dart';
 import '../../services/v2_app_settings_service.dart';
+import '../../utils/v2_grad_adresa_validator.dart';
 import '../../utils/v2_vozac_cache.dart';
 
 /// ════════════════════════════════════════════════════════════════════════════
@@ -1112,7 +1113,7 @@ class V2MasterRealtimeManager {
   /// Dohvata putnika po telefonu (prvo pretražuje cache, pa DB ako nije nađen)
   Future<Map<String, dynamic>?> v2FindByTelefon(String telefon) async {
     if (telefon.isEmpty) return null;
-    final normalized = _normalizePhone(telefon);
+    final normalized = V2GradAdresaValidator.normalizePhone(telefon);
 
     // Prvo pretraži lokalni cache — 0 DB upita
     for (final tabela in putnikTabele) {
@@ -1121,8 +1122,8 @@ class V2MasterRealtimeManager {
       for (final row in cache.values) {
         final t = row['telefon'] as String? ?? '';
         final t2 = row['telefon_2'] as String? ?? '';
-        if ((t.isNotEmpty && _normalizePhone(t) == normalized) ||
-            (t2.isNotEmpty && _normalizePhone(t2) == normalized)) {
+        if ((t.isNotEmpty && V2GradAdresaValidator.normalizePhone(t) == normalized) ||
+            (t2.isNotEmpty && V2GradAdresaValidator.normalizePhone(t2) == normalized)) {
           return {...row, '_tabela': tabela};
         }
       }
@@ -1139,8 +1140,8 @@ class V2MasterRealtimeManager {
       for (final row in svi) {
         final t = row['telefon'] as String? ?? '';
         final t2 = row['telefon_2'] as String? ?? '';
-        if ((t.isNotEmpty && _normalizePhone(t) == normalized) ||
-            (t2.isNotEmpty && _normalizePhone(t2) == normalized)) {
+        if ((t.isNotEmpty && V2GradAdresaValidator.normalizePhone(t) == normalized) ||
+            (t2.isNotEmpty && V2GradAdresaValidator.normalizePhone(t2) == normalized)) {
           return {...row, '_tabela': tabela};
         }
       }
@@ -1224,16 +1225,6 @@ class V2MasterRealtimeManager {
             return cb.compareTo(ca); // DESC
           }),
       );
-
-  static String _normalizePhone(String telefon) {
-    var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-    if (cleaned.startsWith('+381')) {
-      cleaned = '0${cleaned.substring(4)}';
-    } else if (cleaned.startsWith('00381')) {
-      cleaned = '0${cleaned.substring(5)}';
-    }
-    return cleaned;
-  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────

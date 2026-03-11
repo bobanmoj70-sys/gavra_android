@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_biometric_service.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_push_token_service.dart'; // V2PutnikPushService spojen ovde
 import '../services/v2_realtime_notification_service.dart';
@@ -89,17 +90,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       _pinController.text = credentials['pin']!;
       await _loginWithPin(showBiometricPrompt: false);
     }
-  }
-
-  /// Normalizuje broj telefona za poredenje
-  static String _normalizePhone(String telefon) {
-    var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-    if (cleaned.startsWith('+381')) {
-      cleaned = '0${cleaned.substring(4)}';
-    } else if (cleaned.startsWith('00381')) {
-      cleaned = '0${cleaned.substring(5)}';
-    }
-    return cleaned;
   }
 
   /// Korak 1: Proveri telefon
@@ -372,7 +362,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     });
 
     try {
-      final normalizedInput = _normalizePhone(telefon);
+      final normalizedInput = V2GradAdresaValidator.normalizePhone(telefon);
 
       // Traži putnika po PIN-u kroz sve v2_ tabele, pa filtriraj po telefonu
       final tabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
@@ -382,8 +372,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         if (found != null) {
           final storedPhone = found['telefon'] as String? ?? '';
           final storedPhone2 = found['telefon_2'] as String? ?? '';
-          if (_normalizePhone(storedPhone) == normalizedInput ||
-              (storedPhone2.isNotEmpty && _normalizePhone(storedPhone2) == normalizedInput)) {
+          if (V2GradAdresaValidator.normalizePhone(storedPhone) == normalizedInput ||
+              (storedPhone2.isNotEmpty && V2GradAdresaValidator.normalizePhone(storedPhone2) == normalizedInput)) {
             matches.add(found);
           }
         }

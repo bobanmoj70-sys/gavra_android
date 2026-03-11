@@ -9,6 +9,7 @@ import '../services/v2_adresa_supabase_service.dart';
 import '../services/v2_statistika_istorija_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 
 /// UNIFIKOVANI WIDGET ZA DODAVANJE I EDITOVANJE MESECNIH PUTNIKA
 ///
@@ -1294,7 +1295,7 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
     if (telefon.isEmpty) return null;
 
     // Pretraga po normalizovanom broju (ukloni +381, 00381, vodecu 0)
-    final normalizedTelefon = _normalizePhoneNumber(telefon);
+    final normalizedTelefon = V2GradAdresaValidator.normalizePhone(telefon);
 
     try {
       final existing = await V2MasterRealtimeManager.instance.v2FindByTelefon(normalizedTelefon);
@@ -1313,20 +1314,6 @@ class _V2PutnikDialogState extends State<V2PutnikDialog> {
     }
 
     return null;
-  }
-
-  /// Normalizuje broj telefona za poredenje
-  String _normalizePhoneNumber(String telefon) {
-    var cleaned = telefon.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-
-    // Ukloni prefix i vrati samo lokalni deo
-    if (cleaned.startsWith('+381')) {
-      cleaned = '0${cleaned.substring(4)}';
-    } else if (cleaned.startsWith('00381')) {
-      cleaned = '0${cleaned.substring(5)}';
-    }
-
-    return cleaned;
   }
 
   Future<void> _savePutnik() async {
