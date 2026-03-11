@@ -16,15 +16,7 @@ class V2OdrzavanjeScreen extends StatefulWidget {
 class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
   V2Vozilo? _selectedVozilo;
 
-  late final Stream<List<V2Vozilo>> _streamVozila;
-
-  static final _formatBroja = NumberFormat('#,###', 'sr');
-
-  @override
-  void initState() {
-    super.initState();
-    _streamVozila = V2VozilaService.streamVozila();
-  }
+  late final Stream<List<V2Vozilo>> _streamVozila = V2VozilaService.streamVozila();
 
   void _selectVozilo(V2Vozilo? vozilo) {
     setState(() => _selectedVozilo = vozilo);
@@ -68,59 +60,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     );
   }
 
-  // Boje vozila - 066 plava, 088 beli, 093 crvena, 097 bela, 102 plava
-  static Color _getVoziloColor(String registarskiBroj) {
-    if (registarskiBroj.contains('066')) return Colors.blue;
-    if (registarskiBroj.contains('088')) return Colors.white;
-    if (registarskiBroj.contains('093')) return Colors.red;
-    if (registarskiBroj.contains('097')) return Colors.white;
-    if (registarskiBroj.contains('102')) return Colors.blue;
-    return Colors.grey.shade400; // Siva za ostale
-  }
-
-  // Dani do isteka registracije
-  static int? _getDanaDoIsteka(V2Vozilo vozilo) {
-    if (vozilo.registracijaVaziDo == null) return null;
-    return vozilo.registracijaVaziDo!.difference(DateTime.now()).inDays;
-  }
-
-  // Informativna senka za 15-30 dana do isteka (žuta/limeta)
-  static List<BoxShadow>? _getRegistracijaSenka(V2Vozilo vozilo) {
-    final danaDoIsteka = _getDanaDoIsteka(vozilo);
-    if (danaDoIsteka == null) return null;
-
-    // Samo za 15-30 dana (≤14 dana već ima widget na home screenu)
-    if (danaDoIsteka >= 15 && danaDoIsteka <= 30) {
-      return [
-        BoxShadow(
-          color: Colors.lime.withValues(alpha: 0.6),
-          blurRadius: 12,
-          spreadRadius: 3,
-        ),
-      ];
-    }
-    return null;
-  }
-
-  // Slika tablice za vozilo
-  static String _getTablicaImage(String registarskiBroj) {
-    if (registarskiBroj.contains('066')) return 'assets/tablica_066.png';
-    if (registarskiBroj.contains('088')) return 'assets/tablica_088.png';
-    if (registarskiBroj.contains('093')) return 'assets/tablica_093.png';
-    if (registarskiBroj.contains('097')) return 'assets/tablica_097.png';
-    if (registarskiBroj.contains('102')) return 'assets/tablica_102.png';
-    return 'assets/tablica_066.png'; // fallback
-  }
-
-  // Da li treba tamni okvir (za bele ikonice)
-  static Color _getVoziloBorderColor(String registarskiBroj, bool isSelected, Color color) {
-    if (isSelected) return color == Colors.white ? Colors.black : color;
-    if (color == Colors.white) {
-      return Colors.grey.shade600; // Tamni okvir za belo
-    }
-    return Colors.grey.shade300;
-  }
-
   Widget _buildVoziloDropdown(List<V2Vozilo> vozila) {
     // Sortiraj: 066 levo, 102 desno, ostali po redu
     final sortedVozila = List<V2Vozilo>.from(vozila)
@@ -140,10 +79,10 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: sortedVozila.map((vozilo) {
             final isSelected = _selectedVozilo?.id == vozilo.id;
-            final color = _getVoziloColor(vozilo.registarskiBroj);
-            final borderColor = _getVoziloBorderColor(vozilo.registarskiBroj, isSelected, color);
-            final tablicaImage = _getTablicaImage(vozilo.registarskiBroj);
-            final registracijaSenka = _getRegistracijaSenka(vozilo);
+            final color = _odrzavanjeGetVoziloColor(vozilo.registarskiBroj);
+            final borderColor = _odrzavanjeGetVoziloBorderColor(vozilo.registarskiBroj, isSelected, color);
+            final tablicaImage = _odrzavanjeGetTablicaImage(vozilo.registarskiBroj);
+            final registracijaSenka = _odrzavanjeGetRegistracijaSenka(vozilo);
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -253,7 +192,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
                         Text(
-                          '${_formatBroja.format(v.kilometraza ?? 0)} km',
+                          '${_odrzavanjeFormatBroja.format(v.kilometraza ?? 0)} km',
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
                         ),
                       ],
@@ -266,14 +205,14 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
           const SizedBox(height: 16),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🔢',
             label: 'Broj šasije (VIN)',
             value: v.brojSasije,
             onEdit: () => _editTextField('broj_sasije', 'Broj šasije', v.brojSasije),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '📋',
             label: 'Registracija važi do',
             value: V2Vozilo.formatDatum(v.registracijaVaziDo),
@@ -291,7 +230,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             onEdit: () => _editDateField('registracija_vazi_do', 'Registracija važi do', v.registracijaVaziDo),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '📝',
             label: 'Napomena',
             value: v.napomena ?? '-',
@@ -300,63 +239,63 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
           const Divider(height: 32),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🔧',
             label: 'Mali servis',
-            value: _formatServis(v.maliServisDatum, v.maliServisKm),
+            value: _odrzavanjeFormatServis(v.maliServisDatum, v.maliServisKm),
             onEdit: () => _editServisField('mali_servis', 'Mali servis', v.maliServisDatum, v.maliServisKm),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🛠️',
             label: 'Veliki servis',
-            value: _formatServis(v.velikiServisDatum, v.velikiServisKm),
+            value: _odrzavanjeFormatServis(v.velikiServisDatum, v.velikiServisKm),
             onEdit: () => _editServisField('veliki_servis', 'Veliki servis', v.velikiServisDatum, v.velikiServisKm),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '⚡',
             label: 'Alternator',
-            value: _formatServis(v.alternatorDatum, v.alternatorKm),
+            value: _odrzavanjeFormatServis(v.alternatorDatum, v.alternatorKm),
             onEdit: () => _editServisField('alternator', 'Alternator', v.alternatorDatum, v.alternatorKm),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🔋',
             label: 'Akumulator',
-            value: _formatServis(v.akumulatorDatum, v.akumulatorKm),
+            value: _odrzavanjeFormatServis(v.akumulatorDatum, v.akumulatorKm),
             onEdit: () => _editServisField('akumulator', 'Akumulator', v.akumulatorDatum, v.akumulatorKm),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🛑',
             label: 'Pločice prednje',
-            value: _formatServis(v.plocicePrednjeDatum, v.plocicePrednjeKm),
+            value: _odrzavanjeFormatServis(v.plocicePrednjeDatum, v.plocicePrednjeKm),
             onEdit: () =>
                 _editServisField('plocice_prednje', 'Pločice prednje', v.plocicePrednjeDatum, v.plocicePrednjeKm),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🛑',
             label: 'Pločice zadnje',
-            value: _formatServis(v.plociceZadnjeDatum, v.plociceZadnjeKm),
+            value: _odrzavanjeFormatServis(v.plociceZadnjeDatum, v.plociceZadnjeKm),
             onEdit: () => _editServisField('plocice_zadnje', 'Pločice zadnje', v.plociceZadnjeDatum, v.plociceZadnjeKm),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🔩',
             label: 'Trap',
-            value: _formatServis(v.trapDatum, v.trapKm),
+            value: _odrzavanjeFormatServis(v.trapDatum, v.trapKm),
             onEdit: () => _editServisField('trap', 'Trap', v.trapDatum, v.trapKm),
           ),
 
           const Divider(height: 32),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🛥',
             label: 'Gume prednje',
             value: v.gumePrednjeOpis ?? v.gumeOpis ?? '-',
-            subtitle: _formatGumeSubtitle(v.gumePrednjeDatum ?? v.gumeDatum, v.gumePrednjeKm),
+            subtitle: _odrzavanjeFormatGumeSubtitle(v.gumePrednjeDatum ?? v.gumeDatum, v.gumePrednjeKm),
             onEdit: () => _editGumeField(
               'prednje',
               v.gumePrednjeDatum ?? v.gumeDatum,
@@ -365,17 +304,17 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
             ),
           ),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '🛥',
             label: 'Gume zadnje',
             value: v.gumeZadnjeOpis ?? '-',
-            subtitle: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
+            subtitle: _odrzavanjeFormatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
             onEdit: () => _editGumeField('zadnje', v.gumeZadnjeDatum, v.gumeZadnjeOpis, v.gumeZadnjeKm),
           ),
 
           const Divider(height: 32),
 
-          _buildEditableField(
+          _odrzavanjeBuildEditableField(
             icon: '📻',
             label: 'Radio code',
             value: v.radio,
@@ -384,84 +323,6 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
 
           const SizedBox(height: 80),
         ],
-      ),
-    );
-  }
-
-  static String _formatServis(DateTime? datum, int? km) {
-    if (datum == null && km == null) return '-';
-    final parts = <String>[];
-    if (datum != null) parts.add(V2Vozilo.formatDatum(datum));
-    if (km != null) parts.add('${_formatBroja.format(km)} km');
-    return parts.join(' · ');
-  }
-
-  static String? _formatGumeSubtitle(DateTime? datum, int? km) {
-    if (datum == null && km == null) return null;
-    final parts = <String>[];
-    if (datum != null) parts.add('Menjane: ${V2Vozilo.formatDatum(datum)}');
-    if (km != null) parts.add('${_formatBroja.format(km)} km');
-    return parts.join(' · ');
-  }
-
-  static Widget _buildEditableField({
-    required String icon,
-    required String label,
-    required String? value,
-    String? subtitle,
-    Color? valueColor,
-    String? badge,
-    Color? badgeColor,
-    required VoidCallback onEdit,
-  }) {
-    return Card(
-      child: ListTile(
-        leading: Text(icon, style: const TextStyle(fontSize: 24)),
-        title: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    value ?? '-',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: valueColor,
-                    ),
-                  ),
-                ),
-                if (badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: badgeColor?.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      badge,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: badgeColor,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            if (subtitle != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-              ),
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.edit, size: 20),
-          onPressed: onEdit,
-        ),
       ),
     );
   }
@@ -711,7 +572,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildTipGumaChip(
+                          child: _odrzavanjeBuildTipGumaChip(
                             '☀️ Letnje',
                             'letnje',
                             selectedTip,
@@ -720,7 +581,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: _buildTipGumaChip(
+                          child: _odrzavanjeBuildTipGumaChip(
                             '❄️ Zimske',
                             'zimske',
                             selectedTip,
@@ -729,7 +590,7 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: _buildTipGumaChip(
+                          child: _odrzavanjeBuildTipGumaChip(
                             '🛤️ M+S',
                             'ms',
                             selectedTip,
@@ -871,31 +732,159 @@ class _OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
     opisController.dispose();
     kmController.dispose();
   }
+}
 
-  static Widget _buildTipGumaChip(String label, String value, String? selected, Function(String?) onTap) {
-    final isSelected = selected == value;
-    return InkWell(
-      onTap: () => onTap(isSelected ? null : value),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.shade100 : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.blue : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
+// ─── Top-level helpers ────────────────────────────────────────────────────────
+
+final _odrzavanjeFormatBroja = NumberFormat('#,###', 'sr');
+
+// Boje vozila - 066 plava, 088 beli, 093 crvena, 097 bela, 102 plava
+Color _odrzavanjeGetVoziloColor(String registarskiBroj) {
+  if (registarskiBroj.contains('066')) return Colors.blue;
+  if (registarskiBroj.contains('088')) return Colors.white;
+  if (registarskiBroj.contains('093')) return Colors.red;
+  if (registarskiBroj.contains('097')) return Colors.white;
+  if (registarskiBroj.contains('102')) return Colors.blue;
+  return Colors.grey.shade400;
+}
+
+int? _odrzavanjeGetDanaDoIsteka(V2Vozilo vozilo) {
+  if (vozilo.registracijaVaziDo == null) return null;
+  return vozilo.registracijaVaziDo!.difference(DateTime.now()).inDays;
+}
+
+// Informativna senka za 15-30 dana do isteka (žuta/limeta)
+List<BoxShadow>? _odrzavanjeGetRegistracijaSenka(V2Vozilo vozilo) {
+  final danaDoIsteka = _odrzavanjeGetDanaDoIsteka(vozilo);
+  if (danaDoIsteka == null) return null;
+  if (danaDoIsteka >= 15 && danaDoIsteka <= 30) {
+    return [
+      BoxShadow(
+        color: Colors.lime.withValues(alpha: 0.6),
+        blurRadius: 12,
+        spreadRadius: 3,
+      ),
+    ];
+  }
+  return null;
+}
+
+String _odrzavanjeGetTablicaImage(String registarskiBroj) {
+  if (registarskiBroj.contains('066')) return 'assets/tablica_066.png';
+  if (registarskiBroj.contains('088')) return 'assets/tablica_088.png';
+  if (registarskiBroj.contains('093')) return 'assets/tablica_093.png';
+  if (registarskiBroj.contains('097')) return 'assets/tablica_097.png';
+  if (registarskiBroj.contains('102')) return 'assets/tablica_102.png';
+  return 'assets/tablica_066.png';
+}
+
+Color _odrzavanjeGetVoziloBorderColor(String registarskiBroj, bool isSelected, Color color) {
+  if (isSelected) return color == Colors.white ? Colors.black : color;
+  if (color == Colors.white) return Colors.grey.shade600;
+  return Colors.grey.shade300;
+}
+
+String _odrzavanjeFormatServis(DateTime? datum, int? km) {
+  if (datum == null && km == null) return '-';
+  final parts = <String>[];
+  if (datum != null) parts.add(V2Vozilo.formatDatum(datum));
+  if (km != null) parts.add('${_odrzavanjeFormatBroja.format(km)} km');
+  return parts.join(' · ');
+}
+
+String? _odrzavanjeFormatGumeSubtitle(DateTime? datum, int? km) {
+  if (datum == null && km == null) return null;
+  final parts = <String>[];
+  if (datum != null) parts.add('Menjane: ${V2Vozilo.formatDatum(datum)}');
+  if (km != null) parts.add('${_odrzavanjeFormatBroja.format(km)} km');
+  return parts.join(' · ');
+}
+
+Widget _odrzavanjeBuildEditableField({
+  required String icon,
+  required String label,
+  required String? value,
+  String? subtitle,
+  Color? valueColor,
+  String? badge,
+  Color? badgeColor,
+  required VoidCallback onEdit,
+}) {
+  return Card(
+    child: ListTile(
+      leading: Text(icon, style: const TextStyle(fontSize: 24)),
+      title: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value ?? '-',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: valueColor,
+                  ),
+                ),
+              ),
+              if (badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeColor?.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    badge,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: badgeColor,
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.blue.shade800 : Colors.black87,
-          ),
+          if (subtitle != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            ),
+        ],
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.edit, size: 20),
+        onPressed: onEdit,
+      ),
+    ),
+  );
+}
+
+Widget _odrzavanjeBuildTipGumaChip(String label, String value, String? selected, Function(String?) onTap) {
+  final isSelected = selected == value;
+  return InkWell(
+    onTap: () => onTap(isSelected ? null : value),
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.blue.shade100 : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? Colors.blue : Colors.grey.shade300,
+          width: isSelected ? 2 : 1,
         ),
       ),
-    );
-  }
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.blue.shade800 : Colors.black87,
+        ),
+      ),
+    ),
+  );
 }
