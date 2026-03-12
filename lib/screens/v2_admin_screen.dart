@@ -500,7 +500,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(gradient: _themeManager.currentGradient),
-          child: const Center(child: Text('⏳ Ucitavanje...')),
+          child: const SafeArea(child: Center(child: Text('⏳ Ucitavanje...'))),
         ),
       );
     }
@@ -532,362 +532,366 @@ class _AdminScreenState extends State<V2AdminScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(gradient: _themeManager.currentGradient),
-        child: Column(
-          children: [
-            // RED 1: Adrese, Kapacitet, Statistike, Gorivo, Raspored tip, Vozaci admin
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _NavBtn(
-                      onTap: () =>
-                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2AdreseScreen())),
-                      child: const Text('📍', style: TextStyle(fontSize: 20)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _NavBtn(
-                      onTap: () =>
-                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2KapacitetScreen())),
-                      child: const Text('💺', style: TextStyle(fontSize: 20)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _NavBtn(
-                    onTap: () => _showStatistikeMenu(context),
-                    width: 50,
-                    child: const Text('📊', style: TextStyle(fontSize: 20)),
-                  ),
-                  const SizedBox(width: 8),
-                  _NavBtn(
-                    onTap: () =>
-                        Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2GorivoScreen())),
-                    color: Colors.orange,
-                    borderAlpha: 0.7,
-                    width: 50,
-                    child: const Text('⛽', style: TextStyle(fontSize: 20)),
-                  ),
-                  const SizedBox(width: 8),
-                  // Dropdown za tip rasporeda
-                  ValueListenableBuilder<String>(
-                    valueListenable: navBarTypeNotifier,
-                    builder: (context, navType, _) {
-                      return Container(
-                        height: 40,
-                        width: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.blueGrey.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.6), width: 1.5),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: navType,
-                            isExpanded: true,
-                            icon: const SizedBox.shrink(),
-                            dropdownColor: Theme.of(context).colorScheme.primary,
-                            style: const TextStyle(color: Colors.white, fontSize: 11),
-                            selectedItemBuilder: (context) {
-                              const labels = {'zimski': '❄️', 'letnji': '☀️', 'praznici': '🎉'};
-                              return ['zimski', 'letnji', 'praznici'].map((t) {
-                                return Center(
-                                  child: Text(
-                                    labels[t] ?? t,
-                                    style:
-                                        const TextStyle(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.white),
-                                  ),
-                                );
-                              }).toList();
-                            },
-                            items: const [
-                              DropdownMenuItem(value: 'zimski', child: Center(child: Text('Zimski'))),
-                              DropdownMenuItem(value: 'letnji', child: Center(child: Text('Letnji'))),
-                              DropdownMenuItem(value: 'praznici', child: Center(child: Text('Praznici'))),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) V2AppSettingsService.setNavBarType(value);
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _NavBtn(
-                    onTap: () =>
-                        Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2VozaciAdminScreen())),
-                    width: 50,
-                    child: const Text('🛡️', style: TextStyle(fontSize: 20)),
-                  ),
-                ],
-              ),
-            ),
-            // RED 2: Vozac picker, Raspored, Putnici
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _NavBtn(
-                      onTap: () => _showVozacPickerDialog(context),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('Vozac',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                                color: Colors.white,
-                                shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // RED 1: Adrese, Kapacitet, Statistike, Gorivo, Raspored tip, Vozaci admin
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _NavBtn(
+                        onTap: () =>
+                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2AdreseScreen())),
+                        child: const Text('📍', style: TextStyle(fontSize: 20)),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  _NavBtn(
-                    onTap: () =>
-                        Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2VozacRasporedScreen())),
-                    color: Colors.blue,
-                    width: 50,
-                    child: const Text('📅', style: TextStyle(fontSize: 20)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _NavBtn(
-                      onTap: () =>
-                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2PutniciScreen())),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('Putnici',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                                color: Colors.white,
-                                shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _NavBtn(
+                        onTap: () =>
+                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2KapacitetScreen())),
+                        child: const Text('💺', style: TextStyle(fontSize: 20)),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            // RED 3: Audit log, Dnevnik, saVS/ukBC
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _NavBtn(
+                    const SizedBox(width: 8),
+                    _NavBtn(
+                      onTap: () => _showStatistikeMenu(context),
+                      width: 50,
+                      child: const Text('📊', style: TextStyle(fontSize: 20)),
+                    ),
+                    const SizedBox(width: 8),
+                    _NavBtn(
                       onTap: () =>
-                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2AuditLogScreen())),
-                      color: Colors.teal,
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('📋 Audit log',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                                color: Colors.white,
-                                shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _NavBtn(
-                      onTap: () => Navigator.push(
-                          context, MaterialPageRoute<void>(builder: (_) => const V2DnevnikNaplateScreen())),
-                      color: Colors.indigo,
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('Dnevnik',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                                color: Colors.white,
-                                shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: _adminSaVsUkBc(data)),
-                ],
-              ),
-            ),
-            // RED 4: Učenici, Radnici, Pošiljke, PIN zahtevi
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _BadgeBtn(
-                      onTap: () => Navigator.push(
-                          context, MaterialPageRoute<void>(builder: (_) => const V2UceniciZahteviScreen())),
-                      emoji: '🎓',
-                      color: Colors.lightBlue,
-                      badgeCount: data.uceniciObrada,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _BadgeBtn(
-                      onTap: () => Navigator.push(
-                          context, MaterialPageRoute<void>(builder: (_) => const V2RadniciZahteviScreen())),
-                      emoji: '👷',
-                      color: Colors.green,
-                      badgeCount: data.radniciObrada,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _BadgeBtn(
-                      onTap: () => Navigator.push(
-                          context, MaterialPageRoute<void>(builder: (_) => const V2PosiljkeZahteviScreen())),
-                      emoji: '📦',
-                      color: const Color(0xFFE65C00),
-                      badgeCount: 0,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _BadgeBtn(
-                      onTap: () =>
-                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2PinZahteviScreen())),
-                      emoji: '🔐',
+                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2GorivoScreen())),
                       color: Colors.orange,
-                      badgeCount: data.pinZahtevi.length,
-                      badgeColor: Colors.orange,
+                      borderAlpha: 0.7,
+                      width: 50,
+                      child: const Text('⛽', style: TextStyle(fontSize: 20)),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    // Dropdown za tip rasporeda
+                    ValueListenableBuilder<String>(
+                      valueListenable: navBarTypeNotifier,
+                      builder: (context, navType, _) {
+                        return Container(
+                          height: 40,
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.blueGrey.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.6), width: 1.5),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: navType,
+                              isExpanded: true,
+                              icon: const SizedBox.shrink(),
+                              dropdownColor: Theme.of(context).colorScheme.primary,
+                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                              selectedItemBuilder: (context) {
+                                const labels = {'zimski': '❄️', 'letnji': '☀️', 'praznici': '🎉'};
+                                return ['zimski', 'letnji', 'praznici'].map((t) {
+                                  return Center(
+                                    child: Text(
+                                      labels[t] ?? t,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600, fontSize: 20, color: Colors.white),
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                              items: const [
+                                DropdownMenuItem(value: 'zimski', child: Center(child: Text('Zimski'))),
+                                DropdownMenuItem(value: 'letnji', child: Center(child: Text('Letnji'))),
+                                DropdownMenuItem(value: 'praznici', child: Center(child: Text('Praznici'))),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) V2AppSettingsService.setNavBarType(value);
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _NavBtn(
+                      onTap: () =>
+                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2VozaciAdminScreen())),
+                      width: 50,
+                      child: const Text('🛡️', style: TextStyle(fontSize: 20)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            // GLAVNI SADRZAJ
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom + 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!isAdmin)
+              // RED 2: Vozac picker, Raspored, Putnici
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _NavBtn(
+                        onTap: () => _showVozacPickerDialog(context),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Vozac',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _NavBtn(
+                      onTap: () => Navigator.push(
+                          context, MaterialPageRoute<void>(builder: (_) => const V2VozacRasporedScreen())),
+                      color: Colors.blue,
+                      width: 50,
+                      child: const Text('📅', style: TextStyle(fontSize: 20)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _NavBtn(
+                        onTap: () =>
+                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2PutniciScreen())),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Putnici',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // RED 3: Audit log, Dnevnik, saVS/ukBC
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _NavBtn(
+                        onTap: () =>
+                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2AuditLogScreen())),
+                        color: Colors.teal,
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('📋 Audit log',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _NavBtn(
+                        onTap: () => Navigator.push(
+                            context, MaterialPageRoute<void>(builder: (_) => const V2DnevnikNaplateScreen())),
+                        color: Colors.indigo,
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Dnevnik',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)])),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: _adminSaVsUkBc(data)),
+                  ],
+                ),
+              ),
+              // RED 4: Učenici, Radnici, Pošiljke, PIN zahtevi
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _BadgeBtn(
+                        onTap: () => Navigator.push(
+                            context, MaterialPageRoute<void>(builder: (_) => const V2UceniciZahteviScreen())),
+                        emoji: '🎓',
+                        color: Colors.lightBlue,
+                        badgeCount: data.uceniciObrada,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _BadgeBtn(
+                        onTap: () => Navigator.push(
+                            context, MaterialPageRoute<void>(builder: (_) => const V2RadniciZahteviScreen())),
+                        emoji: '👷',
+                        color: Colors.green,
+                        badgeCount: data.radniciObrada,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _BadgeBtn(
+                        onTap: () => Navigator.push(
+                            context, MaterialPageRoute<void>(builder: (_) => const V2PosiljkeZahteviScreen())),
+                        emoji: '📦',
+                        color: const Color(0xFFE65C00),
+                        badgeCount: 0,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _BadgeBtn(
+                        onTap: () => Navigator.push(
+                            context, MaterialPageRoute<void>(builder: (_) => const V2PinZahteviScreen())),
+                        emoji: '🔐',
+                        color: Colors.orange,
+                        badgeCount: data.pinZahtevi.length,
+                        badgeColor: Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              // GLAVNI SADRZAJ
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).padding.bottom + 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!isAdmin)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green[200]!),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.person, color: Colors.green[600], size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Prikazuju se samo VAŠE naplate, vozac: $currentDriver',
+                                    style:
+                                        TextStyle(color: Colors.green[700], fontSize: 12, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        // LISTA VOZACA S PAZAROM
+                        ...prikazaniVozaci.map((vozac) {
+                          final boja = vozacBoje[vozac] ?? Colors.blueGrey;
+                          return Container(
+                            width: double.infinity,
+                            height: 60,
+                            margin: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: boja.withValues(alpha: 60 / 255),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: boja.withValues(alpha: 120 / 255)),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: boja,
+                                  radius: 16,
+                                  child: Text(vozac[0],
+                                      style: const TextStyle(
+                                          color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(vozac,
+                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: boja)),
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(Icons.monetization_on, color: boja, size: 16),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${(filteredPazar[vozac] ?? 0.0).toStringAsFixed(0)} RSD',
+                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: boja),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        V2DugButton(
+                          brojDuznika: filteredDuznici.length,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(builder: (_) => V2DugoviScreen(currentDriver: currentDriver)),
+                          ),
+                          wide: true,
+                        ),
+                        const SizedBox(height: 4),
+                        // UKUPAN PAZAR
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 8),
+                          height: 76,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.green[50],
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green[200]!),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.person, color: Colors.green[600], size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Prikazuju se samo VAŠE naplate, vozac: $currentDriver',
-                                  style: TextStyle(color: Colors.green[700], fontSize: 12, fontWeight: FontWeight.w500),
-                                ),
-                              ),
+                            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))
                             ],
                           ),
-                        ),
-                      const SizedBox(height: 12),
-                      // LISTA VOZACA S PAZAROM
-                      ...prikazaniVozaci.map((vozac) {
-                        final boja = vozacBoje[vozac] ?? Colors.blueGrey;
-                        return Container(
-                          width: double.infinity,
-                          height: 60,
-                          margin: const EdgeInsets.only(bottom: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: boja.withValues(alpha: 60 / 255),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: boja.withValues(alpha: 120 / 255)),
-                          ),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              CircleAvatar(
-                                backgroundColor: boja,
-                                radius: 16,
-                                child: Text(vozac[0],
-                                    style: const TextStyle(
-                                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(vozac,
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: boja)),
-                              ),
-                              Row(
+                              Icon(Icons.account_balance_wallet, color: Colors.green[700], size: 20),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.monetization_on, color: boja, size: 16),
-                                  const SizedBox(width: 2),
                                   Text(
-                                    '${(filteredPazar[vozac] ?? 0.0).toStringAsFixed(0)} RSD',
-                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: boja),
+                                    isAdmin ? 'UKUPAN PAZAR' : 'MOJ UKUPAN PAZAR',
+                                    style: TextStyle(
+                                        color: Colors.green[800], fontWeight: FontWeight.bold, letterSpacing: 1),
+                                  ),
+                                  Text(
+                                    '${(isAdmin ? data.ukupnoPazar : mojUkupanPazar).toStringAsFixed(0)} RSD',
+                                    style:
+                                        TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold, fontSize: 18),
                                   ),
                                 ],
                               ),
                             ],
                           ),
-                        );
-                      }),
-                      V2DugButton(
-                        brojDuznika: filteredDuznici.length,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(builder: (_) => V2DugoviScreen(currentDriver: currentDriver)),
                         ),
-                        wide: true,
-                      ),
-                      const SizedBox(height: 4),
-                      // UKUPAN PAZAR
-                      Container(
-                        width: double.infinity,
-                        height: 76,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.account_balance_wallet, color: Colors.green[700], size: 20),
-                            const SizedBox(width: 8),
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  isAdmin ? 'UKUPAN PAZAR' : 'MOJ UKUPAN PAZAR',
-                                  style: TextStyle(
-                                      color: Colors.green[800], fontWeight: FontWeight.bold, letterSpacing: 1),
-                                ),
-                                Text(
-                                  '${(isAdmin ? data.ukupnoPazar : mojUkupanPazar).toStringAsFixed(0)} RSD',
-                                  style: TextStyle(color: Colors.green[900], fontWeight: FontWeight.bold, fontSize: 18),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

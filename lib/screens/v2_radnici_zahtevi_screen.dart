@@ -48,7 +48,7 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
           extendBodyBehindAppBar: true,
           backgroundColor: Colors.transparent,
           appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(80),
+            preferredSize: Size.fromHeight(80 + MediaQuery.of(context).padding.top),
             child: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).glassContainer,
