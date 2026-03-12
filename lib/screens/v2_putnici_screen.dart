@@ -171,151 +171,153 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
           ),
           body: Container(
             decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
-            child: Column(
-              children: [
-                // SEARCH BAR
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 3),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // SEARCH BAR
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
                       ),
-                    ],
-                    border: Border.all(
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        hintText: 'Pretraži putnike...',
+                        hintStyle: TextStyle(color: Colors.grey[600]),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: Colors.grey[600],
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              )
+                            : null,
+                      ),
                     ),
                   ),
-                  child: TextField(
-                    controller: _searchController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(
-                      hintText: 'Pretraži putnike...',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(
-                                Icons.clear,
-                                color: Colors.grey[600],
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                              },
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
 
-                // LISTA PUTNIKA — jedan StreamBuilder za cijeli ekran + ValueListenableBuilder za pretragu
-                Expanded(
-                  child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
-                      ? const Center(child: CircularProgressIndicator())
-                      : snapshot.hasError
-                          ? const Center(
-                              child: Text(
-                                'Greška pri učitavanju putnika',
-                                style: TextStyle(fontSize: 16, color: Colors.grey),
-                              ),
-                            )
-                          : ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _searchController,
-                              builder: (context, searchValue, _) {
-                                final filteredPutnici = _filterPutniciDirect(sviPutnici, searchValue.text);
-                                const int _limit = 50;
-                                final bool isTruncated = filteredPutnici.length > _limit;
-                                final prikazaniPutnici =
-                                    isTruncated ? filteredPutnici.sublist(0, _limit) : filteredPutnici;
+                  // LISTA PUTNIKA — jedan StreamBuilder za cijeli ekran + ValueListenableBuilder za pretragu
+                  Expanded(
+                    child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
+                        ? const Center(child: CircularProgressIndicator())
+                        : snapshot.hasError
+                            ? const Center(
+                                child: Text(
+                                  'Greška pri učitavanju putnika',
+                                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                                ),
+                              )
+                            : ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: _searchController,
+                                builder: (context, searchValue, _) {
+                                  final filteredPutnici = _filterPutniciDirect(sviPutnici, searchValue.text);
+                                  const int _limit = 50;
+                                  final bool isTruncated = filteredPutnici.length > _limit;
+                                  final prikazaniPutnici =
+                                      isTruncated ? filteredPutnici.sublist(0, _limit) : filteredPutnici;
 
-                                if (prikazaniPutnici.isEmpty) {
-                                  return Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          searchValue.text.isNotEmpty ? Icons.search_off : Icons.group_off,
-                                          size: 64,
-                                          color: Colors.grey.shade400,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          searchValue.text.isNotEmpty ? 'Nema rezultata pretrage' : 'Nema putnika',
-                                          style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
-                                        ),
-                                        if (searchValue.text.isNotEmpty) ...[
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Pokušajte sa drugim terminom',
-                                            style: TextStyle(color: Colors.grey.shade500),
+                                  if (prikazaniPutnici.isEmpty) {
+                                    return Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            searchValue.text.isNotEmpty ? Icons.search_off : Icons.group_off,
+                                            size: 64,
+                                            color: Colors.grey.shade400,
                                           ),
-                                        ],
-                                      ],
-                                    ),
-                                  );
-                                }
-
-                                return Column(
-                                  children: [
-                                    // Fix #3: Prikaži info ako je lista truncated
-                                    if (isTruncated)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
-                                            const SizedBox(width: 6),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            searchValue.text.isNotEmpty ? 'Nema rezultata pretrage' : 'Nema putnika',
+                                            style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                                          ),
+                                          if (searchValue.text.isNotEmpty) ...[
+                                            const SizedBox(height: 8),
                                             Text(
-                                              'Prikazano $_limit od ${filteredPutnici.length} — precizíraj pretragu',
-                                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                              'Pokušajte sa drugim terminom',
+                                              style: TextStyle(color: Colors.grey.shade500),
                                             ),
                                           ],
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  return Column(
+                                    children: [
+                                      // Fix #3: Prikaži info ako je lista truncated
+                                      if (isTruncated)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'Prikazano $_limit od ${filteredPutnici.length} — precizíraj pretragu',
+                                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: ListView.builder(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                                          itemCount: prikazaniPutnici.length,
+                                          physics: const AlwaysScrollableScrollPhysics(
+                                            parent: BouncingScrollPhysics(),
+                                          ),
+                                          itemBuilder: (context, index) {
+                                            final v2Putnik = prikazaniPutnici[index];
+                                            // Fix #4: TweenAnimationBuilder samo za svježe dodane elemente
+                                            // key: ValueKey(id) garantuje da se animacija pokreće samo jednom po putnik-u
+                                            return TweenAnimationBuilder<double>(
+                                              key: ValueKey(v2Putnik.id),
+                                              duration: const Duration(milliseconds: 300),
+                                              tween: Tween(begin: 0.0, end: 1.0),
+                                              curve: Curves.easeOutCubic,
+                                              builder: (context, value, child) => Transform.translate(
+                                                offset: Offset(0, 20 * (1 - value)),
+                                                child: Opacity(opacity: value, child: child),
+                                              ),
+                                              child: _buildPutnikCard(v2Putnik, index + 1),
+                                            );
+                                          },
                                         ),
                                       ),
-                                    Expanded(
-                                      child: ListView.builder(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                                        itemCount: prikazaniPutnici.length,
-                                        physics: const AlwaysScrollableScrollPhysics(
-                                          parent: BouncingScrollPhysics(),
-                                        ),
-                                        itemBuilder: (context, index) {
-                                          final v2Putnik = prikazaniPutnici[index];
-                                          // Fix #4: TweenAnimationBuilder samo za svježe dodane elemente
-                                          // key: ValueKey(id) garantuje da se animacija pokreće samo jednom po putnik-u
-                                          return TweenAnimationBuilder<double>(
-                                            key: ValueKey(v2Putnik.id),
-                                            duration: const Duration(milliseconds: 300),
-                                            tween: Tween(begin: 0.0, end: 1.0),
-                                            curve: Curves.easeOutCubic,
-                                            builder: (context, value, child) => Transform.translate(
-                                              offset: Offset(0, 20 * (1 - value)),
-                                              child: Opacity(opacity: value, child: child),
-                                            ),
-                                            child: _buildPutnikCard(v2Putnik, index + 1),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                ),
-              ],
+                                    ],
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

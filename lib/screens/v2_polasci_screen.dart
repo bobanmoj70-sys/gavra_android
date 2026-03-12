@@ -64,23 +64,25 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
       ),
       body: Container(
         decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
-        child: StreamBuilder<List<V2Polazak>>(
-          stream: _streamDnevni,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator(color: Colors.white));
-            }
-            final zahtevi =
-                (snapshot.data ?? []).where((z) => (z.tipPutnika ?? 'dnevni').toLowerCase() == 'dnevni').toList();
-            return _polasciDnevniLista(
-              zahtevi: zahtevi,
-              loadingIds: _loadingIds,
-              glassContainer: Theme.of(context).glassContainer,
-              glassBorder: Theme.of(context).glassBorder,
-              onApprove: (id, z) => _approveZahtev(id, z),
-              onReject: (id) => _rejectZahtev(id),
-            );
-          },
+        child: SafeArea(
+          child: StreamBuilder<List<V2Polazak>>(
+            stream: _streamDnevni,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator(color: Colors.white));
+              }
+              final zahtevi =
+                  (snapshot.data ?? []).where((z) => (z.tipPutnika ?? 'dnevni').toLowerCase() == 'dnevni').toList();
+              return _polasciDnevniLista(
+                zahtevi: zahtevi,
+                loadingIds: _loadingIds,
+                glassContainer: Theme.of(context).glassContainer,
+                glassBorder: Theme.of(context).glassBorder,
+                onApprove: (id, z) => _approveZahtev(id, z),
+                onReject: (id) => _rejectZahtev(id),
+              );
+            },
+          ),
         ),
       ),
     );

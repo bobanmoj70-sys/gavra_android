@@ -273,165 +273,167 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
       ),
       body: Container(
         decoration: const BoxDecoration(gradient: tripleBlueFashionGradient),
-        child: StreamBuilder<List<V2Vozac>>(
-          stream: _streamVozaci,
-          builder: (_, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        child: SafeArea(
+          child: StreamBuilder<List<V2Vozac>>(
+            stream: _streamVozaci,
+            builder: (_, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Greška pri učitavanju vozača: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
-            }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Greška pri učitavanju vozača: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }
 
-            final vozaci = snapshot.data ?? [];
+              final vozaci = snapshot.data ?? [];
 
-            return ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      ' VOZAČI',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${vozaci.length}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (vozaci.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'Nema vozača.\nKlikni + da dodaš.',
-                        style: TextStyle(color: Colors.white70, fontSize: 18),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  )
-                else
-                  ...vozaci.map((vozac) {
-                    final boja = vozac.color ?? Colors.blue;
-
-                    return Card(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: boja.withValues(alpha: 0.6), width: 1.5),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: boja,
-                              radius: 22,
-                              child: Text(
-                                vozac.ime[0].toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          vozac.ime,
-                                          style: TextStyle(
-                                            color: boja,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.edit, color: boja, size: 20),
-                                        onPressed: () => _editVozac(vozac),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                                        onPressed: () => _deleteVozac(),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.email, size: 14, color: Colors.white54),
-                                      const SizedBox(width: 6),
-                                      Flexible(
-                                        child: Text(
-                                          vozac.email ?? '-',
-                                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.phone, size: 14, color: Colors.white54),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        vozac.brojTelefona ?? '-',
-                                        style: const TextStyle(color: Colors.white, fontSize: 13),
-                                      ),
-                                      if (vozac.sifra?.isNotEmpty == true)
-                                        const Padding(
-                                          padding: EdgeInsets.only(left: 6),
-                                          child: Text('', style: TextStyle(fontSize: 12)),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+              return ListView(
+                padding: const EdgeInsets.all(12),
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        ' VOZAČI',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                    );
-                  }),
-              ],
-            );
-          },
-        ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${vozaci.length}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (vozaci.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text(
+                          'Nema vozača.\nKlikni + da dodaš.',
+                          style: TextStyle(color: Colors.white70, fontSize: 18),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  else
+                    ...vozaci.map((vozac) {
+                      final boja = vozac.color ?? Colors.blue;
+
+                      return Card(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: boja.withValues(alpha: 0.6), width: 1.5),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: boja,
+                                radius: 22,
+                                child: Text(
+                                  vozac.ime[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            vozac.ime,
+                                            style: TextStyle(
+                                              color: boja,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.edit, color: boja, size: 20),
+                                          onPressed: () => _editVozac(vozac),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                          onPressed: () => _deleteVozac(),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.email, size: 14, color: Colors.white54),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            vozac.email ?? '-',
+                                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.phone, size: 14, color: Colors.white54),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          vozac.brojTelefona ?? '-',
+                                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                                        ),
+                                        if (vozac.sifra?.isNotEmpty == true)
+                                          const Padding(
+                                            padding: EdgeInsets.only(left: 6),
+                                            child: Text('', style: TextStyle(fontSize: 12)),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              );
+            },
+          ),
+        ), // end SafeArea
       ),
     );
   }

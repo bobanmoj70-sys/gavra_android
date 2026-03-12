@@ -99,7 +99,7 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
       body: Container(
         decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 100, 24, 24),
+          padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + kToolbarHeight + 24, 24, 24),
           child: Form(
             key: _formKey,
             child: Column(

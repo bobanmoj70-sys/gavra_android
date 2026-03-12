@@ -213,9 +213,10 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Container(
+        constraints: const BoxConstraints(minHeight: double.infinity),
         decoration: BoxDecoration(gradient: _themeManager.currentGradient),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + kToolbarHeight + 24, 24, 24),
           child: Form(
             key: _formKey,
             child: Column(

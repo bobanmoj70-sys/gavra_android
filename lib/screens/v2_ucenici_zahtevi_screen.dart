@@ -93,9 +93,11 @@ class _V2UceniciZahteviScreenState extends State<V2UceniciZahteviScreen> {
           ),
           body: Container(
             decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
-            child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
-                ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                : v2ZahtjevLista(context, zahtevi, Icons.inbox_outlined, 'Nema zahteva učenika'),
+            child: SafeArea(
+              child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : v2ZahtjevLista(context, zahtevi, Icons.inbox_outlined, 'Nema zahteva učenika'),
+            ),
           ),
         );
       },
