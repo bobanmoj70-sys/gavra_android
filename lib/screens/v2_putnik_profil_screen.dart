@@ -143,19 +143,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// HELPER: Merge-uje nove promene sa postojećim markerima u bazi
-  /// Čuva bc_pokupljeno, bc_placeno, vs_pokupljeno, vs_placeno i ostale markere
-  // UKLONJENO: _checkAndResolvePendingRequests() funkcija
-  // Razlog: Client-side pending resolution je konflikovao sa Supabase cron jobs
-  // Sva pending logika se sada obrađuje server-side putem:
-  // - Job #7: resolve-pending-main (svaki minut)
-  // - Job #5: resolve-pending-20h-ucenici (u 20:00)
-  // - Job #6: cleanup-expired-pending (svakih 5 minuta)
-
-  // _cleanupOldSeatRequests() uklonjen — metoda je bila prazan stub.
-  // Brisanje v2_polasci redova nije dozvoljeno iz klijentskog koda (videti PRAVILA.md).
-  // Cleanup se radi server-side putem Supabase cron job-ova.
-
   /// Učitava statistike za profil (vožnje i otkazivanja)
   Future<void> _loadStatistike() async {
     final now = DateTime.now();
@@ -165,8 +152,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
     try {
       final tipPutnikaRaw = V2Putnik.tipIzTabele(_putnikData['_tabela']?.toString()) ?? 'radnik';
-      bool isJeDnevni(String t) => t.contains('dnevni') || t.contains('posiljka') || t.contains('pošiljka');
-      final jeDnevni = isJeDnevni(tipPutnikaRaw);
+      final jeDnevni = _profilJeDnevniTip(tipPutnikaRaw);
 
       // 1+2. Jedan upit za SVE zapise od poč. godine (obuhvata tekući mesec i istoriju)
       // Filtriramo client-side po mesecu — izbegavamo 2 odvojena upita
@@ -430,43 +416,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// Dugme za postavljanje bolovanja/godišnjeg - SAMO za radnike
-  Widget _buildOdsustvoButton() {
-    final status = _putnikData['status']?.toString().toLowerCase() ?? 'aktivan';
-    final jeNaOdsustvu = status == 'bolovanje' || status == 'godisnji';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-        ),
-        child: ListTile(
-          leading: Icon(
-            jeNaOdsustvu ? Icons.work : Icons.beach_access,
-            color: jeNaOdsustvu ? Colors.green : Colors.orange,
-          ),
-          title: Text(
-            jeNaOdsustvu ? 'Vratite se na posao' : 'Godišnji / Bolovanje',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          ),
-          subtitle: Text(
-            jeNaOdsustvu
-                ? 'Trenutno ste na ${status == "godisnji" ? "godišnjem odmoru" : "bolovanju"}'
-                : 'Postavite se na odsustvo',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
-          ),
-          trailing: const Icon(Icons.chevron_right, color: Colors.white54),
-          onTap: () async {
-            await _pokaziOdsustvoDialog(jeNaOdsustvu);
-          },
-        ),
-      ),
-    );
-  }
-
   /// Dialog za odabir tipa odsustva ili vraćanje na posao
   Future<void> _pokaziOdsustvoDialog(bool jeNaOdsustvu) async {
     if (jeNaOdsustvu) {
@@ -600,58 +549,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         V2AppSnackBar.error(context, '❌ Greška: $e');
       }
     }
-  }
-
-  // KOMPAKTAN PRIKAZ TEMPERATURE ZA GRAD (isti kao na danas_screen)
-  Widget _buildWeatherCompact(String grad) {
-    final stream = grad == 'BC' ? V2WeatherService.bcWeatherStream : V2WeatherService.vsWeatherStream;
-
-    return StreamBuilder<V2WeatherData?>(
-      stream: stream,
-      builder: (context, snapshot) {
-        final data = snapshot.data;
-        final temp = data?.temperature;
-        final icon = data?.icon ?? '🌡️';
-        final tempStr = temp != null ? '${temp.round()}°' : '--';
-        final tempColor = temp != null
-            ? (temp < 0
-                ? Colors.lightBlue
-                : temp < 15
-                    ? Colors.cyan
-                    : temp < 25
-                        ? Colors.green
-                        : Colors.orange)
-            : Colors.grey;
-
-        // Widget za ikonu - slika ili emoji (usklađene veličine)
-        Widget iconWidget;
-        if (V2WeatherData.isAssetIcon(icon)) {
-          iconWidget = Image.asset(V2WeatherData.getAssetPath(icon), width: 32, height: 32);
-        } else {
-          iconWidget = Text(icon, style: const TextStyle(fontSize: 14));
-        }
-
-        return GestureDetector(
-          onTap: () => _showWeatherDialog(grad, data),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              iconWidget,
-              const SizedBox(width: 2),
-              Text(
-                '$grad $tempStr',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: tempColor,
-                  shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 2, color: Colors.black54)],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   // DIJALOG ZA DETALJNU VREMENSKU PROGNOZU
@@ -882,9 +779,9 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(child: Center(child: _buildWeatherCompact('BC'))),
+                              Expanded(child: Center(child: _profilWeatherCompact('BC', context, _showWeatherDialog))),
                               const SizedBox(width: 16),
-                              Expanded(child: Center(child: _buildWeatherCompact('VS'))),
+                              Expanded(child: Center(child: _profilWeatherCompact('VS', context, _showWeatherDialog))),
                             ],
                           ),
                         ),
@@ -1135,7 +1032,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         // Bolovanje/Godišnji dugme - SAMO za radnike
                         if ((_putnikData['_tabela'] ?? _putnikData['putnik_tabela'] ?? '').toString() ==
                             'v2_radnici') ...[
-                          _buildOdsustvoButton(),
+                          _profilOdsustvoButton(
+                            putnikData: _putnikData,
+                            onTap: () => _pokaziOdsustvoDialog(
+                              (_putnikData['status']?.toString().toLowerCase() ?? '') == 'bolovanje' ||
+                                  (_putnikData['status']?.toString().toLowerCase() ?? '') == 'godisnji',
+                            ),
+                          ),
                           const SizedBox(height: 16),
                         ],
 
@@ -1197,7 +1100,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         ],
 
                         // Detaljne statistike - dugme za dijalog
-                        _buildDetaljneStatistikeDugme(),
+                        _profilDetaljneStatistikeDugme(
+                          context: context,
+                          putnikData: _putnikData,
+                        ),
                         const SizedBox(height: 16),
 
                         // Raspored polazaka
@@ -1441,53 +1347,6 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// Dugme za otvaranje detaljnih statistika
-  Widget _buildDetaljneStatistikeDugme() {
-    return Card(
-      color: Colors.transparent,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Theme.of(context).glassBorder, width: 1.5),
-      ),
-      child: InkWell(
-        onTap: () {
-          V2PutnikStatistikeHelper.prikaziDetaljneStatistike(
-            context: context,
-            putnikId: _putnikData['id'] ?? '',
-            putnikIme: _putnikData['putnik_ime'] ?? 'Nepoznato',
-            tip: V2Putnik.tipIzTabele(_putnikData['_tabela']?.toString()) ?? 'radnik',
-            tipSkole: _putnikData['tip_skole'],
-            brojTelefona: _putnikData['broj_telefona'],
-            createdAt:
-                _putnikData['created_at'] != null ? DateTime.tryParse(_putnikData['created_at'].toString()) : null,
-            updatedAt:
-                _putnikData['updated_at'] != null ? DateTime.tryParse(_putnikData['updated_at'].toString()) : null,
-            aktivan: _putnikData['aktivan'] ?? true,
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.analytics_outlined, color: Colors.blue.shade300, size: 24),
-              const SizedBox(width: 12),
-              const Text(
-                'Detaljne statistike',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.5), size: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   /// v2 helper: čita tip putnika iz '_tabela' ključa (v2 sistem)
   /// Fallback na stari 'tip' ključ radi kompatibilnosti
 }
@@ -1543,6 +1402,137 @@ List<Map<String, dynamic>> _profilIzracunajIstorijuIzKolekcije(List<dynamic> svi
   } catch (e) {
     return [];
   }
+}
+
+bool _profilJeDnevniTip(String t) => t.contains('dnevni') || t.contains('posiljka') || t.contains('pošiljka');
+
+Widget _profilWeatherCompact(
+  String grad,
+  BuildContext context,
+  void Function(String, V2WeatherData?) onTap,
+) {
+  final stream = grad == 'BC' ? V2WeatherService.bcWeatherStream : V2WeatherService.vsWeatherStream;
+  return StreamBuilder<V2WeatherData?>(
+    stream: stream,
+    builder: (ctx, snapshot) {
+      final data = snapshot.data;
+      final temp = data?.temperature;
+      final icon = data?.icon ?? '🌡️';
+      final tempStr = temp != null ? '${temp.round()}°' : '--';
+      final tempColor = temp != null
+          ? (temp < 0
+              ? Colors.lightBlue
+              : temp < 15
+                  ? Colors.cyan
+                  : temp < 25
+                      ? Colors.green
+                      : Colors.orange)
+          : Colors.grey;
+      final Widget iconWidget = V2WeatherData.isAssetIcon(icon)
+          ? Image.asset(V2WeatherData.getAssetPath(icon), width: 32, height: 32)
+          : Text(icon, style: const TextStyle(fontSize: 14));
+      return GestureDetector(
+        onTap: () => onTap(grad, data),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            iconWidget,
+            const SizedBox(width: 2),
+            Text(
+              '$grad $tempStr',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: tempColor,
+                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 2, color: Colors.black54)],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _profilOdsustvoButton({
+  required Map<String, dynamic> putnikData,
+  required VoidCallback onTap,
+}) {
+  final status = putnikData['status']?.toString().toLowerCase() ?? 'aktivan';
+  final jeNaOdsustvu = status == 'bolovanje' || status == 'godisnji';
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: ListTile(
+        leading: Icon(
+          jeNaOdsustvu ? Icons.work : Icons.beach_access,
+          color: jeNaOdsustvu ? Colors.green : Colors.orange,
+        ),
+        title: Text(
+          jeNaOdsustvu ? 'Vratite se na posao' : 'Godišnji / Bolovanje',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          jeNaOdsustvu
+              ? 'Trenutno ste na ${status == "godisnji" ? "godišnjem odmoru" : "bolovanju"}'
+              : 'Postavite se na odsustvo',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+        onTap: onTap,
+      ),
+    ),
+  );
+}
+
+Widget _profilDetaljneStatistikeDugme({
+  required BuildContext context,
+  required Map<String, dynamic> putnikData,
+}) {
+  return Card(
+    color: Colors.transparent,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: Theme.of(context).glassBorder, width: 1.5),
+    ),
+    child: InkWell(
+      onTap: () => V2PutnikStatistikeHelper.prikaziDetaljneStatistike(
+        context: context,
+        putnikId: putnikData['id'] ?? '',
+        putnikIme: putnikData['putnik_ime'] ?? 'Nepoznato',
+        tip: V2Putnik.tipIzTabele(putnikData['_tabela']?.toString()) ?? 'radnik',
+        tipSkole: putnikData['tip_skole'],
+        brojTelefona: putnikData['broj_telefona'],
+        createdAt: putnikData['created_at'] != null ? DateTime.tryParse(putnikData['created_at'].toString()) : null,
+        updatedAt: putnikData['updated_at'] != null ? DateTime.tryParse(putnikData['updated_at'].toString()) : null,
+        aktivan: putnikData['aktivan'] ?? true,
+      ),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.analytics_outlined, color: Colors.blue.shade300, size: 24),
+            const SizedBox(width: 12),
+            const Text(
+              'Detaljne statistike',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.5), size: 16),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 String _profilGetWeatherDescription(int code) {

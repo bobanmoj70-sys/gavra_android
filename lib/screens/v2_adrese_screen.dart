@@ -407,8 +407,7 @@ class _AdresaDialogState extends State<_AdresaDialog> {
     _nazivController = TextEditingController(text: widget.initialNaziv);
     _latitudeController = TextEditingController(text: widget.initialLatitude?.toString());
     _longitudeController = TextEditingController(text: widget.initialLongitude?.toString());
-    const validniGradovi = ['BC', 'VS'];
-    if (widget.initialGrad != null && validniGradovi.contains(widget.initialGrad)) {
+    if (widget.initialGrad == 'BC' || widget.initialGrad == 'VS') {
       _selectedGrad = widget.initialGrad!;
     }
   }

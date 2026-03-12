@@ -26,14 +26,11 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
 
   static const Color _accent = Color(0xFFFF9800); // narandžasta = gorivo
 
-  final _fmt = NumberFormat('#,##0.0', 'sr');
-  final _fmtInt = NumberFormat('#,###', 'sr');
+  static final _fmt = NumberFormat('#,##0.0', 'sr');
+  static final _fmtInt = NumberFormat('#,###', 'sr');
 
   /// Stream koji emituje kad se bilo koja od ove 4 tabele promijeni u cache-u
   late final Stream<_GorivoData> _stream;
-
-  /// Filter za statistike — od prvog dana tekućeg meseca
-  final DateTime _statsOd = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   void initState() {
@@ -46,11 +43,12 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
   }
 
   _GorivoData _buildGorivoData() {
+    final statsOd = DateTime(DateTime.now().year, DateTime.now().month, 1);
     return _GorivoData(
       stanje: V2GorivoService.getStanjeSync(),
       punjenja: V2PumpaPunjenjaService.getPunjenjaSync(),
       tocenja: V2PumpaTocenjaService.getTocenjaSync(),
-      statistike: _getStatistikeSync(_statsOd),
+      statistike: _getStatistikeSync(statsOd),
     );
   }
 
@@ -213,202 +211,11 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16, 16, 16),
       child: Column(
         children: [
-          _buildBrojcanik(stanje),
+          _BrojcanikCard(stanje: stanje, fmt: _fmt),
           const SizedBox(height: 16),
-          _buildStanjeDetalji(stanje),
+          _StanjeDetaljiCard(stanje: stanje, fmt: _fmt),
           const SizedBox(height: 16),
-          _buildStatistikePoVozilu(data.statistike),
-        ],
-      ),
-    );
-  }
-
-  /// Vizuelni brojčanik pumpe
-  Widget _buildBrojcanik(V2PumpaStanje stanje) {
-    final procenat = (stanje.procenatPune / 100).clamp(0.0, 1.0);
-    final Color barColor = stanje.prazna
-        ? Colors.grey
-        : stanje.ispodAlarma
-            ? Colors.red
-            : procenat > 0.6
-                ? Colors.green
-                : Colors.orange;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: barColor.withValues(alpha: 0.5), width: 2),
-        boxShadow: [
-          BoxShadow(color: barColor.withValues(alpha: 0.15), blurRadius: 16, spreadRadius: 1),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '⛽ Trenutno stanje',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Colors.white,
-                  ),
-                ),
-                if (stanje.ispodAlarma)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red),
-                    ),
-                    child: const Text(
-                      '⚠️ MALO GORIVA',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Veliki broj litara
-            Text(
-              '${_fmt.format(stanje.trenutnoStanje)} L',
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: barColor,
-              ),
-            ),
-            Text(
-              'od ${_fmt.format(stanje.kapacitetLitri)} L kapaciteta',
-              style: const TextStyle(color: Colors.white54, fontSize: 14),
-            ),
-            const SizedBox(height: 20),
-
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: procenat,
-                minHeight: 24,
-                backgroundColor: Colors.grey.withValues(alpha: 0.2),
-                valueColor: AlwaysStoppedAnimation<Color>(barColor),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('0 L', style: TextStyle(color: Colors.white38, fontSize: 12)),
-                Text(
-                  '${stanje.procenatPune.toStringAsFixed(0)}%',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: barColor),
-                ),
-                Text('${_fmt.format(stanje.kapacitetLitri)} L',
-                    style: const TextStyle(color: Colors.white38, fontSize: 12)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStanjeDetalji(V2PumpaStanje stanje) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).glassBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '📊 Detalji',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            _gorivoDetaljiRow('🟢 Ukupno dopunjeno', '${_fmt.format(stanje.ukupnoPunjeno)} L', Colors.greenAccent),
-            _gorivoDetaljiRow('🔴 Ukupno utrošeno', '${_fmt.format(stanje.ukupnoUtroseno)} L', Colors.redAccent),
-            _gorivoDetaljiRow(
-              '🔔 Alarm nivo',
-              '${_fmt.format(stanje.alarmNivo)} L',
-              stanje.ispodAlarma ? Colors.redAccent : Colors.white54,
-            ),
-            _gorivoDetaljiRow(
-              '📦 Kapacitet',
-              '${_fmt.format(stanje.kapacitetLitri)} L',
-              Colors.white70,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatistikePoVozilu(List<V2VoziloStatistika> lista) {
-    if (lista.isEmpty) return const SizedBox.shrink();
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('📊 Potrošnja ovog meseca po vozilu',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    )),
-            const SizedBox(height: 12),
-            ...lista.map((v) => _statVoziloRow(v, lista.first.ukupnoLitri)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statVoziloRow(V2VoziloStatistika v, double max) {
-    final ratio = max > 0 ? (v.ukupnoLitri / max).clamp(0.0, 1.0) : 0.0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(v.registarskiBroj, style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text(
-                '${_fmt.format(v.ukupnoLitri)} L · ${v.brojTocenja}× točeno',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _accent,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 6,
-              backgroundColor: Colors.grey.withValues(alpha: 0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(_accent),
-            ),
-          ),
+          _StatistikePoVoziluCard(lista: data.statistike, fmt: _fmt),
         ],
       ),
     );
@@ -416,68 +223,23 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
 
   Widget _buildPunjenjaTab(List<V2PumpaPunjenje> lista) {
     if (lista.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.local_gas_station, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
-            Text('Nema zabeleženih punjenja',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey,
-                    )),
-            const SizedBox(height: 8),
-            const Text('Klikni + da dodaš prvo punjenje', style: TextStyle(color: Colors.grey)),
-          ],
-        ),
+      return _gorivoListaTabPrazno(
+        icon: Icons.local_gas_station,
+        naslov: 'Nema zabeleženih punjenja',
+        podnaslov: 'Klikni + da dodaš prvo punjenje',
       );
     }
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
       itemCount: lista.length,
-      itemBuilder: (context, i) => _buildPunjenjeCard(lista[i]),
-    );
-  }
-
-  Widget _buildPunjenjeCard(V2PumpaPunjenje p) {
-    final datumStr = DateFormat('dd.MM.yyyy', 'sr').format(p.datum);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.green.withValues(alpha: 0.4), width: 1.5),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green.withValues(alpha: 0.15),
-          child: const Text('🛢️', style: TextStyle(fontSize: 20)),
-        ),
-        title: Text(
-          '+${_fmt.format(p.litri)} L',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 18),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(datumStr),
-            if (p.cenaPoPLitru != null)
-              Text(
-                '${_fmt.format(p.cenaPoPLitru!)} din/L · ${_fmtInt.format(p.ukupnoCena ?? (p.litri * p.cenaPoPLitru!))} din',
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            if (p.napomena != null) Text(p.napomena!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
-          onPressed: () => _confirmDelete(
-            'Obriši punjenje?',
-            '${_fmt.format(p.litri)} L od $datumStr',
-            () async {
-              await V2GorivoService.deletePunjenje(p.id);
-              // Stream se automatski osvježava kroz RM Realtime event
-            },
-          ),
+      itemBuilder: (_, i) => _PunjenjeCard(
+        punjenje: lista[i],
+        fmt: _fmt,
+        fmtInt: _fmtInt,
+        onDelete: (p) => _confirmDelete(
+          'Obriši punjenje?',
+          '${_fmt.format(p.litri)} L od ${DateFormat('dd.MM.yyyy', 'sr').format(p.datum)}',
+          () async => V2GorivoService.deletePunjenje(p.id),
         ),
       ),
     );
@@ -485,80 +247,23 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
 
   Widget _buildTocenjaTab(List<V2PumpaTocenje> lista) {
     if (lista.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.directions_car, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
-            Text('Nema zabeleženih točenja',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey,
-                    )),
-            const SizedBox(height: 8),
-            const Text('Klikni + da dodaš točenje', style: TextStyle(color: Colors.grey)),
-          ],
-        ),
+      return _gorivoListaTabPrazno(
+        icon: Icons.directions_car,
+        naslov: 'Nema zabeleženih točenja',
+        podnaslov: 'Klikni + da dodaš točenje',
       );
     }
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 12, 12, 80),
       itemCount: lista.length,
-      itemBuilder: (context, i) => _buildTocenjeCard(lista[i]),
-    );
-  }
-
-  Widget _buildTocenjeCard(V2PumpaTocenje t) {
-    final datumStr = DateFormat('dd.MM.yyyy', 'sr').format(t.datum);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: _accent.withValues(alpha: 0.4), width: 1.5),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _accent.withValues(alpha: 0.15),
-          child: const Text('🚗', style: TextStyle(fontSize: 20)),
-        ),
-        title: Row(
-          children: [
-            Text(
-              '-${_fmt.format(t.litri)} L',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: _accent, fontSize: 18),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                t.voziloNaziv,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(datumStr),
-            if (t.kmVozila != null)
-              Text(
-                '${_fmtInt.format(t.kmVozila!)} km',
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            if (t.napomena != null) Text(t.napomena!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
-          onPressed: () => _confirmDelete(
-            'Obriši točenje?',
-            '${_fmt.format(t.litri)} L — ${t.voziloNaziv} — $datumStr',
-            () async {
-              await V2GorivoService.deleteTocenje(t.id);
-              // Stream se automatski osvježava kroz RM Realtime event
-            },
-          ),
+      itemBuilder: (_, i) => _TocenjeCard(
+        tocenje: lista[i],
+        fmt: _fmt,
+        fmtInt: _fmtInt,
+        onDelete: (t) => _confirmDelete(
+          'Obriši točenje?',
+          '${_fmt.format(t.litri)} L — ${t.voziloNaziv} — ${DateFormat('dd.MM.yyyy', 'sr').format(t.datum)}',
+          () async => V2GorivoService.deleteTocenje(t.id),
         ),
       ),
     );
@@ -576,10 +281,11 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => _gorivoBuildBottomSheet(
+          ctx: ctx,
           title: '🛢️ Novo punjenje pumpe',
           accentColor: Colors.green,
           children: [
-            _datumRow(datum, (d) => setLocal(() => datum = d)),
+            _datumRow(ctx, datum, (d) => setLocal(() => datum = d)),
             const SizedBox(height: 12),
             _gorivoInputField(litriCtrl, 'Litri *', suffixText: 'L', keyboardType: TextInputType.number),
             const SizedBox(height: 12),
@@ -652,10 +358,11 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => _gorivoBuildBottomSheet(
+          ctx: ctx,
           title: '🚗 Novo točenje',
           accentColor: _accent,
           children: [
-            _datumRow(datum, (d) => setLocal(() => datum = d)),
+            _datumRow(ctx, datum, (d) => setLocal(() => datum = d)),
             const SizedBox(height: 12),
             DropdownButtonFormField<V2Vozilo>(
               value: selectedVozilo,
@@ -749,6 +456,7 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _gorivoBuildBottomSheet(
+        ctx: ctx,
         title: '⚙️ Podešavanja pumpe',
         accentColor: Colors.blueGrey,
         children: [
@@ -819,28 +527,6 @@ class _GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvider
     );
     if (ok == true && mounted) onConfirm();
   }
-
-  Widget _datumRow(DateTime datum, ValueChanged<DateTime> onChanged) {
-    return InkWell(
-      onTap: () async {
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: datum,
-          firstDate: DateTime(2020),
-          lastDate: DateTime.now().add(const Duration(days: 1)),
-        );
-        if (picked != null) onChanged(picked);
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: InputDecorator(
-        decoration: _gorivoInputDeco('Datum'),
-        child: Text(
-          DateFormat('dd.MM.yyyy', 'sr').format(datum),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
 }
 
 // ─── top-level helperi (bez state pristupa) ───────────────────────────────────
@@ -859,54 +545,416 @@ Widget _gorivoDetaljiRow(String label, String value, Color valueColor) {
 }
 
 Widget _gorivoBuildBottomSheet({
+  required BuildContext ctx,
   required String title,
   required Color accentColor,
   required List<Widget> children,
 }) {
-  return Builder(
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+  return Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+    child: SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: accentColor,
-                  ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: accentColor,
                 ),
-                const SizedBox(height: 20),
-                ...children,
-              ],
-            ),
+              ),
+              const SizedBox(height: 20),
+              ...children,
+            ],
           ),
         ),
       ),
     ),
   );
+}
+
+Widget _datumRow(BuildContext ctx, DateTime datum, ValueChanged<DateTime> onChanged) {
+  return InkWell(
+    onTap: () async {
+      final picked = await showDatePicker(
+        context: ctx,
+        initialDate: datum,
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now().add(const Duration(days: 1)),
+      );
+      if (picked != null) onChanged(picked);
+    },
+    borderRadius: BorderRadius.circular(12),
+    child: InputDecorator(
+      decoration: _gorivoInputDeco('Datum'),
+      child: Text(
+        DateFormat('dd.MM.yyyy', 'sr').format(datum),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    ),
+  );
+}
+
+Widget _gorivoListaTabPrazno({
+  required IconData icon,
+  required String naslov,
+  required String podnaslov,
+}) {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+        const SizedBox(height: 16),
+        Text(naslov, style: const TextStyle(color: Colors.grey, fontSize: 16)),
+        const SizedBox(height: 8),
+        Text(podnaslov, style: const TextStyle(color: Colors.grey)),
+      ],
+    ),
+  );
+}
+
+// ─── StatelessWidget kartice ──────────────────────────────────────────────────
+
+class _BrojcanikCard extends StatelessWidget {
+  const _BrojcanikCard({required this.stanje, required this.fmt});
+  final V2PumpaStanje stanje;
+  final NumberFormat fmt;
+
+  static const Color _accent = Color(0xFFFF9800);
+
+  @override
+  Widget build(BuildContext context) {
+    final procenat = (stanje.procenatPune / 100).clamp(0.0, 1.0);
+    final Color barColor = stanje.prazna
+        ? Colors.grey
+        : stanje.ispodAlarma
+            ? Colors.red
+            : procenat > 0.6
+                ? Colors.green
+                : Colors.orange;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: barColor.withValues(alpha: 0.5), width: 2),
+        boxShadow: [
+          BoxShadow(color: barColor.withValues(alpha: 0.15), blurRadius: 16, spreadRadius: 1),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '⛽ Trenutno stanje',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                ),
+                if (stanje.ispodAlarma)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red),
+                    ),
+                    child: const Text(
+                      '⚠️ MALO GORIVA',
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '${fmt.format(stanje.trenutnoStanje)} L',
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: barColor),
+            ),
+            Text(
+              'od ${fmt.format(stanje.kapacitetLitri)} L kapaciteta',
+              style: const TextStyle(color: Colors.white54, fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: procenat,
+                minHeight: 24,
+                backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('0 L', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                Text(
+                  '${stanje.procenatPune.toStringAsFixed(0)}%',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: barColor),
+                ),
+                Text(
+                  '${fmt.format(stanje.kapacitetLitri)} L',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StanjeDetaljiCard extends StatelessWidget {
+  const _StanjeDetaljiCard({required this.stanje, required this.fmt});
+  final V2PumpaStanje stanje;
+  final NumberFormat fmt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).glassBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '📊 Detalji',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            _gorivoDetaljiRow('🟢 Ukupno dopunjeno', '${fmt.format(stanje.ukupnoPunjeno)} L', Colors.greenAccent),
+            _gorivoDetaljiRow('🔴 Ukupno utrošeno', '${fmt.format(stanje.ukupnoUtroseno)} L', Colors.redAccent),
+            _gorivoDetaljiRow(
+              '🔔 Alarm nivo',
+              '${fmt.format(stanje.alarmNivo)} L',
+              stanje.ispodAlarma ? Colors.redAccent : Colors.white54,
+            ),
+            _gorivoDetaljiRow('📦 Kapacitet', '${fmt.format(stanje.kapacitetLitri)} L', Colors.white70),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatistikePoVoziluCard extends StatelessWidget {
+  const _StatistikePoVoziluCard({required this.lista, required this.fmt});
+  final List<V2VoziloStatistika> lista;
+  final NumberFormat fmt;
+
+  @override
+  Widget build(BuildContext context) {
+    if (lista.isEmpty) return const SizedBox.shrink();
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '📊 Potrošnja ovog meseca po vozilu',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ...lista.map((v) => _StatVoziloRow(v: v, max: lista.first.ukupnoLitri, fmt: fmt)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatVoziloRow extends StatelessWidget {
+  const _StatVoziloRow({required this.v, required this.max, required this.fmt});
+  final V2VoziloStatistika v;
+  final double max;
+  final NumberFormat fmt;
+
+  static const Color _accent = Color(0xFFFF9800);
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = max > 0 ? (v.ukupnoLitri / max).clamp(0.0, 1.0) : 0.0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(v.registarskiBroj, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                '${fmt.format(v.ukupnoLitri)} L · ${v.brojTocenja}× točeno',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: _accent,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 6,
+              backgroundColor: Colors.grey.withValues(alpha: 0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(_accent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PunjenjeCard extends StatelessWidget {
+  const _PunjenjeCard({
+    required this.punjenje,
+    required this.fmt,
+    required this.fmtInt,
+    required this.onDelete,
+  });
+  final V2PumpaPunjenje punjenje;
+  final NumberFormat fmt;
+  final NumberFormat fmtInt;
+  final void Function(V2PumpaPunjenje) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = punjenje;
+    final datumStr = DateFormat('dd.MM.yyyy', 'sr').format(p.datum);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.green.withValues(alpha: 0.4), width: 1.5),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.green.withValues(alpha: 0.15),
+          child: const Text('🛢️', style: TextStyle(fontSize: 20)),
+        ),
+        title: Text(
+          '+${fmt.format(p.litri)} L',
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 18),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(datumStr),
+            if (p.cenaPoPLitru != null)
+              Text(
+                '${fmt.format(p.cenaPoPLitru!)} din/L · ${fmtInt.format(p.ukupnoCena ?? (p.litri * p.cenaPoPLitru!))} din',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            if (p.napomena != null) Text(p.napomena!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          onPressed: () => onDelete(p),
+        ),
+      ),
+    );
+  }
+}
+
+class _TocenjeCard extends StatelessWidget {
+  const _TocenjeCard({
+    required this.tocenje,
+    required this.fmt,
+    required this.fmtInt,
+    required this.onDelete,
+  });
+  final V2PumpaTocenje tocenje;
+  final NumberFormat fmt;
+  final NumberFormat fmtInt;
+  final void Function(V2PumpaTocenje) onDelete;
+
+  static const Color _accent = Color(0xFFFF9800);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tocenje;
+    final datumStr = DateFormat('dd.MM.yyyy', 'sr').format(t.datum);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: _accent.withValues(alpha: 0.4), width: 1.5),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: _accent.withValues(alpha: 0.15),
+          child: const Text('🚗', style: TextStyle(fontSize: 20)),
+        ),
+        title: Row(
+          children: [
+            Text(
+              '-${fmt.format(t.litri)} L',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: _accent, fontSize: 18),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                t.voziloNaziv,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(datumStr),
+            if (t.kmVozila != null)
+              Text('${fmtInt.format(t.kmVozila!)} km', style: const TextStyle(fontWeight: FontWeight.w500)),
+            if (t.napomena != null) Text(t.napomena!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          onPressed: () => onDelete(t),
+        ),
+      ),
+    );
+  }
 }
 
 Widget _gorivoInputField(

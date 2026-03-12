@@ -14,12 +14,8 @@ class V2FinansijeScreen extends StatefulWidget {
 }
 
 class _FinansijeScreenState extends State<V2FinansijeScreen> {
-  final _formatBroja = NumberFormat('#,###', 'sr');
+  static final _formatBroja = NumberFormat('#,###', 'sr');
   final Stream<V2FinansijskiIzvestaj> _stream = V2FinansijeService.streamIzvestaj();
-
-  String _formatIznos(double iznos) {
-    return '${_formatBroja.format(iznos.round())} din';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -208,9 +204,9 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Column(
               children: [
-                _buildRow('Prihod', prihod, const Color(0xFF4ADE80), isPlus: true),
+                _FinRow('Prihod', prihod, const Color(0xFF4ADE80), prefix: '+'),
                 const SizedBox(height: 8),
-                _buildRow('Troškovi', troskovi, const Color(0xFFF87171), isMinus: true),
+                _FinRow('Troškovi', troskovi, const Color(0xFFF87171), prefix: '-'),
                 const SizedBox(height: 10),
                 Divider(color: Colors.white.withValues(alpha: 0.1)),
                 const SizedBox(height: 8),
@@ -250,33 +246,6 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildRow(String label, double iznos, Color color, {bool isMinus = false, bool isPlus = false}) {
-    String prefix = '';
-    if (isPlus) prefix = '+';
-    if (isMinus) prefix = '-';
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.white60,
-          ),
-        ),
-        Text(
-          '$prefix${_formatIznos(iznos)}',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      ],
     );
   }
 
@@ -335,32 +304,10 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
             child: Column(
               children: [
                 ...troskoviPoTipu.entries.map(
-                  (entry) => _buildTrosakRow(entry.key, entry.value),
+                  (e) => _FinRow(e.key, e.value, e.value > 0 ? const Color(0xFFF87171) : Colors.white38,
+                      fontSize: 14, labelColor: Colors.white70),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrosakRow(String label, double iznos) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14, color: Colors.white70),
-          ),
-          Text(
-            _formatIznos(iznos),
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: iznos > 0 ? const Color(0xFFF87171) : Colors.white38,
             ),
           ),
         ],
@@ -381,32 +328,19 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
     );
   }
 
-  Future<void> _saveTroskovi({
-    required double plate,
-    required double kredit,
-    required double gorivo,
-    required double amortizacija,
-    required double registracija,
-    required double yuAuto,
-    required double majstori,
-    required double ostalo,
-    required double porez,
-    required double alimentacija,
-    required double racuni,
-  }) async {
-    // Paralelni INSERT-i za sve kategorije sa iznosom != 0
+  Future<void> _saveTroskovi(Map<String, double> unosi) async {
     await Future.wait([
-      _finansijeAddTrosakIfPositive('Plate', 'plata', plate),
-      _finansijeAddTrosakIfPositive('Kredit', 'kredit', kredit),
-      _finansijeAddTrosakIfPositive('Gorivo', 'gorivo', gorivo),
-      _finansijeAddTrosakIfPositive('Amortizacija', 'amortizacija', amortizacija),
-      _finansijeAddTrosakIfPositive('Registracija', 'registracija', registracija),
-      _finansijeAddTrosakIfPositive('YU auto', 'yu_auto', yuAuto),
-      _finansijeAddTrosakIfPositive('Majstori', 'majstori', majstori),
-      _finansijeAddTrosakIfPositive('Porez', 'porez', porez),
-      _finansijeAddTrosakIfPositive('Alimentacija', 'alimentacija', alimentacija),
-      _finansijeAddTrosakIfPositive('Računi', 'racuni', racuni),
-      _finansijeAddTrosakIfPositive('Ostalo', 'ostalo', ostalo),
+      _finansijeAddTrosakIfPositive('Plate', 'plata', unosi['plata'] ?? 0),
+      _finansijeAddTrosakIfPositive('Kredit', 'kredit', unosi['kredit'] ?? 0),
+      _finansijeAddTrosakIfPositive('Gorivo', 'gorivo', unosi['gorivo'] ?? 0),
+      _finansijeAddTrosakIfPositive('Amortizacija', 'amortizacija', unosi['amortizacija'] ?? 0),
+      _finansijeAddTrosakIfPositive('Registracija', 'registracija', unosi['registracija'] ?? 0),
+      _finansijeAddTrosakIfPositive('YU auto', 'yu_auto', unosi['yu_auto'] ?? 0),
+      _finansijeAddTrosakIfPositive('Majstori', 'majstori', unosi['majstori'] ?? 0),
+      _finansijeAddTrosakIfPositive('Porez', 'porez', unosi['porez'] ?? 0),
+      _finansijeAddTrosakIfPositive('Alimentacija', 'alimentacija', unosi['alimentacija'] ?? 0),
+      _finansijeAddTrosakIfPositive('Računi', 'racuni', unosi['racuni'] ?? 0),
+      _finansijeAddTrosakIfPositive('Ostalo', 'ostalo', unosi['ostalo'] ?? 0),
     ]);
   }
 
@@ -538,11 +472,11 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildPopupRow('Prihod', prihod, Colors.green),
+                _FinRow('Prihod', prihod, Colors.green),
                 const SizedBox(height: 8),
-                _buildPopupRow('Troškovi', troskovi, Colors.red),
+                _FinRow('Troškovi', troskovi, Colors.red),
                 const Divider(),
-                _buildPopupRow('NETO', neto, neto >= 0 ? Colors.green : Colors.red, isBold: true),
+                _FinRow('NETO', neto, neto >= 0 ? Colors.green : Colors.red, isBold: true),
                 const SizedBox(height: 16),
                 Text('$voznje vožnji u ovom periodu', style: const TextStyle(fontStyle: FontStyle.italic)),
               ],
@@ -558,41 +492,12 @@ class _FinansijeScreenState extends State<V2FinansijeScreen> {
       ),
     );
   }
-
-  Widget _buildPopupRow(String label, double iznos, Color color, {bool isBold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-        Text(
-          _formatIznos(iznos),
-          style: TextStyle(
-            color: color,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-            fontSize: isBold ? 18 : 16,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _TroskoviBottomSheet extends StatefulWidget {
   final Map<String, double> poTipu;
   final NumberFormat formatBroja;
-  final Future<void> Function({
-    required double plate,
-    required double kredit,
-    required double gorivo,
-    required double amortizacija,
-    required double registracija,
-    required double yuAuto,
-    required double majstori,
-    required double ostalo,
-    required double porez,
-    required double alimentacija,
-    required double racuni,
-  }) onSave;
+  final Future<void> Function(Map<String, double>) onSave;
 
   const _TroskoviBottomSheet({
     required this.poTipu,
@@ -605,31 +510,28 @@ class _TroskoviBottomSheet extends StatefulWidget {
 }
 
 class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
-  final _plateController = TextEditingController();
-  final _kreditController = TextEditingController();
-  final _gorivoController = TextEditingController();
-  final _amortizacijaController = TextEditingController();
-  final _registracijaController = TextEditingController();
-  final _yuAutoController = TextEditingController();
-  final _majstoriController = TextEditingController();
-  final _ostaloController = TextEditingController();
-  final _porezController = TextEditingController();
-  final _alimentacijaController = TextEditingController();
-  final _racuniController = TextEditingController();
+  // Ključevi moraju biti isti kao u V2FinansijeService (tip kolona)
+  static const _kljucevi = [
+    'plata',
+    'kredit',
+    'gorivo',
+    'amortizacija',
+    'registracija',
+    'yu_auto',
+    'majstori',
+    'porez',
+    'alimentacija',
+    'racuni',
+    'ostalo',
+  ];
+
+  late final Map<String, TextEditingController> _ctrls = {
+    for (final k in _kljucevi) k: TextEditingController(),
+  };
 
   @override
   void dispose() {
-    _plateController.dispose();
-    _kreditController.dispose();
-    _gorivoController.dispose();
-    _amortizacijaController.dispose();
-    _registracijaController.dispose();
-    _yuAutoController.dispose();
-    _majstoriController.dispose();
-    _ostaloController.dispose();
-    _porezController.dispose();
-    _alimentacijaController.dispose();
-    _racuniController.dispose();
+    for (final c in _ctrls.values) c.dispose();
     super.dispose();
   }
 
@@ -707,45 +609,39 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                   style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 24),
-                _buildTrosakInputRow('💰', 'Plate', _plateController, currentTotal: pt['plata']),
+                // Redovi za unos — emoji i labele po kljucu
+                ...(() {
+                  const meta = {
+                    'plata': ('💰', 'Plate'),
+                    'kredit': ('🏦', 'Kredit'),
+                    'gorivo': ('⛽', 'Gorivo'),
+                    'amortizacija': ('🔧', 'Amortizacija'),
+                    'registracija': ('📋', 'Registracija'),
+                    'yu_auto': ('🚗', 'YU auto'),
+                    'majstori': ('🛠️', 'Majstori'),
+                    'porez': ('🏗️', 'Porez'),
+                    'alimentacija': ('👶', 'Alimentacija'),
+                    'racuni': ('🧾', 'Računi'),
+                    'ostalo': ('📋', 'Ostalo'),
+                  };
+                  final rows = <Widget>[];
+                  for (final k in _TroskoviBottomSheetState._kljucevi) {
+                    final (emoji, label) = meta[k]!;
+                    rows.add(_buildTrosakInputRow(emoji, label, _ctrls[k]!, currentTotal: pt[k]));
+                    rows.add(const SizedBox(height: 12));
+                  }
+                  return rows;
+                })(),
                 const SizedBox(height: 12),
-                _buildTrosakInputRow('🏦', 'Kredit', _kreditController, currentTotal: pt['kredit']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('⛽', 'Gorivo', _gorivoController, currentTotal: pt['gorivo']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('🔧', 'Amortizacija', _amortizacijaController, currentTotal: pt['amortizacija']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('📋', 'Registracija', _registracijaController, currentTotal: pt['registracija']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('🚗', 'YU auto', _yuAutoController, currentTotal: pt['yu_auto']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('🛠️', 'Majstori', _majstoriController, currentTotal: pt['majstori']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('🏛️', 'Porez', _porezController, currentTotal: pt['porez']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('👶', 'Alimentacija', _alimentacijaController, currentTotal: pt['alimentacija']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('🧾', 'Računi', _racuniController, currentTotal: pt['racuni']),
-                const SizedBox(height: 12),
-                _buildTrosakInputRow('📋', 'Ostalo', _ostaloController, currentTotal: pt['ostalo']),
-                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      await widget.onSave(
-                        plate: double.tryParse(_plateController.text.replaceAll(',', '.')) ?? 0,
-                        kredit: double.tryParse(_kreditController.text.replaceAll(',', '.')) ?? 0,
-                        gorivo: double.tryParse(_gorivoController.text.replaceAll(',', '.')) ?? 0,
-                        amortizacija: double.tryParse(_amortizacijaController.text.replaceAll(',', '.')) ?? 0,
-                        registracija: double.tryParse(_registracijaController.text.replaceAll(',', '.')) ?? 0,
-                        yuAuto: double.tryParse(_yuAutoController.text.replaceAll(',', '.')) ?? 0,
-                        majstori: double.tryParse(_majstoriController.text.replaceAll(',', '.')) ?? 0,
-                        ostalo: double.tryParse(_ostaloController.text.replaceAll(',', '.')) ?? 0,
-                        porez: double.tryParse(_porezController.text.replaceAll(',', '.')) ?? 0,
-                        alimentacija: double.tryParse(_alimentacijaController.text.replaceAll(',', '.')) ?? 0,
-                        racuni: double.tryParse(_racuniController.text.replaceAll(',', '.')) ?? 0,
-                      );
+                      final unosi = <String, double>{
+                        for (final k in _TroskoviBottomSheetState._kljucevi)
+                          k: double.tryParse(_ctrls[k]!.text.replaceAll(',', '.')) ?? 0,
+                      };
+                      await widget.onSave(unosi);
                       if (!context.mounted) return;
                       Navigator.pop(context);
                     },
@@ -773,5 +669,52 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
 Future<void> _finansijeAddTrosakIfPositive(String naziv, String tip, double iznos) async {
   if (iznos != 0) {
     await V2FinansijeService.addTrosak(naziv, tip, iznos);
+  }
+}
+
+String _formatIznos(double iznos) {
+  return '${_FinansijeScreenState._formatBroja.format(iznos.round())} din';
+}
+
+// Unifikovani row widget — zamjenjuje _buildRow, _buildPopupRow, _buildTrosakRow
+class _FinRow extends StatelessWidget {
+  const _FinRow(
+    this.label,
+    this.iznos,
+    this.color, {
+    this.prefix,
+    this.isBold = false,
+    this.fontSize = 15,
+    this.labelColor = Colors.white60,
+  });
+
+  final String label;
+  final double iznos;
+  final Color color;
+  final String? prefix;
+  final bool isBold;
+  final double fontSize;
+  final Color labelColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: fontSize, color: labelColor, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            '${prefix ?? ''}${_formatIznos(iznos.abs())}',
+            style: TextStyle(
+                fontSize: isBold ? fontSize + 3 : fontSize,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w700,
+                color: color),
+          ),
+        ],
+      ),
+    );
   }
 }

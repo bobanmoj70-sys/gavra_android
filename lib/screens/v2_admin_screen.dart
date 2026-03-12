@@ -146,9 +146,12 @@ class _AdminScreenState extends State<V2AdminScreen> {
   // Jedan broadcast stream koji sluša sve relevantne tabele
   late final Stream<_AdminData> _stream;
 
+  late final V2ThemeManager _themeManager;
+
   @override
   void initState() {
     super.initState();
+    _themeManager = V2ThemeManager();
 
     // Osvježi lokalne map-ove iz rm.vozaciCache (bez DB upita)
     V2VozacCache.refresh();
@@ -494,11 +497,10 @@ class _AdminScreenState extends State<V2AdminScreen> {
   @override
   Widget build(BuildContext context) {
     if (_currentDriver == null) {
-      return Container(
-        decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
-        child: const Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Center(child: Text('⏳ Ucitavanje...')),
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(gradient: _themeManager.currentGradient),
+          child: const Center(child: Text('⏳ Ucitavanje...')),
         ),
       );
     }
@@ -527,11 +529,10 @@ class _AdminScreenState extends State<V2AdminScreen> {
       return p.placeno != true && !iskljuceniStatusiDuznici.contains(st) && p.jePokupljen;
     }).toList();
 
-    return Container(
-      decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Column(
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(gradient: _themeManager.currentGradient),
+        child: Column(
           children: [
             // RED 1: Adrese, Kapacitet, Statistike, Gorivo, Raspored tip, Vozaci admin
             Padding(
@@ -708,7 +709,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(child: _buildSaVsUkBc(data)),
+                  Expanded(child: _adminSaVsUkBc(data)),
                 ],
               ),
             ),
@@ -891,29 +892,29 @@ class _AdminScreenState extends State<V2AdminScreen> {
       ),
     );
   }
+}
 
-  Widget _buildSaVsUkBc(_AdminData data) {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.6), width: 1.5),
-      ),
-      child: Center(
-        child: Text(
-          '${data.saVS}/${data.ukBC}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: Colors.orange,
-            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-          ),
+Widget _adminSaVsUkBc(_AdminData data) {
+  return Container(
+    height: 40,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: Colors.orange.withValues(alpha: 0.2),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.orange.withValues(alpha: 0.6), width: 1.5),
+    ),
+    child: Center(
+      child: Text(
+        '${data.saVS}/${data.ukBC}',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+          color: Colors.orange,
+          shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// Snapshot svih admin podataka — jedan StreamBuilder rebuild

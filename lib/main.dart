@@ -158,6 +158,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // Kada app izadje iz backgrounda, provjeri da li je novi dan i osvjezi cache
       V2MasterRealtimeManager.instance.v2RefreshForNewDay().catchError((Object e) {});
 
+      // Health check — provjeri da li su WebSocket kanali živi nakon buđenja iz backgrounda
+      // (mrežne promjene tokom spavanja mogu "zamrznuti" vezu bez TCP reset-a)
+      V2MasterRealtimeManager.instance.v2HealthCheck();
+
       // When app is resumed, try registering pending tokens (if any)
       try {
         V2HuaweiPushService().tryRegisterPendingToken();

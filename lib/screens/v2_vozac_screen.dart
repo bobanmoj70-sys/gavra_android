@@ -52,10 +52,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
   final V2PutnikStreamService _putnikService = V2PutnikStreamService();
 
   StreamSubscription<Position>? _driverPositionSubscription;
-  StreamSubscription<String>? _rasporedRealtimeSub;
-  StreamSubscription<String>? _vozacPutnikRealtimeSub;
-  Timer? _rasporedDebounce;
-  Timer? _vozacPutnikDebounce;
+  StreamSubscription<void>? _rasporedSub;
 
   String _selectedGrad = 'BC';
   String _selectedVreme = ''; // Ce biti postavljen u _selectClosestDeparture()
@@ -124,9 +121,12 @@ class _VozacScreenState extends State<V2VozacScreen> {
     return [...bcList, ...vsList];
   }
 
+  late final V2ThemeManager _themeManager;
+
   @override
   void initState() {
     super.initState();
+    _themeManager = V2ThemeManager();
     _workingDateIso = V2PutnikHelpers.getWorkingDateIso();
     _autoOptimizePending = widget.autoOptimize;
 
@@ -154,9 +154,11 @@ class _VozacScreenState extends State<V2VozacScreen> {
   }
 
   Future<void> _initAsync() async {
-    // 1. Inicijalizuj vozaca (ovo ce takode pozvati _selectClosestDeparture)
-    // 2. Ucitaj raspored — oba su awaited da bi setState bio samo jednom (na kraju _initializeCurrentDriver)
-    await _loadRaspored();
+    // 1. Pre-populiši raspored iz RM in-memory cache (0 DB querija)
+    final rm0 = V2MasterRealtimeManager.instance;
+    _rasporedCache = rm0.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
+    _vozacPutnikCache = rm0.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
+    // 2. Inicijalizuj vozaca (ovo ce takode pozvati _selectClosestDeparture)
     await _initializeCurrentDriver();
     _subscribeRealtime();
 
@@ -170,35 +172,20 @@ class _VozacScreenState extends State<V2VozacScreen> {
     }
   }
 
-  Future<void> _loadRaspored() async {
-    final rm = V2MasterRealtimeManager.instance;
-    // Čita direktno iz RM in-memory cache — 0 DB querija
-    final raspored = rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
-    final vozacPutnik = rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
-    // Bez setState — poziva se iz _initAsync koji vec radi setState na kraju
-    _rasporedCache = raspored;
-    _vozacPutnikCache = vozacPutnik;
-  }
-
-  /// Realtime: prati vozac_raspored i vozac_putnik i osvježava lokalne cache-ove
+  /// Realtime: jedan stream za v2_vozac_raspored + v2_vozac_putnik — osvježava lokalne cache-ove.
+  /// Koristi v2StreamFromCache iz RM-a (onListen/onCancel, controller ostaje otvoren).
   void _subscribeRealtime() {
-    _rasporedRealtimeSub?.cancel();
-    _vozacPutnikRealtimeSub?.cancel();
+    _rasporedSub?.cancel();
     final rm = V2MasterRealtimeManager.instance;
-    _rasporedRealtimeSub = rm.onCacheChanged.where((t) => t == 'v2_vozac_raspored').listen((_) {
-      _rasporedDebounce?.cancel();
-      _rasporedDebounce = Timer(const Duration(milliseconds: 150), () {
-        if (!mounted) return;
-        final entries = rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
-        setState(() => _rasporedCache = entries);
-      });
-    });
-    _vozacPutnikRealtimeSub = rm.onCacheChanged.where((t) => t == 'v2_vozac_putnik').listen((_) {
-      _vozacPutnikDebounce?.cancel();
-      _vozacPutnikDebounce = Timer(const Duration(milliseconds: 150), () {
-        if (!mounted) return;
-        final entries = rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
-        setState(() => _vozacPutnikCache = entries);
+    final stream = rm.v2StreamFromCache<void>(
+      tables: const ['v2_vozac_raspored', 'v2_vozac_putnik'],
+      build: () {},
+    );
+    _rasporedSub = stream.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _rasporedCache = rm.rasporedCache.values.map((row) => V2VozacRasporedEntry.fromMap(row)).toList();
+        _vozacPutnikCache = rm.vozacPutnikCache.values.map((row) => V2VozacPutnikEntry.fromMap(row)).toList();
       });
     });
   }
@@ -211,58 +198,33 @@ class _VozacScreenState extends State<V2VozacScreen> {
       }
     });
 
-    _driverPositionSubscription = V2RealtimeGpsService.positionStream.listen((pos) {
-      V2DriverLocationService.instance.forceLocationUpdate(knownPosition: pos);
-    });
+    // Lokacija se šalje samo iz background service-a (kada vozač klikne START dugme)
+    _driverPositionSubscription = V2RealtimeGpsService.positionStream.listen((_) {});
   }
 
   @override
   void dispose() {
     _driverPositionSubscription?.cancel();
-    _rasporedRealtimeSub?.cancel();
-    _vozacPutnikRealtimeSub?.cancel();
-    _rasporedDebounce?.cancel();
-    _vozacPutnikDebounce?.cancel();
+    _rasporedSub?.cancel();
     super.dispose();
   }
 
   Future<void> _initializeCurrentDriver() async {
     if (widget.previewAsDriver != null && widget.previewAsDriver!.isNotEmpty) {
       _currentDriver = widget.previewAsDriver;
-      _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
-        dan: V2DanUtils.odIso(_workingDateIso),
-        vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
-      );
-      // Sinhronizovano pre-populiši putnike iz cache-a — prikazuju se odmah,
-      // bez čekanja na stream emit(). Stream će ih osvježiti čim emituje.
-      final rmPrev = V2MasterRealtimeManager.instance;
-      if (rmPrev.isInitialized && _latestPutnici.isEmpty) {
-        _latestPutnici = _putnikService.fetchPutniciSync(
-          dan: V2DanUtils.odIso(_workingDateIso),
-          vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
-        );
-      }
-      if (mounted) {
-        setState(() {});
-        _selectClosestDeparture();
-      }
-      return;
+    } else {
+      _currentDriver = await V2AuthManager.getCurrentDriver();
     }
 
-    _currentDriver = await V2AuthManager.getCurrentDriver();
-
-    _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(
-      dan: V2DanUtils.odIso(_workingDateIso),
-      vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
-    );
-    // Sinhronizovano pre-populiši putnike iz cache-a — prikazuju se odmah,
-    // bez čekanja na stream emit(). Stream će ih osvježiti čim emituje.
+    // Zajednički blok: stream + sync pre-populate
+    final dan = V2DanUtils.odIso(_workingDateIso);
+    final vozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
+    _streamPutnici ??= _putnikService.streamKombinovaniPutniciFiltered(dan: dan, vozacId: vozacId);
     final rm = V2MasterRealtimeManager.instance;
     if (rm.isInitialized && _latestPutnici.isEmpty) {
-      _latestPutnici = _putnikService.fetchPutniciSync(
-        dan: V2DanUtils.odIso(_workingDateIso),
-        vozacId: V2VozacCache.getUuidByIme(_currentDriver ?? ''),
-      );
+      // Sinhronizovano pre-populiši putnike iz cache-a — prikazuju se odmah,
+      // bez čekanja na stream emit(). Stream će ih osvježiti čim emituje.
+      _latestPutnici = _putnikService.fetchPutniciSync(dan: dan, vozacId: vozacId);
     }
     if (mounted) {
       setState(() {});
@@ -710,7 +672,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
     final baseColor = _isGpsTracking ? Colors.orange : (_isRouteOptimized ? Colors.green : Colors.white);
 
-    return InkWell(
+    return _buildAppBarButton(
+      label: _isOptimizing ? null : (_isGpsTracking ? 'STOP' : 'START'),
+      icon: _isOptimizing ? Icons.hourglass_empty : null,
+      color: baseColor,
       onTap: canPress
           ? () async {
               if (_isGpsTracking) {
@@ -721,39 +686,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
                 await _optimizeCurrentRoute(filtriraniPutnici, isAlreadyOptimized: false);
               }
             }
-          : null,
-      borderRadius: BorderRadius.circular(8),
-      child: Opacity(
-        opacity: 1.0,
-        child: Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: baseColor.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _getBorderColor(baseColor)),
-          ),
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: _isOptimizing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(
-                      _isGpsTracking ? 'STOP' : 'START',
-                      style: TextStyle(
-                        color: baseColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-            ),
-          ),
-        ),
-      ),
+          : () {},
     );
   }
 
@@ -819,34 +752,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
     final bool canPress = hasOptimizedRoute && isDriverValid;
     final baseColor = hasOptimizedRoute ? Colors.blue : Colors.white;
 
-    return InkWell(
-      onTap: canPress ? _openHereWeGoNavigation : null,
-      borderRadius: BorderRadius.circular(8),
-      child: Opacity(
-        opacity: 1.0,
-        child: Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: baseColor.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _getBorderColor(baseColor)),
-          ),
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                'MAPA',
-                style: TextStyle(
-                  color: baseColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return _buildAppBarButton(
+      label: 'MAPA',
+      color: baseColor,
+      onTap: canPress ? _openHereWeGoNavigation : () {},
     );
   }
 
@@ -971,227 +880,224 @@ class _VozacScreenState extends State<V2VozacScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: V2ThemeManager().currentGradient,
-      ),
-      child: StreamBuilder<List<V2Putnik>>(
-        stream: _streamPutnici,
-        builder: (context, snapshot) {
-          // Osvježi _latestPutnici iz builder-a — zamjena za ručni StreamSubscription
-          if (snapshot.hasData) _latestPutnici = snapshot.data!;
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      extendBody: true,
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(gradient: _themeManager.currentGradient),
+        child: StreamBuilder<List<V2Putnik>>(
+          stream: _streamPutnici,
+          builder: (context, snapshot) {
+            // Osvježi _latestPutnici iz builder-a — zamjena za ručni StreamSubscription
+            if (snapshot.hasData) _latestPutnici = snapshot.data!;
 
-          // Auto-optimizacija pri otvaranju ekrana via GPS podsjetnik notifikacije
-          if (_autoOptimizePending && snapshot.hasData && snapshot.data!.isNotEmpty) {
-            _autoOptimizePending = false;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _optimizeCurrentRoute(snapshot.data!);
-            });
-          }
-          // -- Zajednicki podaci za body i nav bar --------------------------
-          final sviPutnici = snapshot.data ?? <V2Putnik>[];
-          final targetDan = V2DanUtils.odIso(_workingDateIso); // jednom, dijeli se svuda
-          final currentVozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
-          final mojiPutnici = _currentDriver == null
-              ? sviPutnici
-              : V2VozacPutnikService.filterKombinovan<V2Putnik>(
-                  sviPutnici: sviPutnici,
-                  vozacId: currentVozacId ?? '',
-                  targetDan: targetDan,
-                  individualneDodjele: _vozacPutnikCache,
-                  raspored: _rasporedCache,
-                  getId: (p) => p.id?.toString() ?? '',
-                  getGrad: (p) => p.grad,
-                  getPolazak: (p) => p.polazak,
-                );
+            // Auto-optimizacija pri otvaranju ekrana via GPS podsjetnik notifikacije
+            if (_autoOptimizePending && snapshot.hasData && snapshot.data!.isNotEmpty) {
+              _autoOptimizePending = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _optimizeCurrentRoute(snapshot.data!);
+              });
+            }
+            // -- Zajednicki podaci za body i nav bar --------------------------
+            final sviPutnici = snapshot.data ?? <V2Putnik>[];
+            final targetDan = V2DanUtils.odIso(_workingDateIso); // jednom, dijeli se svuda
+            final currentVozacId = V2VozacCache.getUuidByIme(_currentDriver ?? '');
+            final mojiPutnici = _currentDriver == null
+                ? sviPutnici
+                : V2VozacPutnikService.filterKombinovan<V2Putnik>(
+                    sviPutnici: sviPutnici,
+                    vozacId: currentVozacId ?? '',
+                    targetDan: targetDan,
+                    individualneDodjele: _vozacPutnikCache,
+                    raspored: _rasporedCache,
+                    getId: (p) => p.id?.toString() ?? '',
+                    getGrad: (p) => p.grad,
+                    getPolazak: (p) => p.polazak,
+                  );
 
-          // -- Nav bar: samo dodeljena vremena vozaca ------------------------
-          final dodeljenaVremena = _rasporedVozaca(sviPutnici: mojiPutnici);
-          final bcVremenaToShow =
-              (dodeljenaVremena.where((v) => v['grad'] == 'BC').map((v) => v['vreme']!).toList()..sort());
-          final vsVremenaToShow =
-              (dodeljenaVremena.where((v) => v['grad'] == 'VS').map((v) => v['vreme']!).toList()..sort());
+            // -- Nav bar: samo dodeljena vremena vozaca ------------------------
+            final dodeljenaVremena = _rasporedVozaca(sviPutnici: mojiPutnici);
+            final bcVremenaToShow =
+                (dodeljenaVremena.where((v) => v['grad'] == 'BC').map((v) => v['vreme']!).toList()..sort());
+            final vsVremenaToShow =
+                (dodeljenaVremena.where((v) => v['grad'] == 'VS').map((v) => v['vreme']!).toList()..sort());
 
-          final countHelper = V2PutnikCountHelper.fromPutnici(
-            putnici: mojiPutnici,
-            targetDayAbbr: targetDan,
-          );
-          int getPutnikCount(String grad, String vreme) => countHelper.getCount(grad, vreme);
-          int getKapacitet(String grad, String vreme) => V2KapacitetService.getKapacitetSync(grad, vreme);
-
-          Widget buildNavBarForType(String navType) {
-            return V2BottomNavBar(
-              sviPolasci: _sviPolasci,
-              selectedGrad: _selectedGrad,
-              selectedVreme: _selectedVreme,
-              getPutnikCount: getPutnikCount,
-              getKapacitet: getKapacitet,
-              onPolazakChanged: _onPolazakChanged,
-              bcVremena: bcVremenaToShow,
-              vsVremena: vsVremenaToShow,
+            final countHelper = V2PutnikCountHelper.fromPutnici(
+              putnici: mojiPutnici,
+              targetDayAbbr: targetDan,
             );
-          }
+            int getPutnikCount(String grad, String vreme) => countHelper.getCount(grad, vreme);
 
-          // -----------------------------------------------------------------
-          return Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 80,
-              flexibleSpace: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildDigitalDateDisplay(),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(child: _buildOptimizeButton(mojiPutnici)),
-                          const SizedBox(width: 4),
-                          Expanded(child: _buildMapsButton()),
-                          const SizedBox(width: 4),
-                          Expanded(child: _buildSpeedometerButton()),
-                          const SizedBox(width: 4),
-                          _buildAppBarButton(
-                            icon: Icons.lock_reset,
-                            color: Colors.blueAccent,
-                            onTap: _promeniSifru,
-                          ),
-                          const SizedBox(width: 4),
-                          _buildAppBarButton(
-                            icon: Icons.logout,
-                            color: Colors.red.shade400,
-                            onTap: _logout,
-                          ),
-                        ],
-                      ),
-                    ],
+            // -----------------------------------------------------------------
+            return Scaffold(
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                automaticallyImplyLeading: false,
+                toolbarHeight: 80,
+                flexibleSpace: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildDigitalDateDisplay(),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(child: _buildOptimizeButton(mojiPutnici)),
+                            const SizedBox(width: 4),
+                            Expanded(child: _buildMapsButton()),
+                            const SizedBox(width: 4),
+                            Expanded(child: _buildSpeedometerButton()),
+                            const SizedBox(width: 4),
+                            _buildAppBarButton(
+                              icon: Icons.lock_reset,
+                              color: Colors.blueAccent,
+                              onTap: _promeniSifru,
+                            ),
+                            const SizedBox(width: 4),
+                            _buildAppBarButton(
+                              icon: Icons.logout,
+                              color: Colors.red.shade400,
+                              onTap: _logout,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            bottomNavigationBar: ValueListenableBuilder<String>(
-              valueListenable: navBarTypeNotifier,
-              builder: (context, navType, _) => buildNavBarForType(navType),
-            ),
-            body: _currentDriver == null
-                ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                : Builder(builder: (context) {
-                    final filteredByGradVreme = mojiPutnici.where((p) {
-                      // Filter po gradu
-                      final gradMatch =
-                          _selectedGrad.isEmpty || V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad);
+              bottomNavigationBar: ValueListenableBuilder<String>(
+                valueListenable: navBarTypeNotifier,
+                builder: (context, navType, _) => V2BottomNavBar(
+                  sviPolasci: _sviPolasci,
+                  selectedGrad: _selectedGrad,
+                  selectedVreme: _selectedVreme,
+                  getPutnikCount: getPutnikCount,
+                  getKapacitet: V2KapacitetService.getKapacitetSync,
+                  onPolazakChanged: _onPolazakChanged,
+                  bcVremena: bcVremenaToShow,
+                  vsVremena: vsVremenaToShow,
+                ),
+              ),
+              body: _currentDriver == null
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : Builder(builder: (context) {
+                      final filteredByGradVreme = mojiPutnici.where((p) {
+                        // Filter po gradu
+                        final gradMatch =
+                            _selectedGrad.isEmpty || V2GradAdresaValidator.isGradMatch(p.grad, p.adresa, _selectedGrad);
 
-                      // Filter po vremenu
-                      final vremeMatch = _selectedVreme.isEmpty ||
-                          V2GradAdresaValidator.normalizeTime(p.polazak) ==
-                              V2GradAdresaValidator.normalizeTime(_selectedVreme);
+                        // Filter po vremenu
+                        final vremeMatch = _selectedVreme.isEmpty ||
+                            V2GradAdresaValidator.normalizeTime(p.polazak) ==
+                                V2GradAdresaValidator.normalizeTime(_selectedVreme);
 
-                      // Sakrij putnike u obradi
-                      final isObrada = p.status?.toLowerCase() == 'obrada';
-                      return gradMatch && vremeMatch && !isObrada;
-                    }).toList();
+                        // Sakrij putnike u obradi
+                        final isObrada = p.status?.toLowerCase() == 'obrada';
+                        return gradMatch && vremeMatch && !isObrada;
+                      }).toList();
 
-                    // Ako je ruta optimizovana, sortiraj po redosledu iz `_optimizedRoute`
-                    List<V2Putnik> putnici = filteredByGradVreme;
+                      // Ako je ruta optimizovana, sortiraj po redosledu iz `_optimizedRoute`
+                      List<V2Putnik> putnici = filteredByGradVreme;
 
-                    if (_isRouteOptimized && _optimizedRoute.isNotEmpty) {
-                      final trenutniIds = filteredByGradVreme.map((p) => p.id).toSet();
-                      final optimizedIds = _optimizedRoute.map((p) => p.id).toSet();
+                      if (_isRouteOptimized && _optimizedRoute.isNotEmpty) {
+                        final trenutniIds = filteredByGradVreme.map((p) => p.id).toSet();
+                        final optimizedIds = _optimizedRoute.map((p) => p.id).toSet();
 
-                      // Broj belih putnika (nepokupljenih) u obe liste
-                      final trenutniBeli = filteredByGradVreme
-                          .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo)
-                          .map((p) => p.id)
-                          .toSet();
-                      final optimizedBeli = _optimizedRoute
-                          .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo)
-                          .map((p) => p.id)
-                          .toSet();
+                        // Broj belih putnika (nepokupljenih) u obe liste
+                        final trenutniBeli = filteredByGradVreme
+                            .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo)
+                            .map((p) => p.id)
+                            .toSet();
+                        final optimizedBeli = _optimizedRoute
+                            .where((p) => !p.jePokupljen && !p.jeOtkazan && !p.jeOdsustvo)
+                            .map((p) => p.id)
+                            .toSet();
 
-                      // Ako ima novih belih putnika ili su izbrisani beli putnici, resetuj optimizaciju
-                      final imaNoviPutnik = trenutniBeli.difference(optimizedBeli).isNotEmpty;
-                      final imaIzbrisan = optimizedBeli.difference(trenutniBeli).isNotEmpty;
+                        // Ako ima novih belih putnika ili su izbrisani beli putnici, resetuj optimizaciju
+                        final imaNoviPutnik = trenutniBeli.difference(optimizedBeli).isNotEmpty;
+                        final imaIzbrisan = optimizedBeli.difference(trenutniBeli).isNotEmpty;
 
-                      if (imaNoviPutnik || imaIzbrisan) {
-                        // Lista se promenila - resetuj optimizaciju
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (!mounted) return;
-                          setState(() {
-                            _isRouteOptimized = false;
-                            _isListReordered = false;
-                            _optimizedRoute = [];
+                        if (imaNoviPutnik || imaIzbrisan) {
+                          // Lista se promenila - resetuj optimizaciju
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            setState(() {
+                              _isRouteOptimized = false;
+                              _isListReordered = false;
+                              _optimizedRoute = [];
+                            });
                           });
-                        });
-                        // Koristi nesortirane putnike za ovaj frame
-                        putnici = filteredByGradVreme;
-                      } else {
-                        // Lista je ista - primeni optimizovani redosled
-                        final optimizedOrder = <dynamic, int>{};
+                          // Koristi nesortirane putnike za ovaj frame
+                          putnici = filteredByGradVreme;
+                        } else {
+                          // Lista je ista - primeni optimizovani redosled
+                          final optimizedOrder = <dynamic, int>{};
 
-                        for (int i = 0; i < _optimizedRoute.length; i++) {
-                          optimizedOrder[_optimizedRoute[i].id] = i;
+                          for (int i = 0; i < _optimizedRoute.length; i++) {
+                            optimizedOrder[_optimizedRoute[i].id] = i;
+                          }
+
+                          putnici.sort((a, b) {
+                            final aIndex = optimizedOrder[a.id] ?? 999;
+                            final bIndex = optimizedOrder[b.id] ?? 999;
+                            return aIndex.compareTo(bIndex);
+                          });
                         }
-
-                        putnici.sort((a, b) {
-                          final aIndex = optimizedOrder[a.id] ?? 999;
-                          final bIndex = optimizedOrder[b.id] ?? 999;
-                          return aIndex.compareTo(bIndex);
-                        });
                       }
-                    }
 
-                    return Column(
-                      children: [
-                        // Lista putnika - koristi V2PutnikList sa stream-om kao DanasScreen
-                        Expanded(
-                          child: putnici.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.inbox,
-                                        size: 64,
-                                        color: Colors.white.withValues(alpha: 0.5),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'Nema putnika za izabrani polazak',
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.7),
-                                          fontSize: 16,
+                      return Column(
+                        children: [
+                          // Lista putnika - koristi V2PutnikList sa stream-om kao DanasScreen
+                          Expanded(
+                            child: putnici.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.inbox,
+                                          size: 64,
+                                          color: Colors.white.withValues(alpha: 0.5),
                                         ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Nema putnika za izabrani polazak',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.7),
+                                            fontSize: 16,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : V2PutnikList(
+                                    putnici: putnici,
+                                    useProvidedOrder: _isListReordered,
+                                    currentDriver:
+                                        _currentDriver!, // ? FIX: Koristi dinamicki _currentDriver umesto hardkodovanog _vozacIme
+                                    selectedGrad: _selectedGrad,
+                                    selectedVreme: _selectedVreme,
+                                    selectedDay: targetDan,
+                                    onPutnikStatusChanged: _reoptimizeAfterStatusChange,
+                                    bcVremena: V2RouteConfig.getVremenaByNavType('BC'),
+                                    vsVremena: V2RouteConfig.getVremenaByNavType('VS'),
                                   ),
-                                )
-                              : V2PutnikList(
-                                  putnici: putnici,
-                                  useProvidedOrder: _isListReordered,
-                                  currentDriver:
-                                      _currentDriver!, // ? FIX: Koristi dinamicki _currentDriver umesto hardkodovanog _vozacIme
-                                  selectedGrad: _selectedGrad,
-                                  selectedVreme: _selectedVreme,
-                                  selectedDay: targetDan,
-                                  onPutnikStatusChanged: _reoptimizeAfterStatusChange,
-                                  bcVremena: V2RouteConfig.getVremenaByNavType('BC'),
-                                  vsVremena: V2RouteConfig.getVremenaByNavType('VS'),
-                                ),
-                        ),
-                      ],
-                    );
-                  }),
-            // -----------------------------------------------------------------
-          ); // end Scaffold
-        }, // end StreamBuilder builder
-      ), // end StreamBuilder
-    ); // end Container
+                          ),
+                        ],
+                      );
+                    }),
+              // -----------------------------------------------------------------
+            ); // end Scaffold
+          }, // end StreamBuilder builder
+        ), // end StreamBuilder
+      ), // end body Container
+    ); // end outer Scaffold
   }
 
   Widget _buildDigitalDateDisplay() {
@@ -1279,13 +1185,19 @@ class _VozacScreenState extends State<V2VozacScreen> {
     );
   }
 
-  // Helper za border boju kao u danas_screen
-  Color _getBorderColor(Color color) {
-    if (color == Colors.green) return Colors.green[300]!;
-    if (color == Colors.purple) return Colors.purple[300]!;
-    if (color == Colors.red) return Colors.red[300]!;
-    if (color == Colors.orange) return Colors.orange[300]!;
-    if (color == Colors.blue) return Colors.blue[300]!;
-    return color.withValues(alpha: 0.6);
-  }
+  // Helper za border boju — delegira na top-level funkciju
+  Color _getBorderColor(Color color) => _vozacGetBorderColor(color);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOP-LEVEL HELPERI ZA VOZAC SCREEN
+// ═══════════════════════════════════════════════════════════════
+
+Color _vozacGetBorderColor(Color color) {
+  if (color == Colors.green) return Colors.green[300]!;
+  if (color == Colors.purple) return Colors.purple[300]!;
+  if (color == Colors.red) return Colors.red[300]!;
+  if (color == Colors.orange) return Colors.orange[300]!;
+  if (color == Colors.blue) return Colors.blue[300]!;
+  return color.withValues(alpha: 0.6);
 }

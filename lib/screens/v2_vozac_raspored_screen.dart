@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
@@ -34,11 +32,9 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
   String _selectedVreme = '';
   String? _selectedDay;
 
-  late Stream<List<V2Putnik>> _putniciStream;
-
-  /// Subscription na onCacheChanged — okida setState kad se rasporedCache
-  /// ili vozacPutnikCache promijeni (Realtime WebSocket ili optimistički patch).
-  StreamSubscription<String>? _cacheChangeSub;
+  /// Jedan stream za sve podatke — putnici + raspored + vozacPutnik.
+  /// Mijenja se samo kad se promijeni _selectedDay (swap dan).
+  late Stream<_RasporedData> _stream;
 
   List<String> get _days => V2DanUtils.kratice;
 
@@ -55,29 +51,31 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     final today = V2DanUtils.odDatuma(DateTime.now());
     _selectedDay = (today == 'sub' || today == 'ned') ? 'pon' : today;
     _autoSelectNajblizeVreme();
-    // Jedan stream za trenutni dan — isti pattern kao HomeScreen.
-    // v2StreamFromCache emituje odmah u onListen, pa StreamBuilder uvijek dobija podatke.
-    _putniciStream = V2PolasciService.streamPutniciZaDan(_selectedDay!);
-
-    // Automatski refresh kad se raspored ili individualne dodjele promijene
-    _cacheChangeSub = V2MasterRealtimeManager.instance.onCacheChanged
-        .where((table) => table == 'v2_vozac_raspored' || table == 'v2_vozac_putnik')
-        .listen((_) {
-      if (mounted) setState(() {});
-    });
+    _stream = _buildStream(_selectedDay!);
   }
 
-  @override
-  void dispose() {
-    _cacheChangeSub?.cancel();
-    super.dispose();
+  /// Kreira stream koji nosi sve podatke za dati dan.
+  /// v2StreamFromCache obuhvata sve relevantne tabele i emituje odmah u onListen.
+  Stream<_RasporedData> _buildStream(String dan) {
+    return V2MasterRealtimeManager.instance.v2StreamFromCache<_RasporedData>(
+      tables: const ['v2_polasci', 'v2_vozac_raspored', 'v2_vozac_putnik'],
+      build: () => _buildRasporedData(dan),
+    );
+  }
+
+  _RasporedData _buildRasporedData(String dan) {
+    final rm = V2MasterRealtimeManager.instance;
+    final putnici = V2PolasciService.fetchPutniciSyncStatic(dan: dan);
+    final raspored = rm.rasporedCache.values.map((r) => V2VozacRasporedEntry.fromMap(r)).toList();
+    final vozacPutnik = rm.vozacPutnikCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).toList();
+    return _RasporedData(putnici: putnici, raspored: raspored, vozacPutnik: vozacPutnik);
   }
 
   void _onDayChanged(String day) {
     setState(() {
       _selectedDay = day;
       // Kreira novi stream za novi dan — v2StreamFromCache emituje odmah u onListen.
-      _putniciStream = V2PolasciService.streamPutniciZaDan(day);
+      _stream = _buildStream(day);
     });
   }
 
@@ -115,29 +113,13 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
     }
   }
 
-  /// Helper: vraca V2VozacRasporedEntry za termin ili null (izbjegava dupliciranu logiku)
-  V2VozacRasporedEntry? _getRasporedEntry(String grad, String vreme) {
-    final dan = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
-    final rm = V2MasterRealtimeManager.instance;
-    return rm.rasporedCache.values
-        .map((r) => V2VozacRasporedEntry.fromMap(r))
-        .where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme)
-        .firstOrNull;
-  }
+  Color? _getVozacColorForTermin(String grad, String vreme) =>
+      _rasporedGetEntry(grad: grad, vreme: vreme, dan: _selectedDay ?? V2DanUtils.odDatuma(DateTime.now()))
+          .let((e) => e != null ? V2VozacCache.getColor(e.vozacId) : null);
 
-  /// Vraća boju vozača dodijeljenog terminu (grad+vreme) za selektovani dan
-  Color? _getVozacColorForTermin(String grad, String vreme) {
-    final entry = _getRasporedEntry(grad, vreme);
-    if (entry == null) return null;
-    return V2VozacCache.getColor(entry.vozacId);
-  }
-
-  /// Naziv vozača dodijeljenog terminu
-  String? _getVozacZaTermin(String grad, String vreme) {
-    final entry = _getRasporedEntry(grad, vreme);
-    if (entry == null) return null;
-    return V2VozacCache.getImeByUuid(entry.vozacId);
-  }
+  String? _getVozacZaTermin(String grad, String vreme) =>
+      _rasporedGetEntry(grad: grad, vreme: vreme, dan: _selectedDay ?? V2DanUtils.odDatuma(DateTime.now()))
+          .let((e) => e != null ? V2VozacCache.getImeByUuid(e.vozacId) : null);
 
   // ═══════════════════════════════════════════════════════════════
   // DIALOZI ZA DODJELU
@@ -192,52 +174,12 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
               ),
               const SizedBox(height: 16),
-              ...vozaci.map((ime) {
-                final isSelected = odabranVozac == ime;
-                final color = V2VozacCache.getColor(ime);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    onTap: () => setSheetState(() => odabranVozac = isSelected ? null : ime),
-                    borderRadius: BorderRadius.circular(12),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
-                          width: isSelected ? 2 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: color.withValues(alpha: 0.3),
-                            child: Text(
-                              ime.isNotEmpty ? ime[0].toUpperCase() : '?',
-                              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            ime,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white70,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
+              ...vozaci.map((ime) => _rasporedVozacTile(
+                    ime: ime,
+                    isSelected: odabranVozac == ime,
+                    color: V2VozacCache.getColor(ime),
+                    onTap: () => setSheetState(() => odabranVozac = odabranVozac == ime ? null : ime),
+                  )),
               const SizedBox(height: 8),
               if (trenutni != null)
                 TextButton.icon(
@@ -347,52 +289,12 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
               ),
               const SizedBox(height: 16),
-              ...vozaci.map((ime) {
-                final isSelected = odabranVozac == ime;
-                final color = V2VozacCache.getColor(ime);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    onTap: () => setSheetState(() => odabranVozac = isSelected ? null : ime),
-                    borderRadius: BorderRadius.circular(12),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
-                          width: isSelected ? 2 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: color.withValues(alpha: 0.3),
-                            child: Text(
-                              ime.isNotEmpty ? ime[0].toUpperCase() : '?',
-                              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            ime,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white70,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
+              ...vozaci.map((ime) => _rasporedVozacTile(
+                    ime: ime,
+                    isSelected: odabranVozac == ime,
+                    color: V2VozacCache.getColor(ime),
+                    onTap: () => setSheetState(() => odabranVozac = odabranVozac == ime ? null : ime),
+                  )),
               const SizedBox(height: 8),
               if (trenutni != null)
                 TextButton.icon(
@@ -545,14 +447,11 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<V2Putnik>>(
-      stream: _putniciStream,
+    return StreamBuilder<_RasporedData>(
+      stream: _stream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
-          return const Center(child: CircularProgressIndicator(color: Colors.white));
-        }
-
-        final allPutnici = snapshot.data ?? [];
+        final data = snapshot.data ?? _buildRasporedData(_selectedDay ?? V2DanUtils.odDatuma(DateTime.now()));
+        final allPutnici = data.putnici;
         final targetDay = _selectedDay ?? V2DanUtils.odDatuma(DateTime.now());
 
         final countHelper = V2PutnikCountHelper.fromPutnici(
@@ -563,7 +462,7 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
         int getPutnikCount(String grad, String vreme) {
           try {
             return countHelper.getCount(grad, vreme);
-          } catch (e) {
+          } catch (_) {
             return 0;
           }
         }
@@ -640,7 +539,13 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                   ),
 
                   // TERMIN INFO TRAKA: koji vozač je dodeljen selektovanom terminu
-                  if (_selectedVreme.isNotEmpty) _buildTerminInfoRow(targetDay),
+                  if (_selectedVreme.isNotEmpty)
+                    _rasporedTerminInfoRow(
+                      grad: _selectedGrad,
+                      vreme: _selectedVreme,
+                      vozac: _getVozacZaTermin(_selectedGrad, _selectedVreme),
+                      onTap: () => _showTerminAssignDialog(_selectedGrad, _selectedVreme),
+                    ),
 
                   Expanded(
                     child: filteredByGradVreme.isEmpty
@@ -665,14 +570,10 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                             itemCount: filteredByGradVreme.length,
                             itemBuilder: (_, i) {
                               final p = filteredByGradVreme[i];
-                              // Da li je termin dodeljen (vozac_raspored)?
                               final terminJeDodeljen = _getVozacZaTermin(_selectedGrad, _selectedVreme) != null;
-                              // Individualna dodjela putnika za OVAJ dan+grad+vreme+sedmica (vozac_putnik)
                               final dan = targetDay;
                               final sedmicaItem = V2DanUtils.pocetakTekuceSedmice();
-                              final rmCache = V2MasterRealtimeManager.instance.vozacPutnikCache;
-                              final individualnaEntry =
-                                  rmCache.values.map((r) => V2VozacPutnikEntry.fromMap(r)).where((e) {
+                              final individualnaEntry = data.vozacPutnik.where((e) {
                                 return e.putnikId == p.id?.toString() &&
                                     e.dan == dan &&
                                     e.grad.toUpperCase() == _selectedGrad.toUpperCase() &&
@@ -680,7 +581,6 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
                                         V2GradAdresaValidator.normalizeTime(_selectedVreme) &&
                                     e.datumSedmice == sedmicaItem;
                               }).firstOrNull;
-                              // Boja: individualna dodjela ima prioritet nad termin bojom
                               final vozacColor = individualnaEntry != null
                                   ? V2VozacCache.getColorByUuid(individualnaEntry.vozacId)
                                   : _getVozacColorForTermin(_selectedGrad, _selectedVreme);
@@ -703,78 +603,179 @@ class _VozacRasporedScreenState extends State<V2VozacRasporedScreen> {
           bottomNavigationBar: ValueListenableBuilder<String>(
             valueListenable: navBarTypeNotifier,
             builder: (context, navType, _) {
-              return _buildBottomNavBar(navType, getPutnikCount, targetDay);
+              return _rasporedBottomNavBar(
+                sviPolasci: _sviPolasci,
+                selectedGrad: _selectedGrad,
+                selectedVreme: _selectedVreme,
+                getPutnikCount: getPutnikCount,
+                onPolazakChanged: _onPolazakChanged,
+                selectedDan: targetDay,
+                getVozacColor: _getVozacColorForTermin,
+              );
             },
           ),
         );
       },
     );
   }
+}
 
-  /// Traka ispod day chips-a: vozač za selektovani termin + tap za izmjenu
-  Widget _buildTerminInfoRow(String dan) {
-    final vozac = _getVozacZaTermin(_selectedGrad, _selectedVreme);
-    final color = vozac != null ? V2VozacCache.getColor(vozac) : Colors.white24;
+// ═══════════════════════════════════════════════════════════════
+// TOP-LEVEL HELPERI ZA RASPORED EKRAN
+// ═══════════════════════════════════════════════════════════════
 
-    return GestureDetector(
-      onTap: () async {
-        await _showTerminAssignDialog(_selectedGrad, _selectedVreme);
-      },
+/// Pronalazi V2VozacRasporedEntry za dati termin iz cache-a.
+V2VozacRasporedEntry? _rasporedGetEntry({
+  required String grad,
+  required String vreme,
+  required String dan,
+}) {
+  return V2MasterRealtimeManager.instance.rasporedCache.values
+      .map((r) => V2VozacRasporedEntry.fromMap(r))
+      .where((r) => r.dan == dan && r.grad == grad && r.vreme == vreme)
+      .firstOrNull;
+}
+
+/// Traka ispod day chips-a: vozač za selektovani termin + tap za izmjenu.
+Widget _rasporedTerminInfoRow({
+  required String grad,
+  required String vreme,
+  required String? vozac,
+  required VoidCallback onTap,
+}) {
+  final color = vozac != null ? V2VozacCache.getColor(vozac) : Colors.white24;
+  return GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.directions_car, color: color, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              vozac != null ? 'Vozač: $vozac' : 'Nema dodjele — tap za dodjelu vozača',
+              style: TextStyle(
+                color: vozac != null ? Colors.white : Colors.white54,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Text(
+            '$grad $vreme',
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.edit_outlined, color: color.withValues(alpha: 0.7), size: 16),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Bottom nav bar za raspored ekran.
+Widget _rasporedBottomNavBar({
+  required List<String> sviPolasci,
+  required String selectedGrad,
+  required String selectedVreme,
+  required int Function(String, String) getPutnikCount,
+  required void Function(String, String) onPolazakChanged,
+  required String selectedDan,
+  required Color? Function(String, String) getVozacColor,
+}) {
+  return V2BottomNavBar(
+    sviPolasci: sviPolasci,
+    selectedGrad: selectedGrad,
+    selectedVreme: selectedVreme,
+    getPutnikCount: getPutnikCount,
+    getKapacitet: V2KapacitetService.getKapacitetSync,
+    onPolazakChanged: onPolazakChanged,
+    selectedDan: selectedDan,
+    showVozacBoja: true,
+    getVozacColor: getVozacColor,
+  );
+}
+
+/// Tile za jednog vozača u bottom sheet dijalogu za dodjelu.
+Widget _rasporedVozacTile({
+  required String ime,
+  required bool isSelected,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
+          color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+          border: Border.all(
+            color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
+            width: isSelected ? 2 : 1,
+          ),
         ),
         child: Row(
           children: [
-            Icon(Icons.directions_car, color: color, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: color.withValues(alpha: 0.3),
               child: Text(
-                vozac != null ? 'Vozač: $vozac' : 'Nema dodjele — tap za dodjelu vozača',
-                style: TextStyle(
-                  color: vozac != null ? Colors.white : Colors.white54,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
+                ime.isNotEmpty ? ime[0].toUpperCase() : '?',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
               ),
             ),
+            const SizedBox(width: 12),
             Text(
-              '$_selectedGrad $_selectedVreme',
-              style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ime,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white70,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 16,
+              ),
             ),
-            const SizedBox(width: 8),
-            Icon(Icons.edit_outlined, color: color.withValues(alpha: 0.7), size: 16),
+            const Spacer(),
+            if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildBottomNavBar(String navType, int Function(String, String) getPutnikCount, String targetDay) {
-    int getKapacitet(String grad, String vreme) => V2KapacitetService.getKapacitetSync(grad, vreme);
-
-    return V2BottomNavBar(
-      sviPolasci: _sviPolasci,
-      selectedGrad: _selectedGrad,
-      selectedVreme: _selectedVreme,
-      getPutnikCount: getPutnikCount,
-      getKapacitet: getKapacitet,
-      onPolazakChanged: _onPolazakChanged,
-      selectedDan: targetDay,
-      showVozacBoja: true,
-      getVozacColor: _getVozacColorForTermin,
-    );
-  }
+    ),
+  );
 }
 
-// ═══════════════════════════════════════════════════════════════════
+/// Dart extension helper za null-safe transform.
+extension _NullableExt<T> on T? {
+  R? let<R>(R? Function(T?) fn) => fn(this);
+}
+
+/// Snapshot svih podataka za raspored ekran — jedan StreamBuilder rebuild.
+class _RasporedData {
+  final List<V2Putnik> putnici;
+  final List<V2VozacRasporedEntry> raspored;
+  final List<V2VozacPutnikEntry> vozacPutnik;
+
+  const _RasporedData({
+    required this.putnici,
+    required this.raspored,
+    required this.vozacPutnik,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
 // TILE ZA PUTNIKA U RASPORED EKRANU
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 
 /// Prikazuje jednog putnika u raspored ekranu.
 ///
@@ -830,7 +831,7 @@ class _PutnikRasporedTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      putnik.adresa ?? '${putnik.grad} Â· ${putnik.polazak}',
+                      putnik.adresa ?? '${putnik.grad} · ${putnik.polazak}',
                       style: const TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ],

@@ -30,27 +30,29 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _naplate = [];
   double _ukupnoIznos = 0;
-  final _predaoController = TextEditingController();
-  bool _predaoSacuvan = false;
+  double? _predaoIznos; // za share/PDF — drži footer putem callback-a
 
   // Lista vozača — osvježava se kada RM emituje promjenu vozaciCache
   List<String> _vozaciImena = [];
 
-  StreamSubscription<String>? _polasciSub;
-  StreamSubscription<String>? _vozaciSub;
+  StreamSubscription<void>? _cacheSub;
   Timer? _refreshDebounce;
 
   @override
   void initState() {
     super.initState();
     _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
-    _vozaciSub = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_vozaci').listen((_) {
+    // Jedan stream — v2_vozaci i v2_polasci, reaguje na oba eventa.
+    _cacheSub = V2MasterRealtimeManager.instance.v2StreamFromCache<void>(
+      tables: const ['v2_vozaci', 'v2_polasci'],
+      build: () {},
+    ).listen((_) {
       if (!mounted) return;
+      // Osvježi listu vozača (reaguje na v2_vozaci)
       setState(() {
         _vozaciImena = V2VozacService.getAllVozaci().map((v) => v.ime).toList();
       });
-    });
-    _polasciSub = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
+      // Reload naplate samo ako je selektovan vozač i datum je danas (reaguje na v2_polasci)
       if (_selectedVozacIme == null) return;
       final today = DateTime.now();
       final isToday =
@@ -65,11 +67,15 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
 
   @override
   void dispose() {
-    _polasciSub?.cancel();
-    _vozaciSub?.cancel();
+    _cacheSub?.cancel();
     _refreshDebounce?.cancel();
-    _predaoController.dispose();
     super.dispose();
+  }
+
+  void _resetNaplate() {
+    _naplate = [];
+    _ukupnoIznos = 0;
+    _predaoIznos = null;
   }
 
   Future<void> _ucitajNaplate() async {
@@ -87,52 +93,12 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
         _naplate = result;
         _ukupnoIznos = result.fold(0.0, (sum, r) => sum + ((r['iznos'] as num?)?.toDouble() ?? 0));
         _isLoading = false;
-        _predaoController.clear();
-        _predaoSacuvan = false;
+        _predaoIznos = null;
       });
-      await _ucitajPredaju(dateStr);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         V2AppSnackBar.error(context, '❌ Greška: $e');
-      }
-    }
-  }
-
-  Future<void> _ucitajPredaju(String dateStr) async {
-    final predaja = await V2DnevnaPredajaService.get(
-      vozacIme: _selectedVozacIme!,
-      datum: _selectedDate,
-    );
-    if (!mounted) return;
-    if (predaja != null) {
-      setState(() {
-        _predaoController.text = predaja.predaoIznos > 0 ? predaja.predaoIznos.toStringAsFixed(0) : '';
-        _predaoSacuvan = predaja.predaoIznos > 0;
-      });
-    } else {
-      setState(() {
-        _predaoController.clear();
-        _predaoSacuvan = false;
-      });
-    }
-  }
-
-  Future<void> _sacuvajPredaju() async {
-    final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
-    if (predaoVal == null || _selectedVozacIme == null) return;
-    final ok = await V2DnevnaPredajaService.upsert(
-      vozacIme: _selectedVozacIme!,
-      datum: _selectedDate,
-      predaoIznos: predaoVal,
-      ukupnoNaplaceno: _ukupnoIznos,
-    );
-    if (mounted) {
-      if (ok) {
-        setState(() => _predaoSacuvan = true);
-        V2AppSnackBar.success(context, '✅ Predaja sačuvana');
-      } else {
-        V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
       }
     }
   }
@@ -178,10 +144,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
-        _naplate = [];
-        _ukupnoIznos = 0;
-        _predaoController.clear();
-        _predaoSacuvan = false;
+        _resetNaplate();
       });
     }
   }
@@ -200,7 +163,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     }
     buffer.writeln('─────────────────────────');
     buffer.writeln('UKUPNO: ${_naplate.length} uplata — ${_ukupnoIznos.toStringAsFixed(0)} din');
-    final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
+    final predaoVal = _predaoIznos;
     if (predaoVal != null) {
       final razlika = predaoVal - _ukupnoIznos;
       buffer.writeln('Predao: ${predaoVal.toStringAsFixed(0)} din');
@@ -230,7 +193,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
     final normalStyle = pw.TextStyle(font: fontRegular, fontSize: 12);
 
     final doc = pw.Document();
-    final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
+    final predaoVal = _predaoIznos;
     final razlika = predaoVal != null ? predaoVal - _ukupnoIznos : null;
 
     doc.addPage(
@@ -389,10 +352,7 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                             onChanged: (v) {
                               setState(() {
                                 _selectedVozacIme = v;
-                                _naplate = [];
-                                _ukupnoIznos = 0;
-                                _predaoController.clear();
-                                _predaoSacuvan = false;
+                                _resetNaplate();
                               });
                             },
                           ),
@@ -464,178 +424,17 @@ class _V2DnevnikNaplateScreenState extends State<V2DnevnikNaplateScreen> {
                                 child: ListView.builder(
                                   padding: const EdgeInsets.symmetric(horizontal: 12),
                                   itemCount: _naplate.length,
-                                  itemBuilder: (context, index) {
-                                    final n = _naplate[index];
-                                    final iznos = (n['iznos'] as double).toStringAsFixed(0);
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.07),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: Colors.white12),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 28,
-                                            child: Text(
-                                              '${index + 1}.',
-                                              style: const TextStyle(color: Colors.white38, fontSize: 13),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              n['ime'] as String,
-                                              style: const TextStyle(
-                                                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${n['grad']} ${n['polazak']}',
-                                            style: const TextStyle(color: Colors.white54, fontSize: 13),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            '$iznos din',
-                                            style: const TextStyle(
-                                              color: Colors.greenAccent,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            n['vreme_naplate'] as String,
-                                            style: const TextStyle(color: Colors.white38, fontSize: 12),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
+                                  itemBuilder: (_, index) => _NaplataCard(n: _naplate[index], index: index),
                                 ),
                               ),
-
                               // Footer: Ukupno + Predao
-                              StatefulBuilder(
-                                builder: (context, setFooter) {
-                                  final predaoVal = double.tryParse(_predaoController.text.replaceAll(',', '.'));
-                                  final razlika = predaoVal != null ? predaoVal - _ukupnoIznos : null;
-                                  return Container(
-                                    margin: const EdgeInsets.all(12),
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        // Ukupno
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              '${_naplate.length} uplata',
-                                              style: const TextStyle(color: Colors.white70, fontSize: 15),
-                                            ),
-                                            Text(
-                                              '${_ukupnoIznos.toStringAsFixed(0)} din',
-                                              style: const TextStyle(
-                                                color: Colors.greenAccent,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        // Predao input
-                                        Row(
-                                          children: [
-                                            const Text(
-                                              'Predao:',
-                                              style: TextStyle(color: Colors.white70, fontSize: 14),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: TextField(
-                                                controller: _predaoController,
-                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                style: const TextStyle(color: Colors.white, fontSize: 15),
-                                                decoration: InputDecoration(
-                                                  hintText: '0',
-                                                  hintStyle: const TextStyle(color: Colors.white38),
-                                                  suffixText: 'din',
-                                                  suffixStyle: const TextStyle(color: Colors.white54),
-                                                  isDense: true,
-                                                  contentPadding:
-                                                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                                  filled: true,
-                                                  fillColor: Colors.white.withValues(alpha: 0.08),
-                                                  border: OutlineInputBorder(
-                                                    borderRadius: BorderRadius.circular(8),
-                                                    borderSide: BorderSide.none,
-                                                  ),
-                                                ),
-                                                onChanged: (_) {
-                                                  setState(() => _predaoSacuvan = false);
-                                                },
-                                                onSubmitted: (_) => _sacuvajPredaju(),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            GestureDetector(
-                                              onTap: _sacuvajPredaju,
-                                              child: Container(
-                                                padding: const EdgeInsets.all(8),
-                                                decoration: BoxDecoration(
-                                                  color: _predaoSacuvan
-                                                      ? Colors.green.withValues(alpha: 0.3)
-                                                      : Colors.white.withValues(alpha: 0.1),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                    color: _predaoSacuvan ? Colors.greenAccent : Colors.white24,
-                                                  ),
-                                                ),
-                                                child: Icon(
-                                                  _predaoSacuvan ? Icons.check : Icons.save_outlined,
-                                                  color: _predaoSacuvan ? Colors.greenAccent : Colors.white54,
-                                                  size: 20,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        // Razlika
-                                        if (razlika != null) ...[
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                razlika >= 0 ? 'Višak:' : 'Manjak:',
-                                                style: TextStyle(
-                                                  color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              Text(
-                                                '${razlika.abs().toStringAsFixed(0)} din',
-                                                style: TextStyle(
-                                                  color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  );
-                                },
+                              _PredajaFooter(
+                                key: ValueKey('$_selectedVozacIme-${_selectedDate.toIso8601String()}'),
+                                naplate: _naplate,
+                                ukupnoIznos: _ukupnoIznos,
+                                vozacIme: _selectedVozacIme!,
+                                datum: _selectedDate,
+                                onPredaoChanged: (v) => _predaoIznos = v,
                               ),
                             ],
                           ),
@@ -681,4 +480,218 @@ pw.Widget _dnevnikPdfCell(String text, {required pw.TextStyle style}) {
     padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
     child: pw.Text(text, style: style),
   );
+}
+
+// ─── Widgets ──────────────────────────────────────────────────────────────────
+
+class _NaplataCard extends StatelessWidget {
+  const _NaplataCard({required this.n, required this.index});
+
+  final Map<String, dynamic> n;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final iznos = (n['iznos'] as double).toStringAsFixed(0);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text('${index + 1}.', style: const TextStyle(color: Colors.white38, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(n['ime'] as String,
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+          Text('${n['grad']} ${n['polazak']}', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+          const SizedBox(width: 10),
+          Text('$iznos din',
+              style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 10),
+          Text(n['vreme_naplate'] as String, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Footer sa unosom predatog iznosa — izolirani StatefulWidget.
+/// Seth setState ne trigguje roditelja ni ListView.
+class _PredajaFooter extends StatefulWidget {
+  const _PredajaFooter({
+    super.key,
+    required this.naplate,
+    required this.ukupnoIznos,
+    required this.vozacIme,
+    required this.datum,
+    this.onPredaoChanged,
+  });
+
+  final List<Map<String, dynamic>> naplate;
+  final double ukupnoIznos;
+  final String vozacIme;
+  final DateTime datum;
+  final void Function(double?)? onPredaoChanged;
+
+  @override
+  State<_PredajaFooter> createState() => _PredajaFooterState();
+}
+
+class _PredajaFooterState extends State<_PredajaFooter> {
+  final _ctrl = TextEditingController();
+  bool _sacuvan = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPredaja();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPredaja() async {
+    final predaja = await V2DnevnaPredajaService.get(
+      vozacIme: widget.vozacIme,
+      datum: widget.datum,
+    );
+    if (!mounted) return;
+    final iznos = (predaja != null && predaja.predaoIznos > 0) ? predaja.predaoIznos : null;
+    widget.onPredaoChanged?.call(iznos);
+    setState(() {
+      _ctrl.text = iznos != null ? iznos.toStringAsFixed(0) : '';
+      _sacuvan = iznos != null;
+    });
+  }
+
+  Future<void> _sacuvaj() async {
+    final predaoVal = double.tryParse(_ctrl.text.replaceAll(',', '.'));
+    if (predaoVal == null) return;
+    final ok = await V2DnevnaPredajaService.upsert(
+      vozacIme: widget.vozacIme,
+      datum: widget.datum,
+      predaoIznos: predaoVal,
+      ukupnoNaplaceno: widget.ukupnoIznos,
+    );
+    if (mounted) {
+      if (ok) {
+        widget.onPredaoChanged?.call(predaoVal);
+        setState(() => _sacuvan = true);
+        V2AppSnackBar.success(context, '✅ Predaja sačuvana');
+      } else {
+        V2AppSnackBar.error(context, '❌ Greška pri čuvanju');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final predaoVal = double.tryParse(_ctrl.text.replaceAll(',', '.'));
+    final razlika = predaoVal != null ? predaoVal - widget.ukupnoIznos : null;
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        children: [
+          // Ukupno
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${widget.naplate.length} uplata', style: const TextStyle(color: Colors.white70, fontSize: 15)),
+              Text('${widget.ukupnoIznos.toStringAsFixed(0)} din',
+                  style: const TextStyle(color: Colors.greenAccent, fontSize: 20, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Predao input
+          Row(
+            children: [
+              const Text('Predao:', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _ctrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    suffixText: 'din',
+                    suffixStyle: const TextStyle(color: Colors.white54),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.08),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  ),
+                  onChanged: (v) {
+                    widget.onPredaoChanged?.call(double.tryParse(v.replaceAll(',', '.')));
+                    setState(() => _sacuvan = false);
+                  },
+                  onSubmitted: (_) => _sacuvaj(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _sacuvaj,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _sacuvan ? Colors.green.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _sacuvan ? Colors.greenAccent : Colors.white24),
+                  ),
+                  child: Icon(
+                    _sacuvan ? Icons.check : Icons.save_outlined,
+                    color: _sacuvan ? Colors.greenAccent : Colors.white54,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Razlika
+          if (razlika != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  razlika >= 0 ? 'Višak:' : 'Manjak:',
+                  style: TextStyle(
+                      color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${razlika.abs().toStringAsFixed(0)} din',
+                  style: TextStyle(
+                      color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

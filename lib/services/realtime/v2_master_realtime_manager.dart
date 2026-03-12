@@ -125,6 +125,11 @@ class V2MasterRealtimeManager {
   String? _loadedDate;
   String? get loadedDate => _loadedDate;
 
+  /// Sedmica koja je učitana u polasciCache — koristi se u v2UpsertToCache
+  /// da se izbjegne neslaganje kada pocetakTekuceSedmice() promijeni vrijednost
+  /// (npr. app pokrenut u petak, Realtime INSERT dolazi u subotu)
+  String? _loadedSedmica;
+
   bool _initialized = false;
   bool get isInitialized => _initialized;
 
@@ -195,6 +200,9 @@ class V2MasterRealtimeManager {
 
     _initialized = true;
 
+    // Pokreni globalni heartbeat za WebSocket health check (tick svakih 30s)
+    _startHeartbeat();
+
     // Obavijesti sve stream-ove koji su čekali na isInitialized — triggera inicijalni emit
     if (!_cacheChangeController.isClosed) {
       for (final table in const [
@@ -250,6 +258,7 @@ class V2MasterRealtimeManager {
   Future<void> _loadPolasciCache() async {
     try {
       final sedmica = V2DanUtils.pocetakTekuceSedmice();
+      _loadedSedmica = sedmica;
       final rows = await supabase
           .from('v2_polasci')
           .select('id, putnik_id, putnik_tabela, grad, zeljeno_vreme, dodeljeno_vreme, '
@@ -510,9 +519,13 @@ class V2MasterRealtimeManager {
       if (record['datum_sedmice'] != null) {
         record = {...record, 'datum_sedmice': record['datum_sedmice'].toString().split('T').first};
       }
-      // Ignoriši zapise koji nisu iz tekuće sedmice
+      // Ignoriši zapise koji nisu iz sedmice koja je učitana u cache
+      // Koristimo _loadedSedmica (snapshot iz _loadPolasciCache) umjesto
+      // dinamičkog pocetakTekuceSedmice() koji može promijeniti vrijednost
+      // ako se sedmica promijeni dok je app otvoren (npr. petak→subota)
       final recordSedmica = record['datum_sedmice']?.toString();
-      if (recordSedmica != null && recordSedmica != V2DanUtils.pocetakTekuceSedmice()) {
+      final targetSedmica = _loadedSedmica ?? V2DanUtils.pocetakTekuceSedmice();
+      if (recordSedmica != null && recordSedmica != targetSedmica) {
         target.remove(id);
         if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
         return;
@@ -620,6 +633,92 @@ class V2MasterRealtimeManager {
   final Map<String, int> _listenerCount = {};
   final Map<String, Timer?> _reconnectTimers = {};
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // WEBSOCKET HEALTH CHECK
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Timestamp zadnjeg primljenog eventa po kanalu (INSERT/UPDATE/DELETE)
+  final Map<String, DateTime> _channelLastEvent = {};
+
+  /// Timestamp zadnjeg uspješnog subscribe (connected) po kanalu
+  final Map<String, DateTime> _channelConnectedAt = {};
+
+  /// Globalni heartbeat timer — tick svakih 30s
+  Timer? _heartbeatTimer;
+
+  /// Kanal se smatra mrtvim ako nije primio nijedan event duže od [_deadChannelThreshold]
+  /// od trenutka kad je uspješno connectovao.
+  static const Duration _deadChannelThreshold = Duration(seconds: 90);
+
+  /// Minimalno vrijeme koje kanal mora biti connectovan prije nego se proglasi mrtvim
+  /// (izbjegava false positive za kanale koji su tek connectovani)
+  static const Duration _minConnectedAge = Duration(seconds: 60);
+
+  /// Broadcast stream koji emituje ime tabele čiji kanal je detektovan kao mrtav i reconnectovan.
+  final StreamController<String> _healthEventController = StreamController<String>.broadcast();
+
+  /// Stream health event-a — svaki emit je ime tabele čiji kanal je bio mrtav i ponovo otvoren.
+  Stream<String> get onHealthEvent => _healthEventController.stream;
+
+  /// Vraća snapshot health statusa svih aktivnih kanala.
+  /// Key = ime tabele, value = mapa sa statusnim podacima.
+  Map<String, Map<String, dynamic>> get channelHealthSnapshot {
+    final now = DateTime.now();
+    return {
+      for (final entry in _channels.entries)
+        entry.key: {
+          'connected': true,
+          'connectedAt': _channelConnectedAt[entry.key]?.toIso8601String(),
+          'lastEvent': _channelLastEvent[entry.key]?.toIso8601String(),
+          'secondsSinceEvent':
+              _channelLastEvent[entry.key] != null ? now.difference(_channelLastEvent[entry.key]!).inSeconds : null,
+          'listenerCount': _listenerCount[entry.key] ?? 0,
+        },
+    };
+  }
+
+  /// Pokreće globalni heartbeat timer (poziva se iz initialize()).
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) => _heartbeatTick());
+  }
+
+  /// Jedan heartbeat tick — provjerava sve aktivne kanale.
+  void _heartbeatTick() {
+    final now = DateTime.now();
+    final deadChannels = <String>[];
+
+    for (final table in _channels.keys.toList()) {
+      final listenerCount = _listenerCount[table] ?? 0;
+      if (listenerCount <= 0) continue;
+
+      final connectedAt = _channelConnectedAt[table];
+      if (connectedAt == null) continue;
+
+      // Kanal mora biti connectovan dovoljno dugo prije provjere
+      if (now.difference(connectedAt) < _minConnectedAge) continue;
+
+      final lastEvent = _channelLastEvent[table];
+      // Ako nema nijednog eventa ili zadnji event je star > threshold → mrtav kanal
+      final secondsSinceActivity =
+          lastEvent != null ? now.difference(lastEvent).inSeconds : now.difference(connectedAt).inSeconds;
+
+      if (secondsSinceActivity > _deadChannelThreshold.inSeconds) {
+        deadChannels.add(table);
+      }
+    }
+
+    for (final table in deadChannels) {
+      debugPrint('💔 [RM] Dead channel detected: "$table" — forcing reconnect');
+      _scheduleReconnect(table, immediate: true);
+      if (!_healthEventController.isClosed) _healthEventController.add(table);
+    }
+  }
+
+  /// Manualni health check — poziva se iz app lifecycle (resume) ili on-demand.
+  /// Provjerava sve kanale odmah (ne čeka sljedeći heartbeat tick).
+  void v2HealthCheck() => _heartbeatTick();
+
   /// Broadcast stream koji se emituje svaki put kad se cache manuelno promijeni.
   /// Listeneri (streamAktivniPutnici, streamSveAdrese...) reaguju bez Realtime-a.
   final StreamController<String> _cacheChangeController = StreamController<String>.broadcast();
@@ -665,6 +764,9 @@ class V2MasterRealtimeManager {
           schema: 'public',
           table: table,
           callback: (payload) {
+            // Zabilježi timestamp zadnjeg primljenog eventa — koristi health check
+            _channelLastEvent[table] = DateTime.now();
+
             if (payload.eventType == PostgresChangeEvent.delete) {
               final id = payload.oldRecord['id']?.toString();
               if (id != null) v2RemoveFromCache(table, id);
@@ -687,6 +789,8 @@ class V2MasterRealtimeManager {
     _reconnectTimers[table]?.cancel();
     _reconnectTimers[table] = null;
     _reconnectAttempts.remove(table);
+    _channelLastEvent.remove(table);
+    _channelConnectedAt.remove(table);
     _channels[table]?.unsubscribe();
     _channels.remove(table);
     _controllers[table]?.close();
@@ -773,6 +877,8 @@ class V2MasterRealtimeManager {
   void _handleStatus(String table, RealtimeSubscribeStatus status, dynamic error) {
     switch (status) {
       case RealtimeSubscribeStatus.subscribed:
+        // Zabilježi kada je kanal uspješno connectovao — za health check threshold računicu
+        _channelConnectedAt[table] = DateTime.now();
         // Ako je ovo reconnect (ne prvi subscribe), reload cache da popunimo stale podatke
         if ((_reconnectAttempts[table] ?? 0) > 0) {
           _reconnectAttempts.remove(table);
@@ -801,13 +907,14 @@ class V2MasterRealtimeManager {
 
   final Map<String, int> _reconnectAttempts = {};
 
-  void _scheduleReconnect(String table) {
+  void _scheduleReconnect(String table, {bool immediate = false}) {
     _reconnectTimers[table]?.cancel();
 
+    // immediate=true → health check forced reconnect, nema backoff-a
     // Eksponencijalni backoff: 3, 6, 10, 20, 30, 60s — max 60s
     const delays = [3, 6, 10, 20, 30, 60];
     final attempt = (_reconnectAttempts[table] ?? 0).clamp(0, delays.length - 1);
-    final delay = delays[attempt];
+    final delay = immediate ? 0 : delays[attempt];
     _reconnectAttempts[table] = (_reconnectAttempts[table] ?? 0) + 1;
 
     _reconnectTimers[table] = Timer(Duration(seconds: delay), () async {
@@ -1282,6 +1389,8 @@ class V2MasterRealtimeManager {
   // ──────────────────────────────────────────────────────────────────────────
 
   void dispose() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
     for (final sub in _staticSubscriptions) {
       sub.cancel();
     }
@@ -1296,6 +1405,8 @@ class V2MasterRealtimeManager {
     }
     _reconnectTimers.clear();
     _reconnectAttempts.clear();
+    _channelLastEvent.clear();
+    _channelConnectedAt.clear();
     for (final ch in _channels.values) {
       ch.unsubscribe();
     }
@@ -1305,6 +1416,7 @@ class V2MasterRealtimeManager {
     _channels.clear();
     _controllers.clear();
     _listenerCount.clear();
+    if (!_healthEventController.isClosed) _healthEventController.close();
     _cacheChangeController.close();
   }
 }

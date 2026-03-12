@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
-import '../widgets/v2_summary_badge.dart';
 
 /// PROMENA ŠIFRE SCREEN
 /// Vozač može da promeni svoju šifru nakon uspešnog logina
@@ -64,7 +63,7 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
     try {
       final staraSifra = _staraSifraController.text;
       if (_trenutnaSifra != null && _trenutnaSifra!.isNotEmpty && _trenutnaSifra != staraSifra) {
-        v2ShowError(context, 'Pogrešna trenutna šifra.');
+        V2AppSnackBar.error(context, 'Pogrešna trenutna šifra.');
         return;
       }
 
@@ -76,7 +75,7 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
 
       Navigator.pop(context);
     } catch (e) {
-      v2ShowError(context, 'Greška: $e');
+      V2AppSnackBar.error(context, 'Greška: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -86,168 +85,73 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
   Widget build(BuildContext context) {
     final bool imaSifru = _trenutnaSifra != null && _trenutnaSifra!.isNotEmpty;
 
-    return Container(
-      decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
-      child: Scaffold(
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: const Text(
-            '🔑 Promena šifre',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+        elevation: 0,
+        title: const Text(
+          '🔑 Promena šifre',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+      ),
+      body: Container(
+        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 100, 24, 24),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
-                  Icons.lock_reset,
-                  color: Colors.amber,
-                  size: 60,
-                ),
+                const Icon(Icons.lock_reset, color: Colors.amber, size: 60),
                 const SizedBox(height: 16),
                 Text(
                   widget.vozacIme,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   imaSifru ? 'Promeni svoju šifru' : 'Postavi novu šifru',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 if (imaSifru) ...[
-                  TextFormField(
+                  _sifreTextField(
                     controller: _staraSifraController,
-                    style: const TextStyle(color: Colors.white),
-                    obscureText: !_staraSifraVisible,
-                    decoration: InputDecoration(
-                      labelText: 'Trenutna šifra',
-                      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.amber),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _staraSifraVisible ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.amber,
-                        ),
-                        onPressed: () => setState(() => _staraSifraVisible = !_staraSifraVisible),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.1),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.amber),
-                      ),
-                    ),
-                    validator: (v) {
-                      if (imaSifru && (v?.isEmpty == true)) {
-                        return 'Unesite trenutnu šifru';
-                      }
-                      return null;
-                    },
+                    label: 'Trenutna šifra',
+                    icon: Icons.lock_outline,
+                    visible: _staraSifraVisible,
+                    onToggle: () => setState(() => _staraSifraVisible = !_staraSifraVisible),
+                    validator: (v) => (v?.isEmpty == true) ? 'Unesite trenutnu šifru' : null,
                   ),
                   const SizedBox(height: 16),
                 ],
-                TextFormField(
+                _sifreTextField(
                   controller: _novaSifraController,
-                  style: const TextStyle(color: Colors.white),
-                  obscureText: !_novaSifraVisible,
-                  decoration: InputDecoration(
-                    labelText: 'Nova šifra',
-                    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                    prefixIcon: const Icon(Icons.lock, color: Colors.amber),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _novaSifraVisible ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.amber,
-                      ),
-                      onPressed: () => setState(() => _novaSifraVisible = !_novaSifraVisible),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.1),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.amber),
-                    ),
-                  ),
+                  label: 'Nova šifra',
+                  icon: Icons.lock,
+                  visible: _novaSifraVisible,
+                  onToggle: () => setState(() => _novaSifraVisible = !_novaSifraVisible),
                   validator: (v) {
-                    if (v?.isEmpty == true) {
-                      return 'Unesite novu šifru';
-                    }
-                    if (v!.length < 4) {
-                      return 'Šifra mora imati minimum 4 karaktera';
-                    }
+                    if (v?.isEmpty == true) return 'Unesite novu šifru';
+                    if (v!.length < 4) return 'Šifra mora imati minimum 4 karaktera';
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+                _sifreTextField(
                   controller: _potvrdaSifraController,
-                  style: const TextStyle(color: Colors.white),
-                  obscureText: !_potvrdaVisible,
-                  decoration: InputDecoration(
-                    labelText: 'Potvrdi novu šifru',
-                    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                    prefixIcon: const Icon(Icons.lock_clock, color: Colors.amber),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _potvrdaVisible ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.amber,
-                      ),
-                      onPressed: () => setState(() => _potvrdaVisible = !_potvrdaVisible),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.1),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.amber),
-                    ),
-                  ),
+                  label: 'Potvrdi novu šifru',
+                  icon: Icons.lock_clock,
+                  visible: _potvrdaVisible,
+                  onToggle: () => setState(() => _potvrdaVisible = !_potvrdaVisible),
                   validator: (v) {
-                    if (v?.isEmpty == true) {
-                      return 'Potvrdite novu šifru';
-                    }
-                    if (v != _novaSifraController.text) {
-                      return 'Šifre se ne poklapaju';
-                    }
+                    if (v?.isEmpty == true) return 'Potvrdite novu šifru';
+                    if (v != _novaSifraController.text) return 'Šifre se ne poklapaju';
                     return null;
                   },
                 ),
@@ -258,9 +162,7 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
                     backgroundColor: Colors.amber,
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -302,3 +204,54 @@ class _V2PromenaSifreScreenState extends State<V2PromenaSifreScreen> {
     );
   }
 }
+
+// ─── Top-level helpers ────────────────────────────────────────────────────────
+
+InputDecoration _sifreInputDecoration(
+  String label,
+  IconData prefixIcon, {
+  required bool visible,
+  required VoidCallback onToggle,
+}) =>
+    InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+      prefixIcon: Icon(prefixIcon, color: Colors.amber),
+      suffixIcon: IconButton(
+        icon: Icon(
+          visible ? Icons.visibility_off : Icons.visibility,
+          color: Colors.amber,
+        ),
+        onPressed: onToggle,
+      ),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.1),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.amber),
+      ),
+    );
+
+Widget _sifreTextField({
+  required TextEditingController controller,
+  required String label,
+  required IconData icon,
+  required bool visible,
+  required VoidCallback onToggle,
+  required String? Function(String?) validator,
+}) =>
+    TextFormField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      obscureText: !visible,
+      decoration: _sifreInputDecoration(label, icon, visible: visible, onToggle: onToggle),
+      validator: validator,
+    );

@@ -32,11 +32,8 @@ class V2KombiEtaWidget extends StatefulWidget {
 }
 
 class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
-  StreamSubscription<String>? _subscription;
-  StreamSubscription<String>? _putnikSubscription;
+  StreamSubscription<void>? _cacheSubscription;
   Timer? _pollingTimer;
-  Timer? _gpsDebounce;
-  Timer? _pokupljenjeDebounce;
   int? _etaMinutes;
   bool _isLoading = true;
   bool _isActive = false;
@@ -63,10 +60,7 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
-    _gpsDebounce?.cancel();
-    _pokupljenjeDebounce?.cancel();
-    _subscription?.cancel();
-    _putnikSubscription?.cancel();
+    _cacheSubscription?.cancel();
     super.dispose();
   }
 
@@ -181,19 +175,15 @@ class _KombiEtaWidgetState extends State<V2KombiEtaWidget> {
   void _startListening() {
     _loadGpsData();
     _loadPokupljenjeIzBaze();
-    // Polling je sada samo fallback ako realtime padne.
-    // Interval produžen: 30s → 5min jer nema potrebe za cestim upitima.
+    // Polling — fallback ako realtime padne (5min interval).
     _pollingTimer = Timer.periodic(const Duration(minutes: 5), (_) => _loadGpsData());
-    _subscription = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_vozac_lokacije').listen((_) {
-      _gpsDebounce?.cancel();
-      _gpsDebounce = Timer(const Duration(milliseconds: 150), _loadGpsData);
+    // Jedan stream za obje tabele — v2StreamFromCache, debounce 150ms ugraden u RM.
+    final tables = widget.putnikId != null ? const ['v2_vozac_lokacije', 'v2_polasci'] : const ['v2_vozac_lokacije'];
+    _cacheSubscription =
+        V2MasterRealtimeManager.instance.v2StreamFromCache<void>(tables: tables, build: () {}).listen((_) {
+      _loadGpsData();
+      if (widget.putnikId != null) _loadPokupljenjeIzBaze();
     });
-    if (widget.putnikId != null) {
-      _putnikSubscription = V2MasterRealtimeManager.instance.onCacheChanged.where((t) => t == 'v2_polasci').listen((_) {
-        _pokupljenjeDebounce?.cancel();
-        _pokupljenjeDebounce = Timer(const Duration(milliseconds: 150), _loadPokupljenjeIzBaze);
-      });
-    }
   }
 
   Future<void> _loadPokupljenjeIzBaze() async {

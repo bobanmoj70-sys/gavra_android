@@ -73,158 +73,153 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
         final int brDnevni = _rm.dnevniCache.values.where((r) => r['status'] == 'aktivan').length;
         final int brPosiljke = _rm.posiljkeCache.values.where((r) => r['status'] == 'aktivan').length;
 
-        return Container(
-          decoration: BoxDecoration(
-            gradient: Theme.of(context).backgroundGradient,
-          ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(80),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).glassContainer,
-                  border: Border.all(
-                    color: Theme.of(context).glassBorder,
-                    width: 1.5,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(25),
-                    bottomRight: Radius.circular(25),
-                  ),
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          backgroundColor: Colors.transparent,
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(80),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).glassContainer,
+                border: Border.all(
+                  color: Theme.of(context).glassBorder,
+                  width: 1.5,
                 ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Stack(children: [
-                          IconButton(
-                            icon: Icon(Icons.engineering,
-                                color: _selectedFilter == 'v2_radnici' ? Colors.white : Colors.white70,
-                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                            onPressed: () => setState(
-                                () => _selectedFilter = _selectedFilter == 'v2_radnici' ? 'svi' : 'v2_radnici'),
-                            tooltip: 'Radnici',
-                          ),
-                          Positioned(
-                              right: 0,
-                              top: 0,
-                              child: _putniciiBuildBadge(
-                                  brRadnici, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
-                        ]),
-                        Stack(children: [
-                          IconButton(
-                            icon: Icon(Icons.school,
-                                color: _selectedFilter == 'v2_ucenici' ? Colors.white : Colors.white70,
-                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                            onPressed: () => setState(
-                                () => _selectedFilter = _selectedFilter == 'v2_ucenici' ? 'svi' : 'v2_ucenici'),
-                            tooltip: 'Učenici',
-                          ),
-                          Positioned(
-                              right: 0,
-                              top: 0,
-                              child: _putniciiBuildBadge(
-                                  brUcenici, const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
-                        ]),
-                        Stack(children: [
-                          IconButton(
-                            icon: Icon(Icons.today,
-                                color: _selectedFilter == 'v2_dnevni' ? Colors.white : Colors.white70,
-                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                            onPressed: () =>
-                                setState(() => _selectedFilter = _selectedFilter == 'v2_dnevni' ? 'svi' : 'v2_dnevni'),
-                            tooltip: 'Dnevni',
-                          ),
-                          Positioned(
-                              right: 0,
-                              top: 0,
-                              child: _putniciiBuildBadge(
-                                  brDnevni, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
-                        ]),
-                        Stack(children: [
-                          IconButton(
-                            icon: Icon(Icons.local_shipping,
-                                color: _selectedFilter == 'v2_posiljke' ? Colors.white : Colors.white70,
-                                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                            onPressed: () => setState(
-                                () => _selectedFilter = _selectedFilter == 'v2_posiljke' ? 'svi' : 'v2_posiljke'),
-                            tooltip: 'Pošiljke',
-                          ),
-                          Positioned(
-                              right: 0,
-                              top: 0,
-                              child: _putniciiBuildBadge(
-                                  brPosiljke, const Color(0xFFFF8C00), const Color(0xFFE65C00), Colors.orange)),
-                        ]),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(25),
+                  bottomRight: Radius.circular(25),
+                ),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(children: [
                         IconButton(
-                          icon: const Icon(Icons.add,
-                              color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                          onPressed: _pokaziDijalogZaDodavanje,
-                          tooltip: 'Dodaj novog putnika',
+                          icon: Icon(Icons.engineering,
+                              color: _selectedFilter == 'v2_radnici' ? Colors.white : Colors.white70,
+                              shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                          onPressed: () =>
+                              setState(() => _selectedFilter = _selectedFilter == 'v2_radnici' ? 'svi' : 'v2_radnici'),
+                          tooltip: 'Radnici',
                         ),
-                      ],
-                    ),
+                        Positioned(
+                            right: 0,
+                            top: 0,
+                            child: _putniciiBuildBadge(
+                                brRadnici, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8), Colors.blue)),
+                      ]),
+                      Stack(children: [
+                        IconButton(
+                          icon: Icon(Icons.school,
+                              color: _selectedFilter == 'v2_ucenici' ? Colors.white : Colors.white70,
+                              shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                          onPressed: () =>
+                              setState(() => _selectedFilter = _selectedFilter == 'v2_ucenici' ? 'svi' : 'v2_ucenici'),
+                          tooltip: 'Učenici',
+                        ),
+                        Positioned(
+                            right: 0,
+                            top: 0,
+                            child: _putniciiBuildBadge(
+                                brUcenici, const Color(0xFF4ECDC4), const Color(0xFF44A08D), Colors.teal)),
+                      ]),
+                      Stack(children: [
+                        IconButton(
+                          icon: Icon(Icons.today,
+                              color: _selectedFilter == 'v2_dnevni' ? Colors.white : Colors.white70,
+                              shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                          onPressed: () =>
+                              setState(() => _selectedFilter = _selectedFilter == 'v2_dnevni' ? 'svi' : 'v2_dnevni'),
+                          tooltip: 'Dnevni',
+                        ),
+                        Positioned(
+                            right: 0,
+                            top: 0,
+                            child: _putniciiBuildBadge(
+                                brDnevni, const Color(0xFFFF6B6B), const Color(0xFFFF8E53), Colors.red)),
+                      ]),
+                      Stack(children: [
+                        IconButton(
+                          icon: Icon(Icons.local_shipping,
+                              color: _selectedFilter == 'v2_posiljke' ? Colors.white : Colors.white70,
+                              shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                          onPressed: () => setState(
+                              () => _selectedFilter = _selectedFilter == 'v2_posiljke' ? 'svi' : 'v2_posiljke'),
+                          tooltip: 'Pošiljke',
+                        ),
+                        Positioned(
+                            right: 0,
+                            top: 0,
+                            child: _putniciiBuildBadge(
+                                brPosiljke, const Color(0xFFFF8C00), const Color(0xFFE65C00), Colors.orange)),
+                      ]),
+                      IconButton(
+                        icon: const Icon(Icons.add,
+                            color: Colors.white,
+                            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                        onPressed: _pokaziDijalogZaDodavanje,
+                        tooltip: 'Dodaj novog putnika',
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-            body: Column(
+          ),
+          body: Container(
+            decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+            child: Column(
               children: [
                 // SEARCH BAR
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 3),
                       ),
+                    ],
+                    border: Border.all(
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
                     ),
-                    child: TextField(
-                      controller: _searchController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: InputDecoration(
-                        hintText: 'Pretraži putnike...',
-                        hintStyle: TextStyle(color: Colors.grey[600]),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(
-                                  Icons.clear,
-                                  color: Colors.grey[600],
-                                ),
-                                onPressed: () {
-                                  _searchController.clear();
-                                },
-                              )
-                            : null,
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      hintText: 'Pretraži putnike...',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context).primaryColor,
                       ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: Colors.grey[600],
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                              },
+                            )
+                          : null,
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 16),
 
                 // LISTA PUTNIKA — jedan StreamBuilder za cijeli ekran + ValueListenableBuilder za pretragu
                 Expanded(
@@ -784,56 +779,13 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
     }
   }
 
-  // Helper funkcija za brojanje kontakata
+  // Prikazi kontakt opcije za putnika
   Future<void> _pokaziKontaktOpcije(V2RegistrovaniPutnik v2Putnik) async {
-    final List<Widget> opcije = [];
+    final imaKontakt = v2Putnik.telefon?.isNotEmpty == true ||
+        v2Putnik.telefonOca?.isNotEmpty == true ||
+        v2Putnik.telefonMajke?.isNotEmpty == true;
 
-    // Glavni broj telefona
-    if (v2Putnik.telefon != null && v2Putnik.telefon!.isNotEmpty) {
-      opcije.add(
-        ListTile(
-          leading: const Icon(Icons.person, color: Colors.green),
-          title: const Text('Pozovi putnika'),
-          subtitle: Text(v2Putnik.telefon!),
-          onTap: () async {
-            Navigator.pop(context);
-            await _pozovi(v2Putnik.telefon!);
-          },
-        ),
-      );
-    }
-
-    // Otac
-    if (v2Putnik.telefonOca != null && v2Putnik.telefonOca!.isNotEmpty) {
-      opcije.add(
-        ListTile(
-          leading: const Icon(Icons.man, color: Colors.blue),
-          title: const Text('Pozovi oca'),
-          subtitle: Text(v2Putnik.telefonOca!),
-          onTap: () async {
-            Navigator.pop(context);
-            await _pozovi(v2Putnik.telefonOca!);
-          },
-        ),
-      );
-    }
-
-    // Majka
-    if (v2Putnik.telefonMajke != null && v2Putnik.telefonMajke!.isNotEmpty) {
-      opcije.add(
-        ListTile(
-          leading: const Icon(Icons.woman, color: Colors.pink),
-          title: const Text('Pozovi majku'),
-          subtitle: Text(v2Putnik.telefonMajke!),
-          onTap: () async {
-            Navigator.pop(context);
-            await _pozovi(v2Putnik.telefonMajke!);
-          },
-        ),
-      );
-    }
-
-    if (opcije.isEmpty) {
+    if (!imaKontakt) {
       V2AppSnackBar.info(context, 'Nema dostupnih kontakata');
       return;
     }
@@ -845,21 +797,46 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       ),
       builder: (sheetCtx) => SafeArea(
         top: false,
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Kontaktiraj ${v2Putnik.ime}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              // opcije koriste sheetCtx za Navigator.pop
-              ...opcije,
+              if (v2Putnik.telefon?.isNotEmpty == true)
+                ListTile(
+                  leading: const Icon(Icons.person, color: Colors.green),
+                  title: const Text('Pozovi putnika'),
+                  subtitle: Text(v2Putnik.telefon!),
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    await _pozovi(v2Putnik.telefon!);
+                  },
+                ),
+              if (v2Putnik.telefonOca?.isNotEmpty == true)
+                ListTile(
+                  leading: const Icon(Icons.man, color: Colors.blue),
+                  title: const Text('Pozovi oca'),
+                  subtitle: Text(v2Putnik.telefonOca!),
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    await _pozovi(v2Putnik.telefonOca!);
+                  },
+                ),
+              if (v2Putnik.telefonMajke?.isNotEmpty == true)
+                ListTile(
+                  leading: const Icon(Icons.woman, color: Colors.pink),
+                  title: const Text('Pozovi majku'),
+                  subtitle: Text(v2Putnik.telefonMajke!),
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    await _pozovi(v2Putnik.telefonMajke!);
+                  },
+                ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => Navigator.pop(sheetCtx),
@@ -877,24 +854,12 @@ class _V2PutniciScreenState extends State<V2PutniciScreen> {
       final hasPermission = await V2PermissionService.ensurePhonePermissionHuawei();
       if (!mounted) return;
       if (!hasPermission) {
-        if (mounted) {
-          V2AppSnackBar.error(context, '❌ Dozvola za pozive je potrebna');
-        }
+        V2AppSnackBar.error(context, '❌ Dozvola za pozive je potrebna');
         return;
       }
-
-      final phoneUrl = Uri.parse('tel:$brojTelefona');
-      try {
-        await launchUrl(phoneUrl, mode: LaunchMode.externalApplication);
-      } catch (e) {
-        if (mounted) {
-          V2AppSnackBar.error(context, '❌ Nije moguće pozivanje sa ovog uređaja');
-        }
-      }
+      await launchUrl(Uri.parse('tel:$brojTelefona'), mode: LaunchMode.externalApplication);
     } catch (e) {
-      if (mounted) {
-        V2AppSnackBar.error(context, '❌ Greška pri pozivanju: $e');
-      }
+      if (mounted) V2AppSnackBar.error(context, '❌ Greška pri pozivanju: $e');
     }
   }
 

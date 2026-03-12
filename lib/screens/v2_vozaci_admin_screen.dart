@@ -58,7 +58,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
       email: _emailController.text.trim().toLowerCase(),
       sifra: _sifraController.text,
       brojTelefona: _telefonController.text.trim(),
-      boja: _selectedColor.value.toRadixString(16).padLeft(8, '0').substring(2),
+      boja: _vozaciAdminColorHex(_selectedColor),
     );
 
     try {
@@ -69,10 +69,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
       return;
     }
 
-    _imeController.clear();
-    _emailController.clear();
-    _sifraController.clear();
-    _telefonController.clear();
+    _vozaciAdminClearForm(_imeController, _emailController, _sifraController, _telefonController);
     _selectedColor = Colors.blue;
 
     if (mounted) {
@@ -82,7 +79,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   }
 
   /// Obrisi vozaca
-  void _deleteVozac(V2Vozac vozac) {
+  void _deleteVozac() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -124,7 +121,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
             email: _emailController.text.trim().toLowerCase(),
             sifra: _sifraController.text,
             brojTelefona: _telefonController.text.trim(),
-            boja: _selectedColor.value.toRadixString(16).padLeft(8, '0').substring(2),
+            boja: _vozaciAdminColorHex(_selectedColor),
           );
 
           try {
@@ -224,10 +221,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              _imeController.clear();
-              _emailController.clear();
-              _sifraController.clear();
-              _telefonController.clear();
+              _vozaciAdminClearForm(_imeController, _emailController, _sifraController, _telefonController);
               Navigator.pop(ctx);
             },
             child: const Text('Otkaži'),
@@ -244,48 +238,42 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: tripleBlueFashionGradient,
-      ),
-      child: Scaffold(
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          centerTitle: true,
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                ' Vozači Admin',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
-                onPressed: () {
-                  _imeController.clear();
-                  _emailController.clear();
-                  _sifraController.clear();
-                  _telefonController.clear();
-                  _selectedColor = Colors.blue;
-
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => _buildVozacDialog(
-                      title: 'Dodaj vozača',
-                      onSave: _addVozac,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        centerTitle: true,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              ' Vozači Admin',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 12),
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
+              onPressed: () {
+                _vozaciAdminClearForm(_imeController, _emailController, _sifraController, _telefonController);
+                _selectedColor = Colors.blue;
+                showDialog(
+                  context: context,
+                  builder: (ctx) => _buildVozacDialog(
+                    title: 'Dodaj vozača',
+                    onSave: _addVozac,
+                  ),
+                );
+              },
+            ),
+          ],
         ),
-        body: StreamBuilder<List<V2Vozac>>(
+      ),
+      body: Container(
+        decoration: const BoxDecoration(gradient: tripleBlueFashionGradient),
+        child: StreamBuilder<List<V2Vozac>>(
           stream: _streamVozaci,
           builder: (_, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
@@ -395,7 +383,7 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                                        onPressed: () => _deleteVozac(vozac),
+                                        onPressed: () => _deleteVozac(),
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                         visualDensity: VisualDensity.compact,
@@ -449,7 +437,23 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   }
 }
 
-// ─── Top-level helper funkcije ───────────────────────────────────────────────
+// ─── Top-level helper funkcije ────────────────────────────────────────────────────────
+
+/// Očisti sva 4 controller-a forme za vozача.
+void _vozaciAdminClearForm(
+  TextEditingController ime,
+  TextEditingController email,
+  TextEditingController sifra,
+  TextEditingController telefon,
+) {
+  ime.clear();
+  email.clear();
+  sifra.clear();
+  telefon.clear();
+}
+
+/// Konvertuje Color u hex string (bez alpha) za čuvanje u bazi.
+String _vozaciAdminColorHex(Color color) => color.value.toRadixString(16).padLeft(8, '0').substring(2);
 
 InputDecoration _vozaciAdminInputDecoration(String label, IconData icon) {
   return InputDecoration(

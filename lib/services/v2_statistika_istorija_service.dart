@@ -263,7 +263,7 @@ class V2StatistikaIstorijaService {
     required String isoDate,
   }) {
     final rm = V2MasterRealtimeManager.instance;
-    final controller = StreamController<Map<String, double>>.broadcast();
+    late StreamController<Map<String, double>> controller;
 
     Future<void> emit() async {
       if (controller.isClosed) return;
@@ -287,19 +287,27 @@ class V2StatistikaIstorijaService {
       }
     }
 
-    Future.microtask(emit);
-    // Prati i polasci (pokupljen/plaćen flag) i statistika (nova uplata)
-    // Debounce 150ms — skuplja brze uzastopne evente u jedan emit
+    StreamSubscription<String>? cacheSub;
     Timer? debounce;
-    final sub = rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_statistika_istorija').listen((_) {
-      debounce?.cancel();
-      debounce = Timer(const Duration(milliseconds: 150), emit);
-    });
-    controller.onCancel = () {
-      debounce?.cancel();
-      sub.cancel();
-      if (!controller.isClosed) controller.close();
-    };
+
+    controller = StreamController<Map<String, double>>.broadcast(
+      onListen: () {
+        if (cacheSub != null) return;
+        unawaited(Future.microtask(emit));
+        // Debounce 150ms — skuplja brze uzastopne evente u jedan emit
+        cacheSub = rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_statistika_istorija').listen((_) {
+          debounce?.cancel();
+          debounce = Timer(const Duration(milliseconds: 150), () => unawaited(emit()));
+        });
+      },
+      onCancel: () async {
+        debounce?.cancel();
+        await cacheSub?.cancel();
+        cacheSub = null;
+        // Ne zatvaraj controller — broadcast može dobiti novog listenera
+      },
+    );
+
     return controller.stream;
   }
 

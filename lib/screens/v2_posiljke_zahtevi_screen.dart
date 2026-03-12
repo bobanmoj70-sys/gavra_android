@@ -19,83 +19,92 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<V2Polazak>>(
-      stream: _stream,
-      builder: (context, snapshot) {
-        final svi = snapshot.data ?? [];
-
-        final zahtevi = svi.where((z) {
-          if ((z.tipPutnika ?? '').toLowerCase() != 'posiljka') return false;
-          return z.status == 'obrada' || z.approvedBy == 'sistem' || z.cancelledBy == 'sistem';
-        }).toList();
-
-        final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
-        final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
-        final brOdbijeno = zahtevi.where((z) => z.status == 'odbijeno').length;
-        final brOtkazano = zahtevi.where((z) => z.status == 'otkazano').length;
-
-        return Container(
-          decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(80),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).glassContainer,
-                  border: Border(
-                    bottom: BorderSide(color: Theme.of(context).glassBorder, width: 1.5),
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).glassContainer,
+            border: Border(
+              bottom: BorderSide(color: Theme.of(context).glassBorder, width: 1.5),
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(25),
+              bottomRight: Radius.circular(25),
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Pošiljke Zahtevi',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(25),
-                    bottomRight: Radius.circular(25),
-                  ),
-                ),
-                child: SafeArea(
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+        child: StreamBuilder<List<V2Polazak>>(
+          stream: _stream,
+          builder: (context, snapshot) {
+            final svi = snapshot.data ?? [];
+            final zahtevi = svi.where((z) {
+              if ((z.tipPutnika ?? '').toLowerCase() != 'posiljka') return false;
+              return z.status == 'obrada' || z.approvedBy == 'sistem' || z.cancelledBy == 'sistem';
+            }).toList();
+
+            final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
+            final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
+            final brOdbijeno = zahtevi.where((z) => z.status == 'odbijeno').length;
+            final brOtkazano = zahtevi.where((z) => z.status == 'otkazano').length;
+
+            return Column(
+              children: [
+                // Badges ispod AppBar-a
+                SafeArea(
+                  bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    padding: const EdgeInsets.only(top: 86, bottom: 4),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
                       children: [
-                        const Text(
-                          'Pošiljke Zahtevi',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          children: [
-                            if (brObrada > 0) v2SummaryBadge('🟡 $brObrada obrada', Colors.amber),
-                            if (brOdobreno > 0) v2SummaryBadge('🟢 $brOdobreno odobreno', Colors.green),
-                            if (brOdbijeno > 0) v2SummaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
-                            if (brOtkazano > 0) v2SummaryBadge('⛔ $brOtkazano otkazano', Colors.orange),
-                            if (zahtevi.isEmpty)
-                              Text('Nema zahteva',
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
+                        if (brObrada > 0) v2SummaryBadge('🟡 $brObrada obrada', Colors.amber),
+                        if (brOdobreno > 0) v2SummaryBadge('🟢 $brOdobreno odobreno', Colors.green),
+                        if (brOdbijeno > 0) v2SummaryBadge('🔴 $brOdbijeno odbijeno', Colors.red),
+                        if (brOtkazano > 0) v2SummaryBadge('⛔ $brOtkazano otkazano', Colors.orange),
+                        if (zahtevi.isEmpty)
+                          Text('Nema zahteva',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ),
-            body: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
-                ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                : _buildLista(zahtevi),
-          ),
-        );
-      },
+                Expanded(
+                  child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
+                      ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                      : v2ZahtjevLista(context, zahtevi, Icons.local_shipping_outlined, 'Nema zahteva pošiljki'),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
-
-  Widget _buildLista(List<V2Polazak> zahtevi) =>
-      v2ZahtjevLista(context, zahtevi, Icons.local_shipping_outlined, 'Nema zahteva pošiljki');
 }

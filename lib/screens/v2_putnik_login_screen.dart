@@ -283,30 +283,27 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     );
   }
 
-  /// Pošalji zahtev za PIN
-  Future<void> _sendPinRequest() async {
+  /// Pošalji zahtev za PIN (novo ili reset)
+  Future<void> _posaljiZahtevZaPin({required String poruka}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-
     try {
       final putnikId = _putnikData!['id'] as String;
       final email = _putnikData!['email'] as String? ?? _emailController.text.trim();
       final telefon = _putnikData!['telefon'] as String? ?? _telefonController.text.trim();
       final putnikTabela = _putnikData!['_tabela'] as String?;
-
       final success = await V2PinZahtevService.posaljiZahtev(
         putnikId: putnikId,
         email: email,
         telefon: telefon,
         putnikTabela: putnikTabela,
       );
-
       if (success) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Zahtev je uspešno poslat! Admin ce vam dodeliti PIN.';
+          _infoMessage = poruka;
         });
         _listenForPinOdobren();
       } else {
@@ -315,11 +312,12 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     } catch (e) {
       setState(() => _errorMessage = 'Greška: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  /// Pošalji zahtev za PIN (prvi put)
+  Future<void> _sendPinRequest() => _posaljiZahtevZaPin(poruka: 'Zahtev je uspešno poslat! Admin će vam dodeliti PIN.');
 
   /// Slušaj push notifikacije dok je putnik na zahtevPoslat ekranu
   void _listenForPinOdobren() {
@@ -509,21 +507,20 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: Theme.of(context).backgroundGradient,
-      ),
-      child: Scaffold(
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        body: SafeArea(
+      ),
+      body: Container(
+        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+        child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -531,13 +528,13 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               children: [
                 const SizedBox(height: 40),
                 Icon(
-                  _getStepIcon(),
+                  _currentStep.stepIcon,
                   color: Colors.amber,
                   size: 60,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _getStepTitle(),
+                  _currentStep.title,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -546,7 +543,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _getStepSubtitle(),
+                  _currentStep.subtitle,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 14,
@@ -554,7 +551,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                _buildStepIndicator(),
+                _loginStepIndicator(_currentStep),
                 const SizedBox(height: 24),
                 if (_infoMessage != null) ...[
                   Container(
@@ -608,7 +605,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _getStepAction(),
+                      onPressed: _isLoading ? null : _currentStep.action(this),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amber,
                         foregroundColor: Colors.black,
@@ -624,7 +621,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                               child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
                             )
                           : Text(
-                              _getStepButtonText(),
+                              _currentStep.buttonText,
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                     ),
@@ -663,7 +660,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          _getInfoText(),
+                          _currentStep.infoText,
                           style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
                         ),
                       ),
@@ -675,38 +672,6 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStepIndicator() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildStepDot(0, _currentStep.index >= 0),
-        _buildStepLine(_currentStep.index >= 1),
-        _buildStepDot(1, _currentStep.index >= 1),
-        _buildStepLine(_currentStep.index >= 2),
-        _buildStepDot(2, _currentStep.index >= 2),
-      ],
-    );
-  }
-
-  static Widget _buildStepDot(int _, bool active) {
-    return Container(
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: active ? Colors.amber : Colors.white.withValues(alpha: 0.3),
-      ),
-    );
-  }
-
-  static Widget _buildStepLine(bool active) {
-    return Container(
-      width: 40,
-      height: 2,
-      color: active ? Colors.amber : Colors.white.withValues(alpha: 0.3),
     );
   }
 
@@ -790,63 +755,27 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     );
   }
 
-  Widget _buildTelefonInput() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-      ),
-      child: TextField(
+  Widget _buildTelefonInput() => _loginTextField(
         controller: _telefonController,
-        style: const TextStyle(color: Colors.white, fontSize: 18),
+        hintText: '06x xxx xxxx',
         keyboardType: TextInputType.phone,
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          hintText: '06x xxx xxxx',
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
-          prefixIcon: const Icon(Icons.phone, color: Colors.amber),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
+        prefixIcon: Icons.phone,
         onSubmitted: (_) => _checkTelefon(),
-      ),
-    );
-  }
+      );
 
-  Widget _buildEmailInput() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-      ),
-      child: TextField(
+  Widget _buildEmailInput() => _loginTextField(
         controller: _emailController,
-        style: const TextStyle(color: Colors.white, fontSize: 18),
+        hintText: 'vašemail@example.com',
         keyboardType: TextInputType.emailAddress,
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          hintText: 'vašemail@example.com',
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
-          prefixIcon: const Icon(Icons.email, color: Colors.amber),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
+        prefixIcon: Icons.email,
         onSubmitted: (_) => _saveEmail(),
-      ),
-    );
-  }
+      );
 
   Widget _buildPinInput() {
     return Column(
       children: [
         Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-          ),
+          decoration: _loginInputDecoration(),
           child: TextField(
             controller: _pinController,
             style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 8),
@@ -961,45 +890,22 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
-
     try {
       final putnikId = _putnikData!['id'] as String;
-      final email = _putnikData!['email'] as String? ?? '';
-      final telefon = _putnikData!['telefon'] as String? ?? _telefonController.text.trim();
-      final putnikTabela = _putnikData!['_tabela'] as String?;
-
       final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekaAsync(putnikId);
       if (imaZahtev) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Vec ste poslali zahtev za PIN. Molimo sacekajte da admin odobri.';
+          _infoMessage = 'Već ste poslali zahtev za PIN. Molimo sačekajte da admin odobri.';
         });
         _listenForPinOdobren();
         return;
       }
-
-      final success = await V2PinZahtevService.posaljiZahtev(
-        putnikId: putnikId,
-        email: email,
-        telefon: telefon,
-        putnikTabela: putnikTabela,
-      );
-
-      if (success) {
-        setState(() {
-          _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Zahtev za novi PIN je uspešno poslat! Admin ce vam dodeliti novi PIN.';
-        });
-        _listenForPinOdobren();
-      } else {
-        setState(() => _errorMessage = 'Greška pri slanju zahteva. Pokušajte ponovo.');
-      }
+      await _posaljiZahtevZaPin(poruka: 'Zahtev za novi PIN je uspešno poslat! Admin će vam dodeliti novi PIN.');
     } catch (e) {
       setState(() => _errorMessage = 'Greška: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -1037,94 +943,111 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       ],
     );
   }
+}
 
-  IconData _getStepIcon() {
-    switch (_currentStep) {
-      case _LoginStep.telefon:
-        return Icons.phone_android;
-      case _LoginStep.email:
-        return Icons.email;
-      case _LoginStep.pin:
-        return Icons.lock;
-      case _LoginStep.izborPutnika:
-        return Icons.people;
-      case _LoginStep.zahtevPoslat:
-        return Icons.mark_email_read;
-    }
-  }
+// ─── Top-level helpers ────────────────────────────────────────────────────────
 
-  String _getStepTitle() {
-    switch (_currentStep) {
-      case _LoginStep.telefon:
-        return 'Prijava putnika';
-      case _LoginStep.email:
-        return 'Vaš email';
-      case _LoginStep.pin:
-        return 'Unesite PIN';
-      case _LoginStep.izborPutnika:
-        return 'Ko se prijavljuje?';
-      case _LoginStep.zahtevPoslat:
-        return 'Zahtev poslat';
-    }
-  }
+extension _LoginStepMeta on _LoginStep {
+  IconData get stepIcon => switch (this) {
+        _LoginStep.telefon => Icons.phone_android,
+        _LoginStep.email => Icons.email,
+        _LoginStep.pin => Icons.lock,
+        _LoginStep.izborPutnika => Icons.people,
+        _LoginStep.zahtevPoslat => Icons.mark_email_read,
+      };
 
-  String _getStepSubtitle() {
-    switch (_currentStep) {
-      case _LoginStep.telefon:
-        return 'Unesite broj telefona sa kojim ste registrovani';
-      case _LoginStep.email:
-        return 'Potreban nam je vaš email za kontakt';
-      case _LoginStep.pin:
-        return 'Unesite svoj 4-cifreni PIN';
-      case _LoginStep.izborPutnika:
-        return 'Izaberite svoj profil sa liste ispod';
-      case _LoginStep.zahtevPoslat:
-        return 'Sacekajte odobrenje od admina';
-    }
-  }
+  String get title => switch (this) {
+        _LoginStep.telefon => 'Prijava putnika',
+        _LoginStep.email => 'Vaš email',
+        _LoginStep.pin => 'Unesite PIN',
+        _LoginStep.izborPutnika => 'Ko se prijavljuje?',
+        _LoginStep.zahtevPoslat => 'Zahtev poslat',
+      };
 
-  String _getStepButtonText() {
-    switch (_currentStep) {
-      case _LoginStep.telefon:
-        return '➡️ Nastavi';
-      case _LoginStep.email:
-        return '💾 Sacuvaj email';
-      case _LoginStep.pin:
-        return '🔑 Pristupi';
-      case _LoginStep.izborPutnika:
-        return '';
-      case _LoginStep.zahtevPoslat:
-        return '';
-    }
-  }
+  String get subtitle => switch (this) {
+        _LoginStep.telefon => 'Unesite broj telefona sa kojim ste registrovani',
+        _LoginStep.email => 'Potreban nam je vaš email za kontakt',
+        _LoginStep.pin => 'Unesite svoj 4-cifreni PIN',
+        _LoginStep.izborPutnika => 'Izaberite svoj profil sa liste ispod',
+        _LoginStep.zahtevPoslat => 'Sačekajte odobrenje od admina',
+      };
 
-  VoidCallback? _getStepAction() {
-    switch (_currentStep) {
-      case _LoginStep.telefon:
-        return _checkTelefon;
-      case _LoginStep.email:
-        return _saveEmail;
-      case _LoginStep.pin:
-        return _loginWithPin;
-      case _LoginStep.izborPutnika:
-        return null;
-      case _LoginStep.zahtevPoslat:
-        return null;
-    }
-  }
+  String get buttonText => switch (this) {
+        _LoginStep.telefon => '➡️ Nastavi',
+        _LoginStep.email => '💾 Sačuvaj email',
+        _LoginStep.pin => '🔑 Pristupi',
+        _LoginStep.izborPutnika || _LoginStep.zahtevPoslat => '',
+      };
 
-  String _getInfoText() {
-    switch (_currentStep) {
-      case _LoginStep.telefon:
-        return 'Unesite broj telefona koji ste dali prilikom registracije.';
-      case _LoginStep.email:
-        return 'Email koristimo za obaveštenja i Google Play interno testiranje.';
-      case _LoginStep.pin:
-        return 'PIN ste dobili od admina. Ako ste ga zaboravili, kontaktirajte nas.';
-      case _LoginStep.izborPutnika:
-        return 'Više osoba koristi isti broj telefona. Kliknite na svoje ime za ulaz.';
-      case _LoginStep.zahtevPoslat:
-        return 'Možete zatvoriti aplikaciju. Obavesticemo vas kada PIN bude dodeljen.';
-    }
-  }
+  VoidCallback? action(_V2PutnikLoginScreenState s) => switch (this) {
+        _LoginStep.telefon => s._checkTelefon,
+        _LoginStep.email => s._saveEmail,
+        _LoginStep.pin => s._loginWithPin,
+        _LoginStep.izborPutnika || _LoginStep.zahtevPoslat => null,
+      };
+
+  String get infoText => switch (this) {
+        _LoginStep.telefon => 'Unesite broj telefona koji ste dali prilikom registracije.',
+        _LoginStep.email => 'Email koristimo za obaveštenja i Google Play interno testiranje.',
+        _LoginStep.pin => 'PIN ste dobili od admina. Ako ste ga zaboravili, kontaktirajte nas.',
+        _LoginStep.izborPutnika => 'Više osoba koristi isti broj telefona. Kliknite na svoje ime za ulaz.',
+        _LoginStep.zahtevPoslat => 'Možete zatvoriti aplikaciju. Obavestićemo vas kada PIN bude dodeljen.',
+      };
+}
+
+BoxDecoration _loginInputDecoration() => BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+    );
+
+Widget _loginTextField({
+  required TextEditingController controller,
+  required String hintText,
+  required TextInputType keyboardType,
+  required IconData prefixIcon,
+  required ValueChanged<String> onSubmitted,
+}) =>
+    Container(
+      decoration: _loginInputDecoration(),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white, fontSize: 18),
+        keyboardType: keyboardType,
+        textAlign: TextAlign.center,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+          prefixIcon: Icon(prefixIcon, color: Colors.amber),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        onSubmitted: onSubmitted,
+      ),
+    );
+
+Widget _loginStepIndicator(_LoginStep current) {
+  Widget dot(bool active) => Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: active ? Colors.amber : Colors.white.withValues(alpha: 0.3),
+        ),
+      );
+  Widget line(bool active) => Container(
+        width: 40,
+        height: 2,
+        color: active ? Colors.amber : Colors.white.withValues(alpha: 0.3),
+      );
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      dot(current.index >= 0),
+      line(current.index >= 1),
+      dot(current.index >= 1),
+      line(current.index >= 2),
+      dot(current.index >= 2),
+    ],
+  );
 }
