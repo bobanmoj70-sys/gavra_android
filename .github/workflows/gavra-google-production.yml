@@ -163,13 +163,13 @@ jobs:
         run: |
           flutter build appbundle --release --build-name=${{ steps.version.outputs.VERSION_NAME }} --build-number=${{ steps.version.outputs.VERSION_CODE }}
 
-      - name: Upload to Google Play (Closed Testing)
+      - name: Upload to Google Play (Production)
         uses: r0adkll/upload-google-play@v1.1.2
         with:
           serviceAccountJson: android/google-service-account.json
           packageName: com.gavra013.gavra_android
           releaseFiles: build/app/outputs/bundle/release/app-release.aab # Linux/Unix path
-          track: alpha # Closed Testing
+          track: production
           status: completed
           releaseName: "v${{ steps.version.outputs.VERSION_NAME }}"
           whatsNewDirectory: distribution/whatsnew
@@ -254,7 +254,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "**Build:** ${{ steps.version.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Track:** Closed Testing (Alpha)" >> $GITHUB_STEP_SUMMARY
+          echo "**Track:** Production" >> $GITHUB_STEP_SUMMARY
 
       - name: Save version for next job
         run: |
@@ -314,31 +314,3 @@ jobs:
           echo "**latest_version:** $VERSION" >> $GITHUB_STEP_SUMMARY
           echo "**min_version:** prethodna latest_version (putnici imaju 1 verziju fore)" >> $GITHUB_STEP_SUMMARY
 
-  promote-to-production:
-    name: 🏪 Promovisi na Google Play Production
-    runs-on: ubuntu-latest
-    needs: update-supabase
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.git_ref || github.ref }}
-
-      - name: Restore Google Play JSON
-        run: |
-          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > android/google-service-account.json
-
-      - name: Promote Alpha → Production
-        uses: r0adkll/upload-google-play@v1.1.2
-        with:
-          serviceAccountJson: android/google-service-account.json
-          packageName: com.gavra013.gavra_android
-          track: production
-          fromTrack: alpha
-          status: completed
-          releaseName: "v${{ needs.build-and-upload.outputs.VERSION_NAME }}"
-
-      - name: Summary
-        run: |
-          echo "## ✅ Google Play Production objavljen!" >> $GITHUB_STEP_SUMMARY
-          echo "Verzija je live na Google Play Store." >> $GITHUB_STEP_SUMMARY
