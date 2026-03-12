@@ -281,13 +281,13 @@ jobs:
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
 
-          # Dohvati prethodnu latest_version — ona postaje novi min_version
-          PREV_VERSION=$(curl -s \
-            "$SUPABASE_URL/rest/v1/v2_app_settings?id=eq.global&select=latest_version" \
-            -H "apikey: $SUPABASE_SERVICE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
-            | grep -o '"latest_version":"[^"]*"' | cut -d'"' -f4)
-          MIN_VERSION=${PREV_VERSION:-$VERSION}
+          # min_version = latest - 2 (npr. latest=6.0.116 → min=6.0.114)
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          MIN_PATCH=$((PATCH - 2))
+          if [ "$MIN_PATCH" -lt 0 ]; then MIN_PATCH=0; fi
+          MIN_VERSION="$MAJOR.$MINOR.$MIN_PATCH"
 
           echo "[INFO] latest_version=$VERSION  min_version=$MIN_VERSION"
 
