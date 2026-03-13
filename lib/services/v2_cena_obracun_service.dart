@@ -39,7 +39,7 @@ class V2CenaObracunService {
 
     try {
       final response = await supabase
-          .from('v3_putnici_arhiva')
+          .from('v3_putnici')
           .select('datum, broj_mesta, putnik_id')
           .inFilter('putnik_id', ids)
           .eq('tip', 'voznja')

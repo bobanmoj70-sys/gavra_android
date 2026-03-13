@@ -40,7 +40,7 @@ class V2AdresaSupabaseService {
   }
 
   static Stream<List<V2Adresa>> streamSveAdrese() =>
-      V2MasterRealtimeManager.instance.v2StreamFromCache(tables: ['v3_adrese'], build: getSveAdrese);
+      V2MasterRealtimeManager.instance.v2StreamFromCache(tables: ['v2_adrese'], build: getSveAdrese);
 
   /// Batch učitavanje adresa po UUID-ovima — iz rm.adreseCache
   static Map<String, V2Adresa> getAdreseByUuids(List<String> uuids) {
@@ -69,12 +69,12 @@ class V2AdresaSupabaseService {
 
     try {
       final row = await supabase
-          .from('v3_adrese')
+          .from('v2_adrese')
           .insert(insertData)
           .select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at')
           .single();
 
-      V2MasterRealtimeManager.instance.v2UpsertToCache('v3_adrese', row);
+      V2MasterRealtimeManager.instance.v2UpsertToCache('v2_adrese', row);
       return V2Adresa.fromMap(row);
     } catch (e) {
       debugPrint('[V2AdresaSupabaseService] addAdresa greška: $e');
@@ -100,7 +100,7 @@ class V2AdresaSupabaseService {
     if (lng != null) updateData['gps_lng'] = lng;
 
     try {
-      await supabase.from('v3_adrese').update(updateData).eq('id', adresa.id);
+      await supabase.from('v2_adrese').update(updateData).eq('id', adresa.id);
     } catch (e) {
       debugPrint('[V2AdresaSupabaseService] updateAdresa greška: $e');
       rethrow;
@@ -114,15 +114,15 @@ class V2AdresaSupabaseService {
       ...updateData,
       'id': adresa.id,
     };
-    rm.v2UpsertToCache('v3_adrese', updatedRow);
+    rm.v2UpsertToCache('v2_adrese', updatedRow);
     return V2Adresa.fromMap(updatedRow);
   }
 
   /// Briše adresu i uklanja je iz cache-a.
   static Future<void> deleteAdresa(V2Adresa adresa) async {
     try {
-      await supabase.from('v3_adrese').delete().eq('id', adresa.id);
-      V2MasterRealtimeManager.instance.v2RemoveFromCache('v3_adrese', adresa.id);
+      await supabase.from('v2_adrese').delete().eq('id', adresa.id);
+      V2MasterRealtimeManager.instance.v2RemoveFromCache('v2_adrese', adresa.id);
     } catch (e) {
       debugPrint('[V2AdresaSupabaseService] deleteAdresa greška: $e');
       rethrow;

@@ -1588,7 +1588,10 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
                                   _adresaCtrl.text = adresa == 'Nema adresa' ? '' : adresa;
                                   _promeniAdresuSamoDanas = false;
                                   _samoDanasAdresa = null;
-                                  _samoDanasAdresaId = null;
+                                  // Auto-fill adresa ID based on direction
+                                  final grad = widget.selectedGrad.toUpperCase();
+                                  _samoDanasAdresaId =
+                                      (grad == 'BC' || grad.contains('BELA')) ? p.adresaBcId : p.adresaVsId;
                                 });
                               }
                             },
@@ -1869,10 +1872,12 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
     }
     setState(() => _isLoading = true);
     try {
-      final adresa = _promeniAdresuSamoDanas && _samoDanasAdresa != null
-          ? _samoDanasAdresa
-          : (_adresaCtrl.text.isEmpty ? null : _adresaCtrl.text);
-      final adresaId = _promeniAdresuSamoDanas && _samoDanasAdresaId != null ? _samoDanasAdresaId : null;
+      final adresaId = _promeniAdresuSamoDanas && _samoDanasAdresaId != null
+          ? _samoDanasAdresaId
+          : ((widget.selectedGrad.toUpperCase() == 'BC' || widget.selectedGrad.toUpperCase().contains('BELA'))
+              ? _selectedPutnik!.adresaBcId
+              : _selectedPutnik!.adresaVsId);
+
       await V2PolasciService.v2DodajPutnika(
         putnikId: _selectedPutnik!.id,
         dan: widget.selectedDay,

@@ -114,13 +114,16 @@ class V2Putnik {
   final String? otkazaoVozacId; // UUID vozaca koji je otkazao
 
   factory V2Putnik.v2FromPolazak(Map<String, dynamic> req, {Map<String, dynamic>? profile}) {
-    // 1. Prioritet: Denormalizovana polja iz v2_polasci (najbrze - NI0 DB lookup)
-    final ime = req['putnik_ime'] as String? ?? profile?['ime'] as String? ?? 'Putnik';
+    // 1. Prioritet: Denormalizovana polja iz v2_polasci (najbrže - 0 DB lookup)
+    // Ako nema denormalizovanih polja, proveri profile (v3_putnici ili legacy)
+    final ime =
+        req['putnik_ime'] as String? ?? profile?['ime_prezime'] as String? ?? profile?['ime'] as String? ?? 'Putnik';
+
     final adresa = req['adresa_naziv'] as String? ?? profile?['adresa_naziv'] as String?;
 
     // NOVO: Denormalizovane adrese iz v2_polasci ako postoje u redovima
-    final adresaBc = req['adresa_bc_naziv'] as String?;
-    final adresaVs = req['adresa_vs_naziv'] as String?;
+    final adresaBc = req['adresa_bc_naziv'] as String? ?? profile?['adresa_bc_naziv'] as String?;
+    final adresaVs = req['adresa_vs_naziv'] as String? ?? profile?['adresa_vs_naziv'] as String?;
 
     return V2Putnik(
       id: req['putnik_id'],

@@ -448,11 +448,14 @@ class V2PolasciService {
   /// Stream putnika za konkretan dan â€” jedan stream, koristi v2StreamFromCache u RM-u.
   /// Ne zatvara se kad nema listenera (broadcast + onListen/onCancel pattern u RM).
   /// HomeScreen kreira JEDAN stream i swap-uje dan kroz setState bez rekreiranja streama.
-  /// NOVO: Koristi v2_home View koncept (preko v2StreamHomeView) za munjevit prikaz
+  /// NOVO: Koristi unifikovan stream iz v2_ tabele sa punom denormalizacijom
   static Stream<List<V2Putnik>> streamPutniciZaDan(String dan) {
     final rm = V2MasterRealtimeManager.instance;
-    return rm.v2StreamHomeView(dan).map((rows) {
-      return rows.map((row) => V2Putnik.v2FromPolazak(row)).toList();
+    return rm.v2StreamPutniciZaDan(dan).map((rows) {
+      return rows.map((row) {
+        final profile = row['registrovani_putnici'] as Map<String, dynamic>?;
+        return V2Putnik.v2FromPolazak(row, profile: profile);
+      }).toList();
     });
   }
 
