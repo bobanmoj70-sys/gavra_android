@@ -160,38 +160,24 @@ class V2Putnik {
     try {
       final rm = V2MasterRealtimeManager.instance;
       final putnikIdStr = (p['id'] ?? req['putnik_id'])?.toString() ?? '';
-      final gradNorm = grad.toUpperCase(); // već je 'BC' ili 'VS'
-      final vremeNorm = vreme; // već normalizovan via V2RegistrovaniHelpers.normalizeTime
 
-      // 1. Individualna dodjela za ovaj dan+grad+vreme
-      final indDodjela = rm.vozacPutnikCache.values.where((vp) {
-        return vp['putnik_id']?.toString() == putnikIdStr &&
-            vp['dan']?.toString().toLowerCase() == danStr &&
-            vp['grad']?.toString().toUpperCase() == gradNorm &&
-            (V2RegistrovaniHelpers.normalizeTime(vp['vreme']?.toString()) ?? '') == vremeNorm;
-      }).firstOrNull;
-
-      if (indDodjela != null) {
-        dodeljenVozacFinal = V2VozacCache.getImeByUuid(indDodjela['vozac_id']?.toString() ?? '');
+      // NEW: O(1) Lookups
+      final vozacId = rm.v3FindIndividualnaDodjela(putnikIdStr, danStr);
+      if (vozacId != null) {
+        dodeljenVozacFinal = V2VozacCache.getImeByUuid(vozacId);
       } else {
-        // 2. Termin-raspored (v2_vozac_raspored) za ovaj dan+grad+vreme
-        final terminRaspored = rm.rasporedCache.values.where((vr) {
-          return vr['dan']?.toString().toLowerCase() == danStr &&
-              vr['grad']?.toString().toUpperCase() == gradNorm &&
-              (V2RegistrovaniHelpers.normalizeTime(vr['vreme']?.toString()) ?? '') == vremeNorm;
-        }).firstOrNull;
-
-        if (terminRaspored != null) {
-          dodeljenVozacFinal = V2VozacCache.getImeByUuid(terminRaspored['vozac_id']?.toString() ?? '');
+        final rasporedVozacId = rm.v3GetVozacIzRasporeda(grad, danStr, vreme);
+        if (rasporedVozacId != null) {
+          dodeljenVozacFinal = V2VozacCache.getImeByUuid(rasporedVozacId);
         }
       }
     } catch (e) {
-      debugPrint('[V2Putnik] v2FromPolazak dodeljenVozac greška: $e');
+      debugPrint('[V2Putnik] v2FromPolazak optimized getter greška: $e');
     }
 
     return V2Putnik(
       id: p['id'] ?? req['putnik_id'],
-      ime: p['ime'] as String? ?? '',
+      ime: (p['ime'] as String?) ?? (req['putnik_ime'] as String?) ?? '',
       polazak: vreme,
       dan: danStr.isNotEmpty ? danStr : V2DanUtils.odIso(datumStr),
       grad: grad,

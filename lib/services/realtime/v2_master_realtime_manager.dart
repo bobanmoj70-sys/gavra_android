@@ -376,10 +376,17 @@ class V2MasterRealtimeManager {
         'odbijeno',
         'pokupljen',
       ]).eq('datum_sedmice', sedmica);
+      v3PolasciCache.clear();
       for (final row in rows) {
         final normalized = Map<String, dynamic>.from(row);
         if (normalized['datum_sedmice'] != null) {
           normalized['datum_sedmice'] = normalized['datum_sedmice'].toString().split('T').first;
+        }
+        final pId = normalized['putnik_id']?.toString();
+        final dan = normalized['dan']?.toString().toLowerCase();
+        if (pId != null && dan != null) {
+          v3PolasciCache[pId] ??= {};
+          v3PolasciCache[pId]![dan] = normalized;
         }
         polasciCache[normalized['id'].toString()] = normalized;
       }
