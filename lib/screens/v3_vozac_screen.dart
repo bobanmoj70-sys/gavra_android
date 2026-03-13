@@ -9,9 +9,9 @@ import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
-import '../services/v3/v3_vozac_service.dart';
-import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
+import '../services/v3/v3_vozac_lokacija_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -249,20 +249,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (vozac == null) return;
 
     if (!_isTracking) {
-      // START TRACKING
+      // 1. START TRACKING
       setState(() => _isTracking = true);
       await V3VozacLokacijaService.postaviAktivnost(vozac.id, true);
 
-      // Simulacija/Start GPS slanja bi išao ovde. 
-      // Za sada samo šaljemo inicijalni marker na mapu (npr. Bela Crkva koordinate)
+      // Simulišemo lat/lng za početak (Bela Crkva ili Vršac zavisno od grada)
+      final startLat = _selectedGrad.toUpperCase() == 'BC' ? 44.8972 : 45.1167;
+      final startLng = _selectedGrad.toUpperCase() == 'BC' ? 21.4247 : 21.3036;
+
       await V3VozacLokacijaService.updateLokacija(V3VozacLokacijaUpdate(
         vozacId: vozac.id,
-        lat: 44.8972,
-        lng: 21.4247,
+        lat: startLat,
+        lng: startLng,
         grad: _selectedGrad,
         vremePolaska: _selectedVreme,
         aktivno: true,
       ));
+
+      // 2. AUTOMATSKA OPTIMIZACIJA RUTI PREMA GPS-u I PUTNICIMA
+      if (_mojiPutnici.isNotEmpty) {
+        await _optimizujRutu();
+      }
     } else {
       // STOP TRACKING
       setState(() => _isTracking = false);
@@ -274,18 +281,29 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (_mojiPutnici.isEmpty) return;
 
     final data = _mojiPutnici.map((p) => {'putnik': p.putnik, 'zahtev': p.zahtev}).toList();
+
+    // Možemo simulirati trenutni GPS vozača ovde za preciznije sortiranje
     final res = await V3SmartNavigationService.optimizeV3Route(
       data: data,
-      startCity: _selectedGrad,
+      fromCity: _selectedGrad,
+      driverLat: _selectedGrad.toUpperCase() == 'BC' ? 44.8972 : 45.1167,
+      driverLng: _selectedGrad.toUpperCase() == 'BC' ? 21.4247 : 21.3036,
     );
 
     if (res.success && res.optimizedData != null) {
       setState(() {
-        _mojiPutnici = res.optimizedData!.map((d) => _PutnikZahtev(putnik: d['putnik'], zahtev: d['zahtev'])).toList();
+        _mojiPutnici = res.optimizedData!.map((d) {
+          return _PutnikZahtev(putnik: d['putnik'] as V3Putnik, zahtev: d['zahtev'] as V3Zahtev?);
+        }).toList();
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.message), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(res.message),
+            backgroundColor: Colors.green.withOpacity(0.8),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -579,7 +597,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _toggleTracking,
                   icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow, color: Colors.white),
-                  label: Text(_isTracking ? 'STOP' : 'START', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  label: Text(_isTracking ? 'STOP' : 'START',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isTracking ? Colors.red.withOpacity(0.7) : Colors.green.withOpacity(0.7),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -590,7 +609,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _optimizujRutu,
-                  icon: const Icon(Icons.Route, color: Colors.white),
+                  icon: const Icon(Icons.alt_route, color: Colors.white),
                   label: const Text('OPTIMIZUJ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.withOpacity(0.7),
