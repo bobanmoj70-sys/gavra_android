@@ -13,21 +13,17 @@ class V3KapacitetService {
 
   static Future<bool> setKapacitet(String grad, String vreme, int maxMesta) async {
     try {
-      final res = await supabase
-          .from('v3_postavke_kapaciteta')
-          .upsert(
-            {
-              'grad': grad,
-              'vreme': vreme,
-              'max_mesta': maxMesta,
-              'aktivno': true,
-            },
-            onConflict: 'grad,vreme',
-          )
-          .select()
-          .single();
+      // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
+      await supabase.from('v3_postavke_kapaciteta').upsert(
+        {
+          'grad': grad,
+          'vreme': vreme,
+          'max_mesta': maxMesta,
+          'aktivno': true,
+        },
+        onConflict: 'grad,vreme',
+      );
 
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_postavke_kapaciteta', res);
       return true;
     } catch (e) {
       debugPrint('[V3KapacitetService] setKapacitet error: $e');

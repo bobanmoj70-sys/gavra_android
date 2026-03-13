@@ -71,8 +71,8 @@ class V3PinZahtevService {
         'status': 'ceka',
         'created_at': DateTime.now().toUtc().toIso8601String(),
       };
-      final res = await supabase.from('v3_pin_zahtevi').insert(row).select().single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pin_zahtevi', res);
+      // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
+      await supabase.from('v3_pin_zahtevi').insert(row);
       return true;
     } catch (e) {
       debugPrint('[V3PinZahtevService] posaljiZahtev error: $e');
@@ -135,17 +135,11 @@ class V3PinZahtevService {
         'pin': pin,
       }).eq('id', putnikId);
 
-      // 2. Obeleži zahtev kao odobren
-      final updated = await supabase
-          .from('v3_pin_zahtevi')
-          .update({
-            'status': 'odobren',
-          })
-          .eq('id', zahtevId)
-          .select()
-          .single();
+      // 2. Obeleži zahtev kao odobren (Fire and Forget)
+      await supabase.from('v3_pin_zahtevi').update({
+        'status': 'odobren',
+      }).eq('id', zahtevId);
 
-      rm.v3UpsertToCache('v3_pin_zahtevi', updated);
       return true;
     } catch (e) {
       debugPrint('[V3PinZahtevService] odobriZahtev error: $e');
@@ -155,16 +149,11 @@ class V3PinZahtevService {
 
   static Future<bool> odbijZahtev(String zahtevId) async {
     try {
-      final updated = await supabase
-          .from('v3_pin_zahtevi')
-          .update({
-            'status': 'odbijen',
-          })
-          .eq('id', zahtevId)
-          .select()
-          .single();
+      // 2. Obeleži zahtev kao odbijen (Fire and Forget)
+      await supabase.from('v3_pin_zahtevi').update({
+        'status': 'odbijen',
+      }).eq('id', zahtevId);
 
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pin_zahtevi', updated);
       return true;
     } catch (e) {
       debugPrint('[V3PinZahtevService] odbijZahtev error: $e');

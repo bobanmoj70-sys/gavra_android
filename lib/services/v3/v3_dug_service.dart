@@ -30,16 +30,11 @@ class V3DugService {
 
   static Future<void> markAsPaid(String operacijaId) async {
     try {
-      final row = await supabase
-          .from('v3_dnevne_operacije')
-          .update({
-            'naplata_status': 'placeno',
-            'vreme_placen': DateTime.now().toIso8601String(),
-          })
-          .eq('id', operacijaId)
-          .select()
-          .single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_dnevne_operacije', row);
+      // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
+      await supabase.from('v3_dnevne_operacije').update({
+        'naplata_status': 'placeno',
+        'vreme_placen': DateTime.now().toIso8601String(),
+      }).eq('id', operacijaId);
     } catch (e) {
       debugPrint('[V3DugService] markAsPaid error: $e');
       rethrow;

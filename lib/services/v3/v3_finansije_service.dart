@@ -30,40 +30,29 @@ class V3FinansijeService {
     return getStanje().fold(0, (sum, s) => sum + s.iznos);
   }
 
-  /// Dodaje novi trošak u bazu
-  static Future<V3Trosak?> addTrosak(V3Trosak trosak) async {
+  /// Dodaje novi trošak u bazu (Fire and Forget)
+  static Future<void> addTrosak(V3Trosak trosak) async {
     try {
-      final row = await supabase.from('v3_troskovi').insert(trosak.toJson()).select().single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_troskovi', row);
-      return V3Trosak.fromJson(row);
+      await supabase.from('v3_troskovi').insert(trosak.toJson());
     } catch (e) {
       debugPrint('[V3FinansijeService] addTrosak error: $e');
-      return null;
     }
   }
 
-  /// Briše trošak
+  /// Briše trošak (Fire and Forget)
   static Future<void> deleteTrosak(String id) async {
     try {
       await supabase.from('v3_troskovi').update({'aktivno': false}).eq('id', id);
-      final cache = V3MasterRealtimeManager.instance.getCache('v3_troskovi');
-      cache.remove(id);
     } catch (e) {
       debugPrint('[V3FinansijeService] deleteTrosak error: $e');
       rethrow;
     }
   }
 
-  /// Ažurira iznos u finansijskom stanju (kasa/račun)
+  /// Ažurira iznos u finansijskom stanju (kasa/račun) - Fire and Forget
   static Future<void> updateStanje(String id, double noviIznos) async {
     try {
-      final row = await supabase
-          .from('v3_finansije_stanje')
-          .update({'iznos': noviIznos, 'updated_at': DateTime.now().toIso8601String()})
-          .eq('id', id)
-          .select()
-          .single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije_stanje', row);
+      await supabase.from('v3_finansije_stanje').update({'iznos': noviIznos}).eq('id', id);
     } catch (e) {
       debugPrint('[V3FinansijeService] updateStanje error: $e');
       rethrow;
