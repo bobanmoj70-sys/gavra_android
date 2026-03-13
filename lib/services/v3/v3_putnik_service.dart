@@ -40,7 +40,7 @@ class V3PutnikService {
 
   static Future<void> deactivatePutnik(String id) async {
     try {
-      await supabase.from('v3_putnici').update({'aktivna': false}).eq('id', id);
+      await supabase.from('v3_putnici').update({'aktivno': false}).eq('id', id);
       V3MasterRealtimeManager.instance.putniciCache.remove(id);
     } catch (e) {
       debugPrint('[V3PutnikService] Deactivate error: $e');

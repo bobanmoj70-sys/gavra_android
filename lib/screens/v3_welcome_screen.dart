@@ -1,8 +1,12 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../globals.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
@@ -18,8 +22,12 @@ class V3WelcomeScreen extends StatefulWidget {
   State<V3WelcomeScreen> createState() => _V3WelcomeScreenState();
 }
 
-class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderStateMixin {
+class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isAudioPlaying = false;
+
   late final AnimationController _fadeController;
+  late final AnimationController _slideController;
   late final AnimationController _pulseController;
   late final Animation<double> _fadeAnimation;
 
@@ -30,14 +38,27 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupAnimations();
     _loadAppVersion();
+    updateInfoNotifier.addListener(_onUpdateInfo);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
     Future.delayed(const Duration(milliseconds: 300), _init);
+
+    // Zahtjev za dozvolama
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      _requestPermissionsIfNeeded();
+    });
   }
 
   void _setupAnimations() {
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
     _pulseController = AnimationController(
@@ -48,6 +69,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
     _fadeController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _slideController.forward();
+    });
   }
 
   Future<void> _loadAppVersion() async {
@@ -79,9 +103,201 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    updateInfoNotifier.removeListener(_onUpdateInfo);
     _fadeController.dispose();
+    _slideController.dispose();
     _pulseController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        unawaited(_stopAudio());
+        break;
+      case AppLifecycleState.resumed:
+        break;
+    }
+  }
+
+  Future<void> _stopAudio() async {
+    try {
+      if (_isAudioPlaying) {
+        await _audioPlayer.stop();
+        if (mounted) setState(() => _isAudioPlaying = false);
+      }
+    } catch (_) {}
+  }
+
+  /// Dialog za obavezno ažuriranje (isti kao V2)
+  void _onUpdateInfo() {
+    final info = updateInfoNotifier.value;
+    if (info == null || !mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: !info.isForced,
+      builder: (ctx) => PopScope(
+        canPop: !info.isForced,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: info.isForced
+                  ? const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+                    )
+                  : const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF1A1A2E), Color(0xFF0F3460)],
+                    ),
+              boxShadow: [
+                BoxShadow(
+                  color: (info.isForced ? Colors.red : Colors.blue).withValues(alpha: 0.3),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: (info.isForced ? Colors.red : Colors.blue).withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: (info.isForced ? Colors.red : Colors.blue).withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      info.isForced ? Icons.system_update : Icons.new_releases_rounded,
+                      color: info.isForced ? Colors.redAccent : Colors.blueAccent,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    info.isForced ? 'Obavezno ažuriranje' : 'Nova verzija dostupna',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: (info.isForced ? Colors.red : Colors.blue).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (info.isForced ? Colors.red : Colors.blue).withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Text(
+                      'v${info.latestVersion}',
+                      style: TextStyle(
+                        color: info.isForced ? Colors.redAccent : Colors.blueAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    info.isForced
+                        ? 'Ova verzija aplikacije više nije podržana. Molimo ažurirajte da biste nastavili sa korišćenjem.'
+                        : 'Preporučujemo da ažurirate aplikaciju radi boljih performansi i novih funkcija.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      if (!info.isForced) ...[
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                              ),
+                            ),
+                            child: Text(
+                              'Kasnije',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Otvori store stranicu
+                            if (!info.isForced) Navigator.of(ctx).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: info.isForced ? Colors.redAccent : Colors.blueAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Ažuriraj',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _requestPermissionsIfNeeded() async {
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final status = await Permission.notification.status;
+        if (!status.isGranted) {
+          await Permission.notification.request();
+        }
+      }
+    } catch (_) {}
   }
 
   void _loginAsVozac(V3Vozac vozac) {
@@ -241,40 +457,56 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                 children: [
                   SizedBox(height: screenHeight * 0.04),
 
-                  // LOGO sa shimmer efektom
+                  // LOGO sa shimmer efektom — klik pušta/zaustavlja kasno_je.mp3
                   FadeTransition(
                     opacity: _fadeAnimation,
-                    child: RepaintBoundary(
-                      child: AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, child) {
-                          return ShaderMask(
-                            shaderCallback: (bounds) {
-                              return LinearGradient(
-                                begin: Alignment(
-                                  -1.5 + 3 * _pulseController.value,
-                                  0,
-                                ),
-                                end: Alignment(
-                                  -0.5 + 3 * _pulseController.value,
-                                  0,
-                                ),
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.6),
-                                  Colors.white,
-                                  Colors.white.withValues(alpha: 0.6),
-                                ],
-                                stops: const [0.0, 0.5, 1.0],
-                              ).createShader(bounds);
-                            },
-                            blendMode: BlendMode.srcATop,
-                            child: child,
-                          );
-                        },
-                        child: Image.asset(
-                          'assets/logo_transparent.png',
-                          height: 180,
-                          fit: BoxFit.contain,
+                    child: GestureDetector(
+                      onTap: () async {
+                        try {
+                          if (_isAudioPlaying) {
+                            await _audioPlayer.stop();
+                            if (mounted) setState(() => _isAudioPlaying = false);
+                          } else {
+                            await _audioPlayer.setVolume(0.5);
+                            await _audioPlayer.play(AssetSource('kasno_je.mp3'));
+                            if (mounted) setState(() => _isAudioPlaying = true);
+                          }
+                        } catch (e) {
+                          debugPrint('[V3WelcomeScreen] Audio error: $e');
+                        }
+                      },
+                      child: RepaintBoundary(
+                        child: AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (context, child) {
+                            return ShaderMask(
+                              shaderCallback: (bounds) {
+                                return LinearGradient(
+                                  begin: Alignment(
+                                    -1.5 + 3 * _pulseController.value,
+                                    0,
+                                  ),
+                                  end: Alignment(
+                                    -0.5 + 3 * _pulseController.value,
+                                    0,
+                                  ),
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.6),
+                                    Colors.white,
+                                    Colors.white.withValues(alpha: 0.6),
+                                  ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                ).createShader(bounds);
+                              },
+                              blendMode: BlendMode.srcATop,
+                              child: child,
+                            );
+                          },
+                          child: Image.asset(
+                            'assets/logo_transparent.png',
+                            height: 180,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
@@ -282,24 +514,30 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
                   const SizedBox(height: 16),
 
-                  // DOBRODOŠLI tekst
+                  // DOBRODOŠLI tekst — klik mijenja temu
                   FadeTransition(
                     opacity: _fadeAnimation,
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [
-                          Colors.white,
-                          Colors.amber.shade200,
-                          Colors.white,
-                        ],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'DOBRODOŠLI',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 6,
-                          color: Colors.white,
+                    child: GestureDetector(
+                      onTap: () async {
+                        await V2ThemeManager().nextTheme();
+                        if (mounted) setState(() {});
+                      },
+                      child: ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [
+                            Colors.white,
+                            Colors.amber.shade200,
+                            Colors.white,
+                          ],
+                        ).createShader(bounds),
+                        child: const Text(
+                          'DOBRODOŠLI',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 6,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),

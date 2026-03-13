@@ -86,10 +86,9 @@ class V3PinZahtevService {
     required String vrednost,
   }) async {
     try {
-      // Logovanje u v3_audit_log ili sličnu tabelu ako postoji
       final row = {
+        'tip': 'direktna_izmena_$tip',
         'putnik_id': putnikId,
-        'akcija': 'direktna_izmena_$tip',
         'detalji': 'Nova vrednost: $vrednost',
         'created_at': DateTime.now().toUtc().toIso8601String(),
       };

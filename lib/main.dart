@@ -10,17 +10,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'globals.dart';
-import 'screens/v2_welcome_screen.dart';
-import 'services/realtime/v2_master_realtime_manager.dart';
+import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
-import 'services/v2_background_gps_service.dart';
-import 'services/v2_firebase_service.dart';
-import 'services/v2_huawei_push_service.dart';
-import 'services/v2_realtime_gps_service.dart';
-import 'services/v2_statistika_istorija_service.dart';
-import 'services/v2_theme_manager.dart';
-import 'services/v2_weather_alert_service.dart';
-import 'services/v2_weather_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,13 +51,6 @@ Future<void> _doStartupTasks() async {
     debugPrint('âš ï¸ [main] Wakelock/SystemChrome greÅ¡ka: $e');
   }
 
-  // Inicijalizuj background GPS foreground service (registracija, ne pokretanje)
-  try {
-    await V2BackgroundGpsService.initialize();
-  } catch (e) {
-    debugPrint('âš ï¸ [main] BackgroundGpsService init greÅ¡ka: $e');
-  }
-
   // Locale - UTF-8 podrska za dijakritiku
   unawaited(initializeDateFormatting('sr', null));
 
@@ -78,55 +62,25 @@ Future<void> _doStartupTasks() async {
 /// Inicijalizacija Notifikacija (GMS vs HMS)
 Future<void> _initPushSystems() async {
   try {
-    // Provera GMS-a sa kratkim timeoutom
     final availability =
         await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability().timeout(const Duration(seconds: 2));
-
     if (availability == GooglePlayServicesAvailability.success) {
       try {
         await Firebase.initializeApp().timeout(const Duration(seconds: 5));
-        await V2FirebaseService.initialize();
-        V2FirebaseService.setupFCMListeners();
-        unawaited(V2FirebaseService.initializeAndRegisterToken());
       } catch (e) {
-        debugPrint('âš ï¸ [main] Firebase/FCM init greÅ¡ka: $e');
+        debugPrint('âš ï¸ [main] Firebase init greÅ¡ka: $e');
       }
-    } else {
-      await _tryInitHms(timeout: const Duration(seconds: 5));
     }
   } catch (e) {
-    // GMS provjera nije uspjela â€” probaj HMS kao fallback
-    debugPrint('âš ï¸ [main] GMS provjera greÅ¡ka, pokuÅ¡avam HMS: $e');
-    await _tryInitHms(timeout: const Duration(seconds: 2));
-  }
-}
-
-/// HMS inicijalizacija (Huawei ureÄ‘aji bez GMS)
-Future<void> _tryInitHms({required Duration timeout}) async {
-  try {
-    final hmsToken = await V2HuaweiPushService().initialize().timeout(timeout);
-    if (hmsToken != null) {
-      await V2HuaweiPushService().tryRegisterPendingToken();
-    }
-  } catch (e) {
-    debugPrint('âš ï¸ [main] HMS init greÅ¡ka: $e');
+    debugPrint('âš ï¸ [main] GMS provjera greÅ¡ka: $e');
   }
 }
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
-  // V2 Master Realtime Manager
-  unawaited(V2MasterRealtimeManager.instance
-      .initialize()
-      .catchError((Object e) => debugPrint('âŒ [main] MasterRealtimeManager.initialize greÅ¡ka: $e')));
-
-  // V3 Master Realtime Manager
   unawaited(V3MasterRealtimeManager.instance
       .initV3()
-      .catchError((Object e) => debugPrint('âŒ [main] V3MasterRealtimeManager.initV3 greÅ¡ka: $e')));
-
-  // Weather alerts (bez cekanja)
-  unawaited(V2WeatherAlertService.checkAndSendWeatherAlerts());
+      .catchError((Object e) => debugPrint('âŒ [main] V3MasterRealtimeManager.initV3 greÅ¡ka: $e')));
 }
 
 class MyApp extends StatefulWidget {
@@ -149,58 +103,32 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Cleanup: zatvori stream controllere i WebSocket kanale
-    V2WeatherService.dispose();
-    V2RealtimeGpsService.dispose();
-    V2StatistikaIstorijaService.dispose();
-    V2MasterRealtimeManager.instance.dispose();
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Kada app izadje iz backgrounda, provjeri da li je novi dan i osvjezi cache
-      V2MasterRealtimeManager.instance.v2RefreshForNewDay().catchError((Object e) {});
+  void didChangeAppLifecycleState(AppLifecycleState state) {}
 
-      // When app is resumed, try registering pending tokens (if any)
-      try {
-        V2HuaweiPushService().tryRegisterPendingToken();
-      } catch (e) {}
-    }
-  }
-
-  Future<void> _initializeApp() async {
-    try {
-      await V2ThemeManager().initialize();
-    } catch (e) {
-      debugPrint('âš ï¸ [main] V2ThemeManager.initialize greÅ¡ka: $e');
-    }
-  }
+  Future<void> _initializeApp() async {}
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeData>(
-      valueListenable: V2ThemeManager().themeNotifier,
-      builder: (context, themeData, child) {
-        return MaterialApp(
-          navigatorKey: navigatorKey,
-          title: 'Gavra 013',
-          debugShowCheckedModeBanner: false,
-          theme: themeData, // Light tema
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [
-            Locale('en', 'US'),
-            Locale('sr'),
-          ],
-          locale: const Locale('sr'), // Default locale sa dijakritikom
-          home: const V2WelcomeScreen(),
-        );
-      },
+    return MaterialApp(
+      navigatorKey: navigatorKey,
+      title: 'Gavra 013',
+      debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', 'US'),
+        Locale('sr'),
+      ],
+      locale: const Locale('sr'),
+      // home: const V3WelcomeScreen(),
+      home: const V3WelcomeScreen(),
     );
   }
 }

@@ -8,9 +8,7 @@ import '../realtime/v3_master_realtime_manager.dart';
 class V3VozacService {
   V3VozacService._();
 
-  static V3Vozac? _currentVozac;
-  static V3Vozac? get currentVozac => _currentVozac;
-  static set currentVozac(V3Vozac? v) => _currentVozac = v;
+  static V3Vozac? currentVozac;
 
   static List<V3Vozac> getAllVozaci() {
     final cache = V3MasterRealtimeManager.instance.vozaciCache.values;

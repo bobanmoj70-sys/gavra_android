@@ -26,7 +26,7 @@ class V3Putnik {
   final int? placeniMesec;
   final int? placenaGodina;
 
-  final bool aktivna;
+  final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -52,7 +52,7 @@ class V3Putnik {
     this.cenaPoPokupljenju = 0.0,
     this.placeniMesec,
     this.placenaGodina,
-    this.aktivna = true,
+    this.aktivno = true,
     this.createdAt,
     this.updatedAt,
   });
@@ -80,7 +80,7 @@ class V3Putnik {
       cenaPoPokupljenju: (json['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0,
       placeniMesec: json['placeni_mesec'] as int?,
       placenaGodina: json['placena_godina'] as int?,
-      aktivna: json['aktivna'] as bool? ?? true,
+      aktivno: json['aktivno'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
     );
@@ -109,7 +109,7 @@ class V3Putnik {
       'cena_po_pokupljenju': cenaPoPokupljenju,
       'placeni_mesec': placeniMesec,
       'placena_godina': placenaGodina,
-      'aktivna': aktivna,
+      'aktivno': aktivno,
     };
   }
 
@@ -135,7 +135,7 @@ class V3Putnik {
     double? cenaPoPokupljenju,
     int? placeniMesec,
     int? placenaGodina,
-    bool? aktivna,
+    bool? aktivno,
   }) {
     return V3Putnik(
       id: id ?? this.id,
@@ -159,7 +159,7 @@ class V3Putnik {
       cenaPoPokupljenju: cenaPoPokupljenju ?? this.cenaPoPokupljenju,
       placeniMesec: placeniMesec ?? this.placeniMesec,
       placenaGodina: placenaGodina ?? this.placenaGodina,
-      aktivna: aktivna ?? this.aktivna,
+      aktivno: aktivno ?? this.aktivno,
     );
   }
 

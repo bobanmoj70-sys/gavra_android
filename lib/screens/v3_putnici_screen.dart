@@ -1,6 +1,5 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_putnik.dart';
-import 'package:gavra_android/services/v3/v3_putnik_service.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -81,7 +80,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
       builder: (context, snapshot) {
         var list = V3MasterRealtimeManager.instance.putniciCache.values
             .map((v) => V3Putnik.fromJson(v))
-            .where((p) => p.aktivna)
+            .where((p) => p.aktivno)
             .toList();
 
         // Filter po tipu
@@ -136,11 +135,16 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
 
   Color _getTipColor(String tip) {
     switch (tip) {
-      case 'radnik': return Colors.blue;
-      case 'ucenik': return Colors.orange;
-      case 'dnevni': return Colors.green;
-      case 'posiljka': return Colors.purple;
-      default: return Colors.grey;
+      case 'radnik':
+        return Colors.blue;
+      case 'ucenik':
+        return Colors.orange;
+      case 'dnevni':
+        return Colors.green;
+      case 'posiljka':
+        return Colors.purple;
+      default:
+        return Colors.grey;
     }
   }
 

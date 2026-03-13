@@ -34,6 +34,14 @@ class V3ZahtevService {
   static Stream<List<V3Zahtev>> streamPendingZahteviByGrad(String grad) => V3MasterRealtimeManager.instance
       .v3StreamFromCache(tables: ['v3_zahtevi'], build: () => getPendingZahteviByGrad(grad));
 
+  static Stream<int> streamPendingZahteviCount() => V3MasterRealtimeManager.instance.v3StreamFromCache(
+        tables: ['v3_zahtevi'],
+        build: () {
+          final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
+          return cache.where((r) => r['status'] == 'obrada').length;
+        },
+      );
+
   static V3Zahtev? getZahtevById(String id) {
     final data = V3MasterRealtimeManager.instance.zahteviCache[id];
     return data != null ? V3Zahtev.fromJson(data) : null;

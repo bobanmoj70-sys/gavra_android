@@ -1,8 +1,5 @@
-import '../../models/v2_putnik.dart';
 import '../../models/v3_putnik.dart';
 import '../../models/v3_zahtev.dart';
-import '../../utils/v2_dan_utils.dart';
-import '../v2_smart_navigation_service.dart';
 
 class V3NavigationResult {
   final bool success;
@@ -17,58 +14,43 @@ class V3NavigationResult {
 class V3SmartNavigationService {
   V3SmartNavigationService._();
 
-  /// Optimizacija V3 rute koristeći postojeći V2 engine
+  /// Optimizacija V3 rute — sortira putnike po gradu i željenom vremenu.
   static Future<V3NavigationResult> optimizeV3Route({
     required List<Map<String, dynamic>> data, // contains 'putnik' and 'zahtev'
     required String startCity,
   }) async {
     try {
-      // 1. Mapiraj V3 podloge u V2Putnik format koji navigator razume
-      final List<V2Putnik> v2ProxyList = data.map((item) {
-        final V3Putnik p = item['putnik'];
-        final V3Zahtev z = item['zahtev'];
+      if (data.isEmpty) {
+        return V3NavigationResult.error('Nema putnika za optimizaciju');
+      }
 
-        return V2Putnik(
-          id: p.id,
-          ime: p.imePrezime,
-          brojTelefona: p.telefon1 ?? p.telefon2,
-          grad: z.grad,
-          dan: V2DanUtils.danas(),
-          polazak: z.zeljenoVreme,
-          // Mapiranje adresa na V2 format za geokodiranje
-          adresa: p.tipPutnika == 'posiljka'
-              ? (p.adresaBcNaziv ?? '')
-              : (z.grad == 'BC' ? p.adresaBcNaziv : p.adresaVsNaziv),
-          adresaId: z.grad == 'BC' ? p.adresaBcId : p.adresaVsId,
-          status: z.status,
-          placeno: false, // V3 ima drugaciji sistem, ovde samo proxy
-        );
+      // Filtriramo samo putnike za traženi grad i sortiramo po zeljenoVreme
+      final filtered = data.where((item) {
+        final V3Zahtev z = item['zahtev'];
+        return z.grad.toUpperCase() == startCity.toUpperCase();
       }).toList();
 
-      // 2. Pozovi provereni V2 optimizator
-      final v2Result = await V2SmartNavigationService.optimizeRouteOnly(
-        putnici: v2ProxyList,
-        startCity: startCity,
-      );
-
-      if (!v2Result.success || v2Result.optimizedPutnici == null) {
-        return V3NavigationResult.error(v2Result.message);
-      }
-
-      // 3. Vrati optimizovanu V3 listu na osnovu V2 rezultata
-      final List<Map<String, dynamic>> optimizedV3 = [];
-      for (final v2p in v2Result.optimizedPutnici!) {
-        final matching = data.firstWhere((item) => (item['putnik'] as V3Putnik).id == v2p.id);
-        optimizedV3.add(matching);
-      }
+      filtered.sort((a, b) {
+        final V3Zahtev za = a['zahtev'];
+        final V3Zahtev zb = b['zahtev'];
+        return za.zeljenoVreme.compareTo(zb.zeljenoVreme);
+      });
 
       return V3NavigationResult(
         success: true,
-        message: 'Ruta optimizovana za ${optimizedV3.length} putnika',
-        optimizedData: optimizedV3,
+        message: 'Ruta optimizovana za ${filtered.length} putnika',
+        optimizedData: filtered,
       );
     } catch (e) {
       return V3NavigationResult.error('Greška pri optimizaciji: $e');
     }
+  }
+
+  /// Vraća adresu putnika za određeni grad
+  static String getAdresaZaGrad(V3Putnik p, String grad) {
+    if (grad.toUpperCase() == 'BC') {
+      return p.adresaBcNaziv ?? p.adresaBcNaziv2 ?? '';
+    }
+    return p.adresaVsNaziv ?? p.adresaVsNaziv2 ?? '';
   }
 }
