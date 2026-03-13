@@ -22,6 +22,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> gorivoStanjeCache = {};
   final Map<String, Map<String, dynamic>> gorivoPunjenjaCache = {};
   final Map<String, Map<String, dynamic>> gorivoTocenjaCache = {};
+  final Map<String, Map<String, dynamic>> kapacitetCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
@@ -42,6 +43,7 @@ class V3MasterRealtimeManager {
         supabase.from('v3_gorivo_stanje').select(),
         supabase.from('v3_gorivo_punjenja').select().order('datum', ascending: false).limit(200),
         supabase.from('v3_gorivo_tocenja').select().order('datum', ascending: false).limit(500),
+        supabase.from('v3_kapacitet').select().eq('aktivno', true),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -54,6 +56,7 @@ class V3MasterRealtimeManager {
       _fillCache(gorivoStanjeCache, results[7] as List);
       _fillCache(gorivoPunjenjaCache, results[8] as List);
       _fillCache(gorivoTocenjaCache, results[9] as List);
+      _fillCache(kapacitetCache, results[10] as List);
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -83,6 +86,7 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_gorivo_stanje', gorivoStanjeCache);
     _setupTableRealtime('v3_gorivo_punjenja', gorivoPunjenjaCache);
     _setupTableRealtime('v3_gorivo_tocenja', gorivoTocenjaCache);
+    _setupTableRealtime('v3_kapacitet', kapacitetCache);
 
     _v3Channel?.subscribe();
   }
@@ -141,7 +145,10 @@ class V3MasterRealtimeManager {
       zahteviCache[id] = row;
     else if (table == 'v3_dugovi')
       dugoviCache[id] = row;
-    else if (table == 'v3_finansije') finansijeCache[id] = row;
+    else if (table == 'v3_finansije')
+      finansijeCache[id] = row;
+    else if (table == 'v3_kapacitet')
+      kapacitetCache[id] = row;
 
     _changeController.add(null);
   }

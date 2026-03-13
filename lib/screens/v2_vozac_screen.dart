@@ -10,7 +10,7 @@ import '../services/realtime/v2_master_realtime_manager.dart'; // Za realtime ra
 import '../services/v2_audit_log_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_driver_location_service.dart';
-import '../services/v2_kapacitet_service.dart';
+import '../services/v3/v3_kapacitet_service.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_realtime_gps_service.dart';
@@ -977,7 +977,7 @@ class _VozacScreenState extends State<V2VozacScreen> {
                   selectedGrad: _selectedGrad,
                   selectedVreme: _selectedVreme,
                   getPutnikCount: getPutnikCount,
-                  getKapacitet: V2KapacitetService.getKapacitetSync,
+                  getKapacitet: V3KapacitetService.getKapacitetSyncValue,
                   onPolazakChanged: _onPolazakChanged,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,

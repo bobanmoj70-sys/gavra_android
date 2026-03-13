@@ -5,7 +5,7 @@ import '../globals.dart';
 import '../models/v2_putnik.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_audit_log_service.dart';
-import '../services/v2_kapacitet_service.dart';
+import '../services/v3/v3_kapacitet_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
@@ -696,7 +696,7 @@ Widget _rasporedBottomNavBar({
     selectedGrad: selectedGrad,
     selectedVreme: selectedVreme,
     getPutnikCount: getPutnikCount,
-    getKapacitet: V2KapacitetService.getKapacitetSync,
+    getKapacitet: V3KapacitetService.getKapacitetSyncValue,
     onPolazakChanged: onPolazakChanged,
     selectedDan: selectedDan,
     showVozacBoja: true,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/v2_kapacitet_service.dart';
+import '../services/v3/v3_kapacitet_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
@@ -20,7 +20,7 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _streamKapacitet = V2KapacitetService.streamKapacitet();
+    _streamKapacitet = V3KapacitetService.streamKapacitet();
   }
 
   @override
@@ -36,7 +36,7 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
       builder: (_) => _KapacitetEditDialog(grad: grad, vreme: vreme, trenutni: trenutni),
     );
     if (result != null && result != trenutni) {
-      final success = await V2KapacitetService.setKapacitet(grad, vreme, result);
+      final success = await V3KapacitetService.setKapacitet(grad, vreme, result);
       if (!mounted) return;
       if (success) {
         V2AppSnackBar.success(context, '✅ $grad $vreme = $result mesta');
@@ -53,7 +53,7 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text('🎫 Kapacitet Polazaka', style: TextStyle(color: Colors.white)),
+          title: const Text('🎫 Kapacitet Polazaka (V3)', style: TextStyle(color: Colors.white)),
           backgroundColor: Colors.transparent,
           elevation: 0,
           automaticallyImplyLeading: false,
@@ -79,8 +79,8 @@ class _KapacitetScreenState extends State<V2KapacitetScreen> with SingleTickerPr
             return TabBarView(
               controller: _tabController,
               children: [
-                _kapacitetGradTab('BC', V2KapacitetService.bcVremena, data, _editKapacitet),
-                _kapacitetGradTab('VS', V2KapacitetService.vsVremena, data, _editKapacitet),
+                _kapacitetGradTab('BC', V3KapacitetService.bcVremena, data, _editKapacitet),
+                _kapacitetGradTab('VS', V3KapacitetService.vsVremena, data, _editKapacitet),
               ],
             );
           },
@@ -128,7 +128,7 @@ Widget _kapacitetGradTab(
               IconButton(
                 onPressed: maxMesta > 1
                     ? () async {
-                        final success = await V2KapacitetService.setKapacitet(grad, vreme, maxMesta - 1);
+                        final success = await V3KapacitetService.setKapacitet(grad, vreme, maxMesta - 1);
                         if (!ctx.mounted) return;
                         if (!success) V2AppSnackBar.error(ctx, '❌ Greška pri čuvanju');
                       }
@@ -152,7 +152,7 @@ Widget _kapacitetGradTab(
               IconButton(
                 onPressed: maxMesta < 20
                     ? () async {
-                        final success = await V2KapacitetService.setKapacitet(grad, vreme, maxMesta + 1);
+                        final success = await V3KapacitetService.setKapacitet(grad, vreme, maxMesta + 1);
                         if (!ctx.mounted) return;
                         if (!success) V2AppSnackBar.error(ctx, '❌ Greška pri čuvanju');
                       }

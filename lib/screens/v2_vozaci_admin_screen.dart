@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_vozac.dart';
 import 'package:gavra_android/services/v3/v3_vozac_service.dart';
-import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 
 class V2VozaciAdminScreen extends StatefulWidget {
@@ -230,7 +229,8 @@ class _V2VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {bool obscure = false, TextInputType? keyboard}) {
+  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon,
+      {bool obscure = false, TextInputType? keyboard}) {
     return TextFormField(
       controller: ctrl,
       style: const TextStyle(color: Colors.white),
@@ -254,7 +254,8 @@ class _V2VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Deaktivacija', style: TextStyle(color: Colors.white)),
-        content: Text('Da li ste sigurni da želite da deaktivirate vozača ${v.imePrezime}?', style: const TextStyle(color: Colors.white70)),
+        content: Text('Da li ste sigurni da želite da deaktivirate vozača ${v.imePrezime}?',
+            style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('NE')),
           TextButton(
