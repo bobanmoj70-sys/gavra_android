@@ -841,7 +841,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                           brojDuznika: filteredDuznici.length,
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute<void>(builder: (_) => V2DugoviScreen(currentDriver: currentDriver)),
+                            MaterialPageRoute<void>(builder: (_) => const V2DugoviScreen()),
                           ),
                           wide: true,
                         ),
