@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/v2_polazak.dart';
-import '../services/v2_polasci_service.dart';
+import '../models/v3_zahtev.dart';
+import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../widgets/v2_summary_badge.dart';
 
@@ -14,29 +14,14 @@ class V2RadniciZahteviScreen extends StatefulWidget {
 
 class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
   // obrada + odobreno + odbijeno + otkazano — kompletan lifecycle zahteva
-  final Stream<List<V2Polazak>> _stream = V2PolasciService.v2StreamZahteviObrada(
-    statusFilter: const ['obrada', 'odobreno', 'odbijeno', 'otkazano'],
-  );
+  final Stream<List<V3Zahtev>> _stream = V3ZahtevService.streamZahteviByTip('radnik');
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<V2Polazak>>(
+    return StreamBuilder<List<V3Zahtev>>(
       stream: _stream,
       builder: (context, snapshot) {
-        final svi = snapshot.data ?? [];
-
-        // Samo zahtevi koji su prošli kroz kronom:
-        // - status='obrada' → čeka kronom
-        // - odobrio='sistem' → kronom odobrio
-        // - otkazao='sistem' → kronom odbio
-        // Samo zahtevi koji su prošli kroz kronom:
-        // - status='obrada' → čeka kronom
-        // - odobrio='sistem' → kronom odobrio
-        // - otkazao='sistem' → kronom odbio
-        final zahtevi = svi.where((z) {
-          if ((z.tipPutnika ?? '').toLowerCase() != 'radnik') return false;
-          return z.status == 'obrada' || z.approvedBy == 'sistem' || z.cancelledBy == 'sistem';
-        }).toList();
+        final zahtevi = snapshot.data ?? [];
 
         // Grupiši po statusu za summary u AppBaru
         final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
@@ -101,7 +86,7 @@ class _V2RadniciZahteviScreenState extends State<V2RadniciZahteviScreen> {
             child: SafeArea(
               child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
                   ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                  : v2ZahtjevLista(context, zahtevi, Icons.inbox_outlined, 'Nema zahteva radnika'),
+                  : v3ZahtjevLista(context, zahtevi, Icons.inbox_outlined, 'Nema zahteva radnika'),
             ),
           ),
         );

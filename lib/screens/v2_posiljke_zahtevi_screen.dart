@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/v2_polazak.dart';
-import '../services/v2_polasci_service.dart';
+import '../models/v3_zahtev.dart';
+import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../widgets/v2_summary_badge.dart';
 
@@ -13,9 +13,7 @@ class V2PosiljkeZahteviScreen extends StatefulWidget {
 }
 
 class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
-  final Stream<List<V2Polazak>> _stream = V2PolasciService.v2StreamZahteviObrada(
-    statusFilter: const ['obrada', 'odobreno', 'odbijeno', 'otkazano'],
-  );
+  final Stream<List<V3Zahtev>> _stream = V3ZahtevService.streamZahteviByTip('posiljka');
 
   @override
   Widget build(BuildContext context) {
@@ -59,14 +57,10 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
       ),
       body: Container(
         decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
-        child: StreamBuilder<List<V2Polazak>>(
+        child: StreamBuilder<List<V3Zahtev>>(
           stream: _stream,
           builder: (context, snapshot) {
-            final svi = snapshot.data ?? [];
-            final zahtevi = svi.where((z) {
-              if ((z.tipPutnika ?? '').toLowerCase() != 'posiljka') return false;
-              return z.status == 'obrada' || z.approvedBy == 'sistem' || z.cancelledBy == 'sistem';
-            }).toList();
+            final zahtevi = snapshot.data ?? [];
 
             final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
             final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
@@ -98,7 +92,7 @@ class _V2PosiljkeZahteviScreenState extends State<V2PosiljkeZahteviScreen> {
                 Expanded(
                   child: snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData
                       ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                      : v2ZahtjevLista(context, zahtevi, Icons.local_shipping_outlined, 'Nema zahteva pošiljki'),
+                      : v3ZahtjevLista(context, zahtevi, Icons.local_shipping_outlined, 'Nema zahteva pošiljki'),
                 ),
               ],
             );

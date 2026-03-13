@@ -1,5 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'dart:math';
+
+import 'package:flutter/foundation.dart';
+
 import '../../globals.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
@@ -56,9 +58,14 @@ class V3PinZahtevService {
       }).eq('id', putnikId);
 
       // 2. Obeleži zahtev kao odobren
-      final updated = await supabase.from('v3_pin_zahtevi').update({
-        'status': 'odobren',
-      }).eq('id', zahtevId).select().single();
+      final updated = await supabase
+          .from('v3_pin_zahtevi')
+          .update({
+            'status': 'odobren',
+          })
+          .eq('id', zahtevId)
+          .select()
+          .single();
 
       rm.v3UpsertToCache('v3_pin_zahtevi', updated);
       return true;
@@ -70,9 +77,14 @@ class V3PinZahtevService {
 
   static Future<bool> odbijZahtev(String zahtevId) async {
     try {
-      final updated = await supabase.from('v3_pin_zahtevi').update({
-        'status': 'odbijen',
-      }).eq('id', zahtevId).select().single();
+      final updated = await supabase
+          .from('v3_pin_zahtevi')
+          .update({
+            'status': 'odbijen',
+          })
+          .eq('id', zahtevId)
+          .select()
+          .single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pin_zahtevi', updated);
       return true;

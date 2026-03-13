@@ -8,6 +8,23 @@ import '../realtime/v3_master_realtime_manager.dart';
 class V3ZahtevService {
   V3ZahtevService._();
 
+  static List<V3Zahtev> getZahteviByTip(String tip) {
+    final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
+    // Filtriramo putnike iz cachea da nađemo one koji su traženog tipa
+    final putnici = V3MasterRealtimeManager.instance.putniciCache.values
+        .where((p) => (p['tip'] ?? '').toLowerCase() == tip.toLowerCase())
+        .map((p) => p['id'] as String)
+        .toSet();
+
+    return cache.where((r) => putnici.contains(r['putnik_id'])).map((r) => V3Zahtev.fromJson(r)).toList()
+      ..sort((a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime(2000)) ?? 0);
+  }
+
+  static Stream<List<V3Zahtev>> streamZahteviByTip(String tip) => V3MasterRealtimeManager.instance.v3StreamFromCache(
+        tables: ['v3_zahtevi', 'v3_putnici'],
+        build: () => getZahteviByTip(tip),
+      );
+
   static List<V3Zahtev> getPendingZahteviByGrad(String grad) {
     final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
     return cache.where((r) => r['grad'] == grad && r['status'] == 'obrada').map((r) => V3Zahtev.fromJson(r)).toList()
