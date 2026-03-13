@@ -1,17 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_putnik.dart';
 import 'package:gavra_android/models/v3_zahtev.dart';
 import 'package:gavra_android/services/v3/v3_putnik_service.dart';
 import 'package:gavra_android/services/v3/v3_zahtev_service.dart';
 
-class V2HomeScreen extends StatefulWidget {
-  const V2HomeScreen({super.key});
+class V3HomeScreen extends StatefulWidget {
+  const V3HomeScreen({super.key});
 
   @override
-  State<V2HomeScreen> createState() => _V2HomeScreenState();
+  State<V3HomeScreen> createState() => _V3HomeScreenState();
 }
 
-class _V2HomeScreenState extends State<V2HomeScreen> {
+class _V3HomeScreenState extends State<V3HomeScreen> {
   String _selectedDay = 'pon';
   String _selectedGrad = 'BC';
 

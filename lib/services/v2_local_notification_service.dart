@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
-import '../screens/v2_home_screen.dart';
+import '../screens/v3_home_screen.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
@@ -458,7 +458,7 @@ class V2LocalNotificationService {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => const V2HomeScreen(),
+            builder: (_) => const V3HomeScreen(),
           ),
         );
       }
@@ -491,7 +491,7 @@ class V2LocalNotificationService {
       if (context != null && context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => const V2HomeScreen(),
+            builder: (_) => const V3HomeScreen(),
           ),
         );
       }

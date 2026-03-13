@@ -1,17 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_gorivo.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
 import 'package:intl/intl.dart';
 
-class V2GorivoScreen extends StatefulWidget {
-  const V2GorivoScreen({super.key});
+class V3GorivoScreen extends StatefulWidget {
+  const V3GorivoScreen({super.key});
 
   @override
-  State<V2GorivoScreen> createState() => _V2GorivoScreenState();
+  State<V3GorivoScreen> createState() => _V3GorivoScreenState();
 }
 
-class _V2GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProviderStateMixin {
+class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _fmt = NumberFormat('#,##0.0', 'sr');
 

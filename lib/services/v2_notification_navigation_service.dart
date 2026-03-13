@@ -1,10 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
-import '../screens/v2_home_screen.dart';
+import '../screens/v3_home_screen.dart';
 import '../screens/v2_pin_zahtevi_screen.dart';
 import '../screens/v2_putnik_profil_screen.dart';
 import '../screens/v2_vozac_screen.dart';
@@ -202,7 +202,7 @@ class V2NotificationNavigationService {
   static void _navigateToAppropriateScreen(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const V2HomeScreen(),
+        builder: (_) => const V3HomeScreen(),
       ),
     );
   }

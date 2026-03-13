@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_adresa.dart';
 import 'package:gavra_android/services/v3/v3_adresa_service.dart';
 import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 
-class V2AdreseScreen extends StatefulWidget {
-  const V2AdreseScreen({super.key});
+class V3AdreseScreen extends StatefulWidget {
+  const V3AdreseScreen({super.key});
 
   @override
-  State<V2AdreseScreen> createState() => _AdreseScreenState();
+  State<V3AdreseScreen> createState() => _AdreseScreenState();
 }
 
-class _AdreseScreenState extends State<V2AdreseScreen> {
+class _AdreseScreenState extends State<V3AdreseScreen> {
   String _filter = '';
 
   @override

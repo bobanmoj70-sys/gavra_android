@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
@@ -7,8 +7,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../globals.dart';
-import '../models/v2_vozac.dart';
+import '../models/v3_vozac.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_app_settings_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_battery_optimization_service.dart';
@@ -17,18 +18,18 @@ import '../services/v2_local_notification_service.dart';
 import '../services/v2_permission_service.dart';
 import '../services/v2_theme_manager.dart';
 import '../utils/v2_vozac_cache.dart';
-import 'v2_home_screen.dart';
+import 'v3_home_screen.dart';
 import 'v2_o_nama_screen.dart';
 import 'v2_putnik_login_screen.dart';
 import 'v2_vozac_login_screen.dart';
 import 'v2_vozac_screen.dart';
 
 Widget _getScreenForDriver(String driverName) {
-  // Vozači koji koriste V2VozacScreen umesto V2HomeScreen
+  // Vozači koji koriste V2VozacScreen umesto V3HomeScreen
   if (V2VozacCache.prefersVozacScreen(driverName)) {
     return const V2VozacScreen();
   }
-  return const V2HomeScreen();
+  return const V3HomeScreen();
 }
 
 class V2WelcomeScreen extends StatefulWidget {
@@ -713,7 +714,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                         const SizedBox(width: 16),
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => _showDriverSelectionDialog(),
+                            onTap: () => unawaited(_showDriverSelectionDialog()),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
@@ -821,10 +822,15 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
   }
 
   // s- Dijalog za izbor vozača
-  void _showDriverSelectionDialog() {
-    // Citaj vozace direktno iz cache-a — nema setState na parent widgetu
-    final drivers = V2MasterRealtimeManager.instance.vozaciCache.values.map((row) => V2Vozac.fromMap(row)).toList()
-      ..sort((a, b) => a.ime.compareTo(b.ime));
+  Future<void> _showDriverSelectionDialog() async {
+    // Čitaj vozače iz V3 RM cache-a
+    List<V3Vozac> drivers = V3MasterRealtimeManager.instance.vozaciCache.values
+        .map((row) => V3Vozac.fromJson(row))
+        .where((v) => v.aktivno && v.imePrezime.isNotEmpty)
+        .toList()
+      ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (BuildContext ctx) {
@@ -868,12 +874,15 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                   const CircularProgressIndicator(color: Colors.white)
                 else
                   ...drivers.map((driver) {
+                    final driverColor = driver.boja != null
+                        ? Color(int.tryParse(driver.boja!.replaceFirst('#', '0xFF')) ?? 0xFF2196F3)
+                        : Colors.blue;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pop(ctx); // Zatvori dijalog
-                          _loginAsDriver(driver.ime);
+                          Navigator.pop(ctx);
+                          _loginAsDriver(driver.imePrezime);
                         },
                         child: Container(
                           width: double.infinity,
@@ -881,7 +890,7 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                (driver.color ?? Colors.blue).withValues(alpha: 0.8),
+                                driverColor.withValues(alpha: 0.8),
                                 Colors.white.withValues(alpha: 0.1),
                               ],
                               begin: Alignment.topLeft,
@@ -889,21 +898,21 @@ class _WelcomeScreenState extends State<V2WelcomeScreen> with TickerProviderStat
                             ),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: (driver.color ?? Colors.blue).withValues(alpha: 0.6),
+                              color: driverColor.withValues(alpha: 0.6),
                               width: 1.5,
                             ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                V2VozacCache.getIconForDriver(driver.ime),
+                              const Icon(
+                                Icons.local_taxi,
                                 color: Colors.white,
                                 size: 22,
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                driver.ime,
+                                driver.imePrezime,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,

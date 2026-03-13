@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,7 +10,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
-import 'v2_home_screen.dart';
+import 'v3_home_screen.dart';
 import 'v2_vozac_screen.dart';
 
 /// VOZAČ LOGIN SCREEN
@@ -195,7 +195,7 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
         context,
         MaterialPageRoute(
           builder: (_) =>
-              V2VozacCache.prefersVozacScreen(widget.vozacIme) ? const V2VozacScreen() : const V2HomeScreen(),
+              V2VozacCache.prefersVozacScreen(widget.vozacIme) ? const V2VozacScreen() : const V3HomeScreen(),
         ),
       );
     } catch (e) {

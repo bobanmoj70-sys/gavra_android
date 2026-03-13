@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../models/v2_polazak.dart';
@@ -16,17 +16,17 @@ import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
 import '../utils/v2_vozac_cache.dart';
 import '../widgets/v2_dug_button.dart';
-import 'v2_adrese_screen.dart';
+import 'v3_adrese_screen.dart';
 import 'v2_audit_log_screen.dart';
 import 'v2_dnevnik_naplate_screen.dart';
-import 'v2_dugovi_screen.dart';
-import 'v2_finansije_screen.dart';
-import 'v2_gorivo_screen.dart';
+import 'v3_dugovi_screen.dart';
+import 'v3_finansije_screen.dart';
+import 'v3_gorivo_screen.dart';
 import 'v2_kapacitet_screen.dart';
-import 'v2_odrzavanje_screen.dart';
+import 'v3_odrzavanje_screen.dart';
 import 'v2_pin_zahtevi_screen.dart';
 import 'v2_posiljke_zahtevi_screen.dart';
-import 'v2_putnici_screen.dart';
+import 'v3_putnici_screen.dart';
 import 'v2_radnici_zahtevi_screen.dart';
 import 'v2_ucenici_zahtevi_screen.dart';
 import 'v2_vozac_raspored_screen.dart';
@@ -470,7 +470,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (context) => const V2FinansijeScreen(),
+                        builder: (context) => const V3FinansijeScreen(),
                       ),
                     );
                   },
@@ -486,7 +486,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (context) => const V2OdrzavanjeScreen(),
+                        builder: (context) => const V3OdrzavanjeScreen(),
                       ),
                     );
                   },
@@ -549,7 +549,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                     Expanded(
                       child: _NavBtn(
                         onTap: () =>
-                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2AdreseScreen())),
+                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V3AdreseScreen())),
                         child: const Text('📍', style: TextStyle(fontSize: 20)),
                       ),
                     ),
@@ -570,7 +570,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                     const SizedBox(width: 8),
                     _NavBtn(
                       onTap: () =>
-                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2GorivoScreen())),
+                          Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V3GorivoScreen())),
                       color: Colors.orange,
                       borderAlpha: 0.7,
                       width: 50,
@@ -662,7 +662,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                     Expanded(
                       child: _NavBtn(
                         onTap: () =>
-                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V2PutniciScreen())),
+                            Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const V3PutniciScreen())),
                         child: const FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text('Putnici',
@@ -847,7 +847,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                           brojDuznika: filteredDuznici.length,
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute<void>(builder: (_) => const V2DugoviScreen()),
+                            MaterialPageRoute<void>(builder: (_) => const V3DugoviScreen()),
                           ),
                           wide: true,
                         ),

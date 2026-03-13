@@ -1,18 +1,18 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_putnik.dart';
 import 'package:gavra_android/services/v3/v3_putnik_service.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class V2PutniciScreen extends StatefulWidget {
-  const V2PutniciScreen({super.key});
+class V3PutniciScreen extends StatefulWidget {
+  const V3PutniciScreen({super.key});
 
   @override
-  State<V2PutniciScreen> createState() => _V2PutniciScreenState();
+  State<V3PutniciScreen> createState() => _V3PutniciScreenState();
 }
 
-class _V2PutniciScreenState extends State<V2PutniciScreen> {
+class _V3PutniciScreenState extends State<V3PutniciScreen> {
   String _selectedFilter = 'svi';
   final TextEditingController _searchController = TextEditingController();
 

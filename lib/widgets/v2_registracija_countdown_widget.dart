@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import '../screens/v2_odrzavanje_screen.dart';
+import '../screens/v3_odrzavanje_screen.dart';
 import '../services/v2_vozila_service.dart';
 
 /// Helper klasa za deljene podatke o registraciji
@@ -65,7 +65,7 @@ class _RegistracijaData {
   static void openKolskaKnjiga(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const V2OdrzavanjeScreen()),
+      MaterialPageRoute(builder: (_) => const V3OdrzavanjeScreen()),
     ).then((_) => load());
   }
 

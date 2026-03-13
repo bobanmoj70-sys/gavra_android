@@ -1,17 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
 import 'package:gavra_android/services/v3/v3_dug_service.dart';
 import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 import 'package:intl/intl.dart';
 
-class V2DugoviScreen extends StatefulWidget {
-  const V2DugoviScreen({super.key});
+class V3DugoviScreen extends StatefulWidget {
+  const V3DugoviScreen({super.key});
 
   @override
-  State<V2DugoviScreen> createState() => _V2DugoviScreenState();
+  State<V3DugoviScreen> createState() => _V3DugoviScreenState();
 }
 
-class _V2DugoviScreenState extends State<V2DugoviScreen> {
+class _V3DugoviScreenState extends State<V3DugoviScreen> {
   String _filter = '';
 
   @override

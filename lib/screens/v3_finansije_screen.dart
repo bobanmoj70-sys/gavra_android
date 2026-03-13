@@ -1,17 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:gavra_android/models/v3_finansije.dart';
 import 'package:gavra_android/services/v3/v3_finansije_service.dart';
 import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 
-class V2FinansijeScreen extends StatefulWidget {
-  const V2FinansijeScreen({super.key});
+class V3FinansijeScreen extends StatefulWidget {
+  const V3FinansijeScreen({super.key});
 
   @override
-  State<V2FinansijeScreen> createState() => _V2FinansijeScreenState();
+  State<V3FinansijeScreen> createState() => _V3FinansijeScreenState();
 }
 
-class _V2FinansijeScreenState extends State<V2FinansijeScreen> {
+class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   final NumberFormat _fmt = NumberFormat('#,###', 'sr');
 
   @override

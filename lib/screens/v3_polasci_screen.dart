@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_zahtev.dart';
 import 'package:gavra_android/models/v3_putnik.dart';
 import 'package:gavra_android/services/v3/v3_zahtev_service.dart';
@@ -6,14 +6,14 @@ import 'package:gavra_android/services/v3/v3_putnik_service.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 
-class V2PolasciScreen extends StatefulWidget {
-  const V2PolasciScreen({super.key});
+class V3PolasciScreen extends StatefulWidget {
+  const V3PolasciScreen({super.key});
 
   @override
-  State<V2PolasciScreen> createState() => _V2PolasciScreenState();
+  State<V3PolasciScreen> createState() => _V3PolasciScreenState();
 }
 
-class _V2PolasciScreenState extends State<V2PolasciScreen> {
+class _V3PolasciScreenState extends State<V3PolasciScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
