@@ -8,6 +8,10 @@ import '../realtime/v3_master_realtime_manager.dart';
 class V3VozacService {
   V3VozacService._();
 
+  static V3Vozac? _currentVozac;
+  static V3Vozac? get currentVozac => _currentVozac;
+  static set currentVozac(V3Vozac? v) => _currentVozac = v;
+
   static List<V3Vozac> getAllVozaci() {
     final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
     return cache.map((r) => V3Vozac.fromJson(r)).toList()..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
@@ -21,6 +25,18 @@ class V3VozacService {
   static V3Vozac? getVozacById(String id) {
     final data = V3MasterRealtimeManager.instance.vozaciCache[id];
     return data != null ? V3Vozac.fromJson(data) : null;
+  }
+
+  static V3Vozac? getVozacByName(String name) {
+    final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
+    try {
+      final match = cache.firstWhere(
+        (r) => r['ime_prezime'].toString().toLowerCase() == name.toLowerCase(),
+      );
+      return V3Vozac.fromJson(match);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<V3Vozac> addUpdateVozac(V3Vozac vozac) async {

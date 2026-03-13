@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_biometric_service.dart';
 import '../services/v2_theme_manager.dart';
-import '../services/v2_vozac_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v2_vozac_cache.dart';
@@ -169,6 +169,16 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
 
       // SVE OK - LOGIN USPEŠAN
       await V2AuthManager.setCurrentDriver(widget.vozacIme);
+
+      // V3 SYNC: Postavi currentVozac u V3VozacService
+      try {
+        final v3Vozac = V3VozacService.getVozacByName(widget.vozacIme);
+        if (v3Vozac != null) {
+          V3VozacService.currentVozac = v3Vozac;
+        }
+      } catch (e) {
+        debugPrint('[V2VozacLoginScreen] V3 sync warning: $e');
+      }
 
       // Zapamti uređaj
       await V2AuthManager.rememberDevice(email, widget.vozacIme);
@@ -366,21 +376,21 @@ class _VozacLoginScreenState extends State<V2VozacLoginScreen> {
 
 Future<List<Map<String, dynamic>>> _vozacLoadVozaci() async {
   try {
-    final vozaciFromDB = V2VozacService.getAllVozaci();
+    final vozaciFromDB = V3VozacService.getAllVozaci();
     final vozaciMaps = vozaciFromDB.map((v) {
       int bojaInt = 0xFFFFFFFF;
       if (v.boja != null && v.boja!.isNotEmpty) {
         try {
-          final hex = v.boja!.replaceFirst('#', '');
-          bojaInt = int.parse('FF$hex', radix: 16);
+          final cleanHex = v.boja!.replaceFirst('#', '');
+          bojaInt = int.parse('FF$cleanHex', radix: 16);
         } catch (e) {}
       }
       return <String, dynamic>{
         'id': v.id,
-        'ime': v.ime,
+        'ime': v.imePrezime,
         'email': v.email ?? '',
         'sifra': v.sifra ?? '',
-        'telefon': v.brojTelefona ?? '',
+        'telefon': v.telefon ?? '',
         'boja': bojaInt,
       };
     }).toList();

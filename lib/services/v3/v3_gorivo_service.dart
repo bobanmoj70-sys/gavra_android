@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:gavra_android/models/v3_gorivo.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,60 +6,73 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class V3GorivoService {
   static final _supabase = Supabase.instance.client;
 
-  /// Dobavlja stanje sa pumpe (V3 tabela: v3_gorivo_stanje)
-  /// Samo jedan red u bazi.
-  static V3GorivoStanje getStanjeSync() {
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_gorivo_stanje');
-    if (cache.isEmpty) return V3GorivoStanje(kolicina: 0, updatedAt: DateTime.now());
-    return V3GorivoStanje.fromJson(cache.values.first);
+  /// Dohvata stanje pumpe iz cache-a (tabela: v3_pumpa_stanje)
+  static V3PumpaStanje? getStanjeSync() {
+    final cache = V3MasterRealtimeManager.instance.pumpaStanjeCache;
+    if (cache.isEmpty) return null;
+    return V3PumpaStanje.fromJson(cache.values.first);
   }
 
-  /// Dobavlja sva punjenja pumpe (V3 tabela: v3_gorivo_punjenja)
-  static List<V3PumpaPunjenje> getPunjenjaSync() {
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_gorivo_punjenja');
-    final list = cache.values.map((v) => V3PumpaPunjenje.fromJson(v)).toList();
-    list.sort((a, b) => b.datum.compareTo(a.datum));
-    return list;
+  /// Dohvata rezervoar iz cache-a (tabela: v3_pumpa_rezervoar)
+  static V3PumpaRezervoar? getRezervoarSync() {
+    final cache = V3MasterRealtimeManager.instance.pumpaRezervoarCache;
+    if (cache.isEmpty) return null;
+    return V3PumpaRezervoar.fromJson(cache.values.first);
   }
 
-  /// Dobavlja sva točenja u vozila (V3 tabela: v3_gorivo_tocenja)
-  static List<V3PumpaTocenje> getTocenjaSync() {
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_gorivo_tocenja');
-    final list = cache.values.map((v) => V3PumpaTocenje.fromJson(v)).toList();
-    list.sort((a, b) => b.datum.compareTo(a.datum));
-    return list;
+  /// Stream koji emituje svaki put kad se gorivo promijeni
+  static Stream<V3PumpaStanje?> streamStanje() {
+    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+      tables: ['v3_pumpa_stanje'],
+      build: getStanjeSync,
+    );
   }
 
-  /// -- AKCIJE --
-
-  /// Registruje punjenje pumpe (cisterna stigla)
-  /// Povećava kolicinu u v3_gorivo_stanje
-  static Future<void> addPunjenje(double kolicina, String dobavljac, String opis) async {
-    // 1. Dodaj punjenje u tabelu
-    await _supabase.from('v3_gorivo_punjenja').insert({
-      'kolicina': kolicina,
-      'dobavljac': dobavljac,
-      'opis': opis,
-      'datum': DateTime.now().toIso8601String(),
-    });
-
-    // 2. Ažuriraj stanje (pretpostavljamo da imamo proceduru ili read-modify-write)
-    final stanje = getStanjeSync();
-    await _supabase
-        .from('v3_gorivo_stanje')
-        .update({'kolicina': stanje.kolicina + kolicina, 'updated_at': DateTime.now().toIso8601String()}).match(
-            {'id': 'default'}); // Pretpostavljamo id='default' za singleton red
+  static Stream<V3PumpaRezervoar?> streamRezervoar() {
+    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+      tables: ['v3_pumpa_rezervoar'],
+      build: getRezervoarSync,
+    );
   }
 
-  /// Registruje točenje u vozilo
-  /// Smanjuje kolicinu u v3_gorivo_stanje
-  static Future<void> addTocenje(V3PumpaTocenje t) async {
-    await _supabase.from('v3_gorivo_tocenja').insert(t.toJson());
+  /// Ažurira trenutno stanje pumpe u bazi
+  static Future<bool> updateStanje(String id, double novoStanje, double noviBrojac) async {
+    try {
+      final res = await _supabase
+          .from('v3_pumpa_stanje')
+          .update({
+            'trenutno_stanje': novoStanje,
+            'stanje_brojac_pistolj': noviBrojac,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id)
+          .select()
+          .single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pumpa_stanje', res);
+      return true;
+    } catch (e) {
+      debugPrint('[V3GorivoService] updateStanje error: $e');
+      return false;
+    }
+  }
 
-    final stanje = getStanjeSync();
-    await _supabase
-        .from('v3_gorivo_stanje')
-        .update({'kolicina': stanje.kolicina - t.kolicina, 'updated_at': DateTime.now().toIso8601String()}).match(
-            {'id': 'default'});
+  /// Ažurira trenutni nivo rezervoara u bazi
+  static Future<bool> updateRezervoar(String id, double novoLitara) async {
+    try {
+      final res = await _supabase
+          .from('v3_pumpa_rezervoar')
+          .update({
+            'trenutno_litara': novoLitara,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id)
+          .select()
+          .single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pumpa_rezervoar', res);
+      return true;
+    } catch (e) {
+      debugPrint('[V3GorivoService] updateRezevoar error: $e');
+      return false;
+    }
   }
 }

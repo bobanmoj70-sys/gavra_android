@@ -93,4 +93,29 @@ class V3ZahtevService {
       rethrow;
     }
   }
+
+  static Future<void> oznaciPokupljen({
+    required String zahtevId,
+    required bool pokupljen,
+    required String vozacId,
+  }) async {
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      final row = await supabase
+          .from('v3_zahtevi')
+          .update({
+            'status': pokupljen ? 'pokupljen' : 'obrada',
+            'vozac_id': vozacId,
+            'updated_at': now,
+          })
+          .eq('id', zahtevId)
+          .select()
+          .single();
+
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+    } catch (e) {
+      debugPrint('[V3ZahtevService] Pickup error: $e');
+      rethrow;
+    }
+  }
 }

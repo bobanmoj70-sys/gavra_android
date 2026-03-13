@@ -7,78 +7,103 @@ import '../realtime/v3_master_realtime_manager.dart';
 class V3FinansijeService {
   V3FinansijeService._();
 
-  static List<V3FinansijskiUnos> _filterUnosi(DateTime start, DateTime end) {
-    final cache = V3MasterRealtimeManager.instance.finansijeCache.values;
-    return cache
-        .map((r) => V3FinansijskiUnos.fromJson(r))
-        .where((u) => u.datum.isAfter(start) && u.datum.isBefore(end))
+  /// Vraca sve troškove za trenutni mesec iz cache-a (v3_troskovi)
+  static List<V3Trosak> getTroskoviMesec({int? mesec, int? godina}) {
+    final now = DateTime.now();
+    final m = mesec ?? now.month;
+    final g = godina ?? now.year;
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_troskovi');
+    return cache.values
+        .where((r) => r['aktivno'] != false && r['mesec'] == m && r['godina'] == g)
+        .map((r) => V3Trosak.fromJson(r))
         .toList()
-      ..sort((a, b) => b.datum.compareTo(a.datum));
+      ..sort((a, b) => (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
   }
 
+  /// Vraca finansijsko stanje (v3_finansije_stanje)
+  static List<V3FinansijeStanje> getStanje() {
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije_stanje');
+    return cache.values.where((r) => r['aktivno'] != false).map((r) => V3FinansijeStanje.fromJson(r)).toList();
+  }
+
+  static double getTotalStanje() {
+    return getStanje().fold(0, (sum, s) => sum + s.iznos);
+  }
+
+  /// Dodaje novi trošak u bazu
+  static Future<V3Trosak?> addTrosak(V3Trosak trosak) async {
+    try {
+      final row = await supabase.from('v3_troskovi').insert(trosak.toJson()).select().single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_troskovi', row);
+      return V3Trosak.fromJson(row);
+    } catch (e) {
+      debugPrint('[V3FinansijeService] addTrosak error: $e');
+      return null;
+    }
+  }
+
+  /// Briše trošak
+  static Future<void> deleteTrosak(String id) async {
+    try {
+      await supabase.from('v3_troskovi').update({'aktivno': false}).eq('id', id);
+      final cache = V3MasterRealtimeManager.instance.getCache('v3_troskovi');
+      cache.remove(id);
+    } catch (e) {
+      debugPrint('[V3FinansijeService] deleteTrosak error: $e');
+      rethrow;
+    }
+  }
+
+  /// Ažurira iznos u finansijskom stanju (kasa/račun)
+  static Future<void> updateStanje(String id, double noviIznos) async {
+    try {
+      final row = await supabase
+          .from('v3_finansije_stanje')
+          .update({'iznos': noviIznos, 'updated_at': DateTime.now().toIso8601String()})
+          .eq('id', id)
+          .select()
+          .single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije_stanje', row);
+    } catch (e) {
+      debugPrint('[V3FinansijeService] updateStanje error: $e');
+      rethrow;
+    }
+  }
+
+  // --- Backward compat (stari kod koji koristi V3FinansijskiIzvestaj) ---
   static Stream<V3FinansijskiIzvestaj> streamIzvestaj() {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
-        tables: ['v3_finansije'],
+        tables: ['v3_troskovi'],
         build: () {
           final now = DateTime.now();
-          final startDanas = DateTime(now.year, now.month, now.day);
-          final endDanas = startDanas.add(const Duration(days: 1));
-          final startMesec = DateTime(now.year, now.month, 1);
-          final endMesec = DateTime(now.year, now.month + 1, 1);
-
-          final unosiMesec = _filterUnosi(startMesec, endMesec);
-          final unosiDanas =
-              unosiMesec.where((u) => u.datum.isAfter(startDanas) && u.datum.isBefore(endDanas)).toList();
-
-          double prihodDanas = 0;
-          double trosakDanas = 0;
-          for (final u in unosiDanas) {
-            if (u.tip == 'prihod')
-              prihodDanas += u.iznos;
-            else
-              trosakDanas += u.iznos;
-          }
-
-          double prihodMesec = 0;
+          final troskovi = getTroskoviMesec(mesec: now.month, godina: now.year);
           double trosakMesec = 0;
           final Map<String, double> poKategoriji = {};
-          for (final u in unosiMesec) {
-            if (u.tip == 'prihod') {
-              prihodMesec += u.iznos;
-            } else {
-              trosakMesec += u.iznos;
-              poKategoriji[u.kategorija] = (poKategoriji[u.kategorija] ?? 0) + u.iznos;
-            }
+          for (final t in troskovi) {
+            trosakMesec += t.iznos;
+            poKategoriji[t.kategorija ?? 'ostalo'] = (poKategoriji[t.kategorija ?? 'ostalo'] ?? 0) + t.iznos;
           }
-
           return V3FinansijskiIzvestaj(
-            prihodDanas: prihodDanas,
-            trosakDanas: trosakDanas,
-            prihodMesec: prihodMesec,
             trosakMesec: trosakMesec,
             troskoviPoKategoriji: poKategoriji,
           );
         });
   }
 
+  /// @deprecated Koristi addTrosak umesto addUnos
   static Future<void> addUnos(V3FinansijskiUnos unos) async {
-    try {
-      final data = unos.toJson();
-      final row = await supabase.from('v3_finansije').insert(data).select().single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
-    } catch (e) {
-      debugPrint('[V3FinansijeService] addUnos error: $e');
-      rethrow;
-    }
-  }
-
-  static Future<void> deleteUnos(String id) async {
-    try {
-      await supabase.from('v3_finansije').delete().eq('id', id);
-      V3MasterRealtimeManager.instance.finansijeCache.remove(id);
-    } catch (e) {
-      debugPrint('[V3FinansijeService] deleteUnos error: $e');
-      rethrow;
-    }
+    final now = DateTime.now();
+    final trosak = V3Trosak(
+      id: '',
+      naziv: unos.opis,
+      kategorija: unos.kategorija,
+      iznos: unos.iznos,
+      isplataIz: 'pazar',
+      ponavljajMesecno: false,
+      mesec: unos.datum.month,
+      godina: unos.datum.year,
+      vozacId: unos.vozacId,
+    );
+    await addTrosak(trosak);
   }
 }

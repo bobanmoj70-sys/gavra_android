@@ -20,6 +20,85 @@ class V3PinZahtevService {
     );
   }
 
+  static List<Map<String, dynamic>> buildEnrichedListSync() {
+    return _buildEnrichedList();
+  }
+
+  static Future<bool> imaZahtevKojiCekaAsync(String putnikId) async {
+    try {
+      final rm = V3MasterRealtimeManager.instance;
+      // Proveri prvo cache
+      final uCacheu =
+          rm.pinZahteviCache.values.any((z) => z['putnik_id']?.toString() == putnikId && z['status'] == 'ceka');
+      if (uCacheu) return true;
+
+      // Za svaki slucaj proveri DB (ako RM još nije dovukao sve)
+      final res = await supabase
+          .from('v3_pin_zahtevi')
+          .select('id')
+          .eq('putnik_id', putnikId)
+          .eq('status', 'ceka')
+          .limit(1)
+          .maybeSingle();
+
+      return res != null;
+    } catch (e) {
+      debugPrint('[V3PinZahtevService] imaZahtevKojiCekaAsync error: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> azurirajEmail(String putnikId, String email) async {
+    try {
+      await supabase.from('v3_putnici').update({'email': email}).eq('id', putnikId);
+      return true;
+    } catch (e) {
+      debugPrint('[V3PinZahtevService] azurirajEmail error: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> posaljiZahtev({
+    required String putnikId,
+    required String telefon,
+    required String gcmId,
+  }) async {
+    try {
+      final row = {
+        'putnik_id': putnikId,
+        'telefon': telefon,
+        'gcm_id': gcmId,
+        'status': 'ceka',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      final res = await supabase.from('v3_pin_zahtevi').insert(row).select().single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pin_zahtevi', res);
+      return true;
+    } catch (e) {
+      debugPrint('[V3PinZahtevService] posaljiZahtev error: $e');
+      return false;
+    }
+  }
+
+  static Future<void> logujDirektnaIzmena({
+    required String putnikId,
+    required String tip,
+    required String vrednost,
+  }) async {
+    try {
+      // Logovanje u v3_audit_log ili sličnu tabelu ako postoji
+      final row = {
+        'putnik_id': putnikId,
+        'akcija': 'direktna_izmena_$tip',
+        'detalji': 'Nova vrednost: $vrednost',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      await supabase.from('v3_audit_log').insert(row);
+    } catch (e) {
+      debugPrint('[V3PinZahtevService] logujDirektnaIzmena error: $e');
+    }
+  }
+
   static List<Map<String, dynamic>> _buildEnrichedList() {
     final rm = V3MasterRealtimeManager.instance;
     final zahtevi = rm.pinZahteviCache.values.where((z) => z['status'] == 'ceka').toList()

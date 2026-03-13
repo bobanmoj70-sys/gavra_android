@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,12 +17,15 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> vozilaCache = {};
   final Map<String, Map<String, dynamic>> putniciCache = {};
   final Map<String, Map<String, dynamic>> zahteviCache = {};
-  final Map<String, Map<String, dynamic>> dugoviCache = {};
-  final Map<String, Map<String, dynamic>> finansijeCache = {};
-  final Map<String, Map<String, dynamic>> gorivoStanjeCache = {};
-  final Map<String, Map<String, dynamic>> gorivoPunjenjaCache = {};
-  final Map<String, Map<String, dynamic>> gorivoTocenjaCache = {};
-  final Map<String, Map<String, dynamic>> kapacitetCache = {};
+  final Map<String, Map<String, dynamic>> postavkeKapacitetaCache = {};
+  final Map<String, Map<String, dynamic>> pumpaStanjeCache = {};
+  final Map<String, Map<String, dynamic>> pumpaRezervoarCache = {};
+  final Map<String, Map<String, dynamic>> dnevneOperacijeCache = {};
+  final Map<String, Map<String, dynamic>> rasporedTerminCache = {};
+  final Map<String, Map<String, dynamic>> rasporedPutnikCache = {};
+  final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
+  final Map<String, Map<String, dynamic>> troskoviCache = {};
+  final Map<String, Map<String, dynamic>> finansijeStanjeCache = {};
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
@@ -30,22 +33,23 @@ class V3MasterRealtimeManager {
 
   RealtimeChannel? _v3Channel;
 
-  /// Initializes all v3 caches from the database.
   Future<void> initV3() async {
     try {
       final results = await Future.wait([
         supabase.from('v3_adrese').select().eq('aktivno', true),
         supabase.from('v3_vozaci').select().eq('aktivno', true),
         supabase.from('v3_vozila').select().eq('aktivno', true),
-        supabase.from('v3_putnici').select().eq('aktivna', true),
+        supabase.from('v3_putnici').select().eq('aktivno', true),
         supabase.from('v3_zahtevi').select().eq('aktivno', true),
-        supabase.from('v3_dugovi').select().eq('placeno', false),
-        supabase.from('v3_finansije').select().order('datum', ascending: false).limit(500),
-        supabase.from('v3_gorivo_stanje').select(),
-        supabase.from('v3_gorivo_punjenja').select().order('datum', ascending: false).limit(200),
-        supabase.from('v3_gorivo_tocenja').select().order('datum', ascending: false).limit(500),
-        supabase.from('v3_kapacitet').select().eq('aktivno', true),
-        supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka'),
+        supabase.from('v3_postavke_kapaciteta').select().eq('aktivno', true),
+        supabase.from('v3_pumpa_stanje').select().eq('aktivno', true),
+        supabase.from('v3_pumpa_rezervoar').select(),
+        supabase.from('v3_dnevne_operacije').select().order('datum', ascending: false).limit(200),
+        supabase.from('v3_raspored_termin').select().order('datum', ascending: false).limit(200),
+        supabase.from('v3_raspored_putnik').select().order('created_at', ascending: false).limit(500),
+        supabase.from('v3_vozac_lokacije').select(),
+        supabase.from('v3_troskovi').select().eq('aktivno', true),
+        supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -53,13 +57,15 @@ class V3MasterRealtimeManager {
       _fillCache(vozilaCache, results[2] as List);
       _fillCache(putniciCache, results[3] as List);
       _fillCache(zahteviCache, results[4] as List);
-      _fillCache(dugoviCache, results[5] as List);
-      _fillCache(finansijeCache, results[6] as List);
-      _fillCache(gorivoStanjeCache, results[7] as List);
-      _fillCache(gorivoPunjenjaCache, results[8] as List);
-      _fillCache(gorivoTocenjaCache, results[9] as List);
-      _fillCache(kapacitetCache, results[10] as List);
-      _fillCache(pinZahteviCache, results[11] as List);
+      _fillCache(postavkeKapacitetaCache, results[5] as List);
+      _fillCache(pumpaStanjeCache, results[6] as List);
+      _fillCache(pumpaRezervoarCache, results[7] as List);
+      _fillCache(dnevneOperacijeCache, results[8] as List);
+      _fillCache(rasporedTerminCache, results[9] as List);
+      _fillCache(rasporedPutnikCache, results[10] as List);
+      _fillCache(vozacLokacijeCache, results[11] as List);
+      _fillCache(troskoviCache, results[12] as List);
+      _fillCache(finansijeStanjeCache, results[13] as List);
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -82,21 +88,24 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_adrese', adreseCache);
     _setupTableRealtime('v3_vozaci', vozaciCache);
     _setupTableRealtime('v3_vozila', vozilaCache);
-    _setupTableRealtime('v3_putnici', putniciCache, activeKey: 'aktivna');
+    _setupTableRealtime('v3_putnici', putniciCache);
     _setupTableRealtime('v3_zahtevi', zahteviCache);
-    _setupTableRealtime('v3_dugovi', dugoviCache, activeKey: 'placeno', invertActive: true);
-    _setupTableRealtime('v3_finansije', finansijeCache);
-    _setupTableRealtime('v3_gorivo_stanje', gorivoStanjeCache);
-    _setupTableRealtime('v3_gorivo_punjenja', gorivoPunjenjaCache);
-    _setupTableRealtime('v3_gorivo_tocenja', gorivoTocenjaCache);
-    _setupTableRealtime('v3_kapacitet', kapacitetCache);
-    _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache, activeKey: 'status', invertActive: true, isPin: true);
+    _setupTableRealtime('v3_postavke_kapaciteta', postavkeKapacitetaCache);
+    _setupTableRealtime('v3_pumpa_stanje', pumpaStanjeCache);
+    _setupTableRealtime('v3_pumpa_rezervoar', pumpaRezervoarCache, hasActiveKey: false);
+    _setupTableRealtime('v3_dnevne_operacije', dnevneOperacijeCache, hasActiveKey: false);
+    _setupTableRealtime('v3_raspored_termin', rasporedTerminCache, hasActiveKey: false);
+    _setupTableRealtime('v3_raspored_putnik', rasporedPutnikCache, hasActiveKey: false);
+    _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
+    _setupTableRealtime('v3_troskovi', troskoviCache);
+    _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
+    _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache, hasActiveKey: false);
 
     _v3Channel?.subscribe();
   }
 
   void _setupTableRealtime(String table, Map<String, Map<String, dynamic>> cache,
-      {String activeKey = 'aktivno', bool invertActive = false, bool isPin = false}) {
+      {String activeKey = 'aktivno', bool hasActiveKey = true}) {
     _v3Channel?.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
@@ -109,11 +118,8 @@ class V3MasterRealtimeManager {
         if (id == null) return;
 
         bool isActive = true;
-        if (isPin) {
-          isActive = newRecord['status'] == 'ceka';
-        } else if (newRecord.containsKey(activeKey)) {
-          isActive = newRecord[activeKey] as bool;
-          if (invertActive) isActive = !isActive;
+        if (hasActiveKey && newRecord.containsKey(activeKey)) {
+          isActive = newRecord[activeKey] as bool? ?? true;
         }
 
         if (payload.eventType == PostgresChangeEvent.delete || !isActive) {
@@ -126,9 +132,7 @@ class V3MasterRealtimeManager {
     );
   }
 
-  /// Helper to stream data from cache for specific tables.
   Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
-    // For V3, the simple broadcast is enough as it triggers on ANY v3 update.
     return _changeController.stream.map((_) => build()).asBroadcastStream(
           onListen: (subs) => _changeController.add(null),
         );
@@ -138,29 +142,56 @@ class V3MasterRealtimeManager {
     final id = row['id']?.toString();
     if (id == null) return;
 
-    // Simple routing based on table name
-    if (table == 'v3_adrese')
-      adreseCache[id] = row;
-    else if (table == 'v3_vozaci')
-      vozaciCache[id] = row;
-    else if (table == 'v3_vozila')
-      vozilaCache[id] = row;
-    else if (table == 'v3_putnici')
-      putniciCache[id] = row;
-    else if (table == 'v3_zahtevi')
-      zahteviCache[id] = row;
-    else if (table == 'v3_dugovi')
-      dugoviCache[id] = row;
-    else if (table == 'v3_finansije')
-      finansijeCache[id] = row;
-    else if (table == 'v3_kapacitet')
-      kapacitetCache[id] = row;
-    else if (table == 'v3_pin_zahtevi') {
-      if (row['status'] == 'ceka') {
-        pinZahteviCache[id] = row;
-      } else {
-        pinZahteviCache.remove(id);
-      }
+    switch (table) {
+      case 'v3_adrese':
+        adreseCache[id] = row;
+        break;
+      case 'v3_vozaci':
+        vozaciCache[id] = row;
+        break;
+      case 'v3_vozila':
+        vozilaCache[id] = row;
+        break;
+      case 'v3_putnici':
+        putniciCache[id] = row;
+        break;
+      case 'v3_zahtevi':
+        zahteviCache[id] = row;
+        break;
+      case 'v3_postavke_kapaciteta':
+        postavkeKapacitetaCache[id] = row;
+        break;
+      case 'v3_pumpa_stanje':
+        pumpaStanjeCache[id] = row;
+        break;
+      case 'v3_pumpa_rezervoar':
+        pumpaRezervoarCache[id] = row;
+        break;
+      case 'v3_dnevne_operacije':
+        dnevneOperacijeCache[id] = row;
+        break;
+      case 'v3_raspored_termin':
+        rasporedTerminCache[id] = row;
+        break;
+      case 'v3_raspored_putnik':
+        rasporedPutnikCache[id] = row;
+        break;
+      case 'v3_vozac_lokacije':
+        vozacLokacijeCache[id] = row;
+        break;
+      case 'v3_troskovi':
+        troskoviCache[id] = row;
+        break;
+      case 'v3_finansije_stanje':
+        finansijeStanjeCache[id] = row;
+        break;
+      case 'v3_pin_zahtevi':
+        if (row['status'] == 'ceka') {
+          pinZahteviCache[id] = row;
+        } else {
+          pinZahteviCache.remove(id);
+        }
+        break;
     }
 
     _changeController.add(null);
@@ -183,16 +214,26 @@ class V3MasterRealtimeManager {
         return putniciCache;
       case 'v3_zahtevi':
         return zahteviCache;
-      case 'v3_dugovi':
-        return dugoviCache;
-      case 'v3_finansije':
-        return finansijeCache;
-      case 'v3_gorivo_stanje':
-        return gorivoStanjeCache;
-      case 'v3_gorivo_punjenja':
-        return gorivoPunjenjaCache;
-      case 'v3_gorivo_tocenja':
-        return gorivoTocenjaCache;
+      case 'v3_postavke_kapaciteta':
+        return postavkeKapacitetaCache;
+      case 'v3_pumpa_stanje':
+        return pumpaStanjeCache;
+      case 'v3_pumpa_rezervoar':
+        return pumpaRezervoarCache;
+      case 'v3_dnevne_operacije':
+        return dnevneOperacijeCache;
+      case 'v3_raspored_termin':
+        return rasporedTerminCache;
+      case 'v3_raspored_putnik':
+        return rasporedPutnikCache;
+      case 'v3_vozac_lokacije':
+        return vozacLokacijeCache;
+      case 'v3_troskovi':
+        return troskoviCache;
+      case 'v3_finansije_stanje':
+        return finansijeStanjeCache;
+      case 'v3_pin_zahtevi':
+        return pinZahteviCache;
       default:
         return {};
     }

@@ -47,4 +47,21 @@ class V3Dug {
       'placeno': placeno,
     };
   }
+
+  /// Kreira V3Dug iz reda tabele v3_dnevne_operacije
+  factory V3Dug.fromOperacija(Map<String, dynamic> json) {
+    return V3Dug(
+      id: json['id']?.toString() ?? '',
+      putnikId: json['putnik_id']?.toString() ?? '',
+      putnikIme: json['putnik_ime'] as String? ?? 'Nepoznato',
+      tipPutnika: 'dnevni',
+      vozacId: json['vozac_id']?.toString() ?? '',
+      datum: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      iznos: (json['iznos_naplacen'] as num?)?.toDouble() ?? 0.0,
+      placeno: (json['naplata_status'] as String?) == 'placeno',
+      createdAt: null,
+    );
+  }
 }

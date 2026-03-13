@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/realtime/v2_master_realtime_manager.dart';
-import '../services/v2_pin_zahtev_service.dart';
+import '../services/v3/v3_pin_zahtev_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 
 /// PIN DIALOG za mesečne putnike
@@ -48,9 +48,10 @@ class _V2PinDialogState extends State<V2PinDialog> {
       await V2MasterRealtimeManager.instance.v2UpdatePin(widget.putnikId, newPin, widget.putnikTabela);
 
       // Audit log — direktna izmena PIN-a od strane admina (bez zahteva putnika)
-      unawaited(V2PinZahtevService.logujDirektnaIzmena(
+      unawaited(V3PinZahtevService.logujDirektnaIzmena(
         putnikId: widget.putnikId,
-        putnikTabela: widget.putnikTabela,
+        tip: 'pin',
+        vrednost: newPin,
       ));
 
       setState(() {
@@ -186,7 +187,7 @@ class _V2PinDialogState extends State<V2PinDialog> {
                     onPressed: _isLoading
                         ? null
                         : () async {
-                            final newPin = V2PinZahtevService.generatePin();
+                            final newPin = V3PinZahtevService.generatePin();
                             await _savePin(newPin);
                           },
                     icon: _isLoading

@@ -34,9 +34,9 @@ class _V2OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
           } else {
             final exists = vozila.any((v) => v.id == _selectedVozilo!.id);
             if (!exists) {
-                _selectedVozilo = vozila.first;
+              _selectedVozilo = vozila.first;
             } else {
-                _selectedVozilo = vozila.firstWhere((v) => v.id == _selectedVozilo!.id);
+              _selectedVozilo = vozila.firstWhere((v) => v.id == _selectedVozilo!.id);
             }
           }
 
@@ -70,24 +70,11 @@ class _V2OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
       children: [
         _buildInfoCard('Osnovni podaci', [
           _row('Model:', v.model ?? 'N/A'),
-          _row('Godište:', v.godiste?.toString() ?? 'N/A'),
-          _row('Broj sedišta:', v.brojSedista.toString()),
+          _row('Marka:', v.marka ?? 'N/A'),
         ]),
         const SizedBox(height: 16),
         _buildInfoCard('Tehnički podaci', [
           _row('Kilometraža:', '${v.trenutnaKm} km', highlight: true),
-          _row('Istek registracije:', v.registracijaIstice?.toIso8601String().split('T').first ?? 'N/A'),
-        ]),
-        const SizedBox(height: 16),
-        _buildInfoCard('Održavanje', [
-          _row('Mali servis:', v.maliServisKm != null ? '${v.maliServisKm} km' : 'N/A'),
-          _row('Veliki servis:', v.velikiServisKm != null ? '${v.velikiServisKm} km' : 'N/A'),
-          _row('Servis klime:', v.servisKlimeDatum?.toIso8601String().split('T').first ?? 'N/A'),
-        ]),
-        const SizedBox(height: 16),
-        _buildInfoCard('Gume', [
-          _row('Zimske:', v.gumeZimske ?? 'N/A'),
-          _row('Letnje:', v.gumeLetnje ?? 'N/A'),
         ]),
         const SizedBox(height: 24),
         ElevatedButton.icon(
@@ -123,13 +110,15 @@ class _V2OdrzavanjeScreenState extends State<V2OdrzavanjeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label),
-          Text(value, style: TextStyle(fontWeight: highlight ? FontWeight.bold : FontWeight.normal, color: highlight ? Colors.red : null)),
+          Text(value,
+              style: TextStyle(
+                  fontWeight: highlight ? FontWeight.bold : FontWeight.normal, color: highlight ? Colors.red : null)),
         ],
       ),
     );
   }
 
   void _editVozilo(V3Vozilo v) {
-     V2AppSnackBar.info(context, 'Izmena podataka u pripremi za V3');
+    V2AppSnackBar.info(context, 'Izmena podataka u pripremi za V3');
   }
 }

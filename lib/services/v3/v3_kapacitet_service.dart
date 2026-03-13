@@ -14,7 +14,7 @@ class V3KapacitetService {
   static Future<bool> setKapacitet(String grad, String vreme, int maxMesta) async {
     try {
       final res = await supabase
-          .from('v3_kapacitet')
+          .from('v3_postavke_kapaciteta')
           .upsert(
             {
               'grad': grad,
@@ -27,7 +27,7 @@ class V3KapacitetService {
           .select()
           .single();
 
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet', res);
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_postavke_kapaciteta', res);
       return true;
     } catch (e) {
       debugPrint('[V3KapacitetService] setKapacitet error: $e');
@@ -36,7 +36,7 @@ class V3KapacitetService {
   }
 
   static Map<String, Map<String, int>> getKapacitetSync() {
-    final cache = V3MasterRealtimeManager.instance.kapacitetCache;
+    final cache = V3MasterRealtimeManager.instance.postavkeKapacitetaCache;
     final result = <String, Map<String, int>>{'BC': {}, 'VS': {}};
 
     for (final row in cache.values) {
@@ -53,7 +53,7 @@ class V3KapacitetService {
 
   static Stream<Map<String, Map<String, int>>> streamKapacitet() {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_kapacitet'],
+      tables: ['v3_postavke_kapaciteta'],
       build: getKapacitetSync,
     );
   }
@@ -64,7 +64,7 @@ class V3KapacitetService {
     final normalizedVreme = V2GradAdresaValidator.normalizeTime(vreme);
     final gradKey = grad == 'BC' ? 'BC' : 'VS';
 
-    final cache = V3MasterRealtimeManager.instance.kapacitetCache;
+    final cache = V3MasterRealtimeManager.instance.postavkeKapacitetaCache;
     for (final row in cache.values) {
       final rowGrad = row['grad'] as String? ?? '';
       if (rowGrad != gradKey) continue;

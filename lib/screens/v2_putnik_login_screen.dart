@@ -6,10 +6,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_biometric_service.dart';
-import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_push_token_service.dart'; // V2PutnikPushService spojen ovde
 import '../services/v2_realtime_notification_service.dart';
 import '../services/v2_statistika_istorija_service.dart';
+import '../services/v3/v3_pin_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import 'v2_putnik_profil_screen.dart';
@@ -118,14 +118,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         final pin = response['pin'] as String?;
 
         if (email == null || email.isEmpty) {
-          // Nema email - traÅ¾i ga
+          // Nema email - traži ga
           setState(() {
             _currentStep = _LoginStep.email;
             _infoMessage = 'Pronadeni ste! Unesite email za kontakt.';
           });
         } else if (pin == null || pin.isEmpty) {
           // Ima email ali nema PIN
-          final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekaAsync(response['id']);
+          final imaZahtev = await V3PinZahtevService.imaZahtevKojiCekaAsync(response['id']);
           if (imaZahtev) {
             setState(() {
               _currentStep = _LoginStep.zahtevPoslat;
@@ -206,13 +206,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
     try {
       final putnikId = _putnikData!['id'] as String;
-      final putnikTabela = _putnikData!['_tabela'] as String? ?? 'v2_radnici';
 
       // Sacuvaj email u bazi
-      final success = await V2PinZahtevService.azurirajEmail(
-        putnikId: putnikId,
-        email: email,
-        putnikTabela: putnikTabela,
+      final success = await V3PinZahtevService.azurirajEmail(
+        putnikId,
+        email,
       );
 
       if (success) {
@@ -291,14 +289,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     });
     try {
       final putnikId = _putnikData!['id'] as String;
-      final email = _putnikData!['email'] as String? ?? _emailController.text.trim();
       final telefon = _putnikData!['telefon'] as String? ?? _telefonController.text.trim();
-      final putnikTabela = _putnikData!['_tabela'] as String?;
-      final success = await V2PinZahtevService.posaljiZahtev(
+      final success = await V3PinZahtevService.posaljiZahtev(
         putnikId: putnikId,
-        email: email,
         telefon: telefon,
-        putnikTabela: putnikTabela,
+        gcmId: 'TBD', // Implementirati pravi GCM id ako je potrebno
       );
       if (success) {
         setState(() {
@@ -317,7 +312,8 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   }
 
   /// PoÅ¡alji zahtev za PIN (prvi put)
-  Future<void> _sendPinRequest() => _posaljiZahtevZaPin(poruka: 'Zahtev je uspeÅ¡no poslat! Admin Ä‡e vam dodeliti PIN.');
+  Future<void> _sendPinRequest() =>
+      _posaljiZahtevZaPin(poruka: 'Zahtev je uspeÅ¡no poslat! Admin Ä‡e vam dodeliti PIN.');
 
   /// SluÅ¡aj push notifikacije dok je putnik na zahtevPoslat ekranu
   void _listenForPinOdobren() {
@@ -892,7 +888,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     });
     try {
       final putnikId = _putnikData!['id'] as String;
-      final imaZahtev = await V2PinZahtevService.imaZahtevKojiCekaAsync(putnikId);
+      final imaZahtev = await V3PinZahtevService.imaZahtevKojiCekaAsync(putnikId);
       if (imaZahtev) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;

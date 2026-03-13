@@ -1,7 +1,106 @@
+/// Model za tabelu v3_troskovi
+class V3Trosak {
+  final String id;
+  final String naziv;
+  final String? kategorija;
+  final double iznos;
+  final String isplataIz; // 'pazar', 'racun', ...
+  final bool ponavljajMesecno;
+  final int mesec;
+  final int godina;
+  final String? vozacId;
+  final bool aktivno;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  V3Trosak({
+    required this.id,
+    required this.naziv,
+    this.kategorija,
+    this.iznos = 0,
+    this.isplataIz = 'pazar',
+    this.ponavljajMesecno = true,
+    required this.mesec,
+    required this.godina,
+    this.vozacId,
+    this.aktivno = true,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory V3Trosak.fromJson(Map<String, dynamic> json) {
+    final now = DateTime.now();
+    return V3Trosak(
+      id: json['id']?.toString() ?? '',
+      naziv: json['naziv'] as String? ?? '',
+      kategorija: json['kategorija'] as String?,
+      iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
+      isplataIz: json['isplata_iz'] as String? ?? 'pazar',
+      ponavljajMesecno: json['ponavljaj_mesecno'] as bool? ?? true,
+      mesec: json['mesec'] as int? ?? now.month,
+      godina: json['godina'] as int? ?? now.year,
+      vozacId: json['vozac_id']?.toString(),
+      aktivno: json['aktivno'] as bool? ?? true,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        if (id.isNotEmpty) 'id': id,
+        'naziv': naziv,
+        'kategorija': kategorija,
+        'iznos': iznos,
+        'isplata_iz': isplataIz,
+        'ponavljaj_mesecno': ponavljajMesecno,
+        'mesec': mesec,
+        'godina': godina,
+        'vozac_id': vozacId,
+        'aktivno': aktivno,
+      };
+}
+
+/// Model za tabelu v3_finansije_stanje (stanje kase/računa)
+class V3FinansijeStanje {
+  final String id;
+  final String naziv;
+  final double iznos;
+  final bool aktivno;
+  final DateTime? updatedAt;
+
+  V3FinansijeStanje({
+    required this.id,
+    required this.naziv,
+    this.iznos = 0,
+    this.aktivno = true,
+    this.updatedAt,
+  });
+
+  factory V3FinansijeStanje.fromJson(Map<String, dynamic> json) {
+    return V3FinansijeStanje(
+      id: json['id']?.toString() ?? '',
+      naziv: json['naziv'] as String? ?? '',
+      iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
+      aktivno: json['aktivno'] as bool? ?? true,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        if (id.isNotEmpty) 'id': id,
+        'naziv': naziv,
+        'iznos': iznos,
+        'aktivno': aktivno,
+      };
+}
+
+// --- Backward compat aliases za stari kod ---
+
+/// @deprecated Koristi V3Trosak — mapira se na v3_troskovi
 class V3FinansijskiUnos {
   final String id;
-  final String tip; // 'prihod', 'trosak'
-  final String kategorija; // 'voznja', 'gorivo', 'odrzavanje', 'ostalo'
+  final String tip;
+  final String kategorija;
   final String opis;
   final double iznos;
   final DateTime datum;
@@ -24,32 +123,27 @@ class V3FinansijskiUnos {
   });
 
   factory V3FinansijskiUnos.fromJson(Map<String, dynamic> json) {
+    final now = DateTime.now();
     return V3FinansijskiUnos(
-      id: json['id'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
       tip: json['tip'] as String? ?? 'trosak',
       kategorija: json['kategorija'] as String? ?? 'ostalo',
-      opis: json['opis'] as String? ?? '',
+      opis: json['naziv'] as String? ?? json['opis'] as String? ?? '',
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
-      datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
-      vozacId: json['vozac_id'] as String?,
-      voziloId: json['vozilo_id'] as String?,
-      putnikId: json['putnik_id'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : DateTime.now(),
+      datum: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) ?? now : now,
+      vozacId: json['vozac_id']?.toString(),
+      voziloId: null,
+      putnikId: null,
+      createdAt: now,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'tip': tip,
-      'kategorija': kategorija,
-      'opis': opis,
-      'iznos': iznos,
-      'datum': datum.toIso8601String(),
-      'vozac_id': vozacId,
-      'vozilo_id': voziloId,
-      'putnik_id': putnikId,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'naziv': opis,
+        'kategorija': kategorija,
+        'iznos': iznos,
+        'vozac_id': vozacId,
+      };
 }
 
 class V3FinansijskiIzvestaj {

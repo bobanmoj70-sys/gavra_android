@@ -7,10 +7,10 @@ import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_app_settings_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_local_notification_service.dart';
-import '../services/v2_pin_zahtev_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_theme_manager.dart';
-import '../services/v2_vozac_service.dart';
+import '../services/v3/v3_pin_zahtev_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
@@ -186,7 +186,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
   /// 🚗 VOZAC PICKER DIALOG - Admin može da vidi ekran bilo kog vozaca
   void _showVozacPickerDialog(BuildContext context) {
     try {
-      final vozaci = V2VozacService.getAllVozaci();
+      final vozaci = V3VozacService.getAllVozaci();
 
       if (!mounted) return;
 
@@ -285,18 +285,24 @@ class _AdminScreenState extends State<V2AdminScreen> {
                       ),
                       itemBuilder: (context, index) {
                         final vozac = vozaci[index];
-                        final boja = vozac.color ?? const Color(0xFFBDBDBD);
+                        Color boja = const Color(0xFFBDBDBD);
+                        if (vozac.boja != null && vozac.boja!.isNotEmpty) {
+                          try {
+                            final hex = vozac.boja!.replaceFirst('#', '');
+                            boja = Color(int.parse('FF$hex', radix: 16));
+                          } catch (_) {}
+                        }
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                           leading: CircleAvatar(
                             backgroundColor: boja,
                             child: Text(
-                              vozac.ime[0].toUpperCase(),
+                              vozac.imePrezime.isNotEmpty ? vozac.imePrezime[0].toUpperCase() : '?',
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             ),
                           ),
                           title: Text(
-                            vozac.ime,
+                            vozac.imePrezime,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                           ),
                           trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 14),
@@ -305,7 +311,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute<void>(
-                                builder: (context) => V2VozacScreen(previewAsDriver: vozac.ime),
+                                builder: (context) => V2VozacScreen(previewAsDriver: vozac.imePrezime),
                               ),
                             );
                           },
@@ -401,7 +407,7 @@ class _AdminScreenState extends State<V2AdminScreen> {
     }
 
     // PIN zahtevi — sync iz pinCache (public wrapper)
-    final pinZahtevi = V2PinZahtevService.buildEnrichedListSync();
+    final pinZahtevi = V3PinZahtevService.buildEnrichedListSync();
 
     // saVS/ukBC finalni brojevi
     int ukBC = 0, saVS = 0;

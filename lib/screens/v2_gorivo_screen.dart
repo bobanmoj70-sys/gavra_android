@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:gavra_android/models/v3_gorivo.dart';
-import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
-import 'package:gavra_android/utils/v2_app_snack_bar.dart';
+import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
+import 'package:intl/intl.dart';
 
 class V2GorivoScreen extends StatefulWidget {
   const V2GorivoScreen({super.key});
@@ -19,7 +18,7 @@ class _V2GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -30,19 +29,17 @@ class _V2GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvid
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'STANJE', icon: Icon(Icons.storage)),
-            Tab(text: 'PUNJENJA', icon: Icon(Icons.local_shipping)),
-            Tab(text: 'TOČENJA', icon: Icon(Icons.ev_station)),
+            Tab(text: 'PUMPA', icon: Icon(Icons.storage)),
+            Tab(text: 'REZERVOAR', icon: Icon(Icons.water)),
           ],
         ),
       ),
       body: StreamBuilder(
         stream: V3MasterRealtimeManager.instance.v3StreamFromCache(
-          tables: ['v3_gorivo_stanje', 'v3_gorivo_punjenja', 'v3_gorivo_tocenja'],
+          tables: ['v3_pumpa_stanje', 'v3_pumpa_rezervoar'],
           build: () => _GorivoData(
             stanje: V3GorivoService.getStanjeSync(),
-            punjenja: V3GorivoService.getPunjenjaSync(),
-            tocenja: V3GorivoService.getTocenjaSync(),
+            rezervoar: V3GorivoService.getRezervoarSync(),
           ),
         ),
         builder: (context, snapshot) {
@@ -53,79 +50,65 @@ class _V2GorivoScreenState extends State<V2GorivoScreen> with SingleTickerProvid
             controller: _tabController,
             children: [
               _buildStanjeTab(data.stanje),
-              _buildPunjenjaTab(data.punjenja),
-              _buildTocenjaTab(data.tocenja),
+              _buildRezervoarTab(data.rezervoar),
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () => _tabController.index == 1 ? _addPunjenje() : _addTocenje(),
-      ),
     );
   }
 
-  Widget _buildStanjeTab(V3GorivoStanje stanje) {
+  Widget _buildStanjeTab(V3PumpaStanje? stanje) {
+    if (stanje == null) {
+      return const Center(child: Text('Nema podataka o pumpi'));
+    }
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.local_gas_station, size: 80, color: Colors.blue),
           const SizedBox(height: 16),
-          Text('${_fmt.format(stanje.kolicina)} L', style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
-          const Text('Trenutno stanje na pumpi', style: TextStyle(color: Colors.grey)),
+          Text('${_fmt.format(stanje.trenutnoStanje)} L',
+              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
+          const Text('Trenutno stanje pumpe', style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 8),
+          Text('Kapacitet: ${_fmt.format(stanje.kapacitetLitri)} L', style: const TextStyle(color: Colors.grey)),
+          Text('Brojač pištolja: ${_fmt.format(stanje.stanjeBrojacPistolj)} L',
+              style: const TextStyle(color: Colors.grey)),
         ],
       ),
     );
   }
 
-  Widget _buildPunjenjaTab(List<V3PumpaPunjenje> punjenja) {
-    return ListView.builder(
-      itemCount: punjenja.length,
-      itemBuilder: (context, i) {
-        final p = punjenja[i];
-        return ListTile(
-          leading: const CircleAvatar(child: Icon(Icons.add)),
-          title: Text('${_fmt.format(p.kolicina)} L - ${p.dobavljac ?? "Nepoznato"}'),
-          subtitle: Text(DateFormat('dd.MM.yyyy HH:mm').format(p.datum)),
-        );
-      },
-    );
-  }
-
-  Widget _buildTocenjaTab(List<V3PumpaTocenje> tocenja) {
-    return ListView.builder(
-      itemCount: tocenja.length,
-      itemBuilder: (context, i) {
-        final t = tocenja[i];
-        return ListTile(
-          leading: const CircleAvatar(backgroundColor: Colors.orange, child: Icon(Icons.car_crash, color: Colors.white)),
-          title: Text('${_fmt.format(t.kolicina)} L'),
-          subtitle: Text('ID Vozila: ${t.voziloId} \n${DateFormat('dd.MM.yyyy HH:mm').format(t.datum)}'),
-        );
-      },
-    );
-  }
-
-  Future<void> _addPunjenje() async {
-    // Implementacija dijaloga za dodavanje punjenja (skraćeno za demo)
-    try {
-      await V3GorivoService.addPunjenje(100.0, 'Petrol', 'Dopuna rezervoara');
-      if (mounted) V2AppSnackBar.success(context, '✅ Punjenje dodato');
-    } catch (e) {
-      if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
+  Widget _buildRezervoarTab(V3PumpaRezervoar? r) {
+    if (r == null) {
+      return const Center(child: Text('Nema podataka o rezervoaru'));
     }
-  }
-
-  Future<void> _addTocenje() async {
-     // Implementacija dijaloga za tocenje
+    final boja = r.ispodAlarma ? Colors.red : Colors.green;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.water_drop, size: 80, color: boja),
+          const SizedBox(height: 16),
+          Text('${_fmt.format(r.trenutnoLitara)} L',
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: boja)),
+          Text('od ${_fmt.format(r.kapacitetMax)} L kapaciteta', style: const TextStyle(color: Colors.grey)),
+          const SizedBox(height: 8),
+          Text('${r.procentPunjenosti.toStringAsFixed(1)}% pune', style: const TextStyle(fontSize: 18)),
+          if (r.ispodAlarma)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Text('⚠️ ISPOD ALARMA!', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ),
+        ],
+      ),
+    );
   }
 }
 
 class _GorivoData {
-  final V3GorivoStanje stanje;
-  final List<V3PumpaPunjenje> punjenja;
-  final List<V3PumpaTocenje> tocenja;
-  _GorivoData({required this.stanje, required this.punjenja, required this.tocenja});
+  final V3PumpaStanje? stanje;
+  final V3PumpaRezervoar? rezervoar;
+  _GorivoData({required this.stanje, required this.rezervoar});
 }

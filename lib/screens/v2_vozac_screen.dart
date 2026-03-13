@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../models/v2_putnik.dart';
+import '../models/v3_putnik.dart';
+import '../models/v3_zahtev.dart';
 import '../services/realtime/v2_master_realtime_manager.dart'; // Za realtime raspored
 import '../services/v2_audit_log_service.dart';
 import '../services/v2_auth_manager.dart';
@@ -20,6 +22,8 @@ import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
 import '../services/v2_vozac_service.dart';
 import '../services/v3/v3_kapacitet_service.dart';
+import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_smart_navigation_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
@@ -30,6 +34,7 @@ import '../utils/v2_vozac_cache.dart'; // Za validaciju vozaca
 import '../widgets/v2_bottom_nav_bar.dart';
 import '../widgets/v2_clock_ticker.dart';
 import '../widgets/v2_putnik_list.dart';
+import '../widgets/v3_putnik_card.dart';
 
 /// ?? VOZAC SCREEN
 /// Prikazuje putnike koristeci isti PutnikService stream kao DanasScreen
@@ -61,6 +66,10 @@ class _VozacScreenState extends State<V2VozacScreen> {
   List<V2Putnik> _optimizedRoute = [];
   Map<String, int>? _putniciEta; // ETA po imenu putnika (minuti) nakon optimizacije
   bool _isOptimizing = false; // ? Loading state specificno za optimizaciju rute
+
+  // V3 MOD
+  bool _showV3 = false;
+  List<Map<String, dynamic>> _v3OptimizedRoute = [];
 
   /// Flag — true dok autoOptimize nije još pokrenut (resetuje se pri prvom pozivu)
   bool _autoOptimizePending = false;
@@ -1089,6 +1098,11 @@ class _VozacScreenState extends State<V2VozacScreen> {
                                     vsVremena: V2RouteConfig.getVremenaByNavType('VS'),
                                   ),
                           ),
+                          // V3 MOD panel
+                          if (_showV3) ...[
+                            const Divider(color: Colors.white24, thickness: 1, height: 1),
+                            _buildV3Body(),
+                          ],
                         ],
                       );
                     }),
@@ -1099,6 +1113,113 @@ class _VozacScreenState extends State<V2VozacScreen> {
       ), // end body Container
     ); // end outer Scaffold
   }
+
+  // ─── V3 MOD ───────────────────────────────────────────────────────────────
+
+  Future<void> _handleV3Optimize(List<Map<String, dynamic>> v3Putnici) async {
+    if (_isOptimizing) return;
+    setState(() => _isOptimizing = true);
+    try {
+      final result = await V3SmartNavigationService.optimizeV3Route(
+        data: v3Putnici.where((item) => (item['zahtev'] as V3Zahtev).status != 'pokupljen').toList(),
+        startCity: _selectedGrad,
+      );
+      if (result.success && result.optimizedData != null) {
+        setState(() {
+          _v3OptimizedRoute = result.optimizedData!;
+        });
+        if (mounted)
+          V2AppSnackBar.success(context, '\u2705 V3 ruta optimizovana (${result.optimizedData!.length} putnika)');
+      } else {
+        if (mounted) V2AppSnackBar.error(context, '\u274c ${result.message}');
+      }
+    } finally {
+      if (mounted) setState(() => _isOptimizing = false);
+    }
+  }
+
+  Widget _buildV3Switch() {
+    return ActionChip(
+      avatar: Icon(_showV3 ? Icons.looks_3 : Icons.looks_two, size: 16, color: _showV3 ? Colors.amber : Colors.white54),
+      label:
+          Text(_showV3 ? 'V3' : 'V2', style: TextStyle(color: _showV3 ? Colors.amber : Colors.white54, fontSize: 12)),
+      onPressed: () => setState(() => _showV3 = !_showV3),
+      backgroundColor: _showV3 ? Colors.amber.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.1),
+      padding: EdgeInsets.zero,
+    );
+  }
+
+  Widget _buildV3Body() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: V3PutnikService.streamKombinovaniPutniciFiltrirano(
+        grad: _selectedGrad,
+        vreme: _selectedVreme,
+      ),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final data = snapshot.data!;
+        if (data.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: Text('Nema V3 putnika za $_selectedGrad $_selectedVreme',
+                  style: const TextStyle(color: Colors.white54)),
+            ),
+          );
+        }
+        final displayData = _v3OptimizedRoute.isNotEmpty ? _v3OptimizedRoute : data;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _isOptimizing ? null : () => _handleV3Optimize(data),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _v3OptimizedRoute.isNotEmpty ? Colors.green[800] : Colors.amber[900],
+                        minimumSize: const Size(0, 32),
+                      ),
+                      icon: Icon(_isOptimizing ? Icons.hourglass_empty : Icons.alt_route, size: 16),
+                      label: Text(
+                        _isOptimizing
+                            ? 'OPTIMIZACIJA...'
+                            : (_v3OptimizedRoute.isNotEmpty ? 'OPTIMIZOVANO \u2713' : 'OPTIMIZUJ V3 RUTU'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                  if (_v3OptimizedRoute.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.white54, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      tooltip: 'Resetuj V3 optimizaciju',
+                      onPressed: () => setState(() => _v3OptimizedRoute = []),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            ...displayData.map((item) => V3PutnikCard(
+                  putnik: item['putnik'] as V3Putnik,
+                  zahtev: item['zahtev'] as V3Zahtev,
+                )),
+          ],
+        );
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   Widget _buildDigitalDateDisplay() {
     final parts = _workingDateIso.split('-');
@@ -1118,15 +1239,22 @@ class _VozacScreenState extends State<V2VozacScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // LEVO - DATUM
-        Text(
-          '$dayStr.$monthStr.$yearStr',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: Theme.of(context).colorScheme.onPrimary,
-            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-          ),
+        // LEVO - V3 TOGGLE + DATUM
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildV3Switch(),
+            const SizedBox(width: 6),
+            Text(
+              '$dayStr.$monthStr.$yearStr',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onPrimary,
+                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+              ),
+            ),
+          ],
         ),
         // SREDINA - DAN
         Text(
