@@ -49,7 +49,7 @@ BEGIN
             PERFORM notify_push(
                 v_tokens,
                 '🎟️ Novi dnevni zahtev',
-                COALESCE(v_putnik_ime, 'Putnik') || ' traži vožnju u ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' (' || v_grad_display || ', ' || UPPER(NEW.dan) || ')',
+                COALESCE(v_putnik_ime, 'Putnik') || ' traži vožnju u ' || to_char(NEW.zeljeno_vreme::time, 'HH24:MI') || ' (' || v_grad_display || ', ' || UPPER(NEW.dan) || ')',
                 jsonb_build_object('type', 'v2_dnevni_obrada', 'id', NEW.id, 'grad', NEW.grad)
             );
         END IF;
@@ -70,28 +70,28 @@ BEGIN
     IF v_tokens IS NOT NULL AND jsonb_array_length(v_tokens) > 0 THEN
         IF NEW.status = 'odobreno' THEN
             v_title := '✅ Mesto osigurano!';
-            v_body := 'Vaš zahtev za ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' (' || v_grad_display || ') je odobren. Srećan put!';
+            v_body := 'Vaš zahtev za ' || to_char(NEW.zeljeno_vreme::time, 'HH24:MI') || ' (' || v_grad_display || ') je odobren. Srećan put!';
             v_data := jsonb_build_object('type', 'v2_odobreno', 'id', NEW.id, 'grad', NEW.grad);
         ELSIF NEW.status = 'odbijeno' THEN
             IF NEW.alternative_vreme_1 IS NOT NULL OR NEW.alternative_vreme_2 IS NOT NULL THEN
                 v_title := '⚠️ Termin pun - Izaberi alternativu';
-                v_body := 'Termin ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' je pun. Slobodna mesta: '
-                    || COALESCE(to_char(NEW.alternative_vreme_1, 'HH24:MI'), '')
+                v_body := 'Termin ' || to_char(NEW.zeljeno_vreme::time, 'HH24:MI') || ' je pun. Slobodna mesta: '
+                    || COALESCE(to_char(NEW.alternative_vreme_1::time, 'HH24:MI'), '')
                     || CASE WHEN NEW.alternative_vreme_1 IS NOT NULL AND NEW.alternative_vreme_2 IS NOT NULL THEN ' i ' ELSE '' END
-                    || COALESCE(to_char(NEW.alternative_vreme_2, 'HH24:MI'), '');
+                    || COALESCE(to_char(NEW.alternative_vreme_2::time, 'HH24:MI'), '');
                 v_data := jsonb_build_object(
                     'type', 'v2_alternativa',
                     'id', NEW.id,
                     'grad', NEW.grad,
                     'dan', NEW.dan,
-                    'vreme', to_char(NEW.zeljeno_vreme, 'HH24:MI'),
+                    'vreme', to_char(NEW.zeljeno_vreme::time, 'HH24:MI'),
                     'putnik_id', NEW.putnik_id,
-                    'alternative_1', to_char(NEW.alternative_vreme_1, 'HH24:MI'),
-                    'alternative_2', to_char(NEW.alternative_vreme_2, 'HH24:MI')
+                    'alternative_1', to_char(NEW.alternative_vreme_1::time, 'HH24:MI'),
+                    'alternative_2', to_char(NEW.alternative_vreme_2::time, 'HH24:MI')
                 );
             ELSE
                 v_title := '❌ Termin popunjen';
-                v_body := 'Nažalost, u terminu ' || to_char(NEW.zeljeno_vreme, 'HH24:MI') || ' više nema slobodnih mesta.';
+                v_body := 'Nažalost, u terminu ' || to_char(NEW.zeljeno_vreme::time, 'HH24:MI') || ' više nema slobodnih mesta.';
                 v_data := jsonb_build_object('type', 'v2_odbijeno', 'id', NEW.id, 'grad', NEW.grad);
             END IF;
         END IF;
