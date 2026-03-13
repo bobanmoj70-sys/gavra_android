@@ -3,13 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../globals.dart';
 import '../models/v2_registrovani_putnik.dart';
 
-/// Servis za obračun mesečne cene za putnike
+/// Servis za obraÄun meseÄne cene za putnike
 ///
-/// PRAVILA: Cena se MORA manuelno postaviti od strane admina - više nema default cena!
+/// PRAVILA: Cena se MORA manuelno postaviti od strane admina - viÅ¡e nema default cena!
 /// - RADNIK: Admin postavlja cenu (nema default-a)
-/// - UČENIK: Admin postavlja cenu (nema default-a)
+/// - UÄŒENIK: Admin postavlja cenu (nema default-a)
 /// - DNEVNI: Admin postavlja cenu (nema default-a)
-/// - POŠILJKA: Admin postavlja cenu (osim "ZUBI" koji ima fiksnih 300 RSD)
+/// - POÅ ILJKA: Admin postavlja cenu (osim "ZUBI" koji ima fiksnih 300 RSD)
 class V2CenaObracunService {
   V2CenaObracunService._();
 
@@ -21,11 +21,11 @@ class V2CenaObracunService {
     return 0.0;
   }
 
-  /// Masovni obračun jedinica za listu putnika (optimizovano - jedan upit)
+  /// Masovni obraÄun jedinica za listu putnika (optimizovano - jedan upit)
   ///
-  /// [putnici] - Lista [V2RegistrovaniPutnik] objekata za obračun
-  /// [mesec] - Mesec za koji se računa (1–12)
-  /// [godina] - Godina za koju se računa
+  /// [putnici] - Lista [V2RegistrovaniPutnik] objekata za obraÄun
+  /// [mesec] - Mesec za koji se raÄuna (1â€“12)
+  /// [godina] - Godina za koju se raÄuna
   static Future<Map<String, int>> prebrojJediniceMasovno({
     required List<V2RegistrovaniPutnik> putnici,
     required int mesec,
@@ -39,7 +39,7 @@ class V2CenaObracunService {
 
     try {
       final response = await supabase
-          .from('v2_statistika_istorija')
+          .from('v3_putnici_arhiva')
           .select('datum, broj_mesta, putnik_id')
           .inFilter('putnik_id', ids)
           .eq('tip', 'voznja')
@@ -48,7 +48,7 @@ class V2CenaObracunService {
 
       final Map<String, int> rezultati = {for (var p in putnici) p.id: 0};
 
-      // Grupiši rekorde po putniku
+      // GrupiÅ¡i rekorde po putniku
       final Map<String, List<Map<String, dynamic>>> grupisanRekordi = {};
       for (final r in response) {
         final pid = r['putnik_id'] as String?;
@@ -70,7 +70,7 @@ class V2CenaObracunService {
           }
           rezultati[p.id] = totalUnits;
         } else {
-          // Za ostale (Radnik/Učenik) brojimo unikatne dane i uzimamo MAX mesta po danu
+          // Za ostale (Radnik/UÄenik) brojimo unikatne dane i uzimamo MAX mesta po danu
           final Map<String, int> dailyMaxSeats = {};
           for (final record in logs) {
             final datumStr = record['datum'] as String?;
@@ -91,7 +91,7 @@ class V2CenaObracunService {
       }
       return rezultati;
     } catch (e) {
-      debugPrint('[V2CenaObracunService] prebrojJediniceMasovno greška: $e');
+      debugPrint('[V2CenaObracunService] prebrojJediniceMasovno greÅ¡ka: $e');
       return {};
     }
   }

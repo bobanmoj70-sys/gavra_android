@@ -17,11 +17,11 @@ import '../services/v2_weather_service.dart'; // Vremenska prognoza
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_grad_adresa_validator.dart';
-import '../widgets/v2_kombi_eta_widget.dart'; // 🆕 Jednostavan ETA widget
+import '../widgets/v2_kombi_eta_widget.dart'; // ðŸ†• Jednostavan ETA widget
 import '../widgets/v2_time_picker_cell.dart';
 
-/// MESEČNI V2Putnik PROFIL SCREEN
-/// Prikazuje podatke o mesečnom putniku: raspored, vožnje, dugovanja
+/// MESEÄŒNI V2Putnik PROFIL SCREEN
+/// Prikazuje podatke o meseÄnom putniku: raspored, voÅ¾nje, dugovanja
 class V2PutnikProfilScreen extends StatefulWidget {
   final Map<String, dynamic> putnikData;
 
@@ -41,10 +41,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
   List<Map<String, dynamic>> _istorijaPl = [];
 
   // Statistike - detaljno po zapisima iz dnevnika
-  final Map<String, List<Map<String, dynamic>>> _voznjeDetaljno = {}; // mesec -> lista zapisa vožnji
+  final Map<String, List<Map<String, dynamic>>> _voznjeDetaljno = {}; // mesec -> lista zapisa voÅ¾nji
   final Map<String, List<Map<String, dynamic>>> _otkazivanjaDetaljno = {}; // mesec -> lista zapisa otkazivanja
-  double _ukupnoZaduzenje = 0.0; // ukupno zaduženje za celu godinu
-  double _cenaPoVoznji = 0.0; // Cena po vožnji/danu
+  double _ukupnoZaduzenje = 0.0; // ukupno zaduÅ¾enje za celu godinu
+  double _cenaPoVoznji = 0.0; // Cena po voÅ¾nji/danu
   String? _adresaBC; // BC adresa
   String? _adresaVS; // VS adresa
   String? _sledecaVoznjaInfo; // Format: "Ponedeljak BC - 7:00" ili null
@@ -58,7 +58,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     _checkNotificationPermission(); // Proveri dozvolu za notifikacije
 
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
-    // Sve tabele koje utiču na prikaz: polasci (raspored), putnik tabele (ime/status),
+    // Sve tabele koje utiÄu na prikaz: polasci (raspored), putnik tabele (ime/status),
     // app_settings (sezona/nav_bar_type)
     _cacheStream = V2MasterRealtimeManager.instance.v2StreamFromCache(
       tables: const ['v2_polasci', 'v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke', 'v2_app_settings'],
@@ -93,7 +93,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// Traži dozvolu ili otvara podešavanja
+  /// TraÅ¾i dozvolu ili otvara podeÅ¡avanja
   Future<void> _requestNotificationPermission() async {
     final status = await Permission.notification.request();
     if (mounted) {
@@ -102,7 +102,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       });
     }
 
-    // Ako je trajno odbijeno, otvori podešavanja
+    // Ako je trajno odbijeno, otvori podeÅ¡avanja
     if (status.isPermanentlyDenied) {
       await openAppSettings();
     }
@@ -122,7 +122,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final putnikId = _putnikData['id']?.toString();
       if (putnikId == null) return;
 
-      // Prvo pokušaj iz v2 cache-a (0 DB upita)
+      // Prvo pokuÅ¡aj iz v2 cache-a (0 DB upita)
       final cached = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
       if (cached != null) {
         _putnikData = Map<String, dynamic>.from(cached);
@@ -130,20 +130,20 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         return;
       }
 
-      // Fallback: pretraži sve v2 tabele (jednom pri prvom otvaranju kad cache još nije popunjen)
+      // Fallback: pretraÅ¾i sve v2 tabele (jednom pri prvom otvaranju kad cache joÅ¡ nije popunjen)
       final response = await V2MasterRealtimeManager.instance.v2FindPutnikById(putnikId);
       if (response != null) {
         _putnikData = Map<String, dynamic>.from(response);
       }
-      // Uvijek učitaj statistike (sa svežim ili postojećim podacima)
+      // Uvijek uÄitaj statistike (sa sveÅ¾im ili postojeÄ‡im podacima)
       _loadStatistike();
     } catch (e) {
-      debugPrint('❌ [_refreshPutnikData] Greška: $e');
+      debugPrint('âŒ [_refreshPutnikData] GreÅ¡ka: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// Učitava statistike za profil (vožnje i otkazivanja)
+  /// UÄitava statistike za profil (voÅ¾nje i otkazivanja)
   Future<void> _loadStatistike() async {
     final now = DateTime.now();
     final pocetakGodine = DateTime(now.year, 1, 1);
@@ -154,18 +154,18 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       final tipPutnikaRaw = V2Putnik.tipIzTabele(_putnikData['_tabela']?.toString()) ?? 'radnik';
       final jeDnevni = _profilJeDnevniTip(tipPutnikaRaw);
 
-      // 1+2. Jedan upit za SVE zapise od poč. godine (obuhvata tekući mesec i istoriju)
-      // Filtriramo client-side po mesecu — izbegavamo 2 odvojena upita
+      // 1+2. Jedan upit za SVE zapise od poÄ. godine (obuhvata tekuÄ‡i mesec i istoriju)
+      // Filtriramo client-side po mesecu â€” izbegavamo 2 odvojena upita
       final datumPocetakMeseca = DateTime(now.year, now.month, 1).toIso8601String().split('T')[0];
       final datumKrajMeseca = DateTime(now.year, now.month + 1, 0).toIso8601String().split('T')[0];
 
-      // Jedan upit: sve voznje+otkazivanja+uplate od poč. godine
+      // Jedan upit: sve voznje+otkazivanja+uplate od poÄ. godine
       final sveZapisiGodina = await V2StatistikaIstorijaService.getSveZapisiGodina(
         putnikId: putnikId,
         pocetakGodineIso: pocetakGodine.toIso8601String().split('T')[0],
       );
 
-      // Filtriraj vožnje i otkazivanja ovog meseca iz već dohvaćenih podataka
+      // Filtriraj voÅ¾nje i otkazivanja ovog meseca iz veÄ‡ dohvaÄ‡enih podataka
       final voznjeResponse = sveZapisiGodina.where((r) {
         final d = r['datum'] as String?;
         return r['tip'] == 'voznja' &&
@@ -181,7 +181,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
             d.compareTo(datumKrajMeseca) <= 0;
       }).toList();
 
-      // Broj vožnji ovog meseca — 1 red = 1 vožnja
+      // Broj voÅ¾nji ovog meseca â€” 1 red = 1 voÅ¾nja
       final Set<String> daniSaVoznjom = {};
       for (final v in voznjeResponse) {
         final d = v['datum'] as String?;
@@ -189,7 +189,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
       final int brojVoznjiTotal = jeDnevni ? voznjeResponse.length : daniSaVoznjom.length;
 
-      // Broj otkazivanja ovog meseca — 1 red = 1 otkazivanje
+      // Broj otkazivanja ovog meseca â€” 1 red = 1 otkazivanje
       final Set<String> daniSaOtkazivanjem = {};
       for (final o in otkazivanjaResponse) {
         final d = o['datum'] as String?;
@@ -197,7 +197,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
       final int brojOtkazivanjaTotal = jeDnevni ? otkazivanjaResponse.length : daniSaOtkazivanjem.length;
 
-      // Učitaj obe adrese iz cache-a (nula DB upita)
+      // UÄitaj obe adrese iz cache-a (nula DB upita)
       String? adresaBcNaziv;
       String? adresaVsNaziv;
       final adresaBcId = _putnikData['adresa_bela_crkva_id'] as String?;
@@ -211,11 +211,11 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           adresaVsNaziv = V2AdresaSupabaseService.getAdresaByUuid(adresaVsId)?.naziv;
         }
       } catch (e) {
-        debugPrint('❌ [Adrese] Greška: $e');
+        debugPrint('âŒ [Adrese] GreÅ¡ka: $e');
       }
 
-      // Vožnje po mesecima iz već dohvaćenih sveZapisiGodina (nula dodatnih upita)
-      // Istorija plaćanja - grupiše uplate iz iste kolekcije
+      // VoÅ¾nje po mesecima iz veÄ‡ dohvaÄ‡enih sveZapisiGodina (nula dodatnih upita)
+      // Istorija plaÄ‡anja - grupiÅ¡e uplate iz iste kolekcije
       final Map<String, List<Map<String, dynamic>>> voznjeDetaljnoMap = {};
       final Map<String, List<Map<String, dynamic>>> otkazivanjaDetaljnoMap = {};
 
@@ -235,7 +235,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         }
       }
 
-      // Obračun dugovanja — iz sveZapisiGodina (nema dodatnih DB upita)
+      // ObraÄun dugovanja â€” iz sveZapisiGodina (nema dodatnih DB upita)
       final putnikModel = V2RegistrovaniPutnik.fromMap(_putnikData);
       final cenaPoVoznji = V2CenaObracunService.getCenaPoDanu(putnikModel);
 
@@ -258,7 +258,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         ukupnoUplaceno += V2GradAdresaValidator.parseDouble(u['iznos']);
       }
 
-      // Istorija plaćanja za UI prikaz (iz iste kolekcije — nema DB upita)
+      // Istorija plaÄ‡anja za UI prikaz (iz iste kolekcije â€” nema DB upita)
       final istorija = _profilIzracunajIstorijuIzKolekcije(sveZapisiGodina);
 
       final pocetniDugRaw = V2GradAdresaValidator.parseDouble(_putnikData['dug']);
@@ -282,13 +282,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         });
       }
     } catch (e) {
-      debugPrint('❌ [_loadStatistike] Finalna greška: $e');
+      debugPrint('âŒ [_loadStatistike] Finalna greÅ¡ka: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// 🆕 Izračunaj sledeću zakazanu vožnju putnika
-  /// Vraća format: "Ponedeljak BC - 7:00" ili null ako nema zakazanih vožnji
+  /// ðŸ†• IzraÄunaj sledeÄ‡u zakazanu voÅ¾nju putnika
+  /// VraÄ‡a format: "Ponedeljak BC - 7:00" ili null ako nema zakazanih voÅ¾nji
   String? _izracunajSledecuVoznju() {
     try {
       final putnikId = _putnikData['id']?.toString();
@@ -306,7 +306,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       }
 
       // Sortiraj zahteve po redosledu dana u sedmici (od danas na dalje)
-      // Vikend (sub=6, ned=7) → počni od ponedeljka (sve radne dane prikaži)
+      // Vikend (sub=6, ned=7) â†’ poÄni od ponedeljka (sve radne dane prikaÅ¾i)
       // todayWd=0 vikendom jer 0 < 1 (pon), pa orderedDani = [pon, uto, sre, cet, pet]
       final todayWd = now.weekday >= 6 ? 0 : now.weekday; // 1=pon...5=pet, 0=vikend
       final daniOrder = ['pon', 'uto', 'sre', 'cet', 'pet'];
@@ -329,7 +329,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         final polazakM = polazakParts.length > 1 ? (int.tryParse(polazakParts[1]) ?? 0) : 0;
         final polazak = '$polazakH:${polazakM.toString().padLeft(2, '0')}';
 
-        // Ako je danas radni dan, proveri da li je polazak prošao
+        // Ako je danas radni dan, proveri da li je polazak proÅ¡ao
         final danWd = daniOrder.indexOf(danKratica) + 1;
         if (danWd == todayWd) {
           if (polazakH * 60 + polazakM < now.hour * 60 + now.minute - 30) continue;
@@ -346,7 +346,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// Vraća vreme polaska za DANAS (npr. '7:00') iz aktivnih zahteva, ili null
+  /// VraÄ‡a vreme polaska za DANAS (npr. '7:00') iz aktivnih zahteva, ili null
   String? _getVremeZaDanas() {
     try {
       final putnikId = _putnikData['id']?.toString();
@@ -376,7 +376,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Odjava?', style: TextStyle(color: Colors.white)),
-        content: Text('Da li želiš da se odjaviš?', style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
+        content: Text('Da li Å¾eliÅ¡ da se odjaviÅ¡?', style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ne')),
           ElevatedButton(
@@ -399,7 +399,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         );
       } catch (e) {}
       if (!mounted) return;
-      // Audit log — putnik se odjavio
+      // Audit log â€” putnik se odjavio
       V2AuditLogService.log(
         tip: 'putnik_logout',
         aktorId: putnikId,
@@ -416,10 +416,10 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     }
   }
 
-  /// Dialog za odabir tipa odsustva ili vraćanje na posao
+  /// Dialog za odabir tipa odsustva ili vraÄ‡anje na posao
   Future<void> _pokaziOdsustvoDialog(bool jeNaOdsustvu) async {
     if (jeNaOdsustvu) {
-      // Vraćanje na posao
+      // VraÄ‡anje na posao
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -431,13 +431,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
               Expanded(child: Text('Povratak na posao')),
             ],
           ),
-          content: const Text('Da li želite da se vratite na posao?'),
+          content: const Text('Da li Å¾elite da se vratite na posao?'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ne')),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text('Da, vraćam se'),
+              child: const Text('Da, vraÄ‡am se'),
             ),
           ],
         ),
@@ -468,7 +468,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                 child: ElevatedButton.icon(
                   onPressed: () => Navigator.pop(ctx, 'godisnji'),
                   icon: const Icon(Icons.beach_access),
-                  label: const Text('🏖️ Godišnji odmor'),
+                  label: const Text('ðŸ–ï¸ GodiÅ¡nji odmor'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
@@ -482,7 +482,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                 child: ElevatedButton.icon(
                   onPressed: () => Navigator.pop(ctx, 'bolovanje'),
                   icon: const Icon(Icons.sick),
-                  label: const Text('🤒 Bolovanje'),
+                  label: const Text('ðŸ¤’ Bolovanje'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     foregroundColor: Colors.white,
@@ -514,7 +514,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         tabela,
       );
 
-      // Sačuvaj stari status pre setState (za audit log)
+      // SaÄuvaj stari status pre setState (za audit log)
       final stariStatus = _putnikData['status']?.toString();
 
       if (!mounted) return;
@@ -522,7 +522,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         _putnikData['status'] = noviStatus;
       });
 
-      // Audit log — odsustvo ili povratak na posao
+      // Audit log â€” odsustvo ili povratak na posao
       final audTip = noviStatus == 'aktivan' ? 'odsustvo_uklonjeno' : 'odsustvo_postavljeno';
       V2AuditLogService.log(
         tip: audTip,
@@ -532,21 +532,21 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         putnikTabela: tabela,
         staro: {'status': stariStatus},
         novo: {'status': noviStatus},
-        detalji: 'Status promijenjen: $stariStatus → $noviStatus',
+        detalji: 'Status promijenjen: $stariStatus â†’ $noviStatus',
       );
 
       if (mounted) {
         final poruka = noviStatus == 'aktivan'
-            ? 'Vraćeni ste na posao'
+            ? 'VraÄ‡eni ste na posao'
             : noviStatus == 'godisnji'
-                ? 'Postavljeni ste na godišnji odmor'
+                ? 'Postavljeni ste na godiÅ¡nji odmor'
                 : 'Postavljeni ste na bolovanje';
 
         V2AppSnackBar.info(context, poruka);
       }
     } catch (e) {
       if (mounted) {
-        V2AppSnackBar.error(context, '❌ Greška: $e');
+        V2AppSnackBar.error(context, 'âŒ GreÅ¡ka: $e');
       }
     }
   }
@@ -579,7 +579,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                   children: [
                     Expanded(
                       child: Text(
-                        '🌤️ Vreme - $grad',
+                        'ðŸŒ¤ï¸ Vreme - $grad',
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
@@ -596,7 +596,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                 child: data != null
                     ? Column(
                         children: [
-                          // Upozorenje za kišu/sneg
+                          // Upozorenje za kiÅ¡u/sneg
                           if (data.willSnow)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -609,7 +609,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('❄️', style: TextStyle(fontSize: 20)),
+                                  const Text('â„ï¸', style: TextStyle(fontSize: 20)),
                                   const SizedBox(width: 6),
                                   Text(
                                     'SNEG ${data.precipitationStartTime ?? 'SADA'}',
@@ -634,11 +634,11 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('🌧️', style: TextStyle(fontSize: 20)),
+                                  const Text('ðŸŒ§ï¸', style: TextStyle(fontSize: 20)),
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
-                                      'KIŠA ${data.precipitationStartTime ?? 'SADA'}${data.precipitationProbability != null ? " (${data.precipitationProbability}%)" : ''}',
+                                      'KIÅ A ${data.precipitationStartTime ?? 'SADA'}${data.precipitationProbability != null ? " (${data.precipitationProbability}%)" : ''}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -663,7 +663,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${data.temperature.round()}°C',
+                                    '${data.temperature.round()}Â°C',
                                     style: TextStyle(
                                       fontSize: 42,
                                       fontWeight: FontWeight.bold,
@@ -681,7 +681,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                                   ),
                                   if (data.tempMin != null && data.tempMax != null)
                                     Text(
-                                      '${data.tempMin!.round()}° / ${data.tempMax!.round()}°',
+                                      '${data.tempMin!.round()}Â° / ${data.tempMax!.round()}Â°',
                                       style: const TextStyle(fontSize: 16, color: Colors.white70),
                                     ),
                                 ],
@@ -713,14 +713,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     return StreamBuilder<void>(
       stream: _cacheStream,
       builder: (context, __) {
-        // Osvježi putnikData iz cache-a pri svakom rebuildu (reaguje na promjene RM-a)
+        // OsvjeÅ¾i putnikData iz cache-a pri svakom rebuildu (reaguje na promjene RM-a)
         final putnikId = _putnikData['id']?.toString();
         if (putnikId != null) {
           final cached = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
           if (cached != null) _putnikData = Map<String, dynamic>.from(cached);
         }
 
-        // Ime može biti u 'putnik_ime' ili odvojeno 'ime'/'prezime'
+        // Ime moÅ¾e biti u 'putnik_ime' ili odvojeno 'ime'/'prezime'
         final putnikIme = _putnikData['putnik_ime'] as String? ?? '';
         final ime = _putnikData['ime'] as String? ?? '';
         final prezime = _putnikData['prezime'] as String? ?? '';
@@ -786,7 +786,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                           ),
                         ),
 
-                        // NOTIFIKACIJE UPOZORENJE (ako su ugašene)
+                        // NOTIFIKACIJE UPOZORENJE (ako su ugaÅ¡ene)
                         if (_notificationStatus.isDenied || _notificationStatus.isPermanentlyDenied)
                           Container(
                             width: double.infinity,
@@ -806,11 +806,11 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Notifikacije isključene!',
+                                        'Notifikacije iskljuÄene!',
                                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                       ),
                                       Text(
-                                        'Nećete videti potvrde vožnji.',
+                                        'NeÄ‡ete videti potvrde voÅ¾nji.',
                                         style: TextStyle(color: Colors.white70, fontSize: 12),
                                       ),
                                     ],
@@ -822,7 +822,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                                     backgroundColor: Colors.white,
                                     foregroundColor: Colors.red,
                                   ),
-                                  child: const Text('UKLJUČI'),
+                                  child: const Text('UKLJUÄŒI'),
                                 ),
                               ],
                             ),
@@ -907,14 +907,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                                     ),
                                     child: Text(
                                       tip == 'ucenik'
-                                          ? '🎓 Učenik'
+                                          ? 'ðŸŽ“ UÄenik'
                                           : tip == 'posiljka'
-                                              ? '📦 Pošiljka'
+                                              ? 'ðŸ“¦ PoÅ¡iljka'
                                               : tip == 'radnik'
-                                                  ? '💼 Radnik'
+                                                  ? 'ðŸ’¼ Radnik'
                                                   : tip == 'dnevni'
-                                                      ? '📅 Dnevni'
-                                                      : '👤 Putnik',
+                                                      ? 'ðŸ“… Dnevni'
+                                                      : 'ðŸ‘¤ Putnik',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -980,27 +980,27 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         ),
                         const SizedBox(height: 16),
 
-                        // ─────────── Divider ───────────
+                        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Divider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: Divider(color: Colors.white.withValues(alpha: 0.2), thickness: 1),
                         ),
 
                         // ETA Widget sa fazama:
-                        // 0. Nema dozvola: "Odobravanjem GPS i notifikacija ovde će vam biti prikazano vreme dolaska prevoza"
-                        // 1. 30 min pre polaska: "Vozač će uskoro krenuti"
-                        // 2. Vozač startovao rutu: Realtime ETA praćenje
-                        // 3. Pokupljen: "Pokupljeni ste u HH:MM" (stoji 60 min) - ČITA IZ BAZE!
-                        // 4. Nakon 60 min: "Vaša sledeća vožnja: dan, vreme"
+                        // 0. Nema dozvola: "Odobravanjem GPS i notifikacija ovde Ä‡e vam biti prikazano vreme dolaska prevoza"
+                        // 1. 30 min pre polaska: "VozaÄ Ä‡e uskoro krenuti"
+                        // 2. VozaÄ startovao rutu: Realtime ETA praÄ‡enje
+                        // 3. Pokupljen: "Pokupljeni ste u HH:MM" (stoji 60 min) - ÄŒITA IZ BAZE!
+                        // 4. Nakon 60 min: "VaÅ¡a sledeÄ‡a voÅ¾nja: dan, vreme"
                         V2KombiEtaWidget(
                           putnikIme: fullName,
                           grad: grad,
                           sledecaVoznja: _sledecaVoznjaInfo,
                           putnikId: _putnikData['id']?.toString(),
-                          vreme: _getVremeZaDanas(), // 🆕 Filter po terminu polaska
+                          vreme: _getVremeZaDanas(), // ðŸ†• Filter po terminu polaska
                         ),
 
-                        // ─────────── Divider ───────────
+                        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Divider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1008,17 +1008,17 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         ),
                         const SizedBox(height: 8),
 
-                        // Statistike - Prikazano za sve, ali dnevni/pošiljka broje svako pokupljenje
+                        // Statistike - Prikazano za sve, ali dnevni/poÅ¡iljka broje svako pokupljenje
                         Row(
                           children: [
                             Expanded(
                               child: _profilBuildStatCard(
-                                  '🚌', 'Vožnje', _brojVoznji.toString(), Colors.blue, 'ovaj mesec'),
+                                  'ðŸšŒ', 'VoÅ¾nje', _brojVoznji.toString(), Colors.blue, 'ovaj mesec'),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _profilBuildStatCard(
-                                '❌',
+                                'âŒ',
                                 'Otkazano',
                                 _brojOtkazivanja.toString(),
                                 Colors.orange,
@@ -1029,7 +1029,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                         ),
                         const SizedBox(height: 16),
 
-                        // Bolovanje/Godišnji dugme - SAMO za radnike
+                        // Bolovanje/GodiÅ¡nji dugme - SAMO za radnike
                         if ((_putnikData['_tabela'] ?? _putnikData['putnik_tabela'] ?? '').toString() ==
                             'v2_radnici') ...[
                           _profilOdsustvoButton(
@@ -1042,7 +1042,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                           const SizedBox(height: 16),
                         ],
 
-                        // TRENUTNO ZADUŽENJE
+                        // TRENUTNO ZADUÅ½ENJE
                         if (_putnikData['cena_po_danu'] != null) ...[
                           Container(
                             width: double.infinity,
@@ -1085,7 +1085,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
                                 if (_cenaPoVoznji > 0) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Cena: ${_cenaPoVoznji.toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'vožnja'}',
+                                    'Cena: ${_cenaPoVoznji.toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'voÅ¾nja'}',
                                     style: TextStyle(
                                       color: Colors.white.withValues(alpha: 0.5),
                                       fontSize: 10,
@@ -1123,7 +1123,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     final tip = V2Putnik.tipIzTabele(_putnikData['_tabela']?.toString()) ?? 'radnik';
     final tipPrikazivanja = _putnikData['tip_prikazivanja'] as String? ?? 'standard';
 
-    // 🆕 Inicijalizuj polasci mapu sa praznim vrednostima za svih 7 dana
+    // ðŸ†• Inicijalizuj polasci mapu sa praznim vrednostima za svih 7 dana
     Map<String, Map<String, dynamic>> polasci = {};
     for (final shortDay in _abbrs) {
       polasci[shortDay] = {
@@ -1136,13 +1136,13 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
 
     // MERGE v2_polasci redova po danima
     // Sortiramo: aktivni (odobreno/obrada) ZADNJI da pregaze otkazane
-    // Redosljed: otkazano/odbijeno → obrada → odobreno → pokupljen
+    // Redosljed: otkazano/odbijeno â†’ obrada â†’ odobreno â†’ pokupljen
     final putnikId = _putnikData['id']?.toString();
     const aktivniStatusi = ['obrada', 'odobreno', 'otkazano', 'odbijeno', 'pokupljen'];
     final sortedRequests = V2MasterRealtimeManager.instance.polasciCache.values
         .where((r) => r['putnik_id']?.toString() == putnikId && aktivniStatusi.contains(r['status'] as String?))
         .toList();
-    // Sortiraj po dan kratica redosledu (pon→pet), pa po statusu prioritetu
+    // Sortiraj po dan kratica redosledu (ponâ†’pet), pa po statusu prioritetu
     sortedRequests.sort((a, b) {
       final aDan = _daniRedosled[(a['dan'] as String?)?.toLowerCase() ?? ''] ?? 9;
       final bDan = _daniRedosled[(b['dan'] as String?)?.toLowerCase() ?? ''] ?? 9;
@@ -1162,20 +1162,20 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         // Normalizuj grad na 'bc' ili 'vs'
         final grad = (gradRaw == 'vs' || gradRaw.contains('vr')) ? 'vs' : 'bc';
         final status = req['status'] as String?;
-        // Normalizuj na HH:MM (baza vraća '12:00:00', TimePickerCell očekuje '12:00')
+        // Normalizuj na HH:MM (baza vraÄ‡a '12:00:00', TimePickerCell oÄekuje '12:00')
         final vremeRaw = (req['dodeljeno_vreme'] ?? req['zeljeno_vreme'] ?? '').toString();
         final vreme = vremeRaw.length >= 5 ? vremeRaw.substring(0, 5) : vremeRaw;
 
         final existing = polasci[danKratica]!;
 
         if (status == 'otkazano' || status == 'odbijeno') {
-          // Postavi otkazano SAMO ako još nema aktivnog zahtjeva za ovaj grad
-          // (aktivni zahtjev dolazi zadnji zbog sortiranja pa će ga pregaziti)
+          // Postavi otkazano SAMO ako joÅ¡ nema aktivnog zahtjeva za ovaj grad
+          // (aktivni zahtjev dolazi zadnji zbog sortiranja pa Ä‡e ga pregaziti)
           existing['${grad}_status'] = status;
           existing['${grad}_otkazano'] = true;
           existing['${grad}_otkazano_vreme'] = vreme;
         } else {
-          // Aktivan zahtjev — uvijek pregazuje otkazano
+          // Aktivan zahtjev â€” uvijek pregazuje otkazano
           existing[grad] = vreme;
           existing['${grad}_status'] = status;
           existing['${grad}_otkazano'] = false;
@@ -1206,7 +1206,7 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
         children: [
           const Center(
             child: Text(
-              '🕐 Vremena polaska',
+              'ðŸ• Vremena polaska',
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
@@ -1284,14 +1284,14 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     );
   }
 
-  /// Ažurira polazak
+  /// AÅ¾urira polazak
   Future<void> _updatePolazak(String dan, String tipGrad, String? novoVreme, {String? trenutnoVreme}) async {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
 
     final gradKey = tipGrad.startsWith('bc') ? 'BC' : 'VS';
 
-    // null → otkazano
+    // null â†’ otkazano
     if (novoVreme == null) {
       final ime = (_putnikData['putnik_ime'] as String?)?.isNotEmpty == true
           ? _putnikData['putnik_ime'] as String
@@ -1307,16 +1307,16 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           status: 'otkazano',
         );
       } catch (e) {
-        debugPrint('❌ _updatePolazak (otkazano): $e');
-        if (mounted) V2AppSnackBar.error(context, '❌ Greška pri otkazivanju polaska.');
+        debugPrint('âŒ _updatePolazak (otkazano): $e');
+        if (mounted) V2AppSnackBar.error(context, 'âŒ GreÅ¡ka pri otkazivanju polaska.');
         return;
       }
     } else {
-      // dan + grad + zeljeno_vreme → pending (V2Putnik šalje zahtev)
+      // dan + grad + zeljeno_vreme â†’ pending (V2Putnik Å¡alje zahtev)
       try {
         final rpRow = V2MasterRealtimeManager.instance.v2GetPutnikById(putnikId);
         final brojMesta = (rpRow?['broj_mesta'] as int?) ?? 1;
-        // _tabela iz cache-a → npr. 'v2_radnici'
+        // _tabela iz cache-a â†’ npr. 'v2_radnici'
         final putnikTabela = (_putnikData['_tabela'] as String?) ??
             (_putnikData['putnik_tabela'] as String?) ??
             rpRow?['_tabela']?.toString();
@@ -1330,8 +1330,8 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
           putnikTabela: putnikTabela,
         );
       } catch (e) {
-        debugPrint('❌ _updatePolazak: $e');
-        if (mounted) V2AppSnackBar.error(context, '❌ Greška pri čuvanju promene.');
+        debugPrint('âŒ _updatePolazak: $e');
+        if (mounted) V2AppSnackBar.error(context, 'âŒ GreÅ¡ka pri Äuvanju promene.');
         return;
       }
     }
@@ -1340,21 +1340,21 @@ class _V2PutnikProfilScreenState extends State<V2PutnikProfilScreen> with Widget
     if (mounted) {
       if (novoVreme != null) {
         V2AppSnackBar.success(context,
-            '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.');
+            'âœ… VaÅ¡ zahtev je uspeÅ¡no primljen i biÄ‡e obraÄ‘en u najkraÄ‡em roku. BiÄ‡ete obaveÅ¡teni o statusu putem aplikacije.');
       } else {
-        V2AppSnackBar.success(context, '✅ Polazak otkazan: $dan $gradKey.');
+        V2AppSnackBar.success(context, 'âœ… Polazak otkazan: $dan $gradKey.');
       }
     }
   }
 
-  /// v2 helper: čita tip putnika iz '_tabela' ključa (v2 sistem)
-  /// Fallback na stari 'tip' ključ radi kompatibilnosti
+  /// v2 helper: Äita tip putnika iz '_tabela' kljuÄa (v2 sistem)
+  /// Fallback na stari 'tip' kljuÄ radi kompatibilnosti
 }
 
-// ─── Top-level konstante ────────────────────────────────────────────────────
+// â”€â”€â”€ Top-level konstante â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-const _names2 = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
+const _names2 = ['Ponedeljak', 'Utorak', 'Sreda', 'ÄŒetvrtak', 'Petak', 'Subota', 'Nedelja'];
 const _statusPrioritet = {
   'odbijeno': 1,
   'otkazano': 2,
@@ -1364,9 +1364,9 @@ const _statusPrioritet = {
 };
 const _daniRedosled = {'pon': 0, 'uto': 1, 'sre': 2, 'cet': 3, 'pet': 4};
 
-// ─── Top-level helper funkcije ───────────────────────────────────────────────
+// â”€â”€â”€ Top-level helper funkcije â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-/// Izračunaj istoriju plaćanja iz već učitane kolekcije zapisa (nema DB upita)
+/// IzraÄunaj istoriju plaÄ‡anja iz veÄ‡ uÄitane kolekcije zapisa (nema DB upita)
 List<Map<String, dynamic>> _profilIzracunajIstorijuIzKolekcije(List<dynamic> sviZapisi) {
   try {
     final Map<String, double> poMesecima = {};
@@ -1404,7 +1404,7 @@ List<Map<String, dynamic>> _profilIzracunajIstorijuIzKolekcije(List<dynamic> svi
   }
 }
 
-bool _profilJeDnevniTip(String t) => t.contains('dnevni') || t.contains('posiljka') || t.contains('pošiljka');
+bool _profilJeDnevniTip(String t) => t.contains('dnevni') || t.contains('posiljka') || t.contains('poÅ¡iljka');
 
 Widget _profilWeatherCompact(
   String grad,
@@ -1417,8 +1417,8 @@ Widget _profilWeatherCompact(
     builder: (ctx, snapshot) {
       final data = snapshot.data;
       final temp = data?.temperature;
-      final icon = data?.icon ?? '🌡️';
-      final tempStr = temp != null ? '${temp.round()}°' : '--';
+      final icon = data?.icon ?? 'ðŸŒ¡ï¸';
+      final tempStr = temp != null ? '${temp.round()}Â°' : '--';
       final tempColor = temp != null
           ? (temp < 0
               ? Colors.lightBlue
@@ -1474,12 +1474,12 @@ Widget _profilOdsustvoButton({
           color: jeNaOdsustvu ? Colors.green : Colors.orange,
         ),
         title: Text(
-          jeNaOdsustvu ? 'Vratite se na posao' : 'Godišnji / Bolovanje',
+          jeNaOdsustvu ? 'Vratite se na posao' : 'GodiÅ¡nji / Bolovanje',
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           jeNaOdsustvu
-              ? 'Trenutno ste na ${status == "godisnji" ? "godišnjem odmoru" : "bolovanju"}'
+              ? 'Trenutno ste na ${status == "godisnji" ? "godiÅ¡njem odmoru" : "bolovanju"}'
               : 'Postavite se na odsustvo',
           style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
         ),
@@ -1537,17 +1537,17 @@ Widget _profilDetaljneStatistikeDugme({
 
 String _profilGetWeatherDescription(int code) {
   if (code == 0) return 'Vedro nebo';
-  if (code == 1) return 'Pretežno vedro';
-  if (code == 2) return 'Delimično oblačno';
-  if (code == 3) return 'Oblačno';
+  if (code == 1) return 'PreteÅ¾no vedro';
+  if (code == 2) return 'DelimiÄno oblaÄno';
+  if (code == 3) return 'OblaÄno';
   if (code >= 45 && code <= 48) return 'Magla';
-  if (code >= 51 && code <= 55) return 'Sitna kiša';
-  if (code >= 56 && code <= 57) return 'Ledena kiša';
-  if (code >= 61 && code <= 65) return 'Kiša';
-  if (code >= 66 && code <= 67) return 'Ledena kiša';
+  if (code >= 51 && code <= 55) return 'Sitna kiÅ¡a';
+  if (code >= 56 && code <= 57) return 'Ledena kiÅ¡a';
+  if (code >= 61 && code <= 65) return 'KiÅ¡a';
+  if (code >= 66 && code <= 67) return 'Ledena kiÅ¡a';
   if (code >= 71 && code <= 77) return 'Sneg';
   if (code >= 80 && code <= 82) return 'Pljuskovi';
-  if (code >= 85 && code <= 86) return 'Snežni pljuskovi';
+  if (code >= 85 && code <= 86) return 'SneÅ¾ni pljuskovi';
   if (code >= 95 && code <= 99) return 'Grmljavina';
   return '';
 }

@@ -39,13 +39,13 @@ void main() async {
       anonKey: configService.getSupabaseAnonKey(),
     );
   } catch (e) {
-    debugPrint('❌ [main] Supabase.initialize greška: $e');
+    debugPrint('âŒ [main] Supabase.initialize greÅ¡ka: $e');
   }
 
   // 1. Pokreni UI ODMAH (bez cekanja Supabase)
   runApp(const MyApp());
 
-  // 2. Čekaj malo da se UI renderira, pa tek onda inicijalizuj servise
+  // 2. ÄŒekaj malo da se UI renderira, pa tek onda inicijalizuj servise
   unawaited(Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks));
 }
 
@@ -56,14 +56,14 @@ Future<void> _doStartupTasks() async {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   } catch (e) {
-    debugPrint('⚠️ [main] Wakelock/SystemChrome greška: $e');
+    debugPrint('âš ï¸ [main] Wakelock/SystemChrome greÅ¡ka: $e');
   }
 
   // Inicijalizuj background GPS foreground service (registracija, ne pokretanje)
   try {
     await V2BackgroundGpsService.initialize();
   } catch (e) {
-    debugPrint('⚠️ [main] BackgroundGpsService init greška: $e');
+    debugPrint('âš ï¸ [main] BackgroundGpsService init greÅ¡ka: $e');
   }
 
   // Locale - UTF-8 podrska za dijakritiku
@@ -88,19 +88,19 @@ Future<void> _initPushSystems() async {
         V2FirebaseService.setupFCMListeners();
         unawaited(V2FirebaseService.initializeAndRegisterToken());
       } catch (e) {
-        debugPrint('⚠️ [main] Firebase/FCM init greška: $e');
+        debugPrint('âš ï¸ [main] Firebase/FCM init greÅ¡ka: $e');
       }
     } else {
       await _tryInitHms(timeout: const Duration(seconds: 5));
     }
   } catch (e) {
-    // GMS provjera nije uspjela — probaj HMS kao fallback
-    debugPrint('⚠️ [main] GMS provjera greška, pokušavam HMS: $e');
+    // GMS provjera nije uspjela â€” probaj HMS kao fallback
+    debugPrint('âš ï¸ [main] GMS provjera greÅ¡ka, pokuÅ¡avam HMS: $e');
     await _tryInitHms(timeout: const Duration(seconds: 2));
   }
 }
 
-/// HMS inicijalizacija (Huawei uređaji bez GMS)
+/// HMS inicijalizacija (Huawei ureÄ‘aji bez GMS)
 Future<void> _tryInitHms({required Duration timeout}) async {
   try {
     final hmsToken = await V2HuaweiPushService().initialize().timeout(timeout);
@@ -108,17 +108,17 @@ Future<void> _tryInitHms({required Duration timeout}) async {
       await V2HuaweiPushService().tryRegisterPendingToken();
     }
   } catch (e) {
-    debugPrint('⚠️ [main] HMS init greška: $e');
+    debugPrint('âš ï¸ [main] HMS init greÅ¡ka: $e');
   }
 }
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
-  // V2 Master Realtime Manager — jedini koji slusa Supabase.
+  // V2 Master Realtime Manager â€” jedini koji slusa Supabase.
   // On ucitava sve cache-ove (vozaci, kapacitet, settings...) i otvara WebSocket.
   unawaited(V2MasterRealtimeManager.instance
       .initialize()
-      .catchError((Object e) => debugPrint('❌ [main] MasterRealtimeManager.initialize greška: $e')));
+      .catchError((Object e) => debugPrint('âŒ [main] MasterRealtimeManager.initialize greÅ¡ka: $e')));
 
   // Weather alerts (bez cekanja)
   unawaited(V2WeatherAlertService.checkAndSendWeatherAlerts());
@@ -169,7 +169,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     try {
       await V2ThemeManager().initialize();
     } catch (e) {
-      debugPrint('⚠️ [main] V2ThemeManager.initialize greška: $e');
+      debugPrint('âš ï¸ [main] V2ThemeManager.initialize greÅ¡ka: $e');
     }
   }
 

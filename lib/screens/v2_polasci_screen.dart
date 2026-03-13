@@ -79,6 +79,7 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
                 glassContainer: Theme.of(context).glassContainer,
                 glassBorder: Theme.of(context).glassBorder,
                 onApprove: (id, z) => _approveZahtev(id, z),
+                onAlternative: (id, z) => _posaljiAlternative(id, z),
                 onReject: (id) => _rejectZahtev(id),
               );
             },
@@ -91,14 +92,154 @@ class _V2PolasciScreenState extends State<V2PolasciScreen> {
   // ─── Akcije ───────────────────────────────────────────────────────────────
 
   Future<void> _approveZahtev(String id, V2Polazak zahtev) async {
+    final TextEditingController timeController = TextEditingController(text: zahtev.zeljenoVreme);
+
+    final String? odabranoVreme = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E), // Podudara se sa temom
+        title: const Text('Odobravanje zahteva', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Potvrdi ili promeni vreme polaska za: \n${zahtev.putnikIme ?? "Putnika"}',
+                style: const TextStyle(color: Colors.white70)),
+            if (zahtev.adresaNaziv != null && zahtev.adresaNaziv!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(children: [
+                const Icon(Icons.location_on, size: 14, color: Colors.amber),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    zahtev.adresaNaziv!,
+                    style: const TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ]),
+            ],
+            const SizedBox(height: 20),
+            TextField(
+              controller: timeController,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(
+                labelText: 'Vreme polaska (HH:mm)',
+                labelStyle: TextStyle(color: Colors.amber),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
+              ),
+              keyboardType: TextInputType.datetime,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OTKAŽI', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, timeController.text),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('ODOBRI', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (odabranoVreme == null) return;
+
     setState(() => _loadingIds.add(id));
     try {
-      final success = await V2PolasciService.v2OdobriZahtev(id, approvedBy: _currentDriver);
+      final success = await V2PolasciService.v2OdobriZahtev(
+        id,
+        approvedBy: _currentDriver,
+        dodeljenoVreme: odabranoVreme,
+      );
       if (!mounted) return;
       if (success) {
-        V2AppSnackBar.success(context, '✅ Zahtev uspešno odobren');
+        V2AppSnackBar.success(context, '✅ Zahtev uspešno odobren ($odabranoVreme)');
       } else {
         V2AppSnackBar.error(context, '❌ Greška pri odobravanju, pokušaj ponovo');
+      }
+    } finally {
+      if (mounted) setState(() => _loadingIds.remove(id));
+      timeController.dispose();
+    }
+  }
+
+  Future<void> _posaljiAlternative(String id, V2Polazak zahtev) async {
+    final TextEditingController alt1 = TextEditingController(text: zahtev.zeljenoVreme);
+    final TextEditingController alt2 = TextEditingController();
+
+    final bool? potvrda = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        title: const Text('Ponudi Alternative', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Putnik: ${zahtev.putnikIme ?? "Nepoznato"}', style: const TextStyle(color: Colors.white)),
+            if (zahtev.adresaNaziv != null) ...[
+              const SizedBox(height: 4),
+              Text('Lokacija: ${zahtev.adresaNaziv}', style: const TextStyle(color: Colors.amber, fontSize: 13)),
+            ],
+            const SizedBox(height: 16),
+            const Text('Prvo alternativno vreme:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            TextField(
+              controller: alt1,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Prva alternativa (obavezno)',
+                labelStyle: TextStyle(color: Colors.amber),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text('Drugo alternativno vreme (opciono):', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            TextField(
+              controller: alt2,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Druga alternativa (opciono)',
+                labelStyle: TextStyle(color: Colors.amber),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OTKAŽI', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700),
+            child: const Text('POŠALJI PREDLOGE', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (potvrda != true || alt1.text.isEmpty) return;
+
+    setState(() => _loadingIds.add(id));
+    try {
+      final success = await V2PolasciService.v2PosaljiAlternative(
+        id,
+        alt1: alt1.text,
+        alt2: alt2.text.isEmpty ? null : alt2.text,
+        approvedBy: _currentDriver,
+      );
+      if (!mounted) return;
+      if (success) {
+        V2AppSnackBar.info(context, '🕒 Alternative su poslate putniku');
+      } else {
+        V2AppSnackBar.error(context, '❌ Greška pri slanju alternativa');
       }
     } finally {
       if (mounted) setState(() => _loadingIds.remove(id));
@@ -129,6 +270,7 @@ Widget _polasciDnevniLista({
   required Color glassContainer,
   required Color glassBorder,
   required void Function(String, V2Polazak) onApprove,
+  required void Function(String, V2Polazak) onAlternative,
   required void Function(String) onReject,
 }) {
   if (zahtevi.isEmpty) return _polasciBuildPrazno('Nema dnevnih zahteva na čekanju');
@@ -141,6 +283,7 @@ Widget _polasciDnevniLista({
       glassContainer: glassContainer,
       glassBorder: glassBorder,
       onApprove: onApprove,
+      onAlternative: onAlternative,
       onReject: onReject,
     ),
   );
@@ -152,6 +295,7 @@ Widget _polasciDnevniKartica({
   required Color glassContainer,
   required Color glassBorder,
   required void Function(String, V2Polazak) onApprove,
+  required void Function(String, V2Polazak) onAlternative,
   required void Function(String) onReject,
 }) {
   final ime = zahtev.putnikIme ?? 'Nepoznat';
@@ -162,6 +306,7 @@ Widget _polasciDnevniKartica({
   final id = zahtev.id;
   final brojMesta = zahtev.brojMesta;
   final isLoading = loadingIds.contains(id);
+  final adresa = zahtev.adresaNaziv ?? '';
 
   return Container(
     margin: const EdgeInsets.only(bottom: 20),
@@ -208,6 +353,20 @@ Widget _polasciDnevniKartica({
                 Text(telefon, style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15)),
               ]),
             ],
+            if (adresa.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(children: [
+                Icon(Icons.location_on, size: 16, color: Colors.white.withValues(alpha: 0.7)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    adresa,
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ]),
+            ],
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 14),
               child: Divider(color: Colors.white24, height: 1),
@@ -234,7 +393,21 @@ Widget _polasciDnevniKartica({
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : () => onAlternative(id, zahtev),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber.shade700,
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('ALTERN.', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: isLoading ? null : () => onReject(id),

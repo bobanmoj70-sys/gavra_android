@@ -1,10 +1,7 @@
-import 'package:flutter/foundation.dart';
-
-import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_adresa_supabase_service.dart'; // DODATO za fallback ucitavanje adrese
 import '../utils/v2_dan_utils.dart';
 import '../utils/v2_registrovani_helpers.dart';
-import '../utils/v2_vozac_cache.dart';
+import 'v2_polazak.dart'; // DODATO
 
 class V2Putnik {
   V2Putnik({
@@ -117,102 +114,26 @@ class V2Putnik {
   final String? otkazaoVozacId; // UUID vozaca koji je otkazao
 
   factory V2Putnik.v2FromPolazak(Map<String, dynamic> req, {Map<String, dynamic>? profile}) {
-    final Map<String, dynamic> p = profile ?? (req['registrovani_putnici'] as Map<String, dynamic>? ?? {});
+    // 1. Prioritet: Denormalizovana polja iz v2_polasci (najbrze - NI0 DB lookup)
+    final ime = req['putnik_ime'] as String? ?? profile?['ime'] as String? ?? 'Putnik';
+    final adresa = req['adresa_naziv'] as String? ?? profile?['adresa_naziv'] as String?;
 
-    final danStr = (req['dan']?.toString() ?? '').toLowerCase();
-    // PRIORITET: datum iz RPC-a (p_datum = danas) — ne racunaj iz dana jer ide u buducnost
-    // Fallback: _getIsoDateForDan samo ako RPC nije vratio datum (direktni v2_polasci query)
-    final rpcDatum = req['datum']?.toString();
-    final datumStr = (rpcDatum != null && rpcDatum.isNotEmpty)
-        ? rpcDatum.split('T')[0] // ISO: "2026-02-23T00:00:00" -> "2026-02-23"
-        : V2DanUtils.isoZaDan(danStr);
-    final gRaw = req['grad']?.toString().toLowerCase() ?? '';
-    final grad = (gRaw == 'vs' || gRaw.contains('vrs') || gRaw.contains('vr')) ? 'VS' : 'BC';
-
-    // PRIORITET: Dodeljeno vreme (ako je vozac pomerio termin), inace zeljeno
-    final vremeRaw = (req['dodeljeno_vreme'] ?? req['zeljeno_vreme'])?.toString() ?? '';
-
-    // Provera da li je pokupljen (iz v2_polasci srRow ili statusa)
-    final bool isPickedUp = req['pokupljen_iz_loga'] == true || req['status']?.toString().toLowerCase() == 'pokupljen';
-
-    // Provera da li je placeno (za dnevne putnike)
-    // Čita se iz v2_polasci srRow (placen kolona), ne iz statusa
-    final bool isPaid = req['placeno_iz_loga'] == true;
-
-    // Koristi centralizovanu normalizaciju vremena
-    final vreme = V2RegistrovaniHelpers.normalizeTime(vremeRaw) ?? '05:00';
-
-    final tip = V2Putnik.tipIzTabele(p['_tabela']?.toString() ?? req['putnik_tabela']?.toString());
-    final isDnevni = tip == 'dnevni' || tip == 'posiljka';
-
-    // Status: Prioritet ima status iz profila ako je na bolovanju/godišnjem,
-    // inace koristimo status iz v2_polasci (odobreno, obrada, otkazano...)
-    final profileStatus = p['status']?.toString().toLowerCase();
-    String? finalStatus = req['status']?.toString();
-
-    if (profileStatus == 'bolovanje' || profileStatus == 'godisnji' || profileStatus == 'godišnji') {
-      // Ako je globalno na odsustvu, to je primarni status za prikaz
-      finalStatus = profileStatus;
-    }
-
-    // Dodeljeni vozac — traži individualnu dodjelu (v2_vozac_putnik), pa termin-raspored (v2_vozac_raspored)
-    String? dodeljenVozacFinal;
-    try {
-      final rm = V2MasterRealtimeManager.instance;
-      final putnikIdStr = (p['id'] ?? req['putnik_id'])?.toString() ?? '';
-
-      // NEW: O(1) Lookups
-      final vozacId = rm.v3FindIndividualnaDodjela(putnikIdStr, danStr);
-      if (vozacId != null) {
-        dodeljenVozacFinal = V2VozacCache.getImeByUuid(vozacId);
-      } else {
-        final rasporedVozacId = rm.v3GetVozacIzRasporeda(grad, danStr, vreme);
-        if (rasporedVozacId != null) {
-          dodeljenVozacFinal = V2VozacCache.getImeByUuid(rasporedVozacId);
-        }
-      }
-    } catch (e) {
-      debugPrint('[V2Putnik] v2FromPolazak optimized getter greška: $e');
-    }
+    // NOVO: Denormalizovane adrese iz v2_polasci ako postoje u redovima
+    final adresaBc = req['adresa_bc_naziv'] as String?;
+    final adresaVs = req['adresa_vs_naziv'] as String?;
 
     return V2Putnik(
-      id: p['id'] ?? req['putnik_id'],
-      ime: (p['ime'] as String?) ?? (req['putnik_ime'] as String?) ?? '',
-      polazak: vreme,
-      dan: danStr.isNotEmpty ? danStr : V2DanUtils.odIso(datumStr),
-      grad: grad,
-      status: finalStatus,
-      pokupljen: isPickedUp,
-      placeno: isPaid,
-      datum: datumStr,
-      tipPutnika: tip,
-      brojMesta: (req['broj_mesta'] as num?)?.toInt() ?? (p['broj_mesta'] as num?)?.toInt() ?? 1,
-      adresa: ((req['adrese'] as Map?)?['naziv'] as String?) ??
-          (grad == 'VS'
-              ? ((p['adresa_vs'] as Map<String, dynamic>?)?['naziv'] as String?)
-              : ((p['adresa_bc'] as Map<String, dynamic>?)?['naziv'] as String?)),
-      adresaId: req['custom_adresa_id'] as String? ??
-          (grad == 'VS' ? p['adresa_vs_id'] as String? : p['adresa_bc_id'] as String?),
-      brojTelefona: p['telefon'] as String?,
-      statusVreme: p['updated_at'],
-      vremeDodavanja: p['created_at'] != null ? DateTime.tryParse(p['created_at'].toString())?.toLocal() : null,
-      vremePokupljenja:
-          req['processed_at'] != null ? DateTime.tryParse(req['processed_at'].toString())?.toLocal() : null,
-      pokupioVozac: req['pokupioVozac'],
-      naplatioVozac: req['naplatioVozac'],
-      otkazaoVozac: req['otkazaoVozac'],
-      pokupioVozacId: req['pokupioVozacId'] as String?,
-      naplatioVozacId: req['naplatioVozacId'] as String?,
-      otkazaoVozacId: req['otkazaoVozacId'] as String?,
-      cena: isDnevni ? (p['cena'] as num?)?.toDouble() : (p['cena_po_danu'] as num?)?.toDouble(),
-      iznosUplate: (req['placen_iznos'] as num?)?.toDouble(),
-      vremePlacanja:
-          req['vreme_placanja'] != null ? DateTime.tryParse(req['vreme_placanja'].toString())?.toLocal() : null,
-      vremeOtkazivanja:
-          req['vreme_otkazivanja'] != null ? DateTime.tryParse(req['vreme_otkazivanja'].toString())?.toLocal() : null,
-      obrisan: false,
-      dodeljenVozac: dodeljenVozacFinal,
-      requestId: req['id']?.toString(), // ID v2_polasci reda
+      id: req['putnik_id'],
+      ime: ime,
+      polazak: req['zeljeno_vreme'] ?? '---',
+      pokupljen: req['status'] == V2Polazak.statusPokupljen,
+      vremeDodavanja: req['created_at'] != null ? DateTime.tryParse(req['created_at'] as String)?.toLocal() : null,
+      dan: (req['dan']?.toString() ?? '').toLowerCase(),
+      status: req['status'] as String? ?? 'aktivan',
+      statusVreme: req['updated_at'] as String?,
+      grad: req['grad'] ?? 'BC',
+      adresa: adresa ?? (req['grad'] == 'BC' ? adresaBc : adresaVs), // Koristi denormalizovanu adresu zavisno od smera
+      tipPutnika: tipIzTabele(req['putnik_tabela']?.toString()),
     );
   }
 
@@ -303,9 +224,14 @@ class V2Putnik {
   }
 
   static String? _v2AdresaNaziv(Map<String, dynamic> map, String grad) {
+    // 1. Prioritet: Denormalizovani naziv direktno iz kolone (adresa_bc_naziv / adresa_vs_naziv)
     if (grad == 'VS') {
+      final denormalized = map['adresa_vs_naziv'] as String?;
+      if (denormalized != null && denormalized.isNotEmpty) return denormalized;
       return (map['adresa_vs'] as Map<String, dynamic>?)?['naziv'] as String?;
     }
+    final denormalizedBC = map['adresa_bc_naziv'] as String?;
+    if (denormalizedBC != null && denormalizedBC.isNotEmpty) return denormalizedBC;
     return (map['adresa_bc'] as Map<String, dynamic>?)?['naziv'] as String?;
   }
 

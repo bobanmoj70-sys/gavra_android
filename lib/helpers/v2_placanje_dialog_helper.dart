@@ -75,7 +75,7 @@ class V2PlacanjeDialogHelper {
   }) async {
     try {
       final vozacIme = await V2AuthManager.getCurrentDriver();
-      if (vozacIme == null || vozacIme.isEmpty) throw Exception('Vozač nije ulogovan');
+      if (vozacIme == null || vozacIme.isEmpty) throw Exception('VozaÄ nije ulogovan');
       final parts = mesec.split(' ');
       if (parts.length != 2) throw Exception('Neispravan format meseca: $mesec');
       final monthNumber = _getMonthNumber(parts[0]);
@@ -106,9 +106,9 @@ class V2PlacanjeDialogHelper {
       }
       return uspeh;
     } catch (e, st) {
-      debugPrint('[V2PlacanjeDialogHelper] sacuvajPlacanje greška: $e\n$st');
+      debugPrint('[V2PlacanjeDialogHelper] sacuvajPlacanje greÅ¡ka: $e\n$st');
       if (context.mounted) {
-        V2AppSnackBar.error(context, '❌ Greška: $e');
+        V2AppSnackBar.error(context, 'âŒ GreÅ¡ka: $e');
       }
       return false;
     }
@@ -159,7 +159,7 @@ class V2PlacanjeDialogHelper {
   }
 }
 
-// ── PRIVATE WIDGET ────────────────────────────────────────────────────────────
+// â”€â”€ PRIVATE WIDGET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _PlacanjeDialogContent extends StatefulWidget {
   const _PlacanjeDialogContent({

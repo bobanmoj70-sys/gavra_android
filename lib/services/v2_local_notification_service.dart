@@ -24,7 +24,7 @@ import 'v2_statistika_istorija_service.dart';
 void notificationTapBackground(NotificationResponse notificationResponse) async {
   // 1. Inicijalizuj Supabase jer smo u background isolate-u
   try {
-    // U background isolate-u V2ConfigService nije dostupan, učitaj direktno iz .env
+    // U background isolate-u V2ConfigService nije dostupan, uÄitaj direktno iz .env
     await dotenv.load(fileName: '.env');
     final url = dotenv.env['SUPABASE_URL'] ?? '';
     final anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
@@ -33,7 +33,7 @@ void notificationTapBackground(NotificationResponse notificationResponse) async 
       anonKey: anonKey,
     );
   } catch (e) {
-    debugPrint('[V2LocalNotificationService] notificationTapBackground Supabase init greška: $e');
+    debugPrint('[V2LocalNotificationService] notificationTapBackground Supabase init greÅ¡ka: $e');
   }
   await V2LocalNotificationService.handleNotificationTap(notificationResponse);
 }
@@ -46,7 +46,7 @@ class V2LocalNotificationService {
   static const Duration _dedupeDuration = Duration(seconds: 30);
 
   static Future<void> initialize(BuildContext context) async {
-    // SCREENSHOT MODE - preskoči inicijalizaciju notifikacija
+    // SCREENSHOT MODE - preskoÄi inicijalizaciju notifikacija
     const isScreenshotMode = bool.fromEnvironment('SCREENSHOT_MODE', defaultValue: false);
     if (isScreenshotMode) {
       return;
@@ -55,7 +55,7 @@ class V2LocalNotificationService {
     try {
       await flutterLocalNotificationsPlugin.cancelAll();
     } catch (e) {
-      debugPrint('[V2LocalNotificationService] initialize cancelAll greška: $e');
+      debugPrint('[V2LocalNotificationService] initialize cancelAll greÅ¡ka: $e');
     }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -102,7 +102,7 @@ class V2LocalNotificationService {
     required String title,
     required String body,
     String? payload,
-    bool playCustomSound = false, // ONEMOGUĆENO: Custom zvuk ne radi
+    bool playCustomSound = false, // ONEMOGUÄ†ENO: Custom zvuk ne radi
   }) async {
     String dedupeKey = ''; // Premesteno izvan try-catch da bude dostupno u finally bloku
 
@@ -117,13 +117,13 @@ class V2LocalNotificationService {
       } catch (_) {}
       if (dedupeKey.isEmpty) {
         // fallback: simple hash of title+body (ignoring payload which may contain timestamps)
-        // Ovo rešava problem duplih notifikacija kada backend stavi timestamp u payload.
+        // Ovo reÅ¡ava problem duplih notifikacija kada backend stavi timestamp u payload.
         dedupeKey = '$title|$body';
       }
 
-      // MUTEX LOCK - Sprečava race condition kada Firebase i Huawei primaju istu notifikaciju istovremeno
+      // MUTEX LOCK - SpreÄava race condition kada Firebase i Huawei primaju istu notifikaciju istovremeno
       if (_processingLocks[dedupeKey] == true) {
-        return; // Druga instanca već obrađuje ovu notifikaciju
+        return; // Druga instanca veÄ‡ obraÄ‘uje ovu notifikaciju
       }
       _processingLocks[dedupeKey] = true;
 
@@ -142,7 +142,7 @@ class V2LocalNotificationService {
       try {
         await V2WakeLockService.wakeScreen(durationMs: 5000);
       } catch (e) {
-        debugPrint('[V2LocalNotificationService] wakeScreen greška: $e');
+        debugPrint('[V2LocalNotificationService] wakeScreen greÅ¡ka: $e');
       }
 
       // Specijalna obrada za alternative notifikacije
@@ -150,7 +150,7 @@ class V2LocalNotificationService {
         try {
           final Map<String, dynamic> data = jsonDecode(payload);
           if (data['type'] == 'v2_alternativa') {
-            // Čitanje iz alternative_1 i alternative_2 umesto JSONB niza
+            // ÄŒitanje iz alternative_1 i alternative_2 umesto JSONB niza
             List<String> parsedAlts = [];
             final alt1 = data['alternative_1']?.toString();
             final alt2 = data['alternative_2']?.toString();
@@ -175,7 +175,7 @@ class V2LocalNotificationService {
             return;
           }
         } catch (e) {
-          debugPrint('[V2LocalNotificationService] showRealtimeNotification alternativa parse greška: $e');
+          debugPrint('[V2LocalNotificationService] showRealtimeNotification alternativa parse greÅ¡ka: $e');
         }
       }
 
@@ -219,10 +219,10 @@ class V2LocalNotificationService {
         payload: payload,
       );
 
-      // Oslobodi lock nakon uspešnog slanja
+      // Oslobodi lock nakon uspeÅ¡nog slanja
       _processingLocks.remove(dedupeKey);
     } catch (e) {
-      // Oslobodi lock i u slučaju greške
+      // Oslobodi lock i u sluÄaju greÅ¡ke
       _processingLocks.remove(dedupeKey);
     }
   }
@@ -241,7 +241,7 @@ class V2LocalNotificationService {
 
           // Specijalna obrada za alternative u pozadini
           if (data['type'] == 'v2_alternativa') {
-            // Čitanje iz alternative_1 i alternative_2 umesto JSONB niza
+            // ÄŒitanje iz alternative_1 i alternative_2 umesto JSONB niza
             List<String> parsedAlts = [];
             final alt1 = data['alternative_1']?.toString();
             final alt2 = data['alternative_2']?.toString();
@@ -262,22 +262,22 @@ class V2LocalNotificationService {
               alternatives: parsedAlts,
               body: body,
             );
-            return; // Već je prikazana specijalna notifikacija
+            return; // VeÄ‡ je prikazana specijalna notifikacija
           }
 
           if (data['notification_id'] != null) {
             dedupeKey = data['notification_id'].toString();
           }
         } catch (e) {
-          debugPrint('[V2LocalNotificationService] showNotificationFromBackground payload parse greška: $e');
+          debugPrint('[V2LocalNotificationService] showNotificationFromBackground payload parse greÅ¡ka: $e');
         }
       }
 
       if (dedupeKey.isEmpty) dedupeKey = '$title|$body';
 
-      // MUTEX LOCK - Sprečava race condition kada foreground i background handleri rade istovremeno
+      // MUTEX LOCK - SpreÄava race condition kada foreground i background handleri rade istovremeno
       if (_processingLocks[dedupeKey] == true) {
-        return; // Druga instanca već obrađuje ovu notifikaciju
+        return; // Druga instanca veÄ‡ obraÄ‘uje ovu notifikaciju
       }
       _processingLocks[dedupeKey] = true;
 
@@ -341,10 +341,10 @@ class V2LocalNotificationService {
         payload: payload,
       );
 
-      // Oslobodi lock nakon uspešnog slanja
+      // Oslobodi lock nakon uspeÅ¡nog slanja
       _processingLocks.remove(dedupeKey);
     } catch (e) {
-      // Oslobodi lock i u slučaju greške
+      // Oslobodi lock i u sluÄaju greÅ¡ke
       _processingLocks.remove(dedupeKey);
     }
   }
@@ -443,7 +443,7 @@ class V2LocalNotificationService {
         } catch (_) {}
       }
 
-      // GPS podsjetnik — otvori vozač ekran i auto-optimizuj rutu
+      // GPS podsjetnik â€” otvori vozaÄ ekran i auto-optimizuj rutu
       if (notificationType == 'gps_podsetnik') {
         await V2NotificationNavigationService.navigateToVozacScreenWithOptimize();
         return;
@@ -507,13 +507,13 @@ class V2LocalNotificationService {
       final danas = DateTime.now();
       final danKratica = V2DanUtils.danas();
 
-      // Traži putnika po imenu iz cache-a — 0 DB querija
+      // TraÅ¾i putnika po imenu iz cache-a â€” 0 DB querija
       final rm = V2MasterRealtimeManager.instance;
       final cached = rm.v2GetAllPutnici().where((p) => p['ime'] == putnikIme && p['status'] != 'neaktivan').firstOrNull;
       final putnikId = cached?['id'] as String?;
       if (putnikId == null) return null;
 
-      // Nađi njegovu današnju vožnju u v2_polasci
+      // NaÄ‘i njegovu danaÅ¡nju voÅ¾nju u v2_polasci
       final polazak = await supabase
           .from('v2_polasci')
           .select('grad, zeljeno_vreme')
@@ -541,7 +541,7 @@ class V2LocalNotificationService {
     }
   }
 
-  /// Handler za BC alternativa action button - sačuva izabrani termin
+  /// Handler za BC alternativa action button - saÄuva izabrani termin
   static Future<void> _handleBcAlternativaAction(NotificationResponse response) async {
     try {
       if (response.payload == null || response.actionId == null) return;
@@ -580,21 +580,21 @@ class V2LocalNotificationService {
           vreme: termin,
           grad: 'BC',
           tipPutnika: userType,
-          detalji: 'Prihvaćen alternativni termin BC (Preko notifikacije)',
+          detalji: 'PrihvaÄ‡en alternativni termin BC (Preko notifikacije)',
         );
       } catch (e) {
-        debugPrint('[V2LocalNotificationService] logPotvrda BC alt greška: $e');
+        debugPrint('[V2LocalNotificationService] logPotvrda BC alt greÅ¡ka: $e');
       }
 
-      // Pošalji push notifikaciju putniku
+      // PoÅ¡alji push notifikaciju putniku
       await V2RealtimeNotificationService.sendNotificationToPutnik(
         putnikId: putnikId,
-        title: '✅ Mesto osigurano!',
-        body: '✅ Mesto osigurano! Vaša rezervacija za $termin je potvrđena. Želimo vam ugodnu vožnju! 🚌',
+        title: 'âœ… Mesto osigurano!',
+        body: 'âœ… Mesto osigurano! VaÅ¡a rezervacija za $termin je potvrÄ‘ena. Å½elimo vam ugodnu voÅ¾nju! ðŸšŒ',
         data: {'type': 'bc_alternativa_confirmed', 'termin': termin},
       );
     } catch (e) {
-      debugPrint('[V2LocalNotificationService] _handleBcAlternativaAction greška: $e');
+      debugPrint('[V2LocalNotificationService] _handleBcAlternativaAction greÅ¡ka: $e');
     }
   }
 
@@ -637,21 +637,21 @@ class V2LocalNotificationService {
           vreme: termin,
           grad: 'VS',
           tipPutnika: userType,
-          detalji: 'Prihvaćen alternativni termin VS (Preko notifikacije)',
+          detalji: 'PrihvaÄ‡en alternativni termin VS (Preko notifikacije)',
         );
       } catch (e) {
-        debugPrint('[V2LocalNotificationService] logPotvrda VS greška: $e');
+        debugPrint('[V2LocalNotificationService] logPotvrda VS greÅ¡ka: $e');
       }
 
-      // Pošalji push notifikaciju putniku
+      // PoÅ¡alji push notifikaciju putniku
       await V2RealtimeNotificationService.sendNotificationToPutnik(
         putnikId: putnikId,
-        title: '✅ [VS] Termin potvrđen',
-        body: '✅ Mesto osigurano! Vaša rezervacija za $termin je potvrđena. Želimo vam ugodnu vožnju! 🚌',
+        title: 'âœ… [VS] Termin potvrÄ‘en',
+        body: 'âœ… Mesto osigurano! VaÅ¡a rezervacija za $termin je potvrÄ‘ena. Å½elimo vam ugodnu voÅ¾nju! ðŸšŒ',
         data: {'type': 'vs_alternativa_confirmed', 'termin': termin},
       );
     } catch (e) {
-      debugPrint('[V2LocalNotificationService] _handleVsAlternativaAction greška: $e');
+      debugPrint('[V2LocalNotificationService] _handleVsAlternativaAction greÅ¡ka: $e');
     }
   }
 
@@ -678,13 +678,13 @@ class V2LocalNotificationService {
 
       final actions = <AndroidNotificationAction>[];
 
-      // Dodaj prve dve alternative kao dugmiće
+      // Dodaj prve dve alternative kao dugmiÄ‡e
       for (int i = 0; i < alternatives.length && i < 2; i++) {
         final alt = alternatives[i];
         final displayTime = alt.length >= 5 ? alt.substring(0, 5) : alt;
         actions.add(AndroidNotificationAction(
           'prihvati_alt_$alt',
-          '✅ $displayTime',
+          'âœ… $displayTime',
           showsUserInterface: true,
         ));
       }
@@ -692,13 +692,13 @@ class V2LocalNotificationService {
       // Dugme za odbijanje (zatvaranje)
       actions.add(const AndroidNotificationAction(
         'odbij_alt',
-        '❌ Odbij',
+        'âŒ Odbij',
         cancelNotification: true,
       ));
 
       await flutterLocalNotificationsPlugin.show(
         DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        '🕐 Termin popunjen',
+        'ðŸ• Termin popunjen',
         body,
         NotificationDetails(
           android: AndroidNotificationDetails(
@@ -720,7 +720,7 @@ class V2LocalNotificationService {
         payload: payload,
       );
     } catch (e) {
-      debugPrint('[V2LocalNotificationService] showV2AlternativaNotification greška: $e');
+      debugPrint('[V2LocalNotificationService] showV2AlternativaNotification greÅ¡ka: $e');
     }
   }
 
@@ -739,7 +739,7 @@ class V2LocalNotificationService {
 
       final selectedTime = response.actionId!.replaceFirst('prihvati_alt_', '');
 
-      // Prihvati alternativu -> status postaje 'odobreno' -> trigger šalje push potvrde
+      // Prihvati alternativu -> status postaje 'odobreno' -> trigger Å¡alje push potvrde
       final success = await V2PolasciService.v2PrihvatiAlternativu(
         requestId: requestId,
         putnikId: putnikId,
@@ -752,7 +752,7 @@ class V2LocalNotificationService {
         debugPrint('[V2LocalNotificationService] _handleV2AlternativaAction: prihvatiAlternativu nije uspjelo');
       }
     } catch (e) {
-      debugPrint('[V2LocalNotificationService] _handleV2AlternativaAction greška: $e');
+      debugPrint('[V2LocalNotificationService] _handleV2AlternativaAction greÅ¡ka: $e');
     }
   }
 }
@@ -768,8 +768,8 @@ class V2WakeLockService {
 
   static const MethodChannel _wakeLockChannel = MethodChannel('com.gavra013.gavra_android/wakelock');
 
-  /// Pali ekran na određeno vreme (default 5 sekundi).
-  /// Koristi se kada stigne push notifikacija dok je telefon zaključan.
+  /// Pali ekran na odreÄ‘eno vreme (default 5 sekundi).
+  /// Koristi se kada stigne push notifikacija dok je telefon zakljuÄan.
   static Future<bool> wakeScreen({int durationMs = 5000}) async {
     try {
       final result = await _wakeLockChannel.invokeMethod<bool>('wakeScreen', {

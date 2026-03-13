@@ -11,69 +11,72 @@ import '../../utils/v2_dan_utils.dart';
 import '../../utils/v2_grad_adresa_validator.dart';
 import '../../utils/v2_vozac_cache.dart';
 
-/// ════════════════════════════════════════════════════════════════════════════
-/// V2MasterRealtimeManager — čist, novi singleton za v2_ tabele
+/// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/// V2MasterRealtimeManager â€” Äist, novi singleton za v2_ tabele
 ///
 /// PRAVILA:
-/// 1. Samo v2_ tabele — nikad stare (registrovani_putnici, itd.)
-/// 2. Cache ime = tačno ime tabele bez prefiksa: polasci, putnici, vozaci...
+/// 1. Samo v2_ tabele â€” nikad stare (registrovani_putnici, itd.)
+/// 2. Cache ime = taÄno ime tabele bez prefiksa: polasci, putnici, vozaci...
 /// 3. subscribe/unsubscribe ostaje isti pattern kao RealtimeManager
-/// 4. Inicijalizuje se JEDNOM iz main.dart — ne iz servisa
+/// 4. Inicijalizuje se JEDNOM iz main.dart â€” ne iz servisa
 ///
 /// CACHE MAPA:
-/// polasciCache     ← v2_polasci          (sedmični, svi aktivni dani)
-/// statistikaCache  ← v2_statistika_istorija (dnevni, filter po danas)
-/// auditLogCache    ← v2_audit_log           (posljednjih 200 zapisa, realtime feed)
-/// radniciCache     ← v2_radnici           (statički, svi aktivni)
-/// uceniciCache     ← v2_ucenici           (statički, svi aktivni)
-/// dnevniCache      ← v2_dnevni            (statički, svi aktivni)
-/// posiljkeCache    ← v2_posiljke          (statički, sve aktivne)
-/// vozaciCache      ← v2_vozaci            (statički)
-/// vozilaCache      ← v2_vozila            (statički)
-/// kapacitetCache   ← v2_kapacitet_polazaka (statički, aktivni)
-/// adreseCache      ← v2_adrese            (statički)
-/// rasporedCache    ← v2_vozac_raspored    (statički)
-/// vozacPutnikCache ← v2_vozac_putnik      (statički)
-/// lokacijeCache    ← v2_vozac_lokacije    (statički, aktivne)
-/// troskoviCache    ← v2_finansije_troskovi (statički, aktivni)
-/// pumpaCache       ← v2_pumpa_config      (statički)
-/// pinCache         ← v2_pin_zahtevi       (statički)
-/// settingsCache    ← v2_app_settings      (statički)
-/// ════════════════════════════════════════════════════════════════════════════
+/// polasciCache     â† v2_polasci          (sedmiÄni, svi aktivni dani)
+/// statistikaCache  â† v2_statistika_istorija (dnevni, filter po danas)
+/// auditLogCache    â† v2_audit_log           (posljednjih 200 zapisa, realtime feed)
+/// radniciCache     â† v2_radnici           (statiÄki, svi aktivni)
+/// uceniciCache     â† v2_ucenici           (statiÄki, svi aktivni)
+/// dnevniCache      â† v2_dnevni            (statiÄki, svi aktivni)
+/// posiljkeCache    â† v2_posiljke          (statiÄki, sve aktivne)
+/// vozaciCache      â† v2_vozaci            (statiÄki)
+/// vozilaCache      â† v2_vozila            (statiÄki)
+/// kapacitetCache   â† v2_kapacitet_polazaka (statiÄki, aktivni)
+/// adreseCache      â† v3_adrese            (statiÄki)
+/// rasporedCache    â† v2_vozac_raspored    (statiÄki)
+/// vozacPutnikCache â† v2_vozac_putnik      (statiÄki)
+/// lokacijeCache    â† v2_vozac_lokacije    (statiÄki, aktivne)
+/// troskoviCache    â† v2_finansije_troskovi (statiÄki, aktivni)
+/// pumpaCache       â† v2_pumpa_config      (statiÄki)
+/// pinCache         â† v2_pin_zahtevi       (statiÄki)
+/// settingsCache    â† v2_app_settings      (statiÄki)
+/// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class V2MasterRealtimeManager {
   V2MasterRealtimeManager._internal();
 
   static final V2MasterRealtimeManager _instance = V2MasterRealtimeManager._internal();
   static V2MasterRealtimeManager get instance => _instance;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // IN-MEMORY CACHE — ključ je uvek 'id' reda
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // IN-MEMORY CACHE â€” kljuÄ je uvek 'id' reda
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // --- Dnevni (čisti se na novi dan) ---
-  /// v2_polasci — svi aktivni dani (pon–pet)
+  // --- Dnevni (Äisti se na novi dan) ---
+  /// v2_polasci â€” svi aktivni dani (ponâ€“pet)
   final Map<String, Map<String, dynamic>> polasciCache = {};
 
-  /// v2_statistika_istorija za tekući dan
+  /// v2_statistika_istorija za tekuÄ‡i dan
   final Map<String, Map<String, dynamic>> statistikaCache = {};
 
-  /// v2_audit_log — posljednjih N zapisa za tekući dan (realtime feed)
+  /// v2_audit_log â€” posljednjih N zapisa za tekuÄ‡i dan (realtime feed)
   final Map<String, Map<String, dynamic>> auditLogCache = {};
 
-  // --- Putnici (svi aktivni, statički) ---
-  /// v2_radnici — aktivni radnici
+  // --- Putnici (svi aktivni, statiÄki) ---
+  /// v2_radnici â€” aktivni radnici
   final Map<String, Map<String, dynamic>> radniciCache = {};
 
-  /// v2_ucenici — aktivni učenici
+  /// v2_ucenici â€” aktivni uÄenici
   final Map<String, Map<String, dynamic>> uceniciCache = {};
 
-  /// v2_dnevni — aktivni dnevni putnici
+  /// v2_dnevni â€” aktivni dnevni putnici
   final Map<String, Map<String, dynamic>> dnevniCache = {};
 
-  /// v2_posiljke — aktivne pošiljke
+  /// v2_posiljke â€” aktivne poÅ¡iljke
   final Map<String, Map<String, dynamic>> posiljkeCache = {};
 
-  // --- Infrastruktura (statički) ---
+  /// v3_putnici â€” svi aktivni putnici (unificirana tabela)
+  final Map<String, Map<String, dynamic>> v3PutniciCache = {};
+
+  // --- Infrastruktura (statiÄki) ---
   /// v2_vozaci
   final Map<String, Map<String, dynamic>> vozaciCache = {};
 
@@ -83,7 +86,7 @@ class V2MasterRealtimeManager {
   /// v2_kapacitet_polazaka (samo aktivan=true)
   final Map<String, Map<String, dynamic>> kapacitetCache = {};
 
-  /// v2_adrese
+  /// v3_adrese
   final Map<String, Map<String, dynamic>> adreseCache = {};
 
   /// v2_vozac_raspored
@@ -101,10 +104,10 @@ class V2MasterRealtimeManager {
   /// v2_pumpa_config
   final Map<String, Map<String, dynamic>> pumpaCache = {};
 
-  /// v2_pumpa_punjenja — sva punjenja kućne pumpe, sortirana po datum DESC
+  /// v2_pumpa_punjenja â€” sva punjenja kuÄ‡ne pumpe, sortirana po datum DESC
   final Map<String, Map<String, dynamic>> punjenjaCache = {};
 
-  /// v2_pumpa_tocenja — sva točenja po vozilu, sortirana po datum DESC
+  /// v2_pumpa_tocenja â€” sva toÄenja po vozilu, sortirana po datum DESC
   final Map<String, Map<String, dynamic>> tocenjaCache = {};
 
   /// v2_pin_zahtevi
@@ -113,17 +116,17 @@ class V2MasterRealtimeManager {
   /// v2_app_settings
   final Map<String, Map<String, dynamic>> settingsCache = {};
 
-  /// v2_racuni — firma podaci po putnik_id (keyed by putnik_id)
+  /// v2_racuni â€” firma podaci po putnik_id (keyed by putnik_id)
   final Map<String, Map<String, dynamic>> racuniCache = {};
 
-  /// Reverse lookup: racun UUID → putnik_id (za O(1) DELETE handling)
+  /// Reverse lookup: racun UUID â†’ putnik_id (za O(1) DELETE handling)
   final Map<String, String> _racuniIdToPutnikId = {};
 
   // --- V3 GETTERS & LOOKUPS ---
-  /// Vraća vozača po id-u iz cache-a
+  /// VraÄ‡a vozaÄa po id-u iz cache-a
   Map<String, dynamic>? v2GetVozacById(String id) => vozaciCache[id];
 
-  /// Brza pretraga id-a vozača po imenu — O(1)
+  /// Brza pretraga id-a vozaÄa po imenu â€” O(1)
   String? v2GetVozacIdByIme(String ime) {
     if (ime.isEmpty) return null;
     final lIme = ime.toLowerCase();
@@ -133,7 +136,7 @@ class V2MasterRealtimeManager {
     return null;
   }
 
-  /// Individualna dodjela (v2_vozac_putnik) — O(1)
+  /// Individualna dodjela (v2_vozac_putnik) â€” O(1)
   String? v3FindIndividualnaDodjela(String putnikId, String dan) {
     if (putnikId.isEmpty || dan.isEmpty) return null;
     final lDan = dan.toLowerCase();
@@ -145,7 +148,7 @@ class V2MasterRealtimeManager {
     return null;
   }
 
-  /// Vozač iz rasporeda (v2_vozac_raspored) — O(1)
+  /// VozaÄ iz rasporeda (v2_vozac_raspored) â€” O(1)
   String? v3GetVozacIzRasporeda(String grad, String dan, String vreme) {
     if (grad.isEmpty || dan.isEmpty || vreme.isEmpty) return null;
     final lDan = dan.toLowerCase();
@@ -161,7 +164,7 @@ class V2MasterRealtimeManager {
     return null;
   }
 
-  /// Brzi lookup adresa po gradu — O(1)
+  /// Brzi lookup adresa po gradu â€” O(1)
   Map<String, Map<String, dynamic>>? get v3AdreseGradCache {
     final Map<String, Map<String, Map<String, dynamic>>> cache = {};
     for (final row in adreseCache.values) {
@@ -175,7 +178,7 @@ class V2MasterRealtimeManager {
     return cache.cast<String, Map<String, Map<String, dynamic>>>() as dynamic;
   }
 
-  /// Map: Ime Vozača -> ID Vozača (O(1))
+  /// Map: Ime VozaÄa -> ID VozaÄa (O(1))
   Map<String, String> get v3VozaciIme2Id {
     final Map<String, String> map = {};
     for (final v in vozaciCache.values) {
@@ -186,7 +189,7 @@ class V2MasterRealtimeManager {
     return map;
   }
 
-  /// Brzi lookup točenja po vozilu — O(1)
+  /// Brzi lookup toÄenja po vozilu â€” O(1)
   Map<String, Map<String, Map<String, dynamic>>> get v3TocenjaVoziloCache {
     final Map<String, Map<String, Map<String, dynamic>>> cache = {};
     for (final row in tocenjaCache.values) {
@@ -200,7 +203,29 @@ class V2MasterRealtimeManager {
     return cache;
   }
 
-  /// Stream polazaka za konkretan dan — O(1) filtering
+  /// NOVO: Stream zbirnog Home View-a (v2_home) â€” O(1) fetch gotovih podataka iz baze.
+  /// Zamjenjuje v3StreamPutniciZaDan procesorski zahtjevno spajanje.
+  Stream<List<Map<String, dynamic>>> v2StreamHomeView(String dan) {
+    final lDan = dan.toLowerCase();
+    // Buduci da je v2_home SQL VIEW, on se ne moze direktno osluskivati preko Realtime-a
+    // u nekim verzijama Supabase-a, ali ovdje ga koristimo kao filter nad v2_polasci
+    // jer v2_home zapravo cita v2_polasci.
+    return v2StreamFromCache<List<Map<String, dynamic>>>(
+      tables: const ['v2_polasci'],
+      build: () {
+        final List<Map<String, dynamic>> results = [];
+        // Cita direktno iz polasciCache koji je vec u memoriji
+        for (final row in polasciCache.values) {
+          if ((row['dan']?.toString() ?? '').toLowerCase() == lDan) {
+            results.add(row);
+          }
+        }
+        return results;
+      },
+    );
+  }
+
+  /// Stream polazaka za konkretan dan â€” O(1) filtering
   Stream<List<Map<String, dynamic>>> v3StreamPutniciZaDan(String dan) {
     final lDan = dan.toLowerCase();
     return v2StreamFromCache<List<Map<String, dynamic>>>(
@@ -218,20 +243,20 @@ class V2MasterRealtimeManager {
   }
 
   // --- V3 OPTIMIZACIJA (Index-based caching) ---
-  /// v3PolasciCache — Key: putnik_id -> Value: Map(Dan, RedPodataka)
+  /// v3PolasciCache â€” Key: putnik_id -> Value: Map(Dan, RedPodataka)
   final Map<String, Map<String, Map<String, dynamic>>> v3PolasciCache = {};
 
-  /// v3PolasciModels — Instancirani V2Polazak objekti za O(1) streamove
+  /// v3PolasciModels â€” Instancirani V2Polazak objekti za O(1) streamove
   final Map<String, V2Polazak> v3PolasciModels = {};
 
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // State
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   String? _loadedDate;
   String? get loadedDate => _loadedDate;
 
-  /// Sedmica koja je učitana u polasciCache — koristi se u v2UpsertToCache
+  /// Sedmica koja je uÄitana u polasciCache â€” koristi se u v2UpsertToCache
   /// da se izbjegne neslaganje kada pocetakTekuceSedmice() promijeni vrijednost
   /// (npr. app pokrenut u petak, Realtime INSERT dolazi u subotu)
   String? _loadedSedmica;
@@ -239,41 +264,42 @@ class V2MasterRealtimeManager {
   bool _initialized = false;
   bool get isInitialized => _initialized;
 
-  /// Subscriptions za statičke tabele iz initialize() — drže _listenerCount >= 1
-  /// tako da vanjski unsubscribe() nikad ne može zatvoriti te kanale.
+  /// Subscriptions za statiÄke tabele iz initialize() â€” drÅ¾e _listenerCount >= 1
+  /// tako da vanjski unsubscribe() nikad ne moÅ¾e zatvoriti te kanale.
   final List<StreamSubscription<PostgresChangePayload>> _staticSubscriptions = [];
 
   /// Debounce timeri za derived service reinicijalizacije (vozaci, settings)
   final Map<String, Timer> _debounceTimers = {};
 
-  /// Debounce helper — poziva [fn] jednom nakon 300ms tišine za dati [key]
+  /// Debounce helper â€” poziva [fn] jednom nakon 300ms tiÅ¡ine za dati [key]
   void _debounceTimer(String key, void Function() fn) {
     _debounceTimers[key]?.cancel();
     _debounceTimers[key] = Timer(const Duration(milliseconds: 300), fn);
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> initialize() async {
     if (_initialized) {
       return;
     }
     if (!isSupabaseReady) {
-      debugPrint('❌ [V2MasterRealtimeManager] Supabase nije spreman');
+      debugPrint('âŒ [V2MasterRealtimeManager] Supabase nije spreman');
       return;
     }
     _loadedDate = _today();
 
-    // Pretplati se na sve tabele PRE nego što počne DB fetch — eliminise "mrtvu zonu"
-    // od ~100-500ms u kojoj Realtime event može stići a kanal još ne postoji.
+    // Pretplati se na sve tabele PRE nego Å¡to poÄne DB fetch â€” eliminise "mrtvu zonu"
+    // od ~100-500ms u kojoj Realtime event moÅ¾e stiÄ‡i a kanal joÅ¡ ne postoji.
     const staticTabele = [
       // Putnici
+      'v3_putnici',
       'v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke',
-      // Polasci — glavna dnevna tabela, mora biti permanentno subscribe-ovana
+      // Polasci â€” glavna dnevna tabela, mora biti permanentno subscribe-ovana
       'v2_polasci',
       // Infrastruktura
-      'v2_vozaci', 'v2_vozila', 'v2_adrese',
+      'v2_vozaci', 'v2_vozila', 'v3_adrese',
       'v2_finansije_troskovi', 'v2_pumpa_config', 'v2_app_settings',
       'v2_statistika_istorija',
       // Raspored / putnik mapping / lokacije / kapacitet / pin
@@ -281,7 +307,7 @@ class V2MasterRealtimeManager {
       'v2_vozac_lokacije', 'v2_pin_zahtevi',
       'v2_racuni',
       'v2_audit_log',
-      // Gorivo — pumpa punjenja i točenja (autorefresh za v2_gorivo_screen)
+      // Gorivo â€” pumpa punjenja i toÄenja (autorefresh za v2_gorivo_screen)
       'v2_pumpa_punjenja', 'v2_pumpa_tocenja',
     ];
     for (final tabela in staticTabele) {
@@ -299,14 +325,14 @@ class V2MasterRealtimeManager {
     ]).timeout(
       const Duration(seconds: 30),
       onTimeout: () {
-        debugPrint('⚠️ [RM] initialize() timeout — nastavlja sa djelimično popunjenim cache-om');
+        debugPrint('âš ï¸ [RM] initialize() timeout â€” nastavlja sa djelimiÄno popunjenim cache-om');
         return [];
       },
     );
 
     _initialized = true;
 
-    // Obavijesti sve stream-ove koji su čekali na isInitialized — triggera inicijalni emit
+    // Obavijesti sve stream-ove koji su Äekali na isInitialized â€” triggera inicijalni emit
     if (!_cacheChangeController.isClosed) {
       for (final table in const [
         'v2_polasci',
@@ -323,10 +349,10 @@ class V2MasterRealtimeManager {
     }
 
     debugPrint(
-        '✅ [RM] polasci=${polasciCache.length} radnici=${radniciCache.length} ucenici=${uceniciCache.length} dnevni=${dnevniCache.length} vozaci=${vozaciCache.length}');
+        'âœ… [RM] polasci=${polasciCache.length} radnici=${radniciCache.length} ucenici=${uceniciCache.length} dnevni=${dnevniCache.length} vozaci=${vozaciCache.length}');
   }
 
-  /// Forsira refresh polasciCache bez promjene dana (npr. nakon ručnog dodavanja termina)
+  /// Forsira refresh polasciCache bez promjene dana (npr. nakon ruÄnog dodavanja termina)
   Future<void> v2RefreshPolasciCache() async {
     polasciCache.clear();
     await _loadPolasciCache();
@@ -355,8 +381,8 @@ class V2MasterRealtimeManager {
     }
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadPolasciCache() async {
     try {
@@ -391,11 +417,11 @@ class V2MasterRealtimeManager {
         polasciCache[normalized['id'].toString()] = normalized;
       }
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _loadPolasciCache: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _loadPolasciCache: $e');
     }
   }
 
-  /// Puni/osvežava statistikaCache za tekući dan — poziva se on-demand (pazar, profil, lista)
+  /// Puni/osveÅ¾ava statistikaCache za tekuÄ‡i dan â€” poziva se on-demand (pazar, profil, lista)
   Future<void> v2LoadStatistikaCache() async {
     try {
       final rows = await supabase
@@ -411,7 +437,7 @@ class V2MasterRealtimeManager {
         statistikaCache[row['id'].toString()] = Map<String, dynamic>.from(row);
       }
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _loadStatistikaCache: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _loadStatistikaCache: $e');
     }
   }
 
@@ -462,7 +488,7 @@ class V2MasterRealtimeManager {
         posiljkeCache[row['id'].toString()] = _tagRow(row, 'v2_posiljke');
       }
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _loadPutniciCaches: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _loadPutniciCaches: $e');
     }
   }
 
@@ -481,7 +507,7 @@ class V2MasterRealtimeManager {
                 'plocice_datum, plocice_km, plocice_prednje_datum, plocice_prednje_km, '
                 'plocice_zadnje_datum, plocice_zadnje_km, trap_datum, trap_km, radio'),
         supabase.from('v2_kapacitet_polazaka').select('id, grad, vreme, max_mesta, aktivan').eq('aktivan', true),
-        supabase.from('v2_adrese').select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at'),
+        supabase.from('v3_adrese').select('id, naziv, grad, gps_lat, gps_lng, created_at, updated_at'),
         supabase.from('v2_vozac_raspored').select('id, dan, grad, vreme, vozac_id, created_at, updated_at'),
         supabase
             .from('v2_vozac_putnik')
@@ -515,14 +541,14 @@ class V2MasterRealtimeManager {
       _fillCache(pinCache, results[9]);
       _fillCache(settingsCache, results[10]);
 
-      // Osvježi V2VozacCache i AppSettings paralelno — oba čitaju iz već popunjenih cache-ova
+      // OsvjeÅ¾i V2VozacCache i AppSettings paralelno â€” oba Äitaju iz veÄ‡ popunjenih cache-ova
       await Future.wait([V2VozacCache.initialize(), V2AppSettingsService.initialize()]);
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _loadInfraCache: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _loadInfraCache: $e');
     }
   }
 
-  /// Učitava sve v2_racuni zapise u racuniCache (keyed by putnik_id)
+  /// UÄitava sve v2_racuni zapise u racuniCache (keyed by putnik_id)
   Future<void> _loadRacuniCache() async {
     try {
       final rows = await supabase.from('v2_racuni').select(
@@ -538,11 +564,11 @@ class V2MasterRealtimeManager {
         }
       }
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _loadRacuniCache: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _loadRacuniCache: $e');
     }
   }
 
-  /// Učitava posljednjih 200 audit log zapisa u auditLogCache (keyed by id).
+  /// UÄitava posljednjih 200 audit log zapisa u auditLogCache (keyed by id).
   Future<void> _loadAuditLogCache() async {
     try {
       final rows = await supabase
@@ -556,11 +582,11 @@ class V2MasterRealtimeManager {
         auditLogCache[row['id'].toString()] = Map<String, dynamic>.from(row);
       }
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _loadAuditLogCache: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _loadAuditLogCache: $e');
     }
   }
 
-  /// Učitava v2_pumpa_punjenja i v2_pumpa_tocenja u cache (gorivo screen autorefresh)
+  /// UÄitava v2_pumpa_punjenja i v2_pumpa_tocenja u cache (gorivo screen autorefresh)
   Future<void> _loadPumpaGorivoCache() async {
     try {
       final results = await Future.wait([
@@ -584,14 +610,14 @@ class V2MasterRealtimeManager {
         tocenjaCache[row['id'].toString()] = Map<String, dynamic>.from(row);
       }
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _loadPumpaGorivoCache: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _loadPumpaGorivoCache: $e');
     }
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  /// Ažurira odgovarajući cache na INSERT/UPDATE event
+  /// AÅ¾urira odgovarajuÄ‡i cache na INSERT/UPDATE event
   void v2UpsertToCache(String table, Map<String, dynamic> record) {
     final id = record['id']?.toString();
     if (id == null) return;
@@ -606,7 +632,7 @@ class V2MasterRealtimeManager {
       }
     }
 
-    // v2_racuni je keyed by putnik_id (ne id) — poseban handling
+    // v2_racuni je keyed by putnik_id (ne id) â€” poseban handling
     if (table == 'v2_racuni') {
       final putnikId = record['putnik_id']?.toString();
       if (putnikId != null) {
@@ -620,13 +646,13 @@ class V2MasterRealtimeManager {
     final target = _cacheForTable(table);
     if (target == null) return;
 
-    // statistikaCache je dnevni — prihvati samo zapise za _loadedDate
+    // statistikaCache je dnevni â€” prihvati samo zapise za _loadedDate
     if (table == 'v2_statistika_istorija') {
       final datum = record['datum']?.toString();
       if (datum != null && datum != _loadedDate) return;
     }
 
-    // polasciCache drži samo aktivne statuse za tekuću sedmicu — ukloni zapis ako status nije aktivan ili je iz druge sedmice
+    // polasciCache drÅ¾i samo aktivne statuse za tekuÄ‡u sedmicu â€” ukloni zapis ako status nije aktivan ili je iz druge sedmice
     if (table == 'v2_polasci') {
       const aktivniStatusi = {'obrada', 'odobreno', 'otkazano', 'odbijeno', 'pokupljen'};
       final status = record['status']?.toString();
@@ -635,14 +661,14 @@ class V2MasterRealtimeManager {
         if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
         return;
       }
-      // Normalizuj datum_sedmice na yyyy-MM-dd (Realtime šalje ISO sa sekundama)
+      // Normalizuj datum_sedmice na yyyy-MM-dd (Realtime Å¡alje ISO sa sekundama)
       if (record['datum_sedmice'] != null) {
         record = {...record, 'datum_sedmice': record['datum_sedmice'].toString().split('T').first};
       }
-      // Ignoriši zapise koji nisu iz sedmice koja je učitana u cache
+      // IgnoriÅ¡i zapise koji nisu iz sedmice koja je uÄitana u cache
       // Koristimo _loadedSedmica (snapshot iz _loadPolasciCache) umjesto
-      // dinamičkog pocetakTekuceSedmice() koji može promijeniti vrijednost
-      // ako se sedmica promijeni dok je app otvoren (npr. petak→subota)
+      // dinamiÄkog pocetakTekuceSedmice() koji moÅ¾e promijeniti vrijednost
+      // ako se sedmica promijeni dok je app otvoren (npr. petakâ†’subota)
       final recordSedmica = record['datum_sedmice']?.toString();
       final targetSedmica = _loadedSedmica ?? V2DanUtils.pocetakTekuceSedmice();
       if (recordSedmica != null && recordSedmica != targetSedmica) {
@@ -652,7 +678,7 @@ class V2MasterRealtimeManager {
       }
     }
 
-    // pinCache sadrži samo zahtjeve sa status='ceka' — ako status nije 'ceka', ukloni iz cache-a
+    // pinCache sadrÅ¾i samo zahtjeve sa status='ceka' â€” ako status nije 'ceka', ukloni iz cache-a
     if (table == 'v2_pin_zahtevi') {
       final status = record['status']?.toString();
       if (status != null && status != 'ceka') {
@@ -662,21 +688,21 @@ class V2MasterRealtimeManager {
       }
     }
 
-    // Sačuvaj postojeći _tabela tag — realtime payload ne sadrži _tabela
+    // SaÄuvaj postojeÄ‡i _tabela tag â€” realtime payload ne sadrÅ¾i _tabela
     final existingTabela = target[id]?['_tabela'] ?? table;
-    // Putnik tabele zahtijevaju _tagRow — dodaje '_tabela' i 'broj_telefona' alias
-    // (važno za Realtime INSERT koji ne prolazi kroz _loadPutniciCaches)
+    // Putnik tabele zahtijevaju _tagRow â€” dodaje '_tabela' i 'broj_telefona' alias
+    // (vaÅ¾no za Realtime INSERT koji ne prolazi kroz _loadPutniciCaches)
     if (putnikTabele.contains(table)) {
       target[id] = _tagRow({...record, '_tabela': existingTabela}, table);
     } else {
       target[id] = {...record, '_tabela': existingTabela};
     }
-    // Poništi cached listu putnika ako se promijenio putnik cache
+    // PoniÅ¡ti cached listu putnika ako se promijenio putnik cache
     if (putnikTabele.contains(table)) _invalidatePutniciCache();
     if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
 
-    // Osvježi derived services uz debounce — sprečava višestruke reinicijalizacije
-    // pri bulk Realtime eventima (npr. 5 vozača UPDATE odjednom)
+    // OsvjeÅ¾i derived services uz debounce â€” spreÄava viÅ¡estruke reinicijalizacije
+    // pri bulk Realtime eventima (npr. 5 vozaÄa UPDATE odjednom)
     if (table == 'v2_app_settings') {
       _debounceTimer('_settings', () => V2AppSettingsService.initialize());
     } else if (table == 'v2_vozaci') {
@@ -702,8 +728,8 @@ class V2MasterRealtimeManager {
       }
     }
 
-    // v2_racuni: keyed by putnik_id, ali Realtime DELETE payload šalje record 'id' (UUID reda)
-    // Trebamo pronaći putnik_id koji odgovara tom id-u
+    // v2_racuni: keyed by putnik_id, ali Realtime DELETE payload Å¡alje record 'id' (UUID reda)
+    // Trebamo pronaÄ‡i putnik_id koji odgovara tom id-u
     if (table == 'v2_racuni') {
       final putnikId = _racuniIdToPutnikId.remove(id);
       if (putnikId != null) {
@@ -717,18 +743,18 @@ class V2MasterRealtimeManager {
     if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
   }
 
-  /// Optimistički patch — ažurira samo određena polja postojećeg cache reda i odmah emituje onCacheChanged.
-  /// Koristi se nakon lokalnog DB write-a da se UI odmah osvježi bez čekanja WebSocket event-a.
+  /// OptimistiÄki patch â€” aÅ¾urira samo odreÄ‘ena polja postojeÄ‡eg cache reda i odmah emituje onCacheChanged.
+  /// Koristi se nakon lokalnog DB write-a da se UI odmah osvjeÅ¾i bez Äekanja WebSocket event-a.
   void v2PatchCache(String table, String id, Map<String, dynamic> fields) {
     final target = _cacheForTable(table);
     if (target == null) return;
     final existing = target[id];
-    if (existing == null) return; // red ne postoji u cache-u — WebSocket će ga dodati
+    if (existing == null) return; // red ne postoji u cache-u â€” WebSocket Ä‡e ga dodati
     target[id] = {...existing, ...fields};
     if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
   }
 
-  /// O(1) lookup: ime tabele → odgovarajući cache map
+  /// O(1) lookup: ime tabele â†’ odgovarajuÄ‡i cache map
   late final Map<String, Map<String, Map<String, dynamic>>> _tableToCache = {
     'v2_polasci': polasciCache,
     'v2_statistika_istorija': statistikaCache,
@@ -739,7 +765,7 @@ class V2MasterRealtimeManager {
     'v2_vozaci': vozaciCache,
     'v2_vozila': vozilaCache,
     'v2_kapacitet_polazaka': kapacitetCache,
-    'v2_adrese': adreseCache,
+    'v3_adrese': adreseCache,
     'v2_vozac_raspored': rasporedCache,
     'v2_vozac_putnik': vozacPutnikCache,
     'v2_vozac_lokacije': lokacijeCache,
@@ -750,19 +776,20 @@ class V2MasterRealtimeManager {
     'v2_pin_zahtevi': pinCache,
     'v2_app_settings': settingsCache,
     'v2_audit_log': auditLogCache,
-    // v2_racuni intentionally excluded — keyed by putnik_id, handled separately in upsertToCache
+    'v3_putnici': v3PutniciCache,
+    // v2_racuni intentionally excluded â€” keyed by putnik_id, handled separately in upsertToCache
   };
 
-  /// Vraća odgovarajući cache map po imenu tabele — O(1)
+  /// VraÄ‡a odgovarajuÄ‡i cache map po imenu tabele â€” O(1)
   Map<String, Map<String, dynamic>>? _cacheForTable(String table) {
     final cache = _tableToCache[table];
-    if (cache == null) debugPrint('⚠️ [V2MasterRealtimeManager] Nepoznata tabela za cache: $table');
+    if (cache == null) debugPrint('âš ï¸ [V2MasterRealtimeManager] Nepoznata tabela za cache: $table');
     return cache;
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // CHANNEL MANAGEMENT — subscribe / unsubscribe
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // CHANNEL MANAGEMENT â€” subscribe / unsubscribe
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   final Map<String, RealtimeChannel> _channels = {};
   final Map<String, StreamController<PostgresChangePayload>> _controllers = {};
@@ -775,10 +802,10 @@ class V2MasterRealtimeManager {
   Stream<String> get onCacheChanged => _cacheChangeController.stream;
 
   /// Pretplati se na promene u tabeli.
-  /// Više listenera može deliti isti channel.
+  /// ViÅ¡e listenera moÅ¾e deliti isti channel.
   Stream<PostgresChangePayload> subscribe(String table) {
     if (!isSupabaseReady) {
-      debugPrint('❌ [V2MasterRealtimeManager] Cannot subscribe "$table": Supabase not ready');
+      debugPrint('âŒ [V2MasterRealtimeManager] Cannot subscribe "$table": Supabase not ready');
       return const Stream.empty();
     }
 
@@ -797,7 +824,7 @@ class V2MasterRealtimeManager {
     return _controllers[table]!.stream;
   }
 
-  /// Odjavi se sa tabele — channel se zatvara kad nema više listenera
+  /// Odjavi se sa tabele â€” channel se zatvara kad nema viÅ¡e listenera
   void unsubscribe(String table) {
     _listenerCount[table] = (_listenerCount[table] ?? 1) - 1;
     if ((_listenerCount[table] ?? 0) <= 0) {
@@ -843,7 +870,7 @@ class V2MasterRealtimeManager {
     _listenerCount.remove(table);
   }
 
-  /// Reload cache za datu tabelu nakon reconnecta — pokriva stale podatke iz perioda disconnecta.
+  /// Reload cache za datu tabelu nakon reconnecta â€” pokriva stale podatke iz perioda disconnecta.
   /// Za polasci/statistika koristi posebne load metode; za infra tabele radi direktan DB upit.
   Future<void> _reloadCacheForTable(String table) async {
     try {
@@ -869,10 +896,10 @@ class V2MasterRealtimeManager {
           _cacheChangeController.add('v2_pumpa_tocenja');
         }
       } else {
-        // Generički infra reload — direktan upit, fill u odgovarajući cache
+        // GeneriÄki infra reload â€” direktan upit, fill u odgovarajuÄ‡i cache
         final targetCache = _cacheForTable(table);
         if (targetCache == null) return;
-        // Primijeni iste filtere kao pri inicijalnom učitavanju
+        // Primijeni iste filtere kao pri inicijalnom uÄitavanju
         final query = switch (table) {
           'v2_radnici' => supabase
               .from(table)
@@ -915,7 +942,7 @@ class V2MasterRealtimeManager {
         if (!_cacheChangeController.isClosed) _cacheChangeController.add(table);
       }
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] _reloadCacheForTable "$table": $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] _reloadCacheForTable "$table": $e');
     }
   }
 
@@ -930,7 +957,7 @@ class V2MasterRealtimeManager {
         break;
 
       case RealtimeSubscribeStatus.channelError:
-        debugPrint('❌ [V2MasterRealtimeManager] Channel error "$table": $error');
+        debugPrint('âŒ [V2MasterRealtimeManager] Channel error "$table": $error');
         _scheduleReconnect(table);
         break;
 
@@ -953,7 +980,7 @@ class V2MasterRealtimeManager {
   void _scheduleReconnect(String table, {bool immediate = false}) {
     _reconnectTimers[table]?.cancel();
 
-    // Eksponencijalni backoff: 3, 6, 10, 20, 30, 60s — max 60s
+    // Eksponencijalni backoff: 3, 6, 10, 20, 30, 60s â€” max 60s
     const delays = [3, 6, 10, 20, 30, 60];
     final attempt = (_reconnectAttempts[table] ?? 0).clamp(0, delays.length - 1);
     final delay = immediate ? 0 : delays[attempt];
@@ -974,7 +1001,7 @@ class V2MasterRealtimeManager {
         _channels.remove(table);
       }
 
-      // Kratka pauza da SDK završi čišćenje kanala
+      // Kratka pauza da SDK zavrÅ¡i ÄiÅ¡Ä‡enje kanala
       await Future.delayed(const Duration(milliseconds: 200));
 
       if ((_listenerCount[table] ?? 0) <= 0) {
@@ -985,24 +1012,24 @@ class V2MasterRealtimeManager {
     });
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // LOOKUP HELPERS — česte operacije iz servisa/screena
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // LOOKUP HELPERS â€” Äeste operacije iz servisa/screena
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  /// Vraća ime putnika iz odgovarajućeg cache-a po putnik_tabela + putnik_id
+  /// VraÄ‡a ime putnika iz odgovarajuÄ‡eg cache-a po putnik_tabela + putnik_id
   String? getIme(String putnikTabela, String putnikId) {
     final cache = _cacheForTable(putnikTabela);
     return cache?[putnikId]?['ime'] as String?;
   }
 
-  /// Cached lista svih putnika — poništava se samo kad se putnik cache promijeni
+  /// Cached lista svih putnika â€” poniÅ¡tava se samo kad se putnik cache promijeni
   List<Map<String, dynamic>>? _allPutniciCache;
 
-  /// Poništi _allPutniciCache kad se promijeni bilo koji putnik cache.
+  /// PoniÅ¡ti _allPutniciCache kad se promijeni bilo koji putnik cache.
   /// Poziva se iz upsertToCache i removeFromCache.
   void _invalidatePutniciCache() => _allPutniciCache = null;
 
-  /// Vraća sve aktivne putnike iz sva 4 cache-a objedinjeno — O(1) za ponovljene pozive
+  /// VraÄ‡a sve aktivne putnike iz sva 4 cache-a objedinjeno â€” O(1) za ponovljene pozive
   List<Map<String, dynamic>> v2GetAllPutnici() {
     return _allPutniciCache ??= [
       ...radniciCache.values,
@@ -1012,13 +1039,13 @@ class V2MasterRealtimeManager {
     ];
   }
 
-  /// Vraća putnika po ID-u pretražujući sva 4 cache-a
+  /// VraÄ‡a putnika po ID-u pretraÅ¾ujuÄ‡i sva 4 cache-a
   Map<String, dynamic>? v2GetPutnikById(String id) {
     return radniciCache[id] ?? uceniciCache[id] ?? dnevniCache[id] ?? posiljkeCache[id];
   }
 
-  /// Sync čitanje polasciCache za dati dan (kratica 'pon'/'uto'/...) — 0 DB upita.
-  /// Enrichuje svaki polazak podacima putnika iz odgovarajućeg cache-a.
+  /// Sync Äitanje polasciCache za dati dan (kratica 'pon'/'uto'/...) â€” 0 DB upita.
+  /// Enrichuje svaki polazak podacima putnika iz odgovarajuÄ‡eg cache-a.
   /// Koristi se direktno iz StreamBuilder-a u HomeScreen-u.
   List<Map<String, dynamic>> v2GetPutniciZaDan(String dan) {
     final danKey = dan.toLowerCase();
@@ -1036,7 +1063,7 @@ class V2MasterRealtimeManager {
     return result;
   }
 
-  /// Stream putnika za dati dan — reaguje na sve relevantne cache promjene.
+  /// Stream putnika za dati dan â€” reaguje na sve relevantne cache promjene.
   /// Jedan stream po pozivu; koristi v2StreamFromCache pa ne zatvara controller.
   /// HomeScreen kreira JEDAN ovakav stream i mijenja dan kroz setState.
   Stream<List<Map<String, dynamic>>> v2StreamPutniciZaDan(String dan) => v2StreamFromCache<List<Map<String, dynamic>>>(
@@ -1052,17 +1079,17 @@ class V2MasterRealtimeManager {
         build: () => v2GetPutniciZaDan(dan),
       );
 
-  /// Vraća ime vozača iz cache-a
+  /// VraÄ‡a ime vozaÄa iz cache-a
   String? getVozacIme(String vozacId) {
     return vozaciCache[vozacId]?['ime'] as String?;
   }
 
-  /// Vraća naziv adrese iz cache-a
+  /// VraÄ‡a naziv adrese iz cache-a
   String? getAdresaNaziv(String adresaId) {
     return adreseCache[adresaId]?['naziv'] as String?;
   }
 
-  /// Vraća GPS koordinate adrese iz cache-a (null ako nisu upisane)
+  /// VraÄ‡a GPS koordinate adrese iz cache-a (null ako nisu upisane)
   Map<String, double>? getAdresaKoordinate(String adresaId) {
     final row = adreseCache[adresaId];
     if (row == null) return null;
@@ -1072,9 +1099,9 @@ class V2MasterRealtimeManager {
     return {'lat': lat, 'lng': lng};
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // PRIVATE HELPERS
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   static String _today() => DateTime.now().toIso8601String().split('T')[0];
 
@@ -1098,7 +1125,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Dodaje '_tabela' tag i 'broj_telefona' alias u red putnika.
-  /// v2_* tabele čuvaju broj u koloni 'telefon', ali enrichment očekuje 'broj_telefona'.
+  /// v2_* tabele Äuvaju broj u koloni 'telefon', ali enrichment oÄekuje 'broj_telefona'.
   static Map<String, dynamic> _tagRow(Map<String, dynamic> row, String tabela) {
     return {
       ...row,
@@ -1107,13 +1134,13 @@ class V2MasterRealtimeManager {
     };
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // WRITE OPERACIJE — jedino mesto za direktne upite ka bazi
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // WRITE OPERACIJE â€” jedino mesto za direktne upite ka bazi
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   static const List<String> putnikTabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
 
-  /// Ažurira putnika u datoj tabeli
+  /// AÅ¾urira putnika u datoj tabeli
   Future<Map<String, dynamic>> v2UpdatePutnik(
     String id,
     Map<String, dynamic> updates,
@@ -1148,7 +1175,7 @@ class V2MasterRealtimeManager {
   }
 
   /// Migrira putnika iz jedne tabele u drugu (isti UUID, novi tip).
-  /// Čuva v2_vozac_putnik, v2_polasci i v2_pin_zahtevi — samo menja tabelu putnika.
+  /// ÄŒuva v2_vozac_putnik, v2_polasci i v2_pin_zahtevi â€” samo menja tabelu putnika.
   Future<Map<String, dynamic>> v2MigratePutnikTabela(
     String id,
     Map<String, dynamic> data,
@@ -1163,7 +1190,7 @@ class V2MasterRealtimeManager {
     d.remove('_tabela');
     d.remove('tip');
 
-    // 1. Obriši iz stare tabele (vezane tabele se NE brišu — putnik_id ostaje isti)
+    // 1. ObriÅ¡i iz stare tabele (vezane tabele se NE briÅ¡u â€” putnik_id ostaje isti)
     await supabase.from(staraTabela).delete().eq('id', id);
     v2RemoveFromCache(staraTabela, id);
 
@@ -1172,7 +1199,7 @@ class V2MasterRealtimeManager {
     final result = {...row, '_tabela': novaTabela};
     v2UpsertToCache(novaTabela, result);
 
-    // 3. Ažuriraj putnik_tabela u v2_racuni ako postoji
+    // 3. AÅ¾uriraj putnik_tabela u v2_racuni ako postoji
     try {
       await supabase.from('v2_racuni').update({'putnik_tabela': novaTabela, 'updated_at': now}).eq('putnik_id', id);
       final cached = racuniCache[id];
@@ -1180,7 +1207,7 @@ class V2MasterRealtimeManager {
         racuniCache[id] = {...cached, 'putnik_tabela': novaTabela};
       }
     } catch (_) {
-      // v2_racuni nije obavezan — ignoriši ako ne postoji
+      // v2_racuni nije obavezan â€” ignoriÅ¡i ako ne postoji
     }
 
     if (!_cacheChangeController.isClosed) {
@@ -1191,10 +1218,10 @@ class V2MasterRealtimeManager {
     return result;
   }
 
-  /// Briše putnika i sve vezane podatke (trajno)
+  /// BriÅ¡e putnika i sve vezane podatke (trajno)
   Future<bool> v2DeletePutnik(String id, String tabela) async {
     try {
-      // Briši vezane podatke paralelno, pa tek onda putnika (FK constraint)
+      // BriÅ¡i vezane podatke paralelno, pa tek onda putnika (FK constraint)
       await Future.wait([
         supabase.from('v2_pin_zahtevi').delete().eq('putnik_id', id),
         supabase.from('v2_polasci').delete().eq('putnik_id', id),
@@ -1203,12 +1230,12 @@ class V2MasterRealtimeManager {
       await supabase.from(tabela).delete().eq('id', id);
       // Ukloni putnika iz glavnog cache-a
       v2RemoveFromCache(tabela, id);
-      // Odmah očisti sve vezane redove iz polasciCache i vozacPutnikCache
-      // (Realtime DELETE eventi bi stigli jedan po jedan — ovo ih preduhitruje)
+      // Odmah oÄisti sve vezane redove iz polasciCache i vozacPutnikCache
+      // (Realtime DELETE eventi bi stigli jedan po jedan â€” ovo ih preduhitruje)
       polasciCache.removeWhere((_, v) => v['putnik_id']?.toString() == id);
       vozacPutnikCache.removeWhere((_, v) => v['putnik_id']?.toString() == id);
       pinCache.removeWhere((_, v) => v['putnik_id']?.toString() == id);
-      // Očisti i racuniCache — keyed by putnik_id, plus reverse map
+      // OÄisti i racuniCache â€” keyed by putnik_id, plus reverse map
       final racunId = racuniCache[id]?['id']?.toString();
       racuniCache.remove(id);
       if (racunId != null) _racuniIdToPutnikId.remove(racunId);
@@ -1220,12 +1247,12 @@ class V2MasterRealtimeManager {
       }
       return true;
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] deletePutnik error: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] deletePutnik error: $e');
       return false;
     }
   }
 
-  /// Ažurira PIN putnika
+  /// AÅ¾urira PIN putnika
   Future<void> v2UpdatePin(String id, String noviPin, String tabela) async {
     try {
       final updatedAt = DateTime.now().toUtc().toIso8601String();
@@ -1233,10 +1260,10 @@ class V2MasterRealtimeManager {
         'pin': noviPin,
         'updated_at': updatedAt,
       }).eq('id', id);
-      // Optimistički ažuriraj cache bez čekanja Realtime eventa
+      // OptimistiÄki aÅ¾uriraj cache bez Äekanja Realtime eventa
       v2PatchCache(tabela, id, {'pin': noviPin, 'updated_at': updatedAt});
     } catch (e) {
-      debugPrint('❌ [V2MasterRealtimeManager] v2UpdatePin greška: $e');
+      debugPrint('âŒ [V2MasterRealtimeManager] v2UpdatePin greÅ¡ka: $e');
       rethrow;
     }
   }
@@ -1257,7 +1284,7 @@ class V2MasterRealtimeManager {
       }
       return row;
     } catch (e) {
-      debugPrint('❌ [RM] getFirma error: $e');
+      debugPrint('âŒ [RM] getFirma error: $e');
       return null;
     }
   }
@@ -1283,7 +1310,7 @@ class V2MasterRealtimeManager {
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     await supabase.from('v2_racuni').upsert(data, onConflict: 'putnik_id');
-    // Optimisticki azuriraj racuniCache odmah — ne cekaj Realtime event
+    // Optimisticki azuriraj racuniCache odmah â€” ne cekaj Realtime event
     final existing = racuniCache[putnikId];
     racuniCache[putnikId] = {...?existing, ...data};
     if (!_cacheChangeController.isClosed) _cacheChangeController.add('v2_racuni');
@@ -1301,16 +1328,16 @@ class V2MasterRealtimeManager {
       if (row == null) return null;
       return {...row, '_tabela': tabela};
     } catch (e) {
-      debugPrint('❌ [RM] v2GetByPin error ($tabela, pin=$pin): $e');
+      debugPrint('âŒ [RM] v2GetByPin error ($tabela, pin=$pin): $e');
       return null;
     }
   }
 
-  /// Dohvata putnika iz bilo koje od 4 tabele — prvo cache, pa DB
+  /// Dohvata putnika iz bilo koje od 4 tabele â€” prvo cache, pa DB
   Future<Map<String, dynamic>?> v2FindPutnikById(String id) async {
     final cached = v2GetPutnikById(id);
     if (cached != null) return cached;
-    // Upitaj sve 4 tabele paralelno — uzmi prvi non-null rezultat
+    // Upitaj sve 4 tabele paralelno â€” uzmi prvi non-null rezultat
     const cols =
         'id,ime,status,telefon,adresa_bc_id,adresa_vs_id,pin,email,treba_racun,cena,cena_po_danu,created_at,updated_at';
     final results = await Future.wait(
@@ -1323,12 +1350,12 @@ class V2MasterRealtimeManager {
     return null;
   }
 
-  /// Dohvata putnika po telefonu (prvo pretražuje cache, pa DB ako nije nađen)
+  /// Dohvata putnika po telefonu (prvo pretraÅ¾uje cache, pa DB ako nije naÄ‘en)
   Future<Map<String, dynamic>?> v2FindByTelefon(String telefon) async {
     if (telefon.isEmpty) return null;
     final normalized = V2GradAdresaValidator.normalizePhone(telefon);
 
-    // Prvo pretraži lokalni cache — 0 DB upita
+    // Prvo pretraÅ¾i lokalni cache â€” 0 DB upita
     for (final tabela in putnikTabele) {
       final cache = _cacheForTable(tabela);
       if (cache == null) continue;
@@ -1362,13 +1389,13 @@ class V2MasterRealtimeManager {
     return null;
   }
 
-  /// Generički stream iz cache-a — jedna logika za sve tabele.
+  /// GeneriÄki stream iz cache-a â€” jedna logika za sve tabele.
   ///
-  /// [tables] — lista tabela čije promjene aktiviraju osvježavanje.
-  /// [build]  — sinhron builder koji čita iz cache-a i vraća vrijednost.
+  /// [tables] â€” lista tabela Äije promjene aktiviraju osvjeÅ¾avanje.
+  /// [build]  â€” sinhron builder koji Äita iz cache-a i vraÄ‡a vrijednost.
   ///
   /// Koristi se u svim servisima umjesto ponovljenog StreamController boilerplatea.
-  /// Emituje odmah (Future.microtask) i zatim na svaku promjenu odgovarajućih tabela.
+  /// Emituje odmah (Future.microtask) i zatim na svaku promjenu odgovarajuÄ‡ih tabela.
   Stream<T> v2StreamFromCache<T>({
     required List<String> tables,
     required T Function() build,
@@ -1393,7 +1420,7 @@ class V2MasterRealtimeManager {
         sub = onCacheChanged.where(tables.contains).listen((_) => scheduleEmit());
       },
       onCancel: () async {
-        // Ne zatvaraj controller — broadcast stream može dobiti novog listenera
+        // Ne zatvaraj controller â€” broadcast stream moÅ¾e dobiti novog listenera
         debounce?.cancel();
         await sub?.cancel();
         sub = null;
@@ -1403,9 +1430,9 @@ class V2MasterRealtimeManager {
     return controller.stream;
   }
 
-  /// Stream aktivnih putnika iz cache-a — 0 DB upita
+  /// Stream aktivnih putnika iz cache-a â€” 0 DB upita
   Stream<List<V2RegistrovaniPutnik>> streamAktivniPutnici() => v2StreamFromCache<List<V2RegistrovaniPutnik>>(
-        tables: [...putnikTabele, 'v2_adrese'],
+        tables: [...putnikTabele, 'v3_adrese'],
         build: () => v2GetAllPutnici().map((row) {
           // Fix #6: Enrichuj adresu iz adreseCache umjesto JOIN-a koji ne postoji u cache-u
           final adresaBcId = row['adresa_bc_id']?.toString();
@@ -1427,8 +1454,8 @@ class V2MasterRealtimeManager {
           ..sort((a, b) => a.ime.toLowerCase().compareTo(b.ime.toLowerCase())),
       );
 
-  /// Stream audit log zapisa iz cache-a — 0 DB upita, sortiran created_at DESC.
-  /// Cache drži posljednjih 200 zapisa (punjenih pri init i Realtime INSERT).
+  /// Stream audit log zapisa iz cache-a â€” 0 DB upita, sortiran created_at DESC.
+  /// Cache drÅ¾i posljednjih 200 zapisa (punjenih pri init i Realtime INSERT).
   Stream<List<Map<String, dynamic>>> streamAuditLog() => v2StreamFromCache<List<Map<String, dynamic>>>(
         tables: ['v2_audit_log'],
         build: () => auditLogCache.values.toList()
@@ -1439,8 +1466,8 @@ class V2MasterRealtimeManager {
           }),
       );
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void dispose() {
     for (final sub in _staticSubscriptions) {

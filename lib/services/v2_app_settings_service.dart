@@ -8,20 +8,20 @@ import '../globals.dart';
 import '../services/realtime/v2_master_realtime_manager.dart';
 import '../services/v2_statistika_istorija_service.dart';
 
-/// Servis za globalna podešavanja aplikacije iz Supabase
+/// Servis za globalna podeÅ¡avanja aplikacije iz Supabase
 class V2AppSettingsService {
   V2AppSettingsService._();
 
-  /// Inicijalizuje podešavanja — čita iz rm.settingsCache (rm već sluša tabelu).
+  /// Inicijalizuje podeÅ¡avanja â€” Äita iz rm.settingsCache (rm veÄ‡ sluÅ¡a tabelu).
   static Future<void> initialize() => _loadSettings();
 
-  /// Učitaj sva podešavanja iz rm.settingsCache (nema DB upita)
+  /// UÄitaj sva podeÅ¡avanja iz rm.settingsCache (nema DB upita)
   static Future<void> _loadSettings() async {
     try {
       final rm = V2MasterRealtimeManager.instance;
       final response = rm.settingsCache['global'];
       if (response == null) {
-        debugPrint('[V2AppSettingsService] settingsCache nema "global" red — ostaju default vrednosti.');
+        debugPrint('[V2AppSettingsService] settingsCache nema "global" red â€” ostaju default vrednosti.');
         return;
       }
 
@@ -36,7 +36,7 @@ class V2AppSettingsService {
         storeUrlIos: response['store_url_ios'] as String?,
       );
     } catch (e) {
-      debugPrint('[V2AppSettingsService] _loadSettings greška: $e');
+      debugPrint('[V2AppSettingsService] _loadSettings greÅ¡ka: $e');
     }
   }
 
@@ -78,7 +78,7 @@ class V2AppSettingsService {
         updateInfoNotifier.value = null;
       }
     } catch (e) {
-      debugPrint('[V2AppSettingsService] _checkForUpdates greška: $e');
+      debugPrint('[V2AppSettingsService] _checkForUpdates greÅ¡ka: $e');
     }
   }
 
@@ -86,7 +86,7 @@ class V2AppSettingsService {
     return version.split('.').map((p) => int.tryParse(p.trim()) ?? 0).toList();
   }
 
-  /// Vraća true ako je [a] starija verzija od [b]
+  /// VraÄ‡a true ako je [a] starija verzija od [b]
   static bool _isOlderThan(List<int> a, List<int> b) {
     final len = a.length > b.length ? a.length : b.length;
     for (int i = 0; i < len; i++) {
@@ -108,33 +108,33 @@ class V2AppSettingsService {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      debugPrint('[V2AppSettingsService] openStore greška: $e');
+      debugPrint('[V2AppSettingsService] openStore greÅ¡ka: $e');
     }
   }
 
-  /// Postavi nav_bar_type (samo admin može)
+  /// Postavi nav_bar_type (samo admin moÅ¾e)
   static Future<void> setNavBarType(String type) async {
     final updatedAt = DateTime.now().toUtc().toIso8601String();
     try {
       await supabase.from('v2_app_settings').update({'nav_bar_type': type, 'updated_at': updatedAt}).eq('id', 'global');
     } catch (e) {
-      debugPrint('[V2AppSettingsService] setNavBarType DB greška: $e');
+      debugPrint('[V2AppSettingsService] setNavBarType DB greÅ¡ka: $e');
       rethrow;
     }
 
-    // Optimistički cache patch — odmah ažurira ovaj uređaj bez čekanja WebSocket event-a
+    // OptimistiÄki cache patch â€” odmah aÅ¾urira ovaj ureÄ‘aj bez Äekanja WebSocket event-a
     V2MasterRealtimeManager.instance.v2PatchCache('v2_app_settings', 'global', {
       'nav_bar_type': type,
       'updated_at': updatedAt,
     });
-    // Odmah primeni na notifier-e (kao što radi _loadSettings)
+    // Odmah primeni na notifier-e (kao Å¡to radi _loadSettings)
     navBarTypeNotifier.value = type;
 
     try {
       await V2StatistikaIstorijaService.logGeneric(
-          tip: 'admin_akcija', detalji: 'Promenjen red vožnje na: ${type.toUpperCase()}');
+          tip: 'admin_akcija', detalji: 'Promenjen red voÅ¾nje na: ${type.toUpperCase()}');
     } catch (e) {
-      debugPrint('[V2AppSettingsService] setNavBarType logGeneric greška: $e');
+      debugPrint('[V2AppSettingsService] setNavBarType logGeneric greÅ¡ka: $e');
     }
   }
 }

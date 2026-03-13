@@ -46,7 +46,7 @@ class V2HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin {
   bool _isLoading = true;
-  String _selectedDay = 'pon'; // kratica: 'pon','uto','sre','cet','pet' — postavlja se u initState
+  String _selectedDay = 'pon'; // kratica: 'pon','uto','sre','cet','pet' â€” postavlja se u initState
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00'; // inicijalna vrednost, overriduje se u initState
 
@@ -57,7 +57,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
 
   late final List<String> _sviPolasci;
 
-  /// Automatski selektuje najbliže vreme polaska za trenutni cas (BC grad).
+  /// Automatski selektuje najbliÅ¾e vreme polaska za trenutni cas (BC grad).
 
   @override
   void initState() {
@@ -66,12 +66,12 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     final vsList = V2RouteConfig.getVremenaByNavType('VS').map((v) => '$v VS').toList();
     _sviPolasci = [...bcList, ...vsList];
     final today = DateTime.now().weekday;
-    // Vikend → defaultuj na Ponedeljak (firma ne radi vikendom)
+    // Vikend â†’ defaultuj na Ponedeljak (firma ne radi vikendom)
     _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'pon' : V2DanUtils.danas();
     _streamBrojZahteva = V2PolasciService.v2StreamBrojZahteva();
-    // Jedan stream po trenutnom danu — v2StreamFromCache u RM-u ne zatvara controller
+    // Jedan stream po trenutnom danu â€” v2StreamFromCache u RM-u ne zatvara controller
     // kad nema listenera, pa swap dana u _onDayChanged kreira novi .map() wrapper
-    // koji se zakači na isti aktivni RM broadcast.
+    // koji se zakaÄi na isti aktivni RM broadcast.
     _putniciStream = V2PolasciService.streamPutniciZaDan(_selectedDay);
     _initializeData();
   }
@@ -79,7 +79,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   void _onDayChanged(String day) {
     setState(() {
       _selectedDay = day;
-      // Kreira novi .map() wrapper na isti RM broadcast stream — 0 DB upita, 0 WebSocket konekcija.
+      // Kreira novi .map() wrapper na isti RM broadcast stream â€” 0 DB upita, 0 WebSocket konekcija.
       _putniciStream = V2PolasciService.streamPutniciZaDan(day);
     });
   }
@@ -87,7 +87,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
   Future<void> _initializeData() async {
     try {
       await _initializeCurrentDriver();
-      // Preskočiti redirect ako V2VozacCache još nije inicijalizovan (race condition)
+      // PreskoÄiti redirect ako V2VozacCache joÅ¡ nije inicijalizovan (race condition)
       if (_currentDriver == null || (V2VozacCache.isInitialized && !V2VozacCache.isValidIme(_currentDriver))) {
         if (mounted) {
           Navigator.pushAndRemoveUntil(
@@ -130,7 +130,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
     if (mounted) _currentDriver = driver;
   }
 
-  /// ?? Bira polazak koji je najbliži trenutnom vremenu (bez setState — poziva se unutar setState bloka)
+  /// ?? Bira polazak koji je najbliÅ¾i trenutnom vremenu (bez setState â€” poziva se unutar setState bloka)
   void _selectClosestDeparture() {
     final now = DateTime.now();
     final currentMinutes = now.hour * 60 + now.minute;
@@ -246,7 +246,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
               ),
               body: Center(
                 child: Text(
-                  'Greška pri učitavanju: ${snapshot.error}',
+                  'GreÅ¡ka pri uÄitavanju: ${snapshot.error}',
                   style: const TextStyle(color: Colors.white),
                   textAlign: TextAlign.center,
                 ),
@@ -260,7 +260,7 @@ class _HomeScreenState extends State<V2HomeScreen> with TickerProviderStateMixin
           final Map<String, V2Putnik> uniqueZaPrikaz = {};
 
           for (final p in allPutnici) {
-            // Dan je već filtriran u streamPutniciZaDan — svi putnici su za _selectedDay
+            // Dan je veÄ‡ filtriran u streamPutniciZaDan â€” svi putnici su za _selectedDay
             final key = '${p.id}_${p.polazak}_${p.dan}';
             uniqueZaDan[key] = p;
             final normalizedStatus = V2TextUtils.normalizeText(p.status ?? '');
@@ -734,7 +734,7 @@ class _HomeScreenButton extends StatelessWidget {
             width: 1.5,
           ),
           borderRadius: BorderRadius.circular(12),
-          // no boxShadow ž keep transparent glass + border only
+          // no boxShadow Å¾ keep transparent glass + border only
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -817,7 +817,7 @@ Widget _homeGlassStatRow(String label, String value) {
   );
 }
 
-// ─── _StampajMenuButton ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ _StampajMenuButton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StampajMenuButton extends StatelessWidget {
   const _StampajMenuButton({
@@ -832,7 +832,7 @@ class _StampajMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      tooltip: 'štampaj',
+      tooltip: 'Å¡tampaj',
       offset: const Offset(0, -150),
       onSelected: (value) {
         if (value == 'spisak')
@@ -844,7 +844,7 @@ class _StampajMenuButton extends StatelessWidget {
       itemBuilder: (_) => const [
         PopupMenuItem(
           value: 'spisak',
-          child: Row(children: [Icon(Icons.list_alt, color: Colors.blue), SizedBox(width: 8), Text('štampaj spisak')]),
+          child: Row(children: [Icon(Icons.list_alt, color: Colors.blue), SizedBox(width: 8), Text('Å¡tampaj spisak')]),
         ),
         PopupMenuDivider(),
         PopupMenuItem(
@@ -876,7 +876,7 @@ class _StampajMenuButton extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child:
-                    Text('štampaj', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('Å¡tampaj', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
               ),
             ),
           ],
@@ -886,7 +886,7 @@ class _StampajMenuButton extends StatelessWidget {
   }
 }
 
-// ─── _RacunDialog ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ _RacunDialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _RacunDialog extends StatefulWidget {
   const _RacunDialog();
@@ -1002,7 +1002,7 @@ class _RacunDialogState extends State<_RacunDialog> {
                     Icon(Icons.receipt_long, color: Colors.white),
                     SizedBox(width: 8),
                     Expanded(
-                        child: Text('Racuni za štampanje',
+                        child: Text('Racuni za Å¡tampanje',
                             style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold))),
                   ]),
                   const SizedBox(height: 12),
@@ -1071,7 +1071,7 @@ class _RacunDialogState extends State<_RacunDialog> {
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis),
                                           Text(
-                                              '${cena.toStringAsFixed(0)} RSD × $dana dana = ${(cena * dana).toStringAsFixed(0)} RSD',
+                                              '${cena.toStringAsFixed(0)} RSD Ã— $dana dana = ${(cena * dana).toStringAsFixed(0)} RSD',
                                               style: const TextStyle(fontSize: 11, color: Colors.white70)),
                                         ],
                                       ),
@@ -1135,12 +1135,12 @@ class _RacunDialogState extends State<_RacunDialog> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Otkaži', style: TextStyle(color: Colors.white70)),
+                    child: const Text('OtkaÅ¾i', style: TextStyle(color: Colors.white70)),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.print),
-                    label: const Text('štampaj sve'),
+                    label: const Text('Å¡tampaj sve'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white.withValues(alpha: 0.2),
                       foregroundColor: Colors.white,
@@ -1177,7 +1177,7 @@ class _RacunDialogState extends State<_RacunDialog> {
   }
 }
 
-// ─── _NoviRacunDialog ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ _NoviRacunDialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _NoviRacunDialog extends StatefulWidget {
   const _NoviRacunDialog();
@@ -1265,11 +1265,11 @@ class _NoviRacunDialogState extends State<_NoviRacunDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Otkaži'),
+          child: const Text('OtkaÅ¾i'),
         ),
         ElevatedButton.icon(
           icon: const Icon(Icons.print),
-          label: const Text('štampaj'),
+          label: const Text('Å¡tampaj'),
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
           onPressed: () async {
             if (_imeCtrl.text.trim().isEmpty) {
@@ -1310,7 +1310,7 @@ class _NoviRacunDialogState extends State<_NoviRacunDialog> {
   }
 }
 
-// ─── _DodajPutnikDialog ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ _DodajPutnikDialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _DodajPutnikDialog extends StatefulWidget {
   const _DodajPutnikDialog({
@@ -1480,9 +1480,9 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
                                 shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
                               )),
                           const SizedBox(height: 12),
-                          _homeGlassStatRow('⏰ Vreme:', widget.selectedVreme),
-                          _homeGlassStatRow('📍 Grad:', widget.selectedGrad),
-                          _homeGlassStatRow('📅 Dan:', V2DanUtils.puniNaziv(widget.selectedDay)),
+                          _homeGlassStatRow('â° Vreme:', widget.selectedVreme),
+                          _homeGlassStatRow('ðŸ“ Grad:', widget.selectedGrad),
+                          _homeGlassStatRow('ðŸ“… Dan:', V2DanUtils.puniNaziv(widget.selectedDay)),
                         ],
                       ),
                     ),
@@ -1516,7 +1516,7 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
                             value: _selectedPutnik,
                             decoration: InputDecoration(
                               labelText: 'Izaberi putnika',
-                              hintText: 'Pretraži i izaberi...',
+                              hintText: 'PretraÅ¾i i izaberi...',
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               prefixIcon: Icon(Icons.person_search, color: Theme.of(context).colorScheme.primary),
                               fillColor: Colors.white,
@@ -1540,7 +1540,7 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
                                   decoration: InputDecoration(
                                     isDense: true,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    hintText: 'Pretraži po imenu...',
+                                    hintText: 'PretraÅ¾i po imenu...',
                                     hintStyle: const TextStyle(fontSize: 14),
                                     prefixIcon: const Icon(Icons.search, size: 20),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -1786,7 +1786,7 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
                       ),
                       child: TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Otkaži',
+                        child: const Text('OtkaÅ¾i',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -1855,16 +1855,16 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
 
   Future<void> _dodajPutnika() async {
     if (_selectedPutnik == null) {
-      V2AppSnackBar.error(context, '❌ Morate odabrati putnika iz liste');
+      V2AppSnackBar.error(context, 'âŒ Morate odabrati putnika iz liste');
       return;
     }
     if (widget.selectedVreme.isEmpty || widget.selectedGrad.isEmpty) {
-      V2AppSnackBar.error(context, '❌ Greška: Nije odabrano vreme polaska');
+      V2AppSnackBar.error(context, 'âŒ GreÅ¡ka: Nije odabrano vreme polaska');
       return;
     }
     final driver = widget.currentDriver;
     if (driver == null || driver.isEmpty || !V2VozacCache.isValidIme(driver)) {
-      V2AppSnackBar.error(context, '❌ GREŠKA: Vozač "$driver" nije registrovan. Molimo ponovo se ulogujte.');
+      V2AppSnackBar.error(context, 'âŒ GREÅ KA: VozaÄ "$driver" nije registrovan. Molimo ponovo se ulogujte.');
       return;
     }
     setState(() => _isLoading = true);
@@ -1886,11 +1886,11 @@ class _DodajPutnikDialogState extends State<_DodajPutnikDialog> {
       setState(() => _isLoading = false);
       Navigator.pop(context);
       widget.onPutnikDodat(widget.selectedVreme);
-      V2AppSnackBar.success(context, '✅ Putnik je uspešno dodat');
+      V2AppSnackBar.success(context, 'âœ… Putnik je uspeÅ¡no dodat');
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      V2AppSnackBar.error(context, '❌ Greška pri dodavanju: $e');
+      V2AppSnackBar.error(context, 'âŒ GreÅ¡ka pri dodavanju: $e');
     }
   }
 }

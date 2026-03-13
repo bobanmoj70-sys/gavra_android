@@ -7,9 +7,9 @@ import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 
-/// Servis za računanje prihoda, troškova i neto zarade
+/// Servis za raÄunanje prihoda, troÅ¡kova i neto zarade
 class V2FinansijeService {
-  /// Dodaj novi trošak za određeni mesec/godinu
+  /// Dodaj novi troÅ¡ak za odreÄ‘eni mesec/godinu
   static Future<bool> addTrosak(String naziv, String tip, double iznos, {int? mesec, int? godina}) async {
     try {
       final now = DateTime.now();
@@ -30,12 +30,12 @@ class V2FinansijeService {
 
       return true;
     } catch (e) {
-      debugPrint('[V2FinansijeService] addTrosak greška: $e');
+      debugPrint('[V2FinansijeService] addTrosak greÅ¡ka: $e');
       return false;
     }
   }
 
-  /// Dohvati ukupna potraživanja (putnici s vožnjama koji nisu platili u tekućem mesecu)
+  /// Dohvati ukupna potraÅ¾ivanja (putnici s voÅ¾njama koji nisu platili u tekuÄ‡em mesecu)
   static Future<double> getPotrazivanja() async {
     try {
       final now = DateTime.now();
@@ -44,7 +44,7 @@ class V2FinansijeService {
       final mesecOd = '$godina-${mesec.toString().padLeft(2, '0')}-01';
       final mesecDo = _fmtDate(DateTime(godina, mesec + 1, 0)); // zadnji dan meseca
 
-      // Paralelno dohvati vožnje i uplate za ovaj mesec
+      // Paralelno dohvati voÅ¾nje i uplate za ovaj mesec
       final [voznjeResp, uplateResp] = await Future.wait([
         supabase
             .from('v2_statistika_istorija')
@@ -66,12 +66,12 @@ class V2FinansijeService {
 
       final placeniIds = uplateResp.map((r) => r['putnik_id'] as String?).where((id) => id != null).toSet();
 
-      // Putnici s dugom = imaju vožnje ali nisu platili
+      // Putnici s dugom = imaju voÅ¾nje ali nisu platili
       final duznici = putnikIds.where((id) => !placeniIds.contains(id)).whereType<String>().toList();
 
       if (duznici.isEmpty) return 0;
 
-      // Odvoji mesečne od dnevnih — dnevni trebaju broj vožnji iz DB-a
+      // Odvoji meseÄne od dnevnih â€” dnevni trebaju broj voÅ¾nji iz DB-a
       double ukupnoDug = 0;
       final List<String> dnevniDuznici = [];
       final Map<String, Map<String, dynamic>> dnevniPutnikMap = {};
@@ -89,7 +89,7 @@ class V2FinansijeService {
                     : 'posiljka';
         final cenaPoDanu = (p['cena_po_danu'] as num?)?.toDouble() ?? (p['cena'] as num?)?.toDouble();
         if (tip == 'radnik' || tip == 'ucenik') {
-          // Mesečni - paušal 6000 ako nema cenu
+          // MeseÄni - pauÅ¡al 6000 ako nema cenu
           ukupnoDug += cenaPoDanu != null ? cenaPoDanu * 22 : 6000;
         } else {
           dnevniDuznici.add(id);
@@ -97,7 +97,7 @@ class V2FinansijeService {
         }
       }
 
-      // Jedan batch DB upit za sve dnevne dužnike
+      // Jedan batch DB upit za sve dnevne duÅ¾nike
       if (dnevniDuznici.isNotEmpty) {
         final brojVoznjiResp = await supabase
             .from('v2_statistika_istorija')
@@ -124,12 +124,12 @@ class V2FinansijeService {
 
       return ukupnoDug;
     } catch (e) {
-      debugPrint('[V2FinansijeService] getPotrazivanja greška: $e');
+      debugPrint('[V2FinansijeService] getPotrazivanja greÅ¡ka: $e');
       return 0;
     }
   }
 
-  /// Dohvati kompletan finansijski izveštaj (direktni SQL upiti, bez RPC)
+  /// Dohvati kompletan finansijski izveÅ¡taj (direktni SQL upiti, bez RPC)
   static Future<V2FinansijskiIzvestaj> getIzvestaj() async {
     try {
       final now = DateTime.now();
@@ -144,7 +144,7 @@ class V2FinansijeService {
       final proslaFrom = '${now.year - 1}-01-01';
       final proslaTo = '${now.year - 1}-12-31';
 
-      // Paralelni upiti iz v2_statistika_istorija (trošovi se čitaju iz troskoviCache)
+      // Paralelni upiti iz v2_statistika_istorija (troÅ¡ovi se Äitaju iz troskoviCache)
       final results = await Future.wait([
         // 0: nedelja
         supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', nedFrom).lte('datum', nedTo),
@@ -158,7 +158,7 @@ class V2FinansijeService {
       final mesRows = results[1];
       final proslaRows = results[2];
 
-      // Troškovi iz troskoviCache (0 DB upita)
+      // TroÅ¡kovi iz troskoviCache (0 DB upita)
       final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values.toList();
       final mesTroskRows = troskoviRows
           .where((r) => r['aktivan'] == true && r['mesec'] == now.month && r['godina'] == now.year)
@@ -173,20 +173,20 @@ class V2FinansijeService {
       final prihodProsla = _sumirajPrihode(proslaRows);
       final voznjiProsla = _broji(proslaRows, 'voznja');
 
-      // Troškovi iz finansije_troskovi
-      final troskoviNedelja = 0.0; // troškovi nemaju dnevnu granularnost
+      // TroÅ¡kovi iz finansije_troskovi
+      final troskoviNedelja = 0.0; // troÅ¡kovi nemaju dnevnu granularnost
       final troskoviMesec = mesTroskRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
       final troskoviProsla =
           proslaTroskRows.fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
 
-      // Troškovi po tipu (za tekući mesec)
+      // TroÅ¡kovi po tipu (za tekuÄ‡i mesec)
       final Map<String, double> troskoviPoTipu = {};
       for (final r in mesTroskRows) {
         final tip = r['tip'] as String? ?? 'ostalo';
         troskoviPoTipu[tip] = (troskoviPoTipu[tip] ?? 0) + V2GradAdresaValidator.parseDouble(r['iznos']);
       }
 
-      // Potraživanja (frontend calculation)
+      // PotraÅ¾ivanja (frontend calculation)
       final potrazivanja = await getPotrazivanja();
 
       return V2FinansijskiIzvestaj(
@@ -214,7 +214,7 @@ class V2FinansijeService {
         endNedelja: sundayThisWeek,
       );
     } catch (e) {
-      debugPrint('[V2FinansijeService] getIzvestaj greška: $e');
+      debugPrint('[V2FinansijeService] getIzvestaj greÅ¡ka: $e');
       return _getEmptyIzvestaj();
     }
   }
@@ -228,7 +228,7 @@ class V2FinansijeService {
         .fold<double>(0, (s, r) => s + V2GradAdresaValidator.parseDouble(r['iznos']));
   }
 
-  /// Broji redove određenog tipa
+  /// Broji redove odreÄ‘enog tipa
   static int _broji(List<Map<String, dynamic>> rows, String tip) => rows.where((r) => r['tip'] == tip).length;
 
   /// Formatiraj datum kao YYYY-MM-DD
@@ -263,7 +263,7 @@ class V2FinansijeService {
     );
   }
 
-  /// Dohvati izveštaj za specifičan period (Custom Range) — direktni SQL, bez RPC
+  /// Dohvati izveÅ¡taj za specifiÄan period (Custom Range) â€” direktni SQL, bez RPC
   static Future<Map<String, dynamic>> getIzvestajZaPeriod(DateTime from, DateTime to) async {
     try {
       final fromStr = _fmtDate(from);
@@ -272,7 +272,7 @@ class V2FinansijeService {
       final voznjeRows =
           await supabase.from('v2_statistika_istorija').select('tip, iznos').gte('datum', fromStr).lte('datum', toStr);
 
-      // Troškovi za period iz cache-a (aktivan=true, godina i mesec u opsegu from..to)
+      // TroÅ¡kovi za period iz cache-a (aktivan=true, godina i mesec u opsegu from..to)
       final troskoviRows = V2MasterRealtimeManager.instance.troskoviCache.values.where((r) {
         if (r['aktivan'] != true) return false;
         final g = r['godina'] as int? ?? 0;
@@ -294,12 +294,12 @@ class V2FinansijeService {
         'neto': prihod - troskovi,
       };
     } catch (e) {
-      debugPrint('[V2FinansijeService] getIzvestajZaPeriod greška: $e');
+      debugPrint('[V2FinansijeService] getIzvestajZaPeriod greÅ¡ka: $e');
       return {'prihod': 0, 'voznje': 0, 'troskovi': 0, 'neto': 0};
     }
   }
 
-  /// REALTIME STREAMati promene u relevantnim tabelama i osvežava izveštaj
+  /// REALTIME STREAMati promene u relevantnim tabelama i osveÅ¾ava izveÅ¡taj
   static Stream<V2FinansijskiIzvestaj> streamIzvestaj() {
     final rm = V2MasterRealtimeManager.instance;
     StreamSubscription<String>? cacheSub;
@@ -312,7 +312,7 @@ class V2FinansijeService {
         final izvestaj = await getIzvestaj();
         if (!controller.isClosed) controller.add(izvestaj);
       } catch (e) {
-        debugPrint('[V2FinansijeService] streamIzvestaj emit greška: $e');
+        debugPrint('[V2FinansijeService] streamIzvestaj emit greÅ¡ka: $e');
       }
     }
 
@@ -320,7 +320,7 @@ class V2FinansijeService {
       onListen: () {
         if (cacheSub != null) return;
         unawaited(Future.microtask(emit));
-        // Debounce 1s — finansije rade 4 DB upita, ne trebaju svaki event
+        // Debounce 1s â€” finansije rade 4 DB upita, ne trebaju svaki event
         cacheSub = rm.onCacheChanged
             .where((t) => t == 'v2_polasci' || t == 'v2_finansije_troskovi' || t == 'v2_statistika_istorija')
             .listen((_) {
@@ -332,7 +332,7 @@ class V2FinansijeService {
         debounce?.cancel();
         await cacheSub?.cancel();
         cacheSub = null;
-        // Ne zatvaraj controller — broadcast može dobiti novog listenera
+        // Ne zatvaraj controller â€” broadcast moÅ¾e dobiti novog listenera
       },
     );
 
@@ -340,7 +340,7 @@ class V2FinansijeService {
   }
 }
 
-/// Model za jedan trošak
+/// Model za jedan troÅ¡ak
 class V2Trosak {
   final String id;
   final String naziv;
@@ -367,7 +367,7 @@ class V2Trosak {
   });
 
   factory V2Trosak.fromJson(Map<String, dynamic> json) {
-    // Izvuci ime vozača iz join-a
+    // Izvuci ime vozaÄa iz join-a
     String? vozacIme;
     if (json['v2_vozaci'] != null && json['v2_vozaci'] is Map) {
       vozacIme = json['v2_vozaci']['ime'] as String?;
@@ -389,7 +389,7 @@ class V2Trosak {
     );
   }
 
-  /// Prikaži naziv (koristi ime vozača za plate)
+  /// PrikaÅ¾i naziv (koristi ime vozaÄa za plate)
   String get displayNaziv {
     if (tip == 'plata' && vozacIme != null) {
       return 'Plata - $vozacIme';
@@ -403,38 +403,38 @@ class V2Trosak {
   @override
   int get hashCode => id.hashCode;
 
-  /// Emoji za tip troška
+  /// Emoji za tip troÅ¡ka
   String get emoji {
     switch (tip) {
       case 'plata':
-        return '👷';
+        return 'ðŸ‘·';
       case 'kredit':
-        return '🏦';
+        return 'ðŸ¦';
       case 'gorivo':
-        return '⛽';
+        return 'â›½';
       case 'amortizacija':
-        return '🔧';
+        return 'ðŸ”§';
       case 'registracija':
-        return '🛠️';
+        return 'ðŸ› ï¸';
       case 'yu_auto':
-        return '🇷🇸';
+        return 'ðŸ‡·ðŸ‡¸';
       case 'majstori':
-        return '👨‍🔧';
+        return 'ðŸ‘¨â€ðŸ”§';
       case 'ostalo':
-        return '📋';
+        return 'ðŸ“‹';
       case 'porez':
-        return '🏛️';
+        return 'ðŸ›ï¸';
       case 'alimentacija':
-        return '👶';
+        return 'ðŸ‘¶';
       case 'racuni':
-        return '🧾';
+        return 'ðŸ§¾';
       default:
-        return '❓';
+        return 'â“';
     }
   }
 }
 
-/// Model za finansijski izveštaj
+/// Model za finansijski izveÅ¡taj
 class V2FinansijskiIzvestaj {
   // Nedelja
   final double prihodNedelja;
@@ -454,7 +454,7 @@ class V2FinansijskiIzvestaj {
   final double netoGodina;
   final int voznjiGodina;
 
-  // Prošla godina
+  // ProÅ¡la godina
   final double prihodProslaGodina;
   final double troskoviProslaGodina;
   final double netoProslaGodina;

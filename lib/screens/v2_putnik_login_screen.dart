@@ -42,7 +42,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   bool _biometricEnabled = false;
   String _biometricTypeText = 'otisak prsta';
 
-  // Pretplata na push notifikacije — čeka odobrenje PIN-a
+  // Pretplata na push notifikacije â€” Äeka odobrenje PIN-a
   StreamSubscription<Map<String, dynamic>>? _pinOdobrenSub;
 
   @override
@@ -71,14 +71,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     }
   }
 
-  /// Proveri da li je V2Putnik vec ulogovan — samo biometrija, bez SharedPreferences fallback-a
+  /// Proveri da li je V2Putnik vec ulogovan â€” samo biometrija, bez SharedPreferences fallback-a
   Future<void> _checkSavedLogin() async {
     if (!_biometricAvailable || !_biometricEnabled) return;
 
     final credentials = await V2BiometricService.getSavedCredentials();
     if (credentials == null) return;
 
-    // Ako je obavezno ažuriranje aktivno — ne raditi auto-login
+    // Ako je obavezno aÅ¾uriranje aktivno â€” ne raditi auto-login
     if (updateInfoNotifier.value?.isForced == true) return;
 
     final authenticated = await V2BiometricService.authenticate(
@@ -108,7 +108,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     });
 
     try {
-      // Traži putnika po telefonu kroz sve v2_ tabele
+      // TraÅ¾i putnika po telefonu kroz sve v2_ tabele
       final response = await V2MasterRealtimeManager.instance.v2FindByTelefon(telefon);
 
       if (response != null) {
@@ -118,7 +118,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         final pin = response['pin'] as String?;
 
         if (email == null || email.isEmpty) {
-          // Nema email - traži ga
+          // Nema email - traÅ¾i ga
           setState(() {
             _currentStep = _LoginStep.email;
             _infoMessage = 'Pronadeni ste! Unesite email za kontakt.';
@@ -129,15 +129,15 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           if (imaZahtev) {
             setState(() {
               _currentStep = _LoginStep.zahtevPoslat;
-              _infoMessage = 'Vaš zahtev za PIN je vec poslat. Molimo sacekajte da admin odobri.';
+              _infoMessage = 'VaÅ¡ zahtev za PIN je vec poslat. Molimo sacekajte da admin odobri.';
             });
             _listenForPinOdobren();
           } else {
-            // Ponudi da pošalje zahtev
+            // Ponudi da poÅ¡alje zahtev
             _showPinRequestDialog();
           }
         } else {
-          // Ima i email i PIN - traži PIN za login
+          // Ima i email i PIN - traÅ¾i PIN za login
           setState(() {
             _currentStep = _LoginStep.pin;
             _infoMessage = 'Unesite svoj 4-cifreni PIN';
@@ -150,7 +150,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Greška pri povezivanju: $e';
+        _errorMessage = 'GreÅ¡ka pri povezivanju: $e';
       });
     } finally {
       if (mounted) {
@@ -168,7 +168,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       return;
     }
 
-    // Validacija email formata (strožija)
+    // Validacija email formata (stroÅ¾ija)
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(email)) {
       setState(() => _errorMessage = 'Unesite validnu email adresu');
@@ -182,7 +182,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
     // Blokiraj prekratke delove (aaa@aaa.aa)
     if (localPart.length < 3 || domainPart.split('.')[0].length < 3) {
-      setState(() => _errorMessage = 'Email adresa je previše kratka');
+      setState(() => _errorMessage = 'Email adresa je previÅ¡e kratka');
       return;
     }
 
@@ -220,7 +220,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
         final pin = _putnikData!['pin'] as String?;
         if (pin == null || pin.isEmpty) {
-          // Nema PIN - ponudi da pošalje zahtev
+          // Nema PIN - ponudi da poÅ¡alje zahtev
           _showPinRequestDialog();
         } else {
           // Ima PIN - idi na unos PIN-a
@@ -230,10 +230,10 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           });
         }
       } else {
-        setState(() => _errorMessage = 'Greška pri cuvanju email-a');
+        setState(() => _errorMessage = 'GreÅ¡ka pri cuvanju email-a');
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Greška: $e');
+      setState(() => _errorMessage = 'GreÅ¡ka: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -241,7 +241,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     }
   }
 
-  /// Prikaži dialog za slanje zahteva za PIN
+  /// PrikaÅ¾i dialog za slanje zahteva za PIN
   void _showPinRequestDialog() {
     showDialog(
       context: context,
@@ -259,7 +259,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           ],
         ),
         content: const Text(
-          'Nemate dodeljeni PIN za pristup.\n\nželite li da pošaljete zahtev adminu za dodelu PIN-a?',
+          'Nemate dodeljeni PIN za pristup.\n\nÅ¾elite li da poÅ¡aljete zahtev adminu za dodelu PIN-a?',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -276,14 +276,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               _sendPinRequest();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            child: const Text('Pošalji zahtev', style: TextStyle(color: Colors.black)),
+            child: const Text('PoÅ¡alji zahtev', style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
     );
   }
 
-  /// Pošalji zahtev za PIN (novo ili reset)
+  /// PoÅ¡alji zahtev za PIN (novo ili reset)
   Future<void> _posaljiZahtevZaPin({required String poruka}) async {
     setState(() {
       _isLoading = true;
@@ -307,19 +307,19 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         });
         _listenForPinOdobren();
       } else {
-        setState(() => _errorMessage = 'Greška pri slanju zahteva');
+        setState(() => _errorMessage = 'GreÅ¡ka pri slanju zahteva');
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Greška: $e');
+      setState(() => _errorMessage = 'GreÅ¡ka: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// Pošalji zahtev za PIN (prvi put)
-  Future<void> _sendPinRequest() => _posaljiZahtevZaPin(poruka: 'Zahtev je uspešno poslat! Admin će vam dodeliti PIN.');
+  /// PoÅ¡alji zahtev za PIN (prvi put)
+  Future<void> _sendPinRequest() => _posaljiZahtevZaPin(poruka: 'Zahtev je uspeÅ¡no poslat! Admin Ä‡e vam dodeliti PIN.');
 
-  /// Slušaj push notifikacije dok je putnik na zahtevPoslat ekranu
+  /// SluÅ¡aj push notifikacije dok je putnik na zahtevPoslat ekranu
   void _listenForPinOdobren() {
     _pinOdobrenSub?.cancel();
     final putnikId = _putnikData?['id'] as String?;
@@ -332,7 +332,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         _pinOdobrenSub = null;
         setState(() {
           _currentStep = _LoginStep.pin;
-          _infoMessage = '✅ PIN je dodeljen! Unesite PIN koji ste dobili.';
+          _infoMessage = 'âœ… PIN je dodeljen! Unesite PIN koji ste dobili.';
           _errorMessage = null;
         });
       }
@@ -362,7 +362,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
     try {
       final normalizedInput = V2GradAdresaValidator.normalizePhone(telefon);
 
-      // Traži putnika po PIN-u kroz sve v2_ tabele, pa filtriraj po telefonu
+      // TraÅ¾i putnika po PIN-u kroz sve v2_ tabele, pa filtriraj po telefonu
       final tabele = ['v2_radnici', 'v2_ucenici', 'v2_dnevni', 'v2_posiljke'];
       List<Map<String, dynamic>> matches = [];
       for (final tabela in tabele) {
@@ -378,11 +378,11 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       }
 
       if (matches.length > 1) {
-        // Postoji više putnika na istom broju i PIN-u (npr. radnici koriste broj vlasnika)
+        // Postoji viÅ¡e putnika na istom broju i PIN-u (npr. radnici koriste broj vlasnika)
         setState(() {
           _putnikCandidates = matches;
           _currentStep = _LoginStep.izborPutnika;
-          _infoMessage = 'Pronadeno je više korisnika na ovom broju. Izaberite svoj profil:';
+          _infoMessage = 'Pronadeno je viÅ¡e korisnika na ovom broju. Izaberite svoj profil:';
         });
         return;
       }
@@ -393,17 +393,17 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         await _performLogin(response, telefon, pin, showBiometricPrompt);
       } else {
         setState(() {
-          _errorMessage = 'Pogrešan PIN ili broj telefona. Pokušajte ponovo.';
+          _errorMessage = 'PogreÅ¡an PIN ili broj telefona. PokuÅ¡ajte ponovo.';
         });
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Greška pri povezivanju: $e');
+      setState(() => _errorMessage = 'GreÅ¡ka pri povezivanju: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// Pomocna funkcija za izVrsavanje logina nakon uspešne identifikacije
+  /// Pomocna funkcija za izVrsavanje logina nakon uspeÅ¡ne identifikacije
   Future<void> _performLogin(
     Map<String, dynamic> response,
     String telefon,
@@ -415,7 +415,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       final putnikIme = response['putnik_ime'] ?? response['ime_prezime'] ?? 'Putnik';
 
       if (putnikId != null) {
-        // Sacuvaj id i ime — koriste ih push notifikacijski servisi
+        // Sacuvaj id i ime â€” koriste ih push notifikacijski servisi
         final secureStorage = FlutterSecureStorage();
         await secureStorage.write(key: 'registrovani_putnik_id', value: putnikId.toString());
         await secureStorage.write(key: 'registrovani_putnik_ime', value: putnikIme.toString());
@@ -432,7 +432,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       }
 
       if (mounted) {
-        // Idi na profil ekran — ukloni ceo stack da back ne vraća na login/welcome
+        // Idi na profil ekran â€” ukloni ceo stack da back ne vraÄ‡a na login/welcome
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
@@ -444,7 +444,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
         );
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Greška pri prijavi: $e');
+      setState(() => _errorMessage = 'GreÅ¡ka pri prijavi: $e');
     }
   }
 
@@ -473,7 +473,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           ],
         ),
         content: Text(
-          'želite li ubuduce da se prijavljujete pomocu $_biometricTypeText?\n\nNecete morati da unosite PIN svaki put.',
+          'Å¾elite li ubuduce da se prijavljujete pomocu $_biometricTypeText?\n\nNecete morati da unosite PIN svaki put.',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -641,7 +641,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
                         ),
                       ),
                       child: const Text(
-                        '⬅️ Nazad na pocetnu',
+                        'â¬…ï¸ Nazad na pocetnu',
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
@@ -765,7 +765,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
 
   Widget _buildEmailInput() => _loginTextField(
         controller: _emailController,
-        hintText: 'vašemail@example.com',
+        hintText: 'vaÅ¡email@example.com',
         keyboardType: TextInputType.emailAddress,
         prefixIcon: Icons.email,
         onSubmitted: (_) => _saveEmail(),
@@ -784,7 +784,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
             maxLength: 4,
             obscureText: true,
             decoration: InputDecoration(
-              hintText: '• • • •',
+              hintText: 'â€¢ â€¢ â€¢ â€¢',
               hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), letterSpacing: 8),
               prefixIcon: const Icon(Icons.lock, color: Colors.amber),
               border: InputBorder.none,
@@ -863,7 +863,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
           ],
         ),
         content: const Text(
-          'Možemo poslati zahtev adminu da vam dodeli novi PIN.\n\nNakon što admin odobri zahtev, moci cete da se prijavite sa novim PIN-om.',
+          'MoÅ¾emo poslati zahtev adminu da vam dodeli novi PIN.\n\nNakon Å¡to admin odobri zahtev, moci cete da se prijavite sa novim PIN-om.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -877,14 +877,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               _sendPinResetRequest();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            child: const Text('Zatraži novi PIN', style: TextStyle(color: Colors.black)),
+            child: const Text('ZatraÅ¾i novi PIN', style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
     );
   }
 
-  /// Pošalji zahtev za reset PIN-a
+  /// PoÅ¡alji zahtev za reset PIN-a
   Future<void> _sendPinResetRequest() async {
     setState(() {
       _isLoading = true;
@@ -896,14 +896,14 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
       if (imaZahtev) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Već ste poslali zahtev za PIN. Molimo sačekajte da admin odobri.';
+          _infoMessage = 'VeÄ‡ ste poslali zahtev za PIN. Molimo saÄekajte da admin odobri.';
         });
         _listenForPinOdobren();
         return;
       }
-      await _posaljiZahtevZaPin(poruka: 'Zahtev za novi PIN je uspešno poslat! Admin će vam dodeliti novi PIN.');
+      await _posaljiZahtevZaPin(poruka: 'Zahtev za novi PIN je uspeÅ¡no poslat! Admin Ä‡e vam dodeliti novi PIN.');
     } catch (e) {
-      setState(() => _errorMessage = 'Greška: $e');
+      setState(() => _errorMessage = 'GreÅ¡ka: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -933,7 +933,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Admin ce pregledati vaš zahtev i dodeliti vam PIN.\nBicete obavešteni kada PIN bude spreman.',
+                'Admin ce pregledati vaÅ¡ zahtev i dodeliti vam PIN.\nBicete obaveÅ¡teni kada PIN bude spreman.',
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                 textAlign: TextAlign.center,
               ),
@@ -945,7 +945,7 @@ class _V2PutnikLoginScreenState extends State<V2PutnikLoginScreen> {
   }
 }
 
-// ─── Top-level helpers ────────────────────────────────────────────────────────
+// â”€â”€â”€ Top-level helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 extension _LoginStepMeta on _LoginStep {
   IconData get stepIcon => switch (this) {
@@ -958,7 +958,7 @@ extension _LoginStepMeta on _LoginStep {
 
   String get title => switch (this) {
         _LoginStep.telefon => 'Prijava putnika',
-        _LoginStep.email => 'Vaš email',
+        _LoginStep.email => 'VaÅ¡ email',
         _LoginStep.pin => 'Unesite PIN',
         _LoginStep.izborPutnika => 'Ko se prijavljuje?',
         _LoginStep.zahtevPoslat => 'Zahtev poslat',
@@ -966,16 +966,16 @@ extension _LoginStepMeta on _LoginStep {
 
   String get subtitle => switch (this) {
         _LoginStep.telefon => 'Unesite broj telefona sa kojim ste registrovani',
-        _LoginStep.email => 'Potreban nam je vaš email za kontakt',
+        _LoginStep.email => 'Potreban nam je vaÅ¡ email za kontakt',
         _LoginStep.pin => 'Unesite svoj 4-cifreni PIN',
         _LoginStep.izborPutnika => 'Izaberite svoj profil sa liste ispod',
-        _LoginStep.zahtevPoslat => 'Sačekajte odobrenje od admina',
+        _LoginStep.zahtevPoslat => 'SaÄekajte odobrenje od admina',
       };
 
   String get buttonText => switch (this) {
-        _LoginStep.telefon => '➡️ Nastavi',
-        _LoginStep.email => '💾 Sačuvaj email',
-        _LoginStep.pin => '🔑 Pristupi',
+        _LoginStep.telefon => 'âž¡ï¸ Nastavi',
+        _LoginStep.email => 'ðŸ’¾ SaÄuvaj email',
+        _LoginStep.pin => 'ðŸ”‘ Pristupi',
         _LoginStep.izborPutnika || _LoginStep.zahtevPoslat => '',
       };
 
@@ -988,10 +988,10 @@ extension _LoginStepMeta on _LoginStep {
 
   String get infoText => switch (this) {
         _LoginStep.telefon => 'Unesite broj telefona koji ste dali prilikom registracije.',
-        _LoginStep.email => 'Email koristimo za obaveštenja i Google Play interno testiranje.',
+        _LoginStep.email => 'Email koristimo za obaveÅ¡tenja i Google Play interno testiranje.',
         _LoginStep.pin => 'PIN ste dobili od admina. Ako ste ga zaboravili, kontaktirajte nas.',
-        _LoginStep.izborPutnika => 'Više osoba koristi isti broj telefona. Kliknite na svoje ime za ulaz.',
-        _LoginStep.zahtevPoslat => 'Možete zatvoriti aplikaciju. Obavestićemo vas kada PIN bude dodeljen.',
+        _LoginStep.izborPutnika => 'ViÅ¡e osoba koristi isti broj telefona. Kliknite na svoje ime za ulaz.',
+        _LoginStep.zahtevPoslat => 'MoÅ¾ete zatvoriti aplikaciju. ObavestiÄ‡emo vas kada PIN bude dodeljen.',
       };
 }
 

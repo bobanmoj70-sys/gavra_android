@@ -12,7 +12,7 @@ import '../utils/v2_dan_utils.dart';
 class V2PutnikStatistikeHelper {
   V2PutnikStatistikeHelper._();
 
-  /// Prikaži dijalog sa detaljnim statistikama
+  /// PrikaÅ¾i dijalog sa detaljnim statistikama
   static Future<void> prikaziDetaljneStatistike({
     required BuildContext context,
     required String putnikId,
@@ -55,7 +55,7 @@ class V2PutnikStatistikeHelper {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ── HEADER ──
+                    // â”€â”€ HEADER â”€â”€
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
@@ -124,7 +124,7 @@ class V2PutnikStatistikeHelper {
                       ),
                     ),
 
-                    // ── SCROLLABLE CONTENT ──
+                    // â”€â”€ SCROLLABLE CONTENT â”€â”€
                     Flexible(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
@@ -213,7 +213,7 @@ class V2PutnikStatistikeHelper {
                                     height: 200,
                                     child: Center(
                                       child: Text(
-                                        'Greška pri učitavanju statistika.',
+                                        'GreÅ¡ka pri uÄitavanju statistika.',
                                         style: TextStyle(color: Colors.redAccent, fontSize: 13),
                                         textAlign: TextAlign.center,
                                       ),
@@ -238,7 +238,7 @@ class V2PutnikStatistikeHelper {
                                           ),
                                           const SizedBox(height: 14),
                                           const Text(
-                                            'Podaci nisu dostupni.\nPovežite se na internet.',
+                                            'Podaci nisu dostupni.\nPoveÅ¾ite se na internet.',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(color: Colors.orange, fontSize: 13),
                                           ),
@@ -276,7 +276,7 @@ class V2PutnikStatistikeHelper {
     );
   }
 
-  // DOHVATI PLAĆENE MESECE ZA PUTNIKA
+  // DOHVATI PLAÄ†ENE MESECE ZA PUTNIKA
   static Future<Set<String>> _getPlaceniMeseci(String putnikId) async {
     try {
       final svaPlacanja = await V2StatistikaIstorijaService.dohvatiPlacanja(putnikId);
@@ -291,12 +291,12 @@ class V2PutnikStatistikeHelper {
       }
       return placeni;
     } catch (e, st) {
-      debugPrint('[V2PutnikStatistikeHelper] _getPlaceniMeseci greška: $e\n$st');
+      debugPrint('[V2PutnikStatistikeHelper] _getPlaceniMeseci greÅ¡ka: $e\n$st');
       return {};
     }
   }
 
-  // KREIRANJE SADRŽAJA STATISTIKA
+  // KREIRANJE SADRÅ½AJA STATISTIKA
   static Widget _buildStatistikeContent({
     required BuildContext context,
     required String putnikIme,
@@ -330,15 +330,15 @@ class V2PutnikStatistikeHelper {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader('📋 Osnovne informacije', Colors.blue),
+              _buildSectionHeader('ðŸ“‹ Osnovne informacije', Colors.blue),
               const SizedBox(height: 8),
-              _buildStatRow('👤 Ime:', putnikIme),
+              _buildStatRow('ðŸ‘¤ Ime:', putnikIme),
               if (tipSkole != null)
                 _buildStatRow(
-                  tip == 'ucenik' ? '🏫 Škola:' : '🏢 Ustanova/Firma:',
+                  tip == 'ucenik' ? 'ðŸ« Å kola:' : 'ðŸ¢ Ustanova/Firma:',
                   tipSkole,
                 ),
-              if (brojTelefona != null) _buildStatRow('📞 Telefon:', brojTelefona),
+              if (brojTelefona != null) _buildStatRow('ðŸ“ž Telefon:', brojTelefona),
             ],
           ),
         ),
@@ -350,12 +350,12 @@ class V2PutnikStatistikeHelper {
 
         const SizedBox(height: 12),
 
-        // PLAĆENI MESECI
+        // PLAÄ†ENI MESECI
         _buildPlaceniMeseciSection(context, tip, stats['placeniMeseci'] ?? {}),
 
         const SizedBox(height: 12),
 
-        // STATISTIKE PUTOVANJA - DINAMIČKI PERIOD
+        // STATISTIKE PUTOVANJA - DINAMIÄŒKI PERIOD
         _buildSection(
           context: context,
           accentColor: periodColor,
@@ -367,7 +367,7 @@ class V2PutnikStatistikeHelper {
                   Icon(periodIcon, size: 15, color: periodColor),
                   const SizedBox(width: 6),
                   Text(
-                    '📈 Statistike putovanja',
+                    'ðŸ“ˆ Statistike putovanja',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: periodColor,
@@ -377,13 +377,13 @@ class V2PutnikStatistikeHelper {
                 ],
               ),
               const SizedBox(height: 10),
-              _buildStatRow('🚗 Putovanja:', '${stats['putovanja'] ?? 0}'),
-              _buildStatRow('❌ Otkazivanja:', '${stats['otkazivanja'] ?? 0}'),
+              _buildStatRow('ðŸš— Putovanja:', '${stats['putovanja'] ?? 0}'),
+              _buildStatRow('âŒ Otkazivanja:', '${stats['otkazivanja'] ?? 0}'),
               _buildStatRow(
-                '🔄 Poslednje:',
+                'ðŸ”„ Poslednje:',
                 stats['poslednje'] as String? ?? 'Nema podataka',
               ),
-              _buildStatRow('📊 Uspešnost:', '${stats['uspesnost'] ?? 0}%'),
+              _buildStatRow('ðŸ“Š UspeÅ¡nost:', '${stats['uspesnost'] ?? 0}%'),
             ],
           ),
         ),
@@ -397,10 +397,10 @@ class V2PutnikStatistikeHelper {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader('🕐 Sistemske informacije', Colors.white54),
-              _buildStatRow('📅 Kreiran:', _formatDatum(createdAt)),
-              _buildStatRow('🔄 Ažuriran:', _formatDatum(updatedAt)),
-              _buildStatRow('✅ Status:', aktivan ? 'Aktivan' : '⚠️ Neaktivan'),
+              _buildSectionHeader('ðŸ• Sistemske informacije', Colors.white54),
+              _buildStatRow('ðŸ“… Kreiran:', _formatDatum(createdAt)),
+              _buildStatRow('ðŸ”„ AÅ¾uriran:', _formatDatum(updatedAt)),
+              _buildStatRow('âœ… Status:', aktivan ? 'Aktivan' : 'âš ï¸ Neaktivan'),
             ],
           ),
         ),
@@ -449,19 +449,19 @@ class V2PutnikStatistikeHelper {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('💰 Finansijske informacije', Colors.greenAccent),
+          _buildSectionHeader('ðŸ’° Finansijske informacije', Colors.greenAccent),
           // PRIKAZ CENE PO DANU
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                '🏷️ Vaša cena:',
+                'ðŸ·ï¸ VaÅ¡a cena:',
                 style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500, fontSize: 13),
               ),
               Flexible(
                 child: Text(
                   (customCena != null && customCena > 0)
-                      ? '${(customCena as num).toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'vožnja'}'
+                      ? '${(customCena as num).toStringAsFixed(0)} RSD / ${tip.toLowerCase() == 'radnik' || tip.toLowerCase() == 'ucenik' ? 'dan' : 'voÅ¾nja'}'
                       : 'Nije postavljena',
                   style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
                   textAlign: TextAlign.end,
@@ -470,7 +470,7 @@ class V2PutnikStatistikeHelper {
             ],
           ),
           Divider(color: Colors.white.withValues(alpha: 0.12), height: 20),
-          // Datum, iznos i vozač poslednjeg plaćanja
+          // Datum, iznos i vozaÄ poslednjeg plaÄ‡anja
           FutureBuilder<Map<String, dynamic>?>(
             future: V2StatistikaIstorijaService.dohvatiPlacanja(putnikId).then((l) => l.isNotEmpty ? l.first : null),
             builder: (context, snapshot) {
@@ -482,11 +482,11 @@ class V2PutnikStatistikeHelper {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildStatRow(
-                    '💵 Poslednje plaćanje:',
+                    'ðŸ’µ Poslednje plaÄ‡anje:',
                     iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : 'Nema podataka',
                   ),
-                  _buildStatRow('📅 Datum plaćanja:', datum ?? 'Nema podataka'),
-                  _buildStatRow('🚗 Vozač (naplata):', vozacIme ?? 'Nema podataka'),
+                  _buildStatRow('ðŸ“… Datum plaÄ‡anja:', datum ?? 'Nema podataka'),
+                  _buildStatRow('ðŸš— VozaÄ (naplata):', vozacIme ?? 'Nema podataka'),
                 ],
               );
             },
@@ -502,7 +502,7 @@ class V2PutnikStatistikeHelper {
         context: context,
         accentColor: Colors.blueAccent,
         child: const Text(
-          '💡 Dnevni putnici i pošiljke plaćaju po pokupljenju.',
+          'ðŸ’¡ Dnevni putnici i poÅ¡iljke plaÄ‡aju po pokupljenju.',
           style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.white70),
         ),
       );
@@ -514,7 +514,7 @@ class V2PutnikStatistikeHelper {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('✅ Plaćeni meseci', Colors.greenAccent),
+          _buildSectionHeader('âœ… PlaÄ‡eni meseci', Colors.greenAccent),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -629,7 +629,7 @@ class V2PutnikStatistikeHelper {
       stats['cena_po_danu'] = putnikObj?.cena;
       return stats;
     } catch (e, st) {
-      debugPrint('[V2PutnikStatistikeHelper] _getStatistikeForPeriod greška: $e\n$st');
+      debugPrint('[V2PutnikStatistikeHelper] _getStatistikeForPeriod greÅ¡ka: $e\n$st');
       return {'error': true, ..._kEmptyStats};
     }
   }
@@ -640,10 +640,10 @@ class V2PutnikStatistikeHelper {
     final endOfYearStr = '$currentYear-12-31';
 
     final tp = tipPutnika.toLowerCase();
-    final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('pošiljka');
+    final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('poÅ¡iljka');
 
     final response = await supabase
-        .from('v2_statistika_istorija')
+        .from('v3_putnici_arhiva')
         .select('id, tip, datum, iznos, broj_mesta, created_at')
         .eq('putnik_id', putnikId)
         .gte('datum', startOfYearStr)
@@ -664,11 +664,11 @@ class V2PutnikStatistikeHelper {
       if (tip == 'voznja' && datum != null) {
         ukupanPrihod += iznos;
         if (jeDnevni) {
-          // Za dnevne sabiramo svako sedište (transakciono)
+          // Za dnevne sabiramo svako sediÅ¡te (transakciono)
           final uniqueKey = record['id']?.toString() ?? (datum + (record['created_at']?.toString() ?? ''));
           dailyMaxVoznje[uniqueKey] = bm;
         } else {
-          // Za radnike/učenike uzimamo max broj mesta u toku dana
+          // Za radnike/uÄenike uzimamo max broj mesta u toku dana
           if (bm > (dailyMaxVoznje[datum] ?? 0)) {
             dailyMaxVoznje[datum] = bm;
           }
@@ -722,7 +722,7 @@ class V2PutnikStatistikeHelper {
 
   static Future<Map<String, dynamic>> _getUkupneStatistike(String putnikId, String tipPutnika) async {
     final response = await supabase
-        .from('v2_statistika_istorija')
+        .from('v3_putnici_arhiva')
         .select('id, tip, datum, iznos, broj_mesta, created_at')
         .eq('putnik_id', putnikId)
         .order('datum', ascending: false);
@@ -733,7 +733,7 @@ class V2PutnikStatistikeHelper {
     double ukupanPrihod = 0;
 
     final tp = tipPutnika.toLowerCase();
-    final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('pošiljka');
+    final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('poÅ¡iljka');
 
     for (final record in response) {
       final tip = record['tip'] as String?;
@@ -807,10 +807,10 @@ class V2PutnikStatistikeHelper {
       final endOfMonthStr = "$godina-${mesec.toString().padLeft(2, '0')}-${lastDay.toString().padLeft(2, '0')}";
 
       final tp = tipPutnika.toLowerCase();
-      final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('pošiljka');
+      final bool jeDnevni = tp.contains('dnevni') || tp.contains('posiljka') || tp.contains('poÅ¡iljka');
 
       final response = await supabase
-          .from('v2_statistika_istorija')
+          .from('v3_putnici_arhiva')
           .select('id, tip, datum, iznos, broj_mesta, created_at')
           .eq('putnik_id', putnikId)
           .gte('datum', startOfMonthStr)
@@ -877,19 +877,19 @@ class V2PutnikStatistikeHelper {
         'ukupan_prihod': '${ukupanPrihodData.toStringAsFixed(0)} RSD',
       };
     } catch (e, st) {
-      debugPrint('[V2PutnikStatistikeHelper] _getStatistikeZaMesec greška: $e\n$st');
+      debugPrint('[V2PutnikStatistikeHelper] _getStatistikeZaMesec greÅ¡ka: $e\n$st');
       return {
         'error': true,
         'putovanja': 0,
         'otkazivanja': 0,
-        'poslednje': 'Greška',
+        'poslednje': 'GreÅ¡ka',
         'uspesnost': 0,
         'ukupan_prihod': '0 RSD'
       };
     }
   }
 
-  /// DOHVATI MEDICINSKU POMOĆ LOGS - dodato kao fensi opcija
+  /// DOHVATI MEDICINSKU POMOÄ† LOGS - dodato kao fensi opcija
   static const Map<String, dynamic> _kEmptyStats = {
     'putovanja': 0,
     'otkazivanja': 0,

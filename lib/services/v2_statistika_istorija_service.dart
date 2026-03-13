@@ -11,13 +11,13 @@ import '../utils/v2_vozac_cache.dart';
 import 'realtime/v2_master_realtime_manager.dart';
 import 'v2_audit_log_service.dart';
 
-/// Servis za upravljanje istorijom vožnji.
+/// Servis za upravljanje istorijom voÅ¾nji.
 /// Tabela: putnik_id, datum, tip (voznja/otkazivanje/uplata), iznos, vozac_id
-/// Sve statistike se čitaju iz ove tabele.
+/// Sve statistike se Äitaju iz ove tabele.
 class V2StatistikaIstorijaService {
   V2StatistikaIstorijaService._();
 
-  /// Detalji o aktivnostima — provjera postojanja log zapisa.
+  /// Detalji o aktivnostima â€” provjera postojanja log zapisa.
   static Future<Map<String, dynamic>?> getLogEntry({
     required String putnikId,
     required String datum,
@@ -72,9 +72,9 @@ class V2StatistikaIstorijaService {
     // Dohvati vozac_ime direktno iz baze (garantovano)
     String? vozacIme;
     if (vozacId != null && vozacId.isNotEmpty) {
-      // Prvo pokušaj iz lokalnog cache-a (brže, bez mrežnog zahteva)
+      // Prvo pokuÅ¡aj iz lokalnog cache-a (brÅ¾e, bez mreÅ¾nog zahteva)
       vozacIme = V2VozacCache.getImeByUuid(vozacId);
-      // Ako nije u VozacCache-u, pokušaj iz rm.vozaciCache — 0 DB querija
+      // Ako nije u VozacCache-u, pokuÅ¡aj iz rm.vozaciCache â€” 0 DB querija
       if (vozacIme == null || vozacIme.isEmpty) {
         vozacIme = V2MasterRealtimeManager.instance.vozaciCache[vozacId]?['ime'] as String?;
         if (vozacIme != null) debugPrint('[dodajUplatu] vozacId=$vozacId -> vozac_ime=$vozacIme (iz rm.vozaciCache)');
@@ -104,7 +104,7 @@ class V2StatistikaIstorijaService {
         'placena_godina': placenaGodina ?? datum.year,
       });
 
-      // Audit log — uplata dodana
+      // Audit log â€” uplata dodana
       V2AuditLogService.log(
         tip: 'uplata_dodana',
         aktorId: vozacId,
@@ -120,12 +120,12 @@ class V2StatistikaIstorijaService {
         detalji: 'Uplata: ${iznos.toStringAsFixed(0)} RSD${vozacIme != null ? " od: $vozacIme" : ""}',
       );
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] dodajUplatu greška: $e');
+      debugPrint('[V2StatistikaIstorijaService] dodajUplatu greÅ¡ka: $e');
       rethrow;
     }
   }
 
-  /// Logovanje generičke akcije u statistika_istorija tabelu.
+  /// Logovanje generiÄke akcije u statistika_istorija tabelu.
   static Future<void> logGeneric({
     required String tip,
     String? putnikId,
@@ -174,7 +174,7 @@ class V2StatistikaIstorijaService {
         if (datumParsed != null) 'placena_godina': datumParsed.year,
       });
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] logVoznju greška: $e');
+      debugPrint('[V2StatistikaIstorijaService] logVoznju greÅ¡ka: $e');
     }
   }
 
@@ -197,28 +197,28 @@ class V2StatistikaIstorijaService {
     );
   }
 
-  /// Logovanje greške pri obradi zahteva.
+  /// Logovanje greÅ¡ke pri obradi zahteva.
   static Future<void> logGreska({
-    String? putnikId, // Može biti null za nove putnike koji nisu još sacuvani
+    String? putnikId, // MoÅ¾e biti null za nove putnike koji nisu joÅ¡ sacuvani
     required String greska,
   }) async {
-    return logGeneric(tip: 'greska_aplikacije', putnikId: putnikId, detalji: 'Greška: $greska');
+    return logGeneric(tip: 'greska_aplikacije', putnikId: putnikId, detalji: 'GreÅ¡ka: $greska');
   }
 
-  /// Placeholder — stream se automatski gasi, eksplicitno čišćenje nije potrebno.
+  /// Placeholder â€” stream se automatski gasi, eksplicitno ÄiÅ¡Ä‡enje nije potrebno.
   static void dispose() {}
 
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   /// Agregira pazar iz polasciCache za tekuci dan (0 DB upita, realtime)
   static Map<String, double> _pazarIzPolasciCache(Iterable<Map<String, dynamic>> rows, String today) {
     final Map<String, double> pazar = {};
     double ukupno = 0;
     for (final row in rows) {
-      // placen može biti bool true ili string 'true' (Supabase realtime vs REST)
+      // placen moÅ¾e biti bool true ili string 'true' (Supabase realtime vs REST)
       final placen = row['placen'];
       if (placen != true && placen.toString() != 'true') continue;
       final datumAkcije = row['datum_akcije']?.toString();
-      // datum_akcije moze doci kao "2026-03-04" ili "2026-03-04T00:00:00.000Z" — uzmi samo datum
+      // datum_akcije moze doci kao "2026-03-04" ili "2026-03-04T00:00:00.000Z" â€” uzmi samo datum
       if (datumAkcije == null || !datumAkcije.startsWith(today)) continue;
       final iznos =
           (row['placen_iznos'] as num?)?.toDouble() ?? (double.tryParse(row['placen_iznos']?.toString() ?? '') ?? 0);
@@ -232,7 +232,7 @@ class V2StatistikaIstorijaService {
   }
 
   // PAZAR STREAM
-  // ──────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /// Pretvori listu redova u mapu {vozacIme: iznos, '_ukupno': ukupno}.
   static Map<String, double> _mapRowsToPazar(Iterable<Map<String, dynamic>> rows) {
@@ -256,9 +256,9 @@ class V2StatistikaIstorijaService {
     return pazar;
   }
 
-  /// Stream pazara direktno iz master cache-a (0 DB upita za današnji dan).
+  /// Stream pazara direktno iz master cache-a (0 DB upita za danaÅ¡nji dan).
   /// Za ostale datume radi jednokratni DB fetch.
-  /// Vraća mapu {vozacIme: iznos, '_ukupno': ukupno}
+  /// VraÄ‡a mapu {vozacIme: iznos, '_ukupno': ukupno}
   static Stream<Map<String, double>> streamPazarIzCachea({
     required String isoDate,
   }) {
@@ -271,7 +271,7 @@ class V2StatistikaIstorijaService {
         final today = V2DanUtils.today();
         final Map<String, double> result;
         if (isoDate == today && rm.isInitialized) {
-          // Tekuci dan — citaj direktno iz polasciCache (realtime, 0 DB upita)
+          // Tekuci dan â€” citaj direktno iz polasciCache (realtime, 0 DB upita)
           result = _pazarIzPolasciCache(rm.polasciCache.values, today);
         } else {
           final rows = await supabase
@@ -294,7 +294,7 @@ class V2StatistikaIstorijaService {
       onListen: () {
         if (cacheSub != null) return;
         unawaited(Future.microtask(emit));
-        // Debounce 150ms — skuplja brze uzastopne evente u jedan emit
+        // Debounce 150ms â€” skuplja brze uzastopne evente u jedan emit
         cacheSub = rm.onCacheChanged.where((t) => t == 'v2_polasci' || t == 'v2_statistika_istorija').listen((_) {
           debounce?.cancel();
           debounce = Timer(const Duration(milliseconds: 150), () => unawaited(emit()));
@@ -304,7 +304,7 @@ class V2StatistikaIstorijaService {
         debounce?.cancel();
         await cacheSub?.cancel();
         cacheSub = null;
-        // Ne zatvaraj controller — broadcast može dobiti novog listenera
+        // Ne zatvaraj controller â€” broadcast moÅ¾e dobiti novog listenera
       },
     );
 
@@ -312,11 +312,11 @@ class V2StatistikaIstorijaService {
   }
 
   // ---------------------------------------------------------------------------
-  // SINGLE PUTNIK — svi zapisi od početka godine (v2_putnik_profil_screen)
+  // SINGLE PUTNIK â€” svi zapisi od poÄetka godine (v2_putnik_profil_screen)
   // ---------------------------------------------------------------------------
 
-  /// Dohvata sve zapise za jednog putnika od početka date godine.
-  /// Vraća listu redova sa kolonama: datum, tip, iznos, placeni_mesec, placena_godina, created_at.
+  /// Dohvata sve zapise za jednog putnika od poÄetka date godine.
+  /// VraÄ‡a listu redova sa kolonama: datum, tip, iznos, placeni_mesec, placena_godina, created_at.
   static Future<List<Map<String, dynamic>>> getSveZapisiGodina({
     required String putnikId,
     required String pocetakGodineIso,
@@ -330,13 +330,13 @@ class V2StatistikaIstorijaService {
           .order('datum', ascending: false);
       return List<Map<String, dynamic>>.from(rows);
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] getSveZapisiGodina greška: $e');
+      debugPrint('[V2StatistikaIstorijaService] getSveZapisiGodina greÅ¡ka: $e');
       rethrow;
     }
   }
 
   // ---------------------------------------------------------------------------
-  // LOOKUP — pretražuje sva 4 cache-a (preseljeno iz V2StatistikaService)
+  // LOOKUP â€” pretraÅ¾uje sva 4 cache-a (preseljeno iz V2StatistikaService)
   // ---------------------------------------------------------------------------
 
   /// Vraca sve aktivne putnike iz sva 4 cache-a (radnici + ucenici + dnevni + posiljke)
@@ -358,7 +358,7 @@ class V2StatistikaIstorijaService {
     ]..sort((a, b) => a.ime.compareTo(b.ime));
   }
 
-  /// Dohvata sva plaćanja (tip='uplata') za putnika
+  /// Dohvata sva plaÄ‡anja (tip='uplata') za putnika
   static Future<List<Map<String, dynamic>>> dohvatiPlacanja(String putnikId) async {
     try {
       final res = await supabase
@@ -370,12 +370,12 @@ class V2StatistikaIstorijaService {
           .order('datum', ascending: false);
       return List<Map<String, dynamic>>.from(res);
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] dohvatiPlacanja greška: $e');
+      debugPrint('[V2StatistikaIstorijaService] dohvatiPlacanja greÅ¡ka: $e');
       return [];
     }
   }
 
-  /// Dohvata ukupno plaćeno za putnika (suma svih uplata)
+  /// Dohvata ukupno plaÄ‡eno za putnika (suma svih uplata)
   static Future<double> dohvatiUkupnoPlaceno(String putnikId) async {
     try {
       final rows =
@@ -390,7 +390,7 @@ class V2StatistikaIstorijaService {
     }
   }
 
-  /// Upisuje mesečno plaćanje u v2_statistika_istorija i ažurira v2_polasci
+  /// Upisuje meseÄno plaÄ‡anje u v2_statistika_istorija i aÅ¾urira v2_polasci
   static Future<bool> v2SacuvajUplatu({
     String? putnikId,
     String? putnikIme,
@@ -429,7 +429,7 @@ class V2StatistikaIstorijaService {
       // 1. v2_polasci
       if (requestId != null && requestId.isNotEmpty) {
         await supabase.from('v2_polasci').update(placenPayload).eq('id', requestId);
-        // Optimistički cache patch — UI se osvježava odmah
+        // OptimistiÄki cache patch â€” UI se osvjeÅ¾ava odmah
         rm.v2PatchCache('v2_polasci', requestId, placenPayload);
       }
 
@@ -472,7 +472,7 @@ class V2StatistikaIstorijaService {
 
       return true;
     } catch (e) {
-      debugPrint('[V2StatistikaIstorijaService] v2SacuvajUplatu greška: $e');
+      debugPrint('[V2StatistikaIstorijaService] v2SacuvajUplatu greÅ¡ka: $e');
       return false;
     }
   }
