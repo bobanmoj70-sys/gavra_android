@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
-import '../../globals.dart';
-import '../../models/v3_kapacitet.dart';
-import '../realtime/v3_master_realtime_manager.dart';
+
 import '../../config/v2_route_config.dart';
+import '../../globals.dart';
 import '../../utils/v2_grad_adresa_validator.dart';
+import '../realtime/v3_master_realtime_manager.dart';
 
 class V3KapacitetService {
   V3KapacitetService._();
@@ -26,7 +26,7 @@ class V3KapacitetService {
           )
           .select()
           .single();
-      
+
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet', res);
       return true;
     } catch (e) {
@@ -38,12 +38,12 @@ class V3KapacitetService {
   static Map<String, Map<String, int>> getKapacitetSync() {
     final cache = V3MasterRealtimeManager.instance.kapacitetCache;
     final result = <String, Map<String, int>>{'BC': {}, 'VS': {}};
-    
+
     for (final row in cache.values) {
       final grad = row['grad'] as String? ?? '';
       final vreme = row['vreme'] as String? ?? '';
       final maxMesta = (row['max_mesta'] as int?) ?? 8;
-      
+
       if (grad == 'BC' || grad == 'VS') {
         result[grad]![vreme] = maxMesta;
       }

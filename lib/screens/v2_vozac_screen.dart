@@ -10,7 +10,6 @@ import '../services/realtime/v2_master_realtime_manager.dart'; // Za realtime ra
 import '../services/v2_audit_log_service.dart';
 import '../services/v2_auth_manager.dart';
 import '../services/v2_driver_location_service.dart';
-import '../services/v3/v3_kapacitet_service.dart';
 import '../services/v2_local_notification_service.dart';
 import '../services/v2_polasci_service.dart';
 import '../services/v2_realtime_gps_service.dart';
@@ -20,6 +19,7 @@ import '../services/v2_theme_manager.dart';
 import '../services/v2_vozac_putnik_service.dart';
 import '../services/v2_vozac_raspored_service.dart';
 import '../services/v2_vozac_service.dart';
+import '../services/v3/v3_kapacitet_service.dart';
 import '../utils/v2_app_snack_bar.dart';
 import '../utils/v2_dan_utils.dart';
 import '../utils/v2_grad_adresa_validator.dart';

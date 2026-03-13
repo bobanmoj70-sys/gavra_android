@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../services/v2_pin_zahtev_service.dart';
+import '../services/v3/v3_pin_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v2_app_snack_bar.dart';
 
-/// PIN ZAHTEVI SCREEN
+/// PIN ZAHTEVI SCREEN (V3)
 /// Admin vidi sve zahteve za PIN i može da odobri/odbije
 class V2PinZahteviScreen extends StatefulWidget {
   const V2PinZahteviScreen({super.key});
@@ -16,7 +16,7 @@ class V2PinZahteviScreen extends StatefulWidget {
 }
 
 class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
-  late final Stream<List<Map<String, dynamic>>> _stream = V2PinZahtevService.streamZahteviKojiCekaju();
+  late final Stream<List<Map<String, dynamic>>> _stream = V3PinZahtevService.streamZahteviKojiCekaju();
 
   /// Helper: čita telefon iz oba moguća ključa
   static String _getTelefon(Map<String, dynamic> z, {String fallback = '-'}) =>
@@ -35,7 +35,7 @@ class _PinZahteviScreenState extends State<V2PinZahteviScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: const Text('PIN Zahtevi', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text('PIN Zahtevi (V3)', style: TextStyle(fontWeight: FontWeight.bold)),
             automaticallyImplyLeading: false,
           ),
           body: Container(
@@ -249,7 +249,7 @@ class _PinOdobriDialogState extends State<_PinOdobriDialog> {
   @override
   void initState() {
     super.initState();
-    _pinCtrl = TextEditingController(text: V2PinZahtevService.generatePin());
+    _pinCtrl = TextEditingController(text: V3PinZahtevService.generatePin());
   }
 
   @override
@@ -297,7 +297,7 @@ class _PinOdobriDialogState extends State<_PinOdobriDialog> {
           ),
           const SizedBox(height: 12),
           TextButton.icon(
-            onPressed: () => setState(() => _pinCtrl.text = V2PinZahtevService.generatePin()),
+            onPressed: () => setState(() => _pinCtrl.text = V3PinZahtevService.generatePin()),
             icon: const Icon(Icons.refresh, color: Colors.amber),
             label: const Text('Generiši novi', style: TextStyle(color: Colors.amber)),
           ),
@@ -318,7 +318,7 @@ class _PinOdobriDialogState extends State<_PinOdobriDialog> {
             final zahtevId = widget.zahtev['id'] as String;
             final brojTelefona = widget.getTelefon(widget.zahtev, fallback: '');
 
-            final success = await V2PinZahtevService.odobriZahtev(
+            final success = await V3PinZahtevService.odobriZahtev(
               zahtevId: zahtevId,
               pin: pin,
             );
@@ -373,7 +373,7 @@ class _PinOdbijDialog extends StatelessWidget {
         ElevatedButton(
           onPressed: () async {
             Navigator.pop(context);
-            final success = await V2PinZahtevService.odbijZahtev(zahtevId);
+            final success = await V3PinZahtevService.odbijZahtev(zahtevId);
             if (!context.mounted) return;
             if (success) {
               V2AppSnackBar.warning(context, '🚫 Zahtev od $ime je odbijen');

@@ -23,6 +23,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> gorivoPunjenjaCache = {};
   final Map<String, Map<String, dynamic>> gorivoTocenjaCache = {};
   final Map<String, Map<String, dynamic>> kapacitetCache = {};
+  final Map<String, Map<String, dynamic>> pinZahteviCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
@@ -44,6 +45,7 @@ class V3MasterRealtimeManager {
         supabase.from('v3_gorivo_punjenja').select().order('datum', ascending: false).limit(200),
         supabase.from('v3_gorivo_tocenja').select().order('datum', ascending: false).limit(500),
         supabase.from('v3_kapacitet').select().eq('aktivno', true),
+        supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka'),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -57,6 +59,7 @@ class V3MasterRealtimeManager {
       _fillCache(gorivoPunjenjaCache, results[8] as List);
       _fillCache(gorivoTocenjaCache, results[9] as List);
       _fillCache(kapacitetCache, results[10] as List);
+      _fillCache(pinZahteviCache, results[11] as List);
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -87,12 +90,13 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_gorivo_punjenja', gorivoPunjenjaCache);
     _setupTableRealtime('v3_gorivo_tocenja', gorivoTocenjaCache);
     _setupTableRealtime('v3_kapacitet', kapacitetCache);
+    _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache, activeKey: 'status', invertActive: true, isPin: true);
 
     _v3Channel?.subscribe();
   }
 
   void _setupTableRealtime(String table, Map<String, Map<String, dynamic>> cache,
-      {String activeKey = 'aktivno', bool invertActive = false}) {
+      {String activeKey = 'aktivno', bool invertActive = false, bool isPin = false}) {
     _v3Channel?.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
@@ -105,7 +109,9 @@ class V3MasterRealtimeManager {
         if (id == null) return;
 
         bool isActive = true;
-        if (newRecord.containsKey(activeKey)) {
+        if (isPin) {
+          isActive = newRecord['status'] == 'ceka';
+        } else if (newRecord.containsKey(activeKey)) {
           isActive = newRecord[activeKey] as bool;
           if (invertActive) isActive = !isActive;
         }
@@ -149,6 +155,13 @@ class V3MasterRealtimeManager {
       finansijeCache[id] = row;
     else if (table == 'v3_kapacitet')
       kapacitetCache[id] = row;
+    else if (table == 'v3_pin_zahtevi') {
+      if (row['status'] == 'ceka') {
+        pinZahteviCache[id] = row;
+      } else {
+        pinZahteviCache.remove(id);
+      }
+    }
 
     _changeController.add(null);
   }
