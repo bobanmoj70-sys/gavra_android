@@ -12,6 +12,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'globals.dart';
 import 'screens/v2_welcome_screen.dart';
 import 'services/realtime/v2_master_realtime_manager.dart';
+import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v2_background_gps_service.dart';
 import 'services/v2_firebase_service.dart';
 import 'services/v2_huawei_push_service.dart';
@@ -114,11 +115,15 @@ Future<void> _tryInitHms({required Duration timeout}) async {
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
-  // V2 Master Realtime Manager â€” jedini koji slusa Supabase.
-  // On ucitava sve cache-ove (vozaci, kapacitet, settings...) i otvara WebSocket.
+  // V2 Master Realtime Manager
   unawaited(V2MasterRealtimeManager.instance
       .initialize()
       .catchError((Object e) => debugPrint('âŒ [main] MasterRealtimeManager.initialize greÅ¡ka: $e')));
+
+  // V3 Master Realtime Manager
+  unawaited(V3MasterRealtimeManager.instance
+      .initV3()
+      .catchError((Object e) => debugPrint('âŒ [main] V3MasterRealtimeManager.initV3 greÅ¡ka: $e')));
 
   // Weather alerts (bez cekanja)
   unawaited(V2WeatherAlertService.checkAndSendWeatherAlerts());
