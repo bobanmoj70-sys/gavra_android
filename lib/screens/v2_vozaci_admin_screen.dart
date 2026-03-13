@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:gavra_android/models/v3_vozac.dart';
+import 'package:gavra_android/services/v3/v3_vozac_service.dart';
+import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
+import 'package:gavra_android/utils/v2_app_snack_bar.dart';
 
-import '../models/v2_vozac.dart';
-import '../services/v2_vozac_service.dart';
-import '../theme.dart';
-import '../utils/v2_app_snack_bar.dart';
-
-/// VOZACI ADMIN SCREEN - Admin panel za upravljanje vozacima
-/// Ovde dodajes/brises vozace, emailove, sifre, telefone, boje
 class V2VozaciAdminScreen extends StatefulWidget {
   const V2VozaciAdminScreen({super.key});
 
   @override
-  State<V2VozaciAdminScreen> createState() => _VozaciAdminScreenState();
+  State<V2VozaciAdminScreen> createState() => _V2VozaciAdminScreenState();
 }
 
-class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
-  // Forma za novog vozaca
+class _V2VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   final _formKey = GlobalKey<FormState>();
   final _imeController = TextEditingController();
   final _emailController = TextEditingController();
@@ -23,22 +19,18 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
   final _telefonController = TextEditingController();
   Color _selectedColor = Colors.blue;
 
-  // Predefinisane boje za izbor
   final List<Color> _availableColors = [
-    const Color(0xFF7C4DFF), // ljubicasta
-    const Color(0xFFFF9800), // narandzasta
-    const Color(0xFF00E5FF), // cyan
-    const Color(0xFFFF1493), // pink
-    const Color(0xFFFFD700), // zuta (Gold)
-    const Color(0xFF4CAF50), // zelena
-    const Color(0xFFE91E63), // crvena-pink
-    const Color(0xFF2196F3), // plava
-    const Color(0xFFFFEB3B), // svetla zuta
-    const Color(0xFF9C27B0), // tamno ljubicasta
+    Colors.blue,
+    Colors.red,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+    Colors.teal,
+    Colors.pink,
+    Colors.amber,
+    Colors.indigo,
+    Colors.brown,
   ];
-
-  // Master realtime stream — v2StreamFromCache, automatski refresh
-  final Stream<List<V2Vozac>> _streamVozaci = V2VozacService.streamAllVozaci();
 
   @override
   void dispose() {
@@ -49,432 +41,238 @@ class _VozaciAdminScreenState extends State<V2VozaciAdminScreen> {
     super.dispose();
   }
 
-  /// Dodaj novog vozaca
-  Future<void> _addVozac() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final noviVozac = V2Vozac(
-      ime: _imeController.text.trim(),
-      email: _emailController.text.trim().toLowerCase(),
-      sifra: _sifraController.text,
-      brojTelefona: _telefonController.text.trim(),
-      boja: _vozaciAdminColorHex(_selectedColor),
-    );
-
-    try {
-      await V2VozacService.addVozac(noviVozac);
-    } catch (e) {
-      if (!mounted) return;
-      V2AppSnackBar.error(context, '❌ Greška: $e');
-      return;
-    }
-
-    _vozaciAdminClearForm(_imeController, _emailController, _sifraController, _telefonController);
-    _selectedColor = Colors.blue;
-
-    if (mounted) {
-      Navigator.pop(context);
-      V2AppSnackBar.success(context, '✅ Vozač ${noviVozac.ime} dodat!');
-    }
-  }
-
-  /// Obrisi vozaca
-  void _deleteVozac() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Info', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Brisanje vozaca nije dostupno u ovoj verziji.\nKoristite web admin panel.',
-          style: TextStyle(color: Colors.white70),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1A2E),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('👨‍✈️ Administracija Vozača (V3)', style: TextStyle(color: Colors.white)),
+        centerTitle: true,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+          IconButton(
+            icon: const Icon(Icons.person_add, color: Colors.green, size: 30),
+            onPressed: () => _showVozacDialog(),
           ),
         ],
       ),
-    );
-  }
-
-  /// Edituj vozaca
-  void _editVozac(V2Vozac vozac) {
-    // Popuni formu iz cache podataka — bez DB upita
-    _imeController.text = vozac.ime;
-    _emailController.text = vozac.email ?? '';
-    _sifraController.text = vozac.sifra ?? '';
-    _telefonController.text = vozac.brojTelefona ?? '';
-    _selectedColor = vozac.color ?? Colors.blue;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => _buildVozacDialog(
-        title: 'Izmeni vozača',
-        onSave: () async {
-          if (!_formKey.currentState!.validate()) return;
-
-          final updatedVozac = V2Vozac(
-            id: vozac.id,
-            ime: _imeController.text.trim(),
-            email: _emailController.text.trim().toLowerCase(),
-            sifra: _sifraController.text,
-            brojTelefona: _telefonController.text.trim(),
-            boja: _vozaciAdminColorHex(_selectedColor),
-          );
-
-          try {
-            await V2VozacService.updateVozac(updatedVozac);
-            if (!mounted) return;
-            Navigator.pop(ctx);
-            V2AppSnackBar.info(context, 'Vozač ažuriran');
-          } catch (e) {
-            if (!mounted) return;
-            V2AppSnackBar.error(context, '❌ Greška: $e');
+      body: StreamBuilder<List<V3Vozac>>(
+        stream: V3VozacService.streamVozaci(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Greška: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
           }
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          final vozaci = snapshot.data!.where((v) => v.aktivno).toList();
+          if (vozaci.isEmpty) {
+            return const Center(child: Text('Nema aktivnih vozača.', style: TextStyle(color: Colors.white70)));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: vozaci.length,
+            itemBuilder: (context, i) {
+              final v = vozaci[i];
+              final boja = _hexToColor(v.boja);
+              return Card(
+                color: Colors.white.withValues(alpha: 0.1),
+                margin: const EdgeInsets.only(bottom: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: boja.withValues(alpha: 0.5), width: 1),
+                ),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: boja,
+                    child: Text(v.imePrezime[0].toUpperCase(), style: const TextStyle(color: Colors.white)),
+                  ),
+                  title: Text(v.imePrezime, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    '${v.email}\nTel: ${v.telefon ?? "N/A"}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.edit, color: boja),
+                        onPressed: () => _showVozacDialog(v),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () => _confirmDeactivate(v),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
         },
       ),
     );
   }
 
-  /// Dialog za dodavanje/editovanje vozaca
-  Widget _buildVozacDialog({required String title, required Future<void> Function() onSave}) {
-    return StatefulBuilder(
-      builder: (ctx, setDialogState) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: Text(title, style: const TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _imeController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _vozaciAdminInputDecoration('Ime vozača', Icons.person),
-                  validator: (v) => v?.isEmpty == true ? 'Unesite ime' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _emailController,
-                  style: const TextStyle(color: Colors.white),
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: _vozaciAdminInputDecoration('Email', Icons.email),
-                  validator: (v) {
-                    if (v?.isEmpty == true) return 'Unesite email';
-                    if (!v!.contains('@')) return 'Neispravan email';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _sifraController,
-                  style: const TextStyle(color: Colors.white),
-                  obscureText: true,
-                  decoration: _vozaciAdminInputDecoration('Šifra', Icons.lock),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _telefonController,
-                  style: const TextStyle(color: Colors.white),
-                  keyboardType: TextInputType.phone,
-                  decoration: _vozaciAdminInputDecoration('Telefon', Icons.phone),
-                ),
-                const SizedBox(height: 16),
-                const Text('Izaberi boju:', style: TextStyle(color: Colors.white70)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _availableColors.map((color) {
-                    final isSelected = _selectedColor.value == color.value;
-                    return GestureDetector(
-                      onTap: () {
-                        setDialogState(() {
-                          _selectedColor = color;
-                        });
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected ? Colors.white : Colors.transparent,
-                            width: 3,
-                          ),
-                          boxShadow:
-                              isSelected ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)] : null,
-                        ),
-                        child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _vozaciAdminClearForm(_imeController, _emailController, _sifraController, _telefonController);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Otkaži'),
-          ),
-          ElevatedButton(
-            onPressed: onSave,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Sačuvaj'),
-          ),
-        ],
-      ),
-    );
+  Color _hexToColor(String? hex) {
+    if (hex == null || hex.isEmpty) return Colors.blue;
+    try {
+      final h = hex.replaceAll('#', '');
+      return Color(int.parse('FF$h', radix: 16));
+    } catch (_) {
+      return Colors.blue;
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              ' Vozači Admin',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 12),
-            IconButton(
-              icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
-              onPressed: () {
-                _vozaciAdminClearForm(_imeController, _emailController, _sifraController, _telefonController);
-                _selectedColor = Colors.blue;
-                showDialog(
-                  context: context,
-                  builder: (ctx) => _buildVozacDialog(
-                    title: 'Dodaj vozača',
-                    onSave: _addVozac,
+  String _colorToHex(Color color) {
+    return color.value.toRadixString(16).padLeft(8, '0').substring(2);
+  }
+
+  void _clearForm() {
+    _imeController.clear();
+    _emailController.clear();
+    _sifraController.clear();
+    _telefonController.clear();
+    _selectedColor = Colors.blue;
+  }
+
+  Future<void> _showVozacDialog([V3Vozac? v]) async {
+    if (v != null) {
+      _imeController.text = v.imePrezime;
+      _emailController.text = v.email ?? '';
+      _sifraController.text = v.sifra ?? '';
+      _telefonController.text = v.telefon ?? '';
+      _selectedColor = _hexToColor(v.boja);
+    } else {
+      _clearForm();
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          title: Text(v == null ? 'Dodaj vozača' : 'Izmeni vozača', style: const TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTextField(_imeController, 'Ime i prezime', Icons.person),
+                  const SizedBox(height: 12),
+                  _buildTextField(_emailController, 'Email', Icons.email, keyboard: TextInputType.emailAddress),
+                  const SizedBox(height: 12),
+                  _buildTextField(_sifraController, 'Šifra (za App)', Icons.lock, obscure: true),
+                  const SizedBox(height: 12),
+                  _buildTextField(_telefonController, 'Telefon', Icons.phone, keyboard: TextInputType.phone),
+                  const SizedBox(height: 16),
+                  const Text('Boja:', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _availableColors.map((color) {
+                      final isSelected = _selectedColor.value == color.value;
+                      return GestureDetector(
+                        onTap: () => setDialogState(() => _selectedColor = color),
+                        child: Container(
+                          width: 35,
+                          height: 35,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 2),
+                          ),
+                          child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                        ),
+                      );
+                    }).toList(),
                   ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Otkaži')),
+            ElevatedButton(
+              onPressed: () async {
+                if (!_formKey.currentState!.validate()) return;
+
+                final novVozac = V3Vozac(
+                  id: v?.id ?? '',
+                  imePrezime: _imeController.text.trim(),
+                  email: _emailController.text.trim().toLowerCase(),
+                  sifra: _sifraController.text.trim(),
+                  telefon: _telefonController.text.trim(),
+                  boja: _colorToHex(_selectedColor),
+                  aktivno: true,
                 );
+
+                try {
+                  await V3VozacService.addUpdateVozac(novVozac);
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    V2AppSnackBar.success(context, v == null ? '✅ Vozač dodat' : '✅ Vozač ažuriran');
+                  }
+                } catch (e) {
+                  if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
+                }
               },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('Sačuvaj'),
             ),
           ],
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(gradient: tripleBlueFashionGradient),
-        child: SafeArea(
-          child: StreamBuilder<List<V2Vozac>>(
-            stream: _streamVozaci,
-            builder: (_, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Greška pri učitavanju vozača: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                );
-              }
-
-              final vozaci = snapshot.data ?? [];
-
-              return ListView(
-                padding: const EdgeInsets.all(12),
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        ' VOZAČI',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${vozaci.length}',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (vozaci.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text(
-                          'Nema vozača.\nKlikni + da dodaš.',
-                          style: TextStyle(color: Colors.white70, fontSize: 18),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                  else
-                    ...vozaci.map((vozac) {
-                      final boja = vozac.color ?? Colors.blue;
-
-                      return Card(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: boja.withValues(alpha: 0.6), width: 1.5),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: boja,
-                                radius: 22,
-                                child: Text(
-                                  vozac.ime[0].toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            vozac.ime,
-                                            style: TextStyle(
-                                              color: boja,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: Icon(Icons.edit, color: boja, size: 20),
-                                          onPressed: () => _editVozac(vozac),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                          visualDensity: VisualDensity.compact,
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                                          onPressed: () => _deleteVozac(),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                          visualDensity: VisualDensity.compact,
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.email, size: 14, color: Colors.white54),
-                                        const SizedBox(width: 6),
-                                        Flexible(
-                                          child: Text(
-                                            vozac.email ?? '-',
-                                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.phone, size: 14, color: Colors.white54),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          vozac.brojTelefona ?? '-',
-                                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                                        ),
-                                        if (vozac.sifra?.isNotEmpty == true)
-                                          const Padding(
-                                            padding: EdgeInsets.only(left: 6),
-                                            child: Text('', style: TextStyle(fontSize: 12)),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                ],
-              );
-            },
-          ),
-        ), // end SafeArea
-      ),
     );
   }
-}
 
-// ─── Top-level helper funkcije ────────────────────────────────────────────────────────
+  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {bool obscure = false, TextInputType? keyboard}) {
+    return TextFormField(
+      controller: ctrl,
+      style: const TextStyle(color: Colors.white),
+      obscureText: obscure,
+      keyboardType: keyboard,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: Icon(icon, color: Colors.blueAccent),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.1),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      ),
+      validator: (val) => val == null || val.isEmpty ? 'Obavezno polje' : null,
+    );
+  }
 
-/// Očisti sva 4 controller-a forme za vozача.
-void _vozaciAdminClearForm(
-  TextEditingController ime,
-  TextEditingController email,
-  TextEditingController sifra,
-  TextEditingController telefon,
-) {
-  ime.clear();
-  email.clear();
-  sifra.clear();
-  telefon.clear();
-}
+  Future<void> _confirmDeactivate(V3Vozac v) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text('Deaktivacija', style: TextStyle(color: Colors.white)),
+        content: Text('Da li ste sigurni da želite da deaktivirate vozača ${v.imePrezime}?', style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('NE')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('DA'),
+          ),
+        ],
+      ),
+    );
 
-/// Konvertuje Color u hex string (bez alpha) za čuvanje u bazi.
-String _vozaciAdminColorHex(Color color) => color.value.toRadixString(16).padLeft(8, '0').substring(2);
-
-InputDecoration _vozaciAdminInputDecoration(String label, IconData icon) {
-  return InputDecoration(
-    labelText: label,
-    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-    prefixIcon: Icon(icon, color: Colors.blue),
-    filled: true,
-    fillColor: Colors.white.withValues(alpha: 0.1),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide.none,
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.3)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.blue),
-    ),
-  );
+    if (confirm == true) {
+      try {
+        await V3VozacService.deactivateVozac(v.id);
+        if (mounted) V2AppSnackBar.success(context, '✅ Vozač deaktiviran');
+      } catch (e) {
+        if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
+      }
+    }
+  }
 }
