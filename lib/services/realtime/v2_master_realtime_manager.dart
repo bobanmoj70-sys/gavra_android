@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../../models/v2_polazak.dart';
 import '../../models/v2_registrovani_putnik.dart';
 import '../../services/v2_app_settings_service.dart';
 import '../../utils/v2_dan_utils.dart';
@@ -117,6 +118,111 @@ class V2MasterRealtimeManager {
 
   /// Reverse lookup: racun UUID → putnik_id (za O(1) DELETE handling)
   final Map<String, String> _racuniIdToPutnikId = {};
+
+  // --- V3 GETTERS & LOOKUPS ---
+  /// Vraća vozača po id-u iz cache-a
+  Map<String, dynamic>? v2GetVozacById(String id) => vozaciCache[id];
+
+  /// Brza pretraga id-a vozača po imenu — O(1)
+  String? v2GetVozacIdByIme(String ime) {
+    if (ime.isEmpty) return null;
+    final lIme = ime.toLowerCase();
+    for (final v in vozaciCache.values) {
+      if ((v['ime']?.toString() ?? '').toLowerCase() == lIme) return v['id']?.toString();
+    }
+    return null;
+  }
+
+  /// Individualna dodjela (v2_vozac_putnik) — O(1)
+  String? v3FindIndividualnaDodjela(String putnikId, String dan) {
+    if (putnikId.isEmpty || dan.isEmpty) return null;
+    final lDan = dan.toLowerCase();
+    for (final row in vozacPutnikCache.values) {
+      if (row['putnik_id']?.toString() == putnikId && (row['dan']?.toString() ?? '').toLowerCase() == lDan) {
+        return row['vozac_id']?.toString();
+      }
+    }
+    return null;
+  }
+
+  /// Vozač iz rasporeda (v2_vozac_raspored) — O(1)
+  String? v3GetVozacIzRasporeda(String grad, String dan, String vreme) {
+    if (grad.isEmpty || dan.isEmpty || vreme.isEmpty) return null;
+    final lDan = dan.toLowerCase();
+    final lGrad = grad.toUpperCase();
+    final lVreme = vreme.replaceAll(':', '');
+    for (final row in rasporedCache.values) {
+      if ((row['grad']?.toString() ?? '').toUpperCase() == lGrad &&
+          (row['dan']?.toString() ?? '').toLowerCase() == lDan &&
+          (row['vreme']?.toString() ?? '').replaceAll(':', '') == lVreme) {
+        return row['vozac_id']?.toString();
+      }
+    }
+    return null;
+  }
+
+  /// Brzi lookup adresa po gradu — O(1)
+  Map<String, Map<String, dynamic>>? get v3AdreseGradCache {
+    final Map<String, Map<String, Map<String, dynamic>>> cache = {};
+    for (final row in adreseCache.values) {
+      final grad = (row['grad']?.toString() ?? 'BC').toUpperCase();
+      final id = row['id']?.toString();
+      if (id != null) {
+        cache[grad] ??= {};
+        cache[grad]![id] = row;
+      }
+    }
+    return cache.cast<String, Map<String, Map<String, dynamic>>>() as dynamic;
+  }
+
+  /// Map: Ime Vozača -> ID Vozača (O(1))
+  Map<String, String> get v3VozaciIme2Id {
+    final Map<String, String> map = {};
+    for (final v in vozaciCache.values) {
+      final ime = v['ime']?.toString();
+      final id = v['id']?.toString();
+      if (ime != null && id != null) map[ime] = id;
+    }
+    return map;
+  }
+
+  /// Brzi lookup točenja po vozilu — O(1)
+  Map<String, Map<String, Map<String, dynamic>>> get v3TocenjaVoziloCache {
+    final Map<String, Map<String, Map<String, dynamic>>> cache = {};
+    for (final row in tocenjaCache.values) {
+      final vId = row['vozilo_id']?.toString();
+      final id = row['id']?.toString();
+      if (vId != null && id != null) {
+        cache[vId] ??= {};
+        cache[vId]![id] = row;
+      }
+    }
+    return cache;
+  }
+
+  /// Stream polazaka za konkretan dan — O(1) filtering
+  Stream<List<Map<String, dynamic>>> v3StreamPutniciZaDan(String dan) {
+    final lDan = dan.toLowerCase();
+    return v2StreamFromCache<List<Map<String, dynamic>>>(
+      tables: const ['v2_polasci', ...putnikTabele],
+      build: () {
+        final List<Map<String, dynamic>> results = [];
+        v3PolasciCache.forEach((pId, dani) {
+          if (pId == 'svi') return;
+          final row = dani[lDan];
+          if (row != null) results.add(row);
+        });
+        return results;
+      },
+    );
+  }
+
+  // --- V3 OPTIMIZACIJA (Index-based caching) ---
+  /// v3PolasciCache — Key: putnik_id -> Value: Map(Dan, RedPodataka)
+  final Map<String, Map<String, Map<String, dynamic>>> v3PolasciCache = {};
+
+  /// v3PolasciModels — Instancirani V2Polazak objekti za O(1) streamove
+  final Map<String, V2Polazak> v3PolasciModels = {};
 
   // ──────────────────────────────────────────────────────────────────────────
   // State
@@ -483,6 +589,16 @@ class V2MasterRealtimeManager {
     final id = record['id']?.toString();
     if (id == null) return;
 
+    // v3 Index for polasci
+    if (table == 'v2_polasci') {
+      final pId = record['putnik_id']?.toString();
+      final dan = record['dan']?.toString().toLowerCase();
+      if (pId != null && dan != null) {
+        final existing = v3PolasciCache[pId] ??= {};
+        existing[dan] = Map<String, dynamic>.from(record);
+      }
+    }
+
     // v2_racuni je keyed by putnik_id (ne id) — poseban handling
     if (table == 'v2_racuni') {
       final putnikId = record['putnik_id']?.toString();
@@ -563,6 +679,22 @@ class V2MasterRealtimeManager {
 
   /// Uklanja red iz cache-a na DELETE event
   void v2RemoveFromCache(String table, String id) {
+    // v3 Index for polasci
+    if (table == 'v2_polasci') {
+      final existing = polasciCache[id];
+      if (existing != null) {
+        final pId = existing['putnik_id']?.toString();
+        final dan = existing['dan']?.toString().toLowerCase();
+        if (pId != null && dan != null) {
+          final existing = v3PolasciCache[pId];
+          if (existing != null) {
+            existing.remove(dan);
+            if (existing.isEmpty) v3PolasciCache.remove(pId);
+          }
+        }
+      }
+    }
+
     // v2_racuni: keyed by putnik_id, ali Realtime DELETE payload šalje record 'id' (UUID reda)
     // Trebamo pronaći putnik_id koji odgovara tom id-u
     if (table == 'v2_racuni') {
@@ -943,6 +1075,18 @@ class V2MasterRealtimeManager {
   static void _fillCache(Map<String, Map<String, dynamic>> cache, List<Map<String, dynamic>> rows) {
     for (final row in rows) {
       cache[row['id'].toString()] = Map<String, dynamic>.from(row);
+    }
+    // Special case for O(1) index of v2_polasci
+    if (cache == instance.polasciCache) {
+      instance.v3PolasciCache.clear();
+      for (final row in rows) {
+        final pId = row['putnik_id']?.toString();
+        final dan = row['dan']?.toString().toLowerCase();
+        if (pId != null && dan != null) {
+          final existing = instance.v3PolasciCache[pId] ??= {};
+          existing[dan] = Map<String, dynamic>.from(row);
+        }
+      }
     }
   }
 

@@ -385,7 +385,7 @@ class V2PolasciService {
   /// HomeScreen kreira JEDAN stream i swap-uje dan kroz setState bez rekreiranja streama.
   static Stream<List<V2Putnik>> streamPutniciZaDan(String dan) {
     final rm = V2MasterRealtimeManager.instance;
-    return rm.v2StreamPutniciZaDan(dan).map((rows) {
+    return rm.v3StreamPutniciZaDan(dan).map((rows) {
       final isoZaDan = V2DanUtils.isoZaDan(dan);
       return rows
           .map((row) =>
@@ -638,7 +638,7 @@ class V2PutnikStreamService {
     final putnikId = rpEntry['id']?.toString();
     if (putnikId == null) return null;
 
-    final polazak = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == putnikId).firstOrNull;
+    final polazak = rm.v3PolasciCache[putnikId]?.values.firstOrNull;
     if (polazak != null) {
       return _buildPutnik(polazak, rpEntry, todayStr);
     }
@@ -651,7 +651,7 @@ class V2PutnikStreamService {
       final String idStr = id.toString();
       final rm = V2MasterRealtimeManager.instance;
 
-      final polazak = rm.polasciCache.values.where((r) => r['putnik_id']?.toString() == idStr).firstOrNull;
+      final polazak = rm.v3PolasciCache[idStr]?.values.firstOrNull;
       final rp = rm.v2GetPutnikById(idStr);
 
       if (polazak != null) {
@@ -871,8 +871,8 @@ class V2PutnikStreamService {
     String? vozacId;
     final rm = V2MasterRealtimeManager.instance;
     if (driver != null) {
-      // Čitaj iz cache-a — 0 DB querija
-      vozacId = rm.vozaciCache.values.firstWhere((v) => v['ime'] == driver, orElse: () => {})['id'] as String?;
+      // Čitaj iz cache-a — 0 DB querija (O(1))
+      vozacId = rm.v2GetVozacIdByIme(driver);
     }
 
     try {
@@ -1158,9 +1158,9 @@ class V2PutnikStreamService {
 
     String? vozacId;
     if (driver != null) {
-      // Čitaj iz cache-a — 0 DB querija
+      // Čitaj iz cache-a — 0 DB querija (O(1))
       final rm = V2MasterRealtimeManager.instance;
-      vozacId = rm.vozaciCache.values.firstWhere((v) => v['ime'] == driver, orElse: () => {})['id'] as String?;
+      vozacId = rm.v2GetVozacIdByIme(driver);
     }
 
     final placenNow = v2NowString();
