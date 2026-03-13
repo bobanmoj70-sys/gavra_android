@@ -51,4 +51,29 @@ class V3ZahtevService {
       rethrow;
     }
   }
+
+  static List<V3Zahtev> getZahteviByDanAndGrad(String danUSedmici, String grad) {
+    final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
+    return cache
+        .where((r) => r['dan_u_sedmici'] == danUSedmici && r['grad'] == grad && r['aktivno'] == true)
+        .map((r) => V3Zahtev.fromJson(r))
+        .toList()
+      ..sort((a, b) => a.zeljenoVreme.compareTo(b.zeljenoVreme));
+  }
+
+  static Stream<List<V3Zahtev>> streamZahteviByDanAndGrad(String dan, String grad) =>
+      V3MasterRealtimeManager.instance.v3StreamFromCache(
+        tables: ['v3_zahtevi'],
+        build: () => getZahteviByDanAndGrad(dan, grad),
+      );
+
+  static Future<void> deleteZahtev(String id) async {
+    try {
+      await supabase.from('v3_zahtevi').delete().eq('id', id);
+      V3MasterRealtimeManager.instance.zahteviCache.remove(id);
+    } catch (e) {
+      debugPrint('[V3ZahtevService] Delete error: $e');
+      rethrow;
+    }
+  }
 }
