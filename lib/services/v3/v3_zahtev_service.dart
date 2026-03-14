@@ -86,6 +86,49 @@ class V3ZahtevService {
       ..sort((a, b) => a.zeljenoVreme.compareTo(b.zeljenoVreme));
   }
 
+  /// Dohvata zahteve iz operativnog plana za određeni datum i grad.
+  static List<V3Zahtev> getOperativniZahteviByDatumAndGrad(String datum, String grad) {
+    // Ovde možemo kombinovati redovne zahteve i operativni plan
+    final opCache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    final zCache = V3MasterRealtimeManager.instance.zahteviCache.values;
+
+    // Prvo nađemo sve u operativnoj nedelji za taj dan
+    final opFiltered = opCache.where((r) => r['datum'] == datum && r['grad'] == grad).toList();
+
+    // Mapiramo ih nazad u V3Zahtev objekte
+    return opFiltered.map((op) {
+      final zahtevId = op['izvor_id'] as String?;
+      if (zahtevId != null && op['izvor_tip'] == 'zahtev') {
+        final base = zCache.firstWhere((z) => z['id'] == zahtevId, orElse: () => <String, dynamic>{});
+        if (base.isNotEmpty) {
+          final z = V3Zahtev.fromJson(base);
+          // Prepisujemo operativnim podacima
+          return z.copyWith(
+            status: op['status_final'] as String? ?? z.status,
+            dodeljenoVreme: op['vreme'] as String?,
+          );
+        }
+      }
+      // Ako nema baze (ili je izvor tipa 'putnik' ili dr.), kreiramo dummy/osnovni
+      return V3Zahtev(
+        id: op['id'] as String? ?? 'temp',
+        putnikId: op['putnik_id'] as String? ?? '',
+        grad: grad,
+        datum: DateTime.tryParse(datum) ?? DateTime.now(),
+        zeljenoVreme: op['vreme'] as String? ?? '00:00',
+        dodeljenoVreme: op['vreme'] as String?,
+        status: op['status_final'] as String? ?? 'obrada',
+      );
+    }).toList()
+      ..sort((a, b) => (a.dodeljenoVreme ?? a.zeljenoVreme).compareTo(b.dodeljenoVreme ?? b.zeljenoVreme));
+  }
+
+  static Stream<List<V3Zahtev>> streamOperativniZahteviByDatumAndGrad(String datum, String grad) =>
+      V3MasterRealtimeManager.instance.v3StreamFromCache(
+        tables: ['v3_zahtevi', 'v3_operativna_nedelja'],
+        build: () => getOperativniZahteviByDatumAndGrad(datum, grad),
+      );
+
   static Stream<List<V3Zahtev>> streamZahteviByDanAndGrad(String dan, String grad) =>
       V3MasterRealtimeManager.instance.v3StreamFromCache(
         tables: ['v3_zahtevi'],
@@ -102,28 +145,81 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> oznaciPokupljen({
-    required String zahtevId,
-    required bool pokupljen,
-    required String vozacId,
-  }) async {
+  static Future<void> otkaziZahtev(String id) async {
     try {
-      final now = DateTime.now().toUtc().toIso8601String();
-      final row = await supabase
-          .from('v3_zahtevi')
-          .update({
-            'status': pokupljen ? 'pokupljen' : 'obrada',
-            'vozac_id': vozacId,
-            'updated_at': now,
-          })
-          .eq('id', zahtevId)
-          .select()
-          .single();
-
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+      await supabase.from('v3_zahtevi').update({'status': 'otkazano'}).eq('id', id);
     } catch (e) {
-      debugPrint('[V3ZahtevService] Pickup error: $e');
+      debugPrint('[V3ZahtevService] Otkazi error: $e');
       rethrow;
     }
+  }
+
+  static Future<void> oznaciPokupljen(String id) async {
+    try {
+      await supabase.from('v3_zahtevi').update({
+        'status': 'pokupljen',
+      }).eq('id', id);
+      await supabase.from('v3_operativna_nedelja').update({
+        'vreme_pokupljen': DateTime.now().toIso8601String(),
+      }).eq('izvor_id', id);
+    } catch (e) {
+      debugPrint('[V3ZahtevService] Pokupljen error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> updatedodeljenoVreme(String id, String? vreme) async {
+    try {
+      await supabase.from('v3_zahtevi').update({'dodeljeno_vreme': vreme}).eq('id', id);
+    } catch (e) {
+      debugPrint('[V3ZahtevService] Vreme update error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> updateZeljenoVreme(String id, String novoVreme) async {
+    try {
+      await supabase.from('v3_zahtevi').update({'zeljeno_vreme': novoVreme, 'status': 'obrada'}).eq('id', id);
+    } catch (e) {
+      debugPrint('[V3ZahtevService] ZeljenoVreme update error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> ponudiAlternativu({
+    required String id,
+    String? vremePre,
+    String? vremePosle,
+    String? napomena,
+  }) async {
+    try {
+      await supabase.from('v3_zahtevi').update({
+        'status': 'ponuda',
+        'alt_vreme_pre': vremePre,
+        'alt_vreme_posle': vremePosle,
+        'alt_napomena': napomena,
+      }).eq('id', id);
+    } catch (e) {
+      debugPrint('[V3ZahtevService] Ponuda error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> prihvatiPonudu(String id, String izabranoVreme) async {
+    await supabase.from('v3_zahtevi').update({
+      'status': 'odobreno',
+      'zeljeno_vreme': izabranoVreme,
+      'dodeljeno_vreme': izabranoVreme,
+      'alt_vreme_pre': null,
+      'alt_vreme_posle': null,
+    }).eq('id', id);
+  }
+
+  static Future<void> odbijPonudu(String id) async {
+    await supabase.from('v3_zahtevi').update({
+      'status': 'odbijeno',
+      'alt_vreme_pre': null,
+      'alt_vreme_posle': null,
+    }).eq('id', id);
   }
 }

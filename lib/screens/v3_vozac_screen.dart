@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
@@ -48,8 +50,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   // Moji putnici (iz v3_raspored_putnik) za trenutni dan/grad/vreme
   List<_PutnikZahtev> _mojiPutnici = [];
 
-  List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC');
-  List<String> get _vsVremena => V2RouteConfig.getVremenaByNavType('VS');
+  List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
+  List<String> get _vsVremena => V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),
@@ -98,6 +100,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final rm = V3MasterRealtimeManager.instance;
     final danAbbr = _getDanAbbr(_selectedDay);
 
+    // Pomoćna funkcija za normalizaciju vremena (HH:mm)
+    String normalizeV(String? v) {
+      if (v == null || v.isEmpty) return '';
+      final parts = v.split(':');
+      if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+      return v;
+    }
+
+    final selectedVNorm = normalizeV(_selectedVreme);
+
     // 1. Moji termini za ovaj dan (iz v3_raspored_termin)
     _mojiTermini = rm.rasporedTerminCache.values
         .where((r) =>
@@ -107,8 +119,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         .toList();
 
     // Ako nema selektovanog termina, uzmi prvi koji odgovara
-    final terminPostoji = _mojiTermini
-        .any((t) => t['grad']?.toString().toUpperCase() == _selectedGrad && t['vreme']?.toString() == _selectedVreme);
+    final terminPostoji = _mojiTermini.any((t) =>
+        t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
     if (!terminPostoji && _mojiTermini.isNotEmpty) {
       _selectClosestTermin();
     }
@@ -119,7 +131,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             r['vozac_id']?.toString() == vozac.id &&
             r['dan']?.toString().toLowerCase() == danAbbr &&
             r['grad']?.toString().toUpperCase() == _selectedGrad &&
-            r['vreme']?.toString() == _selectedVreme &&
+            normalizeV(r['vreme']?.toString()) == selectedVNorm &&
             (r['aktivno'] == true || r['aktivno'] == null))
         .toList();
 
@@ -140,7 +152,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           (z) =>
               z['putnik_id']?.toString() == putnikId &&
               z['grad']?.toString().toUpperCase() == _selectedGrad &&
-              z['zeljeno_vreme']?.toString() == _selectedVreme &&
+              normalizeV(z['zeljeno_vreme']?.toString()) == selectedVNorm &&
               z['aktivno'] == true,
         );
         zahtev = V3Zahtev.fromJson(zahtevData);
@@ -193,6 +205,37 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       _selectedVreme = vreme;
     });
     _rebuild();
+  }
+
+  Future<void> _openMapa() async {
+    if (_mojiPutnici.isEmpty) {
+      final uri = Uri.parse('https://wego.here.com/');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+
+    // Napravi multi-stop URL za Here WeGo od liste putnika
+    final waypointsBuffer = StringBuffer('https://wego.here.com/directions/drive/');
+    bool first = true;
+    int idx = 0;
+    for (final pz in _mojiPutnici) {
+      // Adresa zavisno od smjera (grad iz selektovanog termina)
+      final adresa = _selectedGrad.toUpperCase() == 'BC'
+          ? (pz.putnik.adresaBcNaziv ?? pz.putnik.adresaVsNaziv ?? '')
+          : (pz.putnik.adresaVsNaziv ?? pz.putnik.adresaBcNaziv ?? '');
+      if (adresa.isEmpty) continue;
+      final encoded = Uri.encodeComponent('$adresa, Serbia');
+      waypointsBuffer.write('${first ? '?' : '&'}waypoint$idx=$encoded');
+      first = false;
+      idx++;
+    }
+
+    final uri = Uri.parse(waypointsBuffer.toString());
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _logout() async {
@@ -347,7 +390,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(93),
+            preferredSize: const Size.fromHeight(88),
             child: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).glassContainer,
@@ -359,119 +402,88 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
               ),
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Red 1 — naslov
+                      // ── Red 1: Datum | Dan | Sat (V2 digitalni prikaz) ──
+                      _buildDigitalDateDisplay(context, vozac),
+                      const SizedBox(height: 6),
+                      // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
                       Row(
                         children: [
+                          // START / STOP
                           Expanded(
-                            child: Center(
-                              child: Text(
-                                'M O J I   P U T N I C I',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: Theme.of(context).colorScheme.onPrimary,
-                                  letterSpacing: 1.4,
-                                  shadows: const [
-                                    Shadow(blurRadius: 12, color: Colors.black87),
-                                    Shadow(offset: Offset(2, 2), blurRadius: 6, color: Colors.black54),
-                                  ],
-                                ),
-                              ),
+                            flex: 2,
+                            child: _buildAppBarBtn(
+                              context: context,
+                              label: _isTracking ? 'STOP' : 'START',
+                              color: _isTracking ? Colors.red : Colors.green,
+                              onTap: _toggleTracking,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Red 2 — ime vozača + dan + opcije
-                      Row(
-                        children: [
-                          // Ime vozača
+                          const SizedBox(width: 4),
+                          // MAPA
                           Expanded(
-                            flex: 35,
-                            child: Container(
-                              height: 33,
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: _getVozacBoja(vozac),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  vozac?.imePrezime ?? '—',
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onPrimary,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    shadows: const [Shadow(blurRadius: 8, color: Colors.black87)],
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
+                            flex: 2,
+                            child: _buildAppBarBtn(
+                              context: context,
+                              label: 'MAPA',
+                              color: Colors.blue,
+                              onTap: _openMapa,
                             ),
                           ),
                           const SizedBox(width: 4),
                           // Dan picker
                           Expanded(
-                            flex: 30,
-                            child: _buildDanPicker(),
+                            flex: 2,
+                            child: _buildDanPickerBtn(context),
                           ),
                           const SizedBox(width: 4),
-                          // Opcije
-                          Expanded(
-                            flex: 20,
-                            child: PopupMenuButton<String>(
-                              onSelected: (val) {
-                                if (val == 'logout') {
-                                  _logout();
-                                } else if (val == 'sifra') {
-                                  if (!mounted || vozac == null) return;
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (ctx) => V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
-                                    ),
-                                  );
-                                }
-                              },
-                              itemBuilder: (_) => [
-                                const PopupMenuItem(
-                                  value: 'sifra',
-                                  child: Row(children: [
-                                    Icon(Icons.lock, color: Colors.amber),
-                                    SizedBox(width: 8),
-                                    Text('Promeni šifru'),
-                                  ]),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'logout',
-                                  child: Row(children: [
-                                    Icon(Icons.logout, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Logout'),
-                                  ]),
-                                ),
-                              ],
-                              child: Container(
-                                height: 33,
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).glassContainer,
-                                  border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.settings, color: Theme.of(context).colorScheme.onPrimary, size: 18),
-                                  ],
-                                ),
+                          // ⚙️ Popup meni — šifra + logout
+                          PopupMenuButton<String>(
+                            onSelected: (val) {
+                              if (val == 'sifra') {
+                                if (!mounted || vozac == null) return;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
+                                  ),
+                                );
+                              } else if (val == 'logout') {
+                                _logout();
+                              }
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'sifra',
+                                child: Row(children: [
+                                  Icon(Icons.lock_reset, color: Colors.blueAccent),
+                                  SizedBox(width: 8),
+                                  Text('Promeni šifru'),
+                                ]),
+                              ),
+                              PopupMenuItem(
+                                value: 'logout',
+                                child: Row(children: [
+                                  Icon(Icons.logout, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Logout'),
+                                ]),
+                              ),
+                            ],
+                            padding: EdgeInsets.zero,
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.more_vert, color: Colors.white, size: 16),
                               ),
                             ),
                           ),
@@ -582,44 +594,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     return Column(
       children: [
-        // Kontrolna tabla za vožnju
-        Container(
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).glassContainer,
-            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _toggleTracking,
-                  icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow, color: Colors.white),
-                  label: Text(_isTracking ? 'STOP' : 'START',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isTracking ? Colors.red.withOpacity(0.7) : Colors.green.withOpacity(0.7),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _optimizujRutu,
-                  icon: const Icon(Icons.alt_route, color: Colors.white),
-                  label: const Text('OPTIMIZUJ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.withOpacity(0.7),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
         // Lista putnika
         Expanded(
           child: _mojiPutnici.isEmpty
@@ -639,7 +613,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   itemCount: _mojiPutnici.length,
                   itemBuilder: (context, index) {
                     final pz = _mojiPutnici[index];
-                    return V3PutnikCard(putnik: pz.putnik, zahtev: pz.zahtev);
+                    return V3PutnikCard(putnik: pz.putnik, zahtev: pz.zahtev, redniBroj: index + 1);
                   },
                 ),
         ),
@@ -647,35 +621,101 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
   }
 
-  Widget _buildDanPicker() {
+  // ── V2 stil: digitalni datum prikaz ──
+  Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
+    final now = DateTime.now();
+    final dayNames = ['PONEDELJAK', 'UTORAK', 'SREDA', 'CETVRTAK', 'PETAK', 'SUBOTA', 'NEDELJA'];
+    final dayName = dayNames[now.weekday - 1];
+    final dateStr = DateFormat('dd.MM.yy').format(now);
+    final timeStr = DateFormat('HH:mm').format(now);
+    final vozacBoja = _getVozacBojaRaw(vozac);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          dateStr,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: Theme.of(context).colorScheme.onPrimary,
+            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+          ),
+        ),
+        Text(
+          dayName,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: vozacBoja,
+            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+          ),
+        ),
+        Text(
+          timeStr,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: Theme.of(context).colorScheme.onPrimary,
+            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Kompaktni AppBar dugme (label, h=30) ──
+  Widget _buildAppBarBtn({
+    required BuildContext context,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 30,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.6)),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Dan picker dugme (AppBar stil) ──
+  Widget _buildDanPickerBtn(BuildContext context) {
     return InkWell(
       onTap: _showDanDialog,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        height: 33,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        height: 30,
         decoration: BoxDecoration(
-          color: Theme.of(context).glassContainer,
-          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.onPrimary, size: 14),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                _selectedDay.substring(0, 3).toUpperCase(),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+        child: Center(
+          child: Text(
+            _selectedDay.substring(0, 3).toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -701,15 +741,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     });
   }
 
-  Color _getVozacBoja(v3Vozac) {
-    if (v3Vozac == null) return Colors.transparent;
+  // Puna boja vozača (bez alpha skaliranja) — za tekst/border
+  Color _getVozacBojaRaw(dynamic v3Vozac) {
+    if (v3Vozac == null) return Colors.white;
     final hex = v3Vozac.boja?.toString();
-    if (hex == null || hex.isEmpty) return Colors.blueGrey.withValues(alpha: 0.4);
+    if (hex == null || hex.isEmpty) return Colors.white;
     try {
       final clean = hex.replaceFirst('#', '');
-      return Color(int.parse('FF$clean', radix: 16)).withValues(alpha: 0.5);
+      return Color(int.parse('FF$clean', radix: 16));
     } catch (_) {
-      return Colors.blueGrey.withValues(alpha: 0.4);
+      return Colors.white;
     }
   }
 }

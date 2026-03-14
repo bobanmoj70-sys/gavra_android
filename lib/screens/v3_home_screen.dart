@@ -1,4 +1,4 @@
-﻿import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -9,13 +9,21 @@ import '../models/v3_vozac.dart';
 import '../models/v3_zahtev.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_kapacitet_service.dart';
+import '../services/v3/v3_operativna_nedelja_service.dart';
+import '../services/v3/v3_printing_service.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
-import '../utils/v2_app_snack_bar.dart';
+import '../utils/v3_app_snack_bar.dart';
+import '../widgets/v3_bottom_nav_bar_letnji.dart';
+import '../widgets/v3_bottom_nav_bar_praznici.dart';
+import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
+import 'v3_admin_screen.dart';
 import 'v3_polasci_screen.dart';
+import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
 
 class V3HomeScreen extends StatefulWidget {
@@ -40,8 +48,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String get _currentDayAbbr => _dayAbbrs[_dayNames.indexOf(_selectedDay)];
 
   // Dinamična vremena prema tipu nav bara
-  List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC');
-  List<String> get _vsVremena => V2RouteConfig.getVremenaByNavType('VS');
+  List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
+  List<String> get _vsVremena => V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),
@@ -102,42 +110,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   bool get _isAdmin {
     final ime = V3VozacService.currentVozac?.imePrezime ?? '';
-    // Admin = vozač čije ime počinje sa "Admin" ili je u posebnoj listi
-    return ime.toLowerCase().contains('admin');
-  }
-
-  Future<void> _logout() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(ctx).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Column(
-          children: [
-            Icon(Icons.logout, color: Colors.red, size: 40),
-            SizedBox(height: 12),
-            Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text('Da li ste sigurni da se želite odjaviti?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Otkaži')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      V3VozacService.currentVozac = null;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),
-        (r) => false,
-      );
-    }
+    final lowIme = ime.toLowerCase();
+    return lowIme.contains('admin') || lowIme.contains('bojan');
   }
 
   /// Dijalog za dodavanje novog zahteva (rezervacije)
@@ -356,7 +330,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 ? null
                                 : () async {
                                     if (selectedPutnik == null) {
-                                      V2AppSnackBar.error(ctx, '⚠️ Izaberite putnika');
+                                      V3AppSnackBar.error(ctx, '⚠️ Izaberite putnika');
+                                      return;
+                                    }
+                                    if (selectedPutnik!.id.isEmpty) {
+                                      V3AppSnackBar.error(ctx, '⚠️ Putnik nema validan ID');
                                       return;
                                     }
                                     setS(() => isLoading = true);
@@ -385,10 +363,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
                                       if (!dialogCtx.mounted) return;
                                       Navigator.pop(dialogCtx);
-                                      if (mounted) V2AppSnackBar.success(context, '✅ Rezervacija dodana');
+                                      if (mounted) V3AppSnackBar.success(context, '✅ Rezervacija dodana');
                                     } catch (e) {
                                       setS(() => isLoading = false);
-                                      if (ctx.mounted) V2AppSnackBar.error(ctx, '❌ Greška: $e');
+                                      if (ctx.mounted) V3AppSnackBar.error(ctx, '❌ Greška: $e');
                                     }
                                   },
                           ),
@@ -422,6 +400,304 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     );
   }
 
+  // ─── Dialog: Račun za firme (B2B) ────────────────────────────────
+  void _showRacunZaFirmeDialog() {
+    // Pripremi listu putnika sa aktivnim zahtevima za odabrani dan/grad/vreme
+    final putnici = V3PutnikService.getKombinovaniPutniciByDanGradVreme(
+      dan: _currentDayAbbr,
+      grad: _selectedGrad,
+      vreme: _selectedVreme,
+    );
+
+    if (putnici.isEmpty) {
+      V3AppSnackBar.warning(context, '⚠️ Nema putnika za odabrani polazak');
+      return;
+    }
+
+    final selected = <String, bool>{};
+    final ceneController = <String, TextEditingController>{};
+    final brojVoznjiController = <String, TextEditingController>{};
+
+    for (final p in putnici) {
+      final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
+      selected[id] = false;
+      ceneController[id] = TextEditingController(text: '1500');
+      brojVoznjiController[id] = TextEditingController(text: '1');
+    }
+
+    DateTime datumPrometa = DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          backgroundColor: const Color(0xFF1A2035),
+          title: const Text('Račun za firme', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Datum prometa
+                Row(
+                  children: [
+                    const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () async {
+                        final d = await showDatePicker(
+                          context: ctx,
+                          initialDate: datumPrometa,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (d != null) setS(() => datumPrometa = d);
+                      },
+                      child: Text(
+                        '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
+                        style: const TextStyle(color: Colors.amber),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Lista putnika
+                ...putnici.map((p) {
+                  final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
+                  final ime = p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---';
+                  return CheckboxListTile(
+                    value: selected[id] ?? false,
+                    onChanged: (v) => setS(() => selected[id] = v ?? false),
+                    title: Text(ime, style: const TextStyle(color: Colors.white)),
+                    subtitle: selected[id] == true
+                        ? Row(children: [
+                            Expanded(
+                              child: TextField(
+                                controller: brojVoznjiController[id],
+                                decoration: const InputDecoration(
+                                  labelText: 'Dana',
+                                  labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                                ),
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: ceneController[id],
+                                decoration: const InputDecoration(
+                                  labelText: 'Cena/dan',
+                                  labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                                ),
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ])
+                        : null,
+                    activeColor: Colors.green,
+                  );
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Otkaži', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.8)),
+              onPressed: () async {
+                final odabrani = putnici.where((p) {
+                  final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
+                  return selected[id] == true;
+                }).toList();
+
+                if (odabrani.isEmpty) {
+                  V3AppSnackBar.warning(ctx, '⚠️ Odaberite barem jednog putnika');
+                  return;
+                }
+
+                Navigator.pop(ctx);
+
+                final racuniPodaci = <Map<String, dynamic>>[];
+                for (final p in odabrani) {
+                  final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
+                  final ime = p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---';
+                  final cena = double.tryParse(ceneController[id]?.text ?? '') ?? 1500;
+                  final dana = double.tryParse(brojVoznjiController[id]?.text ?? '') ?? 1;
+                  final broj = await V3RacunService.getNextBrojRacuna();
+                  racuniPodaci.add({
+                    'putnik_id': id,
+                    'ime_prezime': ime,
+                    'cena_po_voznji': cena,
+                    'broj_voznji': dana,
+                    'broj_racuna': broj,
+                  });
+                }
+
+                if (!mounted) return;
+                await V3RacunService.stampajRacuneZaFirme(
+                  racuniPodaci: racuniPodaci,
+                  context: context,
+                  datumPrometa: datumPrometa,
+                );
+
+                // Oslobodi controllere
+                for (final c in ceneController.values) c.dispose();
+                for (final c in brojVoznjiController.values) c.dispose();
+              },
+              child: const Text('Štampaj'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      for (final c in ceneController.values) c.dispose();
+      for (final c in brojVoznjiController.values) c.dispose();
+    });
+  }
+
+  // ─── Dialog: Novi račun za fizičko lice ───────────────────────────
+  void _showNoviRacunDialog() {
+    final imeCtrl = TextEditingController();
+    final adresaCtrl = TextEditingController();
+    final opisCtrl = TextEditingController();
+    final iznosCtrl = TextEditingController();
+    final kolicinaCtrl = TextEditingController(text: '1');
+    String jedMera = 'usluga';
+    DateTime datumPrometa = DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          backgroundColor: const Color(0xFF1A2035),
+          title: const Text('Novi račun', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _dialogField(imeCtrl, 'Ime i prezime kupca'),
+                const SizedBox(height: 8),
+                _dialogField(adresaCtrl, 'Adresa kupca'),
+                const SizedBox(height: 8),
+                _dialogField(opisCtrl, 'Opis usluge'),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: _dialogField(iznosCtrl, 'Cena', numeric: true)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _dialogField(kolicinaCtrl, 'Količina', numeric: true)),
+                ]),
+                const SizedBox(height: 8),
+                // Jedinica mjere
+                DropdownButtonFormField<String>(
+                  value: jedMera,
+                  dropdownColor: const Color(0xFF1A2035),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Jedinica mere',
+                    labelStyle: TextStyle(color: Colors.white54),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white30),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'usluga', child: Text('usluga')),
+                    DropdownMenuItem(value: 'dan', child: Text('dan')),
+                    DropdownMenuItem(value: 'kom', child: Text('kom')),
+                    DropdownMenuItem(value: 'sat', child: Text('sat')),
+                    DropdownMenuItem(value: 'km', child: Text('km')),
+                  ],
+                  onChanged: (v) => setS(() => jedMera = v ?? 'usluga'),
+                ),
+                const SizedBox(height: 8),
+                // Datum prometa
+                Row(children: [
+                  const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () async {
+                      final d = await showDatePicker(
+                        context: ctx,
+                        initialDate: datumPrometa,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      );
+                      if (d != null) setS(() => datumPrometa = d);
+                    },
+                    child: Text(
+                      '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
+                      style: const TextStyle(color: Colors.amber),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Otkaži', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.8)),
+              onPressed: () async {
+                if (imeCtrl.text.trim().isEmpty || opisCtrl.text.trim().isEmpty) {
+                  V3AppSnackBar.error(ctx, '⚠️ Popunite ime i opis');
+                  return;
+                }
+                final cena = double.tryParse(iznosCtrl.text.trim()) ?? 0;
+                final kolicina = double.tryParse(kolicinaCtrl.text.trim()) ?? 1;
+                if (cena <= 0) {
+                  V3AppSnackBar.error(ctx, '⚠️ Unesite ispravnu cenu');
+                  return;
+                }
+
+                Navigator.pop(ctx);
+                final broj = await V3RacunService.getNextBrojRacuna();
+                if (!mounted) return;
+                await V3RacunService.stampajRacun(
+                  brojRacuna: broj,
+                  imePrezimeKupca: imeCtrl.text.trim(),
+                  adresaKupca: adresaCtrl.text.trim(),
+                  opisUsluge: opisCtrl.text.trim(),
+                  cena: cena,
+                  kolicina: kolicina,
+                  jedinicaMere: jedMera,
+                  datumPrometa: datumPrometa,
+                  context: context,
+                );
+              },
+              child: const Text('Štampaj'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      imeCtrl.dispose();
+      adresaCtrl.dispose();
+      opisCtrl.dispose();
+      iznosCtrl.dispose();
+      kolicinaCtrl.dispose();
+    });
+  }
+
+  Widget _dialogField(TextEditingController ctrl, String label, {bool numeric = false}) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: numeric ? TextInputType.number : TextInputType.text,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54),
+        enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vozac = V3VozacService.currentVozac;
@@ -441,23 +717,43 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: StreamBuilder<List<V3Zahtev>>(
-        stream: V3ZahtevService.streamZahteviByDanAndGrad(_currentDayAbbr, _selectedGrad),
+      child: StreamBuilder<List<V3OperativnaNedeljaEntry>>(
+        stream: V3OperativnaNedeljaService.streamOperativnaNedeljaByDanAndGrad(_currentDayAbbr, _selectedGrad),
         builder: (context, snapshot) {
-          final sviZahtevi = snapshot.data ?? [];
+          final sviZapisi = snapshot.data ?? [];
 
-          // Filtriraj po izabranom vremenu za prikaz liste
-          final prikazaniZahtevi = sviZahtevi
-              .where((z) => z.zeljenoVreme == _selectedVreme && z.status != 'otkazano' && z.status != 'odbijeno')
-              .toList()
-            ..sort((a, b) => a.zeljenoVreme.compareTo(b.zeljenoVreme));
+          // Pomoćna funkcija za normalizaciju vremena (HH:mm)
+          String normalizeVreme(String? v) {
+            if (v == null || v.isEmpty) return '';
+            final parts = v.split(':');
+            if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+            return v;
+          }
+
+          final selectedVremeNorm = normalizeVreme(_selectedVreme);
+
+          // Filtriraj po izabranom vremenu za prikaz liste — otkazani idu na dno
+          final prikazaniZapisi = sviZapisi.where((z) {
+            final zVremeNorm = normalizeVreme(z.vreme);
+            return zVremeNorm == selectedVremeNorm && z.statusFinal != 'odbijeno';
+          }).toList()
+            ..sort((a, b) {
+              final aOtk = a.statusFinal == 'otkazano' ? 1 : 0;
+              final bOtk = b.statusFinal == 'otkazano' ? 1 : 0;
+              if (aOtk != bOtk) return aOtk.compareTo(bOtk);
+              return (a.vreme ?? '').compareTo(b.vreme ?? '');
+            });
 
           // Brojač po gradu/vremenu za bottom nav bar
           int getPutnikCount(String grad, String vreme) {
-            return sviZahtevi
-                .where((z) =>
-                    z.grad == grad && z.zeljenoVreme == vreme && z.status != 'otkazano' && z.status != 'odbijeno')
-                .fold(0, (sum, z) => sum + z.brojMesta);
+            final targetVremeNorm = normalizeVreme(vreme);
+            return sviZapisi.where((z) {
+              final zVremeNorm = normalizeVreme(z.vreme);
+              return z.grad == grad &&
+                  zVremeNorm == targetVremeNorm &&
+                  z.statusFinal != 'otkazano' &&
+                  z.statusFinal != 'odbijeno';
+            }).fold(0, (sum, z) => sum + z.brojMesta);
           }
 
           // Kapacitet
@@ -649,7 +945,104 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           ),
                         ),
                         const SizedBox(width: 4),
+                        if (!_isAdmin) ...[
+                          Expanded(
+                            child: _V3HomeButton(
+                              label: 'Ja',
+                              icon: Icons.person,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const V3VozacScreen()),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
                         if (_isAdmin) ...[
+                          Expanded(
+                            child: _V3HomeButton(
+                              label: 'Admin',
+                              icon: Icons.admin_panel_settings,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const V3AdminScreen()),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: PopupMenuButton<String>(
+                              tooltip: 'Štampaj',
+                              offset: const Offset(0, -150),
+                              onSelected: (val) {
+                                if (val == 'spisak') {
+                                  V3PrintingService.printPutniksList(
+                                    dan: _selectedDay,
+                                    vreme: _selectedVreme,
+                                    grad: _selectedGrad,
+                                    context: context,
+                                  );
+                                } else if (val == 'racun_postojeci') {
+                                  _showRacunZaFirmeDialog();
+                                } else if (val == 'racun_novi') {
+                                  _showNoviRacunDialog();
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).glassContainer,
+                                  border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.print, color: Theme.of(context).colorScheme.onPrimary, size: 18),
+                                    const SizedBox(height: 4),
+                                    const SizedBox(
+                                      height: 16,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text('Štampaj',
+                                            style: TextStyle(
+                                                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(
+                                  value: 'spisak',
+                                  child: Row(children: [
+                                    Icon(Icons.list_alt, color: Colors.blue),
+                                    SizedBox(width: 8),
+                                    Text('Štampaj spisak'),
+                                  ]),
+                                ),
+                                const PopupMenuDivider(),
+                                const PopupMenuItem(
+                                  value: 'racun_postojeci',
+                                  child: Row(children: [
+                                    Icon(Icons.people, color: Colors.green),
+                                    SizedBox(width: 8),
+                                    Text('Račun - postojeći'),
+                                  ]),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'racun_novi',
+                                  child: Row(children: [
+                                    Icon(Icons.person_add, color: Colors.orange),
+                                    SizedBox(width: 8),
+                                    Text('Račun - novi'),
+                                  ]),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: StreamBuilder<int>(
                               stream: _streamBrojZahteva,
@@ -693,56 +1086,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           ),
                           const SizedBox(width: 4),
                         ],
-                        Expanded(
-                          child: PopupMenuButton<String>(
-                            onSelected: (val) {
-                              if (val == 'logout') _logout();
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).glassContainer,
-                                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.settings, color: Theme.of(context).colorScheme.onPrimary, size: 18),
-                                  const SizedBox(height: 4),
-                                  const SizedBox(
-                                    height: 16,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text('Opcije',
-                                          style: TextStyle(
-                                              color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(
-                                value: 'logout',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.logout, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Logout'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
                   // Lista putnika/zahteva
                   Expanded(
-                    child: prikazaniZahtevi.isEmpty
+                    child: prikazaniZapisi.isEmpty
                         ? Center(
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -753,21 +1102,25 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text(
-                                'Nema rezervacija za ovaj polazak.',
+                                'Nema planiranih putnika.',
                                 style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
                               ),
                             ),
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            itemCount: prikazaniZahtevi.length,
+                            itemCount: prikazaniZapisi.length,
                             itemBuilder: (ctx, i) {
-                              final z = prikazaniZahtevi[i];
+                              final z = prikazaniZapisi[i];
                               final p = V3PutnikService.getPutnikById(z.putnikId);
                               if (p == null) return const SizedBox.shrink();
+
+                              // Konstruišemo privremeni V3Zahtev ako je izvor 'zahtev' radi kompatibilnosti sa V3PutnikCard
+                              final v3Zahtev = z.izvorTip == 'zahtev' ? V3ZahtevService.getZahtevById(z.izvorId) : null;
+
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
-                                child: V3PutnikCard(putnik: p, zahtev: z),
+                                child: V3PutnikCard(putnik: p, zahtev: v3Zahtev, redniBroj: i + 1),
                               );
                             },
                           ),
@@ -801,86 +1154,63 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   }
 
   Widget _buildBottomNavBar(int Function(String, String) getPutnikCount, int Function(String, String) getKapacitet) {
-    final sviPolasci = _sviPolasci;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).glassContainer,
-        border: Border(top: BorderSide(color: Theme.of(context).glassBorder, width: 1.5)),
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            children: sviPolasci.map((polazak) {
-              final parts = polazak.split(' ');
-              final vreme = parts[0];
-              final grad = parts.sublist(1).join(' ');
-              final isSelected = _selectedVreme == vreme && _selectedGrad == grad;
-              final count = getPutnikCount(grad, vreme);
-              final kap = getKapacitet(grad, vreme);
-              final isFull = count >= kap;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: GestureDetector(
-                  onTap: () => setState(() {
-                    _selectedVreme = vreme;
-                    _selectedGrad = grad;
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.white.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.8)
-                            : (isFull ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2)),
-                        width: isSelected ? 2 : 1,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          grad,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.6),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          vreme,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.7),
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: isFull ? Colors.red.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '$count/$kap',
-                            style: const TextStyle(color: Colors.white, fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
+    return ValueListenableBuilder<String>(
+      valueListenable: navBarTypeNotifier,
+      builder: (context, navType, _) {
+        if (navType == 'zimski') {
+          return V3BottomNavBarZimski(
+            sviPolasci: _sviPolasci,
+            selectedGrad: _selectedGrad,
+            selectedVreme: _selectedVreme,
+            onPolazakChanged: (grad, vreme) {
+              setState(() {
+                _selectedGrad = grad;
+                _selectedVreme = vreme;
+              });
+            },
+            getPutnikCount: getPutnikCount,
+            getKapacitet: getKapacitet,
+            selectedDan: _currentDayAbbr,
+            showVozacBoja: _isAdmin,
+            getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
+          );
+        } else if (navType == 'praznici') {
+          return V3BottomNavBarPraznici(
+            sviPolasci: _sviPolasci,
+            selectedGrad: _selectedGrad,
+            selectedVreme: _selectedVreme,
+            onPolazakChanged: (grad, vreme) {
+              setState(() {
+                _selectedGrad = grad;
+                _selectedVreme = vreme;
+              });
+            },
+            getPutnikCount: getPutnikCount,
+            getKapacitet: getKapacitet,
+            selectedDan: _currentDayAbbr,
+            showVozacBoja: _isAdmin,
+            getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
+          );
+        } else {
+          // Default: letnji
+          return V3BottomNavBarLetnji(
+            sviPolasci: _sviPolasci,
+            selectedGrad: _selectedGrad,
+            selectedVreme: _selectedVreme,
+            onPolazakChanged: (grad, vreme) {
+              setState(() {
+                _selectedGrad = grad;
+                _selectedVreme = vreme;
+              });
+            },
+            getPutnikCount: getPutnikCount,
+            getKapacitet: getKapacitet,
+            selectedDan: _currentDayAbbr,
+            showVozacBoja: _isAdmin,
+            getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
+          );
+        }
+      },
     );
   }
 }
