@@ -22,7 +22,7 @@ class V3OperativnaNedeljaEntry {
   final String? zeljenoVreme;
   final String? dodeljivoVreme;
   final DateTime? vremePokupljen;
-  final double iznos_naplacen;
+  final double iznosNaplacen;
   final DateTime? vremePlacen;
   final String naplataStatus;
   final String? vozacId;
@@ -45,7 +45,7 @@ class V3OperativnaNedeljaEntry {
     this.zeljenoVreme,
     this.dodeljivoVreme,
     this.vremePokupljen,
-    this.iznos_naplacen = 0,
+    this.iznosNaplacen = 0,
     this.vremePlacen,
     this.naplataStatus = 'nije_placeno',
     this.vozacId,
@@ -70,7 +70,7 @@ class V3OperativnaNedeljaEntry {
       zeljenoVreme: json['zeljeno_vreme'] as String?,
       dodeljivoVreme: json['dodeljeno_vreme'] as String?,
       vremePokupljen: json['vreme_pokupljen'] != null ? DateTime.tryParse(json['vreme_pokupljen'] as String) : null,
-      iznos_naplacen: (json['iznos_naplacen'] as num?)?.toDouble() ?? 0,
+      iznosNaplacen: (json['iznos_naplacen'] as num?)?.toDouble() ?? 0,
       vremePlacen: json['vreme_placen'] != null ? DateTime.tryParse(json['vreme_placen'] as String) : null,
       naplataStatus: json['naplata_status'] as String? ?? 'nije_placeno',
       vozacId: json['vozac_id'] as String?,
@@ -94,7 +94,7 @@ class V3OperativnaNedeljaEntry {
       if (zeljenoVreme != null) 'zeljeno_vreme': zeljenoVreme,
       if (dodeljivoVreme != null) 'dodeljeno_vreme': dodeljivoVreme,
       if (vremePokupljen != null) 'vreme_pokupljen': vremePokupljen!.toIso8601String(),
-      'iznos_naplacen': iznos_naplacen,
+      'iznos_naplacen': iznosNaplacen,
       if (vremePlacen != null) 'vreme_placen': vremePlacen!.toIso8601String(),
       'naplata_status': naplataStatus,
       if (vozacId != null) 'vozac_id': vozacId,
