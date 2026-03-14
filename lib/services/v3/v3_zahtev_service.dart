@@ -106,6 +106,8 @@ class V3ZahtevService {
           return z.copyWith(
             status: op['status_final'] as String? ?? z.status,
             dodeljenoVreme: op['vreme'] as String?,
+            naplataStatus: op['naplata_status'] as String?,
+            iznosNaplacen: (op['iznos_naplacen'] as num?)?.toDouble(),
           );
         }
       }
@@ -118,6 +120,8 @@ class V3ZahtevService {
         zeljenoVreme: op['vreme'] as String? ?? '00:00',
         dodeljenoVreme: op['vreme'] as String?,
         status: op['status_final'] as String? ?? 'obrada',
+        naplataStatus: op['naplata_status'] as String?,
+        iznosNaplacen: (op['iznos_naplacen'] as num?)?.toDouble(),
       );
     }).toList()
       ..sort((a, b) => (a.dodeljenoVreme ?? a.zeljenoVreme).compareTo(b.dodeljenoVreme ?? b.zeljenoVreme));

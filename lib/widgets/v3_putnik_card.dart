@@ -234,7 +234,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       );
     }
     if (status == 'pokupljen') {
-      final bool isPlacen = widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+      final bool isPlacen = widget.zahtev?.naplataStatus == 'placeno';
       if (isPlacen) {
         return BoxDecoration(
           gradient: const LinearGradient(
@@ -270,7 +270,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFB71C1C);
     if (status == 'pokupljen') {
-      final isPlacen = widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+      final isPlacen = widget.zahtev?.naplataStatus == 'placeno';
       return isPlacen ? const Color(0xFF1B5E20) : const Color(0xFF0D47A1);
     }
     return Colors.black87;
@@ -280,7 +280,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFC62828);
     if (status == 'pokupljen') {
-      final isPlacen = widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+      final isPlacen = widget.zahtev?.naplataStatus == 'placeno';
       return isPlacen ? const Color(0xFF2E7D32) : const Color(0xFF1565C0);
     }
     return Colors.grey.shade700;
@@ -336,7 +336,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool isPokupljen = status == 'pokupljen';
     final bool isOtkazan = status == 'otkazano';
     final bool isPlacen =
-        isPokupljen && widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+        isPokupljen && widget.zahtev?.naplataStatus == 'placeno';
     final bool hasTel = widget.putnik.telefon1 != null || widget.putnik.telefon2 != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
@@ -367,7 +367,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                     Padding(
                       padding: const EdgeInsets.only(right: 4.0),
                       child: Text(
-                        '\${widget.redniBroj}.',
+                        '${widget.redniBroj}.',
                         style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: textColor),
                       ),
                     ),
@@ -544,7 +544,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                       if (isPlacen) ...[
                         if (isPokupljen) const SizedBox(width: 12),
                         Text(
-                          'Plaćeno: \${widget.zahtev!.dodeljenoVreme}',
+                          'Plaćeno: ${widget.zahtev!.iznosNaplacen != null && widget.zahtev!.iznosNaplacen! > 0 ? "${widget.zahtev!.iznosNaplacen!.toStringAsFixed(0)} RSD" : "✓"}',
                           style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF2E7D32),
