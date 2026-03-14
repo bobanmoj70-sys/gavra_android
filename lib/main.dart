@@ -96,8 +96,18 @@ Future<void> _initPushSystems() async {
           onDidReceiveBackgroundNotificationResponse: onNotificationTap,
         );
 
-        // Kreiraj V3 kanal sa kategorijama/akcijama (ovo je više za iOS, ali Android prati payload)
-        // Napomena: Za Android, actions šaljemo direktno u payload-u iz Supabase-a
+        // Kreiraj Android notification kanal (mora da postoji da bi FCM isporučio)
+        const AndroidNotificationChannel channel = AndroidNotificationChannel(
+          'gavra_push_v2',
+          'Gavra obaveštenja',
+          description: 'Obaveštenja o statusu zahteva',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        );
+        await flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(channel);
 
         debugPrint('✅ [Push] FCM Inicijalizovan');
       } catch (e) {
