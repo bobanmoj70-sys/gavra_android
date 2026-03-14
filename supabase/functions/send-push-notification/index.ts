@@ -58,12 +58,15 @@ serve(async (req: any) => {
             resolvedTokens = payload.tokens
 
         } else if (payload.putnik_id) {
-            // Dohvati tokene jednog putnika
-            const { data: rows } = await supabaseClient
-                .from('v2_push_tokens')
-                .select('token, provider')
-                .eq('putnik_id', payload.putnik_id)
-            resolvedTokens = (rows ?? []).filter((r: any) => r.token)
+            // Dohvati token putnika iz v3_putnici.push_token
+            const { data: putnik } = await supabaseClient
+                .from('v3_putnici')
+                .select('push_token')
+                .eq('id', payload.putnik_id)
+                .maybeSingle()
+            if (putnik?.push_token) {
+                resolvedTokens = [{ token: putnik.push_token, provider: 'FCM' }]
+            }
 
         } else if (payload.vozac_ids && payload.vozac_ids.length > 0) {
             // Dohvati tokene tačno određenih vozača

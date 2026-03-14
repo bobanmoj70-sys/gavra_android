@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/v3_finansije.dart';
 import '../../services/v3/v3_finansije_service.dart';
 import '../../services/v3/v3_vozac_service.dart';
-import '../../utils/v2_app_snack_bar.dart';
+import '../../utils/v3_app_snack_bar.dart';
 
 class V3PlacanjeRezultat {
   final double iznos;
@@ -21,7 +21,7 @@ class V3PlacanjeDialogHelper {
 
   static Future<V3PlacanjeRezultat?> prikaziDialog({
     required BuildContext context,
-    required String putnikIme,
+    required String imePrezime,
     required double defaultCena,
   }) async {
     final TextEditingController _iznosController = TextEditingController(text: defaultCena.toStringAsFixed(0));
@@ -33,7 +33,7 @@ class V3PlacanjeDialogHelper {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Naplata: $putnikIme'),
+          title: Text('Naplata: $imePrezime'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -122,7 +122,7 @@ class V3PlacanjeDialogHelper {
   static Future<bool> sacuvajPlacanje({
     required BuildContext context,
     required String putnikId,
-    required String putnikIme,
+    required String imePrezime,
     required V3PlacanjeRezultat rezultat,
     String? zahtevId,
   }) async {
@@ -134,7 +134,7 @@ class V3PlacanjeDialogHelper {
         id: '', // Baza će generisati UUID
         tip: 'prihod',
         kategorija: 'voznja',
-        opis: 'Uplata: $putnikIme (${rezultat.mesec}/${rezultat.godina})',
+        opis: 'Uplata: $imePrezime (${rezultat.mesec}/${rezultat.godina})',
         iznos: rezultat.iznos,
         datum: DateTime.now(),
         vozacId: vozac.id,
@@ -145,12 +145,12 @@ class V3PlacanjeDialogHelper {
       await V3FinansijeService.addUnos(unos);
 
       if (context.mounted) {
-        V2AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} KM za $putnikIme');
+        V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} KM za $imePrezime');
       }
       return true;
     } catch (e) {
       if (context.mounted) {
-        V2AppSnackBar.error(context, 'Greška pri naplati: $e');
+        V3AppSnackBar.error(context, 'Greška pri naplati: $e');
       }
       return false;
     }

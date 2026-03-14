@@ -1,7 +1,7 @@
 class V3Dug {
   final String id;
   final String putnikId;
-  final String putnikIme;
+  final String imePrezime;
   final String tipPutnika;
   final String vozacId;
   final DateTime datum;
@@ -12,7 +12,7 @@ class V3Dug {
   V3Dug({
     required this.id,
     required this.putnikId,
-    required this.putnikIme,
+    required this.imePrezime,
     required this.tipPutnika,
     required this.vozacId,
     required this.datum,
@@ -25,7 +25,7 @@ class V3Dug {
     return V3Dug(
       id: json['id'] as String? ?? '',
       putnikId: json['putnik_id'] as String? ?? '',
-      putnikIme: json['putnik_ime'] as String? ?? 'Nepoznato',
+      imePrezime: json['ime_prezime'] as String? ?? json['putnik_ime'] as String? ?? 'Nepoznato',
       tipPutnika: json['tip_putnika'] as String? ?? 'dnevni',
       vozacId: json['vozac_id'] as String? ?? '',
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
@@ -39,7 +39,7 @@ class V3Dug {
     return {
       'id': id.isEmpty ? null : id,
       'putnik_id': putnikId,
-      'putnik_ime': putnikIme,
+      'ime_prezime': imePrezime,
       'tip_putnika': tipPutnika,
       'vozac_id': vozacId,
       'datum': datum.toIso8601String(),
@@ -53,7 +53,7 @@ class V3Dug {
     return V3Dug(
       id: json['id']?.toString() ?? '',
       putnikId: json['putnik_id']?.toString() ?? '',
-      putnikIme: json['putnik_ime'] as String? ?? 'Nepoznato',
+      imePrezime: json['ime_prezime'] as String? ?? json['putnik_ime'] as String? ?? 'Nepoznato',
       tipPutnika: 'dnevni',
       vozacId: json['vozac_id']?.toString() ?? '',
       datum: json['updated_at'] != null

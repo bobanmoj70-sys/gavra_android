@@ -42,7 +42,7 @@ class V3AdresaService {
       ..sort((a, b) => a.naziv.compareTo(b.naziv));
   }
 
-  static Future<V3Adresa> addUpdateAdresa({
+  static Future<void> addUpdateAdresa({
     String? id,
     required String naziv,
     required String grad,
@@ -57,13 +57,9 @@ class V3AdresaService {
         'grad': normalizedGrad,
         'gps_lat': lat,
         'gps_lng': lng,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
-      final row = await supabase.from('v3_adrese').upsert(data).select().single();
-
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_adrese', row);
-      return V3Adresa.fromJson(row);
+      await supabase.from('v3_adrese').upsert(data);
     } catch (e) {
       debugPrint('[V3AdresaService] Error: $e');
       rethrow;
@@ -73,7 +69,6 @@ class V3AdresaService {
   static Future<void> deleteAdresa(String id) async {
     try {
       await supabase.from('v3_adrese').update({'aktivno': false}).eq('id', id);
-      V3MasterRealtimeManager.instance.adreseCache.remove(id);
     } catch (e) {
       debugPrint('[V3AdresaService] Delete error: $e');
       rethrow;

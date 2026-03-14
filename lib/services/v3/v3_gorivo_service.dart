@@ -38,17 +38,11 @@ class V3GorivoService {
   /// Ažurira trenutno stanje pumpe u bazi
   static Future<bool> updateStanje(String id, double novoStanje, double noviBrojac) async {
     try {
-      final res = await _supabase
-          .from('v3_pumpa_stanje')
-          .update({
-            'trenutno_stanje': novoStanje,
-            'stanje_brojac_pistolj': noviBrojac,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id)
-          .select()
-          .single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pumpa_stanje', res);
+      await _supabase.from('v3_pumpa_stanje').update({
+        'trenutno_stanje': novoStanje,
+        'stanje_brojac_pistolj': noviBrojac,
+      }).eq('id', id);
+
       return true;
     } catch (e) {
       debugPrint('[V3GorivoService] updateStanje error: $e');
@@ -59,16 +53,10 @@ class V3GorivoService {
   /// Ažurira trenutni nivo rezervoara u bazi
   static Future<bool> updateRezervoar(String id, double novoLitara) async {
     try {
-      final res = await _supabase
-          .from('v3_pumpa_rezervoar')
-          .update({
-            'trenutno_litara': novoLitara,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id)
-          .select()
-          .single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_pumpa_rezervoar', res);
+      await _supabase.from('v3_pumpa_rezervoar').update({
+        'trenutno_litara': novoLitara,
+      }).eq('id', id);
+
       return true;
     } catch (e) {
       debugPrint('[V3GorivoService] updateRezevoar error: $e');

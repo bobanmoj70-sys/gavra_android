@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_adresa.dart';
 import 'package:gavra_android/services/v3/v3_adresa_service.dart';
-import 'package:gavra_android/utils/v2_app_snack_bar.dart';
+import 'package:gavra_android/theme.dart';
+import 'package:gavra_android/utils/v3_app_snack_bar.dart';
 
 class V3AdreseScreen extends StatefulWidget {
   const V3AdreseScreen({super.key});
@@ -11,75 +12,45 @@ class V3AdreseScreen extends StatefulWidget {
 }
 
 class _AdreseScreenState extends State<V3AdreseScreen> {
-  String _filter = '';
+  final String _filter = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('📍 V3 Adrese'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_location_alt),
-            onPressed: () => _showAdresaDialog(),
-          ),
-        ],
+        title: const Text('📍 Adrese'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Pretraži adrese...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (v) => setState(() => _filter = v.toLowerCase()),
-            ),
+      body: Container(
+        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+        child: SafeArea(
+          child: StreamBuilder<List<V3Adresa>>(
+            stream: V3AdresaService.streamAdrese(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError)
+                return Center(child: Text('Greška: ${snapshot.error}', style: const TextStyle(color: Colors.white70)));
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final sve = snapshot.data!;
+              return _AdreseFilterPanel(
+                adrese: sve,
+                onEdit: (a) => _showAdresaDialog(adresa: a),
+                onDelete: _confirmDelete,
+              );
+            },
           ),
-          Expanded(
-            child: StreamBuilder<List<V3Adresa>>(
-              stream: V3AdresaService.streamAdrese(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) return Center(child: Text('Greška: ${snapshot.error}'));
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-                final list = snapshot.data!
-                    .where((a) =>
-                        a.naziv.toLowerCase().contains(_filter) || (a.grad?.toLowerCase().contains(_filter) ?? false))
-                    .toList();
-
-                if (list.isEmpty) return const Center(child: Text('Nema adresa'));
-
-                return ListView.builder(
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    final adresa = list[i];
-                    return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.location_on)),
-                      title: Text(adresa.naziv),
-                      subtitle: Text(adresa.grad ?? ''),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showAdresaDialog(adresa: adresa),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _confirmDelete(adresa),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+        ),
+      ),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
+        child: FloatingActionButton.extended(
+          onPressed: () => _showAdresaDialog(),
+          icon: const Icon(Icons.add),
+          label: const Text('Dodaj'),
+          backgroundColor: Colors.green,
+        ),
       ),
     );
   }
@@ -99,9 +70,9 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
           lat: result['lat'],
           lng: result['lng'],
         );
-        if (mounted) V2AppSnackBar.success(context, adresa == null ? '✅ Adresa dodata' : '✅ Adresa izmenjena');
+        if (mounted) V3AppSnackBar.success(context, adresa == null ? '✅ Adresa dodata' : '✅ Adresa izmenjena');
       } catch (e) {
-        if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
+        if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
       }
     }
   }
@@ -125,11 +96,246 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
     if (confirm == true) {
       try {
         await V3AdresaService.deleteAdresa(adresa.id);
-        if (mounted) V2AppSnackBar.success(context, '🗑️ Adresa obrisana');
+        if (mounted) V3AppSnackBar.success(context, '🗑️ Adresa obrisana');
       } catch (e) {
-        if (mounted) V2AppSnackBar.error(context, '❌ Greška: $e');
+        if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
       }
     }
+  }
+}
+
+// ─── Stats model ──────────────────────────────────────────────────────────────
+class _AdreseStats {
+  final int ukupno;
+  final int belaCrkva;
+  final int vrsac;
+
+  const _AdreseStats({required this.ukupno, required this.belaCrkva, required this.vrsac});
+
+  factory _AdreseStats.from(List<V3Adresa> adrese) {
+    int bc = 0, vs = 0;
+    for (final a in adrese) {
+      if (a.grad == 'BC')
+        bc++;
+      else if (a.grad == 'VS') vs++;
+    }
+    return _AdreseStats(ukupno: adrese.length, belaCrkva: bc, vrsac: vs);
+  }
+}
+
+// ─── Filter panel ─────────────────────────────────────────────────────────────
+class _AdreseFilterPanel extends StatefulWidget {
+  const _AdreseFilterPanel({required this.adrese, required this.onEdit, required this.onDelete});
+  final List<V3Adresa> adrese;
+  final void Function(V3Adresa) onEdit;
+  final void Function(V3Adresa) onDelete;
+
+  @override
+  State<_AdreseFilterPanel> createState() => _AdreseFilterPanelState();
+}
+
+class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
+  String _filterGrad = 'Svi';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<V3Adresa> get _filtered {
+    final q = _searchQuery.toLowerCase();
+    return widget.adrese.where((a) {
+      final matchSearch = q.isEmpty || a.naziv.toLowerCase().contains(q);
+      final matchGrad = _filterGrad == 'Svi' || (a.grad ?? '') == _filterGrad;
+      return matchSearch && matchGrad;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = _AdreseStats.from(widget.adrese);
+    final filtered = _filtered;
+
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).glassContainer,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Theme.of(context).glassBorder),
+          ),
+          child: Column(
+            children: [
+              // STATS
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _StatCard(label: 'Ukupno', value: stats.ukupno, color: Colors.blue),
+                  _StatCard(label: 'B. Crkva', value: stats.belaCrkva, color: Colors.green),
+                  _StatCard(label: 'Vrsac', value: stats.vrsac, color: Colors.orange),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // SEARCH
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Pretraži adrese...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.white70),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.blue, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black.withValues(alpha: 0.3),
+                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                onChanged: (v) => setState(() => _searchQuery = v),
+              ),
+              const SizedBox(height: 12),
+              // FILTER CHIPS
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _GradChip(
+                      label: 'Svi', selected: _filterGrad == 'Svi', onTap: () => setState(() => _filterGrad = 'Svi')),
+                  const SizedBox(width: 8),
+                  _GradChip(
+                      label: 'Bela Crkva',
+                      selected: _filterGrad == 'BC',
+                      onTap: () => setState(() => _filterGrad = 'BC')),
+                  const SizedBox(width: 8),
+                  _GradChip(
+                      label: 'Vrsac', selected: _filterGrad == 'VS', onTap: () => setState(() => _filterGrad = 'VS')),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // LISTA
+        Expanded(
+          child: filtered.isEmpty
+              ? const Center(child: Text('Nema adresa', style: TextStyle(color: Colors.white70)))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, i) => _AdresaCard(
+                    adresa: filtered[i],
+                    onEdit: widget.onEdit,
+                    onDelete: widget.onDelete,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Helper widgeti ───────────────────────────────────────────────────────────
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.label, required this.value, required this.color});
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Text('$value', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
+      );
+}
+
+class _GradChip extends StatelessWidget {
+  const _GradChip({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => onTap(),
+        backgroundColor: Colors.black.withValues(alpha: 0.3),
+        selectedColor: Colors.blue.withValues(alpha: 0.6),
+        checkmarkColor: Colors.white,
+        side: BorderSide(
+          color: selected ? Colors.blue : Colors.white.withValues(alpha: 0.3),
+          width: selected ? 2 : 1,
+        ),
+        labelStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 14,
+        ),
+      );
+}
+
+class _AdresaCard extends StatelessWidget {
+  const _AdresaCard({required this.adresa, required this.onEdit, required this.onDelete});
+  final V3Adresa adresa;
+  final void Function(V3Adresa) onEdit;
+  final void Function(V3Adresa) onDelete;
+
+  static String _gradLabel(String? grad) => switch (grad) {
+        'BC' => 'Bela Crkva',
+        'VS' => 'Vrsac',
+        _ => grad ?? '',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final isBC = adresa.grad == 'BC';
+    final color = isBC ? Colors.green : Colors.orange;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: CircleAvatar(
+          backgroundColor: color.withValues(alpha: 0.2),
+          child: Icon(Icons.location_on, color: color),
+        ),
+        title: Text(adresa.naziv, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: Text(_gradLabel(adresa.grad), style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () => onEdit(adresa)),
+            IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => onDelete(adresa)),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -175,8 +381,14 @@ class _AdresaDialogState extends State<_AdresaDialog> {
           children: [
             TextField(controller: _naziv, decoration: const InputDecoration(labelText: 'Naziv adrese')),
             TextField(controller: _grad, decoration: const InputDecoration(labelText: 'Grad')),
-            TextField(controller: _lat, decoration: const InputDecoration(labelText: 'Latitude (opciono)'), keyboardType: TextInputType.number),
-            TextField(controller: _lng, decoration: const InputDecoration(labelText: 'Longitude (opciono)'), keyboardType: TextInputType.number),
+            TextField(
+                controller: _lat,
+                decoration: const InputDecoration(labelText: 'Latitude (opciono)'),
+                keyboardType: TextInputType.number),
+            TextField(
+                controller: _lng,
+                decoration: const InputDecoration(labelText: 'Longitude (opciono)'),
+                keyboardType: TextInputType.number),
           ],
         ),
       ),

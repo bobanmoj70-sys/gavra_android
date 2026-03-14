@@ -1,19 +1,28 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
+import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_biometric_service.dart';
 import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
 import 'v3_putnik_login_screen.dart';
+import 'v3_putnik_profil_screen.dart';
+import 'v3_vozac_login_screen.dart';
+import 'v3_vozac_screen.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
   const V3WelcomeScreen({super.key});
@@ -33,7 +42,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
   String _appVersion = '';
   bool _isLoading = true;
+  bool _updateDialogShown = false;
+  bool _autoLoginDone = false;
   List<V3Vozac> _vozaci = [];
+
+  static const _secureStorage = FlutterSecureStorage();
+  static const String _lastVozacKey = 'last_v3_vozac_ime';
 
   @override
   void initState() {
@@ -49,6 +63,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
       _requestPermissionsIfNeeded();
+    });
+
+    // Provjera baterijske optimizacije za agresivne proizvođače
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      _checkBatteryOptimization();
     });
   }
 
@@ -99,6 +119,148 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         _isLoading = false;
       });
     }
+
+    // Auto-login: provjeri in-memory sesiju ili biometriju za zadnjeg vozača
+    await _checkAutoLogin();
+  }
+
+  Future<void> _checkAutoLogin() async {
+    if (_autoLoginDone) return;
+
+    // 1) In-memory sesija još postoji (app nije ubita)
+    if (V3VozacService.currentVozac != null) {
+      _autoLoginDone = true;
+      if (!mounted) return;
+      // Ako je obavezno ažuriranje aktivno — ostani na Welcome
+      if (updateInfoNotifier.value?.isForced == true) return;
+      final vozac = V3VozacService.currentVozac!;
+      final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
+        ),
+      );
+      return;
+    }
+
+    if (V3PutnikService.currentPutnik != null) {
+      _autoLoginDone = true;
+      if (!mounted) return;
+      if (updateInfoNotifier.value?.isForced == true) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => V3PutnikProfilScreen(putnikData: V3PutnikService.currentPutnik!),
+        ),
+      );
+      return;
+    }
+
+    // 2) Provjeri zadnjeg vozača u SecureStorage + biometriju/RememberMe
+    try {
+      final bio = V3BiometricService();
+      final bioAvailable = await bio.isBiometricAvailable();
+      final bioEnabled = await bio.isBiometricEnabled();
+      final rememberMe = await bio.isRememberMeEnabled();
+
+      if (bioEnabled || rememberMe) {
+        final creds = await bio.getSavedCredentials();
+        if (creds != null) {
+          final phone = creds['phone']!;
+          final pin = creds['pin']!;
+
+          if (bioEnabled && bioAvailable) {
+            // Autentifikacija biometrijom
+            final authenticated = await bio.authenticate(
+              reason: 'Prijavite se kao putnik',
+            );
+            if (!authenticated || !mounted) return;
+          }
+
+          // Ako je RememberMe ili Biometrija uspešna — uradi login
+          await _doPutnikAutoLogin(phone, pin);
+          if (_autoLoginDone) return;
+        }
+      }
+
+      final lastIme = await _secureStorage.read(key: _lastVozacKey);
+      if (lastIme == null || lastIme.isEmpty) return;
+
+      final vozac = V3VozacService.getVozacByName(lastIme);
+      if (vozac == null || !vozac.aktivno) return;
+
+      // Provjeri da li postoje biometrijski kredencijali za ovog vozača
+      final bioKey = 'biometric_v3_vozac_$lastIme';
+      final bioRaw = await _secureStorage.read(key: bioKey);
+      if (bioRaw == null) return;
+
+      // Provjeri dostupnost biometrije
+      final bioAvailableCheck = await bio.isBiometricAvailable();
+      if (!bioAvailableCheck) return;
+
+      if (!mounted) return;
+      if (updateInfoNotifier.value?.isForced == true) return;
+
+      _autoLoginDone = true;
+
+      // Autentifikacija biometrijom
+      final authenticated = await bio.authenticate(
+        reason: 'Nastavi kao $lastIme',
+      );
+      if (!authenticated || !mounted) return;
+
+      V3VozacService.currentVozac = vozac;
+      await _secureStorage.write(key: _lastVozacKey, value: vozac.imePrezime);
+
+      if (!mounted) return;
+      final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
+        ),
+      );
+    } catch (_) {
+      // Tiho ignoriši grešku auto-login-a
+    }
+  }
+
+  Future<void> _doPutnikAutoLogin(String phone, String pin) async {
+    // Čekaj da se učita cache putnika ako je prazan
+    int retries = 0;
+    while (V3MasterRealtimeManager.instance.putniciCache.isEmpty && retries < 10) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      retries++;
+    }
+
+    final normalized = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    Map<String, dynamic>? found;
+    final cache = V3MasterRealtimeManager.instance.putniciCache;
+    for (final row in cache.values) {
+      final t1 = (row['telefon_1']?.toString() ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      final t2 = (row['telefon_2']?.toString() ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      if (t1 == normalized || (t2.isNotEmpty && t2 == normalized)) {
+        found = Map<String, dynamic>.from(row);
+        break;
+      }
+    }
+
+    if (found == null) return;
+    if (found['pin']?.toString() != pin) return;
+
+    _autoLoginDone = true;
+    V3PutnikService.currentPutnik = found;
+
+    if (!mounted) return;
+    if (updateInfoNotifier.value?.isForced == true) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => V3PutnikProfilScreen(putnikData: found!),
+      ),
+    );
   }
 
   @override
@@ -140,6 +302,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   void _onUpdateInfo() {
     final info = updateInfoNotifier.value;
     if (info == null || !mounted) return;
+    if (_updateDialogShown) return;
+    _updateDialogShown = true;
 
     showDialog<void>(
       context: context,
@@ -261,9 +425,17 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                       ],
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
-                            // Otvori store stranicu
-                            if (!info.isForced) Navigator.of(ctx).pop();
+                          onPressed: () async {
+                            final url = info.storeUrl;
+                            if (url.isNotEmpty) {
+                              try {
+                                await launchUrl(
+                                  Uri.parse(url),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } catch (_) {}
+                            }
+                            if (!info.isForced && ctx.mounted) Navigator.of(ctx).pop();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: info.isForced ? Colors.redAccent : Colors.blueAccent,
@@ -300,10 +472,81 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     } catch (_) {}
   }
 
-  void _loginAsVozac(V3Vozac vozac) {
-    V3VozacService.currentVozac = vozac;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const V3HomeScreen()),
+  /// Provjera baterijske optimizacije za agresivne proizvođače (Huawei, Xiaomi, Samsung...)
+  Future<void> _checkBatteryOptimization() async {
+    if (!Platform.isAndroid) return;
+    try {
+      const shownKey = 'battery_opt_warning_shown_v3';
+      final shown = await _secureStorage.read(key: shownKey);
+      if (shown == 'true') return;
+
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+      final manufacturer = androidInfo.manufacturer.toLowerCase();
+
+      const problematicManufacturers = [
+        'huawei',
+        'honor',
+        'xiaomi',
+        'redmi',
+        'poco',
+        'oppo',
+        'realme',
+        'vivo',
+        'oneplus',
+        'samsung',
+        'meizu',
+        'asus',
+        'lenovo',
+      ];
+
+      if (!problematicManufacturers.any((m) => manufacturer.contains(m))) return;
+      if (!mounted) return;
+
+      await _secureStorage.write(key: shownKey, value: 'true');
+
+      final brandName = androidInfo.manufacturer;
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1a1a2e),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.battery_alert, color: Colors.orangeAccent, size: 28),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Upozorenje – $brandName',
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            '$brandName uređaji često agresivno gase pozadinske procese. '
+            'Za pouzdane notifikacije i lokaciju idite u:\n\n'
+            'Podešavanja → Aplikacije → Gavra → Baterija → Bez ograničenja',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Razumio', style: TextStyle(color: Colors.orangeAccent)),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _loginAsVozac(V3Vozac vozac) async {
+    await _stopAudio();
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => V3VozacLoginScreen(vozac: vozac),
+      ),
     );
   }
 
@@ -373,7 +616,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     child: GestureDetector(
                       onTap: () {
                         Navigator.pop(ctx);
-                        _loginAsVozac(vozac);
+                        unawaited(_loginAsVozac(vozac));
                       },
                       child: Container(
                         width: double.infinity,
@@ -442,6 +685,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
       body: Container(
         width: double.infinity,

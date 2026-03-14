@@ -4,7 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/v2_theme_manager.dart';
-import '../utils/v2_app_snack_bar.dart';
+import '../utils/v3_app_snack_bar.dart';
 
 class V3ONamaScreen extends StatefulWidget {
   const V3ONamaScreen({super.key});
@@ -38,7 +38,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     if (!status.isGranted) {
       final result = await Permission.phone.request();
       if (!result.isGranted) {
-        if (mounted) V2AppSnackBar.error(context, 'Dozvola za pozive je potrebna');
+        if (mounted) V3AppSnackBar.error(context, 'Dozvola za pozive je potrebna');
         return;
       }
     }
@@ -47,7 +47,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else if (mounted) {
-      V2AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za pozive');
+      V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za pozive');
     }
   }
 
@@ -57,7 +57,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else if (mounted) {
-      V2AppSnackBar.error(context, 'Ne mogu da otvorim email aplikaciju');
+      V3AppSnackBar.error(context, 'Ne mogu da otvorim email aplikaciju');
     }
   }
 
@@ -69,7 +69,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
-      V2AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
+      V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
     }
   }
 

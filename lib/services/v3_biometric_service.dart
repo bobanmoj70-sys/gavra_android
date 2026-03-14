@@ -12,6 +12,7 @@ class V3BiometricService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   static const String _keyBiometricEnabled = 'biometric_enabled';
+  static const String _keyRememberMe = 'remember_me_enabled';
   static const String _keySavedPhone = 'biometric_saved_phone';
   static const String _keySavedPin = 'biometric_saved_pin';
 
@@ -51,11 +52,27 @@ class V3BiometricService {
     await _secureStorage.write(key: _keyBiometricEnabled, value: enabled.toString());
   }
 
+  // Remember Me logic
+  Future<bool> isRememberMeEnabled() async {
+    final val = await _secureStorage.read(key: _keyRememberMe);
+    return val == 'true';
+  }
+
+  Future<void> setRememberMeEnabled(bool enabled) async {
+    await _secureStorage.write(key: _keyRememberMe, value: enabled.toString());
+  }
+
   // Sačuvaj kredencijale (telefon + PIN)
-  Future<void> saveCredentials(String phone, String pin) async {
+  Future<void> saveCredentials(String phone, String pin, {bool isBiometric = true}) async {
     await _secureStorage.write(key: _keySavedPhone, value: phone);
     await _secureStorage.write(key: _keySavedPin, value: pin);
-    await setBiometricEnabled(true);
+    if (isBiometric) {
+      await setBiometricEnabled(true);
+      await setRememberMeEnabled(false);
+    } else {
+      await setRememberMeEnabled(true);
+      await setBiometricEnabled(false);
+    }
   }
 
   // Dohvati sačuvane kredencijale
@@ -71,6 +88,7 @@ class V3BiometricService {
     await _secureStorage.delete(key: _keySavedPhone);
     await _secureStorage.delete(key: _keySavedPin);
     await setBiometricEnabled(false);
+    await setRememberMeEnabled(false);
   }
 
   // Autentifikacija biometrijom

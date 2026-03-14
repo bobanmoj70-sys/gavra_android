@@ -2,57 +2,103 @@
 class V2RouteConfig {
   V2RouteConfig._();
 
-  /// Vremena polazaka za BC (Banja Luka → Čelinac pravac)
-  static const List<String> _bcVremena = [
+  // 🏙️ BELA CRKVA - Zimski raspored (oktobar-mart)
+  static const List<String> _bcVremenaZimski = [
     '05:00',
     '06:00',
     '07:00',
     '08:00',
     '09:00',
-    '10:00',
     '11:00',
     '12:00',
     '13:00',
     '14:00',
-    '15:00',
     '15:30',
-    '16:00',
-    '17:00',
     '18:00',
-    '19:00',
-    '20:00',
   ];
 
-  /// Vremena polazaka za VS (Čelinac → Banja Luka pravac)
-  static const List<String> _vsVremena = [
+  // 🌆 VRŠAC - Zimski raspored (oktobar-mart)
+  static const List<String> _vsVremenaZimski = [
     '06:00',
     '07:00',
     '08:00',
-    '09:00',
     '10:00',
     '11:00',
     '12:00',
     '13:00',
     '14:00',
-    '15:00',
     '15:30',
-    '16:00',
     '17:00',
-    '18:00',
     '19:00',
-    '20:00',
-    '21:00',
   ];
 
-  /// Vraća listu vremena na osnovu smjera ('BC' ili 'VS')
-  static List<String> getVremenaByNavType(String navType) {
-    switch (navType.toUpperCase()) {
-      case 'BC':
-        return List.unmodifiable(_bcVremena);
-      case 'VS':
-        return List.unmodifiable(_vsVremena);
-      default:
-        return List.unmodifiable([..._bcVremena, ..._vsVremena]..sort());
+  // 🏙️ BELA CRKVA - Letnji raspored (april-septembar)
+  static const List<String> _bcVremenaLetnji = [
+    '05:00',
+    '06:00',
+    '07:00',
+    '08:00',
+    '11:00',
+    '12:00',
+    '13:00',
+    '14:00',
+    '15:30',
+    '18:00',
+  ];
+
+  // 🌆 VRŠAC - Letnji raspored (april-septembar)
+  static const List<String> _vsVremenaLetnji = [
+    '06:00',
+    '07:00',
+    '08:00',
+    '10:00',
+    '11:00',
+    '12:00',
+    '13:00',
+    '14:00',
+    '15:30',
+    '18:00',
+  ];
+
+  // 🏙️ BELA CRKVA - Praznični raspored
+  static const List<String> _bcVremenaPraznici = [
+    '05:00',
+    '06:00',
+    '12:00',
+    '13:00',
+    '15:00',
+  ];
+
+  // 🌆 VRŠAC - Praznični raspored
+  static const List<String> _vsVremenaPraznici = [
+    '06:00',
+    '07:00',
+    '13:00',
+    '14:00',
+    '15:30',
+  ];
+
+  // ── Sezonski getteri ──
+  static List<String> get bcVremenaZimski => List.unmodifiable(_bcVremenaZimski);
+  static List<String> get vsVremenaZimski => List.unmodifiable(_vsVremenaZimski);
+  static List<String> get bcVremenaLetnji => List.unmodifiable(_bcVremenaLetnji);
+  static List<String> get vsVremenaLetnji => List.unmodifiable(_vsVremenaLetnji);
+  static List<String> get bcVremenaPraznici => List.unmodifiable(_bcVremenaPraznici);
+  static List<String> get vsVremenaPraznici => List.unmodifiable(_vsVremenaPraznici);
+
+  /// Vraća listu vremena na osnovu smjera i TRUBNOG navType
+  static List<String> getVremenaByNavType(String grad, [String? season]) {
+    // Ako season nije prosleđen, pokušavamo ga dobiti (u v3_home_screen se season dobija iz navBarTypeNotifier)
+    final s = season?.toLowerCase() ?? 'zimski';
+
+    if (grad.toUpperCase() == 'BC') {
+      if (s == 'letnji') return bcVremenaLetnji;
+      if (s == 'praznici') return bcVremenaPraznici;
+      return bcVremenaZimski;
+    } else {
+      if (s == 'letnji') return vsVremenaLetnji;
+      if (s == 'praznici') return vsVremenaPraznici;
+      return vsVremenaZimski;
     }
   }
 }

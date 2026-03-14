@@ -23,15 +23,11 @@ class V3VoziloService {
     return data != null ? V3Vozilo.fromJson(data) : null;
   }
 
-  static Future<V3Vozilo> addUpdateVozilo(V3Vozilo vozilo) async {
+  static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();
-      data['updated_at'] = DateTime.now().toUtc().toIso8601String();
 
-      final row = await supabase.from('v3_vozila').upsert(data).select().single();
-
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_vozila', row);
-      return V3Vozilo.fromJson(row);
+      await supabase.from('v3_vozila').upsert(data);
     } catch (e) {
       debugPrint('[V3VoziloService] Error: $e');
       rethrow;
@@ -41,9 +37,18 @@ class V3VoziloService {
   static Future<void> deactivateVozilo(String id) async {
     try {
       await supabase.from('v3_vozila').update({'aktivno': false}).eq('id', id);
-      V3MasterRealtimeManager.instance.vozilaCache.remove(id);
     } catch (e) {
       debugPrint('[V3VoziloService] Deactivate error: $e');
+      rethrow;
+    }
+  }
+
+  /// Ažurira kolsku knjigu vozila (samo proslijeđena polja).
+  static Future<void> updateKolskaKnjiga(String voziloId, Map<String, dynamic> data) async {
+    try {
+      await supabase.from('v3_vozila').update(data).eq('id', voziloId);
+    } catch (e) {
+      debugPrint('[V3VoziloService] updateKolskaKnjiga error: $e');
       rethrow;
     }
   }

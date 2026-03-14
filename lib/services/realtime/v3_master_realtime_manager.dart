@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../v3/v3_kapacitet_service.dart';
 
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
 class V3MasterRealtimeManager {
@@ -20,13 +21,15 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> postavkeKapacitetaCache = {};
   final Map<String, Map<String, dynamic>> pumpaStanjeCache = {};
   final Map<String, Map<String, dynamic>> pumpaRezervoarCache = {};
-  final Map<String, Map<String, dynamic>> dnevneOperacijeCache = {};
   final Map<String, Map<String, dynamic>> rasporedTerminCache = {};
   final Map<String, Map<String, dynamic>> rasporedPutnikCache = {};
   final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> finansijeStanjeCache = {};
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
+  final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
+  final Map<String, Map<String, dynamic>> appSettingsCache = {};
+  final Map<String, Map<String, dynamic>> kapacitetCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
@@ -41,15 +44,16 @@ class V3MasterRealtimeManager {
         supabase.from('v3_vozila').select().eq('aktivno', true),
         supabase.from('v3_putnici').select().eq('aktivno', true),
         supabase.from('v3_zahtevi').select().eq('aktivno', true),
-        supabase.from('v3_postavke_kapaciteta').select().eq('aktivno', true),
         supabase.from('v3_pumpa_stanje').select().eq('aktivno', true),
         supabase.from('v3_pumpa_rezervoar').select(),
-        supabase.from('v3_dnevne_operacije').select().order('updated_at', ascending: false).limit(200),
         supabase.from('v3_raspored_termin').select().order('created_at', ascending: false).limit(200),
         supabase.from('v3_raspored_putnik').select().order('created_at', ascending: false).limit(500),
         supabase.from('v3_vozac_lokacije').select(),
         supabase.from('v3_troskovi').select().eq('aktivno', true),
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
+        supabase.from('v3_operativna_nedelja').select(),
+        supabase.from('v3_app_settings').select(),
+        supabase.from('v3_kapacitet').select().eq('aktivno', true),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -57,15 +61,19 @@ class V3MasterRealtimeManager {
       _fillCache(vozilaCache, results[2] as List);
       _fillCache(putniciCache, results[3] as List);
       _fillCache(zahteviCache, results[4] as List);
-      _fillCache(postavkeKapacitetaCache, results[5] as List);
-      _fillCache(pumpaStanjeCache, results[6] as List);
-      _fillCache(pumpaRezervoarCache, results[7] as List);
-      _fillCache(dnevneOperacijeCache, results[8] as List);
-      _fillCache(rasporedTerminCache, results[9] as List);
-      _fillCache(rasporedPutnikCache, results[10] as List);
-      _fillCache(vozacLokacijeCache, results[11] as List);
-      _fillCache(troskoviCache, results[12] as List);
-      _fillCache(finansijeStanjeCache, results[13] as List);
+      _fillCache(pumpaStanjeCache, results[5] as List);
+      _fillCache(pumpaRezervoarCache, results[6] as List);
+      _fillCache(rasporedTerminCache, results[7] as List);
+      _fillCache(rasporedPutnikCache, results[8] as List);
+      _fillCache(vozacLokacijeCache, results[9] as List);
+      _fillCache(troskoviCache, results[10] as List);
+      _fillCache(finansijeStanjeCache, results[11] as List);
+      _fillCache(operativnaNedeljaCache, results[12] as List);
+      _fillCache(appSettingsCache, results[13] as List);
+      _fillCache(kapacitetCache, results[14] as List);
+
+      // Kreiraj slotove koji nedostaju u v3_kapacitet (iz trenutnog sezona konfiguracije)
+      await V3KapacitetService.syncSlotsFromConfig();
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -90,22 +98,23 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_vozila', vozilaCache);
     _setupTableRealtime('v3_putnici', putniciCache);
     _setupTableRealtime('v3_zahtevi', zahteviCache);
-    _setupTableRealtime('v3_postavke_kapaciteta', postavkeKapacitetaCache);
     _setupTableRealtime('v3_pumpa_stanje', pumpaStanjeCache);
     _setupTableRealtime('v3_pumpa_rezervoar', pumpaRezervoarCache, hasActiveKey: false);
-    _setupTableRealtime('v3_dnevne_operacije', dnevneOperacijeCache, hasActiveKey: false);
     _setupTableRealtime('v3_raspored_termin', rasporedTerminCache, hasActiveKey: false);
     _setupTableRealtime('v3_raspored_putnik', rasporedPutnikCache, hasActiveKey: false);
     _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
     _setupTableRealtime('v3_troskovi', troskoviCache);
     _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
-    _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache, hasActiveKey: false);
+    _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
+    _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
+    _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
+    _setupTableRealtime('v3_kapacitet', kapacitetCache);
 
-    _v3Channel?.subscribe();
+    _v3Channel!.subscribe();
   }
 
   void _setupTableRealtime(String table, Map<String, Map<String, dynamic>> cache,
-      {String activeKey = 'aktivno', bool hasActiveKey = true}) {
+      {String activeKey = 'aktivno', bool hasActiveKey = true, bool keepInactive = false}) {
     _v3Channel?.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
@@ -122,7 +131,7 @@ class V3MasterRealtimeManager {
           isActive = newRecord[activeKey] as bool? ?? true;
         }
 
-        if (payload.eventType == PostgresChangeEvent.delete || !isActive) {
+        if (payload.eventType == PostgresChangeEvent.delete || (!isActive && !keepInactive)) {
           cache.remove(id);
         } else {
           cache[id] = Map<String, dynamic>.from(newRecord);
@@ -158,17 +167,11 @@ class V3MasterRealtimeManager {
       case 'v3_zahtevi':
         zahteviCache[id] = row;
         break;
-      case 'v3_postavke_kapaciteta':
-        postavkeKapacitetaCache[id] = row;
-        break;
       case 'v3_pumpa_stanje':
         pumpaStanjeCache[id] = row;
         break;
       case 'v3_pumpa_rezervoar':
         pumpaRezervoarCache[id] = row;
-        break;
-      case 'v3_dnevne_operacije':
-        dnevneOperacijeCache[id] = row;
         break;
       case 'v3_raspored_termin':
         rasporedTerminCache[id] = row;
@@ -184,6 +187,12 @@ class V3MasterRealtimeManager {
         break;
       case 'v3_finansije_stanje':
         finansijeStanjeCache[id] = row;
+        break;
+      case 'v3_operativna_nedelja':
+        operativnaNedeljaCache[id] = row;
+        break;
+      case 'v3_kapacitet':
+        kapacitetCache[id] = row;
         break;
       case 'v3_pin_zahtevi':
         if (row['status'] == 'ceka') {
@@ -214,14 +223,10 @@ class V3MasterRealtimeManager {
         return putniciCache;
       case 'v3_zahtevi':
         return zahteviCache;
-      case 'v3_postavke_kapaciteta':
-        return postavkeKapacitetaCache;
       case 'v3_pumpa_stanje':
         return pumpaStanjeCache;
       case 'v3_pumpa_rezervoar':
         return pumpaRezervoarCache;
-      case 'v3_dnevne_operacije':
-        return dnevneOperacijeCache;
       case 'v3_raspored_termin':
         return rasporedTerminCache;
       case 'v3_raspored_putnik':
@@ -234,6 +239,10 @@ class V3MasterRealtimeManager {
         return finansijeStanjeCache;
       case 'v3_pin_zahtevi':
         return pinZahteviCache;
+      case 'v3_operativna_nedelja':
+        return operativnaNedeljaCache;
+      case 'v3_kapacitet':
+        return kapacitetCache;
       default:
         return {};
     }

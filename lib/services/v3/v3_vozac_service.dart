@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../../globals.dart';
 import '../../models/v3_vozac.dart';
@@ -37,15 +37,11 @@ class V3VozacService {
     }
   }
 
-  static Future<V3Vozac> addUpdateVozac(V3Vozac vozac) async {
+  static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
       final data = vozac.toJson();
-      data['updated_at'] = DateTime.now().toUtc().toIso8601String();
 
-      final row = await supabase.from('v3_vozaci').upsert(data).select().single();
-
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_vozaci', row);
-      return V3Vozac.fromJson(row);
+      await supabase.from('v3_vozaci').upsert(data);
     } catch (e) {
       debugPrint('[V3VozacService] Error: $e');
       rethrow;
@@ -55,10 +51,43 @@ class V3VozacService {
   static Future<void> deactivateVozac(String id) async {
     try {
       await supabase.from('v3_vozaci').update({'aktivno': false}).eq('id', id);
-      V3MasterRealtimeManager.instance.vozaciCache.remove(id);
     } catch (e) {
       debugPrint('[V3VozacService] Deactivate error: $e');
       rethrow;
+    }
+  }
+
+  /// Vraća boju vozača raspoređenog za dati dan/grad/vreme.
+  /// [danPuni] — puni naziv dana (npr. 'Ponedeljak'), konvertuje se u kratico (pon).
+  static Color? getVozacColorForTermin(String danPuni, String grad, String vreme) {
+    const daniMap = {
+      'ponedeljak': 'pon',
+      'utorak': 'uto',
+      'sreda': 'sre',
+      'cetvrtak': 'cet',
+      'petak': 'pet',
+      'subota': 'sub',
+      'nedelja': 'ned',
+    };
+    final danKey = daniMap[danPuni.toLowerCase()] ?? danPuni.toLowerCase();
+    final rm = V3MasterRealtimeManager.instance;
+    try {
+      final termin = rm.rasporedTerminCache.values.firstWhere(
+        (r) =>
+            r['dan']?.toString().toLowerCase() == danKey &&
+            r['grad']?.toString().toUpperCase() == grad.toUpperCase() &&
+            r['vreme']?.toString() == vreme &&
+            r['aktivno'] == true,
+      );
+      final vozacId = termin['vozac_id']?.toString();
+      if (vozacId == null) return null;
+      final vozac = rm.vozaciCache[vozacId];
+      final hex = vozac?['boja']?.toString();
+      if (hex == null || hex.isEmpty) return null;
+      final clean = hex.replaceFirst('#', '');
+      return Color(int.parse('FF$clean', radix: 16));
+    } catch (_) {
+      return null;
     }
   }
 }

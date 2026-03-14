@@ -3,11 +3,19 @@ class V3Zahtev {
   final String putnikId;
   final DateTime datum;
   final String? danUSedmici;
+  final String? imePrezime;
   final String grad;
   final String zeljenoVreme;
   final int brojMesta;
   final String status; // 'obrada', 'odobreno', 'odbijeno', 'otkazano'
   final String? napomena;
+  final String? dodeljenoVreme;
+  final String? adresaId;
+  final String? adresaNaziv;
+  final bool koristiSekundarnu;
+  final String? altVremePre;
+  final String? altVremePosle;
+  final String? altNapomena;
   final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -17,11 +25,19 @@ class V3Zahtev {
     required this.putnikId,
     required this.datum,
     this.danUSedmici,
+    this.imePrezime,
     required this.grad,
     required this.zeljenoVreme,
     this.brojMesta = 1,
     this.status = 'obrada',
     this.napomena,
+    this.dodeljenoVreme,
+    this.adresaId,
+    this.adresaNaziv,
+    this.koristiSekundarnu = false,
+    this.altVremePre,
+    this.altVremePosle,
+    this.altNapomena,
     this.aktivno = true,
     this.createdAt,
     this.updatedAt,
@@ -31,6 +47,7 @@ class V3Zahtev {
     return V3Zahtev(
       id: json['id'] as String? ?? '',
       putnikId: json['putnik_id'] as String? ?? '',
+      imePrezime: json['ime_prezime'] as String?,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       danUSedmici: json['dan_u_sedmici'] as String?,
       grad: json['grad'] as String? ?? '',
@@ -38,6 +55,13 @@ class V3Zahtev {
       brojMesta: json['broj_mesta'] as int? ?? 1,
       status: json['status'] as String? ?? 'obrada',
       napomena: json['napomena'] as String?,
+      dodeljenoVreme: json['dodeljeno_vreme'] as String?,
+      adresaId: json['adresa_id'] as String?,
+      adresaNaziv: json['adresa_naziv'] as String?,
+      koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
+      altVremePre: json['alt_vreme_pre'] as String?,
+      altVremePosle: json['alt_vreme_posle'] as String?,
+      altNapomena: json['alt_napomena'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
@@ -46,8 +70,9 @@ class V3Zahtev {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'putnik_id': putnikId,
+      if (id.isNotEmpty) 'id': id,
+      'putnik_id': putnikId.isNotEmpty ? putnikId : null,
+      'ime_prezime': imePrezime,
       'datum': datum.toIso8601String().split('T')[0],
       'dan_u_sedmici': danUSedmici,
       'grad': grad,
@@ -55,7 +80,60 @@ class V3Zahtev {
       'broj_mesta': brojMesta,
       'status': status,
       'napomena': napomena,
+      'dodeljeno_vreme': dodeljenoVreme,
+      'adresa_id': adresaId,
+      'adresa_naziv': adresaNaziv,
+      'koristi_sekundarnu': koristiSekundarnu,
+      'alt_vreme_pre': altVremePre,
+      'alt_vreme_posle': altVremePosle,
+      'alt_napomena': altNapomena,
       'aktivno': aktivno,
     };
+  }
+
+  V3Zahtev copyWith({
+    String? id,
+    String? putnikId,
+    DateTime? datum,
+    String? danUSedmici,
+    String? imePrezime,
+    String? grad,
+    String? zeljenoVreme,
+    int? brojMesta,
+    String? status,
+    String? napomena,
+    String? dodeljenoVreme,
+    String? adresaId,
+    String? adresaNaziv,
+    bool? koristiSekundarnu,
+    String? altVremePre,
+    String? altVremePosle,
+    String? altNapomena,
+    bool? aktivno,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return V3Zahtev(
+      id: id ?? this.id,
+      putnikId: putnikId ?? this.putnikId,
+      datum: datum ?? this.datum,
+      danUSedmici: danUSedmici ?? this.danUSedmici,
+      imePrezime: imePrezime ?? this.imePrezime,
+      grad: grad ?? this.grad,
+      zeljenoVreme: zeljenoVreme ?? this.zeljenoVreme,
+      brojMesta: brojMesta ?? this.brojMesta,
+      status: status ?? this.status,
+      napomena: napomena ?? this.napomena,
+      dodeljenoVreme: dodeljenoVreme ?? this.dodeljenoVreme,
+      adresaId: adresaId ?? this.adresaId,
+      adresaNaziv: adresaNaziv ?? this.adresaNaziv,
+      koristiSekundarnu: koristiSekundarnu ?? this.koristiSekundarnu,
+      altVremePre: altVremePre ?? this.altVremePre,
+      altVremePosle: altVremePosle ?? this.altVremePosle,
+      altNapomena: altNapomena ?? this.altNapomena,
+      aktivno: aktivno ?? this.aktivno,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }

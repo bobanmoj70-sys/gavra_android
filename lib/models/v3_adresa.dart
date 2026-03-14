@@ -61,4 +61,10 @@ class V3Adresa {
   }
 
   static double _toRadians(double degree) => degree * math.pi / 180;
+
+  @override
+  bool operator ==(Object other) => other is V3Adresa && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

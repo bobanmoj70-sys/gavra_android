@@ -4,14 +4,14 @@ import '../../globals.dart';
 import '../../models/v3_dug.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
-/// V3DugService - Upravljanje dugovima/naplatama iz v3_dnevne_operacije.
-/// Tabela v3_dugovi ne postoji - dugovi se prate kroz naplata_status u v3_dnevne_operacije.
+/// V3DugService - Upravljanje dugovima/naplatama iz v3_operativna_nedelja.
+/// Tabela v3_dugovi ne postoji - dugovi se prate kroz naplata_status u v3_operativna_nedelja.
 class V3DugService {
   V3DugService._();
 
   /// Vraca sve nenaplacene operacije kao listu dugova
   static List<V3Dug> getDugovi() {
-    final cache = V3MasterRealtimeManager.instance.dnevneOperacijeCache;
+    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
     final dugovi = <V3Dug>[];
     for (final row in cache.values) {
       final naplataSt = row['naplata_status'] as String? ?? 'nije_placeno';
@@ -26,12 +26,12 @@ class V3DugService {
   }
 
   static Stream<List<V3Dug>> streamDugovi() =>
-      V3MasterRealtimeManager.instance.v3StreamFromCache(tables: ['v3_dnevne_operacije'], build: () => getDugovi());
+      V3MasterRealtimeManager.instance.v3StreamFromCache(tables: ['v3_operativna_nedelja'], build: () => getDugovi());
 
   static Future<void> markAsPaid(String operacijaId) async {
     try {
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
-      await supabase.from('v3_dnevne_operacije').update({
+      await supabase.from('v3_operativna_nedelja').update({
         'naplata_status': 'placeno',
         'vreme_placen': DateTime.now().toIso8601String(),
       }).eq('id', operacijaId);
