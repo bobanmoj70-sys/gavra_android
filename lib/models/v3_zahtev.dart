@@ -19,9 +19,6 @@ class V3Zahtev {
   final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  // Plaćanje — čita se iz v3_operativna_nedelja
-  final String? naplataStatus; // 'placeno', 'nije_placeno', 'parcijalno'
-  final double? iznosNaplacen;
 
   V3Zahtev({
     required this.id,
@@ -44,8 +41,6 @@ class V3Zahtev {
     this.aktivno = true,
     this.createdAt,
     this.updatedAt,
-    this.naplataStatus,
-    this.iznosNaplacen,
   });
 
   factory V3Zahtev.fromJson(Map<String, dynamic> json) {
@@ -117,8 +112,6 @@ class V3Zahtev {
     bool? aktivno,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? naplataStatus,
-    double? iznosNaplacen,
   }) {
     return V3Zahtev(
       id: id ?? this.id,
@@ -141,8 +134,6 @@ class V3Zahtev {
       aktivno: aktivno ?? this.aktivno,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      naplataStatus: naplataStatus ?? this.naplataStatus,
-      iznosNaplacen: iznosNaplacen ?? this.iznosNaplacen,
     );
   }
 }
