@@ -86,6 +86,23 @@ class V3ZahtevService {
     }
   }
 
+  /// Prepisuje zeljeno_vreme i dodeljeno_vreme postojećeg zahteva (admin use-case).
+  static Future<void> updateVreme(String id, String novoVreme) async {
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      final row = await supabase
+          .from('v3_zahtevi')
+          .update({'zeljeno_vreme': novoVreme, 'dodeljeno_vreme': novoVreme, 'updated_at': now})
+          .eq('id', id)
+          .select()
+          .single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+    } catch (e) {
+      debugPrint('[V3ZahtevService] updateVreme error: $e');
+      rethrow;
+    }
+  }
+
   static List<V3Zahtev> getZahteviByDatumAndGrad(String datumIso, String grad) {
     final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
     return cache
@@ -157,12 +174,12 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId}) async {
+  static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId}) async {
     try {
       await supabase.from('v3_zahtevi').update({'status': 'otkazano'}).eq('id', id);
       await supabase.from('v3_operativna_nedelja').update({
-        'status_final': 'otkazano',
         if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
+        if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
       }).eq('izvor_id', id);
       V3AuditLogService.log(
         tip: 'zahtev_otkazan',
@@ -209,7 +226,13 @@ class V3ZahtevService {
 
   static Future<void> updateZeljenoVreme(String id, String novoVreme) async {
     try {
-      await supabase.from('v3_zahtevi').update({'zeljeno_vreme': novoVreme, 'status': 'obrada'}).eq('id', id);
+      // Scenario 3: reset na isto stanje kao novi zahtev
+      // dodeljeno_vreme = NULL jer kron mora ponovo da odluci
+      await supabase.from('v3_zahtevi').update({
+        'zeljeno_vreme': novoVreme,
+        'dodeljeno_vreme': null,
+        'status': 'obrada',
+      }).eq('id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] ZeljenoVreme update error: $e');
       rethrow;

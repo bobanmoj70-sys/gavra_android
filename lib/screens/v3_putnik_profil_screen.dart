@@ -145,7 +145,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       if (novoVreme == null) {
         // Otkaži postojeći zahtev
         if (trenutniInfo == null) return;
-        await V3ZahtevService.otkaziZahtev(trenutniInfo.zahtevId);
+        await V3ZahtevService.otkaziZahtev(trenutniInfo.zahtevId, otkazaoPutnikId: putnikId);
         if (mounted) V3AppSnackBar.success(context, '✅ Polazak otkazan: $dan $grad');
       } else if (trenutniInfo != null && (trenutniInfo.status == 'obrada' || trenutniInfo.status == 'odobreno')) {
         // Ažuriraj vreme na postojećem zahtevu (vraća u obrada)
@@ -181,6 +181,22 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
+    // Scenario 2: zahtev u obradi — blokirati sve akcije
+    if (info?.status == 'obrada') {
+      if (mounted) V3AppSnackBar.info(ctx, 'Vaš zahtev je u obradi. Nakon završetka možete poslati novi.');
+      return;
+    }
+
+    // Scenario 6: putnik pokupljen — vožnja završena
+    if (info?.status == 'pokupljen') {
+      if (mounted) V3AppSnackBar.info(ctx, '🚌 Pokupljeni ste za ovo vreme. Nadamo se da ste imali ugodnu vožnju! 😊');
+      return;
+    }
+
+    // Scenario 5: zaključavanje 15 min pre polaska
+    final datumPolaska = V3DanHelper.datumZaDanAbbr(dan);
+    final now = DateTime.now();
+
     final vremena = V2RouteConfig.getVremenaByNavType(grad, navBarTypeNotifier.value);
     final currentVreme = info?.vreme;
     final hasActive = info != null && info.status != 'otkazano' && info.status != 'odbijeno';
@@ -327,20 +343,38 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         children: vremena.map((vreme) {
                           final isSelected =
                               currentVreme != null && currentVreme.length >= 5 && currentVreme.substring(0, 5) == vreme;
+                          // Scenario 5: zaključaj dugme 15 min pre polaska
+                          final parts = vreme.split(':');
+                          final polazak = DateTime(
+                            datumPolaska.year,
+                            datumPolaska.month,
+                            datumPolaska.day,
+                            int.parse(parts[0]),
+                            int.parse(parts[1]),
+                          );
+                          final isLocked = now.isAfter(polazak.subtract(const Duration(minutes: 15)));
                           return SizedBox(
                             width: 82,
                             child: OutlinedButton(
-                              onPressed: () async {
-                                Navigator.of(dialogCtx).pop();
-                                await _updatePolazak(dan, grad, vreme,
-                                    trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
-                              },
+                              onPressed: isLocked
+                                  ? null
+                                  : () async {
+                                      Navigator.of(dialogCtx).pop();
+                                      await _updatePolazak(dan, grad, vreme,
+                                          trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
+                                    },
                               style: OutlinedButton.styleFrom(
-                                backgroundColor: isSelected
-                                    ? Colors.green.withValues(alpha: 0.25)
-                                    : Colors.white.withValues(alpha: 0.1),
+                                backgroundColor: isLocked
+                                    ? Colors.white.withValues(alpha: 0.04)
+                                    : isSelected
+                                        ? Colors.green.withValues(alpha: 0.25)
+                                        : Colors.white.withValues(alpha: 0.1),
                                 side: BorderSide(
-                                  color: isSelected ? Colors.green : Colors.white38,
+                                  color: isLocked
+                                      ? Colors.white12
+                                      : isSelected
+                                          ? Colors.green
+                                          : Colors.white38,
                                   width: isSelected ? 2 : 1,
                                 ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -353,7 +387,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                   Text(
                                     vreme,
                                     style: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.white70,
+                                      color: isLocked
+                                          ? Colors.white24
+                                          : isSelected
+                                              ? Colors.white
+                                              : Colors.white70,
                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                       fontSize: 14,
                                     ),
