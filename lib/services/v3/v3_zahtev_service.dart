@@ -127,7 +127,7 @@ class V3ZahtevService {
     // Mapiramo ih nazad u V3Zahtev objekte
     return opFiltered.map((op) {
       final zahtevId = op['izvor_id'] as String?;
-      if (zahtevId != null && op['izvor_tip'] == 'zahtev') {
+      if (zahtevId != null) {
         final base = zCache.firstWhere((z) => z['id'] == zahtevId, orElse: () => <String, dynamic>{});
         if (base.isNotEmpty) {
           final z = V3Zahtev.fromJson(base);
@@ -138,7 +138,7 @@ class V3ZahtevService {
           );
         }
       }
-      // Ako nema baze (ili je izvor tipa 'putnik' ili dr.), kreiramo dummy/osnovni
+      // Ako nema baze, kreiramo dummy/osnovni
       return V3Zahtev(
         id: op['id'] as String? ?? 'temp',
         putnikId: op['putnik_id'] as String? ?? '',
@@ -176,12 +176,7 @@ class V3ZahtevService {
 
   static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId}) async {
     try {
-      final row = await supabase
-          .from('v3_zahtevi')
-          .update({'status': 'otkazano'})
-          .eq('id', id)
-          .select()
-          .single();
+      final row = await supabase.from('v3_zahtevi').update({'status': 'otkazano'}).eq('id', id).select().single();
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
       await supabase.from('v3_operativna_nedelja').update({
         if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,

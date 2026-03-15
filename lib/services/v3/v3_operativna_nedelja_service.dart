@@ -6,7 +6,6 @@ import 'v3_kapacitet_service.dart';
 
 class V3OperativnaNedeljaEntry {
   final String id;
-  final String? izvorTip;
   final String izvorId;
   final String putnikId;
   final String? imePrezime;
@@ -29,7 +28,6 @@ class V3OperativnaNedeljaEntry {
 
   V3OperativnaNedeljaEntry({
     required this.id,
-    this.izvorTip,
     required this.izvorId,
     required this.putnikId,
     this.imePrezime,
@@ -54,8 +52,7 @@ class V3OperativnaNedeljaEntry {
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
-      izvorTip: json['izvor_tip'] as String?,
-      izvorId: json['izvor_id'] as String? ?? '',
+      izvorId: json['izvor_id'] as String? ?? ''
       putnikId: json['putnik_id'] as String? ?? '',
       imePrezime: json['ime_prezime'] as String?,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
@@ -80,7 +77,6 @@ class V3OperativnaNedeljaEntry {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'izvor_tip': izvorTip,
       'izvor_id': izvorId,
       'putnik_id': putnikId,
       'ime_prezime': imePrezime,
