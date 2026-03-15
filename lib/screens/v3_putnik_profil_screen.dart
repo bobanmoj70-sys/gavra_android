@@ -100,11 +100,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final infos = <_ZahtevInfo>[];
       for (final z in bcList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
-        infos.add(_ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id));
+        infos.add(_ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id, altVremePre: z.altVremePre, altVremePosle: z.altVremePosle));
       }
       for (final z in vsList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
-        infos.add(_ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id));
+        infos.add(_ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id, altVremePre: z.altVremePre, altVremePosle: z.altVremePosle));
       }
       newMap[dan] = infos;
     }
@@ -190,6 +190,86 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Scenario 6: putnik pokupljen — vožnja završena
     if (info?.status == 'pokupljen') {
       if (mounted) V3AppSnackBar.info(ctx, '🚌 Pokupljeni ste za ovo vreme. Nadamo se da ste imali ugodnu vožnju! 😊');
+      return;
+    }
+
+    // Scenario: zahtev odbijen — prikaži alternative
+    if (info?.status == 'odbijeno') {
+      final altPre = info!.altVremePre;
+      final altPosle = info.altVremePosle;
+      await showDialog<void>(
+        context: ctx,
+        builder: (dialogCtx) => Dialog(
+          backgroundColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 300,
+            decoration: BoxDecoration(
+              gradient: V2ThemeManager().currentGradient,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('⚠️ Termin pun', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(
+                    altPre != null || altPosle != null
+                        ? 'Slobodna mesta u terminu:'
+                        : 'Nema slobodnih mesta.\nMožeš odabrati drugi termin.',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  if (altPre != null)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.8)),
+                        onPressed: () async {
+                          Navigator.of(dialogCtx).pop();
+                          await V3ZahtevService.prihvatiPonudu(info.zahtevId, altPre);
+                        },
+                        child: Text('✅ $altPre', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  if (altPosle != null) const SizedBox(height: 8),
+                  if (altPosle != null)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.8)),
+                        onPressed: () async {
+                          Navigator.of(dialogCtx).pop();
+                          await V3ZahtevService.prihvatiPonudu(info.zahtevId, altPosle);
+                        },
+                        child: Text('✅ $altPosle', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.redAccent)),
+                      onPressed: () async {
+                        Navigator.of(dialogCtx).pop();
+                        await V3ZahtevService.odbijPonudu(info.zahtevId);
+                      },
+                      child: const Text('❌ Odbij', style: TextStyle(color: Colors.redAccent)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogCtx).pop(),
+                    child: const Text('Zatvori', style: TextStyle(color: Colors.white54)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
       return;
     }
 
@@ -876,12 +956,16 @@ class _ZahtevInfo {
   final String vreme;
   final String status;
   final String zahtevId;
+  final String? altVremePre;
+  final String? altVremePosle;
 
   const _ZahtevInfo({
     required this.grad,
     required this.vreme,
     required this.status,
     required this.zahtevId,
+    this.altVremePre,
+    this.altVremePosle,
   });
 }
 
