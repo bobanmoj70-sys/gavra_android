@@ -115,12 +115,7 @@ class V3OperativnaNedeljaService {
 
     return cache
         .where((r) =>
-            r['grad'] == grad &&
-            r['vreme'] == vreme &&
-            r['datum'].toString() == datumStr &&
-            r['aktivno'] == true &&
-            r['status_final'] != 'otkazano' &&
-            r['status_final'] != 'odbijeno')
+            r['grad'] == grad && r['vreme'] == vreme && r['datum'].toString() == datumStr && r['aktivno'] == true)
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
         .toList()
       ..sort((a, b) => a.id.compareTo(b.id)); // Default sort
