@@ -117,14 +117,15 @@ class V3PutnikService {
         tables: ['v3_putnici', 'v3_zahtevi'], build: () => getKombinovaniPutniciFiltrirano(grad: grad, vreme: vreme));
   }
 
-  /// Streams V3 passengers who have an active request for a specific day.
-  static Stream<List<V3Putnik>> streamPutniciByDan({required String dan}) {
+  /// Streams V3 passengers who have an active request for a specific date.
+  static Stream<List<V3Putnik>> streamPutniciByDatum({required String datumIso}) {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
       tables: ['v3_putnici', 'v3_zahtevi'],
       build: () {
         final rm = V3MasterRealtimeManager.instance;
         final matchingZahtevi = rm.zahteviCache.values.where((z) {
-          return z['dan_u_sedmici'] == dan && z['aktivno'] == true;
+          final rDatum = (z['datum'] as String? ?? '').split('T')[0];
+          return rDatum == datumIso && z['aktivno'] == true;
         });
 
         final Set<String> uniquePutnikIds = matchingZahtevi.map((z) => z['putnik_id'] as String).toSet();
@@ -150,10 +151,10 @@ class V3PutnikService {
       ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 
-  /// Filtrira putnike po danu u sedmici (kratica: pon, uto...), gradu i vremenu.
-  /// Korišćeno za štampanje spiska polaska.
-  static List<Map<String, dynamic>> getKombinovaniPutniciByDanGradVreme({
-    required String dan,
+  /// Filtrira putnike po tačnom datumu, gradu i vremenu.
+  /// Korišćeno za štampanje spiska polaska i prikaz u home screenu.
+  static List<Map<String, dynamic>> getKombinovaniPutniciByDatumGradVreme({
+    required String datumIso,
     required String grad,
     required String vreme,
   }) {
@@ -161,7 +162,8 @@ class V3PutnikService {
     final rez = <String, Map<String, dynamic>>{};
 
     final zahtevi = rm.zahteviCache.values.where((z) {
-      return z['dan_u_sedmici'] == dan &&
+      final rDatum = (z['datum'] as String? ?? '').split('T')[0];
+      return rDatum == datumIso &&
           z['grad'] == grad &&
           z['zeljeno_vreme'] == vreme &&
           z['aktivno'] == true &&

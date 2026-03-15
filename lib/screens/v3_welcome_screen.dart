@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -468,6 +469,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         if (!status.isGranted) {
           await Permission.notification.request();
         }
+      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final settings = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        debugPrint('[Push] iOS dozvola: ${settings.authorizationStatus}');
       }
     } catch (_) {}
   }

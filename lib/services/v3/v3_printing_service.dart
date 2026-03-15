@@ -23,8 +23,9 @@ class V3PrintingService {
   static const String _firmaPIB = '102853497';
   static const String _firmaMB = '55572178';
 
-  /// Generiše i otvara PDF spisak putnika za [dan]/[vreme]/[grad].
+  /// Generiše i otvara PDF spisak putnika za [datumIso]/[vreme]/[grad].
   static Future<void> printPutniksList({
+    required String datumIso,
     required String dan,
     required String vreme,
     required String grad,
@@ -32,8 +33,8 @@ class V3PrintingService {
   }) async {
     try {
       // Putnici iz v3 cache-a za dati polazak
-      final putnici = V3PutnikService.getKombinovaniPutniciByDanGradVreme(
-        dan: _skratiDan(dan),
+      final putnici = V3PutnikService.getKombinovaniPutniciByDatumGradVreme(
+        datumIso: datumIso,
         grad: grad,
         vreme: vreme,
       );
@@ -232,19 +233,6 @@ class V3PrintingService {
     if (g == 'BC') return 'Bela Crkva - Vrsac';
     if (g == 'VS') return 'Vrsac - Bela Crkva';
     return '$grad - ______';
-  }
-
-  static String _skratiDan(String punNaziv) {
-    const mapa = {
-      'ponedeljak': 'pon',
-      'utorak': 'uto',
-      'sreda': 'sre',
-      'cetvrtak': 'cet',
-      'petak': 'pet',
-      'subota': 'sub',
-      'nedelja': 'ned',
-    };
-    return mapa[punNaziv.toLowerCase()] ?? punNaziv.toLowerCase();
   }
 
   static pw.Widget _infoRow(String label, String value) {

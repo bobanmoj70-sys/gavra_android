@@ -9,6 +9,8 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_phone_utils.dart';
+import '../utils/v3_string_utils.dart';
 
 class V3PutniciScreen extends StatefulWidget {
   const V3PutniciScreen({super.key});
@@ -45,12 +47,12 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
       lista = lista.where((p) => p.tipPutnika == _selectedFilter).toList();
     }
 
-    final search = _searchController.text.trim().toLowerCase();
+    final search = _searchController.text.trim();
     if (search.isNotEmpty) {
-      lista = lista.where((p) => p.imePrezime.toLowerCase().contains(search)).toList();
+      lista = lista.where((p) => V3StringUtils.containsSearch(p.imePrezime, search)).toList();
     }
 
-    lista.sort((a, b) => a.imePrezime.toLowerCase().compareTo(b.imePrezime.toLowerCase()));
+    lista.sort((a, b) => V3StringUtils.compareForSort(a.imePrezime, b.imePrezime));
 
     const limit = 50;
     if (lista.length > limit) return lista.sublist(0, limit);
@@ -696,8 +698,8 @@ class _PutnikDialogState extends State<_PutnikDialog> {
       final putnik = V3Putnik(
         id: widget.existing?.id ?? '',
         imePrezime: _ime.text.trim(),
-        telefon1: _tel1.text.trim().isEmpty ? null : _tel1.text.trim(),
-        telefon2: _tel2.text.trim().isEmpty ? null : _tel2.text.trim(),
+        telefon1: V3PhoneUtils.normalizeOrNull(_tel1.text),
+        telefon2: V3PhoneUtils.normalizeOrNull(_tel2.text),
         email: _email.text.trim().isEmpty ? null : _email.text.trim(),
         skola: _tip == 'ucenik' && _skola.text.trim().isNotEmpty ? _skola.text.trim() : null,
         opisPosiljke: _tip == 'posiljka' && _opis.text.trim().isNotEmpty ? _opis.text.trim() : null,

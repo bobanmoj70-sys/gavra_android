@@ -293,7 +293,7 @@ jobs:
 
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X PATCH \
-            "$SUPABASE_URL/rest/v1/v2_app_settings?id=eq.global" \
+            "$SUPABASE_URL/rest/v1/v3_app_settings?id=eq.global" \
             -H "apikey: $SUPABASE_SERVICE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
             -H "Content-Type: application/json" \

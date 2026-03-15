@@ -1,13 +1,16 @@
 import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../globals.dart';
 import '../models/v3_vozac.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_phone_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_vozac_screen.dart';
 
@@ -149,9 +152,11 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         return;
       }
 
-      // Provjera telefona
-      final storedTelefon = _normalizePhone(vozac.telefon ?? '');
-      if (storedTelefon.isNotEmpty && storedTelefon != telefon) {
+      // Provjera telefona — prihvata telefon_1 ili telefon_2
+      final stored1 = _normalizePhone(vozac.telefon1 ?? '');
+      final stored2 = _normalizePhone(vozac.telefon2 ?? '');
+      final telefonMatch = (stored1.isNotEmpty && stored1 == telefon) || (stored2.isNotEmpty && stored2 == telefon);
+      if (stored1.isNotEmpty && !telefonMatch) {
         if (mounted) V3AppSnackBar.error(context, '❌ Pogrešan broj telefona.');
         return;
       }
@@ -165,6 +170,17 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
       // ✅ LOGIN USPJEŠAN
       V3VozacService.currentVozac = vozac;
+
+      // Snimi FCM push token
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null && vozac.id.isNotEmpty) {
+          await supabase.from('v3_vozaci').update({'push_token': token}).eq('id', vozac.id);
+          debugPrint('[VozacLogin] push_token upisan');
+        }
+      } catch (e) {
+        debugPrint('[VozacLogin] push_token greška: $e');
+      }
 
       // Zapamti zadnjeg prijavljenog vozača za auto-login pri sljedećem startu
       await _secureStorage.write(key: 'last_v3_vozac_ime', value: vozac.imePrezime);
@@ -192,9 +208,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
   // ─── Helpers ───────────────────────────────────────────────────
 
-  String _normalizePhone(String phone) {
-    return phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').replaceAll(RegExp(r'^0+'), '');
-  }
+  String _normalizePhone(String phone) => V3PhoneUtils.normalize(phone);
 
   InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(

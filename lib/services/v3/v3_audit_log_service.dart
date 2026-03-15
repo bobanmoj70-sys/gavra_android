@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../globals.dart';
 
 /// V3AuditLogService — nepromjenljiv log svih akcija vozača i putnika.
-/// TABELA: v2_audit_log (koristimo istu tabelu za kontinuitet)
+/// TABELA: v3_audit_log
 class V3AuditLogService {
   V3AuditLogService._();
 
@@ -18,12 +18,10 @@ class V3AuditLogService {
     String? putnikId,
     String? putnikIme,
     String? putnikTabela,
-    String? dan,
+    String? datumIso, // ISO date string, npr. '2026-03-15'
     String? grad,
     String? vreme,
     String? polazakId,
-    Map<String, dynamic>? staro,
-    Map<String, dynamic>? novo,
     String? detalji,
   }) {
     unawaited(_insert(
@@ -34,12 +32,10 @@ class V3AuditLogService {
       putnikId: putnikId,
       putnikIme: putnikIme,
       putnikTabela: putnikTabela,
-      dan: dan,
+      datumIso: datumIso,
       grad: grad,
       vreme: vreme,
       polazakId: polazakId,
-      staro: staro,
-      novo: novo,
       detalji: detalji,
     ));
   }
@@ -52,12 +48,10 @@ class V3AuditLogService {
     String? putnikId,
     String? putnikIme,
     String? putnikTabela,
-    String? dan,
+    String? datumIso,
     String? grad,
     String? vreme,
     String? polazakId,
-    Map<String, dynamic>? staro,
-    Map<String, dynamic>? novo,
     String? detalji,
   }) async {
     final payload = {
@@ -68,17 +62,15 @@ class V3AuditLogService {
       if (putnikId != null) 'putnik_id': putnikId,
       if (putnikIme != null) 'putnik_ime': putnikIme,
       if (putnikTabela != null) 'putnik_tabela': putnikTabela,
-      if (dan != null) 'dan': dan,
+      if (datumIso != null) 'datum': datumIso,
       if (grad != null) 'grad': grad,
       if (vreme != null) 'vreme': vreme,
       if (polazakId != null) 'polazak_id': polazakId,
-      if (staro != null) 'staro': staro,
-      if (novo != null) 'novo': novo,
       if (detalji != null) 'detalji': detalji,
     };
 
     try {
-      await supabase.from('v2_audit_log').insert(payload);
+      await supabase.from('v3_audit_log').insert(payload);
       debugPrint('[V3AuditLog] INSERT uspješno tip=$tip');
     } catch (e, st) {
       debugPrint('[V3AuditLog] GREŠKA pri upisu (tip=$tip): $e\n$st');

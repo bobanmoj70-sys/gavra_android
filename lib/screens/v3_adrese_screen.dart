@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_adresa.dart';
 import 'package:gavra_android/services/v3/v3_adresa_service.dart';
 import 'package:gavra_android/theme.dart';
-import 'package:gavra_android/utils/v3_app_snack_bar.dart';
+
+import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_string_utils.dart';
 
 class V3AdreseScreen extends StatefulWidget {
   const V3AdreseScreen({super.key});
@@ -146,9 +148,9 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
   }
 
   List<V3Adresa> get _filtered {
-    final q = _searchQuery.toLowerCase();
+    final q = _searchQuery;
     return widget.adrese.where((a) {
-      final matchSearch = q.isEmpty || a.naziv.toLowerCase().contains(q);
+      final matchSearch = V3StringUtils.containsSearch(a.naziv, q);
       final matchGrad = _filterGrad == 'Svi' || (a.grad ?? '') == _filterGrad;
       return matchSearch && matchGrad;
     }).toList();

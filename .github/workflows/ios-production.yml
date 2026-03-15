@@ -31,7 +31,6 @@ env:
   FLUTTER_VERSION: '3.35.6'
   BUNDLE_ID: 'com.gavra013.gavra013ios'
   APP_ID: '6757114361'
-  VERSION_ID: '2fad2478-eaad-4456-9a79-aa16054d542e'
 
 jobs:
   build-and-submit:
@@ -145,13 +144,68 @@ jobs:
           sleep 300
           echo "✅ Build should be processed now"
 
-      - name: Rename App Store version string to match pubspec
+      - name: Create or find App Store version
         run: |
           VERSION_NAME="${{ steps.version_bump.outputs.VERSION_NAME }}"
-          echo "🏷️ Renaming App Store version to $VERSION_NAME..."
-          app-store-connect app-store-versions modify "$VERSION_ID" \
-            --version-string "$VERSION_NAME" || echo "⚠️ Version rename failed (may already match)"
-          echo "✅ Version string updated to $VERSION_NAME"
+          echo "🔍 Looking for existing App Store version $VERSION_NAME in PREPARE_FOR_SUBMISSION..."
+
+          # Pokušaj naći postojeću verziju u PREPARE_FOR_SUBMISSION
+          VERSION_ID=$(app-store-connect app-store-versions list \
+            --app-id "$APP_ID" \
+            --json 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+vers = [v for v in data if v.get('versionString') == '$VERSION_NAME' and v.get('appStoreState') == 'PREPARE_FOR_SUBMISSION']
+print(vers[0]['id'] if vers else '')
+" 2>/dev/null || echo "")
+
+          if [ -z "$VERSION_ID" ]; then
+            echo "➕ Creating new App Store version $VERSION_NAME..."
+            VERSION_ID=$(app-store-connect app-store-versions create \
+              --app-id "$APP_ID" \
+              --version-string "$VERSION_NAME" \
+              --platform IOS \
+              --release-type AFTER_APPROVAL \
+              --json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null || echo "")
+          fi
+
+          if [ -z "$VERSION_ID" ]; then
+            echo "❌ Could not create or find App Store version. Exiting."
+            exit 1
+          fi
+
+          echo "✅ Using App Store version ID: $VERSION_ID"
+          echo "VERSION_ID=$VERSION_ID" >> $GITHUB_ENV
+
+      - name: Set What's New text
+        run: |
+          WHATSNEW_FILE="distribution/whatsnew/whatsnew-sr-RS"
+          if [ ! -f "$WHATSNEW_FILE" ]; then
+            echo "⚠️ What's New file not found, skipping."
+            exit 0
+          fi
+          WHATS_NEW=$(cat "$WHATSNEW_FILE")
+          echo "📝 Setting What's New text..."
+
+          # Dohvati localization ID za sr-RS ili en-US
+          LOC_ID=$(app-store-connect app-store-version-localizations list \
+            --app-store-version-id "$VERSION_ID" \
+            --json 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+loc = next((l for l in data if l.get('locale') in ('sr-RS', 'en-US')), data[0] if data else None)
+print(loc['id'] if loc else '')
+" 2>/dev/null || echo "")
+
+          if [ -z "$LOC_ID" ]; then
+            echo "⚠️ Could not find localization ID, skipping What's New."
+            exit 0
+          fi
+
+          app-store-connect app-store-version-localizations modify \
+            "$LOC_ID" \
+            --whats-new "$WHATS_NEW" || echo "⚠️ Could not set What's New text."
+          echo "✅ What's New text set!"
 
       - name: Find and link build to version
         id: link_build
@@ -191,18 +245,69 @@ jobs:
 
       - name: Submit for review (optional)
         if: ${{ github.event.inputs.submit_for_review == 'true' }}
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APPSTORE_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APPSTORE_API_KEY_P8 }}
         run: |
           if [ -z "${{ steps.link_build.outputs.BUILD_ID }}" ]; then
             echo "❌ No build ID found to submit; skipping submission."
             exit 0
           fi
-          echo "🚀 Submitting for App Store review..."
-          app-store-connect app-store-version-submissions create \
-            --app-store-version-id "$VERSION_ID" || {
-            echo "⚠️ Could not auto-submit. Please submit manually in App Store Connect."
+          echo "🚀 Submitting for App Store review via new API..."
+
+          # Generiši JWT token za App Store Connect API
+          ISSUED_AT=$(date +%s)
+          EXPIRATION=$((ISSUED_AT + 1200))
+          ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID"
+          KEY_ID="$APP_STORE_CONNECT_KEY_IDENTIFIER"
+
+          # Napiši private key u fajl
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > /tmp/asc_key.p8
+
+          HEADER=$(echo -n '{"alg":"ES256","kid":"'"$KEY_ID"'","typ":"JWT"}' | python3 -c "import sys,base64; print(base64.urlsafe_b64encode(sys.stdin.read().encode()).rstrip(b'=').decode())")
+          PAYLOAD=$(echo -n '{"iss":"'"$ISSUER_ID"'","iat":'"$ISSUED_AT"',"exp":'"$EXPIRATION"',"aud":"appstoreconnect-v1"}' | python3 -c "import sys,base64; print(base64.urlsafe_b64encode(sys.stdin.read().encode()).rstrip(b'=').decode())")
+          SIGN_INPUT="$HEADER.$PAYLOAD"
+          SIGNATURE=$(echo -n "$SIGN_INPUT" | openssl dgst -sha256 -sign /tmp/asc_key.p8 -binary | python3 -c "import sys,base64; print(base64.urlsafe_b64encode(sys.stdin.buffer.read()).rstrip(b'=').decode())")
+          JWT="$SIGN_INPUT.$SIGNATURE"
+          rm -f /tmp/asc_key.p8
+
+          # Kreiraj reviewSubmission
+          SUBMISSION_RESP=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.appstoreconnect.apple.com/v1/reviewSubmissions" \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{\"data\":{\"type\":\"reviewSubmissions\",\"attributes\":{\"platform\":\"IOS\"},\"relationships\":{\"app\":{\"data\":{\"type\":\"apps\",\"id\":\"$APP_ID\"}}}}}")
+          HTTP_CODE=$(echo "$SUBMISSION_RESP" | tail -1)
+          BODY=$(echo "$SUBMISSION_RESP" | head -1)
+          SUBMISSION_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])" 2>/dev/null || echo "")
+
+          if [ -z "$SUBMISSION_ID" ]; then
+            echo "❌ Failed to create review submission (HTTP $HTTP_CODE)"
+            echo "$BODY"
             exit 0
-          }
-          echo "🎉 Successfully submitted for App Store review!"
+          fi
+          echo "✅ Review submission created: $SUBMISSION_ID"
+
+          # Dodaj App Store verziju u submission
+          curl -s -o /dev/null -X POST \
+            "https://api.appstoreconnect.apple.com/v1/reviewSubmissionItems" \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{\"data\":{\"type\":\"reviewSubmissionItems\",\"relationships\":{\"reviewSubmission\":{\"data\":{\"type\":\"reviewSubmissions\",\"id\":\"$SUBMISSION_ID\"}},\"appStoreVersion\":{\"data\":{\"type\":\"appStoreVersions\",\"id\":\"$VERSION_ID\"}}}}}"
+
+          # Pošalji na review (confirm)
+          CONFIRM_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+            "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/$SUBMISSION_ID" \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d '{"data":{"type":"reviewSubmissions","id":"'"$SUBMISSION_ID"'","attributes":{"submitted":true}}}')
+
+          if [ "$CONFIRM_CODE" = "200" ] || [ "$CONFIRM_CODE" = "204" ]; then
+            echo "🎉 Successfully submitted for App Store review!"
+          else
+            echo "⚠️ Submit confirm returned HTTP $CONFIRM_CODE — provjeri ručno u App Store Connect."
+          fi
 
       - name: Summary
         if: always()

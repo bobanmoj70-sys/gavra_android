@@ -67,7 +67,6 @@ dependencies:
   
   # 🔐 BIOMETRIC AUTHENTICATION (otisak prsta, Face ID)
   local_auth: ^2.1.0
-  huawei_push: ^6.14.0+300  # Huawei Push plugin - za notifikacije na Huawei uređajima
 
   # 🛰️ BACKGROUND GPS FOREGROUND SERVICE - GPS tracking dok je app u pozadini
   flutter_background_service: ^5.0.5

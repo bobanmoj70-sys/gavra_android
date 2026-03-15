@@ -2,7 +2,6 @@ class V3Zahtev {
   final String id;
   final String putnikId;
   final DateTime datum;
-  final String? danUSedmici;
   final String? imePrezime;
   final String grad;
   final String zeljenoVreme;
@@ -24,7 +23,6 @@ class V3Zahtev {
     required this.id,
     required this.putnikId,
     required this.datum,
-    this.danUSedmici,
     this.imePrezime,
     required this.grad,
     required this.zeljenoVreme,
@@ -49,7 +47,6 @@ class V3Zahtev {
       putnikId: json['putnik_id'] as String? ?? '',
       imePrezime: json['ime_prezime'] as String?,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
-      danUSedmici: json['dan_u_sedmici'] as String?,
       grad: json['grad'] as String? ?? '',
       zeljenoVreme: json['zeljeno_vreme'] as String? ?? '',
       brojMesta: json['broj_mesta'] as int? ?? 1,
@@ -74,7 +71,6 @@ class V3Zahtev {
       'putnik_id': putnikId.isNotEmpty ? putnikId : null,
       'ime_prezime': imePrezime,
       'datum': datum.toIso8601String().split('T')[0],
-      'dan_u_sedmici': danUSedmici,
       'grad': grad,
       'zeljeno_vreme': zeljenoVreme,
       'broj_mesta': brojMesta,
@@ -95,7 +91,6 @@ class V3Zahtev {
     String? id,
     String? putnikId,
     DateTime? datum,
-    String? danUSedmici,
     String? imePrezime,
     String? grad,
     String? zeljenoVreme,
@@ -117,7 +112,6 @@ class V3Zahtev {
       id: id ?? this.id,
       putnikId: putnikId ?? this.putnikId,
       datum: datum ?? this.datum,
-      danUSedmici: danUSedmici ?? this.danUSedmici,
       imePrezime: imePrezime ?? this.imePrezime,
       grad: grad ?? this.grad,
       zeljenoVreme: zeljenoVreme ?? this.zeljenoVreme,

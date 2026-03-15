@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'v3_audit_log_service.dart';
 
 /// Service for V3 passenger travel requests (`v3_zahtevi`).
 class V3ZahtevService {
@@ -53,6 +54,14 @@ class V3ZahtevService {
       final row = await supabase.from('v3_zahtevi').insert(data).select().single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+      V3AuditLogService.log(
+        tip: 'zahtev_kreiran',
+        putnikId: zahtev.putnikId,
+        putnikIme: zahtev.imePrezime,
+        datumIso: zahtev.datum.toIso8601String().split('T')[0],
+        grad: zahtev.grad,
+        vreme: zahtev.zeljenoVreme,
+      );
       return V3Zahtev.fromJson(row);
     } catch (e) {
       debugPrint('[V3ZahtevService] Error: $e');
@@ -77,16 +86,6 @@ class V3ZahtevService {
     }
   }
 
-  static List<V3Zahtev> getZahteviByDanAndGrad(String danUSedmici, String grad) {
-    final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-    return cache
-        .where((r) => r['dan_u_sedmici'] == danUSedmici && r['grad'] == grad && r['aktivno'] == true)
-        .map((r) => V3Zahtev.fromJson(r))
-        .toList()
-      ..sort((a, b) => a.zeljenoVreme.compareTo(b.zeljenoVreme));
-  }
-
-  /// Dohvata zahteve za tačan datum i grad (filtrira po datum koloni).
   static List<V3Zahtev> getZahteviByDatumAndGrad(String datumIso, String grad) {
     final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
     return cache
@@ -142,10 +141,10 @@ class V3ZahtevService {
         build: () => getOperativniZahteviByDatumAndGrad(datum, grad),
       );
 
-  static Stream<List<V3Zahtev>> streamZahteviByDanAndGrad(String dan, String grad) =>
+  static Stream<List<V3Zahtev>> streamZahteviByDatumAndGrad(String datumIso, String grad) =>
       V3MasterRealtimeManager.instance.v3StreamFromCache(
         tables: ['v3_zahtevi'],
-        build: () => getZahteviByDanAndGrad(dan, grad),
+        build: () => getZahteviByDatumAndGrad(datumIso, grad),
       );
 
   static Future<void> deleteZahtev(String id) async {
@@ -165,6 +164,12 @@ class V3ZahtevService {
         'status_final': 'otkazano',
         if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
       }).eq('izvor_id', id);
+      V3AuditLogService.log(
+        tip: 'zahtev_otkazan',
+        aktorId: otkazaoVozacId,
+        aktorTip: otkazaoVozacId != null ? 'vozac' : null,
+        detalji: 'zahtev_id: $id',
+      );
     } catch (e) {
       debugPrint('[V3ZahtevService] Otkazi error: $e');
       rethrow;
@@ -181,6 +186,12 @@ class V3ZahtevService {
         'status_final': 'pokupljen',
         if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
       }).eq('izvor_id', id);
+      V3AuditLogService.log(
+        tip: 'pokupljen',
+        aktorId: pokupljenVozacId,
+        aktorTip: pokupljenVozacId != null ? 'vozac' : null,
+        detalji: 'zahtev_id: $id',
+      );
     } catch (e) {
       debugPrint('[V3ZahtevService] Pokupljen error: $e');
       rethrow;

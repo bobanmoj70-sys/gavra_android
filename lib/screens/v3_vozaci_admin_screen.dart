@@ -67,7 +67,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
     final imeCtrl = TextEditingController(text: vozac?.imePrezime ?? '');
     final emailCtrl = TextEditingController(text: vozac?.email ?? '');
     final sifraCtrl = TextEditingController(text: vozac?.sifra ?? '');
-    final telCtrl = TextEditingController(text: vozac?.telefon ?? '');
+    final tel1Ctrl = TextEditingController(text: vozac?.telefon1 ?? '');
+    final tel2Ctrl = TextEditingController(text: vozac?.telefon2 ?? '');
     Color selectedColor = _hexToColor(vozac?.boja);
     final formKey = GlobalKey<FormState>();
 
@@ -94,7 +95,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                   children: [
                     Center(
                       child: Container(
-                        width: 40, height: 4,
+                        width: 40,
+                        height: 4,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(2),
@@ -145,11 +147,20 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Telefon
+                    // Telefon 1
                     _inputField(
-                      controller: telCtrl,
-                      label: 'Telefon',
+                      controller: tel1Ctrl,
+                      label: 'Telefon 1',
                       icon: Icons.phone,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Telefon 2
+                    _inputField(
+                      controller: tel2Ctrl,
+                      label: 'Telefon 2 (opciono)',
+                      icon: Icons.phone_outlined,
                       keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 20),
@@ -169,7 +180,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                           onTap: () => setS(() => selectedColor = c),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
-                            width: 40, height: 40,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               color: c,
                               shape: BoxShape.circle,
@@ -177,9 +189,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                                 color: isSel ? Colors.white : Colors.transparent,
                                 width: 3,
                               ),
-                              boxShadow: isSel
-                                  ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 10)]
-                                  : null,
+                              boxShadow: isSel ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 10)] : null,
                             ),
                             child: isSel ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
                           ),
@@ -206,7 +216,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                             imePrezime: imeCtrl.text.trim(),
                             email: emailCtrl.text.trim().toLowerCase(),
                             sifra: sifraCtrl.text.isEmpty ? vozac?.sifra : sifraCtrl.text,
-                            telefon: telCtrl.text.trim(),
+                            telefon1: tel1Ctrl.text.trim().isEmpty ? null : tel1Ctrl.text.trim(),
+                            telefon2: tel2Ctrl.text.trim().isEmpty ? null : tel2Ctrl.text.trim(),
                             boja: _colorToHex(selectedColor),
                             aktivno: true,
                           );
@@ -239,10 +250,14 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
       ),
     );
 
-    imeCtrl.dispose();
-    emailCtrl.dispose();
-    sifraCtrl.dispose();
-    telCtrl.dispose();
+    // Dispose nakon što animacija zatvaranja završi — sprječava "used after dispose" crash
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      imeCtrl.dispose();
+      emailCtrl.dispose();
+      sifraCtrl.dispose();
+      tel1Ctrl.dispose();
+      tel2Ctrl.dispose();
+    });
   }
 
   Future<void> _confirmDeactivate(V3Vozac vozac) async {
@@ -539,8 +554,7 @@ class _VozacKartica extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
                             ),
-                            child: const Text('neaktivan',
-                                style: TextStyle(color: Colors.redAccent, fontSize: 10)),
+                            child: const Text('neaktivan', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
                           ),
                       ],
                     ),
@@ -558,13 +572,18 @@ class _VozacKartica extends StatelessWidget {
                           ),
                         ],
                       ),
-                    if (vozac.telefon?.isNotEmpty == true)
+                    if (vozac.telefon1?.isNotEmpty == true)
                       Row(
                         children: [
                           const Icon(Icons.phone, size: 12, color: Colors.white38),
                           const SizedBox(width: 4),
-                          Text(vozac.telefon!,
-                              style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          Text(vozac.telefon1!, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          if (vozac.telefon2?.isNotEmpty == true) ...[
+                            const SizedBox(width: 8),
+                            const Text('/', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                            const SizedBox(width: 8),
+                            Text(vozac.telefon2!, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                          ],
                         ],
                       ),
                   ],

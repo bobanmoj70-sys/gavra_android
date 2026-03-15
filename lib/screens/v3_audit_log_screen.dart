@@ -63,12 +63,12 @@ class _LogCard extends StatelessWidget {
     final aktorIme = log['aktor_ime']?.toString();
     final putnikIme = log['putnik_ime']?.toString();
     final detalji = log['detalji']?.toString();
-    final dan = log['dan']?.toString();
+    final datum = log['datum']?.toString();
     final grad = log['grad']?.toString();
     final vreme = log['vreme']?.toString();
     final color = _tipColor(tip);
     final prikaziDetalji = detalji != null && detalji.isNotEmpty && (aktorIme == null || !detalji.contains(aktorIme));
-    final meta = [dan, grad, vreme].whereType<String>().join(' · ');
+    final meta = [datum, grad, vreme].whereType<String>().join(' · ');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -199,7 +199,7 @@ class _V3AuditLogScreenState extends State<V3AuditLogScreen> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
-      final data = await supabase.from('v2_audit_log').select().order('created_at', ascending: false).limit(300);
+      final data = await supabase.from('v3_audit_log').select().order('created_at', ascending: false).limit(300);
       final logs = (data as List).cast<Map<String, dynamic>>();
       final tipoviSet = <String>{};
       for (final l in logs) {

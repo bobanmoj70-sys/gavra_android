@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
 import 'package:gavra_android/services/v3/v3_dug_service.dart';
 import 'package:gavra_android/utils/v3_app_snack_bar.dart';
+import 'package:gavra_android/utils/v3_string_utils.dart';
 import 'package:intl/intl.dart';
 
 import '../theme.dart';
@@ -23,7 +24,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
       builder: (context, snapshot) {
         final isLoading = !snapshot.hasData && snapshot.connectionState == ConnectionState.waiting;
         final allDugovi = snapshot.data ?? [];
-        final dugovi = allDugovi.where((d) => d.imePrezime.toLowerCase().contains(_filter)).toList();
+        final dugovi = allDugovi.where((d) => V3StringUtils.containsSearch(d.imePrezime, _filter)).toList();
         final ukupanIznos = allDugovi.fold(0.0, (s, d) => s + d.iznos);
 
         return Scaffold(
@@ -91,7 +92,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
-                        onChanged: (v) => setState(() => _filter = v.toLowerCase()),
+                        onChanged: (v) => setState(() => _filter = v),
                       ),
                     ),
                   ),

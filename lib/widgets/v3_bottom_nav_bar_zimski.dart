@@ -16,7 +16,6 @@ class V3BottomNavBarZimski extends StatefulWidget {
     this.isSlotLoading,
     this.bcVremena,
     this.vsVremena,
-    this.selectedDan, // Dan za proveru dodeljenog vozaca (npr. 'pon', 'uto')
     this.showVozacBoja = false,
     this.getVozacColor,
   });
@@ -29,7 +28,6 @@ class V3BottomNavBarZimski extends StatefulWidget {
   final bool Function(String grad, String vreme)? isSlotLoading;
   final List<String>? bcVremena;
   final List<String>? vsVremena;
-  final String? selectedDan;
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
 
@@ -145,7 +143,6 @@ class _BottomNavBarZimskiState extends State<V3BottomNavBarZimski> {
                     isSlotLoading: widget.isSlotLoading,
                     scrollController: _bcScrollController,
                     currentThemeId: currentThemeId,
-                    selectedDan: widget.selectedDan,
                     showVozacBoja: widget.showVozacBoja,
                     getVozacColor: widget.getVozacColor,
                   ),
@@ -166,7 +163,6 @@ class _BottomNavBarZimskiState extends State<V3BottomNavBarZimski> {
                     isSlotLoading: widget.isSlotLoading,
                     scrollController: _vsScrollController,
                     currentThemeId: currentThemeId,
-                    selectedDan: widget.selectedDan,
                     showVozacBoja: widget.showVozacBoja,
                     getVozacColor: widget.getVozacColor,
                   ),
@@ -193,7 +189,6 @@ class _PolazakRow extends StatelessWidget {
     this.getKapacitet,
     this.isSlotLoading,
     this.scrollController,
-    this.selectedDan,
     this.showVozacBoja = false,
     this.getVozacColor,
   });
@@ -208,7 +203,6 @@ class _PolazakRow extends StatelessWidget {
   final bool Function(String grad, String vreme)? isSlotLoading;
   final ScrollController? scrollController;
   final String currentThemeId;
-  final String? selectedDan;
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
 

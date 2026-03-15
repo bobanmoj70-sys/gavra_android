@@ -230,9 +230,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         continue; // nema datuma — preskači
       }
       // Akter: ko je naplatio
-      final akterId =
-          (row['naplatio_vozac_id']?.toString().isNotEmpty == true ? row['naplatio_vozac_id'] : row['vozac_id'])
-              ?.toString();
+      final akterId = row['naplatio_vozac_id']?.toString();
       if (akterId == null || akterId.isEmpty) continue;
       final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
       result[akterId] = (result[akterId] ?? 0.0) + iznos;

@@ -239,13 +239,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   // ─── Boje kartice po statusu ───────────────────────────────────
 
-  bool get _isTudji {
-    final currentVozac = V3VozacService.currentVozac;
-    if (currentVozac == null) return false;
-    final vozacId = widget.entry?.vozacId;
-    if (vozacId == null || vozacId.isEmpty) return false;
-    return vozacId != currentVozac.id;
-  }
+  bool get _isTudji => false;
 
   BoxDecoration _getCardDecoration() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
@@ -274,9 +268,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       );
     }
     if (status == 'pokupljen') {
-      final bool isPlacen = widget.entry != null
-          ? widget.entry!.naplataStatus == 'placeno'
-          : (widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty);
+      final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
       if (isPlacen) {
         return BoxDecoration(
           gradient: const LinearGradient(
@@ -394,9 +386,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     final bool isPokupljen = status == 'pokupljen';
     final bool isOtkazan = status == 'otkazano';
-    final bool isPlacen = widget.entry != null
-        ? widget.entry!.naplataStatus == 'placeno'
-        : (widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty);
+    final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
     final bool hasTel = widget.putnik.telefon1 != null || widget.putnik.telefon2 != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
@@ -596,11 +586,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                     Color _bojaZaVozacId(String? vozacId) {
                       if (vozacId != null) {
                         final v = V3VozacService.getVozacById(vozacId);
-                        if (v != null) return _parseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
-                      }
-                      // fallback: dodjeljeni vozač → trenutni vozač → siva
-                      if (widget.entry?.vozacId != null) {
-                        final v = V3VozacService.getVozacById(widget.entry!.vozacId!);
                         if (v != null) return _parseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
                       }
                       return _parseHexColor(_currentVozac?.boja) ?? const Color(0xFF9E9E9E);

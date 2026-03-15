@@ -10,6 +10,7 @@ import '../services/v3/v3_pin_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_phone_utils.dart';
 import 'v3_putnik_profil_screen.dart';
 
 enum _LoginStep { telefon, email, pin, zahtevPoslat }
@@ -74,12 +75,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     super.dispose();
   }
 
-  String _normalizePhone(String phone) {
-    var p = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-    if (p.startsWith('+381')) p = '0${p.substring(4)}';
-    if (p.startsWith('381')) p = '0${p.substring(3)}';
-    return p;
-  }
+  String _normalizePhone(String phone) => V3PhoneUtils.normalize(phone);
 
   // Korak 1: Provjeri telefon u v3_putnici
   Future<void> _checkTelefon() async {
