@@ -195,9 +195,6 @@ class V3ZahtevService {
 
   static Future<void> oznaciPokupljen(String id, {String? pokupljenVozacId}) async {
     try {
-      await supabase.from('v3_zahtevi').update({
-        'status': 'pokupljen',
-      }).eq('id', id);
       await supabase.from('v3_operativna_nedelja').update({
         'vreme_pokupljen': DateTime.now().toIso8601String(),
         'status_final': 'pokupljen',
