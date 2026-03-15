@@ -17,7 +17,6 @@ class V3PolasciScreen extends StatefulWidget {
 }
 
 class _V3PolasciScreenState extends State<V3PolasciScreen> {
-  String _filterTip = 'dnevni';
   String _filterGrad = 'svi';
 
   // ─── data helpers ────────────────────────────────────────────────
@@ -27,18 +26,14 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
     final windowEnd = todayOnly.add(const Duration(days: 14));
-    return rm.zahteviCache.values
-        .map((v) => V3Zahtev.fromJson(v))
-        .where((z) {
+    return rm.zahteviCache.values.map((v) => V3Zahtev.fromJson(v)).where((z) {
       if (!z.aktivno || z.status != status) return false;
       final d = DateTime(z.datum.year, z.datum.month, z.datum.day);
       if (d.isBefore(todayOnly) || d.isAfter(windowEnd)) return false;
       if (_filterGrad != 'svi' && z.grad.toUpperCase() != _filterGrad) return false;
-      if (_filterTip != 'svi') {
-        final p = rm.putniciCache[z.putnikId];
-        final tip = (p?['tip_putnika'] as String? ?? '').toLowerCase();
-        if (tip != _filterTip) return false;
-      }
+      final p = rm.putniciCache[z.putnikId];
+      final tip = (p?['tip_putnika'] as String? ?? '').toLowerCase();
+      if (tip != 'dnevni') return false;
       return true;
     }).toList()
       ..sort((a, b) {
@@ -146,34 +141,6 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Tip putnika
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (final tip in ['svi', 'radnik', 'ucenik', 'dnevni', 'posiljka'])
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 6),
-                                  child: ChoiceChip(
-                                    label: Text(_tipLabel(tip)),
-                                    selected: _filterTip == tip,
-                                    onSelected: (_) => setState(() => _filterTip = tip),
-                                    selectedColor: _tipColor(tip).withValues(alpha: 0.75),
-                                    labelStyle: TextStyle(
-                                      color: _filterTip == tip ? Colors.white : Colors.white70,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    backgroundColor: Colors.white.withValues(alpha: 0.08),
-                                    side: BorderSide(
-                                      color: _filterTip == tip ? _tipColor(tip) : Colors.white.withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
                         // Grad
                         Row(
                           children: [
@@ -334,37 +301,6 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
     );
   }
 
-  // ─── helpers ─────────────────────────────────────────────────────
-
-  String _tipLabel(String tip) {
-    switch (tip) {
-      case 'radnik':
-        return '💼 Radnik';
-      case 'ucenik':
-        return '🎓 Učenik';
-      case 'dnevni':
-        return '📅 Dnevni';
-      case 'posiljka':
-        return '📦 Pošiljka';
-      default:
-        return '👥 Svi';
-    }
-  }
-
-  Color _tipColor(String tip) {
-    switch (tip) {
-      case 'radnik':
-        return Colors.orange;
-      case 'ucenik':
-        return Colors.blue;
-      case 'dnevni':
-        return Colors.green;
-      case 'posiljka':
-        return Colors.purple;
-      default:
-        return Colors.blueGrey;
-    }
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────
