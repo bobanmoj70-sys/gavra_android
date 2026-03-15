@@ -24,10 +24,15 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
 
   List<V3Zahtev> _getZahtevi(String status) {
     final rm = V3MasterRealtimeManager.instance;
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final windowEnd = todayOnly.add(const Duration(days: 14));
     return rm.zahteviCache.values
         .map((v) => V3Zahtev.fromJson(v))
-        .where((z) => z.aktivno && z.status == status)
         .where((z) {
+      if (!z.aktivno || z.status != status) return false;
+      final d = DateTime(z.datum.year, z.datum.month, z.datum.day);
+      if (d.isBefore(todayOnly) || d.isAfter(windowEnd)) return false;
       if (_filterGrad != 'svi' && z.grad.toUpperCase() != _filterGrad) return false;
       if (_filterTip != 'svi') {
         final p = rm.putniciCache[z.putnikId];

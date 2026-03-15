@@ -13,7 +13,7 @@ class V3ZahtevService {
     final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
     // Filtriramo putnike iz cachea da nađemo one koji su traženog tipa
     final putnici = V3MasterRealtimeManager.instance.putniciCache.values
-        .where((p) => (p['tip'] ?? '').toLowerCase() == tip.toLowerCase())
+        .where((p) => (p['tip_putnika'] ?? '').toLowerCase() == tip.toLowerCase())
         .map((p) => p['id'] as String)
         .toSet();
 
@@ -176,7 +176,13 @@ class V3ZahtevService {
 
   static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId}) async {
     try {
-      await supabase.from('v3_zahtevi').update({'status': 'otkazano'}).eq('id', id);
+      final row = await supabase
+          .from('v3_zahtevi')
+          .update({'status': 'otkazano'})
+          .eq('id', id)
+          .select()
+          .single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
       await supabase.from('v3_operativna_nedelja').update({
         if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
         if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
