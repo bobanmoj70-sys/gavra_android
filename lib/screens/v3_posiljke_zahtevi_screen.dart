@@ -485,6 +485,54 @@ class _ZahtevKartica extends StatelessWidget {
   final String? opisPosiljke;
   final VoidCallback onTap;
 
+  Widget _buildTimelapse(V3Zahtev z) {
+    final created = z.createdAt;
+    final updated = z.updatedAt;
+    if (created == null) return const SizedBox.shrink();
+
+    String fmt(DateTime dt) {
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    }
+
+    String odgovorInfo;
+    if (updated != null && updated.isAfter(created.add(const Duration(seconds: 5)))) {
+      final diff = updated.difference(created);
+      final mins = diff.inMinutes;
+      final secs = diff.inSeconds % 60;
+      final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
+
+      String odgovorLabel;
+      if (z.status == 'odbijeno' && (z.altVremePre != null || z.altVremePosle != null)) {
+        final alts = [
+          if (z.altVremePre != null) z.altVremePre.toString().substring(0, 5),
+          if (z.altVremePosle != null) z.altVremePosle.toString().substring(0, 5),
+        ].join(' / ');
+        odgovorLabel = '⚠️ alt: $alts';
+      } else {
+        odgovorLabel = switch (z.status) {
+          'odobreno' => '✅',
+          'odbijeno' => '❌',
+          'otkazano' => '⛔',
+          _ => '🕒',
+        };
+      }
+
+      odgovorInfo = '${fmt(created)} → ${fmt(updated)} ($diffStr) $odgovorLabel';
+    } else {
+      odgovorInfo = '${fmt(created)} · čeka kron...';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        '⏱ $odgovorInfo',
+        style: const TextStyle(color: Colors.white24, fontSize: 11),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final (borderColor, statusLabel) = switch (zahtev.status) {
@@ -569,6 +617,7 @@ class _ZahtevKartica extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                    _buildTimelapse(zahtev),
                     if (zahtev.dodeljenoVreme != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),

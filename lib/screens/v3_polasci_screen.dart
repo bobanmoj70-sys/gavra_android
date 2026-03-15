@@ -16,7 +16,7 @@ class V3PolasciScreen extends StatefulWidget {
 }
 
 class _V3PolasciScreenState extends State<V3PolasciScreen> {
-  String _filterTip = 'svi';
+  String _filterTip = 'dnevni';
   String _filterGrad = 'svi';
 
   // ─── data helpers ────────────────────────────────────────────────

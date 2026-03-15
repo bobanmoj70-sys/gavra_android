@@ -26,6 +26,9 @@ class V3OperativnaNedeljaEntry {
   final DateTime? vremePlacen;
   final String naplataStatus;
   final String? vozacId;
+  final String? pokupljenVozacId;
+  final String? naplatioVozacId;
+  final String? otkazaoVozacId;
 
   V3OperativnaNedeljaEntry({
     required this.id,
@@ -49,6 +52,9 @@ class V3OperativnaNedeljaEntry {
     this.vremePlacen,
     this.naplataStatus = 'nije_placeno',
     this.vozacId,
+    this.pokupljenVozacId,
+    this.naplatioVozacId,
+    this.otkazaoVozacId,
   });
 
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
@@ -74,6 +80,9 @@ class V3OperativnaNedeljaEntry {
       vremePlacen: json['vreme_placen'] != null ? DateTime.tryParse(json['vreme_placen'] as String) : null,
       naplataStatus: json['naplata_status'] as String? ?? 'nije_placeno',
       vozacId: json['vozac_id'] as String?,
+      pokupljenVozacId: json['pokupljen_vozac_id'] as String?,
+      naplatioVozacId: json['naplatio_vozac_id'] as String?,
+      otkazaoVozacId: json['otkazao_vozac_id'] as String?,
     );
   }
 
@@ -98,6 +107,9 @@ class V3OperativnaNedeljaEntry {
       if (vremePlacen != null) 'vreme_placen': vremePlacen!.toIso8601String(),
       'naplata_status': naplataStatus,
       if (vozacId != null) 'vozac_id': vozacId,
+      if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
+      if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
+      if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
     };
   }
 }
@@ -139,13 +151,22 @@ class V3OperativnaNedeljaService {
 
   static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByDanAndGrad(String danAbbr, String grad) {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-    // Filtriramo po danu u sedmici (izvlačimo iz datuma) i gradu
+
+    // Tekuća sedmica: pon–ned
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
+
     return cache
         .where((r) {
           final datumStr = r['datum'] as String?;
           if (datumStr == null) return false;
           final datum = DateTime.tryParse(datumStr);
           if (datum == null) return false;
+
+          // Samo tekuća sedmica
+          final d = DateTime(datum.year, datum.month, datum.day);
+          if (d.isBefore(monday) || d.isAfter(sunday)) return false;
 
           // Mapiranje weekday u abbr
           const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
@@ -164,6 +185,60 @@ class V3OperativnaNedeljaService {
     );
   }
 
+  /// Vraća sve zapise za dati grad za celu nedelju (bez filtera po danu).
+  static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByGrad(String grad) {
+    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    return cache.where((r) => r['grad'] == grad).map((r) => V3OperativnaNedeljaEntry.fromJson(r)).toList();
+  }
+
+  /// Stream koji emituje sve zapise za dati grad za celu nedelju.
+  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByGrad(String grad) {
+    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+      tables: ['v3_operativna_nedelja'],
+      build: () => getOperativnaNedeljaByGrad(grad),
+    );
+  }
+
+  /// Vraća sve zapise za tačan datum i grad iz cache-a.
+  static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByDatumAndGrad(String datumIso, String grad) {
+    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    return cache
+        .where((r) {
+          final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+          return rDatum == datumIso && r['grad'] == grad;
+        })
+        .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
+        .toList();
+  }
+
+  /// Stream koji emituje zapise za tačan datum i grad.
+  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByDatumAndGrad(String datumIso, String grad) {
+    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+      tables: ['v3_operativna_nedelja'],
+      build: () => getOperativnaNedeljaByDatumAndGrad(datumIso, grad),
+    );
+  }
+
+  /// Vraća sve zapise za tačan datum (svi gradovi).
+  static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByDatum(String datumIso) {
+    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    return cache
+        .where((r) {
+          final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+          return rDatum == datumIso;
+        })
+        .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
+        .toList();
+  }
+
+  /// Stream koji emituje sve zapise za tačan datum (svi gradovi).
+  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByDatum(String datumIso) {
+    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+      tables: ['v3_operativna_nedelja'],
+      build: () => getOperativnaNedeljaByDatum(datumIso),
+    );
+  }
+
   static Future<void> updateStatus({
     required String id,
     required String status,
@@ -175,6 +250,24 @@ class V3OperativnaNedeljaService {
       }).eq('id', id);
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] Update status error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> updateNaplata({
+    required String id,
+    required double iznos,
+    String? naplatioVozacId,
+  }) async {
+    try {
+      await supabase.from('v3_operativna_nedelja').update({
+        'naplata_status': 'placeno',
+        'iznos_naplacen': iznos,
+        'vreme_placen': DateTime.now().toIso8601String(),
+        if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
+      }).eq('id', id);
+    } catch (e) {
+      debugPrint('[V3OperativnaNedeljaService] updateNaplata error: $e');
       rethrow;
     }
   }

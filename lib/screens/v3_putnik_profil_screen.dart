@@ -87,12 +87,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final cached = V3MasterRealtimeManager.instance.putniciCache[putnikId];
     if (cached != null) _putnikData = Map<String, dynamic>.from(cached);
 
-    // Raspored po danima iz v3_zahtevi (aktivni/sedmični)
+    // Raspored po danima iz v3_zahtevi — filtrira po tacnom datumu
     const dani = ['pon', 'uto', 'sre', 'cet', 'pet'];
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
-      final bcList = V3ZahtevService.getZahteviByDanAndGrad(dan, 'BC').where((z) => z.putnikId == putnikId).toList();
-      final vsList = V3ZahtevService.getZahteviByDanAndGrad(dan, 'VS').where((z) => z.putnikId == putnikId).toList();
+      final datumIso = _datumZaDan(dan).toIso8601String().split('T')[0];
+      final bcList =
+          V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'BC').where((z) => z.putnikId == putnikId).toList();
+      final vsList =
+          V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'VS').where((z) => z.putnikId == putnikId).toList();
 
       final infos = <_ZahtevInfo>[];
       for (final z in bcList) {
@@ -131,6 +134,19 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // TIME PICKER
   // ─────────────────────────────────────────────────────────────────
 
+  static const _danAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
+
+  /// Vraća tačan datum za dati dan abbr u tekućoj sedmici.
+  DateTime _datumZaDan(String danAbbr) {
+    final now = DateTime.now();
+    final targetIdx = _danAbbrs.indexOf(danAbbr);
+    if (targetIdx < 0) return now;
+    final currentIdx = now.weekday - 1;
+    int daysToAdd = targetIdx - currentIdx;
+    if (daysToAdd < 0) daysToAdd += 7;
+    return now.add(Duration(days: daysToAdd));
+  }
+
   Future<void> _updatePolazak(String dan, String grad, String? novoVreme,
       {_ZahtevInfo? trenutniInfo, bool koristiSekundarnu = false}) async {
     final putnikId = _putnikData['id']?.toString();
@@ -156,7 +172,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           id: const Uuid().v4(),
           putnikId: putnikId,
           imePrezime: imePrezime,
-          datum: DateTime.now(),
+          datum: _datumZaDan(dan),
           danUSedmici: dan,
           grad: grad,
           zeljenoVreme: novoVreme,

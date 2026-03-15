@@ -11,6 +11,7 @@ import '../../models/v3_putnik.dart';
 import '../../models/v3_zahtev.dart';
 import '../../services/v2_haptic_service.dart';
 import '../../services/v3/v3_adresa_service.dart';
+import '../../services/v3/v3_operativna_nedelja_service.dart';
 import '../../services/v3/v3_vozac_service.dart';
 import '../../services/v3/v3_zahtev_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
@@ -22,12 +23,14 @@ class V3PutnikCard extends StatefulWidget {
     super.key,
     required this.putnik,
     this.zahtev,
+    this.entry,
     this.redniBroj,
     this.onChanged,
   });
 
   final V3Putnik putnik;
   final V3Zahtev? zahtev;
+  final V3OperativnaNedeljaEntry? entry;
   final int? redniBroj;
   final VoidCallback? onChanged;
 
@@ -57,7 +60,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     V2HapticService.selectionClick();
     _longPressTimer = Timer(const Duration(milliseconds: 1500), () {
       if (_isLongPressActive && mounted) {
-        final status = widget.zahtev?.status ?? '';
+        final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
         if (status != 'otkazano' && status != 'pokupljen') {
           _handlePickup();
         }
@@ -73,15 +76,20 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   // ─── Akcije ────────────────────────────────────────────────────
 
   Future<void> _handlePickup() async {
-    if (widget.zahtev == null || _globalProcessingLock || _isProcessing) return;
+    if (widget.entry == null && widget.zahtev == null) return;
+    if (_globalProcessingLock || _isProcessing) return;
     _globalProcessingLock = true;
     if (mounted) setState(() => _isProcessing = true);
     try {
       V2HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac == null) throw 'Niste logovani u V3 sistem';
-      final isAlreadyPokupljen = widget.zahtev!.status == 'pokupljen';
-      await V3ZahtevService.oznaciPokupljen(widget.zahtev!.id);
+      final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
+      final isAlreadyPokupljen = status == 'pokupljen';
+      // Pokupljanje uvijek ide kroz v3_zahtevi
+      final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
+      if (zahtevId == null || zahtevId.isEmpty) throw 'Nema zahteva za pokupljanje';
+      await V3ZahtevService.oznaciPokupljen(zahtevId, pokupljenVozacId: currentVozac.id);
       await V2HapticService.putnikPokupljen();
       if (mounted) {
         V3AppSnackBar.success(context, isAlreadyPokupljen ? 'Vraćeno u obradu' : 'Putnik pokupljen');
@@ -107,7 +115,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Future<void> _handlePayment() async {
-    if (widget.zahtev == null || _globalProcessingLock || _isProcessing) return;
+    if (widget.entry == null && widget.zahtev == null) return;
+    if (_globalProcessingLock || _isProcessing) return;
+    final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
+    if (zahtevId == null || zahtevId.isEmpty) return;
     final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
       context: context,
       imePrezime: widget.putnik.imePrezime,
@@ -117,13 +128,20 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     _globalProcessingLock = true;
     if (mounted) setState(() => _isProcessing = true);
     try {
-      await V3PlacanjeDialogHelper.sacuvajPlacanje(
+      final ok = await V3PlacanjeDialogHelper.sacuvajPlacanje(
         context: context,
         putnikId: widget.putnik.id,
         imePrezime: widget.putnik.imePrezime,
         rezultat: rezultat,
-        zahtevId: widget.zahtev!.id,
+        zahtevId: zahtevId,
       );
+      if (ok && widget.entry != null) {
+        await V3OperativnaNedeljaService.updateNaplata(
+          id: widget.entry!.id,
+          iznos: rezultat.iznos,
+          naplatioVozacId: V3VozacService.currentVozac?.id,
+        );
+      }
       widget.onChanged?.call();
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, 'Greška pri plaćanju: $e');
@@ -134,7 +152,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Future<void> _handleNavigation() async {
-    final grad = widget.zahtev?.grad ?? '';
+    final grad = widget.entry?.grad ?? widget.zahtev?.grad ?? '';
     final adresaId = grad.toUpperCase() == 'BC'
         ? (widget.putnik.adresaBcId ?? widget.putnik.adresaBcId2)
         : (widget.putnik.adresaVsId ?? widget.putnik.adresaVsId2);
@@ -142,12 +160,12 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final V3Adresa? adresa = V3AdresaService.getAdresaById(adresaId);
 
     if (adresa != null && adresa.hasValidCoordinates) {
-      final hereUrl = Uri.parse('here-route://mylocation/\${adresa.gpsLat},\${adresa.gpsLng}/now');
+      final hereUrl = Uri.parse('here-route://mylocation/${adresa.gpsLat},${adresa.gpsLng}/now');
       if (await canLaunchUrl(hereUrl)) {
         await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
         return;
       }
-      final googleUrl = Uri.parse('https://maps.google.com/?q=\${adresa.gpsLat},\${adresa.gpsLng}');
+      final googleUrl = Uri.parse('https://maps.google.com/?q=${adresa.gpsLat},${adresa.gpsLng}');
       if (await canLaunchUrl(googleUrl)) {
         await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
         return;
@@ -160,8 +178,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Future<void> _handleOtkazivanje() async {
+    final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
+    if (zahtevId == null || zahtevId.isEmpty) return;
+    // Koristimo zahtev za ime, ali id može biti iz entry
     final zahtev = widget.zahtev;
-    if (zahtev == null) return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -175,7 +195,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Da li ste sigurni da želite da otkaže \${widget.putnik.imePrezime}?',
+          'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
           style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         actions: [
@@ -206,9 +226,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
     if (confirm == true) {
       try {
-        await V3ZahtevService.otkaziZahtev(zahtev.id);
+        await V3ZahtevService.otkaziZahtev(zahtevId, otkazaoVozacId: V3VozacService.currentVozac?.id);
         if (mounted) {
-          V3AppSnackBar.warning(context, 'Otkazano: \${widget.putnik.imePrezime}');
+          V3AppSnackBar.warning(context, 'Otkazano: ${widget.putnik.imePrezime}');
           widget.onChanged?.call();
         }
       } catch (e) {
@@ -219,8 +239,28 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   // ─── Boje kartice po statusu ───────────────────────────────────
 
+  bool get _isTudji {
+    final currentVozac = V3VozacService.currentVozac;
+    if (currentVozac == null) return false;
+    final vozacId = widget.entry?.vozacId;
+    if (vozacId == null || vozacId.isEmpty) return false;
+    return vozacId != currentVozac.id;
+  }
+
   BoxDecoration _getCardDecoration() {
-    final status = widget.zahtev?.status ?? '';
+    final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
+    if (_isTudji) {
+      return BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEEEEEE), Color(0xFFE0E0E0)],
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFBDBDBD), width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
+      );
+    }
     if (status == 'otkazano') {
       return BoxDecoration(
         gradient: const LinearGradient(
@@ -234,7 +274,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       );
     }
     if (status == 'pokupljen') {
-      final bool isPlacen = widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+      final bool isPlacen = widget.entry != null
+          ? widget.entry!.naplataStatus == 'placeno'
+          : (widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty);
       if (isPlacen) {
         return BoxDecoration(
           gradient: const LinearGradient(
@@ -258,6 +300,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
       );
     }
+    // Bijela kartica — default
     return BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(10),
@@ -267,20 +310,22 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Color _getTextColor() {
-    final status = widget.zahtev?.status ?? '';
+    if (_isTudji) return const Color(0xFF757575);
+    final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFB71C1C);
     if (status == 'pokupljen') {
-      final isPlacen = widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+      final isPlacen = widget.entry?.naplataStatus == 'placeno';
       return isPlacen ? const Color(0xFF1B5E20) : const Color(0xFF0D47A1);
     }
     return Colors.black87;
   }
 
   Color _getSecondaryTextColor() {
-    final status = widget.zahtev?.status ?? '';
+    if (_isTudji) return const Color(0xFF9E9E9E);
+    final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFC62828);
     if (status == 'pokupljen') {
-      final isPlacen = widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+      final isPlacen = widget.entry?.naplataStatus == 'placeno';
       return isPlacen ? const Color(0xFF2E7D32) : const Color(0xFF1565C0);
     }
     return Colors.grey.shade700;
@@ -321,28 +366,43 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   // ─── Adresa helper ─────────────────────────────────────────────
 
   String? _getAdresaNaziv() {
-    final grad = widget.zahtev?.grad ?? '';
+    final grad = widget.entry?.grad ?? widget.zahtev?.grad ?? '';
     if (grad.toUpperCase() == 'BC') {
       return widget.putnik.adresaBcNaziv ?? widget.putnik.adresaBcNaziv2;
     }
     return widget.putnik.adresaVsNaziv ?? widget.putnik.adresaVsNaziv2;
   }
 
+  Color? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final clean = hex.replaceAll('#', '').trim();
+    if (clean.length == 6) {
+      final value = int.tryParse('FF$clean', radix: 16);
+      return value != null ? Color(value) : null;
+    }
+    if (clean.length == 8) {
+      final value = int.tryParse(clean, radix: 16);
+      return value != null ? Color(value) : null;
+    }
+    return null;
+  }
+
   // ─── Build ─────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final status = widget.zahtev?.status ?? '';
+    final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     final bool isPokupljen = status == 'pokupljen';
     final bool isOtkazan = status == 'otkazano';
-    final bool isPlacen =
-        isPokupljen && widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty;
+    final bool isPlacen = widget.entry != null
+        ? widget.entry!.naplataStatus == 'placeno'
+        : (widget.zahtev?.dodeljenoVreme != null && widget.zahtev!.dodeljenoVreme!.isNotEmpty);
     final bool hasTel = widget.putnik.telefon1 != null || widget.putnik.telefon2 != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
     final Color textColor = _getTextColor();
     final Color secondaryTextColor = _getSecondaryTextColor();
-    final int brojMesta = widget.zahtev?.brojMesta ?? 1;
+    final int brojMesta = widget.entry?.brojMesta ?? widget.zahtev?.brojMesta ?? 1;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -367,7 +427,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                     Padding(
                       padding: const EdgeInsets.only(right: 4.0),
                       child: Text(
-                        '\${widget.redniBroj}.',
+                        '${widget.redniBroj}.',
                         style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: textColor),
                       ),
                     ),
@@ -425,7 +485,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                   ),
 
                   // Akcije desno — tip badge + glassmorphism ikone
-                  if (widget.zahtev != null)
+                  if (widget.entry != null || widget.zahtev != null)
                     Flexible(
                       flex: 0,
                       child: Transform.translate(
@@ -527,42 +587,105 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
               ),
 
               // Red 2 — status info
-              if (isPokupljen || isOtkazan)
+              if (isPokupljen || isOtkazan || isPlacen)
                 Padding(
                   padding: const EdgeInsets.only(top: 2.0),
-                  child: Row(
-                    children: [
-                      if (isPokupljen)
-                        Text(
-                          'Pokupljen',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isPlacen ? const Color(0xFF2E7D32) : const Color(0xFF1565C0),
-                            fontWeight: FontWeight.bold,
+                  child: Builder(builder: (_) {
+                    // Vozač boja po akteru — svaki tekst koristi ID aktera koji je stvarno izvršio akciju
+                    final _currentVozac = V3VozacService.currentVozac;
+                    Color _bojaZaVozacId(String? vozacId) {
+                      if (vozacId != null) {
+                        final v = V3VozacService.getVozacById(vozacId);
+                        if (v != null) return _parseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
+                      }
+                      // fallback: dodjeljeni vozač → trenutni vozač → siva
+                      if (widget.entry?.vozacId != null) {
+                        final v = V3VozacService.getVozacById(widget.entry!.vozacId!);
+                        if (v != null) return _parseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
+                      }
+                      return _parseHexColor(_currentVozac?.boja) ?? const Color(0xFF9E9E9E);
+                    }
+
+                    final bojaPokupljen = _bojaZaVozacId(widget.entry?.pokupljenVozacId);
+                    final bojaNaplata = _bojaZaVozacId(widget.entry?.naplatioVozacId);
+                    final bojaOtkaz = _bojaZaVozacId(widget.entry?.otkazaoVozacId);
+
+                    String _fmt(DateTime? dt) {
+                      if (dt == null) return '';
+                      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}. ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                    }
+
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // 1. BIJELA: plaćeno ali nije pokupljen — cyan
+                        if (isPlacen && !isPokupljen) ...[
+                          Text(
+                            () {
+                              final iznos = widget.entry?.iznosNaplacen ?? 0;
+                              final vpl = widget.entry?.vremePlacen;
+                              final iznosStr = iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : '';
+                              final dtStr = _fmt(vpl);
+                              return 'Plaćeno: ${[
+                                if (iznosStr.isNotEmpty) iznosStr,
+                                if (dtStr.isNotEmpty) dtStr
+                              ].join(' • ')}';
+                            }(),
+                            style: TextStyle(fontSize: 13, color: bojaNaplata, fontWeight: FontWeight.w700),
                           ),
-                        ),
-                      if (isPlacen) ...[
-                        if (isPokupljen) const SizedBox(width: 12),
-                        Text(
-                          'Plaćeno: \${widget.zahtev!.dodeljenoVreme}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF2E7D32),
-                            fontWeight: FontWeight.w500,
+                        ],
+
+                        // 2. PLAVA: pokupljen, nije platio
+                        if (isPokupljen && !isPlacen) ...[
+                          Text(
+                            () {
+                              final dtStr = _fmt(widget.entry?.vremePokupljen);
+                              return dtStr.isNotEmpty ? 'Pokupljen: $dtStr' : 'Pokupljen';
+                            }(),
+                            style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
                           ),
-                        ),
+                        ],
+
+                        // 3. ZELENA: pokupljen + plaćen
+                        if (isPokupljen && isPlacen) ...[
+                          Text(
+                            () {
+                              final dtStr = _fmt(widget.entry?.vremePokupljen);
+                              return dtStr.isNotEmpty ? 'Pokupljen: $dtStr' : 'Pokupljen';
+                            }(),
+                            style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            () {
+                              final iznos = widget.entry?.iznosNaplacen ?? 0;
+                              final vpl = widget.entry?.vremePlacen;
+                              final iznosStr = iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : '';
+                              final dtStr = _fmt(vpl);
+                              return 'Plaćeno: ${[
+                                if (iznosStr.isNotEmpty) iznosStr,
+                                if (dtStr.isNotEmpty) dtStr
+                              ].join(' • ')}';
+                            }(),
+                            style: TextStyle(fontSize: 13, color: bojaNaplata, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+
+                        // 5. CRVENA: otkazano
+                        if (isOtkazan) ...[
+                          Text(
+                            () {
+                              final vp = widget.entry?.vremePokupljen;
+                              final dtStr = _fmt(vp);
+                              return dtStr.isNotEmpty ? 'Otkazano: $dtStr' : 'Otkazano';
+                            }(),
+                            style: TextStyle(fontSize: 13, color: bojaOtkaz, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ],
-                      if (isOtkazan)
-                        Text(
-                          'Otkazano',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.red.shade900,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
+                    );
+                  }),
                 ),
             ],
           ),

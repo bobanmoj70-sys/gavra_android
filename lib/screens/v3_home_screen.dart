@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
+import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../models/v3_zahtev.dart';
 import '../services/v2_theme_manager.dart';
+import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_kapacitet_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
@@ -46,6 +48,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   static const List<String> _dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
 
   String get _currentDayAbbr => _dayAbbrs[_dayNames.indexOf(_selectedDay)];
+
+  /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici (ili sledećoj ako je dan prošao).
+  String get _selectedDatumIso {
+    final now = DateTime.now();
+    final targetDayIdx = _dayNames.indexOf(_selectedDay);
+    final currentDayIdx = now.weekday - 1;
+    int daysToAdd = targetDayIdx - currentDayIdx;
+    if (daysToAdd < 0) daysToAdd += 7;
+    return now.add(Duration(days: daysToAdd)).toIso8601String().split('T')[0];
+  }
 
   // Dinamična vremena prema tipu nav bara
   List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
@@ -117,6 +129,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   /// Dijalog za dodavanje novog zahteva (rezervacije)
   void _showDodajZahtevDialog() {
     V3Putnik? selectedPutnik;
+    V3Adresa? selectedAdresa; // override adresa (null = koristi putnikovu)
     int brojMesta = 1;
     bool isLoading = false;
     final searchController = TextEditingController();
@@ -256,7 +269,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       child: Text(p.imePrezime, overflow: TextOverflow.ellipsis),
                                     ))
                                 .toList(),
-                            onChanged: (p) => setS(() => selectedPutnik = p),
+                            onChanged: (p) => setS(() {
+                              selectedPutnik = p;
+                              selectedAdresa = null; // reset adrese kad se promijeni putnik
+                            }),
                           ),
                           const SizedBox(height: 12),
                           // Broj mesta
@@ -286,6 +302,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               ],
                             ),
                           ),
+                          // Adresa override — samo kad je putnik odabran
+                          if (selectedPutnik != null) ...[
+                            const SizedBox(height: 12),
+                            _buildAdresaOverride(
+                              putnik: selectedPutnik!,
+                              grad: _selectedGrad,
+                              selected: selectedAdresa,
+                              onChanged: (a) => setS(() => selectedAdresa = a),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -358,6 +384,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         brojMesta: brojMesta,
                                         status: 'odobreno',
                                         aktivno: true,
+                                        adresaId: selectedAdresa?.id,
+                                        adresaNaziv: selectedAdresa?.naziv,
                                       );
                                       await V3ZahtevService.createZahtev(zahtev);
 
@@ -395,6 +423,89 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           Expanded(
             child: Text(value, style: const TextStyle(fontSize: 13, color: Colors.white70)),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Dropdown za override adrese u dijalogu rezervacije.
+  /// Putnikove 2 adrese za grad su na vrhu liste (označene ★), zatim sve ostale.
+  Widget _buildAdresaOverride({
+    required V3Putnik putnik,
+    required String grad,
+    required V3Adresa? selected,
+    required ValueChanged<V3Adresa?> onChanged,
+  }) {
+    final isBC = grad.toUpperCase() == 'BC';
+    final id1 = isBC ? putnik.adresaBcId : putnik.adresaVsId;
+    final id2 = isBC ? putnik.adresaBcId2 : putnik.adresaVsId2;
+    final adresa1 = V3AdresaService.getAdresaById(id1);
+    final adresa2 = V3AdresaService.getAdresaById(id2);
+
+    // Sve adrese za grad, bez duplikata
+    final sve = V3AdresaService.getAdreseZaGrad(grad);
+    final putnikoviIds = {if (adresa1 != null) adresa1.id, if (adresa2 != null) adresa2.id};
+    final ostale = sve.where((a) => !putnikoviIds.contains(a.id)).toList();
+
+    // Izgradnja stavki: putnikove adrese prve (★), pa separator, pa ostale
+    final items = <DropdownMenuItem<V3Adresa?>>[];
+
+    // "default" opcija — bez override
+    items.add(const DropdownMenuItem<V3Adresa?>(
+      value: null,
+      child: Text('— putnikova adresa —', style: TextStyle(fontSize: 13, color: Colors.grey)),
+    ));
+
+    if (adresa1 != null) {
+      items.add(DropdownMenuItem<V3Adresa?>(
+        value: adresa1,
+        child: Text('★ ${adresa1.naziv}',
+            overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      ));
+    }
+    if (adresa2 != null) {
+      items.add(DropdownMenuItem<V3Adresa?>(
+        value: adresa2,
+        child: Text('★ ${adresa2.naziv}',
+            overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      ));
+    }
+
+    for (final a in ostale) {
+      items.add(DropdownMenuItem<V3Adresa?>(
+        value: a,
+        child: Text(a.naziv, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+      ));
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: selected != null ? Colors.blue.shade400 : Colors.grey.shade400),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on, color: Colors.blueAccent, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<V3Adresa?>(
+                value: selected,
+                isExpanded: true,
+                isDense: true,
+                hint: const Text('Adresa (opciono)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                items: items,
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+          if (selected != null)
+            GestureDetector(
+              onTap: () => onChanged(null),
+              child: const Icon(Icons.clear, size: 18, color: Colors.grey),
+            ),
         ],
       ),
     );
@@ -718,7 +829,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V3OperativnaNedeljaEntry>>(
-        stream: V3OperativnaNedeljaService.streamOperativnaNedeljaByDanAndGrad(_currentDayAbbr, _selectedGrad),
+        stream: V3OperativnaNedeljaService.streamOperativnaNedeljaByDatum(_selectedDatumIso),
         builder: (context, snapshot) {
           final sviZapisi = snapshot.data ?? [];
 
@@ -732,10 +843,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           final selectedVremeNorm = normalizeVreme(_selectedVreme);
 
-          // Filtriraj po izabranom vremenu za prikaz liste — otkazani idu na dno
+          // Lista: datum dolazi iz stream-a, filtriraj samo po gradu i vremenu
           final prikazaniZapisi = sviZapisi.where((z) {
-            final zVremeNorm = normalizeVreme(z.vreme);
-            return zVremeNorm == selectedVremeNorm && z.statusFinal != 'odbijeno';
+            if (z.grad != _selectedGrad) return false;
+            if (normalizeVreme(z.vreme) != selectedVremeNorm) return false;
+            if (z.statusFinal == 'odbijeno') return false;
+            return true;
           }).toList()
             ..sort((a, b) {
               final aOtk = a.statusFinal == 'otkazano' ? 1 : 0;
@@ -744,15 +857,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               return (a.vreme ?? '').compareTo(b.vreme ?? '');
             });
 
-          // Brojač po gradu/vremenu za bottom nav bar
+          // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
           int getPutnikCount(String grad, String vreme) {
             final targetVremeNorm = normalizeVreme(vreme);
             return sviZapisi.where((z) {
-              final zVremeNorm = normalizeVreme(z.vreme);
-              return z.grad == grad &&
-                  zVremeNorm == targetVremeNorm &&
-                  z.statusFinal != 'otkazano' &&
-                  z.statusFinal != 'odbijeno';
+              if (z.grad != grad) return false;
+              if (normalizeVreme(z.vreme) != targetVremeNorm) return false;
+              if (z.statusFinal == 'otkazano' || z.statusFinal == 'odbijeno') return false;
+              return true;
             }).fold(0, (sum, z) => sum + z.brojMesta);
           }
 
@@ -1116,11 +1228,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               if (p == null) return const SizedBox.shrink();
 
                               // Konstruišemo privremeni V3Zahtev ako je izvor 'zahtev' radi kompatibilnosti sa V3PutnikCard
-                              final v3Zahtev = z.izvorTip == 'zahtev' ? V3ZahtevService.getZahtevById(z.izvorId) : null;
-
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
-                                child: V3PutnikCard(putnik: p, zahtev: v3Zahtev, redniBroj: i + 1),
+                                child: V3PutnikCard(putnik: p, entry: z, redniBroj: i + 1),
                               );
                             },
                           ),

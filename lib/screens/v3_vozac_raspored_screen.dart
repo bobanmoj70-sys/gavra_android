@@ -137,11 +137,16 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   int _getPutnikCount(String grad, String vreme) {
     final dan = _currentDayAbbr;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
     return V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((r) {
       final datumStr = r['datum'] as String?;
       if (datumStr == null) return false;
       final datum = DateTime.tryParse(datumStr);
       if (datum == null) return false;
+      final d = DateTime(datum.year, datum.month, datum.day);
+      if (d.isBefore(monday) || d.isAfter(sunday)) return false;
       const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
       final targetAbbr = abbrs[datum.weekday - 1];
       return targetAbbr == dan &&

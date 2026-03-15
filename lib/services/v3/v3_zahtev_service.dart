@@ -86,6 +86,19 @@ class V3ZahtevService {
       ..sort((a, b) => a.zeljenoVreme.compareTo(b.zeljenoVreme));
   }
 
+  /// Dohvata zahteve za tačan datum i grad (filtrira po datum koloni).
+  static List<V3Zahtev> getZahteviByDatumAndGrad(String datumIso, String grad) {
+    final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
+    return cache
+        .where((r) {
+          final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+          return rDatum == datumIso && r['grad'] == grad && r['aktivno'] == true;
+        })
+        .map((r) => V3Zahtev.fromJson(r))
+        .toList()
+      ..sort((a, b) => (a.zeljenoVreme).compareTo(b.zeljenoVreme));
+  }
+
   /// Dohvata zahteve iz operativnog plana za određeni datum i grad.
   static List<V3Zahtev> getOperativniZahteviByDatumAndGrad(String datum, String grad) {
     // Ovde možemo kombinovati redovne zahteve i operativni plan
@@ -145,22 +158,28 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> otkaziZahtev(String id) async {
+  static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId}) async {
     try {
       await supabase.from('v3_zahtevi').update({'status': 'otkazano'}).eq('id', id);
+      await supabase.from('v3_operativna_nedelja').update({
+        'status_final': 'otkazano',
+        if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
+      }).eq('izvor_id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] Otkazi error: $e');
       rethrow;
     }
   }
 
-  static Future<void> oznaciPokupljen(String id) async {
+  static Future<void> oznaciPokupljen(String id, {String? pokupljenVozacId}) async {
     try {
       await supabase.from('v3_zahtevi').update({
         'status': 'pokupljen',
       }).eq('id', id);
       await supabase.from('v3_operativna_nedelja').update({
         'vreme_pokupljen': DateTime.now().toIso8601String(),
+        'status_final': 'pokupljen',
+        if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
       }).eq('izvor_id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] Pokupljen error: $e');

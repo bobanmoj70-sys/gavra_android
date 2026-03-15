@@ -40,8 +40,8 @@ class V3PlacanjeDialogHelper {
               TextField(
                 controller: _iznosController,
                 decoration: const InputDecoration(
-                  labelText: 'Iznos (KM)',
-                  suffixText: 'KM',
+                  labelText: 'Iznos (RSD)',
+                  suffixText: 'RSD',
                 ),
                 keyboardType: TextInputType.number,
               ),

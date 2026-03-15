@@ -212,17 +212,30 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     );
   }
 
-  /// Računa pazar po vozaču iz operativnaNedeljaCache (placeno)
+  /// Računa pazar po vozaču iz operativnaNedeljaCache — samo danas, akter = naplatio_vozac_id
   Map<String, double> _getPazarPoVozacu() {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
+    final danas = DateTime.now();
     final result = <String, double>{};
     for (final row in cache.values) {
       final status = row['naplata_status'] as String? ?? '';
       if (status != 'placeno') continue;
-      final vozacId = row['vozac_id']?.toString();
-      if (vozacId == null || vozacId.isEmpty) continue;
+      // Datum plaćanja
+      final vremeStr = row['vreme_placen'] as String? ?? row['updated_at'] as String?;
+      if (vremeStr != null) {
+        final dt = DateTime.tryParse(vremeStr);
+        if (dt == null) continue;
+        if (dt.year != danas.year || dt.month != danas.month || dt.day != danas.day) continue;
+      } else {
+        continue; // nema datuma — preskači
+      }
+      // Akter: ko je naplatio
+      final akterId =
+          (row['naplatio_vozac_id']?.toString().isNotEmpty == true ? row['naplatio_vozac_id'] : row['vozac_id'])
+              ?.toString();
+      if (akterId == null || akterId.isEmpty) continue;
       final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
-      result[vozacId] = (result[vozacId] ?? 0.0) + iznos;
+      result[akterId] = (result[akterId] ?? 0.0) + iznos;
     }
     return result;
   }
@@ -656,7 +669,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   Widget _buildPazarSection(BuildContext context) {
     final vozaci = V3VozacService.getAllVozaci();
     final pazarPoVozacu = _getPazarPoVozacu();
-    final dugovi = V3DugService.getDugovi();
+    final sveDugovi = V3DugService.getDugovi();
+    // Dužnici = samo dnevni putnici koji nisu platili
+    final dugovi = sveDugovi.where((d) => d.tipPutnika == 'dnevni').toList();
+    final dugoviIznos = dugovi.fold(0.0, (s, d) => s + d.iznos);
     final ukupnoPazar = pazarPoVozacu.values.fold(0.0, (s, v) => s + v);
 
     return Column(
@@ -735,7 +751,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   ),
                 ),
                 Text(
-                  '${dugovi.length}',
+                  '${dugoviIznos.toStringAsFixed(0)} RSD',
                   style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(width: 4),
