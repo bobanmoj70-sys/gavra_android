@@ -152,12 +152,13 @@ jobs:
           # Pokušaj naći postojeću verziju u PREPARE_FOR_SUBMISSION
           VERSION_ID=$(app-store-connect app-store-versions list \
             --app-id "$APP_ID" \
-            --json 2>/dev/null | python3 -c "
+            --json 2>/dev/null | python3 << 'PYEOF'
 import sys, json
 data = json.load(sys.stdin)
 vers = [v for v in data if v.get('versionString') == '$VERSION_NAME' and v.get('appStoreState') == 'PREPARE_FOR_SUBMISSION']
 print(vers[0]['id'] if vers else '')
-" 2>/dev/null || echo "")
+PYEOF
+)
 
           if [ -z "$VERSION_ID" ]; then
             echo "➕ Creating new App Store version $VERSION_NAME..."
@@ -190,12 +191,13 @@ print(vers[0]['id'] if vers else '')
           # Dohvati localization ID za sr-RS ili en-US
           LOC_ID=$(app-store-connect app-store-version-localizations list \
             --app-store-version-id "$VERSION_ID" \
-            --json 2>/dev/null | python3 -c "
+            --json 2>/dev/null | python3 << 'PYEOF'
 import sys, json
 data = json.load(sys.stdin)
 loc = next((l for l in data if l.get('locale') in ('sr-RS', 'en-US')), data[0] if data else None)
 print(loc['id'] if loc else '')
-" 2>/dev/null || echo "")
+PYEOF
+)
 
           if [ -z "$LOC_ID" ]; then
             echo "⚠️ Could not find localization ID, skipping What's New."
