@@ -300,7 +300,6 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
       ),
     );
   }
-
 }
 
 // ─────────────────────────────────────────────────────────────────────

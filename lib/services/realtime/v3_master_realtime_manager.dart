@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
-import '../v3/v3_kapacitet_service.dart';
 
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
 class V3MasterRealtimeManager {
@@ -29,7 +28,6 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
-  final Map<String, Map<String, dynamic>> kapacitetCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
@@ -53,7 +51,6 @@ class V3MasterRealtimeManager {
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
         supabase.from('v3_operativna_nedelja').select(),
         supabase.from('v3_app_settings').select(),
-        supabase.from('v3_kapacitet').select().eq('aktivno', true),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -70,10 +67,6 @@ class V3MasterRealtimeManager {
       _fillCache(finansijeStanjeCache, results[11] as List);
       _fillCache(operativnaNedeljaCache, results[12] as List);
       _fillCache(appSettingsCache, results[13] as List);
-      _fillCache(kapacitetCache, results[14] as List);
-
-      // Kreiraj slotove koji nedostaju u v3_kapacitet (iz trenutnog sezona konfiguracije)
-      await V3KapacitetService.syncSlotsFromConfig();
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -108,7 +101,6 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
-    _setupTableRealtime('v3_kapacitet', kapacitetCache);
 
     _v3Channel!.subscribe();
   }
@@ -191,9 +183,6 @@ class V3MasterRealtimeManager {
       case 'v3_operativna_nedelja':
         operativnaNedeljaCache[id] = row;
         break;
-      case 'v3_kapacitet':
-        kapacitetCache[id] = row;
-        break;
       case 'v3_pin_zahtevi':
         if (row['status'] == 'ceka') {
           pinZahteviCache[id] = row;
@@ -241,8 +230,6 @@ class V3MasterRealtimeManager {
         return pinZahteviCache;
       case 'v3_operativna_nedelja':
         return operativnaNedeljaCache;
-      case 'v3_kapacitet':
-        return kapacitetCache;
       default:
         return {};
     }

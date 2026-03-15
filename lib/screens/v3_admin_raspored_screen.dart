@@ -5,7 +5,6 @@ import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3/v3_kapacitet_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -624,7 +623,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           _selectedVreme = vreme;
         }),
         getCount: _getPutnikCount,
-        getKapacitet: V3KapacitetService.getKapacitetSyncValue,
+        getKapacitet: (grad, vreme) => V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, DateTime.now()),
       );
 
   // ─── Termin info traka ────────────────────────────────────────────────────
@@ -728,7 +727,7 @@ class _NavBarProps {
   final String selectedVreme;
   final void Function(String, String) onChanged;
   final int Function(String, String) getCount;
-  final int Function(String, String) getKapacitet;
+  final int? Function(String, String) getKapacitet;
 
   const _NavBarProps({
     required this.sviPolasci,

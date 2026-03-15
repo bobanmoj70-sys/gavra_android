@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../realtime/v3_master_realtime_manager.dart';
-import 'v3_kapacitet_service.dart';
 
 class V3OperativnaNedeljaEntry {
   final String id;
@@ -25,6 +24,7 @@ class V3OperativnaNedeljaEntry {
   final String? pokupljenVozacId;
   final String? naplatioVozacId;
   final String? otkazaoVozacId;
+  final int? maxMesta;
 
   V3OperativnaNedeljaEntry({
     required this.id,
@@ -47,12 +47,13 @@ class V3OperativnaNedeljaEntry {
     this.pokupljenVozacId,
     this.naplatioVozacId,
     this.otkazaoVozacId,
+    this.maxMesta,
   });
 
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
-      izvorId: json['izvor_id'] as String? ?? ''
+      izvorId: json['izvor_id'] as String? ?? '',
       putnikId: json['putnik_id'] as String? ?? '',
       imePrezime: json['ime_prezime'] as String?,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
@@ -71,6 +72,7 @@ class V3OperativnaNedeljaEntry {
       pokupljenVozacId: json['pokupljen_vozac_id'] as String?,
       naplatioVozacId: json['naplatio_vozac_id'] as String?,
       otkazaoVozacId: json['otkazao_vozac_id'] as String?,
+      maxMesta: (json['max_mesta'] as num?)?.toInt(),
     );
   }
 
@@ -94,6 +96,7 @@ class V3OperativnaNedeljaEntry {
       if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
       if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
       if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
+      if (maxMesta != null) 'max_mesta': maxMesta,
     };
   }
 }
@@ -249,37 +252,52 @@ class V3OperativnaNedeljaService {
     }
   }
 
-  /// Čita kapacitet vozila (default po gradu) iz v3_app_settings.
-  static int getKapacitetVozila(String grad, String vreme, DateTime datum) {
-    return V3KapacitetService.getKapacitetSyncValue(grad, vreme);
+  /// Čita max_mesta za dati grad/vreme/datum iz operativnaNedeljaCache.
+  /// Vraća null ako slot nije pronađen — nema fallback vrijednosti.
+  static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
+    final datumStr = datum.toIso8601String().split('T')[0];
+    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    for (final r in cache) {
+      if (r['grad'] == grad &&
+          r['vreme'] == vreme &&
+          r['datum'].toString().startsWith(datumStr) &&
+          r['aktivno'] == true) {
+        return (r['max_mesta'] as num?)?.toInt();
+      }
+    }
+    return null;
   }
 
-  /// Čita broj zauzetih mesta — suma broj_mesta aktivnih zapisa u v3_operativna_nedelja za grad/vreme/datum.
+  /// Čita broj zauzetih mesta — suma broj_mesta zapisa sa statusom koji zauzima mjesto.
+  /// Filtrira: aktivno=true i status_final IN (obrada, odobreno, pokupljen).
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
+    const aktivniStatusi = {'obrada', 'odobreno', 'pokupljen'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
-    return zapisi.fold(0, (sum, e) => sum + e.brojMesta);
+    return zapisi.where((e) => aktivniStatusi.contains(e.statusFinal)).fold(0, (sum, e) => sum + e.brojMesta);
   }
 
   /// Čita broj slobodnih mesta za dati grad/vreme/datum.
-  /// slobodna = kapacitet_vozila - zauzetaMesta (min 0).
-  static int getSlobodnaMesta(String grad, String vreme, DateTime datum) {
+  /// slobodna = max_mesta - zauzetaMesta (min 0).
+  /// Vraća null ako max_mesta nije postavljeno.
+  static int? getSlobodnaMesta(String grad, String vreme, DateTime datum) {
     final kapacitet = getKapacitetVozila(grad, vreme, datum);
+    if (kapacitet == null) return null;
     final zauzeto = getZauzetaMesta(grad, vreme, datum);
     return (kapacitet - zauzeto).clamp(0, kapacitet);
   }
 
-  /// Stream koji emituje [kapacitetVozila, zauzetaMesta, slobodnaMesta] za dati termin.
-  static Stream<({int kapacitet, int zauzeto, int slobodna})> streamMesta({
+  /// Stream koji emituje [kapacitet, zauzeto, slobodna] za dati termin.
+  static Stream<({int? kapacitet, int zauzeto, int? slobodna})> streamMesta({
     required String grad,
     required String vreme,
     required DateTime datum,
   }) {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_operativna_nedelja', 'v3_app_settings'],
+      tables: ['v3_operativna_nedelja'],
       build: () {
         final kapacitet = getKapacitetVozila(grad, vreme, datum);
         final zauzeto = getZauzetaMesta(grad, vreme, datum);
-        final slobodna = (kapacitet - zauzeto).clamp(0, kapacitet);
+        final slobodna = kapacitet != null ? (kapacitet - zauzeto).clamp(0, kapacitet) : null;
         return (kapacitet: kapacitet, zauzeto: zauzeto, slobodna: slobodna);
       },
     );

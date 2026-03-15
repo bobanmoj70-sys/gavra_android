@@ -24,7 +24,7 @@ class V3BottomNavBarLetnji extends StatefulWidget {
   final String selectedVreme;
   final void Function(String grad, String vreme) onPolazakChanged;
   final int Function(String grad, String vreme) getPutnikCount;
-  final int Function(String grad, String vreme)? getKapacitet;
+  final int? Function(String grad, String vreme)? getKapacitet;
   final bool Function(String grad, String vreme)? isSlotLoading;
   final List<String>? bcVremena;
   final List<String>? vsVremena;
@@ -195,7 +195,7 @@ class _PolazakRow extends StatelessWidget {
   final String grad;
   final void Function(String grad, String vreme) onPolazakChanged;
   final int Function(String grad, String vreme) getPutnikCount;
-  final int Function(String grad, String vreme)? getKapacitet;
+  final int? Function(String grad, String vreme)? getKapacitet;
   final bool Function(String grad, String vreme)? isSlotLoading;
   final ScrollController? scrollController;
   final String currentThemeId;

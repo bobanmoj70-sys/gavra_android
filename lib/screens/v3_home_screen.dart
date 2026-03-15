@@ -11,7 +11,6 @@ import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
-import '../services/v3/v3_kapacitet_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
 import '../services/v3/v3_putnik_service.dart';
@@ -866,9 +865,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           }
 
           // Kapacitet
-          int getKapacitet(String grad, String vreme) {
-            final kap = V3KapacitetService.getKapacitetSync();
-            return kap[grad]?[vreme] ?? 8;
+          int? getKapacitet(String grad, String vreme) {
+            return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, DateTime.now());
           }
 
           return Container(
@@ -1261,7 +1259,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
   }
 
-  Widget _buildBottomNavBar(int Function(String, String) getPutnikCount, int Function(String, String) getKapacitet) {
+  Widget _buildBottomNavBar(int Function(String, String) getPutnikCount, int? Function(String, String) getKapacitet) {
     return ValueListenableBuilder<String>(
       valueListenable: navBarTypeNotifier,
       builder: (context, navType, _) {
