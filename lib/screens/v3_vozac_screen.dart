@@ -33,9 +33,6 @@ class V3VozacScreen extends StatefulWidget {
 }
 
 class _V3VozacScreenState extends State<V3VozacScreen> {
-  static const List<String> _dayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja'];
-  static const List<String> _dayAbbr = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-
   String _selectedDay = 'Ponedeljak';
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
@@ -61,8 +58,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   @override
   void initState() {
     super.initState();
-    final today = DateTime.now().weekday;
-    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'Ponedeljak' : _dayNames[today - 1];
+    _selectedDay = V3DanHelper.defaultDay();
     _initData();
   }
 
@@ -98,7 +94,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozac = V3VozacService.currentVozac;
     if (vozac == null) return;
     final rm = V3MasterRealtimeManager.instance;
-    final danAbbr = _getDanAbbr(_selectedDay);
 
     // Pomoćna funkcija za normalizaciju vremena (HH:mm)
     String normalizeV(String? v) {
@@ -110,18 +105,24 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     final selectedVNorm = normalizeV(_selectedVreme);
 
-    // 1. Moji termini za ovaj dan (iz v3_raspored_termin)
+    // 1. Moji termini za ovaj datum (iz v3_raspored_termin)
     _mojiTermini = rm.rasporedTerminCache.values
         .where((r) =>
             r['vozac_id']?.toString() == vozac.id &&
-            r['dan']?.toString().toLowerCase() == danAbbr &&
+            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
             (r['aktivno'] == true || r['aktivno'] == null))
         .toList();
 
-    // Ako nema selektovanog termina, uzmi prvi koji odgovara
+    // Ako selektovani grad/vreme ne odgovara nijednom terminu niti putniku, auto-select
     final terminPostoji = _mojiTermini.any((t) =>
         t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
-    if (!terminPostoji && _mojiTermini.isNotEmpty) {
+    final putnikTerminPostoji = rm.rasporedPutnikCache.values.any((r) =>
+        r['vozac_id']?.toString() == vozac.id &&
+        (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+        r['grad']?.toString().toUpperCase() == _selectedGrad &&
+        normalizeV(r['vreme']?.toString()) == selectedVNorm &&
+        r['aktivno'] != false);
+    if (!terminPostoji && !putnikTerminPostoji) {
       _selectClosestTermin();
     }
 
@@ -129,7 +130,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final rasporedPutnici = rm.rasporedPutnikCache.values
         .where((r) =>
             r['vozac_id']?.toString() == vozac.id &&
-            r['dan']?.toString().toLowerCase() == danAbbr &&
+            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
             r['grad']?.toString().toUpperCase() == _selectedGrad &&
             normalizeV(r['vreme']?.toString()) == selectedVNorm &&
             (r['aktivno'] == true || r['aktivno'] == null))
@@ -173,18 +174,29 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     String? bestVreme;
     String? bestGrad;
     int minDiff = 9999;
+    final vozacId = V3VozacService.currentVozac?.id ?? '';
+    final rm = V3MasterRealtimeManager.instance;
 
-    for (final t in _mojiTermini) {
+    // Kandidati: termini + putnici
+    final kandidati = <Map<String, dynamic>>[
+      ..._mojiTermini,
+      ...rm.rasporedPutnikCache.values.where((r) =>
+          r['vozac_id']?.toString() == vozacId &&
+          (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+          r['aktivno'] != false),
+    ];
+
+    for (final t in kandidati) {
       final grad = t['grad']?.toString().toUpperCase() ?? '';
       final vreme = t['vreme']?.toString() ?? '';
       if (vreme.isEmpty) continue;
       final tp = vreme.split(':');
-      if (tp.length != 2) continue;
+      if (tp.length < 2) continue;
       final mins = (int.tryParse(tp[0]) ?? 0) * 60 + (int.tryParse(tp[1]) ?? 0);
       final diff = (mins - current).abs();
       if (diff < minDiff) {
         minDiff = diff;
-        bestVreme = vreme;
+        bestVreme = '${tp[0].padLeft(2, '0')}:${tp[1]}';
         bestGrad = grad;
       }
     }
@@ -194,10 +206,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
-  String _getDanAbbr(String danPuni) {
-    final idx = _dayNames.indexWhere((d) => d.toLowerCase() == danPuni.toLowerCase());
-    return idx >= 0 ? _dayAbbr[idx] : danPuni.toLowerCase().substring(0, 3);
-  }
+  /// ISO datum za izabrani dan — ako je dan prošao, skače u sljedeću sedmicu
+  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
   void _onPolazakChanged(String grad, String vreme) {
     setState(() {
@@ -276,13 +286,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozac = V3VozacService.currentVozac;
     if (vozac == null) return 0;
     final rm = V3MasterRealtimeManager.instance;
-    final danAbbr = _getDanAbbr(_selectedDay);
+    String normV(String? v) {
+      if (v == null || v.isEmpty) return '';
+      final p = v.split(':');
+      return p.length >= 2 ? '${p[0].padLeft(2, '0')}:${p[1]}' : v;
+    }
+
+    final vremeNorm = normV(vreme);
     return rm.rasporedPutnikCache.values
         .where((r) =>
             r['vozac_id']?.toString() == vozac.id &&
-            r['dan']?.toString().toLowerCase() == danAbbr &&
+            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
             r['grad']?.toString().toUpperCase() == grad.toUpperCase() &&
-            r['vreme']?.toString() == vreme &&
+            normV(r['vreme']?.toString()) == vremeNorm &&
             (r['aktivno'] == true || r['aktivno'] == null))
         .length;
   }
@@ -369,19 +385,36 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       );
     }
 
-    // Termini za BottomNavBar — samo moji iz rasporeda
-    final bcVremenaToShow = (_mojiTermini
-        .where((t) => t['grad']?.toString().toUpperCase() == 'BC')
-        .map((t) => t['vreme']?.toString() ?? '')
-        .where((v) => v.isNotEmpty)
-        .toList()
-      ..sort());
-    final vsVremenaToShow = (_mojiTermini
-        .where((t) => t['grad']?.toString().toUpperCase() == 'VS')
-        .map((t) => t['vreme']?.toString() ?? '')
-        .where((v) => v.isNotEmpty)
-        .toList()
-      ..sort());
+    // Termini za BottomNavBar — unija iz v3_raspored_termin i v3_raspored_putnik
+    final vozacId = V3VozacService.currentVozac?.id ?? '';
+    final rm = V3MasterRealtimeManager.instance;
+    String normV(String? v) {
+      if (v == null || v.isEmpty) return '';
+      final p = v.split(':');
+      return p.length >= 2 ? '${p[0].padLeft(2, '0')}:${p[1]}' : v;
+    }
+
+    final bcVremenaSet = <String>{};
+    final vsVremenaSet = <String>{};
+    for (final t in _mojiTermini) {
+      final g = t['grad']?.toString().toUpperCase() ?? '';
+      final v = normV(t['vreme']?.toString());
+      if (v.isEmpty) continue;
+      if (g == 'BC') bcVremenaSet.add(v);
+      if (g == 'VS') vsVremenaSet.add(v);
+    }
+    for (final r in rm.rasporedPutnikCache.values) {
+      if (r['vozac_id']?.toString() != vozacId) continue;
+      if ((r['datum'] as String?)?.split('T')[0] != _selectedDatumIso) continue;
+      if (r['aktivno'] == false) continue;
+      final g = r['grad']?.toString().toUpperCase() ?? '';
+      final v = normV(r['vreme']?.toString());
+      if (v.isEmpty) continue;
+      if (g == 'BC') bcVremenaSet.add(v);
+      if (g == 'VS') vsVremenaSet.add(v);
+    }
+    final bcVremenaToShow = bcVremenaSet.toList()..sort();
+    final vsVremenaToShow = vsVremenaSet.toList()..sort();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -507,7 +540,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   getPutnikCount: _getPutnikCount,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
-                  selectedDan: _selectedDay,
                 );
               } else if (navType == 'praznici') {
                 return V3BottomNavBarPraznici(
@@ -518,7 +550,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   getPutnikCount: _getPutnikCount,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
-                  selectedDan: _selectedDay,
                 );
               }
               return V3BottomNavBarLetnji(
@@ -529,7 +560,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                 getPutnikCount: _getPutnikCount,
                 bcVremena: bcVremenaToShow,
                 vsVremena: vsVremenaToShow,
-                selectedDan: _selectedDay,
               );
             },
           ),
@@ -540,32 +570,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Widget _buildBody() {
-    if (_mojiTermini.isEmpty) {
-      return Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Theme.of(context).glassContainer,
-            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.event_busy, color: Colors.white54, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                'Nema dodeljenih termina za $_selectedDay',
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     if (_mojiPutnici.isEmpty) {
       return Center(
         child: Container(
@@ -624,8 +628,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   // ── V2 stil: digitalni datum prikaz ──
   Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
     final now = DateTime.now();
-    final dayNames = ['PONEDELJAK', 'UTORAK', 'SREDA', 'CETVRTAK', 'PETAK', 'SUBOTA', 'NEDELJA'];
-    final dayName = dayNames[now.weekday - 1];
+    final dayName = V3DanHelper.fullNameUpper(now);
     final dateStr = DateFormat('dd.MM.yy').format(now);
     final timeStr = DateFormat('HH:mm').format(now);
     final vozacBoja = _getVozacBojaRaw(vozac);
@@ -726,7 +729,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       context: context,
       builder: (ctx) => SimpleDialog(
         title: const Text('Izaberi dan'),
-        children: _dayNames.map((dan) {
+        children: V3DanHelper.dayNames.map((dan) {
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, dan),
             child: Text(dan, style: TextStyle(fontWeight: dan == _selectedDay ? FontWeight.bold : FontWeight.normal)),

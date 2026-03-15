@@ -29,10 +29,8 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   String _selectedVreme = '';
   String _selectedDay = 'Ponedeljak';
 
-  static const List<String> _dayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja'];
-  static const List<String> _dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-
-  String get _currentDayAbbr => _dayAbbrs[_dayNames.indexOf(_selectedDay)];
+  /// ISO datum za izabrani dan — ako je dan prošao, skače u sljedeću sedmicu
+  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
   List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
   List<String> get _vsVremena => V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
@@ -44,8 +42,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   @override
   void initState() {
     super.initState();
-    final today = DateTime.now().weekday;
-    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'Ponedeljak' : _dayNames[today - 1];
+    _selectedDay = V3DanHelper.defaultDay();
     _autoSelectNajblizeVreme();
   }
 
@@ -71,11 +68,12 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   // ─── Cache helpers ────────────────────────────────────────────────────────
 
   /// Vozač za termin iz v3_raspored_termin
-  V3Vozac? _getVozacZaTermin(String grad, String vreme, String dan) {
+  V3Vozac? _getVozacZaTermin(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
+    final datum = _selectedDatumIso;
     for (final row in rm.rasporedTerminCache.values) {
-      if (row['dan'] == dan &&
+      if ((row['datum'] as String?)?.split('T')[0] == datum &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV) {
         final vozacId = row['vozac_id'] as String?;
@@ -86,16 +84,15 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   }
 
   /// Vozač za individulanu dodjelu putnika iz v3_raspored_putnik
-  V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String dan) {
+  V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
-    final sedmica = _pocetakSedmice();
+    final datum = _selectedDatumIso;
     for (final row in rm.rasporedPutnikCache.values) {
       if (row['putnik_id'] == putnikId &&
-          row['dan'] == dan &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
-          row['datum_sedmice'] == sedmica) {
+          (row['datum'] as String?)?.split('T')[0] == datum) {
         final vozacId = row['vozac_id'] as String?;
         if (vozacId != null) return V3VozacService.getVozacById(vozacId);
       }
@@ -103,29 +100,29 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
     return null;
   }
 
-  String _rasporedPutnikRowId(String putnikId, String grad, String vreme, String dan) {
+  String _rasporedPutnikRowId(String putnikId, String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
-    final sedmica = _pocetakSedmice();
+    final datum = _selectedDatumIso;
     for (final entry in rm.rasporedPutnikCache.entries) {
       final row = entry.value;
       if (row['putnik_id'] == putnikId &&
-          row['dan'] == dan &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
-          row['datum_sedmice'] == sedmica) {
+          (row['datum'] as String?)?.split('T')[0] == datum) {
         return entry.key;
       }
     }
     return '';
   }
 
-  String _rasporedTerminRowId(String grad, String vreme, String dan) {
+  String _rasporedTerminRowId(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
+    final datum = _selectedDatumIso;
     for (final entry in rm.rasporedTerminCache.entries) {
       final row = entry.value;
-      if (row['dan'] == dan &&
+      if ((row['datum'] as String?)?.split('T')[0] == datum &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV) {
         return entry.key;
@@ -135,21 +132,13 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   }
 
   int _getPutnikCount(String grad, String vreme) {
-    final dan = _currentDayAbbr;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
-    final now = DateTime.now();
-    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
+    final targetDatum = _selectedDatumIso; // već uračunat skok u sljedeću sedmicu
     return V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((r) {
       final datumStr = r['datum'] as String?;
       if (datumStr == null) return false;
-      final datum = DateTime.tryParse(datumStr);
-      if (datum == null) return false;
-      final d = DateTime(datum.year, datum.month, datum.day);
-      if (d.isBefore(monday) || d.isAfter(sunday)) return false;
-      const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-      final targetAbbr = abbrs[datum.weekday - 1];
-      return targetAbbr == dan &&
+      final d = datumStr.split('T')[0];
+      return d == targetDatum &&
           r['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(r['vreme'] as String? ?? '') == normV &&
           r['status_final'] != 'odbijeno' &&
@@ -158,7 +147,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   }
 
   Color? _getVozacBoja(String grad, String vreme) {
-    final v = _getVozacZaTermin(grad, vreme, _currentDayAbbr);
+    final v = _getVozacZaTermin(grad, vreme);
     return v != null ? _parseColor(v.boja) : null;
   }
 
@@ -172,60 +161,68 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
     }
   }
 
-  static String _pocetakSedmice() {
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    return monday.toIso8601String().split('T')[0];
-  }
-
   // ─── DB operacije ─────────────────────────────────────────────────────────
 
-  Future<void> _dodelijTermin(String dan, String grad, String vreme, V3Vozac vozac) async {
+  Future<void> _dodelijTermin(String grad, String vreme, V3Vozac vozac) async {
     try {
-      await supabase.from('v3_raspored_termin').upsert({
-        'dan': dan,
+      final datum = _selectedDatumIso;
+      await supabase.from('v3_raspored_termin').delete().eq('datum', datum).eq('grad', grad).eq('vreme', vreme);
+      await supabase.from('v3_raspored_termin').insert({
+        'datum': datum,
         'grad': grad,
         'vreme': vreme,
         'vozac_id': vozac.id,
-      }, onConflict: 'dan,grad,vreme');
-      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → $grad $vreme ($dan)');
+      });
+      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → $grad $vreme ($datum)');
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
     }
   }
 
-  Future<void> _ukloniTermin(String dan, String grad, String vreme) async {
-    final rowId = _rasporedTerminRowId(grad, vreme, dan);
+  Future<void> _ukloniTermin(String grad, String vreme) async {
+    final rowId = _rasporedTerminRowId(grad, vreme);
     try {
       if (rowId.isNotEmpty) {
         await supabase.from('v3_raspored_termin').delete().eq('id', rowId);
       } else {
-        await supabase.from('v3_raspored_termin').delete().eq('dan', dan).eq('grad', grad).eq('vreme', vreme);
+        await supabase
+            .from('v3_raspored_termin')
+            .delete()
+            .eq('datum', _selectedDatumIso)
+            .eq('grad', grad)
+            .eq('vreme', vreme);
       }
-      if (mounted) V3AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($dan)');
+      if (mounted) V3AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($_selectedDatumIso)');
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
     }
   }
 
-  Future<void> _dodelijPutniku(String putnikId, V3Vozac vozac, String dan, String grad, String vreme) async {
+  Future<void> _dodelijPutniku(String putnikId, V3Vozac vozac, String grad, String vreme) async {
     try {
-      await supabase.from('v3_raspored_putnik').upsert({
+      final datum = _selectedDatumIso;
+      await supabase
+          .from('v3_raspored_putnik')
+          .delete()
+          .eq('putnik_id', putnikId)
+          .eq('grad', grad)
+          .eq('vreme', vreme)
+          .eq('datum', datum);
+      await supabase.from('v3_raspored_putnik').insert({
         'putnik_id': putnikId,
         'vozac_id': vozac.id,
-        'dan': dan,
         'grad': grad,
         'vreme': vreme,
-        'datum_sedmice': _pocetakSedmice(),
-      }, onConflict: 'putnik_id,dan,grad,vreme,datum_sedmice');
-      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($dan)');
+        'datum': datum,
+      });
+      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
     }
   }
 
-  Future<void> _ukloniPutnikDodjelu(String putnikId, String dan, String grad, String vreme) async {
-    final rowId = _rasporedPutnikRowId(putnikId, grad, vreme, dan);
+  Future<void> _ukloniPutnikDodjelu(String putnikId, String grad, String vreme) async {
+    final rowId = _rasporedPutnikRowId(putnikId, grad, vreme);
     try {
       if (rowId.isNotEmpty) {
         await supabase.from('v3_raspored_putnik').delete().eq('id', rowId);
@@ -234,10 +231,9 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
             .from('v3_raspored_putnik')
             .delete()
             .eq('putnik_id', putnikId)
-            .eq('dan', dan)
             .eq('grad', grad)
             .eq('vreme', vreme)
-            .eq('datum_sedmice', _pocetakSedmice());
+            .eq('datum', _selectedDatumIso);
       }
       if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
     } catch (e) {
@@ -248,8 +244,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   // ─── Dialozi ──────────────────────────────────────────────────────────────
 
   Future<void> _showTerminAssignDialog(String grad, String vreme) async {
-    final dan = _currentDayAbbr;
-    final trenutni = _getVozacZaTermin(grad, vreme, dan);
+    final trenutni = _getVozacZaTermin(grad, vreme);
     V3Vozac? odabran = trenutni;
     final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno).toList();
     if (vozaci.isEmpty) {
@@ -281,7 +276,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                     BoxDecoration(color: Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
               )),
               const SizedBox(height: 16),
-              Text('🗓️ TERMIN: $grad $vreme — ${dan.toUpperCase()}',
+              Text('🗓️ TERMIN: $grad $vreme — $_selectedDatumIso',
                   style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1)),
               const SizedBox(height: 6),
               const Text('Dodeli vozača terminu',
@@ -298,7 +293,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                 TextButton.icon(
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    await _ukloniTermin(dan, grad, vreme);
+                    await _ukloniTermin(grad, vreme);
                   },
                   icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
                   label: const Text('Ukloni dodjelu termina', style: TextStyle(color: Colors.redAccent)),
@@ -317,7 +312,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                       ? null
                       : () async {
                           Navigator.pop(ctx);
-                          await _dodelijTermin(dan, grad, vreme, odabran!);
+                          await _dodelijTermin(grad, vreme, odabran!);
                         },
                   child: const Text('Potvrdi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
@@ -330,8 +325,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
   }
 
   Future<void> _showPutnikAssignDialog(V3OperativnaNedeljaEntry zahtev) async {
-    final dan = _currentDayAbbr;
-    final trenutni = _getVozacZaPutnika(zahtev.putnikId, _selectedGrad, _selectedVreme, dan);
+    final trenutni = _getVozacZaPutnika(zahtev.putnikId, _selectedGrad, _selectedVreme);
     V3Vozac? odabran = trenutni;
     final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno).toList();
     if (vozaci.isEmpty) {
@@ -365,7 +359,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
               const SizedBox(height: 16),
               Text('👤 ${(zahtev.imePrezime ?? 'Putnik').toUpperCase()}',
                   style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1)),
-              Text('$_selectedGrad $_selectedVreme — ${dan.toUpperCase()}',
+              Text('$_selectedGrad $_selectedVreme — $_selectedDatumIso',
                   style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1)),
               const SizedBox(height: 8),
               const Text('Dodeli vozača putniku',
@@ -382,7 +376,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                 TextButton.icon(
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    await _ukloniPutnikDodjelu(zahtev.putnikId, dan, _selectedGrad, _selectedVreme);
+                    await _ukloniPutnikDodjelu(zahtev.putnikId, _selectedGrad, _selectedVreme);
                   },
                   icon: const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 18),
                   label: const Text('Ukloni individualnu dodjelu', style: TextStyle(color: Colors.redAccent)),
@@ -401,7 +395,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                       ? null
                       : () async {
                           Navigator.pop(ctx);
-                          await _dodelijPutniku(zahtev.putnikId, odabran!, dan, _selectedGrad, _selectedVreme);
+                          await _dodelijPutniku(zahtev.putnikId, odabran!, _selectedGrad, _selectedVreme);
                         },
                   child: const Text('Potvrdi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
@@ -417,16 +411,17 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.onChange,
-      builder: (context, _) {
-        final dan = _currentDayAbbr;
-        final vozacTermin = _getVozacZaTermin(_selectedGrad, _selectedVreme, dan);
+    return StreamBuilder<List<V3OperativnaNedeljaEntry>>(
+      stream: V3OperativnaNedeljaService.streamOperativnaNedeljaByDatum(_selectedDatumIso),
+      builder: (context, snapshot) {
+        final sviZapisi = snapshot.data ?? [];
+        final vozacTermin = _getVozacZaTermin(_selectedGrad, _selectedVreme);
 
-        // Zapisi iz operativna_nedelja za selektovani grad+vreme+dan
+        // Zapisi iz operativna_nedelja za selektovani grad+vreme (datum već filtriran streamom)
         final zapisi = _selectedVreme.isNotEmpty
-            ? (V3OperativnaNedeljaService.getOperativnaNedeljaByDanAndGrad(dan, _selectedGrad)
+            ? (sviZapisi
                 .where((z) =>
+                    z.grad == _selectedGrad &&
                     V2GradAdresaValidator.normalizeTime(z.vreme ?? '') ==
                         V2GradAdresaValidator.normalizeTime(_selectedVreme) &&
                     z.statusFinal != 'odbijeno')
@@ -466,9 +461,9 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     child: Row(
-                      children: _dayNames.map((day) {
+                      children: V3DanHelper.dayNames.map((day) {
                         final isSelected = _selectedDay == day;
-                        final abbr = _dayAbbrs[_dayNames.indexOf(day)];
+                        final abbr = V3DanHelper.dayAbbrs[V3DanHelper.dayNames.indexOf(day)];
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(
@@ -551,7 +546,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                                 itemBuilder: (_, i) {
                                   final z = zapisi[i];
                                   final terminDodeljen = vozacTermin != null;
-                                  final indivVozac = _getVozacZaPutnika(z.putnikId, _selectedGrad, _selectedVreme, dan);
+                                  final indivVozac = _getVozacZaPutnika(z.putnikId, _selectedGrad, _selectedVreme);
                                   final vozacBoja = indivVozac != null
                                       ? _parseColor(indivVozac.boja)
                                       : (terminDodeljen ? _parseColor(vozacTermin.boja) : null);
@@ -584,7 +579,6 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                   onPolazakChanged: commonProps.onChanged,
                   getPutnikCount: commonProps.getCount,
                   getKapacitet: commonProps.getKapacitet,
-                  selectedDan: dan,
                   showVozacBoja: true,
                   getVozacColor: _getVozacBoja,
                 );
@@ -596,7 +590,6 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                   onPolazakChanged: commonProps.onChanged,
                   getPutnikCount: commonProps.getCount,
                   getKapacitet: commonProps.getKapacitet,
-                  selectedDan: dan,
                   showVozacBoja: true,
                   getVozacColor: _getVozacBoja,
                 );
@@ -608,7 +601,6 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                   onPolazakChanged: commonProps.onChanged,
                   getPutnikCount: commonProps.getCount,
                   getKapacitet: commonProps.getKapacitet,
-                  selectedDan: dan,
                   showVozacBoja: true,
                   getVozacColor: _getVozacBoja,
                 );

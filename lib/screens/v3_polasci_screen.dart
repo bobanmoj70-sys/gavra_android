@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -36,15 +37,10 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
       return true;
     }).toList()
       ..sort((a, b) {
-        final danOrd = _danOrd(a.danUSedmici) - _danOrd(b.danUSedmici);
+        final danOrd = a.datum.compareTo(b.datum);
         if (danOrd != 0) return danOrd;
         return a.zeljenoVreme.compareTo(b.zeljenoVreme);
       });
-  }
-
-  int _danOrd(String? d) {
-    const order = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-    return !order.contains(d?.toLowerCase() ?? '') ? 99 : order.indexOf(d!.toLowerCase());
   }
 
   // ─── actions ─────────────────────────────────────────────────────
@@ -410,7 +406,7 @@ class _ZahtevCard extends StatelessWidget {
     final tip = putnik?.tipPutnika ?? '';
     final tipColor = _tipColor(tip);
     final statusColor = _statusColor(zahtev.status);
-    final danLabel = _danLabel(zahtev.danUSedmici);
+    final danLabel = V3DanHelper.label(zahtev.datum);
     final vreme = zahtev.zeljenoVreme.length >= 5 ? zahtev.zeljenoVreme.substring(0, 5) : zahtev.zeljenoVreme;
 
     return Container(
@@ -557,19 +553,6 @@ class _ZahtevCard extends StatelessWidget {
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
     return '${parts[0][0]}${parts.last[0]}'.toUpperCase();
-  }
-
-  String _danLabel(String? d) {
-    const map = {
-      'pon': 'Pon',
-      'uto': 'Uto',
-      'sre': 'Sre',
-      'cet': 'Čet',
-      'pet': 'Pet',
-      'sub': 'Sub',
-      'ned': 'Ned',
-    };
-    return map[d?.toLowerCase() ?? ''] ?? '';
   }
 
   Color _tipColor(String tip) {

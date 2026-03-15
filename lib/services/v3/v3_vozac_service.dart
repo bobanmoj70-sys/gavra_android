@@ -39,9 +39,29 @@ class V3VozacService {
 
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
-      final data = vozac.toJson();
-
-      await supabase.from('v3_vozaci').upsert(data);
+      if (vozac.id.isNotEmpty) {
+        // Edit — ne diramo push_token
+        await supabase.from('v3_vozaci').update({
+          'ime_prezime': vozac.imePrezime,
+          'telefon_1': vozac.telefon1,
+          'telefon_2': vozac.telefon2,
+          'email': vozac.email,
+          'sifra': vozac.sifra,
+          'boja': vozac.boja,
+          'aktivno': vozac.aktivno,
+        }).eq('id', vozac.id);
+      } else {
+        // Add — insert novog vozača (bez push_token, dobija ga pri prvom loginu)
+        await supabase.from('v3_vozaci').insert({
+          'ime_prezime': vozac.imePrezime,
+          'telefon_1': vozac.telefon1,
+          'telefon_2': vozac.telefon2,
+          'email': vozac.email,
+          'sifra': vozac.sifra,
+          'boja': vozac.boja,
+          'aktivno': vozac.aktivno,
+        });
+      }
     } catch (e) {
       debugPrint('[V3VozacService] Error: $e');
       rethrow;
@@ -58,23 +78,16 @@ class V3VozacService {
   }
 
   /// Vraća boju vozača raspoređenog za dati dan/grad/vreme.
-  /// [danPuni] — puni naziv dana (npr. 'Ponedeljak'), konvertuje se u kratico (pon).
+  /// [danPuni] — puni naziv dana (npr. 'Ponedeljak'), konvertuje se u ISO datum tekuće sedmice.
   static Color? getVozacColorForTermin(String danPuni, String grad, String vreme) {
-    const daniMap = {
-      'ponedeljak': 'pon',
-      'utorak': 'uto',
-      'sreda': 'sre',
-      'cetvrtak': 'cet',
-      'petak': 'pet',
-      'subota': 'sub',
-      'nedelja': 'ned',
-    };
-    final danKey = daniMap[danPuni.toLowerCase()] ?? danPuni.toLowerCase();
+    final datumIso = V3DanHelper.datumIsoZaDanPuni(danPuni);
+    if (datumIso.isEmpty) return null;
+
     final rm = V3MasterRealtimeManager.instance;
     try {
       final termin = rm.rasporedTerminCache.values.firstWhere(
         (r) =>
-            r['dan']?.toString().toLowerCase() == danKey &&
+            (r['datum'] as String?)?.split('T')[0] == datumIso &&
             r['grad']?.toString().toUpperCase() == grad.toUpperCase() &&
             r['vreme']?.toString() == vreme &&
             r['aktivno'] == true,

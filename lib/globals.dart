@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/v2_config_service.dart'; // Centralizovani kredencijali
 
+export 'utils/v3_dan_helper.dart';
+
 /// Globalne varijable za Gavra Android
 ///
 /// Ovaj fajl sadrzi globalne varijable koje se koriste kroz celu aplikaciju.

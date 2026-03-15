@@ -91,7 +91,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     const dani = ['pon', 'uto', 'sre', 'cet', 'pet'];
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
-      final datumIso = _datumZaDan(dan).toIso8601String().split('T')[0];
+      final datumIso = V3DanHelper.datumZaDanAbbr(dan).toIso8601String().split('T')[0];
       final bcList =
           V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'BC').where((z) => z.putnikId == putnikId).toList();
       final vsList =
@@ -134,18 +134,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // TIME PICKER
   // ─────────────────────────────────────────────────────────────────
 
-  static const _danAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-
-  /// Vraća tačan datum za dati dan abbr u tekućoj sedmici.
-  DateTime _datumZaDan(String danAbbr) {
-    final now = DateTime.now();
-    final targetIdx = _danAbbrs.indexOf(danAbbr);
-    if (targetIdx < 0) return now;
-    final currentIdx = now.weekday - 1;
-    int daysToAdd = targetIdx - currentIdx;
-    if (daysToAdd < 0) daysToAdd += 7;
-    return now.add(Duration(days: daysToAdd));
-  }
+  /// Vraća datum za dati dan abbr u tekućoj sedmici.
 
   Future<void> _updatePolazak(String dan, String grad, String? novoVreme,
       {_ZahtevInfo? trenutniInfo, bool koristiSekundarnu = false}) async {
@@ -172,8 +161,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           id: const Uuid().v4(),
           putnikId: putnikId,
           imePrezime: imePrezime,
-          datum: _datumZaDan(dan),
-          danUSedmici: dan,
+          datum: V3DanHelper.datumZaDanAbbr(dan),
           grad: grad,
           zeljenoVreme: novoVreme,
           brojMesta: brojMesta,

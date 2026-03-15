@@ -14,8 +14,6 @@ class V3OperativnaNedeljaEntry {
   final String? grad;
   final String? vreme;
   final String? statusFinal;
-  final String? finansijeFinal;
-  final Map<String, dynamic> detaljiAkcije;
   final bool aktivno;
   final DateTime? createdAt;
   final int brojMesta;
@@ -25,7 +23,6 @@ class V3OperativnaNedeljaEntry {
   final double iznosNaplacen;
   final DateTime? vremePlacen;
   final String naplataStatus;
-  final String? vozacId;
   final String? pokupljenVozacId;
   final String? naplatioVozacId;
   final String? otkazaoVozacId;
@@ -40,8 +37,6 @@ class V3OperativnaNedeljaEntry {
     this.grad,
     this.vreme,
     this.statusFinal,
-    this.finansijeFinal,
-    this.detaljiAkcije = const {},
     this.aktivno = true,
     this.createdAt,
     this.brojMesta = 1,
@@ -51,7 +46,6 @@ class V3OperativnaNedeljaEntry {
     this.iznosNaplacen = 0,
     this.vremePlacen,
     this.naplataStatus = 'nije_placeno',
-    this.vozacId,
     this.pokupljenVozacId,
     this.naplatioVozacId,
     this.otkazaoVozacId,
@@ -68,8 +62,6 @@ class V3OperativnaNedeljaEntry {
       grad: json['grad'] as String?,
       vreme: json['vreme'] as String?,
       statusFinal: json['status_final'] as String?,
-      finansijeFinal: json['finansije_final'] as String?,
-      detaljiAkcije: json['detalji_akcije'] as Map<String, dynamic>? ?? {},
       aktivno: json['aktivno'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
@@ -79,7 +71,6 @@ class V3OperativnaNedeljaEntry {
       iznosNaplacen: (json['iznos_naplacen'] as num?)?.toDouble() ?? 0,
       vremePlacen: json['vreme_placen'] != null ? DateTime.tryParse(json['vreme_placen'] as String) : null,
       naplataStatus: json['naplata_status'] as String? ?? 'nije_placeno',
-      vozacId: json['vozac_id'] as String?,
       pokupljenVozacId: json['pokupljen_vozac_id'] as String?,
       naplatioVozacId: json['naplatio_vozac_id'] as String?,
       otkazaoVozacId: json['otkazao_vozac_id'] as String?,
@@ -97,8 +88,6 @@ class V3OperativnaNedeljaEntry {
       'grad': grad,
       'vreme': vreme,
       'status_final': statusFinal,
-      'finansije_final': finansijeFinal,
-      'detalji_akcije': detaljiAkcije,
       'aktivno': aktivno,
       if (zeljenoVreme != null) 'zeljeno_vreme': zeljenoVreme,
       if (dodeljivoVreme != null) 'dodeljeno_vreme': dodeljivoVreme,
@@ -106,7 +95,6 @@ class V3OperativnaNedeljaEntry {
       'iznos_naplacen': iznosNaplacen,
       if (vremePlacen != null) 'vreme_placen': vremePlacen!.toIso8601String(),
       'naplata_status': naplataStatus,
-      if (vozacId != null) 'vozac_id': vozacId,
       if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
       if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
       if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
@@ -168,9 +156,7 @@ class V3OperativnaNedeljaService {
           final d = DateTime(datum.year, datum.month, datum.day);
           if (d.isBefore(monday) || d.isAfter(sunday)) return false;
 
-          // Mapiranje weekday u abbr
-          const abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-          final targetAbbr = abbrs[datum.weekday - 1];
+          final targetAbbr = V3DanHelper.abbr(datum);
 
           return targetAbbr == danAbbr && r['grad'] == grad;
         })

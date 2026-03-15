@@ -44,20 +44,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   // Stream za broj pending zahteva (badge na dugmetu)
   late final Stream<int> _streamBrojZahteva;
 
-  static const List<String> _dayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja'];
-  static const List<String> _dayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
-
-  String get _currentDayAbbr => _dayAbbrs[_dayNames.indexOf(_selectedDay)];
-
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici (ili sledećoj ako je dan prošao).
-  String get _selectedDatumIso {
-    final now = DateTime.now();
-    final targetDayIdx = _dayNames.indexOf(_selectedDay);
-    final currentDayIdx = now.weekday - 1;
-    int daysToAdd = targetDayIdx - currentDayIdx;
-    if (daysToAdd < 0) daysToAdd += 7;
-    return now.add(Duration(days: daysToAdd)).toIso8601String().split('T')[0];
-  }
+  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
   // Dinamična vremena prema tipu nav bara
   List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
@@ -71,8 +59,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    final today = DateTime.now().weekday;
-    _selectedDay = (today == DateTime.saturday || today == DateTime.sunday) ? 'Ponedeljak' : _dayNames[today - 1];
+    _selectedDay = V3DanHelper.defaultDay();
     _streamBrojZahteva = V3ZahtevService.streamPendingZahteviCount();
     _initData();
   }
@@ -366,19 +353,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     setS(() => isLoading = true);
                                     try {
                                       // Izračunaj datum za selektovani dan
-                                      final now = DateTime.now();
-                                      final targetDayIdx = _dayNames.indexOf(_selectedDay);
-                                      final currentDayIdx = now.weekday - 1;
-                                      int daysToAdd = targetDayIdx - currentDayIdx;
-                                      if (daysToAdd < 0) daysToAdd += 7;
-                                      final targetDate = now.add(Duration(days: daysToAdd));
-                                      final isoDate = targetDate.toIso8601String().split('T')[0];
+                                      final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
                                       final zahtev = V3Zahtev(
                                         id: '',
                                         putnikId: selectedPutnik!.id,
                                         datum: DateTime.parse(isoDate),
-                                        danUSedmici: _currentDayAbbr,
                                         grad: _selectedGrad,
                                         zeljenoVreme: _selectedVreme,
                                         brojMesta: brojMesta,
@@ -514,8 +494,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   // ─── Dialog: Račun za firme (B2B) ────────────────────────────────
   void _showRacunZaFirmeDialog() {
     // Pripremi listu putnika sa aktivnim zahtevima za odabrani dan/grad/vreme
-    final putnici = V3PutnikService.getKombinovaniPutniciByDanGradVreme(
-      dan: _currentDayAbbr,
+    final putnici = V3PutnikService.getKombinovaniPutniciByDatumGradVreme(
+      datumIso: _selectedDatumIso,
       grad: _selectedGrad,
       vreme: _selectedVreme,
     );
@@ -1012,7 +992,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         ),
                                         elevation: 8,
                                       ),
-                                      items: _dayNames
+                                      items: V3DanHelper.dayNames
                                           .map((d) => DropdownMenuItem(
                                                 value: d,
                                                 child: Center(
@@ -1089,6 +1069,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               onSelected: (val) {
                                 if (val == 'spisak') {
                                   V3PrintingService.printPutniksList(
+                                    datumIso: _selectedDatumIso,
                                     dan: _selectedDay,
                                     vreme: _selectedVreme,
                                     grad: _selectedGrad,
@@ -1280,7 +1261,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             },
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
-            selectedDan: _currentDayAbbr,
             showVozacBoja: _isAdmin,
             getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
           );
@@ -1297,7 +1277,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             },
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
-            selectedDan: _currentDayAbbr,
             showVozacBoja: _isAdmin,
             getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
           );
@@ -1315,7 +1294,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             },
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
-            selectedDan: _currentDayAbbr,
             showVozacBoja: _isAdmin,
             getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
           );
