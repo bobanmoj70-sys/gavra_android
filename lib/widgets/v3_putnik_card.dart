@@ -239,22 +239,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   // ─── Boje kartice po statusu ───────────────────────────────────
 
-  bool get _isTudji => false;
-
   BoxDecoration _getCardDecoration() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-    if (_isTudji) {
-      return BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFEEEEEE), Color(0xFFE0E0E0)],
-        ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFBDBDBD), width: 1.2),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
-      );
-    }
     if (status == 'otkazano') {
       return BoxDecoration(
         gradient: const LinearGradient(
@@ -302,7 +288,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Color _getTextColor() {
-    if (_isTudji) return const Color(0xFF757575);
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFB71C1C);
     if (status == 'pokupljen') {
@@ -313,7 +298,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Color _getSecondaryTextColor() {
-    if (_isTudji) return const Color(0xFF9E9E9E);
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFC62828);
     if (status == 'pokupljen') {

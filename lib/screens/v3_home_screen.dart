@@ -8,6 +8,7 @@ import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../models/v3_zahtev.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_kapacitet_service.dart';
@@ -355,19 +356,35 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       // Izračunaj datum za selektovani dan
                                       final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
-                                      final zahtev = V3Zahtev(
-                                        id: '',
-                                        putnikId: selectedPutnik!.id,
-                                        datum: DateTime.parse(isoDate),
-                                        grad: _selectedGrad,
-                                        zeljenoVreme: _selectedVreme,
-                                        brojMesta: brojMesta,
-                                        status: 'odobreno',
-                                        aktivno: true,
-                                        adresaId: selectedAdresa?.id,
-                                        adresaNaziv: selectedAdresa?.naziv,
-                                      );
-                                      await V3ZahtevService.createZahtev(zahtev);
+                                      // Provjeri postoji li već aktivan zahtev za ovog putnika (isti datum + grad)
+                                      final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
+                                      final postojeci = cache.where((r) {
+                                        final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+                                        return r['putnik_id'] == selectedPutnik!.id &&
+                                            rDatum == isoDate &&
+                                            r['grad'] == _selectedGrad &&
+                                            r['aktivno'] == true;
+                                      }).toList();
+
+                                      if (postojeci.isNotEmpty) {
+                                        // Prepiši vreme na postojećem zahtjevu
+                                        await V3ZahtevService.updateVreme(
+                                            postojeci.first['id'] as String, _selectedVreme);
+                                      } else {
+                                        final zahtev = V3Zahtev(
+                                          id: '',
+                                          putnikId: selectedPutnik!.id,
+                                          datum: DateTime.parse(isoDate),
+                                          grad: _selectedGrad,
+                                          zeljenoVreme: _selectedVreme,
+                                          brojMesta: brojMesta,
+                                          status: 'odobreno',
+                                          aktivno: true,
+                                          adresaId: selectedAdresa?.id,
+                                          adresaNaziv: selectedAdresa?.naziv,
+                                        );
+                                        await V3ZahtevService.createZahtev(zahtev);
+                                      }
 
                                       if (!dialogCtx.mounted) return;
                                       Navigator.pop(dialogCtx);

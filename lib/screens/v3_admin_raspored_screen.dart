@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
+import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_kapacitet_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
+import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
@@ -17,14 +19,14 @@ import '../widgets/v3_bottom_nav_bar_zimski.dart';
 /// V3 ekran za upravljanje rasporedom vozača.
 /// Admin dodeljuje vozača terminu (v3_raspored_termin) ili putniku
 /// individualno (v3_raspored_putnik).
-class V3VozacRasporedScreen extends StatefulWidget {
-  const V3VozacRasporedScreen({super.key});
+class V3AdminRasporedScreen extends StatefulWidget {
+  const V3AdminRasporedScreen({super.key});
 
   @override
-  State<V3VozacRasporedScreen> createState() => _V3VozacRasporedScreenState();
+  State<V3AdminRasporedScreen> createState() => _V3AdminRasporedScreenState();
 }
 
-class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
+class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
   String _selectedDay = 'Ponedeljak';
@@ -556,6 +558,7 @@ class _V3VozacRasporedScreenState extends State<V3VozacRasporedScreen> {
                                     vozacBoja: vozacBoja,
                                     terminJeDodeljen: terminDodeljen,
                                     indivVozacIme: indivVozac?.imePrezime,
+                                    redniBroj: i + 1,
                                     onTap: (terminDodeljen || z.statusFinal == 'otkazano')
                                         ? null
                                         : () => _showPutnikAssignDialog(z),
@@ -744,6 +747,7 @@ class _ZahtevTile extends StatelessWidget {
     this.vozacBoja,
     this.terminJeDodeljen = false,
     this.indivVozacIme,
+    this.redniBroj,
     this.onTap,
   });
 
@@ -751,70 +755,174 @@ class _ZahtevTile extends StatelessWidget {
   final Color? vozacBoja;
   final bool terminJeDodeljen;
   final String? indivVozacIme;
+  final int? redniBroj;
   final VoidCallback? onTap;
+
+  Color _getTipColor(String tip) {
+    switch (tip.toLowerCase()) {
+      case 'radnik':
+        return const Color(0xFF3B7DD8);
+      case 'ucenik':
+        return const Color(0xFF44A08D);
+      case 'posiljka':
+        return const Color(0xFFE65C00);
+      case 'dnevni':
+        return const Color(0xFFFF6B6B);
+      default:
+        return Colors.green;
+    }
+  }
+
+  String _getTipLabel(String tip) {
+    switch (tip.toLowerCase()) {
+      case 'radnik':
+        return 'RADNIK';
+      case 'ucenik':
+        return 'UCENIK';
+      case 'posiljka':
+        return 'POSILJKA';
+      case 'dnevni':
+        return 'DNEVNI';
+      default:
+        return 'PUTNIK';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isOtkazan = zapis.statusFinal == 'otkazano';
-    final color = isOtkazan ? const Color(0xFFB71C1C) : (vozacBoja ?? Colors.white12);
+    final isPokupljen = zapis.statusFinal == 'pokupljen';
     final hasIndiv = indivVozacIme != null;
+
+    // Status boje kao V3PutnikCard
+    final Color textColor;
+    final Color secondaryColor;
+    final BoxDecoration cardDecoration;
+
+    if (isOtkazan) {
+      textColor = const Color(0xFFB71C1C);
+      secondaryColor = const Color(0xFFC62828);
+      cardDecoration = BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFCDD2), Color(0xFFEF9A9A)],
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE57373), width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
+      );
+    } else if (isPokupljen) {
+      textColor = const Color(0xFF0D47A1);
+      secondaryColor = const Color(0xFF1565C0);
+      cardDecoration = BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFBBDEFB), Color(0xFF90CAF9)],
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF64B5F6), width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
+      );
+    } else {
+      textColor = Colors.black87;
+      secondaryColor = Colors.grey.shade700;
+      final borderColor = vozacBoja ?? const Color(0xFFE0E0E0);
+      cardDecoration = BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: vozacBoja != null ? 4.0 : 1.0),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 3, offset: const Offset(0, 1))],
+      );
+    }
+
+    // Putnik iz cache-a za adresu i tip
+    final V3Putnik? putnik = V3PutnikService.getPutnikById(zapis.putnikId);
+    final String? adresaNaziv = putnik == null
+        ? null
+        : ((zapis.grad?.toUpperCase() == 'BC')
+            ? (putnik.adresaBcNaziv ?? putnik.adresaBcNaziv2)
+            : (putnik.adresaVsNaziv ?? putnik.adresaVsNaziv2));
+    final String tipPutnika = putnik?.tipPutnika ?? '';
+    final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
+    final bool hasTip = tipPutnika.isNotEmpty;
+    final Color tipColor = _getTipColor(tipPutnika);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),
-        decoration: BoxDecoration(
-          color: isOtkazan ? const Color(0xFFB71C1C).withValues(alpha: 0.15) : color.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
-        ),
+        decoration: cardDecoration,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.all(6.0),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Redni broj
+              if (redniBroj != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4.0, top: 2),
+                  child: Text(
+                    '$redniBroj.',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: textColor),
+                  ),
+                ),
+
+              // Ime + adresa
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      zapis.imePrezime ?? 'Putnik',
+                      putnik?.imePrezime ?? zapis.imePrezime ?? '?',
                       style: TextStyle(
-                        color: isOtkazan ? const Color(0xFFEF9A9A) : (vozacBoja != null ? color : Colors.white),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        color: textColor,
+                        fontWeight: FontWeight.w700,
+                        fontStyle: FontStyle.italic,
+                        fontSize: 14,
                         decoration: isOtkazan ? TextDecoration.lineThrough : null,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-                    Text(
-                      isOtkazan
-                          ? '${zapis.grad} · ${zapis.zeljenoVreme ?? ''} — OTKAZANO'
-                          : '${zapis.grad} · ${zapis.zeljenoVreme ?? ''}',
-                      style: TextStyle(
-                          color: isOtkazan ? const Color(0xFFEF9A9A).withValues(alpha: 0.7) : Colors.white38,
-                          fontSize: 12),
-                    ),
+                    if (hasAdresa)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          adresaNaziv,
+                          style: TextStyle(fontSize: 13, color: secondaryColor, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                   ],
                 ),
               ),
-              if (hasIndiv)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.person, color: color, size: 13),
-                      const SizedBox(width: 4),
-                      Text(indivVozacIme!, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                )
-              else if (!terminJeDodeljen)
-                const Icon(Icons.person_add_outlined, color: Colors.white38, size: 18),
+
+              // Desna strana: tip badge + vozač badge / person_add
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasTip)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: tipColor.withValues(alpha: 0.20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _getTipLabel(tipPutnika),
+                        style:
+                            TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: tipColor, letterSpacing: 0.3),
+                      ),
+                    ),
+                  if (!hasIndiv && !terminJeDodeljen)
+                    Icon(Icons.person_add_outlined, color: Colors.grey.shade500, size: 18),
+                ],
+              ),
             ],
           ),
         ),

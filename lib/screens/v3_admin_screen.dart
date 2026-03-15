@@ -7,6 +7,7 @@ import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_audit_log_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
@@ -21,7 +22,6 @@ import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
-import 'v3_vozac_raspored_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_vozaci_admin_screen.dart';
 
@@ -487,7 +487,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       color: Colors.blue,
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute<void>(builder: (_) => const V3VozacRasporedScreen()),
+                        MaterialPageRoute<void>(builder: (_) => const V3AdminRasporedScreen()),
                       ),
                       child: const Text('📅', style: TextStyle(fontSize: 20)),
                     ),
