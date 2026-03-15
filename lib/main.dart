@@ -84,6 +84,9 @@ Future<void> _initPushSystems() async {
         // Postavi background handler
         FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+        // Foreground handler — data-only poruke (npr. v3_alternativa)
+        FirebaseMessaging.onMessage.listen(_handleIncomingMessage);
+
         // Inicijalizuj Local Notifications (za interaktivne gumbe)
         const AndroidInitializationSettings initializationSettingsAndroid =
             AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -124,8 +127,60 @@ Future<void> _initPushSystems() async {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("Handling a background message: ${message.messageId}");
+  await _showAlternativaNotification(message);
+}
 
-  // Ako poruka sadrži akciju, biće obrađena preko local notifications response-a
+/// Foreground handler
+Future<void> _handleIncomingMessage(RemoteMessage message) async {
+  await _showAlternativaNotification(message);
+}
+
+/// Prikazuje lokalnu notifikaciju sa akcijskim dugmadima za v3_alternativa
+Future<void> _showAlternativaNotification(RemoteMessage message) async {
+  final data = message.data;
+  if (data['type'] != 'v3_alternativa') return;
+
+  final id = data['id'] as String? ?? '';
+  final altPre = data['alt_pre'] as String?;
+  final altPosle = data['alt_posle'] as String?;
+  final title = data['title'] as String? ?? '⚠️ Termin pun';
+  final body = data['body'] as String? ?? 'Izaberi alternativni termin';
+
+  final actions = <AndroidNotificationAction>[
+    if (altPre != null)
+      AndroidNotificationAction(
+        'accept_pre',
+        '✅ $altPre',
+        showsUserInterface: false,
+      ),
+    if (altPosle != null)
+      AndroidNotificationAction(
+        'accept_posle',
+        '✅ $altPosle',
+        showsUserInterface: false,
+      ),
+    AndroidNotificationAction(
+      'reject',
+      '❌ Odbij',
+      showsUserInterface: false,
+    ),
+  ];
+
+  final androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    importance: Importance.max,
+    priority: Priority.high,
+    actions: actions,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    id.hashCode,
+    title,
+    body,
+    NotificationDetails(android: androidDetails),
+    payload: '$id|${altPre ?? ''}|${altPosle ?? ''}',
+  );
 }
 
 // Hendler za klik na interaktivne gumbe (actions)
@@ -138,13 +193,17 @@ void onNotificationTap(NotificationResponse response) async {
     debugPrint('Notification Action Clicked: $actionId, Payload: $payload');
 
     // Akcije za V3 zahtev: accept_pre, accept_posle, reject
-    if (actionId == 'accept_pre' || actionId == 'accept_posle') {
-      final data = payload.split('|'); // Očekujemo "id|vreme"
-      if (data.length == 2) {
-        await V3ZahtevService.prihvatiPonudu(data[0], data[1]);
-      }
+    // payload format: "id|altPre|altPosle"
+    final parts = payload.split('|');
+    final zahtevId = parts[0];
+    final altPre = parts.length > 1 ? parts[1] : '';
+    final altPosle = parts.length > 2 ? parts[2] : '';
+    if (actionId == 'accept_pre' && altPre.isNotEmpty) {
+      await V3ZahtevService.prihvatiPonudu(zahtevId, altPre);
+    } else if (actionId == 'accept_posle' && altPosle.isNotEmpty) {
+      await V3ZahtevService.prihvatiPonudu(zahtevId, altPosle);
     } else if (actionId == 'reject') {
-      await V3ZahtevService.odbijPonudu(payload); // payload je ovde ID zahteva
+      await V3ZahtevService.odbijPonudu(zahtevId);
     }
   }
 }

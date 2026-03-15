@@ -17,6 +17,7 @@ interface PushPayload {
     title: string
     body: string
     data?: Record<string, any>
+    data_only?: boolean  // ako true, ne šalje notification blok — app prikazuje lokalnu notifikaciju sa akcijama
 }
 
 // 🛡️ CORS Headers
@@ -34,6 +35,7 @@ serve(async (req: any) => {
     try {
         const payload: PushPayload = await req.json()
         const { title, body, data } = payload
+        const dataOnly = payload.data_only === true || data?.data_only === true
 
         // 🔐 DOBAVLJANJE TAJNI IZ BAZE (Umesto Dashboard-a)
         const supabaseClient = createClient(
@@ -116,7 +118,7 @@ serve(async (req: any) => {
 
         // 1. 🟢 SLANJE PREKO FCM (Google/Apple)
         if (fcmTokens.length > 0) {
-            const fcmResult = await sendToFCM(fcmTokens, title, body, data, secrets)
+            const fcmResult = await sendToFCM(fcmTokens, title, body, data, secrets, dataOnly)
             results.push({ provider: 'FCM', ...fcmResult })
         }
 
@@ -143,7 +145,7 @@ serve(async (req: any) => {
 /**
  * 🟢 GOOGLE FCM V1 IMPLEMENTACIJA
  */
-async function sendToFCM(tokens: string[], title: string, body: string, data?: any, secrets?: any) {
+async function sendToFCM(tokens: string[], title: string, body: string, data?: any, secrets?: any, dataOnly?: boolean) {
     const serviceAccount = JSON.parse(secrets?.FIREBASE_SERVICE_ACCOUNT || (Deno as any).env.get('FIREBASE_SERVICE_ACCOUNT') || '{}')
 
     if (!serviceAccount.project_id) {
@@ -156,14 +158,13 @@ async function sendToFCM(tokens: string[], title: string, body: string, data?: a
         const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
 
         const sendPromises = tokens.map(token => {
-            const message = {
+            const message: any = {
                 message: {
                     token,
-                    notification: { title, body },
-                    data: data || {},
+                    data: data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {},
                     android: {
                         priority: "high",
-                        notification: {
+                        notification: dataOnly ? undefined : {
                             sound: "default",
                             channel_id: "gavra_push_v2",
                             default_sound: true,
@@ -172,8 +173,16 @@ async function sendToFCM(tokens: string[], title: string, body: string, data?: a
                             visibility: "PUBLIC",
                         }
                     },
-                    apns: { payload: { aps: { sound: "default" } } }
+                    apns: dataOnly ? undefined : { payload: { aps: { sound: "default" } } }
                 }
+            }
+            if (!dataOnly) {
+                message.message.notification = { title, body }
+            }
+            // data_only: dodaj title/body u data polje da ih app može pročitati
+            if (dataOnly) {
+                message.message.data['title'] = title
+                message.message.data['body'] = body
             }
 
             return fetch(url, {
