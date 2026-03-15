@@ -189,6 +189,8 @@ BEGIN
     UPDATE v3_zahtevi
     SET status          = v_novi_status,
         dodeljeno_vreme = CASE WHEN v_novi_status = 'odobreno' THEN v_req.zeljeno_vreme ELSE NULL END,
+        alt_vreme_pre   = CASE WHEN v_novi_status = 'odbijeno' THEN v_alt1 ELSE NULL END,
+        alt_vreme_posle = CASE WHEN v_novi_status = 'odbijeno' THEN v_alt2 ELSE NULL END,
         updated_at      = v_now
     WHERE id = v_req.id;
 
