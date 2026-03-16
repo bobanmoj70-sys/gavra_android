@@ -3,12 +3,10 @@ import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
@@ -20,6 +18,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
+import 'v3_permission_screen.dart';
 import 'v3_putnik_login_screen.dart';
 import 'v3_putnik_profil_screen.dart';
 import 'v3_vozac_login_screen.dart';
@@ -60,10 +59,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
     Future.delayed(const Duration(milliseconds: 300), _init);
 
-    // Zahtjev za dozvolama
+    // Zahtjev za dozvolama — prikaži onboarding screen samo prvi put
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
-      _requestPermissionsIfNeeded();
+      _maybeShowPermissionScreen();
     });
 
     // Provjera baterijske optimizacije za agresivne proizvođače
@@ -462,22 +461,21 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     );
   }
 
-  Future<void> _requestPermissionsIfNeeded() async {
-    try {
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        final status = await Permission.notification.status;
-        if (!status.isGranted) {
-          await Permission.notification.request();
-        }
-      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final settings = await FirebaseMessaging.instance.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-        debugPrint('[Push] iOS dozvola: ${settings.authorizationStatus}');
-      }
-    } catch (_) {}
+  Future<void> _maybeShowPermissionScreen() async {
+    final should = await V3PermissionScreen.shouldShow();
+    if (!should || !mounted) return;
+    await Navigator.of(context).push<void>(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        pageBuilder: (_, __, ___) => V3PermissionScreen(
+          onDone: () => Navigator.of(context).pop(),
+        ),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
   }
 
   /// Provjera baterijske optimizacije za agresivne proizvođače (Huawei, Xiaomi, Samsung...)
