@@ -88,7 +88,7 @@ if ($supabaseUrl -and $supabaseKey) {
             'Prefer'        = 'return=minimal'
         }
         $body = (@{ latest_version = $newVersion; min_version = $oldVersion } | ConvertTo-Json)
-        $uri = "$supabaseUrl/rest/v1/v2_app_settings?id=eq.global"
+        $uri = "$supabaseUrl/rest/v1/v3_app_settings?id=eq.global"
         Invoke-RestMethod -Uri $uri -Method Patch -Headers $headers -Body $body | Out-Null
         Write-Host "✓ Supabase: latest_version=$newVersion, min_version=$oldVersion" -ForegroundColor Green
     } catch {
