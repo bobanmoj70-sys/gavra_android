@@ -120,7 +120,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
     final terminPostoji = _mojiTermini.any((t) =>
         t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
-    if (!terminPostoji) {
+
+    // Provjeri da li postoji individualna dodjela za ovog vozača za selektovani grad/vreme
+    final imaIndividualnuDodjelu = rm.rasporedPutnikCache.values.any((r) =>
+        r['vozac_id']?.toString() == vozac.id &&
+        (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+        r['grad']?.toString().toUpperCase() == _selectedGrad &&
+        normalizeV(r['vreme']?.toString()) == selectedVNorm &&
+        r['aktivno'] != false);
+
+    if (!terminPostoji && !imaIndividualnuDodjelu) {
       _selectClosestTermin();
       // Nakon auto-selecta ponovi rebuild sa novim vrednostima
       if (_selectedVreme.isNotEmpty) {
