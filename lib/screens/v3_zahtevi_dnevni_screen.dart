@@ -39,14 +39,8 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       final p = rm.putniciCache[z.putnikId];
       final tip = (p?['tip_putnika'] as String? ?? '').toLowerCase();
       if (tip != 'dnevni') return false;
-      // Samo zahtevi koje je putnik sam poslao
-      // Primarni filter: created_by počinje sa 'vozac:' → kreirao vozač → sakriti
+      // Samo zahtevi koje je putnik sam poslao — created_by ne počinje sa 'vozac:'
       if (z.createdBy != null && z.createdBy!.startsWith('vozac:')) return false;
-      // Fallback za stare zahteve (created_by = null): izvor_id nije vozačev ID
-      if (z.createdBy == null) {
-        final vozaciIds = rm.vozaciCache.keys.toSet();
-        if (z.izvorId != null && vozaciIds.contains(z.izvorId)) return false;
-      }
       return true;
     }).toList()
       ..sort((a, b) {
