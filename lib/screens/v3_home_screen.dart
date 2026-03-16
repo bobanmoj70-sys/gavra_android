@@ -852,6 +852,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 if (e.statusFinal == 'pokupljen') return 1;
                 return 0;
               }
+
               final aRank = sortRank(a);
               final bRank = sortRank(b);
               if (aRank != bRank) return aRank.compareTo(bRank);
