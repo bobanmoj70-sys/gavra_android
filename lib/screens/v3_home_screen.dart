@@ -1404,15 +1404,21 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               final p = V3PutnikService.getPutnikById(z.putnikId);
                               if (p == null) return const SizedBox.shrink();
 
-                              // Konstruišemo privremeni V3Zahtev ako je izvor 'zahtev' radi kompatibilnosti sa V3PutnikCard
+                              final grad = z.grad ?? '';
+                              final vreme = z.vreme ?? '';
+                              final indivVozac = _getVozacZaPutnika(
+                                  z.putnikId, grad, vreme, _selectedDatumIso);
+                              final vozacBoja = indivVozac != null
+                                  ? _parseVozacColor(indivVozac.boja)
+                                  : V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme);
+
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: V3PutnikCard(
                                   putnik: p,
                                   entry: z,
                                   redniBroj: i + 1,
-                                  vozacBoja: V3VozacService.getVozacColorForTermin(
-                                      _selectedDay, z.grad ?? '', z.vreme ?? ''),
+                                  vozacBoja: vozacBoja,
                                   onDodeliVozaca: _isAdmin ? () => _showPutnikAssignDialog(z) : null,
                                 ),
                               );
