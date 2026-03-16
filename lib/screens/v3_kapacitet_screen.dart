@@ -16,30 +16,32 @@ class V3KapacitetScreen extends StatefulWidget {
 
 class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  late final Stream<Map<String, Map<String, int?>>> _streamKapacitet;
+  late final Stream<void> _streamTrigger;
+  String _selectedDay = V3DanHelper.defaultDay();
+  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _streamKapacitet = V3MasterRealtimeManager.instance.v3StreamFromCache(
+    _streamTrigger = V3MasterRealtimeManager.instance.v3StreamFromCache(
       tables: ['v3_operativna_nedelja'],
-      build: _getKapacitetSync,
+      build: () {},
     );
   }
 
-  /// Čita max_mesta iz operativnaNedeljaCache: {grad: {vreme: max_mesta?}}
+  /// Čita max_mesta iz kapacitetSlotsCache: {grad: {vreme: max_mesta?}}
   Map<String, Map<String, int?>> _getKapacitetSync() {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
     final bcVremena = V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
     final vsVremena = V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
-    final today = DateTime.now().toIso8601String().split('T')[0];
+    final datumIso = _selectedDatumIso;
 
     int? _find(String grad, String vreme) {
       for (final r in cache) {
         if (r['grad'] == grad &&
-            r['vreme'] == vreme &&
-            r['datum'].toString().startsWith(today) &&
+            r['vreme'].toString().substring(0, 5) == vreme &&
+            r['datum'].toString().startsWith(datumIso) &&
             r['aktivno'] == true) {
           return (r['max_mesta'] as num?)?.toInt();
         }
@@ -76,28 +78,26 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
     }
   }
 
-  /// Upisuje max_mesta za sve aktivne zapise grad/vreme/danas u v3_operativna_nedelja.
+  /// Upsert max_mesta u v3_kapacitet_slots za dati grad/vreme/datum.
   Future<bool> _setKapacitet(String grad, String vreme, int maxMesta) async {
     try {
-      final today = DateTime.now().toIso8601String().split('T')[0];
-      final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-      final ids = cache
-          .where((r) =>
-              r['grad'] == grad &&
-              r['vreme'] == vreme &&
-              r['datum'].toString().startsWith(today) &&
-              r['aktivno'] == true)
-          .map((r) => r['id'] as String)
-          .toList();
-      if (ids.isEmpty) {
-        debugPrint('[KapacitetScreen] Nema zapisa za $grad $vreme $today');
-        return false;
-      }
-      await supabase.from('v3_operativna_nedelja').update({'max_mesta': maxMesta}).inFilter('id', ids);
-      // Lokalni cache update
-      for (final r in cache.where((r) => ids.contains(r['id'])).toList()) {
-        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', {...r, 'max_mesta': maxMesta});
-      }
+      final datumIso = _selectedDatumIso;
+      final response = await supabase
+          .from('v3_kapacitet_slots')
+          .upsert(
+            {
+              'grad': grad,
+              'vreme': vreme,
+              'datum': datumIso,
+              'max_mesta': maxMesta,
+              'aktivno': true,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            onConflict: 'grad,vreme,datum',
+          )
+          .select()
+          .single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet_slots', response);
       return true;
     } catch (e) {
       debugPrint('[KapacitetScreen] setKapacitet error: $e');
@@ -131,23 +131,68 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
         body: ValueListenableBuilder<String>(
           valueListenable: navBarTypeNotifier,
           builder: (context, sezon, _) {
-            return StreamBuilder<Map<String, Map<String, int?>>>(
-              stream: _streamKapacitet,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final data = snapshot.data ?? {'BC': {}, 'VS': {}};
-                final bcVremena = V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
-                final vsVremena = V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _kapacitetGradTab('BC', bcVremena, data, _editKapacitet),
-                    _kapacitetGradTab('VS', vsVremena, data, _editKapacitet),
-                  ],
-                );
-              },
+            return Column(
+              children: [
+                // ── Dan chips ──────────────────────────────────────────
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Row(
+                    children: V3DanHelper.dayNames.map((day) {
+                      final isSelected = _selectedDay == day;
+                      final abbr = V3DanHelper.dayAbbrs[V3DanHelper.dayNames.indexOf(day)];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: InkWell(
+                          onTap: () => setState(() => _selectedDay = day),
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : Theme.of(context).glassContainer.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected ? Colors.white.withValues(alpha: 0.7) : Theme.of(context).glassBorder,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              abbr.toUpperCase(),
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.white60,
+                                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                                fontSize: 13,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                // ── TabBarView ─────────────────────────────────────────
+                Expanded(
+                  child: StreamBuilder<void>(
+                    stream: _streamTrigger,
+                    builder: (context, snapshot) {
+                      final data = _getKapacitetSync();
+                      final bcVremena = V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
+                      final vsVremena = V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
+                      return TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _kapacitetGradTab('BC', bcVremena, data, _editKapacitet, _selectedDatumIso),
+                          _kapacitetGradTab('VS', vsVremena, data, _editKapacitet, _selectedDatumIso),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         ),
@@ -169,6 +214,7 @@ Widget _kapacitetGradTab(
   List<String> vremena,
   Map<String, Map<String, int?>> kapacitet,
   Future<void> Function(String grad, String vreme, int? trenutni) onEdit,
+  String datumIso,
 ) {
   return ListView.builder(
     padding: const EdgeInsets.all(16),
@@ -200,20 +246,25 @@ Widget _kapacitetGradTab(
               IconButton(
                 onPressed: maxMesta != null && maxMesta > 1
                     ? () async {
-                        final ids = _getIdsForSlot(ctx, grad, vreme);
-                        if (ids.isEmpty) {
-                          if (ctx.mounted) V3AppSnackBar.error(ctx, '❌ Nema zapisa');
-                          return;
-                        }
-                        await supabase
-                            .from('v3_operativna_nedelja')
-                            .update({'max_mesta': maxMesta - 1}).inFilter('id', ids);
-                        for (final r in V3MasterRealtimeManager.instance.operativnaNedeljaCache.values
-                            .where((r) => ids.contains(r['id']))
-                            .toList()) {
-                          V3MasterRealtimeManager.instance
-                              .v3UpsertToCache('v3_operativna_nedelja', {...r, 'max_mesta': maxMesta - 1});
-                        }
+                        final newVal = maxMesta - 1;
+                        final slotId = _getSlotId(grad, vreme, datumIso);
+                        final response = await supabase
+                            .from('v3_kapacitet_slots')
+                            .upsert(
+                              {
+                                if (slotId != null) 'id': slotId,
+                                'grad': grad,
+                                'vreme': vreme,
+                                'datum': datumIso,
+                                'max_mesta': newVal,
+                                'aktivno': true,
+                                'updated_at': DateTime.now().toIso8601String(),
+                              },
+                              onConflict: 'grad,vreme,datum',
+                            )
+                            .select()
+                            .single();
+                        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet_slots', response);
                       }
                     : null,
                 icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
@@ -235,19 +286,25 @@ Widget _kapacitetGradTab(
               IconButton(
                 onPressed: maxMesta == null || maxMesta < 20
                     ? () async {
-                        final ids = _getIdsForSlot(ctx, grad, vreme);
-                        if (ids.isEmpty) {
-                          if (ctx.mounted) V3AppSnackBar.error(ctx, '❌ Nema zapisa');
-                          return;
-                        }
                         final newVal = (maxMesta ?? 0) + 1;
-                        await supabase.from('v3_operativna_nedelja').update({'max_mesta': newVal}).inFilter('id', ids);
-                        for (final r in V3MasterRealtimeManager.instance.operativnaNedeljaCache.values
-                            .where((r) => ids.contains(r['id']))
-                            .toList()) {
-                          V3MasterRealtimeManager.instance
-                              .v3UpsertToCache('v3_operativna_nedelja', {...r, 'max_mesta': newVal});
-                        }
+                        final slotId = _getSlotId(grad, vreme, datumIso);
+                        final response = await supabase
+                            .from('v3_kapacitet_slots')
+                            .upsert(
+                              {
+                                if (slotId != null) 'id': slotId,
+                                'grad': grad,
+                                'vreme': vreme,
+                                'datum': datumIso,
+                                'max_mesta': newVal,
+                                'aktivno': true,
+                                'updated_at': DateTime.now().toIso8601String(),
+                              },
+                              onConflict: 'grad,vreme,datum',
+                            )
+                            .select()
+                            .single();
+                        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet_slots', response);
                       }
                     : null,
                 icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
@@ -261,13 +318,17 @@ Widget _kapacitetGradTab(
   );
 }
 
-List<String> _getIdsForSlot(BuildContext ctx, String grad, String vreme) {
-  final today = DateTime.now().toIso8601String().split('T')[0];
-  return V3MasterRealtimeManager.instance.operativnaNedeljaCache.values
-      .where((r) =>
-          r['grad'] == grad && r['vreme'] == vreme && r['datum'].toString().startsWith(today) && r['aktivno'] == true)
-      .map((r) => r['id'] as String)
-      .toList();
+String? _getSlotId(String grad, String vreme, String datumIso) {
+  final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
+  for (final r in cache) {
+    if (r['grad'] == grad &&
+        r['vreme'].toString().substring(0, 5) == vreme &&
+        r['datum'].toString().startsWith(datumIso) &&
+        r['aktivno'] == true) {
+      return r['id'] as String?;
+    }
+  }
+  return null;
 }
 
 // ─── _KapacitetEditDialog ────────────────────────────────────────────────────

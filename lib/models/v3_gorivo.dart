@@ -49,7 +49,6 @@ class V3PumpaStanje {
         'trenutno_stanje': trenutnoStanje,
         'stanje_brojac_pistolj': stanjeBrojacPistolj,
         'aktivno': aktivno,
-        'updated_at': DateTime.now().toIso8601String(),
       };
 }
 
@@ -93,7 +92,6 @@ class V3PumpaRezervoar {
         'kapacitet_max': kapacitetMax,
         'trenutno_litara': trenutnoLitara,
         'alarm_nivo': alarmNivo,
-        'updated_at': DateTime.now().toIso8601String(),
       };
 
   bool get ispodAlarma => trenutnoLitara <= alarmNivo;

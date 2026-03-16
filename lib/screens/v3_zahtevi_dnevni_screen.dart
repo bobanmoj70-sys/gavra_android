@@ -9,16 +9,14 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 
-class V3PolasciScreen extends StatefulWidget {
-  const V3PolasciScreen({super.key});
+class V3ZahteviDnevniScreen extends StatefulWidget {
+  const V3ZahteviDnevniScreen({super.key});
 
   @override
-  State<V3PolasciScreen> createState() => _V3PolasciScreenState();
+  State<V3ZahteviDnevniScreen> createState() => _V3ZahteviDnevniScreenState();
 }
 
-class _V3PolasciScreenState extends State<V3PolasciScreen> {
-  String _filterGrad = 'svi';
-
+class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
   // ─── data helpers ────────────────────────────────────────────────
 
   List<V3Zahtev> _getZahtevi(String status) {
@@ -30,10 +28,11 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
       if (!z.aktivno || z.status != status) return false;
       final d = DateTime(z.datum.year, z.datum.month, z.datum.day);
       if (d.isBefore(todayOnly) || d.isAfter(windowEnd)) return false;
-      if (_filterGrad != 'svi' && z.grad.toUpperCase() != _filterGrad) return false;
       final p = rm.putniciCache[z.putnikId];
       final tip = (p?['tip_putnika'] as String? ?? '').toLowerCase();
       if (tip != 'dnevni') return false;
+      // Samo zahtevi koje je putnik sam poslao (izvor_id == putnik_id)
+      if (z.izvorId != z.putnikId) return false;
       return true;
     }).toList()
       ..sort((a, b) {
@@ -81,6 +80,7 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
                   expandedHeight: 110,
                   floating: true,
                   snap: true,
+                  automaticallyImplyLeading: false,
                   flexibleSpace: FlexibleSpaceBar(
                     background: Container(
                       decoration: BoxDecoration(
@@ -101,7 +101,7 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
-                              '📋 Zahtevi prevoza',
+                              'Zahtevi dnevnih putnika',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -130,42 +130,6 @@ class _V3PolasciScreenState extends State<V3PolasciScreen> {
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                ),
-
-                // ── Filteri ───────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Grad
-                        Row(
-                          children: [
-                            for (final grad in ['svi', 'BC', 'VS'])
-                              Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: ChoiceChip(
-                                  label: Text(grad == 'svi' ? '🌍 Svi gradovi' : grad),
-                                  selected: _filterGrad == grad,
-                                  onSelected: (_) => setState(() => _filterGrad = grad),
-                                  selectedColor: Colors.blue.withValues(alpha: 0.6),
-                                  labelStyle: TextStyle(
-                                    color: _filterGrad == grad ? Colors.white : Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  backgroundColor: Colors.white.withValues(alpha: 0.08),
-                                  side: BorderSide(
-                                    color: _filterGrad == grad ? Colors.blue : Colors.white.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
                     ),
                   ),
                 ),

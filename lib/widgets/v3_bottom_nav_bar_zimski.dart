@@ -300,19 +300,27 @@ class _PolazakRow extends StatelessWidget {
                               final count = getPutnikCount(grad, vreme);
                               final kapacitet = getKapacitet?.call(grad, vreme);
                               final displayText = kapacitet != null ? '$count ($kapacitet)' : '$count';
+                              final slobodna = kapacitet != null ? (kapacitet - count).clamp(0, kapacitet) : null;
+                              final textColor = selected
+                                  ? (currentThemeId == 'dark_steel_grey'
+                                      ? const Color(0xFF4A4A4A)
+                                      : currentThemeId == 'passionate_rose'
+                                          ? const Color(0xFFDC143C)
+                                          : currentThemeId == 'dark_pink'
+                                              ? const Color(0xFFE91E8C)
+                                              : Colors.blue)
+                                  : slobodna == null
+                                      ? Colors.white70
+                                      : slobodna == 0
+                                          ? Colors.red
+                                          : slobodna <= 2
+                                              ? Colors.orange
+                                              : Colors.white70;
                               return Text(
                                 displayText,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: selected
-                                      ? (currentThemeId == 'dark_steel_grey'
-                                          ? const Color(0xFF4A4A4A) // Crna tema
-                                          : currentThemeId == 'passionate_rose'
-                                              ? const Color(0xFFDC143C) // Crvena tema
-                                              : currentThemeId == 'dark_pink'
-                                                  ? const Color(0xFFE91E8C) // Dark Pink tema
-                                                  : Colors.blue) // Plava tema
-                                      : Colors.white70,
+                                  color: textColor,
                                 ),
                               );
                             },

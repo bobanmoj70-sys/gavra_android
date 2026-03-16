@@ -24,7 +24,6 @@ import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
 import 'v3_admin_screen.dart';
-import 'v3_polasci_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
 
@@ -40,9 +39,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedDay = 'Ponedeljak';
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
-
-  // Stream za broj pending zahteva (badge na dugmetu)
-  late final Stream<int> _streamBrojZahteva;
 
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici (ili sledećoj ako je dan prošao).
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
@@ -60,7 +56,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _selectedDay = V3DanHelper.defaultDay();
-    _streamBrojZahteva = V3ZahtevService.streamPendingZahteviCount();
     _initData();
   }
 
@@ -381,6 +376,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                           aktivno: true,
                                           adresaId: selectedAdresa?.id,
                                           adresaNaziv: selectedAdresa?.naziv,
+                                          izvorId: V3VozacService.currentVozac?.id,
                                         );
                                         await V3ZahtevService.createZahtev(zahtev);
                                       }
@@ -866,7 +862,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           // Kapacitet
           int? getKapacitet(String grad, String vreme) {
-            return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, DateTime.now());
+            final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+            return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
           }
 
           return Container(
@@ -1150,49 +1147,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               ],
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: StreamBuilder<int>(
-                              stream: _streamBrojZahteva,
-                              builder: (ctx, snap) {
-                                final count = snap.data ?? 0;
-                                return Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    _V3HomeButton(
-                                      label: 'Zahtevi',
-                                      icon: Icons.notifications_active,
-                                      onTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => const V3PolasciScreen()),
-                                      ),
-                                    ),
-                                    if (count > 0)
-                                      Positioned(
-                                        right: 8,
-                                        top: 8,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                                          ),
-                                          constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                          child: Text(
-                                            '$count',
-                                            style: const TextStyle(
-                                                color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 4),
                         ],
                       ],
                     ),

@@ -168,6 +168,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           status: 'obrada',
           koristiSekundarnu: koristiSekundarnu,
           aktivno: true,
+          izvorId: putnikId,
         );
         await V3ZahtevService.createZahtev(zahtev);
         if (mounted) {

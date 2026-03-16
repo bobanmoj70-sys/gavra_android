@@ -623,7 +623,10 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           _selectedVreme = vreme;
         }),
         getCount: _getPutnikCount,
-        getKapacitet: (grad, vreme) => V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, DateTime.now()),
+        getKapacitet: (grad, vreme) {
+          final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+          return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
+        },
       );
 
   // ─── Termin info traka ────────────────────────────────────────────────────

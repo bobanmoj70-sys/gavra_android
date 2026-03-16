@@ -27,6 +27,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> finansijeStanjeCache = {};
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
+  final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
@@ -50,6 +51,7 @@ class V3MasterRealtimeManager {
         supabase.from('v3_troskovi').select().eq('aktivno', true),
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
         supabase.from('v3_operativna_nedelja').select(),
+        supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
         supabase.from('v3_app_settings').select(),
       ]);
 
@@ -66,7 +68,8 @@ class V3MasterRealtimeManager {
       _fillCache(troskoviCache, results[10] as List);
       _fillCache(finansijeStanjeCache, results[11] as List);
       _fillCache(operativnaNedeljaCache, results[12] as List);
-      _fillCache(appSettingsCache, results[13] as List);
+      _fillCache(kapacitetSlotsCache, results[13] as List);
+      _fillCache(appSettingsCache, results[14] as List);
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -100,6 +103,7 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
     _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
+    _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
 
     _v3Channel!.subscribe();
@@ -183,6 +187,9 @@ class V3MasterRealtimeManager {
       case 'v3_operativna_nedelja':
         operativnaNedeljaCache[id] = row;
         break;
+      case 'v3_kapacitet_slots':
+        kapacitetSlotsCache[id] = row;
+        break;
       case 'v3_pin_zahtevi':
         if (row['status'] == 'ceka') {
           pinZahteviCache[id] = row;
@@ -230,6 +237,8 @@ class V3MasterRealtimeManager {
         return pinZahteviCache;
       case 'v3_operativna_nedelja':
         return operativnaNedeljaCache;
+      case 'v3_kapacitet_slots':
+        return kapacitetSlotsCache;
       default:
         return {};
     }

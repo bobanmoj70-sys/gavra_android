@@ -252,14 +252,14 @@ class V3OperativnaNedeljaService {
     }
   }
 
-  /// Čita max_mesta za dati grad/vreme/datum iz operativnaNedeljaCache.
-  /// Vraća null ako slot nije pronađen — nema fallback vrijednosti.
+  /// Čita max_mesta za dati grad/vreme/datum iz v3_kapacitet_slots cache-a.
+  /// Vraća null ako slot nije pronađen.
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
+    final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
     final datumStr = datum.toIso8601String().split('T')[0];
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     for (final r in cache) {
       if (r['grad'] == grad &&
-          r['vreme'] == vreme &&
+          r['vreme'].toString().substring(0, 5) == vreme &&
           r['datum'].toString().startsWith(datumStr) &&
           r['aktivno'] == true) {
         return (r['max_mesta'] as num?)?.toInt();

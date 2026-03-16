@@ -71,13 +71,7 @@ class V3ZahtevService {
 
   static Future<void> updateStatus(String id, String newStatus) async {
     try {
-      final now = DateTime.now().toUtc().toIso8601String();
-      final row = await supabase
-          .from('v3_zahtevi')
-          .update({'status': newStatus, 'updated_at': now})
-          .eq('id', id)
-          .select()
-          .single();
+      final row = await supabase.from('v3_zahtevi').update({'status': newStatus}).eq('id', id).select().single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -89,10 +83,9 @@ class V3ZahtevService {
   /// Prepisuje zeljeno_vreme i dodeljeno_vreme postojećeg zahteva (admin use-case).
   static Future<void> updateVreme(String id, String novoVreme) async {
     try {
-      final now = DateTime.now().toUtc().toIso8601String();
       final row = await supabase
           .from('v3_zahtevi')
-          .update({'zeljeno_vreme': novoVreme, 'dodeljeno_vreme': novoVreme, 'updated_at': now})
+          .update({'zeljeno_vreme': novoVreme, 'dodeljeno_vreme': novoVreme})
           .eq('id', id)
           .select()
           .single();

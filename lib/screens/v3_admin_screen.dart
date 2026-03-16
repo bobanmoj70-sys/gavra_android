@@ -17,13 +17,13 @@ import 'v3_gorivo_screen.dart';
 import 'v3_kapacitet_screen.dart';
 import 'v3_odrzavanje_screen.dart';
 import 'v3_pin_zahtevi_screen.dart';
-import 'v3_polasci_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_vozaci_admin_screen.dart';
+import 'v3_zahtevi_dnevni_screen.dart';
 
 class V3AdminScreen extends StatefulWidget {
   const V3AdminScreen({super.key});
@@ -197,7 +197,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           Navigator.pop(dialogContext);
                           Navigator.push(
                             context,
-                            MaterialPageRoute<void>(builder: (_) => const V3VozacScreen()),
+                            MaterialPageRoute<void>(builder: (_) => V3VozacScreen(vozacOverrideId: v.id)),
                           );
                         },
                       );
@@ -269,8 +269,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   }
 
   int _getZahteviCount() {
-    final cache = V3MasterRealtimeManager.instance.zahteviCache;
-    return cache.values.where((row) => (row['status']?.toString() ?? '') == 'na_cekanju').length;
+    final rm = V3MasterRealtimeManager.instance;
+    return rm.zahteviCache.values.where((row) {
+      if ((row['status']?.toString() ?? '') != 'obrada') return false;
+      final izvorId = row['izvor_id'] as String?;
+      final putnikId = row['putnik_id'] as String?;
+      return izvorId != null && izvorId == putnikId;
+    }).length;
   }
 
   int _getPinZahteviCount() {
@@ -580,6 +585,19 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
                   children: [
+                    // 🔔 Zahtevi (polasci)
+                    Expanded(
+                      child: _BadgeBtn(
+                        emoji: '🔔',
+                        color: Colors.deepOrange,
+                        badgeCount: _getZahteviCount(),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(builder: (_) => const V3ZahteviDnevniScreen()),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     // 🎓 Učenici zahtevi
                     Expanded(
                       child: _BadgeBtn(
@@ -628,19 +646,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute<void>(builder: (_) => const V3PinZahteviScreen()),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // 🔔 Zahtevi (polasci)
-                    Expanded(
-                      child: _BadgeBtn(
-                        emoji: '🔔',
-                        color: Colors.deepOrange,
-                        badgeCount: _getZahteviCount(),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(builder: (_) => const V3PolasciScreen()),
                         ),
                       ),
                     ),

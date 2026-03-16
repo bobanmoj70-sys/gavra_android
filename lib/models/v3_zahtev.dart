@@ -18,6 +18,7 @@ class V3Zahtev {
   final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? izvorId;
 
   V3Zahtev({
     required this.id,
@@ -39,6 +40,7 @@ class V3Zahtev {
     this.aktivno = true,
     this.createdAt,
     this.updatedAt,
+    this.izvorId,
   });
 
   factory V3Zahtev.fromJson(Map<String, dynamic> json) {
@@ -62,6 +64,7 @@ class V3Zahtev {
       aktivno: json['aktivno'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      izvorId: json['izvor_id'] as String?,
     );
   }
 
@@ -84,6 +87,7 @@ class V3Zahtev {
       'alt_vreme_posle': altVremePosle,
       'alt_napomena': altNapomena,
       'aktivno': aktivno,
+      if (izvorId != null) 'izvor_id': izvorId,
     };
   }
 
@@ -107,6 +111,7 @@ class V3Zahtev {
     bool? aktivno,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? izvorId,
   }) {
     return V3Zahtev(
       id: id ?? this.id,
@@ -128,6 +133,7 @@ class V3Zahtev {
       aktivno: aktivno ?? this.aktivno,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      izvorId: izvorId ?? this.izvorId,
     );
   }
 }
