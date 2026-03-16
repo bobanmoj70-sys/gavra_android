@@ -1042,6 +1042,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           final selectedVremeNorm = normalizeVreme(_selectedVreme);
 
           // Lista: datum dolazi iz stream-a, filtriraj samo po gradu i vremenu
+          final currentVozacId = V3VozacService.currentVozac?.id;
           final prikazaniZapisi = sviZapisi.where((z) {
             if (z.grad != _selectedGrad) return false;
             if (normalizeVreme(z.vreme) != selectedVremeNorm) return false;
@@ -1051,9 +1052,27 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           }).toList()
             ..sort((a, b) {
               int sortRank(V3OperativnaNedeljaEntry e) {
-                if (e.statusFinal == 'otkazano') return 2;
-                if (e.pokupljen) return 1;
-                return 0;
+                if (e.statusFinal == 'otkazano') return 3;
+                if (e.pokupljen) return 2;
+                // Provjeri da li je putnik dodijeljen logovanom vozaču
+                if (currentVozacId != null) {
+                  final indiv = _getVozacZaPutnika(
+                      e.putnikId, e.grad ?? '', e.vreme ?? '', _selectedDatumIso);
+                  if (indiv != null) {
+                    return indiv.id == currentVozacId ? 0 : 1;
+                  }
+                  // Nema individualne — provjeri terminskog vozača
+                  final rm = V3MasterRealtimeManager.instance;
+                  final normV = V2GradAdresaValidator.normalizeTime(e.vreme ?? '');
+                  for (final row in rm.rasporedTerminCache.values) {
+                    if ((row['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+                        row['grad'] == e.grad &&
+                        V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV) {
+                      return row['vozac_id'] == currentVozacId ? 0 : 1;
+                    }
+                  }
+                }
+                return 1;
               }
 
               final aRank = sortRank(a);
@@ -1406,8 +1425,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
                               final grad = z.grad ?? '';
                               final vreme = z.vreme ?? '';
-                              final indivVozac = _getVozacZaPutnika(
-                                  z.putnikId, grad, vreme, _selectedDatumIso);
+                              final indivVozac = _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
                               final vozacBoja = indivVozac != null
                                   ? _parseVozacColor(indivVozac.boja)
                                   : V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme);
