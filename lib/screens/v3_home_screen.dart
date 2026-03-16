@@ -369,9 +369,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         final zahtev = V3Zahtev(
                                           id: '',
                                           putnikId: selectedPutnik!.id,
+                                          imePrezime: selectedPutnik!.imePrezime,
                                           datum: DateTime.parse(isoDate),
                                           grad: _selectedGrad,
                                           zeljenoVreme: _selectedVreme,
+                                          dodeljenoVreme: _selectedVreme,
                                           brojMesta: brojMesta,
                                           status: 'odobreno',
                                           aktivno: true,
