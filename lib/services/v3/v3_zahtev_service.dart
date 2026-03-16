@@ -4,6 +4,7 @@ import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_audit_log_service.dart';
+import 'v3_vozac_service.dart';
 
 /// Service for V3 passenger travel requests (`v3_zahtevi`).
 class V3ZahtevService {
@@ -228,7 +229,9 @@ class V3ZahtevService {
 
   static Future<void> updatedodeljenoVreme(String id, String? vreme) async {
     try {
-      await supabase.from('v3_zahtevi').update({'dodeljeno_vreme': vreme, 'updated_by': 'dispecer:sistem'}).eq('id', id);
+      await supabase
+          .from('v3_zahtevi')
+          .update({'dodeljeno_vreme': vreme, 'updated_by': 'dispecer:sistem'}).eq('id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] Vreme update error: $e');
       rethrow;
