@@ -1256,7 +1256,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             },
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
-            showVozacBoja: _isAdmin,
+            showVozacBoja: true,
             getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
           );
         } else if (navType == 'praznici') {
@@ -1272,7 +1272,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             },
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
-            showVozacBoja: _isAdmin,
+            showVozacBoja: true,
             getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
           );
         } else {
@@ -1289,7 +1289,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             },
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
-            showVozacBoja: _isAdmin,
+            showVozacBoja: true,
             getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
           );
         }

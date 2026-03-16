@@ -84,13 +84,20 @@ class V3VozacService {
     final datumIso = V3DanHelper.datumIsoZaDanPuni(danPuni);
     if (datumIso.isEmpty) return null;
 
+    String normV(String? v) {
+      if (v == null || v.isEmpty) return '';
+      final p = v.split(':');
+      return p.length >= 2 ? '${p[0].padLeft(2, '0')}:${p[1]}' : v;
+    }
+
+    final vremeNorm = normV(vreme);
     final rm = V3MasterRealtimeManager.instance;
     try {
       final termin = rm.rasporedTerminCache.values.firstWhere(
         (r) =>
             (r['datum'] as String?)?.split('T')[0] == datumIso &&
             r['grad']?.toString().toUpperCase() == grad.toUpperCase() &&
-            r['vreme']?.toString() == vreme &&
+            normV(r['vreme']?.toString()) == vremeNorm &&
             r['aktivno'] == true,
       );
       final vozacId = termin['vozac_id']?.toString();
