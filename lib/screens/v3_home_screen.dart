@@ -379,7 +379,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                           adresaNaziv: selectedAdresa?.naziv,
                                           izvorId: V3VozacService.currentVozac?.id,
                                         );
-                                        await V3ZahtevService.createZahtev(zahtev, createdBy: 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "nepoznat"}');
+                                        await V3ZahtevService.createZahtev(zahtev,
+                                            createdBy:
+                                                'vozac:${V3VozacService.currentVozac?.imePrezime ?? "nepoznat"}');
                                       }
 
                                       if (!dialogCtx.mounted) return;
@@ -845,9 +847,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             return true;
           }).toList()
             ..sort((a, b) {
-              final aOtk = a.statusFinal == 'otkazano' ? 1 : 0;
-              final bOtk = b.statusFinal == 'otkazano' ? 1 : 0;
-              if (aOtk != bOtk) return aOtk.compareTo(bOtk);
+              int sortRank(V3OperativnaNedeljaEntry e) {
+                if (e.statusFinal == 'otkazano') return 2;
+                if (e.statusFinal == 'pokupljen') return 1;
+                return 0;
+              }
+              final aRank = sortRank(a);
+              final bRank = sortRank(b);
+              if (aRank != bRank) return aRank.compareTo(bRank);
               final aIme = a.imePrezime ?? V3PutnikService.getPutnikById(a.putnikId)?.imePrezime ?? '';
               final bIme = b.imePrezime ?? V3PutnikService.getPutnikById(b.putnikId)?.imePrezime ?? '';
               return aIme.compareTo(bIme);
