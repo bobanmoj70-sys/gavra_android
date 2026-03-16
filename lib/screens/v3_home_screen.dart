@@ -840,6 +840,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             if (z.grad != _selectedGrad) return false;
             if (normalizeVreme(z.vreme) != selectedVremeNorm) return false;
             if (z.statusFinal == 'odbijeno') return false;
+            if (z.statusFinal == 'obrada') return false;
             return true;
           }).toList()
             ..sort((a, b) {
@@ -856,6 +857,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               if (z.grad != grad) return false;
               if (normalizeVreme(z.vreme) != targetVremeNorm) return false;
               if (z.statusFinal == 'otkazano' || z.statusFinal == 'odbijeno') return false;
+              if (z.statusFinal == 'obrada') return false;
               return true;
             }).fold(0, (sum, z) => sum + z.brojMesta);
           }
