@@ -238,7 +238,7 @@ Future<void> _initAppServices() async {
       final min = _parseVersion(minVersion);
       final latest = _parseVersion(latestVersion);
 
-      const isForced = true; // TEST: privremeno true
+      final isForced = current < min;
       final hasUpdate = current < latest;
 
       // Odaberi odgovarajući store URL (Android prioritet)
@@ -247,7 +247,6 @@ Future<void> _initAppServices() async {
           (settings?['store_url_ios'] as String?) ??
           '';
 
-      // ignore: dead_code
       if (isForced || hasUpdate) {
         updateInfoNotifier.value = V2UpdateInfo(
           latestVersion: latestVersion,
