@@ -37,7 +37,7 @@ class V3VoziloService {
 
   static Future<void> deactivateVozilo(String id) async {
     try {
-      await supabase.from('v3_vozila').update({'aktivno': false}).eq('id', id);
+      await supabase.from('v3_vozila').update({'aktivno': false, 'updated_by': 'admin:sistem'}).eq('id', id);
     } catch (e) {
       debugPrint('[V3VoziloService] Deactivate error: $e');
       rethrow;

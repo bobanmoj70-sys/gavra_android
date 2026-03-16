@@ -72,10 +72,15 @@ class V3ZahtevService {
 
   static Future<void> updateStatus(String id, String newStatus, {String? updatedBy}) async {
     try {
-      final row = await supabase.from('v3_zahtevi').update({
-        'status': newStatus,
-        'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
-      }).eq('id', id).select().single();
+      final row = await supabase
+          .from('v3_zahtevi')
+          .update({
+            'status': newStatus,
+            'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
+          })
+          .eq('id', id)
+          .select()
+          .single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -179,7 +184,12 @@ class V3ZahtevService {
           : otkazaoPutnikId != null
               ? 'putnik:$otkazaoPutnikId'
               : 'sistem';
-      final row = await supabase.from('v3_zahtevi').update({'status': 'otkazano', 'updated_by': updBy}).eq('id', id).select().single();
+      final row = await supabase
+          .from('v3_zahtevi')
+          .update({'status': 'otkazano', 'updated_by': updBy})
+          .eq('id', id)
+          .select()
+          .single();
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
       await supabase.from('v3_operativna_nedelja').update({
         if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
@@ -218,7 +228,7 @@ class V3ZahtevService {
 
   static Future<void> updatedodeljenoVreme(String id, String? vreme) async {
     try {
-      await supabase.from('v3_zahtevi').update({'dodeljeno_vreme': vreme}).eq('id', id);
+      await supabase.from('v3_zahtevi').update({'dodeljeno_vreme': vreme, 'updated_by': 'dispecer:sistem'}).eq('id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] Vreme update error: $e');
       rethrow;
@@ -253,6 +263,7 @@ class V3ZahtevService {
         'alt_vreme_pre': vremePre,
         'alt_vreme_posle': vremePosle,
         'alt_napomena': napomena,
+        'updated_by': 'dispecer:sistem',
       }).eq('id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] Ponuda error: $e');
@@ -267,6 +278,7 @@ class V3ZahtevService {
       'dodeljeno_vreme': izabranoVreme,
       'alt_vreme_pre': null,
       'alt_vreme_posle': null,
+      'updated_by': 'putnik:sistem',
     }).eq('id', id);
   }
 
@@ -275,6 +287,7 @@ class V3ZahtevService {
       'status': 'odbijeno',
       'alt_vreme_pre': null,
       'alt_vreme_posle': null,
+      'updated_by': 'putnik:sistem',
     }).eq('id', id);
   }
 }

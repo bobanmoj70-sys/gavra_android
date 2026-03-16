@@ -71,7 +71,7 @@ class V3VozacService {
 
   static Future<void> deactivateVozac(String id) async {
     try {
-      await supabase.from('v3_vozaci').update({'aktivno': false}).eq('id', id);
+      await supabase.from('v3_vozaci').update({'aktivno': false, 'updated_by': 'admin:sistem'}).eq('id', id);
     } catch (e) {
       debugPrint('[V3VozacService] Deactivate error: $e');
       rethrow;
