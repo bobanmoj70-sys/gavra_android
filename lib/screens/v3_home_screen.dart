@@ -848,7 +848,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               final aOtk = a.statusFinal == 'otkazano' ? 1 : 0;
               final bOtk = b.statusFinal == 'otkazano' ? 1 : 0;
               if (aOtk != bOtk) return aOtk.compareTo(bOtk);
-              return (a.imePrezime ?? '').compareTo(b.imePrezime ?? '');
+              final aIme = a.imePrezime ?? V3PutnikService.getPutnikById(a.putnikId)?.imePrezime ?? '';
+              final bIme = b.imePrezime ?? V3PutnikService.getPutnikById(b.putnikId)?.imePrezime ?? '';
+              return aIme.compareTo(bIme);
             });
 
           // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
