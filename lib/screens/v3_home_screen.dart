@@ -1056,8 +1056,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 if (e.pokupljen) return 2;
                 // Provjeri da li je putnik dodijeljen logovanom vozaču
                 if (currentVozacId != null) {
-                  final indiv = _getVozacZaPutnika(
-                      e.putnikId, e.grad ?? '', e.vreme ?? '', _selectedDatumIso);
+                  final indiv = _getVozacZaPutnika(e.putnikId, e.grad ?? '', e.vreme ?? '', _selectedDatumIso);
                   if (indiv != null) {
                     return indiv.id == currentVozacId ? 0 : 1;
                   }

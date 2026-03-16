@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
-import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
@@ -562,9 +561,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                       entry: z,
                                       redniBroj: i + 1,
                                       vozacBoja: vozacBoja,
-                                      onDodeliVozaca: z.statusFinal == 'otkazano'
-                                          ? null
-                                          : () => _showPutnikAssignDialog(z),
+                                      onDodeliVozaca:
+                                          z.statusFinal == 'otkazano' ? null : () => _showPutnikAssignDialog(z),
                                       onChanged: () => setState(() {}),
                                     ),
                                   );
@@ -749,4 +747,3 @@ class _NavBarProps {
 }
 
 // ─── Zahtev tile ──────────────────────────────────────────────────────────────
-
