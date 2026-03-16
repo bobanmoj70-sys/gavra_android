@@ -26,6 +26,13 @@ class V3OperativnaNedeljaEntry {
   final String? otkazaoVozacId;
   final int? maxMesta;
   final bool pokupljen;
+  final String? napomena;
+  final String? altVremePre;
+  final String? altVremePosle;
+  final String? altNapomena;
+  final String? adresaId;
+  final String? adresaNaziv;
+  final String? createdBy;
 
   V3OperativnaNedeljaEntry({
     required this.id,
@@ -50,6 +57,13 @@ class V3OperativnaNedeljaEntry {
     this.otkazaoVozacId,
     this.maxMesta,
     this.pokupljen = false,
+    this.napomena,
+    this.altVremePre,
+    this.altVremePosle,
+    this.altNapomena,
+    this.adresaId,
+    this.adresaNaziv,
+    this.createdBy,
   });
 
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
@@ -76,6 +90,13 @@ class V3OperativnaNedeljaEntry {
       otkazaoVozacId: json['otkazao_vozac_id'] as String?,
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
       pokupljen: json['pokupljen'] as bool? ?? false,
+      napomena: json['napomena'] as String?,
+      altVremePre: json['alt_vreme_pre'] as String?,
+      altVremePosle: json['alt_vreme_posle'] as String?,
+      altNapomena: json['alt_napomena'] as String?,
+      adresaId: json['adresa_id'] as String?,
+      adresaNaziv: json['adresa_naziv'] as String?,
+      createdBy: json['created_by'] as String?,
     );
   }
 
@@ -100,6 +121,13 @@ class V3OperativnaNedeljaEntry {
       if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
       if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
       if (maxMesta != null) 'max_mesta': maxMesta,
+      if (napomena != null) 'napomena': napomena,
+      if (altVremePre != null) 'alt_vreme_pre': altVremePre,
+      if (altVremePosle != null) 'alt_vreme_posle': altVremePosle,
+      if (altNapomena != null) 'alt_napomena': altNapomena,
+      if (adresaId != null) 'adresa_id': adresaId,
+      if (adresaNaziv != null) 'adresa_naziv': adresaNaziv,
+      if (createdBy != null) 'created_by': createdBy,
     };
   }
 }
@@ -306,5 +334,71 @@ class V3OperativnaNedeljaService {
         return (kapacitet: kapacitet, zauzeto: zauzeto, slobodna: slobodna);
       },
     );
+  }
+
+  /// Direktan INSERT u v3_operativna_nedelja — za vozača koji dodaje putnika.
+  /// Upisuje: zeljeno_vreme, dodeljeno_vreme, status_final='odobreno', created_by='vozac:Ime'.
+  /// Ako već postoji aktivan zapis za isti putnik+datum+grad → UPDATE vreme+status.
+  static Future<void> createOrUpdateByVozac({
+    required String putnikId,
+    required String imePrezime,
+    required String datum, // yyyy-MM-dd
+    required String grad,
+    required String zeljenoVreme, // HH:mm
+    required String dodeljivoVreme, // HH:mm
+    required int brojMesta,
+    required String createdBy, // 'vozac:Ime'
+    String? adresaId,
+    String? adresaNaziv,
+    String? napomena,
+  }) async {
+    try {
+      // Provjeri postoji li već aktivan zapis
+      final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+      final postojeci = cache.where((r) {
+        final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+        return r['putnik_id'] == putnikId &&
+            rDatum == datum &&
+            r['grad'] == grad &&
+            r['aktivno'] == true;
+      }).toList();
+
+      if (postojeci.isNotEmpty) {
+        // UPDATE: prepiši vreme i status
+        await supabase.from('v3_operativna_nedelja').update({
+          'zeljeno_vreme': zeljenoVreme,
+          'dodeljeno_vreme': dodeljivoVreme,
+          'vreme': dodeljivoVreme,
+          'status_final': 'odobreno',
+          'updated_by': createdBy,
+          if (adresaId != null) 'adresa_id': adresaId,
+          if (adresaNaziv != null) 'adresa_naziv': adresaNaziv,
+          if (napomena != null) 'napomena': napomena,
+        }).eq('id', postojeci.first['id'] as String);
+      } else {
+        // INSERT direktno u operativna_nedelja
+        await supabase.from('v3_operativna_nedelja').insert({
+          'putnik_id': putnikId,
+          'izvor_id': putnikId,
+          'ime_prezime': imePrezime,
+          'datum': datum,
+          'grad': grad,
+          'zeljeno_vreme': zeljenoVreme,
+          'dodeljeno_vreme': dodeljivoVreme,
+          'vreme': dodeljivoVreme,
+          'broj_mesta': brojMesta,
+          'status_final': 'odobreno',
+          'aktivno': true,
+          'pokupljen': false,
+          'created_by': createdBy,
+          if (adresaId != null) 'adresa_id': adresaId,
+          if (adresaNaziv != null) 'adresa_naziv': adresaNaziv,
+          if (napomena != null) 'napomena': napomena,
+        });
+      }
+    } catch (e) {
+      debugPrint('[V3OperativnaNedeljaService] createOrUpdateByVozac error: $e');
+      rethrow;
+    }
   }
 }

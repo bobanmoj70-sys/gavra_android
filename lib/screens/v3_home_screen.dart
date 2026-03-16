@@ -548,44 +548,22 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     }
                                     setS(() => isLoading = true);
                                     try {
-                                      // Izračunaj datum za selektovani dan
                                       final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
+                                      final vozacIme = V3VozacService.currentVozac?.imePrezime ?? 'nepoznat';
 
-                                      // Provjeri postoji li već aktivan zahtev za ovog putnika (isti datum + grad)
-                                      final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-                                      final postojeci = cache.where((r) {
-                                        final rDatum = (r['datum'] as String? ?? '').split('T')[0];
-                                        return r['putnik_id'] == selectedPutnik!.id &&
-                                            rDatum == isoDate &&
-                                            r['grad'] == _selectedGrad &&
-                                            r['aktivno'] == true;
-                                      }).toList();
-
-                                      if (postojeci.isNotEmpty) {
-                                        // Prepiši vreme na postojećem zahtjevu
-                                        await V3ZahtevService.updateVreme(
-                                            postojeci.first['id'] as String, _selectedVreme,
-                                            status: 'odobreno');
-                                      } else {
-                                        final zahtev = V3Zahtev(
-                                          id: '',
-                                          putnikId: selectedPutnik!.id,
-                                          imePrezime: selectedPutnik!.imePrezime,
-                                          datum: DateTime.parse(isoDate),
-                                          grad: _selectedGrad,
-                                          zeljenoVreme: _selectedVreme,
-                                          dodeljenoVreme: _selectedVreme,
-                                          brojMesta: brojMesta,
-                                          status: 'odobreno',
-                                          aktivno: true,
-                                          adresaId: selectedAdresa?.id,
-                                          adresaNaziv: selectedAdresa?.naziv,
-                                          izvorId: V3VozacService.currentVozac?.id,
-                                        );
-                                        await V3ZahtevService.createZahtev(zahtev,
-                                            createdBy:
-                                                'vozac:${V3VozacService.currentVozac?.imePrezime ?? "nepoznat"}');
-                                      }
+                                      // Direktan INSERT/UPDATE u v3_operativna_nedelja
+                                      await V3OperativnaNedeljaService.createOrUpdateByVozac(
+                                        putnikId: selectedPutnik!.id,
+                                        imePrezime: selectedPutnik!.imePrezime,
+                                        datum: isoDate,
+                                        grad: _selectedGrad,
+                                        zeljenoVreme: _selectedVreme,
+                                        dodeljivoVreme: _selectedVreme,
+                                        brojMesta: brojMesta,
+                                        createdBy: 'vozac:$vozacIme',
+                                        adresaId: selectedAdresa?.id,
+                                        adresaNaziv: selectedAdresa?.naziv,
+                                      );
 
                                       if (!dialogCtx.mounted) return;
                                       Navigator.pop(dialogCtx);
