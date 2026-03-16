@@ -134,6 +134,7 @@ class V3PinZahtevService {
       // 1. Ažuriraj putnika sa novim PIN-om u v3_putnici
       await supabase.from('v3_putnici').update({
         'pin': pin,
+        'updated_by': 'admin:sistem',
       }).eq('id', putnikId);
 
       // 2. Obeleži zahtev kao odobren (Fire and Forget)

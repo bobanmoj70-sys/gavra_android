@@ -49,6 +49,7 @@ class V3VozacService {
           'sifra': vozac.sifra,
           'boja': vozac.boja,
           'aktivno': vozac.aktivno,
+          'updated_by': 'admin:sistem',
         }).eq('id', vozac.id);
       } else {
         // Add — insert novog vozača (bez push_token, dobija ga pri prvom loginu)

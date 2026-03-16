@@ -26,6 +26,7 @@ class V3VoziloService {
   static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();
+      data['updated_by'] = 'admin:sistem';
 
       await supabase.from('v3_vozila').upsert(data);
     } catch (e) {

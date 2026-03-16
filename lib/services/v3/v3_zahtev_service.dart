@@ -70,9 +70,12 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> updateStatus(String id, String newStatus) async {
+  static Future<void> updateStatus(String id, String newStatus, {String? updatedBy}) async {
     try {
-      final row = await supabase.from('v3_zahtevi').update({'status': newStatus}).eq('id', id).select().single();
+      final row = await supabase.from('v3_zahtevi').update({
+        'status': newStatus,
+        'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
+      }).eq('id', id).select().single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -88,6 +91,7 @@ class V3ZahtevService {
         'zeljeno_vreme': novoVreme,
         'dodeljeno_vreme': novoVreme,
         if (status != null) 'status': status,
+        'updated_by': 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
       };
       final row = await supabase.from('v3_zahtevi').update(payload).eq('id', id).select().single();
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
@@ -170,7 +174,12 @@ class V3ZahtevService {
 
   static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId}) async {
     try {
-      final row = await supabase.from('v3_zahtevi').update({'status': 'otkazano'}).eq('id', id).select().single();
+      final String updBy = otkazaoVozacId != null
+          ? 'vozac:${V3VozacService.getVozacById(otkazaoVozacId)?.imePrezime ?? otkazaoVozacId}'
+          : otkazaoPutnikId != null
+              ? 'putnik:$otkazaoPutnikId'
+              : 'sistem';
+      final row = await supabase.from('v3_zahtevi').update({'status': 'otkazano', 'updated_by': updBy}).eq('id', id).select().single();
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
       await supabase.from('v3_operativna_nedelja').update({
         if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
@@ -224,6 +233,7 @@ class V3ZahtevService {
         'zeljeno_vreme': novoVreme,
         'dodeljeno_vreme': null,
         'status': 'obrada',
+        'updated_by': 'putnik:sistem',
       }).eq('id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] ZeljenoVreme update error: $e');
