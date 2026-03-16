@@ -68,7 +68,7 @@ Set-Content -Path $gradlePath -Value $gradleContent -NoNewline
 Write-Host "`n✓ Updated pubspec.yaml: $newFullVersion" -ForegroundColor Green
 Write-Host "✓ Updated build.gradle.kts: versionCode=$build, versionName=$newVersion" -ForegroundColor Green
 
-# Auto-update Supabase v2_app_settings
+# Auto-update Supabase v3_app_settings
 # latest_version = nova verzija, min_version = prethodna (svaka druga obavezna)
 $supabaseUrl = $null
 $supabaseKey = $null
