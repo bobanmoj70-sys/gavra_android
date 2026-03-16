@@ -58,12 +58,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     WidgetsBinding.instance.addPostFrameCallback((_) => _onUpdateInfo());
     Future.delayed(const Duration(milliseconds: 300), _init);
 
-    // Zahtjev za dozvolama — prikaži onboarding screen samo prvi put
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      _maybeShowPermissionScreen();
-    });
-
     // Provjera baterijske optimizacije za agresivne proizvođače
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
@@ -118,6 +112,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         _isLoading = false;
       });
     }
+
+    // Dozvole — prikaži onboarding screen ako nije prikazan, pa tek onda auto-login
+    await _maybeShowPermissionScreen();
 
     // Auto-login: provjeri in-memory sesiju ili biometriju za zadnjeg vozača
     await _checkAutoLogin();

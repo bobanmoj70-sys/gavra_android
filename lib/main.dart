@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_api_availability/google_api_availability.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -210,17 +211,67 @@ void onNotificationTap(NotificationResponse response) async {
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
-  // Učitaj nav_bar_type iz baze PRIJE nego što se UI osloni na notifier
+  // Učitaj nav_bar_type + verziju iz baze
   try {
-    final settings =
-        await Supabase.instance.client.from('v3_app_settings').select('nav_bar_type').eq('id', 'global').maybeSingle();
+    final settings = await Supabase.instance.client
+        .from('v3_app_settings')
+        .select('nav_bar_type, min_version, latest_version, store_url_android, store_url_huawei, store_url_ios')
+        .eq('id', 'global')
+        .maybeSingle();
+
+    // 1. nav_bar_type
     final navType = settings?['nav_bar_type'] as String?;
     if (navType != null && ['zimski', 'letnji', 'praznici'].contains(navType)) {
       navBarTypeNotifier.value = navType;
       debugPrint('[main] nav_bar_type učitan iz baze: $navType');
     }
+
+    // 2. Provjera verzije — obavezno/opciono ažuriranje
+    final minVersion = settings?['min_version'] as String?;
+    final latestVersion = settings?['latest_version'] as String?;
+    if (minVersion != null && latestVersion != null) {
+      final info = await PackageInfo.fromPlatform();
+      final currentVersion = info.version;
+
+      // Uporedi verzije numerički (npr. 6.0.124)
+      final current = _parseVersion(currentVersion);
+      final min = _parseVersion(minVersion);
+      final latest = _parseVersion(latestVersion);
+
+      const isForced = true; // TEST: privremeno true
+      final hasUpdate = current < latest;
+
+      // Odaberi odgovarajući store URL (Android prioritet)
+      final storeUrl = (settings?['store_url_android'] as String?) ??
+          (settings?['store_url_huawei'] as String?) ??
+          (settings?['store_url_ios'] as String?) ??
+          '';
+
+      // ignore: dead_code
+      if (isForced || hasUpdate) {
+        updateInfoNotifier.value = V2UpdateInfo(
+          latestVersion: latestVersion,
+          storeUrl: storeUrl,
+          isForced: isForced,
+        );
+        debugPrint('[main] Update: current=$currentVersion min=$minVersion latest=$latestVersion forced=$isForced');
+      }
+    }
   } catch (e) {
-    debugPrint('⚠️ [main] Greška pri učitavanju nav_bar_type: $e');
+    debugPrint('⚠️ [main] Greška pri učitavanju app_settings: $e');
+  }
+}
+
+/// Parsira verziju u broj za poređenje (npr. "6.0.124" → 6000124)
+int _parseVersion(String v) {
+  try {
+    final parts = v.split('.');
+    final major = int.tryParse(parts.elementAtOrNull(0) ?? '0') ?? 0;
+    final minor = int.tryParse(parts.elementAtOrNull(1) ?? '0') ?? 0;
+    final patch = int.tryParse(parts.elementAtOrNull(2) ?? '0') ?? 0;
+    return major * 1000000 + minor * 1000 + patch;
+  } catch (_) {
+    return 0;
   }
 }
 
