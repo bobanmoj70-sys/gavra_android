@@ -100,11 +100,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final infos = <_ZahtevInfo>[];
       for (final z in bcList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
-        infos.add(_ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id));
+        infos.add(
+            _ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: z.pokupljen));
       }
       for (final z in vsList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
-        infos.add(_ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id));
+        infos.add(
+            _ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: z.pokupljen));
       }
       newMap[dan] = infos;
     }
@@ -184,7 +186,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
     // Scenario 2: zahtev u obradi — blokirati sve akcije
     if (info?.status == 'obrada') {
-      if (mounted) V3AppSnackBar.info(ctx, 'Vaš zahtev je u obradi. Nakon završetka možete poslati novi.');
+      if (mounted) V3AppSnackBar.info(ctx, 'Vaš zahtev je u obradi kod dispečera.');
       return;
     }
 
@@ -194,7 +196,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
     final vremena = V2RouteConfig.getVremenaByNavType(grad, navBarTypeNotifier.value);
     final currentVreme = info?.vreme;
-    final hasActive = info != null && info.status != 'otkazano' && info.status != 'odbijeno';
+    final hasActive = info != null &&
+        info.status != 'otkazano' &&
+        info.status != 'odbijeno' &&
+        info.status != 'alternativa' &&
+        info.status != 'ponuda';
 
     // Provera da li putnik ima drugu adresu za ovaj grad
     final putnikId = _putnikData['id']?.toString();
@@ -355,6 +361,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                   ? null
                                   : () async {
                                       Navigator.of(dialogCtx).pop();
+
+                                      // Scenario: "Ignore alternative and retry"
+                                      // Ako putnik klikne na bilo koje vreme dok je u statusu "alternativa",
+                                      // resetujemo zahtev na "obrada" i brišemo ponuđene alternative.
+                                      if (info?.status == 'alternativa' || info?.status == 'ponuda') {
+                                        await V3ZahtevService.updateStatus(info!.zahtevId, 'obrada',
+                                            updatedBy: 'putnik:reset_alternative');
+                                        // Ovde možemo stati ili nastaviti sa novim vremenom.
+                                        // Budući da je isLocked već proveren, dozvoljavamo promenu vremena.
+                                      }
+
                                       await _updatePolazak(dan, grad, vreme,
                                           trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
                                     },
@@ -425,32 +442,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   };
 
   Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Odjava?', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'Da li želiš da se odjaviš?',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Ne'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Da, odjavi me', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true || !mounted) return;
-    Navigator.pop(context);
+    // ...existing code...
   }
+
+  // _showAlternativaDialog obrisan jer alternativa ide samo preko push notifikacije.
 
   // ─────────────────────────────────────────────────────────────────
   // BUILD
@@ -871,12 +866,14 @@ class _ZahtevInfo {
   final String vreme;
   final String status;
   final String zahtevId;
+  final bool pokupljen;
 
   const _ZahtevInfo({
     required this.grad,
     required this.vreme,
     required this.status,
     required this.zahtevId,
+    this.pokupljen = false,
   });
 }
 
@@ -991,22 +988,29 @@ class _ZahtevCell extends StatelessWidget {
 
     final Color statusColor;
     final String statusIcon;
-    switch (info!.status) {
-      case 'odobreno':
-        statusColor = Colors.green;
-        statusIcon = '✅';
-      case 'obrada':
-        statusColor = Colors.amber;
-        statusIcon = '⏳';
-      case 'odbijeno':
-        statusColor = Colors.red;
-        statusIcon = '❌';
-      case 'otkazano':
-        statusColor = Colors.red.shade300;
-        statusIcon = '🚫';
-      default:
-        statusColor = Colors.grey;
-        statusIcon = '•';
+    if (info!.pokupljen) {
+      statusColor = Colors.blue;
+      statusIcon = '🚗';
+    } else {
+      switch (info!.status) {
+        case 'odobreno':
+          statusColor = Colors.green;
+          statusIcon = '✅';
+        case 'obrada':
+          statusColor = Colors.orange;
+          statusIcon = '⏳';
+        case 'alternativa':
+        case 'ponuda':
+          statusColor = Colors.orangeAccent;
+          statusIcon = '🔄';
+        case 'odbijeno':
+        case 'otkazano':
+          statusColor = Colors.red;
+          statusIcon = '🚫';
+        default:
+          statusColor = Colors.grey;
+          statusIcon = '•';
+      }
     }
 
     final vreme = info!.vreme.length >= 5 ? info!.vreme.substring(0, 5) : info!.vreme;
@@ -1039,3 +1043,5 @@ class _ZahtevCell extends StatelessWidget {
     );
   }
 }
+
+// _AltOptionBtn obrisan jer se više ne koristi u ovom fajlu.

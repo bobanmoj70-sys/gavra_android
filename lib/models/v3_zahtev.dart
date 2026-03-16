@@ -6,7 +6,8 @@ class V3Zahtev {
   final String grad;
   final String zeljenoVreme;
   final int brojMesta;
-  final String status; // 'obrada', 'odobreno', 'odbijeno', 'otkazano'
+  final String status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
+  final bool pokupljen;
   final String? napomena;
   final String? dodeljenoVreme;
   final String? adresaId;
@@ -30,6 +31,7 @@ class V3Zahtev {
     required this.zeljenoVreme,
     this.brojMesta = 1,
     this.status = 'obrada',
+    this.pokupljen = false,
     this.napomena,
     this.dodeljenoVreme,
     this.adresaId,
@@ -55,6 +57,7 @@ class V3Zahtev {
       zeljenoVreme: json['zeljeno_vreme'] as String? ?? '',
       brojMesta: json['broj_mesta'] as int? ?? 1,
       status: json['status'] as String? ?? 'obrada',
+      pokupljen: json['pokupljen'] as bool? ?? false,
       napomena: json['napomena'] as String?,
       dodeljenoVreme: json['dodeljeno_vreme'] as String?,
       adresaId: json['adresa_id'] as String?,
@@ -81,6 +84,7 @@ class V3Zahtev {
       'zeljeno_vreme': zeljenoVreme,
       'broj_mesta': brojMesta,
       'status': status,
+      'pokupljen': pokupljen,
       'napomena': napomena,
       'dodeljeno_vreme': dodeljenoVreme,
       'adresa_id': adresaId,
@@ -104,6 +108,7 @@ class V3Zahtev {
     String? zeljenoVreme,
     int? brojMesta,
     String? status,
+    bool? pokupljen,
     String? napomena,
     String? dodeljenoVreme,
     String? adresaId,
@@ -126,6 +131,7 @@ class V3Zahtev {
       zeljenoVreme: zeljenoVreme ?? this.zeljenoVreme,
       brojMesta: brojMesta ?? this.brojMesta,
       status: status ?? this.status,
+      pokupljen: pokupljen ?? this.pokupljen,
       napomena: napomena ?? this.napomena,
       dodeljenoVreme: dodeljenoVreme ?? this.dodeljenoVreme,
       adresaId: adresaId ?? this.adresaId,

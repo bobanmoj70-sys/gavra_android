@@ -25,7 +25,15 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
     final todayOnly = DateTime(today.year, today.month, today.day);
     final windowEnd = todayOnly.add(const Duration(days: 14));
     return rm.zahteviCache.values.map((v) => V3Zahtev.fromJson(v)).where((z) {
-      if (!z.aktivno || z.status != status) return false;
+      if (!z.aktivno) return false;
+
+      // Ako tražimo 'obrada', prikaži i one koji su u statusu 'alternativa' (jer ih dispečer i dalje vidi kao nešto na čemu radi)
+      if (status == 'obrada') {
+        if (z.status != 'obrada' && z.status != 'alternativa') return false;
+      } else {
+        if (z.status != status) return false;
+      }
+
       final d = DateTime(z.datum.year, z.datum.month, z.datum.day);
       if (d.isBefore(todayOnly) || d.isAfter(windowEnd)) return false;
       final p = rm.putniciCache[z.putnikId];
@@ -49,12 +57,141 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
     try {
       await V3ZahtevService.updateStatus(id, status);
       if (mounted) {
-        final label = status == 'odobreno' ? '✅ Odobreno' : '❌ Odbijeno';
+        String label = '✅ Uspeh';
+        if (status == 'odobreno')
+          label = '✅ Odobreno';
+        else if (status == 'alternativa' || status == 'ponuda')
+          label = '🔄 Ponuđena alternativa';
+        else if (status == 'otkazano')
+          label = '🚫 Otkazano';
+        else if (status == 'odbijeno') label = '❌ Odbijeno';
+
         V3AppSnackBar.success(context, label);
       }
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
     }
+  }
+
+  Future<void> _showAlternativaDialog(V3Zahtev zahtev) async {
+    final TextEditingController preController = TextEditingController();
+    final TextEditingController posleController = TextEditingController();
+    final TextEditingController napomenaController = TextEditingController();
+
+    // Inicijalno popunjavanje sugerisanim terminima (npr. +- 15 ili 30 min)
+    final zVreme = zahtev.zeljenoVreme; // HH:mm
+    if (zVreme.length == 5) {
+      final hh = int.tryParse(zVreme.substring(0, 2)) ?? 0;
+      final mm = int.tryParse(zVreme.substring(3, 5)) ?? 0;
+      final d = DateTime(2000, 1, 1, hh, mm);
+
+      // Prvo nudi vreme PRE, pa vreme POSLE zeljenog termina
+      final dPre = d.subtract(const Duration(minutes: 15));
+      final dPosle = d.add(const Duration(minutes: 15));
+
+      preController.text = "${dPre.hour.toString().padLeft(2, '0')}:${dPre.minute.toString().padLeft(2, '0')}";
+      posleController.text = "${dPosle.hour.toString().padLeft(2, '0')}:${dPosle.minute.toString().padLeft(2, '0')}";
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.sync_alt, color: Colors.orangeAccent),
+            SizedBox(width: 10),
+            Text('Ponudi alternativu', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Termin ${zahtev.zeljenoVreme} je pun. Ponudite putniku druga vremena:',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              _timeInput('Prvi termin (obično pre)', preController),
+              const SizedBox(height: 12),
+              _timeInput('Drugi termin (obično posle)', posleController),
+              const SizedBox(height: 12),
+              TextField(
+                controller: napomenaController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Napomena (opciono)',
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.orangeAccent),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Odustani', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orangeAccent,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Pošalji ponudu', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      try {
+        await V3ZahtevService.ponudiAlternativu(
+          id: zahtev.id,
+          vremePre: preController.text.isNotEmpty ? preController.text : null,
+          vremePosle: posleController.text.isNotEmpty ? posleController.text : null,
+          napomena: napomenaController.text.isNotEmpty ? napomenaController.text : null,
+        );
+        if (mounted) V3AppSnackBar.success(context, 'Ponuđena alternativa putniku');
+      } catch (e) {
+        if (mounted) V3AppSnackBar.error(context, 'Greška pri slanju alternative: $e');
+      }
+    }
+  }
+
+  Widget _timeInput(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      keyboardType: TextInputType.datetime,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54),
+        prefixIcon: const Icon(Icons.access_time, color: Colors.white54, size: 20),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.orangeAccent),
+        ),
+      ),
+    );
   }
 
   // ─── build ───────────────────────────────────────────────────────
@@ -114,10 +251,11 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                               alignment: WrapAlignment.center,
                               spacing: 6,
                               children: [
-                                if (obrada.isNotEmpty) _StatusBadge('⏳ ${obrada.length} obrada', Colors.amber),
+                                if (obrada.isNotEmpty) _StatusBadge('⏳ ${obrada.length} obrada', Colors.orange),
                                 if (odobreno.isNotEmpty) _StatusBadge('✅ ${odobreno.length} odobreno', Colors.green),
                                 if (odbijeno.isNotEmpty) _StatusBadge('❌ ${odbijeno.length} odbijeno', Colors.red),
-                                if (otkazano.isNotEmpty) _StatusBadge('🚫 ${otkazano.length} otkazano', Colors.orange),
+                                if (otkazano.isNotEmpty)
+                                  _StatusBadge('🚫 ${otkazano.length} otkazano', Colors.red.shade300),
                                 if (obrada.isEmpty && odobreno.isEmpty && odbijeno.isEmpty && otkazano.isEmpty)
                                   Text(
                                     'Nema zahteva',
@@ -137,14 +275,15 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
 
                 // ── Sekcija: NA ČEKANJU ───────────────────────────
                 if (obrada.isNotEmpty) ...[
-                  _sectionHeader('⏳ Na čekanju', Colors.amber, obrada.length),
+                  _sectionHeader('⏳ Na čekanju', Colors.orange, obrada.length),
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (ctx, i) => _ZahtevCard(
                         zahtev: obrada[i],
                         putnik: V3PutnikService.getPutnikById(obrada[i].putnikId),
                         onOdobri: () => _updateStatus(obrada[i].id, 'odobreno'),
-                        onOdbij: () => _updateStatus(obrada[i].id, 'odbijeno'),
+                        onAlternativa: () => _showAlternativaDialog(obrada[i]),
+                        onOdbij: () => _updateStatus(obrada[i].id, 'otkazano'),
                       ),
                       childCount: obrada.length,
                     ),
@@ -160,7 +299,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                         zahtev: odobreno[i],
                         putnik: V3PutnikService.getPutnikById(odobreno[i].putnikId),
                         onOdobri: null,
-                        onOdbij: () => _updateStatus(odobreno[i].id, 'odbijeno'),
+                        onOdbij: () => _updateStatus(odobreno[i].id, 'otkazano'),
                       ),
                       childCount: odobreno.length,
                     ),
@@ -297,12 +436,14 @@ class _ZahtevCard extends StatelessWidget {
   final V3Zahtev zahtev;
   final V3Putnik? putnik;
   final VoidCallback? onOdobri;
+  final VoidCallback? onAlternativa;
   final VoidCallback? onOdbij;
 
   const _ZahtevCard({
     required this.zahtev,
     required this.putnik,
     required this.onOdobri,
+    this.onAlternativa,
     required this.onOdbij,
   });
 
@@ -426,7 +567,7 @@ class _ZahtevCard extends StatelessWidget {
             ),
 
             // Akcije
-            if (onOdobri != null || onOdbij != null) ...[
+            if (onOdobri != null || onAlternativa != null || onOdbij != null) ...[
               const SizedBox(width: 8),
               Column(
                 mainAxisSize: MainAxisSize.min,
@@ -437,13 +578,22 @@ class _ZahtevCard extends StatelessWidget {
                       color: Colors.green,
                       onTap: onOdobri!,
                     ),
-                  if (onOdobri != null && onOdbij != null) const SizedBox(height: 6),
-                  if (onOdbij != null)
+                  if (onAlternativa != null) ...[
+                    const SizedBox(height: 6),
+                    _ActionBtn(
+                      icon: Icons.sync_alt,
+                      color: Colors.orangeAccent,
+                      onTap: onAlternativa!,
+                    ),
+                  ],
+                  if (onOdbij != null) ...[
+                    const SizedBox(height: 6),
                     _ActionBtn(
                       icon: Icons.cancel_outlined,
                       color: Colors.red,
                       onTap: onOdbij!,
                     ),
+                  ],
                 ],
               ),
             ],
@@ -477,12 +627,15 @@ class _ZahtevCard extends StatelessWidget {
     switch (status) {
       case 'odobreno':
         return Colors.green;
-      case 'odbijeno':
-        return Colors.red;
-      case 'otkazano':
+      case 'obrada':
         return Colors.orange;
+      case 'alternativa':
+        return Colors.orangeAccent;
+      case 'otkazano':
+      case 'odbijeno':
+        return Colors.red.shade300;
       default:
-        return Colors.amber;
+        return Colors.grey;
     }
   }
 }
