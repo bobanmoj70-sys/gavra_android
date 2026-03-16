@@ -12,14 +12,20 @@ class V3PermissionScreen extends StatefulWidget {
 
   const V3PermissionScreen({super.key, required this.onDone});
 
+  static const _storage = FlutterSecureStorage();
+  static const _shownKey = 'v3_permission_screen_shown';
+
+  /// Provjeri da li je screen već prikazan — poziva se iz welcome screena.
+  static Future<bool> shouldShow() async {
+    final val = await _storage.read(key: _shownKey);
+    return val != 'true';
+  }
+
   @override
   State<V3PermissionScreen> createState() => _V3PermissionScreenState();
 }
 
 class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTickerProviderStateMixin {
-  static const _storage = FlutterSecureStorage();
-  static const _shownKey = 'v3_permission_screen_shown';
-
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
@@ -41,12 +47,6 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
   void dispose() {
     _animCtrl.dispose();
     super.dispose();
-  }
-
-  /// Provjeri da li je screen već prikazan — poziva se iz welcome screena.
-  static Future<bool> shouldShow() async {
-    final val = await _storage.read(key: _shownKey);
-    return val != 'true';
   }
 
   Future<void> _onOdobri() async {
@@ -72,12 +72,12 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
       }
     } catch (_) {}
 
-    await _storage.write(key: _shownKey, value: 'true');
+    await V3PermissionScreen._storage.write(key: V3PermissionScreen._shownKey, value: 'true');
     if (mounted) widget.onDone();
   }
 
-  Future<void> _onPreskoči() async {
-    await _storage.write(key: _shownKey, value: 'true');
+  Future<void> _onPreskoci() async {
+    await V3PermissionScreen._storage.write(key: V3PermissionScreen._shownKey, value: 'true');
     if (mounted) widget.onDone();
   }
 
@@ -194,7 +194,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                       children: [
                         Expanded(
                           child: TextButton(
-                            onPressed: _loading ? null : _onPreskoči,
+                            onPressed: _loading ? null : _onPreskoci,
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
