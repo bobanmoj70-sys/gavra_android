@@ -1090,6 +1090,17 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           ),
                           const SizedBox(width: 4),
                           Expanded(
+                            child: _V3HomeButton(
+                              label: 'Ja',
+                              icon: Icons.person,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const V3VozacScreen()),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
                             child: PopupMenuButton<String>(
                               tooltip: 'Štampaj',
                               offset: const Offset(0, -150),
