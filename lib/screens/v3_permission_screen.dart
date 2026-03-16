@@ -106,12 +106,12 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
             opacity: _fadeAnim,
             child: SlideTransition(
               position: _slideAnim,
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
                     // Ikona
                     Container(
@@ -132,7 +132,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
 
                     // Naslov
                     const Text(
@@ -146,7 +146,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                       textAlign: TextAlign.center,
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
                     Text(
                       'Za potpunu funkcionalnost\naplikacije potrebne su sledeće dozvole:',
@@ -158,7 +158,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                       textAlign: TextAlign.center,
                     ),
 
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 24),
 
                     // Permission stavke
                     _PermissionItem(
@@ -182,7 +182,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                       subtitle: 'za nova putovanja',
                     ),
 
-                    const Spacer(),
+                    const SizedBox(height: 24),
 
                     // Napomena
                     Text(
@@ -195,7 +195,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                       textAlign: TextAlign.center,
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // Dugmad
                     Row(
