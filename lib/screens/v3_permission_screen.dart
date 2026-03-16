@@ -54,15 +54,18 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
     setState(() => _loading = true);
 
     try {
-      // GPS
-      await Permission.location.request();
+      // 1. GPS (Request and wait)
+      final locStatus = await Permission.location.request();
+      debugPrint('Location permission: $locStatus');
 
-      // Pozivi
-      await Permission.phone.request();
+      // 2. Pozivi (Request and wait)
+      final phoneStatus = await Permission.phone.request();
+      debugPrint('Phone permission: $phoneStatus');
 
-      // Notifikacije
+      // 3. Notifikacije
       if (Platform.isAndroid) {
-        await Permission.notification.request();
+        final notifStatus = await Permission.notification.request();
+        debugPrint('Notification permission: $notifStatus');
       } else if (Platform.isIOS) {
         await FirebaseMessaging.instance.requestPermission(
           alert: true,
@@ -70,8 +73,13 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
           sound: true,
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Permission request error: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
 
+    // Tek nakon što su svi dijalozi prošli, pišemo da je prikazano i gasimo screen
     await V3PermissionScreen._storage.write(key: V3PermissionScreen._shownKey, value: 'true');
     if (mounted) widget.onDone();
   }
