@@ -272,11 +272,13 @@ class V3OperativnaNedeljaService {
   }
 
   /// Čita broj zauzetih mesta — suma broj_mesta zapisa sa statusom koji zauzima mjesto.
-  /// Filtrira: aktivno=true i status_final IN (obrada, odobreno) ili pokupljen=true.
+  /// Filtrira: aktivno=true i status_final IN (obrada, odobreno, alternativa).
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
-    const aktivniStatusi = {'obrada', 'odobreno'};
+    const aktivniStatusi = {'obrada', 'odobreno', 'alternativa'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
-    return zapisi.where((e) => aktivniStatusi.contains(e.statusFinal) || e.pokupljen).fold(0, (sum, e) => sum + e.brojMesta);
+    return zapisi
+        .where((e) => e.aktivno && (aktivniStatusi.contains(e.statusFinal) || e.pokupljen))
+        .fold(0, (sum, e) => sum + e.brojMesta);
   }
 
   /// Čita broj slobodnih mesta za dati grad/vreme/datum.

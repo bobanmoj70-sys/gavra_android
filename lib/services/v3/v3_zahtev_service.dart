@@ -73,20 +73,15 @@ class V3ZahtevService {
 
   static Future<void> updateStatus(String id, String newStatus, {String? updatedBy}) async {
     try {
-      final payload = <String, dynamic>{
-        'status': newStatus,
-        'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
-      };
-
-      // Ako vraćamo u obradu, resetuj planat (ponuda alternative više ne važi)
-      if (newStatus == 'obrada') {
-        payload['dodeljeno_vreme'] = null;
-        payload['alt_vreme_pre'] = null;
-        payload['alt_vreme_posle'] = null;
-        payload['alt_napomena'] = null;
-      }
-
-      final row = await supabase.from('v3_zahtevi').update(payload).eq('id', id).select().single();
+      final row = await supabase
+          .from('v3_zahtevi')
+          .update({
+            'status': newStatus,
+            'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
+          })
+          .eq('id', id)
+          .select()
+          .single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -144,6 +139,7 @@ class V3ZahtevService {
           return z.copyWith(
             status: op['status_final'] as String? ?? z.status,
             dodeljenoVreme: op['vreme'] as String?,
+            pokupljen: op['pokupljen'] as bool? ?? z.pokupljen,
           );
         }
       }
@@ -156,6 +152,7 @@ class V3ZahtevService {
         zeljenoVreme: op['vreme'] as String? ?? '00:00',
         dodeljenoVreme: op['vreme'] as String?,
         status: op['status_final'] as String? ?? 'obrada',
+        pokupljen: op['pokupljen'] as bool? ?? false,
       );
     }).toList()
       ..sort((a, b) => (a.dodeljenoVreme ?? a.zeljenoVreme).compareTo(b.dodeljenoVreme ?? b.zeljenoVreme));
