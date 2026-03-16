@@ -322,7 +322,7 @@ AFTER INSERT ON v3_zahtevi
 FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_admin_on_zahtev_dnevni();
 
 -- 10. FUNKCIJA: v3_zahtevi UPDATE → push putniku
---     Šalje pri promeni statusa: odobreno / odbijeno (sa/bez alternative)
+--     Šalje pri promeni statusa: odobreno / odbijeno (sa/bez alternative) / otkazano / ponuda
 CREATE OR REPLACE FUNCTION public.fn_v3_notify_putnik_on_zahtev_update()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -371,7 +371,8 @@ BEGIN
         'id',        NEW.id,
         'grad',      NEW.grad,
         'alt_pre',   COALESCE(to_char(NEW.alt_vreme_pre,   'HH24:MI'), ''),
-        'alt_posle', COALESCE(to_char(NEW.alt_vreme_posle, 'HH24:MI'), '')
+        'alt_posle', COALESCE(to_char(NEW.alt_vreme_posle, 'HH24:MI'), ''),
+        'data_only', true
       );
     ELSE
       v_title := '❌ Termin popunjen';
@@ -379,6 +380,25 @@ BEGIN
         || ' nema slobodnih mesta (' || v_grad || ').';
       v_data  := jsonb_build_object('type', 'v3_zahtev_odbijen', 'id', NEW.id, 'grad', NEW.grad);
     END IF;
+
+  ELSIF NEW.status = 'otkazano' THEN
+    v_title := '🚫 Prevoz otkazan';
+    v_body  := 'Vaš prevoz za ' || to_char(NEW.zeljeno_vreme, 'HH24:MI')
+      || ' (' || v_grad || ') je otkazan.';
+    v_data  := jsonb_build_object('type', 'v3_otkazano', 'id', NEW.id, 'grad', NEW.grad);
+
+  ELSIF NEW.status = 'ponuda' THEN
+    v_title := '🕐 Nova ponuda termina';
+    v_body  := 'Predložen je novi termin umjesto ' || to_char(NEW.zeljeno_vreme, 'HH24:MI')
+      || ' (' || v_grad || ').';
+    v_data  := jsonb_build_object(
+      'type',      'v3_alternativa',
+      'id',        NEW.id,
+      'grad',      NEW.grad,
+      'alt_pre',   COALESCE(to_char(NEW.alt_vreme_pre,   'HH24:MI'), ''),
+      'alt_posle', COALESCE(to_char(NEW.alt_vreme_posle, 'HH24:MI'), ''),
+      'data_only', true
+    );
   END IF;
 
   IF v_title IS NOT NULL THEN
