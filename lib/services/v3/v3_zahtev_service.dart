@@ -48,9 +48,10 @@ class V3ZahtevService {
     return data != null ? V3Zahtev.fromJson(data) : null;
   }
 
-  static Future<V3Zahtev> createZahtev(V3Zahtev zahtev) async {
+  static Future<V3Zahtev> createZahtev(V3Zahtev zahtev, {String? createdBy}) async {
     try {
       final data = zahtev.toJson();
+      if (createdBy != null) data['created_by'] = createdBy;
       final row = await supabase.from('v3_zahtevi').insert(data).select().single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
@@ -88,12 +89,7 @@ class V3ZahtevService {
         'dodeljeno_vreme': novoVreme,
         if (status != null) 'status': status,
       };
-      final row = await supabase
-          .from('v3_zahtevi')
-          .update(payload)
-          .eq('id', id)
-          .select()
-          .single();
+      final row = await supabase.from('v3_zahtevi').update(payload).eq('id', id).select().single();
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
       debugPrint('[V3ZahtevService] updateVreme error: $e');

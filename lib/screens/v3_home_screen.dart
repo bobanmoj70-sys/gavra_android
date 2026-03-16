@@ -379,7 +379,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                           adresaNaziv: selectedAdresa?.naziv,
                                           izvorId: V3VozacService.currentVozac?.id,
                                         );
-                                        await V3ZahtevService.createZahtev(zahtev);
+                                        await V3ZahtevService.createZahtev(zahtev, createdBy: 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "nepoznat"}');
                                       }
 
                                       if (!dialogCtx.mounted) return;

@@ -19,6 +19,7 @@ class V3Zahtev {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? izvorId;
+  final String? createdBy;
 
   V3Zahtev({
     required this.id,
@@ -41,6 +42,7 @@ class V3Zahtev {
     this.createdAt,
     this.updatedAt,
     this.izvorId,
+    this.createdBy,
   });
 
   factory V3Zahtev.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class V3Zahtev {
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
       izvorId: json['izvor_id'] as String?,
+      createdBy: json['created_by'] as String?,
     );
   }
 
@@ -88,6 +91,7 @@ class V3Zahtev {
       'alt_napomena': altNapomena,
       'aktivno': aktivno,
       if (izvorId != null) 'izvor_id': izvorId,
+      if (createdBy != null) 'created_by': createdBy,
     };
   }
 

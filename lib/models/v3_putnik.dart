@@ -29,6 +29,7 @@ class V3Putnik {
   final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? createdBy;
 
   V3Putnik({
     required this.id,
@@ -55,6 +56,7 @@ class V3Putnik {
     this.aktivno = true,
     this.createdAt,
     this.updatedAt,
+    this.createdBy,
   });
 
   factory V3Putnik.fromJson(Map<String, dynamic> json) {
@@ -83,6 +85,7 @@ class V3Putnik {
       aktivno: json['aktivno'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdBy: json['created_by'] as String?,
     );
   }
 
@@ -110,6 +113,7 @@ class V3Putnik {
       'placeni_mesec': placeniMesec,
       'placena_godina': placenaGodina,
       'aktivno': aktivno,
+      if (createdBy != null) 'created_by': createdBy,
     };
   }
 

@@ -27,9 +27,10 @@ class V3PutnikService {
     return data != null ? V3Putnik.fromJson(data) : null;
   }
 
-  static Future<void> addUpdatePutnik(V3Putnik putnik) async {
+  static Future<void> addUpdatePutnik(V3Putnik putnik, {String? createdBy}) async {
     try {
       final data = putnik.toJson();
+      if (createdBy != null && putnik.id.isEmpty) data['created_by'] = createdBy;
 
       await supabase.from('v3_putnici').upsert(data);
     } catch (e) {

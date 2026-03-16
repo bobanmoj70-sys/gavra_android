@@ -170,7 +170,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           aktivno: true,
           izvorId: putnikId,
         );
-        await V3ZahtevService.createZahtev(zahtev);
+        await V3ZahtevService.createZahtev(zahtev, createdBy: 'putnik:$imePrezime');
         if (mounted) {
           V3AppSnackBar.success(context,
               '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.');

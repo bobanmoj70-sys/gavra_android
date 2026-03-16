@@ -719,7 +719,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         placeniMesec: widget.existing?.placeniMesec,
         placenaGodina: widget.existing?.placenaGodina,
       );
-      await V3PutnikService.addUpdatePutnik(putnik);
+      await V3PutnikService.addUpdatePutnik(putnik, createdBy: 'admin:sistem');
       if (mounted) {
         V3AppSnackBar.success(context, widget.existing == null ? '✅ Putnik dodan' : '✅ Putnik sačuvan');
         Navigator.pop(context);
