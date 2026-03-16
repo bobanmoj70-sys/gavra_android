@@ -363,7 +363,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       if (postojeci.isNotEmpty) {
                                         // Prepiši vreme na postojećem zahtjevu
                                         await V3ZahtevService.updateVreme(
-                                            postojeci.first['id'] as String, _selectedVreme, status: 'odobreno');
+                                            postojeci.first['id'] as String, _selectedVreme,
+                                            status: 'odobreno');
                                       } else {
                                         final zahtev = V3Zahtev(
                                           id: '',
@@ -847,7 +848,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               final aOtk = a.statusFinal == 'otkazano' ? 1 : 0;
               final bOtk = b.statusFinal == 'otkazano' ? 1 : 0;
               if (aOtk != bOtk) return aOtk.compareTo(bOtk);
-              return (a.vreme ?? '').compareTo(b.vreme ?? '');
+              return (a.imePrezime ?? '').compareTo(b.imePrezime ?? '');
             });
 
           // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
