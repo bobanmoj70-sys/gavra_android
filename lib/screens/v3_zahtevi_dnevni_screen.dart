@@ -31,8 +31,9 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       final p = rm.putniciCache[z.putnikId];
       final tip = (p?['tip_putnika'] as String? ?? '').toLowerCase();
       if (tip != 'dnevni') return false;
-      // Samo zahtevi koje je putnik sam poslao (izvor_id == putnik_id)
-      if (z.izvorId != z.putnikId) return false;
+      // Samo zahtevi koje je putnik sam poslao — izvor_id nije vozačev ID
+      final vozaciIds = rm.vozaciCache.keys.toSet();
+      if (z.izvorId != null && vozaciIds.contains(z.izvorId)) return false;
       return true;
     }).toList()
       ..sort((a, b) {
