@@ -25,6 +25,7 @@ class V3OperativnaNedeljaEntry {
   final String? naplatioVozacId;
   final String? otkazaoVozacId;
   final int? maxMesta;
+  final bool pokupljen;
 
   V3OperativnaNedeljaEntry({
     required this.id,
@@ -48,6 +49,7 @@ class V3OperativnaNedeljaEntry {
     this.naplatioVozacId,
     this.otkazaoVozacId,
     this.maxMesta,
+    this.pokupljen = false,
   });
 
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,7 @@ class V3OperativnaNedeljaEntry {
       naplatioVozacId: json['naplatio_vozac_id'] as String?,
       otkazaoVozacId: json['otkazao_vozac_id'] as String?,
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
+      pokupljen: json['pokupljen'] as bool? ?? false,
     );
   }
 
@@ -269,11 +272,11 @@ class V3OperativnaNedeljaService {
   }
 
   /// Čita broj zauzetih mesta — suma broj_mesta zapisa sa statusom koji zauzima mjesto.
-  /// Filtrira: aktivno=true i status_final IN (obrada, odobreno, pokupljen).
+  /// Filtrira: aktivno=true i status_final IN (obrada, odobreno) ili pokupljen=true.
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
-    const aktivniStatusi = {'obrada', 'odobreno', 'pokupljen'};
+    const aktivniStatusi = {'obrada', 'odobreno'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
-    return zapisi.where((e) => aktivniStatusi.contains(e.statusFinal)).fold(0, (sum, e) => sum + e.brojMesta);
+    return zapisi.where((e) => aktivniStatusi.contains(e.statusFinal) || e.pokupljen).fold(0, (sum, e) => sum + e.brojMesta);
   }
 
   /// Čita broj slobodnih mesta za dati grad/vreme/datum.

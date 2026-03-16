@@ -61,7 +61,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     _longPressTimer = Timer(const Duration(milliseconds: 1500), () {
       if (_isLongPressActive && mounted) {
         final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-        if (status != 'otkazano' && status != 'pokupljen') {
+        final isPokupljen = widget.entry?.pokupljen ?? false;
+        if (status != 'otkazano' && !isPokupljen) {
           _handlePickup();
         }
       }
@@ -84,8 +85,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       V2HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac == null) throw 'Niste logovani u V3 sistem';
-      final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-      final isAlreadyPokupljen = status == 'pokupljen';
+      final isAlreadyPokupljen = widget.entry?.pokupljen ?? false;
       // Pokupljanje uvijek ide kroz v3_zahtevi
       final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
       if (zahtevId == null || zahtevId.isEmpty) throw 'Nema zahteva za pokupljanje';
@@ -253,7 +253,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
       );
     }
-    if (status == 'pokupljen') {
+    final bool isPokupljen = widget.entry?.pokupljen ?? false;
+    if (isPokupljen) {
       final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
       if (isPlacen) {
         return BoxDecoration(
@@ -290,7 +291,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Color _getTextColor() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFB71C1C);
-    if (status == 'pokupljen') {
+    if (widget.entry?.pokupljen ?? false) {
       final isPlacen = widget.entry?.naplataStatus == 'placeno';
       return isPlacen ? const Color(0xFF1B5E20) : const Color(0xFF0D47A1);
     }
@@ -300,7 +301,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Color _getSecondaryTextColor() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFC62828);
-    if (status == 'pokupljen') {
+    if (widget.entry?.pokupljen ?? false) {
       final isPlacen = widget.entry?.naplataStatus == 'placeno';
       return isPlacen ? const Color(0xFF2E7D32) : const Color(0xFF1565C0);
     }
@@ -368,7 +369,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   @override
   Widget build(BuildContext context) {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-    final bool isPokupljen = status == 'pokupljen';
+    final bool isPokupljen = widget.entry?.pokupljen ?? false;
     final bool isOtkazan = status == 'otkazano';
     final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
     final bool hasTel = widget.putnik.telefon1 != null || widget.putnik.telefon2 != null;

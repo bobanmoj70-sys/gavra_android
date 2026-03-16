@@ -851,7 +851,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             ..sort((a, b) {
               int sortRank(V3OperativnaNedeljaEntry e) {
                 if (e.statusFinal == 'otkazano') return 2;
-                if (e.statusFinal == 'pokupljen') return 1;
+                if (e.pokupljen) return 1;
                 return 0;
               }
 

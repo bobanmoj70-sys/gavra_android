@@ -212,7 +212,7 @@ class V3ZahtevService {
     try {
       await supabase.from('v3_operativna_nedelja').update({
         'vreme_pokupljen': DateTime.now().toIso8601String(),
-        'status_final': 'pokupljen',
+        'pokupljen': true,
         if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
       }).eq('izvor_id', id);
       V3AuditLogService.log(

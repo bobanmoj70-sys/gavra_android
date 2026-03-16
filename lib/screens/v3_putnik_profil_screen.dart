@@ -188,12 +188,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
 
-    // Scenario 6: putnik pokupljen — vožnja završena
-    if (info?.status == 'pokupljen') {
-      if (mounted) V3AppSnackBar.info(ctx, '🚌 Pokupljeni ste za ovo vreme. Nadamo se da ste imali ugodnu vožnju! 😊');
-      return;
-    }
-
     // Scenario 5: zaključavanje 15 min pre polaska
     final datumPolaska = V3DanHelper.datumZaDanAbbr(dan);
     final now = DateTime.now();
@@ -1010,9 +1004,6 @@ class _ZahtevCell extends StatelessWidget {
       case 'otkazano':
         statusColor = Colors.red.shade300;
         statusIcon = '🚫';
-      case 'pokupljen':
-        statusColor = Colors.blue;
-        statusIcon = '🚌';
       default:
         statusColor = Colors.grey;
         statusIcon = '•';

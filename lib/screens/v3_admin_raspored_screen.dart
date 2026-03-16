@@ -793,7 +793,7 @@ class _ZahtevTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOtkazan = zapis.statusFinal == 'otkazano';
-    final isPokupljen = zapis.statusFinal == 'pokupljen';
+    final isPokupljen = zapis.pokupljen;
     final hasIndiv = indivVozacIme != null;
 
     // Status boje kao V3PutnikCard
