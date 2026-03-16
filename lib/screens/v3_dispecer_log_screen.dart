@@ -258,9 +258,7 @@ class _V3DispecerLogScreenState extends State<V3DispecerLogScreen> {
 
   String get _naslovDatuma {
     final danas = DateTime.now();
-    if (_filterDatum.year == danas.year &&
-        _filterDatum.month == danas.month &&
-        _filterDatum.day == danas.day) {
+    if (_filterDatum.year == danas.year && _filterDatum.month == danas.month && _filterDatum.day == danas.day) {
       return 'Danas';
     }
     return '${_filterDatum.day.toString().padLeft(2, '0')}.${_filterDatum.month.toString().padLeft(2, '0')}.${_filterDatum.year}';
@@ -376,8 +374,7 @@ class _V3DispecerLogScreenState extends State<V3DispecerLogScreen> {
                       selected: _filterTip == 'dispecer_odobrio',
                       color: Colors.greenAccent,
                       onTap: () {
-                        setState(() => _filterTip =
-                            _filterTip == 'dispecer_odobrio' ? 'SVI' : 'dispecer_odobrio');
+                        setState(() => _filterTip = _filterTip == 'dispecer_odobrio' ? 'SVI' : 'dispecer_odobrio');
                         _load();
                       },
                     ),
@@ -387,8 +384,7 @@ class _V3DispecerLogScreenState extends State<V3DispecerLogScreen> {
                       selected: _filterTip == 'dispecer_odbio',
                       color: Colors.redAccent,
                       onTap: () {
-                        setState(() =>
-                            _filterTip = _filterTip == 'dispecer_odbio' ? 'SVI' : 'dispecer_odbio');
+                        setState(() => _filterTip = _filterTip == 'dispecer_odbio' ? 'SVI' : 'dispecer_odbio');
                         _load();
                       },
                     ),
@@ -422,8 +418,7 @@ class _V3DispecerLogScreenState extends State<V3DispecerLogScreen> {
                                 color: Colors.teal,
                                 onRefresh: _load,
                                 child: ListView.builder(
-                                  padding: EdgeInsets.fromLTRB(
-                                      12, 0, 12, 16 + MediaQuery.of(context).padding.bottom),
+                                  padding: EdgeInsets.fromLTRB(12, 0, 12, 16 + MediaQuery.of(context).padding.bottom),
                                   itemCount: _logs.length,
                                   itemBuilder: (_, i) => _LogCard(log: _logs[i]),
                                 ),
@@ -477,8 +472,7 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Color? color;
-  const _FilterChip(
-      {required this.label, required this.selected, required this.onTap, this.color});
+  const _FilterChip({required this.label, required this.selected, required this.onTap, this.color});
 
   @override
   Widget build(BuildContext context) {

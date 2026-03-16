@@ -357,10 +357,7 @@ class V3OperativnaNedeljaService {
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
         final rDatum = (r['datum'] as String? ?? '').split('T')[0];
-        return r['putnik_id'] == putnikId &&
-            rDatum == datum &&
-            r['grad'] == grad &&
-            r['aktivno'] == true;
+        return r['putnik_id'] == putnikId && rDatum == datum && r['grad'] == grad && r['aktivno'] == true;
       }).toList();
 
       if (postojeci.isNotEmpty) {

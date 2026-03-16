@@ -8,6 +8,7 @@ import '../services/v3/v3_vozac_service.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_audit_log_screen.dart';
+import 'v3_dispecer_log_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
 import 'v3_dugovi_screen.dart';
 import 'v3_finansije_screen.dart';
@@ -20,7 +21,6 @@ import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
 import 'v3_vozaci_admin_screen.dart';
-import 'v3_dispecer_log_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
 
 class V3AdminScreen extends StatefulWidget {
