@@ -351,15 +351,16 @@ class _AdresaDialog extends StatefulWidget {
 
 class _AdresaDialogState extends State<_AdresaDialog> {
   late final TextEditingController _naziv;
-  late final TextEditingController _grad;
   late final TextEditingController _lat;
   late final TextEditingController _lng;
+  late String _selectedGrad;
 
   @override
   void initState() {
     super.initState();
     _naziv = TextEditingController(text: widget.adresa?.naziv ?? '');
-    _grad = TextEditingController(text: widget.adresa?.grad ?? 'BRČKO');
+    final existingGrad = widget.adresa?.grad ?? '';
+    _selectedGrad = (existingGrad == 'VS') ? 'VS' : 'BC';
     _lat = TextEditingController(text: widget.adresa?.gpsLat?.toString() ?? '');
     _lng = TextEditingController(text: widget.adresa?.gpsLng?.toString() ?? '');
   }
@@ -367,7 +368,6 @@ class _AdresaDialogState extends State<_AdresaDialog> {
   @override
   void dispose() {
     _naziv.dispose();
-    _grad.dispose();
     _lat.dispose();
     _lng.dispose();
     super.dispose();
@@ -382,7 +382,17 @@ class _AdresaDialogState extends State<_AdresaDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(controller: _naziv, decoration: const InputDecoration(labelText: 'Naziv adrese')),
-            TextField(controller: _grad, decoration: const InputDecoration(labelText: 'Grad')),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _selectedGrad,
+              decoration: const InputDecoration(labelText: 'Grad'),
+              items: const [
+                DropdownMenuItem(value: 'BC', child: Text('Bela Crkva')),
+                DropdownMenuItem(value: 'VS', child: Text('Vršac')),
+              ],
+              onChanged: (v) => setState(() => _selectedGrad = v!),
+            ),
+            const SizedBox(height: 4),
             TextField(
                 controller: _lat,
                 decoration: const InputDecoration(labelText: 'Latitude (opciono)'),
@@ -398,12 +408,12 @@ class _AdresaDialogState extends State<_AdresaDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('ODUSTANI')),
         ElevatedButton(
           onPressed: () {
-            if (_naziv.text.isEmpty || _grad.text.isEmpty) {
+            if (_naziv.text.isEmpty) {
               return;
             }
             Navigator.pop(context, {
               'naziv': _naziv.text,
-              'grad': _grad.text,
+              'grad': _selectedGrad,
               'lat': double.tryParse(_lat.text),
               'lng': double.tryParse(_lng.text),
             });
