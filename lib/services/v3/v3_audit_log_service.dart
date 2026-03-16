@@ -17,7 +17,6 @@ class V3AuditLogService {
     String? aktorTip, // 'vozac' | 'putnik' | 'admin'
     String? putnikId,
     String? putnikIme,
-    String? putnikTabela,
     String? datumIso, // ISO date string, npr. '2026-03-15'
     String? grad,
     String? vreme,
@@ -31,7 +30,6 @@ class V3AuditLogService {
       aktorTip: aktorTip,
       putnikId: putnikId,
       putnikIme: putnikIme,
-      putnikTabela: putnikTabela,
       datumIso: datumIso,
       grad: grad,
       vreme: vreme,
@@ -47,7 +45,6 @@ class V3AuditLogService {
     String? aktorTip,
     String? putnikId,
     String? putnikIme,
-    String? putnikTabela,
     String? datumIso,
     String? grad,
     String? vreme,
@@ -61,7 +58,6 @@ class V3AuditLogService {
       if (aktorTip != null) 'aktor_tip': aktorTip,
       if (putnikId != null) 'putnik_id': putnikId,
       if (putnikIme != null) 'putnik_ime': putnikIme,
-      if (putnikTabela != null) 'putnik_tabela': putnikTabela,
       if (datumIso != null) 'datum': datumIso,
       if (grad != null) 'grad': grad,
       if (vreme != null) 'vreme': vreme,
