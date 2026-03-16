@@ -243,3 +243,154 @@ DROP TRIGGER IF EXISTS tr_v3_zahtev_notification ON v3_zahtevi;
 CREATE TRIGGER tr_v3_zahtev_notification
 AFTER UPDATE ON v3_zahtevi
 FOR EACH ROW EXECUTE FUNCTION notify_v3_zahtev_update();
+
+-- ==========================================
+-- V3 NOVI SISTEM – PUSH NOTIFIKACIJE (2025)
+-- ==========================================
+
+-- 8. FUNKCIJA: v3_zahtevi INSERT → push adminu (Bojan)
+--    Token čita iz v3_vozaci (ne v3_putnici!)
+CREATE OR REPLACE FUNCTION public.fn_v3_notify_admin_on_zahtev_dnevni()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_token  text;
+  v_tokens jsonb;
+  v_tip    text;
+  v_grad   text;
+  v_naslov text;
+  v_poruka text;
+  v_data   jsonb;
+BEGIN
+  -- Šalji samo nove zahteve na obradi
+  IF NEW.status != 'obrada' THEN
+    RETURN NEW;
+  END IF;
+
+  -- Token admina iz v3_vozaci (Bojan)
+  SELECT push_token INTO v_token
+  FROM public.v3_vozaci
+  WHERE LOWER(ime_prezime) LIKE '%bojan%'
+    AND aktivno = true
+    AND push_token IS NOT NULL AND push_token <> ''
+  LIMIT 1;
+
+  IF v_token IS NULL OR v_token = '' THEN
+    RETURN NEW;
+  END IF;
+
+  v_tokens := jsonb_build_array(
+    jsonb_build_object('token', v_token, 'provider', 'fcm')
+  );
+
+  -- Tip putnika za kontekst
+  SELECT tip_putnika INTO v_tip
+  FROM public.v3_putnici
+  WHERE id = NEW.putnik_id
+  LIMIT 1;
+
+  v_grad := CASE
+    WHEN NEW.grad = 'BC' THEN 'Bela Crkva'
+    WHEN NEW.grad = 'VS' THEN 'Vršac'
+    ELSE NEW.grad
+  END;
+
+  v_naslov := '🔔 Novi zahtev – ' || v_grad || ' ' || to_char(NEW.zeljeno_vreme, 'HH24:MI');
+  v_poruka := COALESCE(NEW.ime_prezime, 'Putnik')
+    || CASE WHEN v_tip IS NOT NULL THEN ' (' || v_tip || ')' ELSE '' END
+    || ' · ' || to_char(NEW.datum, 'DD.MM.YYYY');
+
+  v_data := jsonb_build_object(
+    'type', 'v3_novi_zahtev',
+    'id', NEW.id,
+    'grad', NEW.grad,
+    'tip', COALESCE(v_tip, '')
+  );
+
+  PERFORM notify_push(v_tokens, v_naslov, v_poruka, v_data);
+
+  RETURN NEW;
+END;
+$$;
+
+-- 9. TRIGGER: Aktiviraj na tabeli v3_zahtevi (INSERT)
+DROP TRIGGER IF EXISTS tr_v3_notify_admin_zahtev ON v3_zahtevi;
+CREATE TRIGGER tr_v3_notify_admin_zahtev
+AFTER INSERT ON v3_zahtevi
+FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_admin_on_zahtev_dnevni();
+
+-- 10. FUNKCIJA: v3_zahtevi UPDATE → push putniku
+--     Šalje pri promeni statusa: odobreno / odbijeno (sa/bez alternative)
+CREATE OR REPLACE FUNCTION public.fn_v3_notify_putnik_on_zahtev_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_tokens jsonb;
+  v_title  text;
+  v_body   text;
+  v_data   jsonb;
+  v_grad   text;
+BEGIN
+  IF OLD.status = NEW.status THEN RETURN NEW; END IF;
+
+  v_grad := CASE
+    WHEN NEW.grad = 'BC' THEN 'Bela Crkva'
+    WHEN NEW.grad = 'VS' THEN 'Vršac'
+    ELSE NEW.grad
+  END;
+
+  SELECT jsonb_build_array(jsonb_build_object('token', push_token, 'provider', 'fcm'))
+  INTO v_tokens
+  FROM public.v3_putnici
+  WHERE id = NEW.putnik_id
+    AND push_token IS NOT NULL AND push_token <> ''
+  LIMIT 1;
+
+  IF v_tokens IS NULL THEN RETURN NEW; END IF;
+
+  IF NEW.status = 'odobreno' THEN
+    v_title := '✅ Mesto osigurano!';
+    v_body  := 'Vaš zahtev za ' || to_char(NEW.zeljeno_vreme, 'HH24:MI')
+      || ' (' || v_grad || ') je odobren. Srećan put!';
+    v_data  := jsonb_build_object('type', 'v3_zahtev_odobren', 'id', NEW.id, 'grad', NEW.grad);
+
+  ELSIF NEW.status = 'odbijeno' THEN
+    IF NEW.alt_vreme_pre IS NOT NULL OR NEW.alt_vreme_posle IS NOT NULL THEN
+      v_title := '⚠️ Termin pun – Izaberi alternativu';
+      v_body  := 'Termin ' || to_char(NEW.zeljeno_vreme, 'HH24:MI')
+        || ' je pun. Slobodna mesta: '
+        || COALESCE(to_char(NEW.alt_vreme_pre, 'HH24:MI'), '')
+        || CASE WHEN NEW.alt_vreme_pre IS NOT NULL AND NEW.alt_vreme_posle IS NOT NULL THEN ' i ' ELSE '' END
+        || COALESCE(to_char(NEW.alt_vreme_posle, 'HH24:MI'), '');
+      v_data  := jsonb_build_object(
+        'type',      'v3_alternativa',
+        'id',        NEW.id,
+        'grad',      NEW.grad,
+        'alt_pre',   COALESCE(to_char(NEW.alt_vreme_pre,   'HH24:MI'), ''),
+        'alt_posle', COALESCE(to_char(NEW.alt_vreme_posle, 'HH24:MI'), '')
+      );
+    ELSE
+      v_title := '❌ Termin popunjen';
+      v_body  := 'Nažalost, u terminu ' || to_char(NEW.zeljeno_vreme, 'HH24:MI')
+        || ' nema slobodnih mesta (' || v_grad || ').';
+      v_data  := jsonb_build_object('type', 'v3_zahtev_odbijen', 'id', NEW.id, 'grad', NEW.grad);
+    END IF;
+  END IF;
+
+  IF v_title IS NOT NULL THEN
+    PERFORM notify_push(v_tokens, v_title, v_body, v_data);
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+-- 11. TRIGGER: Aktiviraj na tabeli v3_zahtevi (UPDATE statusa)
+DROP TRIGGER IF EXISTS tr_v3_notify_putnik_zahtev ON v3_zahtevi;
+CREATE TRIGGER tr_v3_notify_putnik_zahtev
+AFTER UPDATE OF status ON v3_zahtevi
+FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_putnik_on_zahtev_update();
