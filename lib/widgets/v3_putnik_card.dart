@@ -26,6 +26,7 @@ class V3PutnikCard extends StatefulWidget {
     this.entry,
     this.redniBroj,
     this.onChanged,
+    this.onDodeliVozaca,
   });
 
   final V3Putnik putnik;
@@ -33,6 +34,7 @@ class V3PutnikCard extends StatefulWidget {
   final V3OperativnaNedeljaEntry? entry;
   final int? redniBroj;
   final VoidCallback? onChanged;
+  final VoidCallback? onDodeliVozaca;
 
   @override
   State<V3PutnikCard> createState() => _V3PutnikCardState();
@@ -545,6 +547,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
+                                      if (widget.onDodeliVozaca != null) iconBtn('👤', widget.onDodeliVozaca!),
                                       if (hasAdresa) iconBtn('📍', _handleNavigation),
                                       if (hasTel) iconBtn('📞', _handleCall),
                                       if (!isOtkazan) iconBtn('💰', _handlePayment),

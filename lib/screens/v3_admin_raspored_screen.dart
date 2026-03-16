@@ -202,7 +202,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Future<void> _dodelijPutniku(String putnikId, V3Vozac vozac, String grad, String vreme) async {
     try {
       final datum = _selectedDatumIso;
-      debugPrint('[DODELI] putnikId=$putnikId vozacId=${vozac.id} grad=$grad vreme=$vreme datum=$datum');
       await supabase
           .from('v3_raspored_putnik')
           .delete()
@@ -210,7 +209,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           .eq('grad', grad)
           .eq('vreme', vreme)
           .eq('datum', datum);
-      debugPrint('[DODELI] delete OK, inserting...');
       await supabase.from('v3_raspored_putnik').insert({
         'putnik_id': putnikId,
         'vozac_id': vozac.id,
@@ -218,10 +216,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         'vreme': vreme,
         'datum': datum,
       });
-      debugPrint('[DODELI] insert OK');
       if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
-    } catch (e, st) {
-      debugPrint('[DODELI ERROR] $e\n$st');
+    } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
     }
   }

@@ -18,6 +18,7 @@ import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
+import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -106,6 +107,220 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final ime = V3VozacService.currentVozac?.imePrezime ?? '';
     final lowIme = ime.toLowerCase();
     return lowIme.contains('admin') || lowIme.contains('bojan');
+  }
+
+  // ─── Dodjela vozača putniku (admin only) ──────────────────────
+
+  Color _parseVozacColor(String? hex) {
+    if (hex == null || hex.isEmpty) return Colors.blueAccent;
+    final h = hex.replaceAll('#', '');
+    try {
+      return Color(int.parse('FF$h', radix: 16));
+    } catch (_) {
+      return Colors.blueAccent;
+    }
+  }
+
+  V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
+    final rm = V3MasterRealtimeManager.instance;
+    final normV = V2GradAdresaValidator.normalizeTime(vreme);
+    for (final row in rm.rasporedPutnikCache.values) {
+      if (row['putnik_id'] == putnikId &&
+          row['grad'] == grad &&
+          V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
+          (row['datum'] as String?)?.split('T')[0] == datum) {
+        final vozacId = row['vozac_id'] as String?;
+        if (vozacId != null) return V3VozacService.getVozacById(vozacId);
+      }
+    }
+    return null;
+  }
+
+  Future<void> _dodelijPutnikuHome(
+      String putnikId, V3Vozac vozac, String grad, String vreme, String datum) async {
+    try {
+      await supabase
+          .from('v3_raspored_putnik')
+          .delete()
+          .eq('putnik_id', putnikId)
+          .eq('grad', grad)
+          .eq('vreme', vreme)
+          .eq('datum', datum);
+      await supabase.from('v3_raspored_putnik').insert({
+        'putnik_id': putnikId,
+        'vozac_id': vozac.id,
+        'grad': grad,
+        'vreme': vreme,
+        'datum': datum,
+      });
+      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
+    } catch (e) {
+      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+    }
+  }
+
+  Future<void> _ukloniPutnikDodjeluHome(
+      String putnikId, String grad, String vreme, String datum) async {
+    try {
+      await supabase
+          .from('v3_raspored_putnik')
+          .delete()
+          .eq('putnik_id', putnikId)
+          .eq('grad', grad)
+          .eq('vreme', vreme)
+          .eq('datum', datum);
+      if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
+    } catch (e) {
+      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+    }
+  }
+
+  Future<void> _showPutnikAssignDialog(V3OperativnaNedeljaEntry zahtev) async {
+    final grad = zahtev.grad ?? '';
+    final vreme = zahtev.vreme ?? '';
+    final dt = zahtev.datum;
+    final datum =
+        '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    final trenutni = _getVozacZaPutnika(zahtev.putnikId, grad, vreme, datum);
+    V3Vozac? odabran = trenutni;
+    final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno).toList();
+    if (vozaci.isEmpty) {
+      if (mounted) V3AppSnackBar.warning(context, 'Nema registrovanih vozača');
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Container(
+          decoration: BoxDecoration(
+            gradient: Theme.of(context).backgroundGradient,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '👤 ${(zahtev.imePrezime ?? 'Putnik').toUpperCase()}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1),
+              ),
+              Text(
+                '$grad $vreme — $datum',
+                style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Dodeli vozača putniku',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              ...vozaci.map((v) {
+                final isSelected = odabran?.id == v.id;
+                final color = _parseVozacColor(v.boja);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () => setS(() => odabran = isSelected ? null : v),
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? color.withValues(alpha: 0.25)
+                            : Colors.white.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: color.withValues(alpha: 0.3),
+                            child: Text(
+                              v.imePrezime.isNotEmpty ? v.imePrezime[0].toUpperCase() : '?',
+                              style: TextStyle(
+                                  color: color, fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            v.imePrezime,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white70,
+                              fontWeight:
+                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (isSelected)
+                            Icon(Icons.check_circle, color: color, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              if (trenutni != null)
+                TextButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await _ukloniPutnikDodjeluHome(zahtev.putnikId, grad, vreme, datum);
+                  },
+                  icon: const Icon(Icons.person_remove_outlined,
+                      color: Colors.redAccent, size: 18),
+                  label: const Text('Ukloni individualnu dodjelu',
+                      style: TextStyle(color: Colors.redAccent)),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: odabran == null
+                      ? null
+                      : () async {
+                          Navigator.pop(ctx);
+                          await _dodelijPutnikuHome(
+                              zahtev.putnikId, odabran!, grad, vreme, datum);
+                        },
+                  child: const Text('Potvrdi',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Dijalog za dodavanje novog zahteva (rezervacije)
@@ -1206,7 +1421,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               // Konstruišemo privremeni V3Zahtev ako je izvor 'zahtev' radi kompatibilnosti sa V3PutnikCard
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
-                                child: V3PutnikCard(putnik: p, entry: z, redniBroj: i + 1),
+                                child: V3PutnikCard(
+                                  putnik: p,
+                                  entry: z,
+                                  redniBroj: i + 1,
+                                  onDodeliVozaca: _isAdmin
+                                      ? () => _showPutnikAssignDialog(z)
+                                      : null,
+                                ),
                               );
                             },
                           ),
