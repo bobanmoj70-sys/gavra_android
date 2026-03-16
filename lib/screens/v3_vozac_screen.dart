@@ -11,6 +11,7 @@ import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
+import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -25,8 +26,12 @@ import 'v3_welcome_screen.dart';
 /// V3VozacScreen — ekran za vozača (Voja).
 /// Prikazuje samo putnike iz v3_raspored_putnik dodeljene ovom vozaču,
 /// i samo termine iz v3_raspored_termin dodeljene ovom vozaču.
+/// [vozacOverrideId] — ako je postavljen, prikazuje podatke za tog vozača (admin pogled, read-only).
 class V3VozacScreen extends StatefulWidget {
-  const V3VozacScreen({super.key});
+  const V3VozacScreen({super.key, this.vozacOverrideId});
+
+  /// Ako je null, koristi currentVozac (normalni vozač). Ako nije null, admin gleda tuđi ekran.
+  final String? vozacOverrideId;
 
   @override
   State<V3VozacScreen> createState() => _V3VozacScreenState();
@@ -40,6 +45,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isTracking = false;
 
   StreamSubscription<void>? _realtimeSub;
+
+  /// Da li je ovo admin pregled (read-only)
+  bool get _isAdminPregled => widget.vozacOverrideId != null;
+
+  /// Efektivni vozač — override (admin gleda) ili currentVozac (normalni)
+  dynamic get _efektivniVozac {
+    if (widget.vozacOverrideId != null) {
+      final data = V3MasterRealtimeManager.instance.vozaciCache[widget.vozacOverrideId];
+      if (data == null) return null;
+      // Napravimo jednostavan objekat koji ima .id i .imePrezime i .boja
+      return _VozacProxy(data);
+    }
+    return V3VozacService.currentVozac;
+  }
 
   // Moji termini (iz v3_raspored_termin) za trenutni dan
   List<Map<String, dynamic>> _mojiTermini = [];
@@ -69,7 +88,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<void> _initData() async {
-    if (V3VozacService.currentVozac == null) {
+    if (!_isAdminPregled && V3VozacService.currentVozac == null) {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -91,7 +110,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   void _rebuild() {
-    final vozac = V3VozacService.currentVozac;
+    final vozac = _efektivniVozac;
     if (vozac == null) return;
     final rm = V3MasterRealtimeManager.instance;
 
@@ -113,35 +132,69 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             (r['aktivno'] == true || r['aktivno'] == null))
         .toList();
 
-    // Ako selektovani grad/vreme ne odgovara nijednom terminu niti putniku, auto-select
+    // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
     final terminPostoji = _mojiTermini.any((t) =>
         t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
-    final putnikTerminPostoji = rm.rasporedPutnikCache.values.any((r) =>
+    if (!terminPostoji) {
+      _selectClosestTermin();
+      // Nakon auto-selecta ponovi rebuild sa novim vrednostima
+      if (_selectedVreme.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _rebuild();
+        });
+        return;
+      }
+    }
+
+    // 2. Putnici za ovaj dan/grad/vreme:
+    //    a) Svi iz v3_operativna_nedelja za isti datum+grad+vreme koji nisu odbijeni/otkazani
+    //       (vozač ima termin → sve putnike tog termina preuzima automatski)
+    //    b) Individualni override iz v3_raspored_putnik (putnik dodijeljen direktno ovom vozaču
+    //       za drugačiji termin od termina — npr. drugačije vreme unutar istog dana)
+    //    c) Putnici iz v3_raspored_putnik koji su eksplicitno dodijeljeni ovom vozaču
+    //       za ovaj datum+grad+vreme (individualna dodjela)
+
+    // Skup putnik_id-eva koji su individualno dodijeljeni DRUGOM vozaču za isti termin
+    // (override — isključi ih iz automatskog popunjavanja)
+    final individualniDrugiVozac = rm.rasporedPutnikCache.values
+        .where((r) =>
+            r['vozac_id']?.toString() != vozac.id &&
+            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+            r['grad']?.toString().toUpperCase() == _selectedGrad &&
+            normalizeV(r['vreme']?.toString()) == selectedVNorm &&
+            r['aktivno'] != false)
+        .map((r) => r['putnik_id']?.toString())
+        .whereType<String>()
+        .toSet();
+
+    // Putnici iz v3_operativna_nedelja za ovaj termin (automatski, jer vozač ima termin)
+    final operativniPutnici = terminPostoji
+        ? rm.operativnaNedeljaCache.values.where((r) =>
+            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+            r['grad']?.toString().toUpperCase() == _selectedGrad &&
+            normalizeV(r['vreme']?.toString()) == selectedVNorm &&
+            r['status_final'] != 'odbijeno' &&
+            r['status_final'] != 'otkazano' &&
+            !individualniDrugiVozac.contains(r['putnik_id']?.toString()))
+        : <Map<String, dynamic>>[];
+
+    // Putnici individualno dodijeljeni OVOM vozaču (v3_raspored_putnik)
+    final individualniOvajVozac = rm.rasporedPutnikCache.values.where((r) =>
         r['vozac_id']?.toString() == vozac.id &&
         (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
         r['grad']?.toString().toUpperCase() == _selectedGrad &&
         normalizeV(r['vreme']?.toString()) == selectedVNorm &&
         r['aktivno'] != false);
-    if (!terminPostoji && !putnikTerminPostoji) {
-      _selectClosestTermin();
-    }
 
-    // 2. Moji putnici za ovaj dan/grad/vreme (iz v3_raspored_putnik)
-    final rasporedPutnici = rm.rasporedPutnikCache.values
-        .where((r) =>
-            r['vozac_id']?.toString() == vozac.id &&
-            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
-            r['grad']?.toString().toUpperCase() == _selectedGrad &&
-            normalizeV(r['vreme']?.toString()) == selectedVNorm &&
-            (r['aktivno'] == true || r['aktivno'] == null))
-        .toList();
+    // Unija putnik_id-eva (bez duplikata)
+    final svePutnikIds = <String>{
+      ...operativniPutnici.map((r) => r['putnik_id']?.toString()).whereType<String>(),
+      ...individualniOvajVozac.map((r) => r['putnik_id']?.toString()).whereType<String>(),
+    };
 
-    // 3. Za svakog putnika iz rasporeda, pronađi zahtev iz v3_zahtevi
+    // 3. Za svakog putnika izgradimo _PutnikZahtev
     final putnici = <_PutnikZahtev>[];
-    for (final rp in rasporedPutnici) {
-      final putnikId = rp['putnik_id']?.toString();
-      if (putnikId == null) continue;
-
+    for (final putnikId in svePutnikIds) {
       final putnikData = rm.putniciCache[putnikId];
       if (putnikData == null) continue;
       final putnik = V3Putnik.fromJson(putnikData);
@@ -174,16 +227,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     String? bestVreme;
     String? bestGrad;
     int minDiff = 9999;
-    final vozacId = V3VozacService.currentVozac?.id ?? '';
-    final rm = V3MasterRealtimeManager.instance;
 
-    // Kandidati: termini + putnici
+    // Kandidati: samo termini (putnici se izvlače automatski iz operativna_nedelja)
     final kandidati = <Map<String, dynamic>>[
       ..._mojiTermini,
-      ...rm.rasporedPutnikCache.values.where((r) =>
-          r['vozac_id']?.toString() == vozacId &&
-          (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
-          r['aktivno'] != false),
     ];
 
     for (final t in kandidati) {
@@ -283,8 +330,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   int _getPutnikCount(String grad, String vreme) {
-    final vozac = V3VozacService.currentVozac;
-    if (vozac == null) return 0;
     final rm = V3MasterRealtimeManager.instance;
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
@@ -293,18 +338,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
 
     final vremeNorm = normV(vreme);
-    return rm.rasporedPutnikCache.values
+    final gradUp = grad.toUpperCase();
+
+    return rm.operativnaNedeljaCache.values
         .where((r) =>
-            r['vozac_id']?.toString() == vozac.id &&
             (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
-            r['grad']?.toString().toUpperCase() == grad.toUpperCase() &&
+            r['grad']?.toString().toUpperCase() == gradUp &&
             normV(r['vreme']?.toString()) == vremeNorm &&
-            (r['aktivno'] == true || r['aktivno'] == null))
+            r['status_final'] != 'odbijeno' &&
+            r['status_final'] != 'otkazano')
         .length;
   }
 
   Future<void> _toggleTracking() async {
-    final vozac = V3VozacService.currentVozac;
+    final vozac = _efektivniVozac;
     if (vozac == null) return;
 
     if (!_isTracking) {
@@ -386,7 +433,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
 
     // Termini za BottomNavBar — unija iz v3_raspored_termin i v3_raspored_putnik
-    final vozacId = V3VozacService.currentVozac?.id ?? '';
+    final vozacId = _efektivniVozac?.id ?? '';
     final rm = V3MasterRealtimeManager.instance;
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
@@ -443,85 +490,101 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                       _buildDigitalDateDisplay(context, vozac),
                       const SizedBox(height: 6),
                       // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
-                      Row(
-                        children: [
-                          // START / STOP
-                          Expanded(
-                            flex: 2,
-                            child: _buildAppBarBtn(
-                              context: context,
-                              label: _isTracking ? 'STOP' : 'START',
-                              color: _isTracking ? Colors.red : Colors.green,
-                              onTap: _toggleTracking,
-                            ),
+                      if (_isAdminPregled)
+                        // Admin pregled — samo naziv vozača
+                        Container(
+                          height: 30,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                           ),
-                          const SizedBox(width: 4),
-                          // MAPA
-                          Expanded(
-                            flex: 2,
-                            child: _buildAppBarBtn(
-                              context: context,
-                              label: 'MAPA',
-                              color: Colors.blue,
-                              onTap: _openMapa,
-                            ),
+                          child: Text(
+                            '👁 ${vozac?.imePrezime ?? ''}  —  admin pregled',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
-                          const SizedBox(width: 4),
-                          // Dan picker
-                          Expanded(
-                            flex: 2,
-                            child: _buildDanPickerBtn(context),
-                          ),
-                          const SizedBox(width: 4),
-                          // ⚙️ Popup meni — šifra + logout
-                          PopupMenuButton<String>(
-                            onSelected: (val) {
-                              if (val == 'sifra') {
-                                if (!mounted || vozac == null) return;
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
-                                  ),
-                                );
-                              } else if (val == 'logout') {
-                                _logout();
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'sifra',
-                                child: Row(children: [
-                                  Icon(Icons.lock_reset, color: Colors.blueAccent),
-                                  SizedBox(width: 8),
-                                  Text('Promeni šifru'),
-                                ]),
-                              ),
-                              PopupMenuItem(
-                                value: 'logout',
-                                child: Row(children: [
-                                  Icon(Icons.logout, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Logout'),
-                                ]),
-                              ),
-                            ],
-                            padding: EdgeInsets.zero,
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.more_vert, color: Colors.white, size: 16),
+                        )
+                      else
+                        Row(
+                          children: [
+                            // START / STOP
+                            Expanded(
+                              flex: 2,
+                              child: _buildAppBarBtn(
+                                context: context,
+                                label: _isTracking ? 'STOP' : 'START',
+                                color: _isTracking ? Colors.red : Colors.green,
+                                onTap: _toggleTracking,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 4),
+                            // MAPA
+                            Expanded(
+                              flex: 2,
+                              child: _buildAppBarBtn(
+                                context: context,
+                                label: 'MAPA',
+                                color: Colors.blue,
+                                onTap: _openMapa,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            // Dan picker
+                            Expanded(
+                              flex: 2,
+                              child: _buildDanPickerBtn(context),
+                            ),
+                            const SizedBox(width: 4),
+                            // ⚙️ Popup meni — šifra + logout
+                            PopupMenuButton<String>(
+                              onSelected: (val) {
+                                if (val == 'sifra') {
+                                  if (!mounted || vozac == null) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
+                                    ),
+                                  );
+                                } else if (val == 'logout') {
+                                  _logout();
+                                }
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'sifra',
+                                  child: Row(children: [
+                                    Icon(Icons.lock_reset, color: Colors.blueAccent),
+                                    SizedBox(width: 8),
+                                    Text('Promeni šifru'),
+                                  ]),
+                                ),
+                                PopupMenuItem(
+                                  value: 'logout',
+                                  child: Row(children: [
+                                    Icon(Icons.logout, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('Logout'),
+                                  ]),
+                                ),
+                              ],
+                              padding: EdgeInsets.zero,
+                              child: Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.more_vert, color: Colors.white, size: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -531,6 +594,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           bottomNavigationBar: ValueListenableBuilder<String>(
             valueListenable: navBarTypeNotifier,
             builder: (context, navType, _) {
+              int? getKapacitet(String grad, String vreme) {
+                final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+                return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
+              }
+
               if (navType == 'zimski') {
                 return V3BottomNavBarZimski(
                   sviPolasci: _sviPolasci,
@@ -538,6 +606,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   selectedVreme: _selectedVreme,
                   onPolazakChanged: _onPolazakChanged,
                   getPutnikCount: _getPutnikCount,
+                  getKapacitet: getKapacitet,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
                 );
@@ -548,6 +617,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   selectedVreme: _selectedVreme,
                   onPolazakChanged: _onPolazakChanged,
                   getPutnikCount: _getPutnikCount,
+                  getKapacitet: getKapacitet,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
                 );
@@ -558,6 +628,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                 selectedVreme: _selectedVreme,
                 onPolazakChanged: _onPolazakChanged,
                 getPutnikCount: _getPutnikCount,
+                getKapacitet: getKapacitet,
                 bcVremena: bcVremenaToShow,
                 vsVremena: vsVremenaToShow,
               );
@@ -763,4 +834,16 @@ class _PutnikZahtev {
   final V3Putnik putnik;
   final V3Zahtev? zahtev;
   const _PutnikZahtev({required this.putnik, this.zahtev});
+}
+
+/// Proxy objekat za vozača koji se gradi iz raw Map podataka (za admin pregled)
+class _VozacProxy {
+  _VozacProxy(Map<String, dynamic> data)
+      : id = data['id']?.toString() ?? '',
+        imePrezime = data['ime_prezime']?.toString() ?? data['ime']?.toString() ?? '',
+        boja = data['boja']?.toString();
+
+  final String id;
+  final String imePrezime;
+  final String? boja;
 }
