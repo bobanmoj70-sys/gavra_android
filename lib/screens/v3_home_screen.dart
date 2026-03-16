@@ -363,7 +363,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       if (postojeci.isNotEmpty) {
                                         // Prepiši vreme na postojećem zahtjevu
                                         await V3ZahtevService.updateVreme(
-                                            postojeci.first['id'] as String, _selectedVreme);
+                                            postojeci.first['id'] as String, _selectedVreme, status: 'odobreno');
                                       } else {
                                         final zahtev = V3Zahtev(
                                           id: '',

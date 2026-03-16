@@ -81,11 +81,16 @@ class V3ZahtevService {
   }
 
   /// Prepisuje zeljeno_vreme i dodeljeno_vreme postojećeg zahteva (admin use-case).
-  static Future<void> updateVreme(String id, String novoVreme) async {
+  static Future<void> updateVreme(String id, String novoVreme, {String? status}) async {
     try {
+      final payload = <String, dynamic>{
+        'zeljeno_vreme': novoVreme,
+        'dodeljeno_vreme': novoVreme,
+        if (status != null) 'status': status,
+      };
       final row = await supabase
           .from('v3_zahtevi')
-          .update({'zeljeno_vreme': novoVreme, 'dodeljeno_vreme': novoVreme})
+          .update(payload)
           .eq('id', id)
           .select()
           .single();
