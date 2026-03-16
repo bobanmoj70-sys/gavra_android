@@ -5,8 +5,6 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
-import '../theme.dart';
-import '../utils/v3_app_snack_bar.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_audit_log_screen.dart';
@@ -21,7 +19,6 @@ import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
-import 'v3_vozac_screen.dart';
 import 'v3_vozaci_admin_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
 
@@ -105,110 +102,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showVozacPickerDialog(BuildContext context) {
-    final vozaci = V3VozacService.getAllVozaci();
-    if (!mounted) return;
-    if (vozaci.isEmpty) {
-      V3AppSnackBar.error(context, '❌ Nema učitanih vozača');
-      return;
-    }
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.92,
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
-            ),
-            decoration: BoxDecoration(
-              gradient: Theme.of(context).backgroundGradient,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    blurRadius: 24,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 8)),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                    border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.blue.withValues(alpha: 0.4)),
-                        ),
-                        child: const Icon(Icons.person_search_outlined, color: Colors.white, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Izaberi vozača',
-                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white70),
-                        onPressed: () => Navigator.pop(dialogContext),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
-                    ],
-                  ),
-                ),
-                // Lista vozača
-                Flexible(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shrinkWrap: true,
-                    itemCount: vozaci.length,
-                    separatorBuilder: (_, __) => Divider(color: Theme.of(context).glassBorder, height: 1),
-                    itemBuilder: (ctx, i) {
-                      final v = vozaci[i];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.blueGrey,
-                          child: Text(v.imePrezime[0],
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                        title: Text(v.imePrezime,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                        onTap: () {
-                          Navigator.pop(dialogContext);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(builder: (_) => V3VozacScreen(vozacOverrideId: v.id)),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -462,31 +355,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               ),
               const SizedBox(height: 6),
 
-              // ─── RED 2: Vozač picker, Raspored, Putnici ───
+              // ─── RED 2: Raspored, Putnici ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                 child: Row(
                   children: [
-                    // Vozač picker
-                    Expanded(
-                      child: _NavBtn(
-                        color: Colors.blue,
-                        onTap: () => _showVozacPickerDialog(context),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            'Vozač',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     // 📅 Raspored
                     _NavBtn(
                       color: Colors.blue,

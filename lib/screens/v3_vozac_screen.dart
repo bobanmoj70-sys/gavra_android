@@ -26,12 +26,8 @@ import 'v3_welcome_screen.dart';
 /// V3VozacScreen — ekran za vozača (Voja).
 /// Prikazuje samo putnike iz v3_raspored_putnik dodeljene ovom vozaču,
 /// i samo termine iz v3_raspored_termin dodeljene ovom vozaču.
-/// [vozacOverrideId] — ako je postavljen, prikazuje podatke za tog vozača (admin pogled, read-only).
 class V3VozacScreen extends StatefulWidget {
-  const V3VozacScreen({super.key, this.vozacOverrideId});
-
-  /// Ako je null, koristi currentVozac (normalni vozač). Ako nije null, admin gleda tuđi ekran.
-  final String? vozacOverrideId;
+  const V3VozacScreen({super.key});
 
   @override
   State<V3VozacScreen> createState() => _V3VozacScreenState();
@@ -46,19 +42,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   StreamSubscription<void>? _realtimeSub;
 
-  /// Da li je ovo admin pregled (read-only)
-  bool get _isAdminPregled => widget.vozacOverrideId != null;
-
-  /// Efektivni vozač — override (admin gleda) ili currentVozac (normalni)
-  dynamic get _efektivniVozac {
-    if (widget.vozacOverrideId != null) {
-      final data = V3MasterRealtimeManager.instance.vozaciCache[widget.vozacOverrideId];
-      if (data == null) return null;
-      // Napravimo jednostavan objekat koji ima .id i .imePrezime i .boja
-      return _VozacProxy(data);
-    }
-    return V3VozacService.currentVozac;
-  }
+  /// Efektivni vozač
+  dynamic get _efektivniVozac => V3VozacService.currentVozac;
 
   // Moji termini (iz v3_raspored_termin) za trenutni dan
   List<Map<String, dynamic>> _mojiTermini = [];
@@ -88,7 +73,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<void> _initData() async {
-    if (!_isAdminPregled && V3VozacService.currentVozac == null) {
+    if (V3VozacService.currentVozac == null) {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -490,101 +475,85 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                       _buildDigitalDateDisplay(context, vozac),
                       const SizedBox(height: 6),
                       // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
-                      if (_isAdminPregled)
-                        // Admin pregled — samo naziv vozača
-                        Container(
-                          height: 30,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      Row(
+                        children: [
+                          // START / STOP
+                          Expanded(
+                            flex: 2,
+                            child: _buildAppBarBtn(
+                              context: context,
+                              label: _isTracking ? 'STOP' : 'START',
+                              color: _isTracking ? Colors.red : Colors.green,
+                              onTap: _toggleTracking,
+                            ),
                           ),
-                          child: Text(
-                            '👁 ${vozac?.imePrezime ?? ''}  —  admin pregled',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                          const SizedBox(width: 4),
+                          // MAPA
+                          Expanded(
+                            flex: 2,
+                            child: _buildAppBarBtn(
+                              context: context,
+                              label: 'MAPA',
+                              color: Colors.blue,
+                              onTap: _openMapa,
+                            ),
                           ),
-                        )
-                      else
-                        Row(
-                          children: [
-                            // START / STOP
-                            Expanded(
-                              flex: 2,
-                              child: _buildAppBarBtn(
-                                context: context,
-                                label: _isTracking ? 'STOP' : 'START',
-                                color: _isTracking ? Colors.red : Colors.green,
-                                onTap: _toggleTracking,
+                          const SizedBox(width: 4),
+                          // Dan picker
+                          Expanded(
+                            flex: 2,
+                            child: _buildDanPickerBtn(context),
+                          ),
+                          const SizedBox(width: 4),
+                          // ⚙️ Popup meni — šifra + logout
+                          PopupMenuButton<String>(
+                            onSelected: (val) {
+                              if (val == 'sifra') {
+                                if (!mounted || vozac == null) return;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
+                                  ),
+                                );
+                              } else if (val == 'logout') {
+                                _logout();
+                              }
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'sifra',
+                                child: Row(children: [
+                                  Icon(Icons.lock_reset, color: Colors.blueAccent),
+                                  SizedBox(width: 8),
+                                  Text('Promeni šifru'),
+                                ]),
+                              ),
+                              PopupMenuItem(
+                                value: 'logout',
+                                child: Row(children: [
+                                  Icon(Icons.logout, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Logout'),
+                                ]),
+                              ),
+                            ],
+                            padding: EdgeInsets.zero,
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.more_vert, color: Colors.white, size: 16),
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            // MAPA
-                            Expanded(
-                              flex: 2,
-                              child: _buildAppBarBtn(
-                                context: context,
-                                label: 'MAPA',
-                                color: Colors.blue,
-                                onTap: _openMapa,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            // Dan picker
-                            Expanded(
-                              flex: 2,
-                              child: _buildDanPickerBtn(context),
-                            ),
-                            const SizedBox(width: 4),
-                            // ⚙️ Popup meni — šifra + logout
-                            PopupMenuButton<String>(
-                              onSelected: (val) {
-                                if (val == 'sifra') {
-                                  if (!mounted || vozac == null) return;
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
-                                    ),
-                                  );
-                                } else if (val == 'logout') {
-                                  _logout();
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'sifra',
-                                  child: Row(children: [
-                                    Icon(Icons.lock_reset, color: Colors.blueAccent),
-                                    SizedBox(width: 8),
-                                    Text('Promeni šifru'),
-                                  ]),
-                                ),
-                                PopupMenuItem(
-                                  value: 'logout',
-                                  child: Row(children: [
-                                    Icon(Icons.logout, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Logout'),
-                                  ]),
-                                ),
-                              ],
-                              padding: EdgeInsets.zero,
-                              child: Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                                ),
-                                child: const Center(
-                                  child: Icon(Icons.more_vert, color: Colors.white, size: 16),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -834,16 +803,4 @@ class _PutnikZahtev {
   final V3Putnik putnik;
   final V3Zahtev? zahtev;
   const _PutnikZahtev({required this.putnik, this.zahtev});
-}
-
-/// Proxy objekat za vozača koji se gradi iz raw Map podataka (za admin pregled)
-class _VozacProxy {
-  _VozacProxy(Map<String, dynamic> data)
-      : id = data['id']?.toString() ?? '',
-        imePrezime = data['ime_prezime']?.toString() ?? data['ime']?.toString() ?? '',
-        boja = data['boja']?.toString();
-
-  final String id;
-  final String imePrezime;
-  final String? boja;
 }
