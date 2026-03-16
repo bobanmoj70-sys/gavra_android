@@ -136,8 +136,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return null;
   }
 
-  Future<void> _dodelijPutnikuHome(
-      String putnikId, V3Vozac vozac, String grad, String vreme, String datum) async {
+  Future<void> _dodelijPutnikuHome(String putnikId, V3Vozac vozac, String grad, String vreme, String datum) async {
     try {
       await supabase
           .from('v3_raspored_putnik')
@@ -159,8 +158,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
   }
 
-  Future<void> _ukloniPutnikDodjeluHome(
-      String putnikId, String grad, String vreme, String datum) async {
+  Future<void> _ukloniPutnikDodjeluHome(String putnikId, String grad, String vreme, String datum) async {
     try {
       await supabase
           .from('v3_raspored_putnik')
@@ -179,8 +177,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final grad = zahtev.grad ?? '';
     final vreme = zahtev.vreme ?? '';
     final dt = zahtev.datum;
-    final datum =
-        '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    final datum = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
     final trenutni = _getVozacZaPutnika(zahtev.putnikId, grad, vreme, datum);
     V3Vozac? odabran = trenutni;
     final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno).toList();
@@ -242,9 +239,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? color.withValues(alpha: 0.25)
-                            : Colors.white.withValues(alpha: 0.07),
+                        color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
@@ -258,8 +253,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             backgroundColor: color.withValues(alpha: 0.3),
                             child: Text(
                               v.imePrezime.isNotEmpty ? v.imePrezime[0].toUpperCase() : '?',
-                              style: TextStyle(
-                                  color: color, fontWeight: FontWeight.bold, fontSize: 13),
+                              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -267,14 +261,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             v.imePrezime,
                             style: TextStyle(
                               color: isSelected ? Colors.white : Colors.white70,
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               fontSize: 16,
                             ),
                           ),
                           const Spacer(),
-                          if (isSelected)
-                            Icon(Icons.check_circle, color: color, size: 20),
+                          if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
                         ],
                       ),
                     ),
@@ -288,10 +280,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     Navigator.pop(ctx);
                     await _ukloniPutnikDodjeluHome(zahtev.putnikId, grad, vreme, datum);
                   },
-                  icon: const Icon(Icons.person_remove_outlined,
-                      color: Colors.redAccent, size: 18),
-                  label: const Text('Ukloni individualnu dodjelu',
-                      style: TextStyle(color: Colors.redAccent)),
+                  icon: const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 18),
+                  label: const Text('Ukloni individualnu dodjelu', style: TextStyle(color: Colors.redAccent)),
                 ),
               const SizedBox(height: 8),
               SizedBox(
@@ -301,19 +291,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     backgroundColor: Colors.white.withValues(alpha: 0.15),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: odabran == null
                       ? null
                       : () async {
                           Navigator.pop(ctx);
-                          await _dodelijPutnikuHome(
-                              zahtev.putnikId, odabran!, grad, vreme, datum);
+                          await _dodelijPutnikuHome(zahtev.putnikId, odabran!, grad, vreme, datum);
                         },
-                  child: const Text('Potvrdi',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: const Text('Potvrdi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],
@@ -1425,9 +1411,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   putnik: p,
                                   entry: z,
                                   redniBroj: i + 1,
-                                  onDodeliVozaca: _isAdmin
-                                      ? () => _showPutnikAssignDialog(z)
-                                      : null,
+                                  vozacBoja: V3VozacService.getVozacColorForTermin(
+                                      _selectedDay, z.grad ?? '', z.vreme ?? ''),
+                                  onDodeliVozaca: _isAdmin ? () => _showPutnikAssignDialog(z) : null,
                                 ),
                               );
                             },
