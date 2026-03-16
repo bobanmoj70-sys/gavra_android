@@ -558,9 +558,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                     terminJeDodeljen: terminDodeljen,
                                     indivVozacIme: indivVozac?.imePrezime,
                                     redniBroj: i + 1,
-                                    onTap: (terminDodeljen || z.statusFinal == 'otkazano')
-                                        ? null
-                                        : () => _showPutnikAssignDialog(z),
+                                    onTap: z.statusFinal == 'otkazano' ? null : () => _showPutnikAssignDialog(z),
                                   );
                                 },
                               ),

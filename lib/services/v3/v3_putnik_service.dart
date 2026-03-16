@@ -63,7 +63,7 @@ class V3PutnikService {
     for (final z in danasnjiZahtevi) {
       final pid = z['putnik_id'];
       final pData = rm.putniciCache[pid];
-      if (pData != null && pData['aktivna'] == true) {
+      if (pData != null && pData['aktivno'] == true) {
         rez.add({
           'putnik': V3Putnik.fromJson(pData),
           'zahtev': V3Zahtev.fromJson(z),
@@ -100,7 +100,7 @@ class V3PutnikService {
     for (final z in filtriraniZahtevi) {
       final pid = z['putnik_id'];
       final pData = rm.putniciCache[pid];
-      if (pData != null && pData['aktivna'] == true) {
+      if (pData != null && pData['aktivno'] == true) {
         rez.add({
           'putnik': V3Putnik.fromJson(pData),
           'zahtev': V3Zahtev.fromJson(z),
@@ -149,7 +149,7 @@ class V3PutnikService {
 
   static Future<List<V3Putnik>> getAllAktivniPutnici() async {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    return cache.where((p) => p['aktivna'] == true).map((p) => V3Putnik.fromJson(p)).toList()
+    return cache.where((p) => p['aktivno'] == true).map((p) => V3Putnik.fromJson(p)).toList()
       ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 
@@ -177,7 +177,7 @@ class V3PutnikService {
       final pid = z['putnik_id']?.toString() ?? '';
       if (rez.containsKey(pid)) continue;
       final pData = rm.putniciCache[pid];
-      if (pData != null && pData['aktivna'] == true) {
+      if (pData != null && pData['aktivno'] == true) {
         rez[pid] = {
           'id': pid,
           'ime_prezime': pData['ime_prezime']?.toString() ?? '',
