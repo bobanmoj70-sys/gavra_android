@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -471,8 +470,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         pageBuilder: (_, __, ___) => V3PermissionScreen(
           onDone: () => Navigator.of(context).pop(),
         ),
-        transitionsBuilder: (_, anim, __, child) =>
-            FadeTransition(opacity: anim, child: child),
+        transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),
       ),
     );
