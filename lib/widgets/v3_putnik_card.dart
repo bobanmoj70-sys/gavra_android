@@ -27,6 +27,7 @@ class V3PutnikCard extends StatefulWidget {
     this.redniBroj,
     this.onChanged,
     this.onDodeliVozaca,
+    this.vozacBoja,
   });
 
   final V3Putnik putnik;
@@ -35,6 +36,7 @@ class V3PutnikCard extends StatefulWidget {
   final int? redniBroj;
   final VoidCallback? onChanged;
   final VoidCallback? onDodeliVozaca;
+  final Color? vozacBoja;
 
   @override
   State<V3PutnikCard> createState() => _V3PutnikCardState();
@@ -285,7 +287,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     return BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: const Color(0xFFE0E0E0), width: 1.0),
+      border: Border.all(
+        color: widget.vozacBoja ?? const Color(0xFFE0E0E0),
+        width: widget.vozacBoja != null ? 4.0 : 1.0,
+      ),
       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 3, offset: const Offset(0, 1))],
     );
   }
