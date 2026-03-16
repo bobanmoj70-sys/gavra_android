@@ -23,16 +23,13 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
         .map((p) => p['id'] as String)
         .toSet();
 
-    final vozaciIds = rm.vozaciCache.keys.toSet();
-
     return rm.zahteviCache.values
         .where((r) {
           if (!radniciIds.contains(r['putnik_id'])) return false;
-          // Samo zahtevi koje je putnik sam poslao — izvor_id je putnik_id ili null, ali ne vozač
-          final izvorId = r['izvor_id'] as String?;
-          final putnikId = r['putnik_id'] as String?;
-          if (izvorId != null && vozaciIds.contains(izvorId)) return false;
-          return izvorId == null || izvorId == putnikId;
+          // Samo zahtevi koje je putnik sam poslao — created_by ne počinje sa 'vozac:'
+          final createdBy = r['created_by'] as String?;
+          if (createdBy != null && createdBy.startsWith('vozac:')) return false;
+          return true;
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()
