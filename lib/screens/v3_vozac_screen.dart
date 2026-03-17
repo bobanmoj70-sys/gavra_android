@@ -681,9 +681,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   itemCount: _mojiPutnici.length,
                   itemBuilder: (context, index) {
                     final pz = _mojiPutnici[index];
-                    final redniBroj = _mojiPutnici
-                        .sublist(0, index)
-                        .fold(1, (sum, e) => sum + (e.entry?.brojMesta ?? 1));
+                    final redniBroj =
+                        _mojiPutnici.sublist(0, index).fold(1, (sum, e) => sum + (e.entry?.brojMesta ?? 1));
                     return V3PutnikCard(putnik: pz.putnik, entry: pz.entry, redniBroj: redniBroj);
                   },
                 ),
