@@ -123,10 +123,14 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     if (_globalProcessingLock || _isProcessing) return;
     final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
     if (zahtevId == null || zahtevId.isEmpty) return;
+    final tip = widget.putnik.tipPutnika;
+    final defaultCena = (tip == 'dnevni' || tip == 'posiljka')
+        ? widget.putnik.cenaPoPokupljenju
+        : widget.putnik.cenaPoDanu;
     final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
       context: context,
       imePrezime: widget.putnik.imePrezime,
-      defaultCena: widget.putnik.cenaPoDanu,
+      defaultCena: defaultCena,
     );
     if (rezultat == null) return;
     _globalProcessingLock = true;
