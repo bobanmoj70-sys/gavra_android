@@ -281,11 +281,11 @@ jobs:
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
 
-          # min_version = latest - 2 (npr. latest=6.0.116 → min=6.0.114)
+          # min_version = latest - 3 (npr. latest=6.0.116 → min=6.0.113)
           MAJOR=$(echo "$VERSION" | cut -d. -f1)
           MINOR=$(echo "$VERSION" | cut -d. -f2)
           PATCH=$(echo "$VERSION" | cut -d. -f3)
-          MIN_PATCH=$((PATCH - 2))
+          MIN_PATCH=$((PATCH - 3))
           if [ "$MIN_PATCH" -lt 0 ]; then MIN_PATCH=0; fi
           MIN_VERSION="$MAJOR.$MINOR.$MIN_PATCH"
 
