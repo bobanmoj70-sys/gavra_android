@@ -11,9 +11,12 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_dug_service.dart';
+import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
+import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../widgets/v3_update_banner.dart';
+import 'v3_welcome_screen.dart';
 
 class V3PutnikProfilScreen extends StatefulWidget {
   final Map<String, dynamic> putnikData;
@@ -453,7 +456,41 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   };
 
   Future<void> _logout() async {
-    // ...existing code...
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Column(
+          children: [
+            Icon(Icons.logout, color: Colors.red, size: 40),
+            SizedBox(height: 12),
+            Text('Odjava', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text('Da li ste sigurni da želite da se odjavite?', textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Otkaži')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Odjavi se', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    // Obrisi sesiju i kredencijale
+    V3PutnikService.currentPutnik = null;
+    await V3BiometricService().clearCredentials();
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),
+      (r) => false,
+    );
   }
 
   // _showAlternativaDialog obrisan jer alternativa ide samo preko push notifikacije.
