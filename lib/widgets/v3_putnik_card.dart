@@ -93,7 +93,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       // Pokupljanje uvijek ide kroz v3_zahtevi
       final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
       if (zahtevId == null || zahtevId.isEmpty) throw 'Nema zahteva za pokupljanje';
-      await V3ZahtevService.oznaciPokupljen(zahtevId, pokupljenVozacId: currentVozac.id, operativnaId: widget.entry?.id);
+      await V3ZahtevService.oznaciPokupljen(zahtevId,
+          pokupljenVozacId: currentVozac.id, operativnaId: widget.entry?.id);
       await V2HapticService.putnikPokupljen();
       if (mounted) {
         V3AppSnackBar.success(context, isAlreadyPokupljen ? 'Vraćeno u obradu' : 'Putnik pokupljen');
@@ -238,7 +239,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
     if (confirm == true) {
       try {
-        await V3ZahtevService.otkaziZahtev(zahtevId, otkazaoVozacId: V3VozacService.currentVozac?.id, operativnaId: widget.entry?.id);
+        await V3ZahtevService.otkaziZahtev(zahtevId,
+            otkazaoVozacId: V3VozacService.currentVozac?.id, operativnaId: widget.entry?.id);
         if (mounted) {
           V3AppSnackBar.warning(context, 'Otkazano: ${widget.putnik.imePrezime}');
           widget.onChanged?.call();
