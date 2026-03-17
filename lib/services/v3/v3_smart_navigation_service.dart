@@ -1,5 +1,4 @@
 import '../../models/v3_putnik.dart';
-import '../../models/v3_zahtev.dart';
 
 class V3NavigationResult {
   final bool success;
@@ -17,7 +16,7 @@ class V3SmartNavigationService {
   /// Optimizacija V3 rute — sortira putnike po GPS lokaciji vozača,
   /// prolazi kroz sve putnike i završava u suprotnom gradu.
   static Future<V3NavigationResult> optimizeV3Route({
-    required List<Map<String, dynamic>> data, // Sadrži 'putnik' i 'zahtev'
+    required List<Map<String, dynamic>> data, // Sadrži 'putnik' i 'entry'
     required String fromCity, // BC ili VS
     double? driverLat,
     double? driverLng,
@@ -30,21 +29,13 @@ class V3SmartNavigationService {
       // 1. Odredimo ciljni grad (suprotan od polaznog)
       final targetCity = fromCity.toUpperCase() == 'BC' ? 'VS' : 'BC';
 
-      // 2. Mapiramo putnike u objekte sa koordinatama (za pravu GPS optimizaciju bi nam trebali API-jevi)
-      // Za sada simuliramo sortiranje po vremenu i lokaciji unutar grada
-      // U v3_zahtevi obično imamo 'adresa_naziv' ili koordinate ako postoje
+      // 2. Sortiramo po imenu putnika (GPS optimizacija za budućnost)
       final sortedData = List<Map<String, dynamic>>.from(data);
 
       sortedData.sort((a, b) {
-        final V3Zahtev za = a['zahtev'];
-        final V3Zahtev zb = b['zahtev'];
-
-        // Prioritet 1: Vreme (da bismo ispoštovali red vožnje)
-        final timeComp = za.zeljenoVreme.compareTo(zb.zeljenoVreme);
-        if (timeComp != 0) return timeComp;
-
-        // Prioritet 2: "Blizina" (simulirano preko adresa za v3)
-        return 0;
+        final pa = a['putnik'] as V3Putnik?;
+        final pb = b['putnik'] as V3Putnik?;
+        return (pa?.imePrezime ?? '').compareTo(pb?.imePrezime ?? '');
       });
 
       return V3NavigationResult(

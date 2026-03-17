@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../models/v3_putnik.dart';
-import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
@@ -49,7 +48,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   List<Map<String, dynamic>> _mojiTermini = [];
 
   // Moji putnici (iz v3_raspored_putnik) za trenutni dan/grad/vreme
-  List<_PutnikZahtev> _mojiPutnici = [];
+  List<_PutnikEntry> _mojiPutnici = [];
 
   List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
   List<String> get _vsVremena => V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
@@ -130,14 +129,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         r['aktivno'] != false);
 
     if (!terminPostoji && !imaIndividualnuDodjelu) {
+      final staroVreme = _selectedVreme;
       _selectClosestTermin();
-      // Nakon auto-selecta ponovi rebuild sa novim vrednostima
-      if (_selectedVreme.isNotEmpty) {
+      if (_selectedVreme != staroVreme && _selectedVreme.isNotEmpty) {
+        // Pronašao bliži termin — ponovi rebuild sa novim vrednostima
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _rebuild();
         });
         return;
       }
+      // Nema termina za ovaj dan — prikaži prazno
+      if (mounted) setState(() => _mojiPutnici = []);
+      return;
     }
 
     // 2. Putnici za ovaj dan/grad/vreme:
@@ -168,7 +171,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             r['grad']?.toString().toUpperCase() == _selectedGrad &&
             normalizeV(r['vreme']?.toString()) == selectedVNorm &&
             r['status_final'] != 'odbijeno' &&
-            r['status_final'] != 'otkazano' &&
             !individualniDrugiVozac.contains(r['putnik_id']?.toString()))
         : <Map<String, dynamic>>[];
 
@@ -186,31 +188,44 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       ...individualniOvajVozac.map((r) => r['putnik_id']?.toString()).whereType<String>(),
     };
 
-    // 3. Za svakog putnika izgradimo _PutnikZahtev
-    final putnici = <_PutnikZahtev>[];
+    // 3. Za svakog putnika izgradimo _PutnikEntry iz operativna_nedelja
+    final putnici = <_PutnikEntry>[];
     for (final putnikId in svePutnikIds) {
       final putnikData = rm.putniciCache[putnikId];
       if (putnikData == null) continue;
       final putnik = V3Putnik.fromJson(putnikData);
 
-      // Pronađi zahtev za ovog putnika (isti grad/vreme)
-      V3Zahtev? zahtev;
+      // Pronađi entry iz operativna_nedelja za ovog putnika
+      V3OperativnaNedeljaEntry? entry;
       try {
-        final zahtevData = rm.zahteviCache.values.firstWhere(
-          (z) =>
-              z['putnik_id']?.toString() == putnikId &&
-              z['grad']?.toString().toUpperCase() == _selectedGrad &&
-              normalizeV(z['zeljeno_vreme']?.toString()) == selectedVNorm &&
-              z['aktivno'] == true,
+        final entryData = rm.operativnaNedeljaCache.values.firstWhere(
+          (r) =>
+              r['putnik_id']?.toString() == putnikId &&
+              (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+              r['grad']?.toString().toUpperCase() == _selectedGrad &&
+              normalizeV(r['vreme']?.toString()) == selectedVNorm,
         );
-        zahtev = V3Zahtev.fromJson(zahtevData);
+        entry = V3OperativnaNedeljaEntry.fromJson(entryData);
       } catch (_) {
-        // nema zahteva
+        // nema entry-ja
       }
 
-      putnici.add(_PutnikZahtev(putnik: putnik, zahtev: zahtev));
+      putnici.add(_PutnikEntry(putnik: putnik, entry: entry));
     }
-    putnici.sort((a, b) => a.putnik.imePrezime.compareTo(b.putnik.imePrezime));
+
+    // Sort identičan home screenu: otkazano(3) → pokupljen(2) → ostali(1) → ime
+    putnici.sort((a, b) {
+      int rank(_PutnikEntry p) {
+        if (p.entry?.statusFinal == 'otkazano') return 3;
+        if (p.entry?.pokupljen == true) return 2;
+        return 1;
+      }
+
+      final aR = rank(a);
+      final bR = rank(b);
+      if (aR != bR) return aR.compareTo(bR);
+      return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
+    });
 
     if (mounted) setState(() => _mojiPutnici = putnici);
   }
@@ -380,7 +395,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Future<void> _optimizujRutu() async {
     if (_mojiPutnici.isEmpty) return;
 
-    final data = _mojiPutnici.map((p) => {'putnik': p.putnik, 'zahtev': p.zahtev}).toList();
+    final data = _mojiPutnici.map((p) => {'putnik': p.putnik, 'entry': p.entry}).toList();
 
     // Možemo simulirati trenutni GPS vozača ovde za preciznije sortiranje
     final res = await V3SmartNavigationService.optimizeV3Route(
@@ -393,7 +408,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (res.success && res.optimizedData != null) {
       setState(() {
         _mojiPutnici = res.optimizedData!.map((d) {
-          return _PutnikZahtev(putnik: d['putnik'] as V3Putnik, zahtev: d['zahtev'] as V3Zahtev?);
+          return _PutnikEntry(putnik: d['putnik'] as V3Putnik, entry: d['entry'] as V3OperativnaNedeljaEntry?);
         }).toList();
       });
       if (mounted) {
@@ -666,7 +681,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   itemCount: _mojiPutnici.length,
                   itemBuilder: (context, index) {
                     final pz = _mojiPutnici[index];
-                    return V3PutnikCard(putnik: pz.putnik, zahtev: pz.zahtev, redniBroj: index + 1);
+                    return V3PutnikCard(putnik: pz.putnik, entry: pz.entry, redniBroj: index + 1);
                   },
                 ),
         ),
@@ -807,9 +822,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 }
 
-/// Helper klasa — putnik + njegov zahtev
-class _PutnikZahtev {
+/// Helper klasa — putnik + njegov operativni entry
+class _PutnikEntry {
   final V3Putnik putnik;
-  final V3Zahtev? zahtev;
-  const _PutnikZahtev({required this.putnik, this.zahtev});
+  final V3OperativnaNedeljaEntry? entry;
+  const _PutnikEntry({required this.putnik, this.entry});
 }
