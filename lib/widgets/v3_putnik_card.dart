@@ -91,7 +91,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       if (currentVozac == null) throw 'Niste logovani u V3 sistem';
       final isAlreadyPokupljen = widget.entry?.pokupljen ?? false;
       // Pokupljanje uvijek ide kroz v3_zahtevi
-      final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
+      final zahtevId = widget.zahtev?.id;
       if (zahtevId == null || zahtevId.isEmpty) throw 'Nema zahteva za pokupljanje';
       await V3ZahtevService.oznaciPokupljen(zahtevId,
           pokupljenVozacId: currentVozac.id, operativnaId: widget.entry?.id);
@@ -122,7 +122,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Future<void> _handlePayment() async {
     if (widget.entry == null && widget.zahtev == null) return;
     if (_globalProcessingLock || _isProcessing) return;
-    final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
+    final zahtevId = widget.zahtev?.id;
     if (zahtevId == null || zahtevId.isEmpty) return;
     final tip = widget.putnik.tipPutnika;
     final defaultCena =
@@ -191,7 +191,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Future<void> _handleOtkazivanje() async {
-    final zahtevId = widget.entry?.izvorId ?? widget.zahtev?.id;
+    final zahtevId = widget.zahtev?.id;
     if (zahtevId == null || zahtevId.isEmpty) return;
     // Koristimo zahtev za ime, ali id može biti iz entry
     final zahtev = widget.zahtev;
