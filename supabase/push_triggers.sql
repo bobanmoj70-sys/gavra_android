@@ -431,7 +431,7 @@ BEGIN
   IF TG_OP <> 'INSERT' OR NEW.status <> 'ceka' THEN RETURN NEW; END IF;
 
   -- Dohvati ime putnika
-  SELECT imePrezime INTO v_putnik_ime
+  SELECT ime_prezime INTO v_putnik_ime
   FROM public.v3_putnici
   WHERE id = NEW.putnik_id
   LIMIT 1;
