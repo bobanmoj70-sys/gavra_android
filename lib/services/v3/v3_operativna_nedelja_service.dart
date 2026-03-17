@@ -301,11 +301,12 @@ class V3OperativnaNedeljaService {
 
   /// Čita broj zauzetih mesta — suma broj_mesta zapisa sa statusom koji zauzima mjesto.
   /// Filtrira: aktivno=true i status_final IN (obrada, odobreno, alternativa).
+  /// Napomena: pokupljeni putnici imaju status_final='odobreno' + pokupljen=true, pa su već u skupu.
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
     const aktivniStatusi = {'obrada', 'odobreno', 'alternativa'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
     return zapisi
-        .where((e) => e.aktivno && (aktivniStatusi.contains(e.statusFinal) || e.pokupljen))
+        .where((e) => e.aktivno && aktivniStatusi.contains(e.statusFinal))
         .fold(0, (sum, e) => sum + e.brojMesta);
   }
 
