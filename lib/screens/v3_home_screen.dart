@@ -1414,12 +1414,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   ? _parseVozacColor(indivVozac.boja)
                                   : V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme);
 
+                              // Kumulativni redni broj — uzima u obzir broj_mesta prethodnih putnika
+                              final redniBroj = prikazaniZapisi.sublist(0, i).fold(1, (sum, e) => sum + e.brojMesta);
+
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: V3PutnikCard(
                                   putnik: p,
                                   entry: z,
-                                  redniBroj: i + 1,
+                                  redniBroj: redniBroj,
                                   vozacBoja: vozacBoja,
                                   onDodeliVozaca: _isAdmin ? () => _showPutnikAssignDialog(z) : null,
                                 ),

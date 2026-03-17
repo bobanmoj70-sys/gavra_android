@@ -455,7 +455,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                     border: Border.all(color: textColor.withOpacity(0.45), width: 1),
                                   ),
                                   child: Text(
-                                    'x\$brojMesta',
+                                    'x$brojMesta',
                                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: textColor),
                                   ),
                                 ),
