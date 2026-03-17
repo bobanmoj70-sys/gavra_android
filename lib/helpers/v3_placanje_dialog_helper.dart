@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../models/v3_finansije.dart';
+import '../../models/v3_putnik.dart';
 import '../../services/v3/v3_finansije_service.dart';
+import '../../services/v3/v3_putnik_service.dart';
 import '../../services/v3/v3_vozac_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
 
@@ -144,8 +146,18 @@ class V3PlacanjeDialogHelper {
 
       await V3FinansijeService.addUnos(unos);
 
+      // Za radnika i učenika ažuriramo arhivski zapis plaćenog meseca/godine
+      final putnik = V3PutnikService.getPutnikById(putnikId);
+      if (putnik != null && (putnik.tipPutnika == 'radnik' || putnik.tipPutnika == 'ucenik')) {
+        final azuriran = putnik.copyWith(
+          placeniMesec: rezultat.mesec,
+          placenaGodina: rezultat.godina,
+        );
+        await V3PutnikService.addUpdatePutnik(azuriran, updatedBy: 'vozac:${vozac.id}');
+      }
+
       if (context.mounted) {
-        V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} KM za $imePrezime');
+        V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za $imePrezime');
       }
       return true;
     } catch (e) {
