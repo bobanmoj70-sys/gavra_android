@@ -272,10 +272,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     bool first = true;
     int idx = 0;
     for (final pz in _mojiPutnici) {
-      // Adresa zavisno od smjera (grad iz selektovanog termina)
+      // Adresa zavisno od smjera (grad iz selektovanog termina) — bez fallback na drugi grad
       final adresa = _selectedGrad.toUpperCase() == 'BC'
-          ? (pz.putnik.adresaBcNaziv ?? pz.putnik.adresaVsNaziv ?? '')
-          : (pz.putnik.adresaVsNaziv ?? pz.putnik.adresaBcNaziv ?? '');
+          ? (pz.putnik.adresaBcNaziv ?? pz.putnik.adresaBcNaziv2 ?? '')
+          : (pz.putnik.adresaVsNaziv ?? pz.putnik.adresaVsNaziv2 ?? '');
       if (adresa.isEmpty) continue;
       final encoded = Uri.encodeComponent('$adresa, Serbia');
       waypointsBuffer.write('${first ? '?' : '&'}waypoint$idx=$encoded');

@@ -195,6 +195,7 @@ class V3ZahtevService {
           .single();
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
       await supabase.from('v3_operativna_nedelja').update({
+        'status_final': 'otkazano',
         if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
         if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
       }).eq('izvor_id', id);
