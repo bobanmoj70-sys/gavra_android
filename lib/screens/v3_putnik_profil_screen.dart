@@ -507,9 +507,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaVsId = _putnikData['adresa_vs_id'] as String?;
     final adresaBcNaziv = V3AdresaService.getNazivAdreseById(adresaBcId);
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
-    final cenaPoDanu = (_putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
-    final cenaPoPokupljenju = (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
-    final imaDugovanje = (tip == 'dnevni' || tip == 'posiljka') && (cenaPoPokupljenju > 0 || _ukupnoDugovanje > 0);
+
 
     // Avatar inicijali
     final parts = imePrezime.trim().split(' ');
@@ -571,11 +569,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               ),
 
               const SizedBox(height: 16),
-
-              // ── DUGOVANJE ────────────────────────────────────────
-              if (imaDugovanje) _buildDugovanjeCard(cenaPoPokupljenju: cenaPoPokupljenju),
-
-              if (imaDugovanje) const SizedBox(height: 16),
 
               // ── RASPORED ZAHTEVA ─────────────────────────────────
               _buildRasporedCard(),
@@ -697,65 +690,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   ),
                 ],
               ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDugovanjeCard({required double cenaPoPokupljenju}) {
-    final isCisto = _ukupnoDugovanje <= 0;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isCisto
-              ? [Colors.green.withValues(alpha: 0.18), Colors.green.withValues(alpha: 0.05)]
-              : [Colors.red.withValues(alpha: 0.22), Colors.red.withValues(alpha: 0.06)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isCisto ? Colors.green.withValues(alpha: 0.35) : Colors.red.withValues(alpha: 0.35),
-        ),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'TRENUTNO STANJE',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
-              fontSize: 11,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            isCisto ? '✅ IZMIRENO' : '${_ukupnoDugovanje.toStringAsFixed(0)} RSD',
-            style: TextStyle(
-              color: isCisto ? Colors.green.shade200 : Colors.red.shade200,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (!isCisto) ...[
-            const SizedBox(height: 4),
-            Text(
-              '$_brojNeplacenih neplaćenih prevoza',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
-            ),
-          ],
-          if (cenaPoPokupljenju > 0) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Cena po pokupljenju: ${cenaPoPokupljenju.toStringAsFixed(0)} RSD',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 10,
-                fontStyle: FontStyle.italic,
-              ),
             ),
           ],
         ],
