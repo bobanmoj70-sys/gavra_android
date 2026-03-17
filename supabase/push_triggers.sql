@@ -414,3 +414,103 @@ DROP TRIGGER IF EXISTS tr_v3_notify_putnik_zahtev ON v3_zahtevi;
 CREATE TRIGGER tr_v3_notify_putnik_zahtev
 AFTER UPDATE OF status ON v3_zahtevi
 FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_putnik_on_zahtev_update();
+
+-- ==========================================
+-- 12. FUNKCIJA: v3_pin_zahtevi INSERT → push adminu
+--     Admin dobija push kada putnik pošalje zahtev za PIN
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.fn_v3_notify_admin_on_pin_zahtev()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_tokens     jsonb;
+  v_putnik_ime text;
+BEGIN
+  IF TG_OP <> 'INSERT' OR NEW.status <> 'ceka' THEN RETURN NEW; END IF;
+
+  -- Dohvati ime putnika
+  SELECT imePrezime INTO v_putnik_ime
+  FROM public.v3_putnici
+  WHERE id = NEW.putnik_id
+  LIMIT 1;
+
+  -- Dohvati admin token (Bojan)
+  SELECT jsonb_build_array(jsonb_build_object('token', push_token, 'provider', 'fcm'))
+  INTO v_tokens
+  FROM public.v3_vozaci
+  WHERE LOWER(ime_prezime) LIKE '%bojan%'
+    AND push_token IS NOT NULL AND push_token <> ''
+  LIMIT 1;
+
+  IF v_tokens IS NULL THEN RETURN NEW; END IF;
+
+  PERFORM notify_push(
+    v_tokens,
+    '🔔 Novi zahtev za PIN',
+    COALESCE(v_putnik_ime, 'Putnik') || ' traži PIN za pristup aplikaciji'
+      || CASE WHEN NEW.telefon IS NOT NULL THEN ' · ' || NEW.telefon ELSE '' END,
+    jsonb_build_object(
+      'type',      'v3_pin_zahtev',
+      'zahtev_id', NEW.id,
+      'putnik_id', NEW.putnik_id
+    )
+  );
+
+  RETURN NEW;
+END;
+$$;
+
+-- 12. TRIGGER: Aktiviraj na tabeli v3_pin_zahtevi (INSERT)
+DROP TRIGGER IF EXISTS tr_v3_notify_admin_pin_zahtev ON v3_pin_zahtevi;
+CREATE TRIGGER tr_v3_notify_admin_pin_zahtev
+AFTER INSERT ON v3_pin_zahtevi
+FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_admin_on_pin_zahtev();
+
+-- ==========================================
+-- 13. FUNKCIJA: v3_pin_zahtevi UPDATE → push putniku
+--     Putnik dobija push kada admin odbije zahtev za PIN
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.fn_v3_notify_putnik_on_pin_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_tokens jsonb;
+BEGIN
+  IF OLD.status = NEW.status THEN RETURN NEW; END IF;
+
+  -- Push samo pri odbijanju (odobravanje → admin šalje SMS sa PIN-om)
+  IF NEW.status <> 'odbijen' THEN RETURN NEW; END IF;
+
+  SELECT jsonb_build_array(jsonb_build_object('token', push_token, 'provider', 'fcm'))
+  INTO v_tokens
+  FROM public.v3_putnici
+  WHERE id = NEW.putnik_id
+    AND push_token IS NOT NULL AND push_token <> ''
+  LIMIT 1;
+
+  IF v_tokens IS NULL THEN RETURN NEW; END IF;
+
+  PERFORM notify_push(
+    v_tokens,
+    '❌ Zahtev za PIN odbijen',
+    'Vaš zahtev za PIN je odbijen. Kontaktirajte administraciju za više informacija.',
+    jsonb_build_object(
+      'type',      'v3_pin_odbijen',
+      'zahtev_id', NEW.id,
+      'putnik_id', NEW.putnik_id
+    )
+  );
+
+  RETURN NEW;
+END;
+$$;
+
+-- 13. TRIGGER: Aktiviraj na tabeli v3_pin_zahtevi (UPDATE statusa)
+DROP TRIGGER IF EXISTS tr_v3_notify_putnik_pin_zahtev ON v3_pin_zahtevi;
+CREATE TRIGGER tr_v3_notify_putnik_pin_zahtev
+AFTER UPDATE OF status ON v3_pin_zahtevi
+FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_putnik_on_pin_update();
