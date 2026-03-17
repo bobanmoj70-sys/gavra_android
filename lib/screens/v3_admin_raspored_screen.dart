@@ -546,6 +546,9 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                 itemCount: zapisi.length,
                                 itemBuilder: (_, i) {
                                   final z = zapisi[i];
+                                  final redniBroj = zapisi
+                                      .sublist(0, i)
+                                      .fold(1, (sum, e) => sum + e.brojMesta);
                                   final terminDodeljen = vozacTermin != null;
                                   final indivVozac = _getVozacZaPutnika(z.putnikId, _selectedGrad, _selectedVreme);
                                   final vozacBoja = indivVozac != null
@@ -559,7 +562,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                     child: V3PutnikCard(
                                       putnik: putnik,
                                       entry: z,
-                                      redniBroj: i + 1,
+                                      redniBroj: redniBroj,
                                       vozacBoja: vozacBoja,
                                       onDodeliVozaca:
                                           z.statusFinal == 'otkazano' ? null : () => _showPutnikAssignDialog(z),
