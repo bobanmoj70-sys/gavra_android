@@ -48,18 +48,28 @@ class V3Dug {
     };
   }
 
-  /// Kreira V3Dug iz reda tabele v3_dnevne_operacije
-  factory V3Dug.fromOperacija(Map<String, dynamic> json) {
+  /// Kreira V3Dug iz reda tabele v3_operativna_nedelja.
+  /// [putnikData] — red iz v3_putnici cache-a za ovog putnika.
+  factory V3Dug.fromOperacija(
+    Map<String, dynamic> json, {
+    Map<String, dynamic>? putnikData,
+  }) {
+    final tip = putnikData?['tip_putnika'] as String? ?? 'dnevni';
+    // Iznos = cena po pokupljenju iz profila putnika (jedini relevantan iznos za dnevne/posiljke)
+    final iznos = (putnikData?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
     return V3Dug(
       id: json['id']?.toString() ?? '',
       putnikId: json['putnik_id']?.toString() ?? '',
-      imePrezime: json['ime_prezime'] as String? ?? json['putnik_ime'] as String? ?? 'Nepoznato',
-      tipPutnika: 'dnevni',
+      imePrezime: putnikData?['ime_prezime'] as String? ??
+          json['ime_prezime'] as String? ??
+          json['putnik_ime'] as String? ??
+          'Nepoznato',
+      tipPutnika: tip,
       vozacId: json['vozac_id']?.toString() ?? '',
-      datum: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'] as String) ?? DateTime.now()
+      datum: json['datum'] != null
+          ? DateTime.tryParse(json['datum'] as String) ?? DateTime.now()
           : DateTime.now(),
-      iznos: (json['iznos_naplacen'] as num?)?.toDouble() ?? 0.0,
+      iznos: iznos,
       placeno: (json['naplata_status'] as String?) == 'placeno',
       createdAt: null,
     );
