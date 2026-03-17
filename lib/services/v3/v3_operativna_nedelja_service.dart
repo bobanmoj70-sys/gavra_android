@@ -367,7 +367,7 @@ class V3OperativnaNedeljaService {
           if (napomena != null) 'napomena': napomena,
         }).eq('id', postojeci.first['id'] as String);
       } else {
-        // INSERT direktno u operativna_nedelja (bez izvor_id — null, nije kroz zahtev)
+        // INSERT direktno u operativna_nedelja
         await supabase.from('v3_operativna_nedelja').insert({
           'putnik_id': putnikId,
           'ime_prezime': imePrezime,
