@@ -77,7 +77,7 @@ class V3ZahtevService {
           .from('v3_zahtevi')
           .update({
             'status': newStatus,
-            'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
+            'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.id ?? "sistem"}',
           })
           .eq('id', id)
           .select()
@@ -97,7 +97,7 @@ class V3ZahtevService {
         'zeljeno_vreme': novoVreme,
         'dodeljeno_vreme': novoVreme,
         if (status != null) 'status': status,
-        'updated_by': 'vozac:${V3VozacService.currentVozac?.imePrezime ?? "sistem"}',
+        'updated_by': 'vozac:${V3VozacService.currentVozac?.id ?? "sistem"}',
       };
       final row = await supabase.from('v3_zahtevi').update(payload).eq('id', id).select().single();
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
@@ -133,7 +133,11 @@ class V3ZahtevService {
       final putnikId = op['putnik_id'] as String?;
       if (putnikId != null) {
         final base = zCache.firstWhere(
-          (z) => z['putnik_id'] == putnikId && (z['datum'] as String? ?? '').startsWith(datum) && z['grad'] == grad && z['aktivno'] == true,
+          (z) =>
+              z['putnik_id'] == putnikId &&
+              (z['datum'] as String? ?? '').startsWith(datum) &&
+              z['grad'] == grad &&
+              z['aktivno'] == true,
           orElse: () => <String, dynamic>{},
         );
         if (base.isNotEmpty) {
@@ -181,7 +185,8 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId, String? operativnaId}) async {
+  static Future<void> otkaziZahtev(String id,
+      {String? otkazaoVozacId, String? otkazaoPutnikId, String? operativnaId}) async {
     try {
       if (otkazaoVozacId != null) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)

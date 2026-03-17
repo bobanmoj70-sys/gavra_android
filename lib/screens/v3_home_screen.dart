@@ -548,7 +548,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     setS(() => isLoading = true);
                                     try {
                                       final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
-                                      final vozacIme = V3VozacService.currentVozac?.imePrezime ?? 'nepoznat';
+                                      final vozacId = V3VozacService.currentVozac?.id ?? 'nepoznat';
 
                                       // Direktan INSERT u v3_operativna_nedelja — bez zahteva
                                       await V3OperativnaNedeljaService.createOrUpdateByVozac(
@@ -559,7 +559,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         zeljenoVreme: _selectedVreme,
                                         dodeljivoVreme: _selectedVreme,
                                         brojMesta: brojMesta,
-                                        createdBy: 'vozac:$vozacIme',
+                                        createdBy: 'vozac:$vozacId',
                                       );
 
                                       if (!dialogCtx.mounted) return;
