@@ -30,6 +30,7 @@ class V3PutnikService {
   static Future<void> addUpdatePutnik(V3Putnik putnik, {String? createdBy, String? updatedBy}) async {
     try {
       final data = putnik.toJson();
+      if (putnik.id.isEmpty) data.remove('id');
       if (createdBy != null && putnik.id.isEmpty) data['created_by'] = createdBy;
       data['updated_by'] = updatedBy ?? createdBy ?? 'admin:sistem';
 

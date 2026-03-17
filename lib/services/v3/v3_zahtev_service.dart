@@ -180,29 +180,39 @@ class V3ZahtevService {
 
   static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId}) async {
     try {
-      final String updBy = otkazaoVozacId != null
-          ? 'vozac:${V3VozacService.getVozacById(otkazaoVozacId)?.imePrezime ?? otkazaoVozacId}'
-          : otkazaoPutnikId != null
-              ? 'putnik:$otkazaoPutnikId'
-              : 'sistem';
-      final row = await supabase
-          .from('v3_zahtevi')
-          .update({'status': 'otkazano', 'updated_by': updBy})
-          .eq('id', id)
-          .select()
-          .single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-      await supabase.from('v3_operativna_nedelja').update({
-        'status_final': 'otkazano',
-        if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
-        if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
-      }).eq('izvor_id', id);
-      V3AuditLogService.log(
-        tip: 'zahtev_otkazan',
-        aktorId: otkazaoVozacId,
-        aktorTip: otkazaoVozacId != null ? 'vozac' : null,
-        detalji: 'zahtev_id: $id',
-      );
+      if (otkazaoVozacId != null) {
+        // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
+        await supabase.from('v3_operativna_nedelja').update({
+          'status_final': 'otkazano',
+          'otkazao_vozac_id': otkazaoVozacId,
+        }).eq('izvor_id', id);
+        V3AuditLogService.log(
+          tip: 'zahtev_otkazan',
+          aktorId: otkazaoVozacId,
+          aktorTip: 'vozac',
+          detalji: 'zahtev_id: $id',
+        );
+      } else {
+        // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovdje
+        final String updBy = otkazaoPutnikId != null ? 'putnik:$otkazaoPutnikId' : 'sistem';
+        final row = await supabase
+            .from('v3_zahtevi')
+            .update({'status': 'otkazano', 'updated_by': updBy})
+            .eq('id', id)
+            .select()
+            .single();
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+        await supabase.from('v3_operativna_nedelja').update({
+          'status_final': 'otkazano',
+          if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
+        }).eq('izvor_id', id);
+        V3AuditLogService.log(
+          tip: 'zahtev_otkazan',
+          aktorId: otkazaoPutnikId,
+          aktorTip: 'putnik',
+          detalji: 'zahtev_id: $id',
+        );
+      }
     } catch (e) {
       debugPrint('[V3ZahtevService] Otkazi error: $e');
       rethrow;

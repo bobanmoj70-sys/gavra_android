@@ -24,14 +24,13 @@ class V3OperativnaNedeljaEntry {
   final String? pokupljenVozacId;
   final String? naplatioVozacId;
   final String? otkazaoVozacId;
+  final String? otkazaoPutnikId;
   final int? maxMesta;
   final bool pokupljen;
   final String? napomena;
   final String? altVremePre;
   final String? altVremePosle;
   final String? altNapomena;
-  final String? adresaId;
-  final String? adresaNaziv;
   final bool koristiSekundarnu;
   final String? createdBy;
 
@@ -56,14 +55,13 @@ class V3OperativnaNedeljaEntry {
     this.pokupljenVozacId,
     this.naplatioVozacId,
     this.otkazaoVozacId,
+    this.otkazaoPutnikId,
     this.maxMesta,
     this.pokupljen = false,
     this.napomena,
     this.altVremePre,
     this.altVremePosle,
     this.altNapomena,
-    this.adresaId,
-    this.adresaNaziv,
     this.koristiSekundarnu = false,
     this.createdBy,
   });
@@ -90,14 +88,13 @@ class V3OperativnaNedeljaEntry {
       pokupljenVozacId: json['pokupljen_vozac_id'] as String?,
       naplatioVozacId: json['naplatio_vozac_id'] as String?,
       otkazaoVozacId: json['otkazao_vozac_id'] as String?,
+      otkazaoPutnikId: json['otkazao_putnik_id'] as String?,
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
       pokupljen: json['pokupljen'] as bool? ?? false,
       napomena: json['napomena'] as String?,
       altVremePre: json['alt_vreme_pre'] as String?,
       altVremePosle: json['alt_vreme_posle'] as String?,
       altNapomena: json['alt_napomena'] as String?,
-      adresaId: json['adresa_id'] as String?,
-      adresaNaziv: json['adresa_naziv'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
       createdBy: json['created_by'] as String?,
     );
@@ -123,13 +120,12 @@ class V3OperativnaNedeljaEntry {
       if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
       if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
       if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
+      if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
       if (maxMesta != null) 'max_mesta': maxMesta,
       if (napomena != null) 'napomena': napomena,
       if (altVremePre != null) 'alt_vreme_pre': altVremePre,
       if (altVremePosle != null) 'alt_vreme_posle': altVremePosle,
       if (altNapomena != null) 'alt_napomena': altNapomena,
-      if (adresaId != null) 'adresa_id': adresaId,
-      if (adresaNaziv != null) 'adresa_naziv': adresaNaziv,
       'koristi_sekundarnu': koristiSekundarnu,
       if (createdBy != null) 'created_by': createdBy,
     };
@@ -353,8 +349,6 @@ class V3OperativnaNedeljaService {
     required String dodeljivoVreme, // HH:mm
     required int brojMesta,
     required String createdBy, // 'vozac:Ime'
-    String? adresaId,
-    String? adresaNaziv,
     String? napomena,
   }) async {
     try {
@@ -373,8 +367,6 @@ class V3OperativnaNedeljaService {
           'vreme': dodeljivoVreme,
           'status_final': 'odobreno',
           'updated_by': createdBy,
-          if (adresaId != null) 'adresa_id': adresaId,
-          if (adresaNaziv != null) 'adresa_naziv': adresaNaziv,
           if (napomena != null) 'napomena': napomena,
         }).eq('id', postojeci.first['id'] as String);
       } else {
@@ -393,8 +385,6 @@ class V3OperativnaNedeljaService {
           'aktivno': true,
           'pokupljen': false,
           'created_by': createdBy,
-          if (adresaId != null) 'adresa_id': adresaId,
-          if (adresaNaziv != null) 'adresa_naziv': adresaNaziv,
           if (napomena != null) 'napomena': napomena,
         });
       }

@@ -597,6 +597,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                     final bojaPokupljen = _bojaZaVozacId(widget.entry?.pokupljenVozacId);
                     final bojaNaplata = _bojaZaVozacId(widget.entry?.naplatioVozacId);
                     final bojaOtkaz = _bojaZaVozacId(widget.entry?.otkazaoVozacId);
+                    final otkazaoPutnikId = widget.entry?.otkazaoPutnikId;
 
                     String _fmt(DateTime? dt) {
                       if (dt == null) return '';
@@ -666,7 +667,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                             () {
                               final vp = widget.entry?.vremePokupljen;
                               final dtStr = _fmt(vp);
-                              return dtStr.isNotEmpty ? 'Otkazano: $dtStr' : 'Otkazano';
+                              final koOtkaz = otkazaoPutnikId != null ? 'Putnik otkazao' : 'Vozač otkazao';
+                              return dtStr.isNotEmpty ? '$koOtkaz: $dtStr' : koOtkaz;
                             }(),
                             style: TextStyle(fontSize: 13, color: bojaOtkaz, fontWeight: FontWeight.w600),
                           ),
