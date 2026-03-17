@@ -262,7 +262,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
-  /// ISO datum za izabrani dan — ako je dan prošao, skače u sljedeću sedmicu
+  /// ISO datum za izabrani dan u tekućoj nedelji.
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
   void _onPolazakChanged(String grad, String vreme) {

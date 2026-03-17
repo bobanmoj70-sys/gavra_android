@@ -30,7 +30,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   String _selectedVreme = '';
   String _selectedDay = 'Ponedeljak';
 
-  /// ISO datum za izabrani dan — ako je dan prošao, skače u sljedeću sedmicu
+  /// ISO datum za izabrani dan u tekućoj nedelji.
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
 
   List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
@@ -134,7 +134,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
   int _getPutnikCount(String grad, String vreme) {
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
-    final targetDatum = _selectedDatumIso; // već uračunat skok u sljedeću sedmicu
+    final targetDatum = _selectedDatumIso;
     return V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((r) {
       final datumStr = r['datum'] as String?;
       if (datumStr == null) return false;

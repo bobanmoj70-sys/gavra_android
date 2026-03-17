@@ -38,10 +38,10 @@ class V3DanHelper {
     return _names[w - 1];
   }
 
-  // ─── naziv/kratica → ISO datum (tekuća/sljedeća sedmica) ────────
+  // ─── naziv/kratica → ISO datum (uvijek tekuća sedmica) ──────────
 
-  /// ISO datum (yyyy-MM-dd) za dati puni naziv dana.
-  /// Ako je dan prošao u tekućoj sedmici, skače u sljedeću.
+  /// ISO datum (yyyy-MM-dd) za dati puni naziv dana u tekućoj nedelji.
+  /// Prošli dani vraćaju prošli datum — nema skakanja na sledeću nedelju.
   static String datumIsoZaDanPuni(String danPuni) {
     final idx = _names.indexWhere((d) => d.toLowerCase() == danPuni.toLowerCase());
     if (idx == -1) return _todayIso();
@@ -64,8 +64,7 @@ class V3DanHelper {
 
   static String _isoZaIdx(int targetIdx) {
     final now = DateTime.now();
-    int d = targetIdx - (now.weekday - 1);
-    if (d < 0) d += 7;
-    return now.add(Duration(days: d)).toIso8601String().split('T')[0];
+    final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
+    return DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day + targetIdx).toIso8601String().split('T')[0];
   }
 }
