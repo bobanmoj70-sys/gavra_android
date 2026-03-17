@@ -22,7 +22,7 @@ String _formatVreme(String? iso) {
 String _formatDatumKratko(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   try {
-    final dt = DateTime.parse(iso);
+    final dt = DateTime.parse(iso).toLocal();
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.';
   } catch (_) {
     return iso;

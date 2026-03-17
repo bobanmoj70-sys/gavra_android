@@ -1,3 +1,5 @@
+import '../utils/v3_date_utils.dart';
+
 /// Universal model for all types of passengers in v3_putnici table
 class V3Putnik {
   final String id;
@@ -83,8 +85,8 @@ class V3Putnik {
       placeniMesec: json['placeni_mesec'] as int?,
       placenaGodina: json['placena_godina'] as int?,
       aktivno: json['aktivno'] as bool? ?? true,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
+      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       createdBy: json['created_by'] as String?,
     );
   }

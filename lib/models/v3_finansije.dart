@@ -1,3 +1,5 @@
+import '../utils/v3_date_utils.dart';
+
 /// Model za tabelu v3_troskovi
 class V3Trosak {
   final String id;
@@ -41,8 +43,8 @@ class V3Trosak {
       godina: json['godina'] as int? ?? now.year,
       vozacId: json['vozac_id']?.toString(),
       aktivno: json['aktivno'] as bool? ?? true,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
+      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
   }
 
@@ -82,7 +84,7 @@ class V3FinansijeStanje {
       naziv: json['naziv'] as String? ?? '',
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
       aktivno: json['aktivno'] as bool? ?? true,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
   }
 
@@ -130,7 +132,7 @@ class V3FinansijskiUnos {
       kategorija: json['kategorija'] as String? ?? 'ostalo',
       opis: json['naziv'] as String? ?? json['opis'] as String? ?? '',
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
-      datum: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) ?? now : now,
+      datum: V3DateUtils.parseTs(json['created_at'] as String?) ?? now,
       vozacId: json['vozac_id']?.toString(),
       voziloId: null,
       putnikId: null,

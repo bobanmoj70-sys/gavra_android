@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../models/v3_finansije.dart';
-import '../../models/v3_putnik.dart';
 import '../../services/v3/v3_finansije_service.dart';
 import '../../services/v3/v3_putnik_service.dart';
 import '../../services/v3/v3_vozac_service.dart';

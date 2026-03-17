@@ -66,9 +66,7 @@ class V3Dug {
           'Nepoznato',
       tipPutnika: tip,
       vozacId: json['vozac_id']?.toString() ?? '',
-      datum: json['datum'] != null
-          ? DateTime.tryParse(json['datum'] as String) ?? DateTime.now()
-          : DateTime.now(),
+      datum: json['datum'] != null ? DateTime.tryParse(json['datum'] as String) ?? DateTime.now() : DateTime.now(),
       iznos: iznos,
       placeno: (json['naplata_status'] as String?) == 'placeno',
       createdAt: null,

@@ -508,7 +508,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaBcNaziv = V3AdresaService.getNazivAdreseById(adresaBcId);
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
 
-
     // Avatar inicijali
     final parts = imePrezime.trim().split(' ');
     final initials = '${parts.isNotEmpty && parts[0].isNotEmpty ? parts[0][0].toUpperCase() : ''}'

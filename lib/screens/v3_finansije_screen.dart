@@ -79,7 +79,7 @@ _V3IzvestajData _buildIzvestaj() {
     if ((row['naplata_status'] as String?) != 'placeno') continue;
     final updStr = row['updated_at'] as String?;
     if (updStr == null) continue;
-    final dt = DateTime.tryParse(updStr);
+    final dt = DateTime.tryParse(updStr)?.toLocal();
     if (dt == null) continue;
     final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
 
@@ -477,7 +477,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
     int voznje = 0;
     for (final row in ops) {
       if ((row['naplata_status'] as String?) != 'placeno') continue;
-      final dt = DateTime.tryParse(row['updated_at'] as String? ?? '');
+      final dt = DateTime.tryParse(row['updated_at'] as String? ?? '')?.toLocal();
       if (dt == null) continue;
       if (dt.isBefore(from) || dt.isAfter(to.add(const Duration(days: 1)))) continue;
       prihod += (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;

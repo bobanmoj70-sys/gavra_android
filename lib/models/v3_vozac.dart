@@ -1,3 +1,5 @@
+import '../utils/v3_date_utils.dart';
+
 class V3Vozac {
   final String id;
   final String imePrezime;
@@ -36,8 +38,8 @@ class V3Vozac {
       boja: json['boja'] as String?,
       pushToken: json['push_token'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
+      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
   }
 

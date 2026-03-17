@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
+import '../../utils/v3_date_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
 class V3OperativnaNedeljaEntry {
@@ -77,13 +78,13 @@ class V3OperativnaNedeljaEntry {
       vreme: json['vreme'] as String?,
       statusFinal: json['status_final'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
       zeljenoVreme: json['zeljeno_vreme'] as String?,
       dodeljivoVreme: json['dodeljeno_vreme'] as String?,
-      vremePokupljen: json['vreme_pokupljen'] != null ? DateTime.tryParse(json['vreme_pokupljen'] as String) : null,
+      vremePokupljen: V3DateUtils.parseTs(json['vreme_pokupljen'] as String?),
       iznosNaplacen: (json['iznos_naplacen'] as num?)?.toDouble() ?? 0,
-      vremePlacen: json['vreme_placen'] != null ? DateTime.tryParse(json['vreme_placen'] as String) : null,
+      vremePlacen: V3DateUtils.parseTs(json['vreme_placen'] as String?),
       naplataStatus: json['naplata_status'] as String? ?? 'nije_placeno',
       pokupljenVozacId: json['pokupljen_vozac_id'] as String?,
       naplatioVozacId: json['naplatio_vozac_id'] as String?,
