@@ -104,23 +104,27 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final infos = <_ZahtevInfo>[];
       for (final z in bcList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
+        final datumIso = z.datum.toIso8601String().split('T')[0];
         final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
-          (e) => e['izvor_id'] == z.id,
+          (e) => e['putnik_id'] == z.putnikId && (e['datum'] as String? ?? '').startsWith(datumIso) && e['grad'] == 'BC' && e['aktivno'] == true,
           orElse: () => <String, dynamic>{},
         );
         final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
+        final opId = opEntry['id'] as String?;
         infos.add(
-            _ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: isPokupljen));
+            _ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: isPokupljen, operativnaId: opId));
       }
       for (final z in vsList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
+        final datumIso = z.datum.toIso8601String().split('T')[0];
         final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
-          (e) => e['izvor_id'] == z.id,
+          (e) => e['putnik_id'] == z.putnikId && (e['datum'] as String? ?? '').startsWith(datumIso) && e['grad'] == 'VS' && e['aktivno'] == true,
           orElse: () => <String, dynamic>{},
         );
         final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
+        final opId2 = opEntry['id'] as String?;
         infos.add(
-            _ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: isPokupljen));
+            _ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: isPokupljen, operativnaId: opId2));
       }
       newMap[dan] = infos;
     }
@@ -161,7 +165,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       if (novoVreme == null) {
         // Otkaži postojeći zahtev
         if (trenutniInfo == null) return;
-        await V3ZahtevService.otkaziZahtev(trenutniInfo.zahtevId, otkazaoPutnikId: putnikId);
+        await V3ZahtevService.otkaziZahtev(trenutniInfo.zahtevId, otkazaoPutnikId: putnikId, operativnaId: trenutniInfo.operativnaId);
         if (mounted) V3AppSnackBar.success(context, '✅ Polazak otkazan: $dan $grad');
       } else if (trenutniInfo != null && (trenutniInfo.status == 'obrada' || trenutniInfo.status == 'odobreno')) {
         // Ažuriraj vreme na postojećem zahtevu (vraća u obrada)
@@ -184,7 +188,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           status: 'obrada',
           koristiSekundarnu: koristiSekundarnu,
           aktivno: true,
-          izvorId: putnikId,
         );
         await V3ZahtevService.createZahtev(zahtev, createdBy: 'putnik:$imePrezime');
         if (mounted) {
@@ -852,6 +855,7 @@ class _ZahtevInfo {
   final String status;
   final String zahtevId;
   final bool pokupljen;
+  final String? operativnaId;
 
   const _ZahtevInfo({
     required this.grad,
@@ -859,6 +863,7 @@ class _ZahtevInfo {
     required this.status,
     required this.zahtevId,
     this.pokupljen = false,
+    this.operativnaId,
   });
 }
 

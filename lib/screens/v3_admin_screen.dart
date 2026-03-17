@@ -166,9 +166,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final rm = V3MasterRealtimeManager.instance;
     return rm.zahteviCache.values.where((row) {
       if ((row['status']?.toString() ?? '') != 'obrada') return false;
-      final izvorId = row['izvor_id'] as String?;
-      final putnikId = row['putnik_id'] as String?;
-      return izvorId != null && izvorId == putnikId;
+      final createdBy = row['created_by'] as String? ?? '';
+      return createdBy.startsWith('putnik:');
     }).length;
   }
 

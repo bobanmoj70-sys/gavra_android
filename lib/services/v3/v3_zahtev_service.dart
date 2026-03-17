@@ -130,9 +130,12 @@ class V3ZahtevService {
 
     // Mapiramo ih nazad u V3Zahtev objekte
     return opFiltered.map((op) {
-      final zahtevId = op['izvor_id'] as String?;
-      if (zahtevId != null) {
-        final base = zCache.firstWhere((z) => z['id'] == zahtevId, orElse: () => <String, dynamic>{});
+      final putnikId = op['putnik_id'] as String?;
+      if (putnikId != null) {
+        final base = zCache.firstWhere(
+          (z) => z['putnik_id'] == putnikId && (z['datum'] as String? ?? '').startsWith(datum) && z['grad'] == grad && z['aktivno'] == true,
+          orElse: () => <String, dynamic>{},
+        );
         if (base.isNotEmpty) {
           final z = V3Zahtev.fromJson(base);
           // Prepisujemo operativnim podacima
@@ -142,7 +145,7 @@ class V3ZahtevService {
           );
         }
       }
-      // Ako nema baze, kreiramo dummy/osnovni
+      // Ako nema zahteva (vozačev direktan unos), kreiramo dummy/osnovni
       return V3Zahtev(
         id: op['id'] as String? ?? 'temp',
         putnikId: op['putnik_id'] as String? ?? '',
@@ -178,14 +181,19 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId}) async {
+  static Future<void> otkaziZahtev(String id, {String? otkazaoVozacId, String? otkazaoPutnikId, String? operativnaId}) async {
     try {
       if (otkazaoVozacId != null) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
-        await supabase.from('v3_operativna_nedelja').update({
+        final query = supabase.from('v3_operativna_nedelja').update({
           'status_final': 'otkazano',
           'otkazao_vozac_id': otkazaoVozacId,
-        }).eq('izvor_id', id);
+        });
+        if (operativnaId != null && operativnaId.isNotEmpty) {
+          await query.eq('id', operativnaId);
+        } else {
+          throw Exception('operativnaId je obavezan za otkazivanje');
+        }
         V3AuditLogService.log(
           tip: 'zahtev_otkazan',
           aktorId: otkazaoVozacId,
@@ -202,10 +210,15 @@ class V3ZahtevService {
             .select()
             .single();
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-        await supabase.from('v3_operativna_nedelja').update({
+        final query2 = supabase.from('v3_operativna_nedelja').update({
           'status_final': 'otkazano',
           if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
-        }).eq('izvor_id', id);
+        });
+        if (operativnaId != null && operativnaId.isNotEmpty) {
+          await query2.eq('id', operativnaId);
+        } else {
+          throw Exception('operativnaId je obavezan za otkazivanje');
+        }
         V3AuditLogService.log(
           tip: 'zahtev_otkazan',
           aktorId: otkazaoPutnikId,
@@ -219,13 +232,18 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> oznaciPokupljen(String id, {String? pokupljenVozacId}) async {
+  static Future<void> oznaciPokupljen(String id, {String? pokupljenVozacId, String? operativnaId}) async {
     try {
-      await supabase.from('v3_operativna_nedelja').update({
+      final query = supabase.from('v3_operativna_nedelja').update({
         'vreme_pokupljen': DateTime.now().toIso8601String(),
         'pokupljen': true,
         if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
-      }).eq('izvor_id', id);
+      });
+      if (operativnaId != null && operativnaId.isNotEmpty) {
+        await query.eq('id', operativnaId);
+      } else {
+        throw Exception('operativnaId je obavezan za pokupljanje');
+      }
       V3AuditLogService.log(
         tip: 'pokupljen',
         aktorId: pokupljenVozacId,

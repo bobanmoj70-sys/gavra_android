@@ -6,7 +6,6 @@ import '../realtime/v3_master_realtime_manager.dart';
 
 class V3OperativnaNedeljaEntry {
   final String id;
-  final String izvorId;
   final String putnikId;
   final String? imePrezime;
   final DateTime datum;
@@ -37,7 +36,6 @@ class V3OperativnaNedeljaEntry {
 
   V3OperativnaNedeljaEntry({
     required this.id,
-    required this.izvorId,
     required this.putnikId,
     this.imePrezime,
     required this.datum,
@@ -70,7 +68,6 @@ class V3OperativnaNedeljaEntry {
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
-      izvorId: json['izvor_id'] as String? ?? '',
       putnikId: json['putnik_id'] as String? ?? '',
       imePrezime: json['ime_prezime'] as String?,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
@@ -104,7 +101,6 @@ class V3OperativnaNedeljaEntry {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'izvor_id': izvorId,
       'putnik_id': putnikId,
       'ime_prezime': imePrezime,
       'datum': datum.toIso8601String().split('T')[0],
