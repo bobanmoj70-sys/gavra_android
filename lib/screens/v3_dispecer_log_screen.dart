@@ -271,7 +271,7 @@ class _V3DispecerLogScreenState extends State<V3DispecerLogScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(gradient: appGradient),
+        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
         child: SafeArea(
           child: Column(
             children: [
