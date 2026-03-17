@@ -19,6 +19,7 @@ import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
+import '../widgets/v3_update_banner.dart';
 import 'v3_promena_sifre_screen.dart';
 import 'v3_welcome_screen.dart';
 
@@ -662,6 +663,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     return Column(
       children: [
+        // Update banner (opcioni/obavezni)
+        const V3UpdateBanner(),
         // Lista putnika
         Expanded(
           child: _mojiPutnici.isEmpty
