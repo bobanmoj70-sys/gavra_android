@@ -105,12 +105,38 @@ class _ForceUpdateOverlay extends StatelessWidget {
   }
 }
 
-class _UpdateBannerContent extends StatelessWidget {
+class _UpdateBannerContent extends StatefulWidget {
   final V2UpdateInfo info;
   const _UpdateBannerContent({required this.info});
 
+  @override
+  State<_UpdateBannerContent> createState() => _UpdateBannerContentState();
+}
+
+class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
   Future<void> _openStore() async {
-    final url = Uri.tryParse(info.storeUrl);
+    final url = Uri.tryParse(widget.info.storeUrl);
     if (url != null && await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -118,44 +144,98 @@ class _UpdateBannerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isForced = info.isForced;
-    final bgColor = isForced ? const Color(0xFFB71C1C) : const Color(0xFFE65100);
-    final icon = isForced ? Icons.system_update : Icons.new_releases_rounded;
-    final label =
-        isForced ? 'Obavezno ažuriranje — v${info.latestVersion}' : 'Nova verzija v${info.latestVersion} dostupna';
+    final isForced = widget.info.isForced;
+
+    final gradientColors = isForced
+        ? [const Color(0xFFB71C1C), const Color(0xFF7F0000)]
+        : [const Color(0xFFE65100), const Color(0xFFBF360C)];
+
+    final icon = isForced ? Icons.system_update_rounded : Icons.new_releases_rounded;
+    final title = isForced ? '⚠️ Obavezno ažuriranje' : '🚀 Nova verzija dostupna';
+    final subtitle =
+        isForced ? 'Aplikacija neće raditi bez ažuriranja' : 'v${widget.info.latestVersion} — tapni za preuzimanje';
 
     return GestureDetector(
       onTap: _openStore,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
         decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: bgColor.withValues(alpha: 0.4),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              color: gradientColors[0].withValues(alpha: 0.45),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          child: Row(
+            children: [
+              // Pulsirajuća ikonica
+              ScaleTransition(
+                scale: _scale,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
                 ),
               ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 14),
-          ],
+              const SizedBox(width: 12),
+              // Tekst
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Dugme
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                ),
+                child: const Text(
+                  'Ažuriraj',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
