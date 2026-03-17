@@ -32,6 +32,7 @@ class V3OperativnaNedeljaEntry {
   final String? altNapomena;
   final String? adresaId;
   final String? adresaNaziv;
+  final bool koristiSekundarnu;
   final String? createdBy;
 
   V3OperativnaNedeljaEntry({
@@ -63,6 +64,7 @@ class V3OperativnaNedeljaEntry {
     this.altNapomena,
     this.adresaId,
     this.adresaNaziv,
+    this.koristiSekundarnu = false,
     this.createdBy,
   });
 
@@ -96,6 +98,7 @@ class V3OperativnaNedeljaEntry {
       altNapomena: json['alt_napomena'] as String?,
       adresaId: json['adresa_id'] as String?,
       adresaNaziv: json['adresa_naziv'] as String?,
+      koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
       createdBy: json['created_by'] as String?,
     );
   }
@@ -127,6 +130,7 @@ class V3OperativnaNedeljaEntry {
       if (altNapomena != null) 'alt_napomena': altNapomena,
       if (adresaId != null) 'adresa_id': adresaId,
       if (adresaNaziv != null) 'adresa_naziv': adresaNaziv,
+      'koristi_sekundarnu': koristiSekundarnu,
       if (createdBy != null) 'created_by': createdBy,
     };
   }

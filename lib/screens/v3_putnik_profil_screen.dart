@@ -101,13 +101,23 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final infos = <_ZahtevInfo>[];
       for (final z in bcList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
+        final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
+          (e) => e['izvor_id'] == z.id,
+          orElse: () => <String, dynamic>{},
+        );
+        final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
         infos.add(
-            _ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: z.pokupljen));
+            _ZahtevInfo(grad: 'BC', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: isPokupljen));
       }
       for (final z in vsList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
+        final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
+          (e) => e['izvor_id'] == z.id,
+          orElse: () => <String, dynamic>{},
+        );
+        final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
         infos.add(
-            _ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: z.pokupljen));
+            _ZahtevInfo(grad: 'VS', vreme: displayVreme, status: z.status, zahtevId: z.id, pokupljen: isPokupljen));
       }
       newMap[dan] = infos;
     }

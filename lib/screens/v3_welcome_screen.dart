@@ -116,14 +116,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     // Dozvole — prikaži onboarding screen ako nije prikazan, pa tek onda auto-login
     await _maybeShowPermissionScreen();
 
-    // Sačekaj kratko da _initAppServices završi i postavi updateInfoNotifier
-    // pre auto-logina — da update dialog dobije šansu da se prikaže (max 1.5s)
-    // _initAppServices postavlja updateInfoNotifier ili ga ostavlja null (nema update-a)
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    // Ako ima obavezno ažuriranje — ne radi auto-login, ostaj na Welcome screenu
-    if (updateInfoNotifier.value?.isForced == true) return;
-
     // Auto-login: provjeri in-memory sesiju ili biometriju za zadnjeg vozača
     await _checkAutoLogin();
   }
