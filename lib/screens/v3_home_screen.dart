@@ -10,8 +10,10 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
+import '../models/v3_zahtev.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
+import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -550,18 +552,24 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
                                       final vozacIme = V3VozacService.currentVozac?.imePrezime ?? 'nepoznat';
 
-                                      // Direktan INSERT/UPDATE u v3_operativna_nedelja
-                                      await V3OperativnaNedeljaService.createOrUpdateByVozac(
-                                        putnikId: selectedPutnik!.id,
-                                        imePrezime: selectedPutnik!.imePrezime,
-                                        datum: isoDate,
-                                        grad: _selectedGrad,
-                                        zeljenoVreme: _selectedVreme,
-                                        dodeljivoVreme: _selectedVreme,
-                                        brojMesta: brojMesta,
+                                      // Isti tok kao putnik — INSERT u v3_zahtevi sa status='odobreno'
+                                      // Trigger fn_v3_sync_zahtev_to_operativna automatski kreira
+                                      // zapis u v3_operativna_nedelja sa izvor_id=zahtev.id
+                                      await V3ZahtevService.createZahtev(
+                                        V3Zahtev(
+                                          id: '',
+                                          putnikId: selectedPutnik!.id,
+                                          imePrezime: selectedPutnik!.imePrezime,
+                                          datum: DateTime.parse(isoDate),
+                                          grad: _selectedGrad,
+                                          zeljenoVreme: _selectedVreme,
+                                          dodeljenoVreme: _selectedVreme,
+                                          brojMesta: brojMesta,
+                                          status: 'odobreno',
+                                          adresaId: selectedAdresa?.id,
+                                          adresaNaziv: selectedAdresa?.naziv,
+                                        ),
                                         createdBy: 'vozac:$vozacIme',
-                                        adresaId: selectedAdresa?.id,
-                                        adresaNaziv: selectedAdresa?.naziv,
                                       );
 
                                       if (!dialogCtx.mounted) return;
