@@ -123,8 +123,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     if (V3VozacService.currentVozac != null) {
       _autoLoginDone = true;
       if (!mounted) return;
-      // Ako je obavezno ažuriranje aktivno — ostani na Welcome
-      if (updateInfoNotifier.value?.isForced == true) return;
       final vozac = V3VozacService.currentVozac!;
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
       Navigator.pushReplacement(
@@ -139,7 +137,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     if (V3PutnikService.currentPutnik != null) {
       _autoLoginDone = true;
       if (!mounted) return;
-      if (updateInfoNotifier.value?.isForced == true) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -192,7 +189,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (!bioAvailableCheck) return;
 
       if (!mounted) return;
-      if (updateInfoNotifier.value?.isForced == true) return;
 
       _autoLoginDone = true;
 
@@ -245,7 +241,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     V3PutnikService.currentPutnik = found;
 
     if (!mounted) return;
-    if (updateInfoNotifier.value?.isForced == true) return;
 
     Navigator.pushReplacement(
       context,
