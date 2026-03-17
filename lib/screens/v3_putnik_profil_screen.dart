@@ -508,6 +508,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaBcNaziv = V3AdresaService.getNazivAdreseById(adresaBcId);
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
     final cenaPoDanu = (_putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+    final cenaPoPokupljenju = (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+    final imaDugovanje = (tip == 'dnevni' || tip == 'posiljka') && (cenaPoPokupljenju > 0 || _ukupnoDugovanje > 0);
 
     // Avatar inicijali
     final parts = imePrezime.trim().split(' ');
@@ -571,9 +573,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               const SizedBox(height: 16),
 
               // ── DUGOVANJE ────────────────────────────────────────
-              if (cenaPoDanu > 0 || _ukupnoDugovanje > 0) _buildDugovanjeCard(cenaPoDanu: cenaPoDanu),
+              if (imaDugovanje) _buildDugovanjeCard(cenaPoPokupljenju: cenaPoPokupljenju),
 
-              if (cenaPoDanu > 0 || _ukupnoDugovanje > 0) const SizedBox(height: 16),
+              if (imaDugovanje) const SizedBox(height: 16),
 
               // ── RASPORED ZAHTEVA ─────────────────────────────────
               _buildRasporedCard(),
@@ -702,7 +704,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
   }
 
-  Widget _buildDugovanjeCard({required double cenaPoDanu}) {
+  Widget _buildDugovanjeCard({required double cenaPoPokupljenju}) {
     final isCisto = _ukupnoDugovanje <= 0;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -745,10 +747,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
             ),
           ],
-          if (cenaPoDanu > 0) ...[
+          if (cenaPoPokupljenju > 0) ...[
             const SizedBox(height: 4),
             Text(
-              'Cena: ${cenaPoDanu.toStringAsFixed(0)} RSD / dan',
+              'Cena po pokupljenju: ${cenaPoPokupljenju.toStringAsFixed(0)} RSD',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.45),
                 fontSize: 10,
