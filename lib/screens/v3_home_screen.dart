@@ -22,6 +22,7 @@ import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
+import '../widgets/v3_update_banner.dart';
 import 'v3_admin_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
@@ -1246,6 +1247,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               ),
               body: Column(
                 children: [
+                  // Update banner (opcioni/obavezni)
+                  const V3UpdateBanner(),
                   // Action buttons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

@@ -13,6 +13,7 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../widgets/v3_update_banner.dart';
 
 class V3PutnikProfilScreen extends StatefulWidget {
   final Map<String, dynamic> putnikData;
@@ -502,6 +503,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Update banner (opcioni/obavezni)
+              const V3UpdateBanner(),
               // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
               if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
                 _NotifBanner(onEnable: _requestNotifPermission),
