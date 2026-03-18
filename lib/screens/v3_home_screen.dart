@@ -550,6 +550,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
                                       final vozacId = V3VozacService.currentVozac?.id ?? 'nepoznat';
 
+                                      // Odredi da li je izabrana sekundarna adresa
+                                      bool? koristiSekundarnu;
+                                      if (selectedAdresa != null) {
+                                        final isBC = _selectedGrad.toUpperCase() == 'BC';
+                                        final id2 = isBC ? selectedPutnik!.adresaBcId2 : selectedPutnik!.adresaVsId2;
+                                        koristiSekundarnu = (selectedAdresa!.id == id2);
+                                      }
+
                                       // Direktan INSERT u v3_operativna_nedelja — bez zahteva
                                       await V3OperativnaNedeljaService.createOrUpdateByVozac(
                                         putnikId: selectedPutnik!.id,
@@ -559,6 +567,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         dodeljivoVreme: _selectedVreme,
                                         brojMesta: brojMesta,
                                         createdBy: 'vozac:$vozacId',
+                                        koristiSekundarnu: koristiSekundarnu,
                                       );
 
                                       if (!dialogCtx.mounted) return;

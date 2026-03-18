@@ -342,6 +342,7 @@ class V3OperativnaNedeljaService {
     required int brojMesta,
     required String createdBy, // 'vozac:Ime'
     String? napomena,
+    bool? koristiSekundarnu,
   }) async {
     try {
       // Provjeri postoji li već aktivan zapis
@@ -360,6 +361,7 @@ class V3OperativnaNedeljaService {
           'status_final': 'odobreno',
           'updated_by': createdBy,
           if (napomena != null) 'napomena': napomena,
+          if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
         }).eq('id', postojeci.first['id'] as String);
       } else {
         // INSERT direktno u operativna_nedelja
@@ -376,6 +378,7 @@ class V3OperativnaNedeljaService {
           'pokupljen': false,
           'created_by': createdBy,
           if (napomena != null) 'napomena': napomena,
+          if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
         });
       }
     } catch (e) {
