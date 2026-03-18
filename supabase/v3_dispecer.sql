@@ -35,7 +35,7 @@ BEGIN
       z.zeljeno_vreme,
       z.broj_mesta,
       z.putnik_id,
-      z.ime_prezime,
+      p.ime_prezime,
       z.updated_at,
       z.created_at,
       p.tip_putnika
