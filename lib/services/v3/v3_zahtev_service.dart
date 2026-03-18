@@ -245,16 +245,20 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> updateZeljenoVreme(String id, String novoVreme) async {
+  static Future<void> updateZeljenoVreme(String id, String novoVreme, {bool? koristiSekundarnu}) async {
     try {
       // Scenario 3: reset na isto stanje kao novi zahtev
       // dodeljeno_vreme = NULL jer kron mora ponovo da odluci
-      await supabase.from('v3_zahtevi').update({
+      final updateData = <String, dynamic>{
         'zeljeno_vreme': novoVreme,
         'dodeljeno_vreme': null,
         'status': 'obrada',
         'updated_by': 'putnik:sistem',
-      }).eq('id', id);
+      };
+      if (koristiSekundarnu != null) {
+        updateData['koristi_sekundarnu'] = koristiSekundarnu;
+      }
+      await supabase.from('v3_zahtevi').update(updateData).eq('id', id);
     } catch (e) {
       debugPrint('[V3ZahtevService] ZeljenoVreme update error: $e');
       rethrow;

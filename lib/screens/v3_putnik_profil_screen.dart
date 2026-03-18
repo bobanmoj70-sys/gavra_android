@@ -187,15 +187,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             otkazaoPutnikId: putnikId, operativnaId: trenutniInfo.operativnaId);
         if (mounted) V3AppSnackBar.success(context, '✅ Polazak otkazan: $dan $grad');
       } else if (trenutniInfo != null && (trenutniInfo.status == 'obrada' || trenutniInfo.status == 'odobreno')) {
-        // Ažuriraj vreme na postojećem zahtevu (vraća u obrada)
-        // Napomena: ovde bismo mogli dodati i promenu adrese ako je potrebno, ali za sada samo vreme
-        await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, novoVreme);
+        // Ažuriraj vreme i adresu na postojećem zahtevu (vraća u obrada)
+        await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, novoVreme, koristiSekundarnu: koristiSekundarnu);
         if (mounted) V3AppSnackBar.success(context, '✅ Zahtev ažuriran: $novoVreme');
       } else {
         // Kreiraj novi zahtev
         final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
         final tipPutnika = putnikCache?['tip_putnika'] as String? ?? 'dnevni';
-        final brojMesta = tipPutnika == 'posiljka' ? 0 : 1;  // posiljka ne zauzima putničko mesto
+        final brojMesta = tipPutnika == 'posiljka' ? 0 : 1; // posiljka ne zauzima putničko mesto
         final zahtev = V3Zahtev(
           id: const Uuid().v4(),
           putnikId: putnikId,
