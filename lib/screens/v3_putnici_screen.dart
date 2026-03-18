@@ -710,7 +710,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         opisPosiljke: _tip == 'posiljka' && _opis.text.trim().isNotEmpty ? _opis.text.trim() : null,
         tipPutnika: _tip,
         cenaPoDanu: (_tip == 'dnevni' || _tip == 'posiljka')
-            ? (widget.existing?.cenaPoDanu ?? 0.0)
+            ? 0.0 // dnevni/posiljka koriste cenaPoPokupljenju
             : double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0,
         aktivno: widget.existing?.aktivno ?? true,
         adresaBcId: _adresaBc1?.id,
@@ -720,7 +720,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         pin: widget.existing?.pin,
         cenaPoPokupljenju: (_tip == 'dnevni' || _tip == 'posiljka')
             ? double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0
-            : (widget.existing?.cenaPoPokupljenju ?? 0.0),
+            : 0.0, // radnici/ucenici koriste cenaPoDanu
         placeniMesec: widget.existing?.placeniMesec,
         placenaGodina: widget.existing?.placenaGodina,
       );

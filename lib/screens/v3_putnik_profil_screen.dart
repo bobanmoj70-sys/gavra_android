@@ -532,6 +532,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
     if (ok != true || !mounted) return;
 
+    // Otkaži stream subscription prije brisanja sesije
+    await _cacheSub.cancel();
+
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
     await V3BiometricService().clearCredentials();
@@ -760,11 +763,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         if (adresaBcNaziv2 != null && adresaBcNaziv2.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Row(children: [
-                            const Icon(Icons.home_outlined, color: Colors.orange, size: 14),
+                            const Icon(Icons.home_outlined, color: Colors.white60, size: 14),
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaBcNaziv2,
-                                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -801,11 +804,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         if (adresaVsNaziv2 != null && adresaVsNaziv2.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Row(children: [
-                            const Icon(Icons.work_outline, color: Colors.orange, size: 14),
+                            const Icon(Icons.work_outline, color: Colors.white60, size: 14),
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaVsNaziv2,
-                                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -1093,12 +1096,12 @@ class _ZahtevCell extends StatelessWidget {
     final Color statusColor;
     final String statusIcon;
     if (info!.pokupljen) {
-      statusColor = Colors.blue;
+      statusColor = Colors.lightBlue.shade600;
       statusIcon = '🚗';
     } else {
       switch (info!.status) {
         case 'odobreno':
-          statusColor = Colors.green;
+          statusColor = Colors.green.shade600;
           statusIcon = '✅';
         case 'obrada':
           statusColor = Colors.orange;
@@ -1109,7 +1112,7 @@ class _ZahtevCell extends StatelessWidget {
           statusIcon = '🔄';
         case 'odbijeno':
         case 'otkazano':
-          statusColor = Colors.red;
+          statusColor = Colors.red.shade600;
           statusIcon = '🚫';
         default:
           statusColor = Colors.grey;
