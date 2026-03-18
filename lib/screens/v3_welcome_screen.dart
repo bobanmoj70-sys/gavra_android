@@ -122,6 +122,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     if (V3VozacService.currentVozac != null) {
       _autoLoginDone = true;
       if (!mounted) return;
+      await _stopAudio();
       final vozac = V3VozacService.currentVozac!;
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
       Navigator.pushReplacement(
@@ -136,6 +137,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     if (V3PutnikService.currentPutnik != null) {
       _autoLoginDone = true;
       if (!mounted) return;
+      await _stopAudio();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -201,6 +203,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _secureStorage.write(key: _lastVozacKey, value: vozac.imePrezime);
 
       if (!mounted) return;
+      await _stopAudio();
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
       Navigator.pushReplacement(
         context,
@@ -240,6 +243,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     V3PutnikService.currentPutnik = found;
 
     if (!mounted) return;
+    await _stopAudio();
 
     Navigator.pushReplacement(
       context,
@@ -255,6 +259,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
+    _audioPlayer.stop();
     _audioPlayer.dispose();
     super.dispose();
   }
