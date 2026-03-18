@@ -9,7 +9,19 @@ CREATE OR REPLACE FUNCTION notify_push(
     p_body text,
     p_data jsonb DEFAULT '{}'::jsonb
 ) RETURNS void AS $$
+DECLARE
+    v_has_hms boolean := false;
+    v_token jsonb;
 BEGIN
+    -- Proveri da li ima HMS tokena u listi
+    FOR v_token IN SELECT * FROM jsonb_array_elements(p_tokens)
+    LOOP
+        IF (v_token->>'provider')::text IN ('HMS', 'HUAWEI') THEN
+            v_has_hms := true;
+            EXIT;
+        END IF;
+    END LOOP;
+
     PERFORM net.http_post(
         url := (SELECT value FROM server_secrets WHERE key = 'SUPABASE_URL') || '/functions/v1/send-push-notification',
         headers := jsonb_build_object(
@@ -20,7 +32,8 @@ BEGIN
             'tokens', p_tokens,
             'title', p_title,
             'body', p_body,
-            'data', p_data
+            'data', p_data,
+            'data_only', v_has_hms  -- ako ima HMS tokena, koristi data_only za akcijske dugmiće
         )
     );
 END;
