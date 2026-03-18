@@ -184,30 +184,6 @@ BEGIN
         updated_at      = v_now
     WHERE id = v_req.id;
 
-    -- Audit log
-    INSERT INTO v3_audit_log
-      (tip, aktor_ime, aktor_tip, putnik_id, putnik_ime, datum, grad, vreme, polazak_id, detalji, created_at)
-    VALUES (
-      CASE WHEN v_novi_status = 'odobreno' THEN 'dispecer_odobrio' ELSE 'dispecer_odbio' END,
-      'sistem',
-      'sistem',
-      v_req.putnik_id,
-      v_req.ime_prezime,
-      v_req.datum,
-      v_req.grad,
-      v_req.zeljeno_vreme,
-      v_req.id,
-      CASE
-        WHEN v_novi_status = 'odobreno' THEN
-          'Sistem odobrio: ' || v_req.grad || ' ' || v_req.zeljeno_vreme::text || ' (' || v_req.datum::text || ')'
-        ELSE
-          'Sistem odbio (puno): ' || v_req.grad || ' ' || v_req.zeljeno_vreme::text || ' (' || v_req.datum::text || ')'
-          || COALESCE(' | alt1=' || v_alt1::text, '')
-          || COALESCE(' | alt2=' || v_alt2::text, '')
-      END,
-      v_now
-    );
-
     v_processed := v_processed + 1;
 
   END LOOP;
