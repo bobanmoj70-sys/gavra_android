@@ -225,6 +225,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
 
+    // Scenario 6: putnik je već pokupljen — ne može da otkazuje
+    if (info?.pokupljen == true) {
+      if (mounted) V3AppSnackBar.info(ctx, '🚗 Već ste pokupljeni — nije moguće otkazati.');
+      return;
+    }
+
     // Scenario 5: zaključavanje 15 min pre polaska
     final datumPolaska = V3DanHelper.datumZaDanAbbr(dan);
     final now = DateTime.now();
@@ -401,36 +407,51 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             width: 82,
                             child: OutlinedButton(
                               onPressed: isLocked
-                                  ? null
+                                  ? () {
+                                      final subota =
+                                          datumPolaska.add(Duration(days: DateTime.saturday - datumPolaska.weekday));
+                                      final subotaStr = '${subota.day}.${subota.month}.${subota.year}.';
+                                      V3AppSnackBar.info(context,
+                                          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu ($subotaStr).');
+                                    }
                                   : () async {
                                       Navigator.of(dialogCtx).pop();
 
                                       // Scenario: "Ignore alternative and retry"
-                                      // Ako putnik klikne na bilo koje vreme dok je u statusu "alternativa",
-                                      // resetujemo zahtev na "obrada" i brišemo ponuđene alternative.
+                                      // Ako putnik klikne na bilo koje vreme dok je u statusu "alternativa"
+                                      // ili "ponuda", resetujemo status na "obrada" i prosleđujemo ažurirani
+                                      // info kako bi _updatePolazak koristio updateZeljenoVreme
+                                      // (a ne createZahtev koji bi kreirao duplikat).
+                                      _ZahtevInfo? effectiveInfo = info;
                                       if (info?.status == 'alternativa' || info?.status == 'ponuda') {
                                         await V3ZahtevService.updateStatus(info!.zahtevId, 'obrada',
                                             updatedBy: 'putnik:reset_alternative');
-                                        // Ovde možemo stati ili nastaviti sa novim vremenom.
-                                        // Budući da je isLocked već proveren, dozvoljavamo promenu vremena.
+                                        effectiveInfo = _ZahtevInfo(
+                                          grad: info.grad,
+                                          vreme: info.vreme,
+                                          status: 'obrada',
+                                          zahtevId: info.zahtevId,
+                                          pokupljen: info.pokupljen,
+                                          operativnaId: info.operativnaId,
+                                        );
                                       }
 
                                       await _updatePolazak(dan, grad, vreme,
-                                          trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
+                                          trenutniInfo: effectiveInfo, koristiSekundarnu: koristiSekundarnu);
                                     },
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: isLocked
                                     ? Colors.white.withValues(alpha: 0.04)
                                     : isSelected
-                                        ? Colors.green.withValues(alpha: 0.25)
-                                        : Colors.white.withValues(alpha: 0.1),
+                                        ? Colors.green.withValues(alpha: 0.45)
+                                        : Colors.white.withValues(alpha: 0.15),
                                 side: BorderSide(
                                   color: isLocked
                                       ? Colors.white12
                                       : isSelected
-                                          ? Colors.green
-                                          : Colors.white38,
-                                  width: isSelected ? 2 : 1,
+                                          ? Colors.greenAccent
+                                          : Colors.white60,
+                                  width: isSelected ? 2.5 : 1.5,
                                 ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -438,7 +459,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isSelected) const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                  if (isSelected) const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
                                   Text(
                                     vreme,
                                     style: TextStyle(
@@ -446,8 +467,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                           ? Colors.white24
                                           : isSelected
                                               ? Colors.white
-                                              : Colors.white70,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                              : Colors.white,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -534,8 +555,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final telefon = _putnikData['telefon_1'] as String? ?? '';
     final adresaBcId = _putnikData['adresa_bc_id'] as String?;
     final adresaVsId = _putnikData['adresa_vs_id'] as String?;
+    final adresaBcId2 = _putnikData['adresa_bc_id_2'] as String?;
+    final adresaVsId2 = _putnikData['adresa_vs_id_2'] as String?;
     final adresaBcNaziv = V3AdresaService.getNazivAdreseById(adresaBcId);
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
+    final adresaBcNaziv2 = V3AdresaService.getNazivAdreseById(adresaBcId2);
+    final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
 
     // Avatar inicijali
     final parts = imePrezime.trim().split(' ');
@@ -594,6 +619,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 telefon: telefon,
                 adresaBcNaziv: adresaBcNaziv,
                 adresaVsNaziv: adresaVsNaziv,
+                adresaBcNaziv2: adresaBcNaziv2,
+                adresaVsNaziv2: adresaVsNaziv2,
               ),
 
               const SizedBox(height: 16),
@@ -620,6 +647,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     required String telefon,
     required String? adresaBcNaziv,
     required String? adresaVsNaziv,
+    String? adresaBcNaziv2,
+    String? adresaVsNaziv2,
   }) {
     final avatarColors = _avatarColors(tip);
     final tipLabel = _tipLabel(tip);
@@ -698,25 +727,87 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             Divider(color: Colors.white.withValues(alpha: 0.15)),
             const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (adresaBcNaziv != null && adresaBcNaziv.isNotEmpty) ...[
-                  const Icon(Icons.home, color: Colors.white60, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    adresaBcNaziv,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13),
+                // BC kolona
+                if (adresaBcNaziv != null && adresaBcNaziv.isNotEmpty)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          const Icon(Icons.location_city, color: Colors.white38, size: 12),
+                          const SizedBox(width: 4),
+                          Text('BC',
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.45),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                        ]),
+                        const SizedBox(height: 3),
+                        Row(children: [
+                          const Icon(Icons.home, color: Colors.white60, size: 14),
+                          const SizedBox(width: 4),
+                          Expanded(
+                              child: Text(adresaBcNaziv,
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
+                                  overflow: TextOverflow.ellipsis)),
+                        ]),
+                        if (adresaBcNaziv2 != null && adresaBcNaziv2.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(children: [
+                            const Icon(Icons.home_outlined, color: Colors.orange, size: 14),
+                            const SizedBox(width: 4),
+                            Expanded(
+                                child: Text(adresaBcNaziv2,
+                                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                    overflow: TextOverflow.ellipsis)),
+                          ]),
+                        ],
+                      ],
+                    ),
                   ),
-                ],
-                if (adresaBcNaziv != null && adresaVsNaziv != null) const SizedBox(width: 16),
-                if (adresaVsNaziv != null && adresaVsNaziv.isNotEmpty) ...[
-                  const Icon(Icons.work, color: Colors.white60, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    adresaVsNaziv,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13),
+                if (adresaBcNaziv != null && adresaVsNaziv != null)
+                  Container(
+                      width: 1, height: 40, color: Colors.white12, margin: const EdgeInsets.symmetric(horizontal: 10)),
+                // VS kolona
+                if (adresaVsNaziv != null && adresaVsNaziv.isNotEmpty)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          const Icon(Icons.location_city, color: Colors.white38, size: 12),
+                          const SizedBox(width: 4),
+                          Text('VS',
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.45),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                        ]),
+                        const SizedBox(height: 3),
+                        Row(children: [
+                          const Icon(Icons.work, color: Colors.white60, size: 14),
+                          const SizedBox(width: 4),
+                          Expanded(
+                              child: Text(adresaVsNaziv,
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
+                                  overflow: TextOverflow.ellipsis)),
+                        ]),
+                        if (adresaVsNaziv2 != null && adresaVsNaziv2.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(children: [
+                            const Icon(Icons.work_outline, color: Colors.orange, size: 14),
+                            const SizedBox(width: 4),
+                            Expanded(
+                                child: Text(adresaVsNaziv2,
+                                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                    overflow: TextOverflow.ellipsis)),
+                          ]),
+                        ],
+                      ],
+                    ),
                   ),
-                ],
               ],
             ),
           ],
