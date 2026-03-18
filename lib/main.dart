@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_api_availability/google_api_availability.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -47,10 +49,13 @@ void main() async {
       .initV3()
       .catchError((Object e) => debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
 
-  // 2. Pokreni UI ODMAH (bez cekanja Supabase)
+  // 2. ✨ FIREBASE - Inicijalizuj SINHRONO pre UI-ja (rešava FCM token grešku)
+  await _initFirebaseSync();
+
+  // 3. Pokreni UI tek kad je Firebase spreman
   runApp(const MyApp());
 
-  // 3. Čekaj malo da se UI renderira, pa tek onda inicijalizuj servise
+  // 4. Čekaj malo da se UI renderira, pa tek onda inicijalizuj ostale servise
   unawaited(Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks));
 }
 
@@ -68,12 +73,12 @@ Future<void> _doStartupTasks() async {
   unawaited(initializeDateFormatting('sr', null));
 
   // Sve ostalo pokreni istovremeno (paralelno)
-  unawaited(_initPushSystems());
+  unawaited(_initNotificationHandlers()); // Samo notification handlers, Firebase je već inicijalizovan
   unawaited(_initAppServices());
 }
 
-/// Inicijalizacija Notifikacija (GMS vs HMS)
-Future<void> _initPushSystems() async {
+/// ✨ NOVA: Sinhrona Firebase inicijalizacija u main() funkciji
+Future<void> _initFirebaseSync() async {
   try {
     final availability =
         await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability().timeout(const Duration(seconds: 2));
@@ -81,45 +86,70 @@ Future<void> _initPushSystems() async {
     if (availability == GooglePlayServicesAvailability.success) {
       try {
         await Firebase.initializeApp().timeout(const Duration(seconds: 5));
-
-        // Postavi background handler
-        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-        // Foreground handler — data-only poruke (npr. v3_alternativa)
-        FirebaseMessaging.onMessage.listen(_handleIncomingMessage);
-
-        // Inicijalizuj Local Notifications (za interaktivne gumbe)
-        const AndroidInitializationSettings initializationSettingsAndroid =
-            AndroidInitializationSettings('@mipmap/ic_launcher');
-        const InitializationSettings initializationSettings =
-            InitializationSettings(android: initializationSettingsAndroid);
-
-        await flutterLocalNotificationsPlugin.initialize(
-          initializationSettings,
-          onDidReceiveNotificationResponse: onNotificationTap,
-          onDidReceiveBackgroundNotificationResponse: onNotificationTap,
-        );
-
-        // Kreiraj Android notification kanal (mora da postoji da bi FCM isporučio)
-        const AndroidNotificationChannel channel = AndroidNotificationChannel(
-          'gavra_push_v2',
-          'Gavra obaveštenja',
-          description: 'Obaveštenja o statusu zahteva',
-          importance: Importance.max,
-          playSound: true,
-          enableVibration: true,
-        );
-        await flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-            ?.createNotificationChannel(channel);
-
-        debugPrint('✅ [Push] FCM Inicijalizovan');
+        debugPrint('✅ [Firebase] Inicijalizovan sinhrono u main()');
       } catch (e) {
-        debugPrint('⚠️ [main] Firebase init greška: $e');
+        debugPrint('⚠️ [Firebase] Init greška: $e');
       }
+    } else {
+      debugPrint('⚠️ [Firebase] Google Play Services nedostupan: $availability');
     }
   } catch (e) {
-    debugPrint('⚠️ [main] GMS provjera greška: $e');
+    debugPrint('⚠️ [Firebase] GMS provjera greška: $e');
+  }
+}
+
+/// Inicijalizacija Notification handlers (Firebase je već inicijalizovan)
+Future<void> _initNotificationHandlers() async {
+  try {
+    // Firebase je već inicijalizovan u main(), samo postaviti handlers
+    try {
+      // 🔔 Zahtevaj notifikacijske dozvole na Android 13+
+      if (Platform.isAndroid) {
+        try {
+          final status = await Permission.notification.request();
+          debugPrint('📱 Notification permission: $status');
+        } catch (e) {
+          debugPrint('⚠️ Notification permission request error: $e');
+        }
+      }
+
+      // Postavi background handler
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+      // Foreground handler — data-only poruke (npr. v3_alternativa)
+      FirebaseMessaging.onMessage.listen(_handleIncomingMessage);
+
+      // Inicijalizuj Local Notifications (za interaktivne gumbe)
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const InitializationSettings initializationSettings =
+          InitializationSettings(android: initializationSettingsAndroid);
+
+      await flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: onNotificationTap,
+        onDidReceiveBackgroundNotificationResponse: onNotificationTap,
+      );
+
+      // Kreiraj Android notification kanal (mora da postoji da bi FCM isporučio)
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'gavra_push_v2',
+        'Gavra obaveštenja',
+        description: 'Obaveštenja o statusu zahteva',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      );
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+
+      debugPrint('✅ [Push] Notification handlers konfigurisani');
+    } catch (e) {
+      debugPrint('⚠️ [Push] Notification handlers greška: $e');
+    }
+  } catch (e) {
+    debugPrint('⚠️ [Push] Opšta greška: $e');
   }
 }
 
@@ -127,12 +157,19 @@ Future<void> _initPushSystems() async {
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint("Handling a background message: ${message.messageId}");
+  debugPrint("🔔 [FCM] Background poruka primljena: ${message.messageId}");
+  debugPrint("🔔 [FCM] Title: ${message.notification?.title}");
+  debugPrint("🔔 [FCM] Body: ${message.notification?.body}");
+  debugPrint("🔔 [FCM] Data: ${message.data}");
   await _showAlternativaNotification(message);
 }
 
 /// Foreground handler
 Future<void> _handleIncomingMessage(RemoteMessage message) async {
+  debugPrint("🔔 [FCM] Foreground poruka primljena: ${message.messageId}");
+  debugPrint("🔔 [FCM] Title: ${message.notification?.title}");
+  debugPrint("🔔 [FCM] Body: ${message.notification?.body}");
+  debugPrint("🔔 [FCM] Data: ${message.data}");
   await _showAlternativaNotification(message);
 }
 
@@ -273,6 +310,9 @@ Future<void> _initAppServices() async {
           isForced: isForced,
         );
         debugPrint('[main] Update: current=$currentVersion min=$minVersion latest=$latestVersion forced=$isForced');
+      } else {
+        updateInfoNotifier.value = null;
+        debugPrint('[main] No update needed: current=$currentVersion latest=$latestVersion');
       }
     }
   } catch (e) {
