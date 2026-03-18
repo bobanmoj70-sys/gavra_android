@@ -190,15 +190,32 @@ void onNotificationTap(NotificationResponse response) async {
   final String? payload = response.payload;
   final String? actionId = response.actionId;
 
-  if (payload != null && actionId != null) {
-    debugPrint('Notification Action Clicked: $actionId, Payload: $payload');
+  if (payload == null || actionId == null) return;
 
-    // Akcije za V3 zahtev: accept_pre, accept_posle, reject
-    // payload format: "id|altPre|altPosle"
-    final parts = payload.split('|');
-    final zahtevId = parts[0];
-    final altPre = parts.length > 1 ? parts[1] : '';
-    final altPosle = parts.length > 2 ? parts[2] : '';
+  debugPrint('Notification Action Clicked: $actionId, Payload: $payload');
+
+  // Cold start — Supabase možda nije inicijalizovan
+  if (!isSupabaseReady) {
+    try {
+      await configService.initializeBasic();
+      await Supabase.initialize(
+        url: configService.getSupabaseUrl(),
+        anonKey: configService.getSupabaseAnonKey(),
+      );
+    } catch (e) {
+      debugPrint('[onNotificationTap] Supabase init greška: $e');
+      return;
+    }
+  }
+
+  // Akcije za V3 zahtev: accept_pre, accept_posle, reject
+  // payload format: "id|altPre|altPosle"
+  final parts = payload.split('|');
+  final zahtevId = parts[0];
+  final altPre = parts.length > 1 ? parts[1] : '';
+  final altPosle = parts.length > 2 ? parts[2] : '';
+
+  try {
     if (actionId == 'accept_pre' && altPre.isNotEmpty) {
       await V3ZahtevService.prihvatiPonudu(zahtevId, altPre);
     } else if (actionId == 'accept_posle' && altPosle.isNotEmpty) {
@@ -206,6 +223,8 @@ void onNotificationTap(NotificationResponse response) async {
     } else if (actionId == 'reject') {
       await V3ZahtevService.odbijPonudu(zahtevId);
     }
+  } catch (e) {
+    debugPrint('[onNotificationTap] Greška pri obradi akcije: $e');
   }
 }
 
