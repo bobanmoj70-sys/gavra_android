@@ -194,8 +194,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       } else {
         // Kreiraj novi zahtev
         final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
-        final imePrezime = putnikCache?['ime_prezime'] as String? ?? '';
-        final brojMesta = (putnikCache?['broj_mesta'] as int?) ?? 1;
+        final tipPutnika = putnikCache?['tip_putnika'] as String? ?? 'dnevni';
+        final brojMesta = tipPutnika == 'posiljka' ? 0 : 1;  // posiljka ne zauzima putničko mesto
         final zahtev = V3Zahtev(
           id: const Uuid().v4(),
           putnikId: putnikId,
