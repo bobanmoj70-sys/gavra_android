@@ -94,8 +94,8 @@ class V3PinZahtevService {
       final putnikData = putnikId != null ? rm.putniciCache[putnikId] : null;
       return <String, dynamic>{
         ...z,
-        'putnik_ime': putnikData?['imePrezime'] ?? putnikData?['ime'] ?? 'Nepoznato',
-        'broj_telefona': z['telefon'] ?? putnikData?['telefon'] ?? '-',
+        'putnik_ime': putnikData?['ime_prezime'] ?? 'Nepoznato',
+        'broj_telefona': z['telefon'] ?? putnikData?['telefon_1'] ?? '-',
       };
     }).toList();
   }
