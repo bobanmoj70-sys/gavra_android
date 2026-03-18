@@ -199,7 +199,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         final zahtev = V3Zahtev(
           id: const Uuid().v4(),
           putnikId: putnikId,
-          imePrezime: imePrezime,
           datum: V3DanHelper.datumZaDanAbbr(dan),
           grad: grad,
           zeljenoVreme: novoVreme,

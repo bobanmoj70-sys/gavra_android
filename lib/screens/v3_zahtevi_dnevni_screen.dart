@@ -476,7 +476,7 @@ class _ZahtevCard extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  _initials(putnik?.imePrezime ?? zahtev.imePrezime ?? '?'),
+                  _initials(putnik?.imePrezime ?? '?'),
                   style: TextStyle(
                     color: tipColor,
                     fontWeight: FontWeight.bold,
@@ -496,7 +496,7 @@ class _ZahtevCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          putnik?.imePrezime ?? zahtev.imePrezime ?? 'Nepoznat',
+                          putnik?.imePrezime ?? 'Nepoznat',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

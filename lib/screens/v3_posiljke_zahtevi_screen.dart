@@ -268,7 +268,7 @@ class _ZahtevKartica extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          zahtev.imePrezime ?? V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Pošiljka',
+                          V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Pošiljka',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
