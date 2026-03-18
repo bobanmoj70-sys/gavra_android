@@ -1415,7 +1415,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   : V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme);
 
                               // Kumulativni redni broj — uzima u obzir broj_mesta prethodnih putnika
-                              final redniBroj = prikazaniZapisi.sublist(0, i).fold(1, (sum, e) => sum + e.brojMesta);
+                              final redniBroj = prikazaniZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.brojMesta) + 1;
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
