@@ -553,6 +553,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final tip = _putnikData['tip_putnika'] as String? ?? 'radnik';
     final imePrezime = _putnikData['ime_prezime'] as String? ?? '';
     final telefon = _putnikData['telefon_1'] as String? ?? '';
+    final telefon2 = _putnikData['telefon_2'] as String? ?? '';
     final adresaBcId = _putnikData['adresa_bc_id'] as String?;
     final adresaVsId = _putnikData['adresa_vs_id'] as String?;
     final adresaBcId2 = _putnikData['adresa_bc_id_2'] as String?;
@@ -617,6 +618,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 imePrezime: imePrezime,
                 initials: initials,
                 telefon: telefon,
+                telefon2: telefon2,
                 adresaBcNaziv: adresaBcNaziv,
                 adresaVsNaziv: adresaVsNaziv,
                 adresaBcNaziv2: adresaBcNaziv2,
@@ -645,6 +647,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     required String imePrezime,
     required String initials,
     required String telefon,
+    String telefon2 = '',
     required String? adresaBcNaziv,
     required String? adresaVsNaziv,
     String? adresaBcNaziv2,
@@ -718,6 +721,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             children: [
               _Badge(label: tipLabel, color: avatarColors[0]),
               if (telefon.isNotEmpty) _Badge(label: '📞 $telefon', color: Colors.white24),
+              if (telefon2.isNotEmpty) _Badge(label: '📞 $telefon2', color: Colors.white24),
             ],
           ),
 
