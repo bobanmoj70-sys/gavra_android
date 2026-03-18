@@ -80,24 +80,6 @@ class V3PinZahtevService {
     }
   }
 
-  static Future<void> logujDirektnaIzmena({
-    required String putnikId,
-    required String tip,
-    required String vrednost,
-  }) async {
-    try {
-      final row = {
-        'tip': 'direktna_izmena_$tip',
-        'putnik_id': putnikId,
-        'detalji': 'Nova vrednost: $vrednost',
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-      };
-      await supabase.from('v3_audit_log').insert(row);
-    } catch (e) {
-      debugPrint('[V3PinZahtevService] logujDirektnaIzmena error: $e');
-    }
-  }
-
   static List<Map<String, dynamic>> _buildEnrichedList() {
     final rm = V3MasterRealtimeManager.instance;
     final zahtevi = rm.pinZahteviCache.values.where((z) => z['status'] == 'ceka').toList()

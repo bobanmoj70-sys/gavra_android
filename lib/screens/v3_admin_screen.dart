@@ -7,8 +7,6 @@ import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
-import 'v3_audit_log_screen.dart';
-import 'v3_dispecer_log_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
 import 'v3_dugovi_screen.dart';
 import 'v3_finansije_screen.dart';
@@ -396,57 +394,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 ),
               ),
 
-              // ─── RED 3: Audit log, Dispečer log, Dnevnik naplate, saVS/ukBC ───
+              // ─── RED 3: Dnevnik naplate, saVS/ukBC ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
                   children: [
-                    // 📋 Audit log
-                    Expanded(
-                      child: _NavBtn(
-                        color: Colors.teal,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(builder: (_) => const V3AuditLogScreen()),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '📋 Audit log',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // 🤖 Dispečer log
-                    Expanded(
-                      child: _NavBtn(
-                        color: Colors.cyan,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(builder: (_) => const V3DispecerLogScreen()),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '🤖 Dispečer',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     // Dnevnik naplate
                     Expanded(
                       child: _NavBtn(

@@ -299,15 +299,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         if (_selectedGrad.toUpperCase() == 'BC') {
           adresa = koristiSekundarnu
               ? (V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ?? '')
+                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ??
+                  '')
               : (V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ?? '');
+                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ??
+                  '');
         } else {
           adresa = koristiSekundarnu
               ? (V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ?? '')
+                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ??
+                  '')
               : (V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ?? '');
+                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ??
+                  '');
         }
       }
       if (adresa.isEmpty) continue;
