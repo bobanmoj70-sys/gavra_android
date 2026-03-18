@@ -550,12 +550,22 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
                                       final vozacId = V3VozacService.currentVozac?.id ?? 'nepoznat';
 
-                                      // Odredi da li je izabrana sekundarna adresa
+                                      // Odredi koristiSekundarnu i adresaIdOverride
                                       bool? koristiSekundarnu;
+                                      String? adresaIdOverride;
                                       if (selectedAdresa != null) {
                                         final isBC = _selectedGrad.toUpperCase() == 'BC';
+                                        final id1 = isBC ? selectedPutnik!.adresaBcId : selectedPutnik!.adresaVsId;
                                         final id2 = isBC ? selectedPutnik!.adresaBcId2 : selectedPutnik!.adresaVsId2;
-                                        koristiSekundarnu = (selectedAdresa!.id == id2);
+                                        if (selectedAdresa!.id == id2) {
+                                          koristiSekundarnu = true;
+                                        } else if (selectedAdresa!.id == id1) {
+                                          koristiSekundarnu = false;
+                                        } else {
+                                          // "Ostala" adresa — čuvamo ID direktno
+                                          adresaIdOverride = selectedAdresa!.id;
+                                          koristiSekundarnu = false;
+                                        }
                                       }
 
                                       // Direktan INSERT u v3_operativna_nedelja — bez zahteva
@@ -568,6 +578,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         brojMesta: brojMesta,
                                         createdBy: 'vozac:$vozacId',
                                         koristiSekundarnu: koristiSekundarnu,
+                                        adresaIdOverride: adresaIdOverride,
                                       );
 
                                       if (!dialogCtx.mounted) return;
@@ -1415,7 +1426,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   : V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme);
 
                               // Kumulativni redni broj — uzima u obzir broj_mesta prethodnih putnika
-                              final redniBroj = prikazaniZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.brojMesta) + 1;
+                              final redniBroj =
+                                  prikazaniZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.brojMesta) + 1;
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),

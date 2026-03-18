@@ -35,8 +35,9 @@ class V3AdresaService {
   static List<V3Adresa> getAdreseZaGrad(String grad) {
     final cache = V3MasterRealtimeManager.instance.adreseCache.values;
     final normalizedGrad = grad.trim().toUpperCase();
+    if (normalizedGrad.isEmpty) return [];
     return cache
-        .where((r) => (r['grad'] as String?)?.toUpperCase() == normalizedGrad)
+        .where((r) => (r['grad'] as String?)?.trim().toUpperCase() == normalizedGrad)
         .map((r) => V3Adresa.fromJson(r))
         .toList()
       ..sort((a, b) => a.naziv.compareTo(b.naziv));

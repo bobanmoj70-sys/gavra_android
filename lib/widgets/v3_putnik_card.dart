@@ -153,15 +153,26 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Future<void> _handleNavigation() async {
-    final grad = widget.entry?.grad ?? widget.zahtev?.grad ?? '';
-    final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
-    final adresaId = grad.toUpperCase() == 'BC'
-        ? (koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId) ??
-            widget.putnik.adresaBcId ??
-            widget.putnik.adresaBcId2
-        : (koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId) ??
-            widget.putnik.adresaVsId ??
-            widget.putnik.adresaVsId2;
+    // Prioritet 1: direktan adresa_id_override
+    final overrideId = widget.entry?.adresaIdOverride;
+    final String? adresaId;
+    if (overrideId != null && overrideId.isNotEmpty) {
+      adresaId = overrideId;
+    } else {
+      final grad = (widget.entry?.grad ?? widget.zahtev?.grad ?? '').toUpperCase().trim();
+      final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
+      if (grad != 'BC' && grad != 'VS') {
+        if (mounted) V3AppSnackBar.warning(context, '⚠️ Grad nije definisan za ovog putnika');
+        return;
+      }
+      adresaId = grad == 'BC'
+          ? (koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId) ??
+              widget.putnik.adresaBcId ??
+              widget.putnik.adresaBcId2
+          : (koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId) ??
+              widget.putnik.adresaVsId ??
+              widget.putnik.adresaVsId2;
+    }
     final adresaNaziv = _getAdresaNaziv();
     final V3Adresa? adresa = V3AdresaService.getAdresaById(adresaId);
 
@@ -351,16 +362,24 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   // ─── Adresa helper ─────────────────────────────────────────────
 
   String? _getAdresaNaziv() {
-    final grad = widget.entry?.grad ?? widget.zahtev?.grad ?? '';
+    // Prioritet 1: direktan adresa_id_override
+    final overrideId = widget.entry?.adresaIdOverride;
+    if (overrideId != null && overrideId.isNotEmpty) {
+      return V3AdresaService.getAdresaById(overrideId)?.naziv;
+    }
+    final grad = (widget.entry?.grad ?? widget.zahtev?.grad ?? '').toUpperCase().trim();
     final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
-    if (grad.toUpperCase() == 'BC') {
+    if (grad == 'BC') {
       final id = koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId;
       return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaBcId)?.naziv ??
           V3AdresaService.getAdresaById(widget.putnik.adresaBcId2)?.naziv;
     }
-    final id = koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId;
-    return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaVsId)?.naziv ??
-        V3AdresaService.getAdresaById(widget.putnik.adresaVsId2)?.naziv;
+    if (grad == 'VS') {
+      final id = koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId;
+      return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaVsId)?.naziv ??
+          V3AdresaService.getAdresaById(widget.putnik.adresaVsId2)?.naziv;
+    }
+    return null;
   }
 
   Color? _parseHexColor(String? hex) {

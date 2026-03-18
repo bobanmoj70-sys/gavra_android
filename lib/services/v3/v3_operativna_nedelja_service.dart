@@ -31,6 +31,7 @@ class V3OperativnaNedeljaEntry {
   final String? altVremePosle;
   final String? altNapomena;
   final bool koristiSekundarnu;
+  final String? adresaIdOverride;
   final String? createdBy;
 
   V3OperativnaNedeljaEntry({
@@ -60,6 +61,7 @@ class V3OperativnaNedeljaEntry {
     this.altVremePosle,
     this.altNapomena,
     this.koristiSekundarnu = false,
+    this.adresaIdOverride,
     this.createdBy,
   });
 
@@ -91,6 +93,7 @@ class V3OperativnaNedeljaEntry {
       altVremePosle: json['alt_vreme_posle'] as String?,
       altNapomena: json['alt_napomena'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
+      adresaIdOverride: json['adresa_id_override'] as String?,
       createdBy: json['created_by'] as String?,
     );
   }
@@ -120,6 +123,7 @@ class V3OperativnaNedeljaEntry {
       if (altVremePosle != null) 'alt_vreme_posle': altVremePosle,
       if (altNapomena != null) 'alt_napomena': altNapomena,
       'koristi_sekundarnu': koristiSekundarnu,
+      if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
       if (createdBy != null) 'created_by': createdBy,
     };
   }
@@ -343,6 +347,7 @@ class V3OperativnaNedeljaService {
     required String createdBy, // 'vozac:Ime'
     String? napomena,
     bool? koristiSekundarnu,
+    String? adresaIdOverride,
   }) async {
     try {
       // Provjeri postoji li već aktivan zapis
@@ -362,6 +367,7 @@ class V3OperativnaNedeljaService {
           'updated_by': createdBy,
           if (napomena != null) 'napomena': napomena,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
+          'adresa_id_override': adresaIdOverride, // null = briše override
         }).eq('id', postojeci.first['id'] as String);
       } else {
         // INSERT direktno u operativna_nedelja
@@ -379,6 +385,7 @@ class V3OperativnaNedeljaService {
           'created_by': createdBy,
           if (napomena != null) 'napomena': napomena,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
+          if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
         });
       }
     } catch (e) {

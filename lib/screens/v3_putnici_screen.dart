@@ -393,8 +393,10 @@ class _PutnikCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? adresa;
-    final bcNaziv = V3AdresaService.getAdresaById(putnik.adresaBcId)?.naziv;
-    final vsNaziv = V3AdresaService.getAdresaById(putnik.adresaVsId)?.naziv;
+    final bcNaziv = V3AdresaService.getAdresaById(putnik.adresaBcId)?.naziv ??
+        V3AdresaService.getAdresaById(putnik.adresaBcId2)?.naziv;
+    final vsNaziv = V3AdresaService.getAdresaById(putnik.adresaVsId)?.naziv ??
+        V3AdresaService.getAdresaById(putnik.adresaVsId2)?.naziv;
     adresa = (bcNaziv != null || vsNaziv != null) ? '${bcNaziv ?? "/"} → ${vsNaziv ?? "/"}' : null;
 
     return Card(
