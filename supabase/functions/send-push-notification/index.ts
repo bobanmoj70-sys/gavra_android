@@ -124,7 +124,7 @@ serve(async (req: any) => {
 
         // 2. 🔴 SLANJE PREKO HMS (Huawei)
         if (hmsTokens.length > 0) {
-            const hmsResult = await sendToHMS(hmsTokens, title, body, data, secrets, supabaseClient)
+            const hmsResult = await sendToHMS(hmsTokens, title, body, data, secrets, supabaseClient, dataOnly)
             results.push({ provider: 'HMS', ...hmsResult })
         }
 
@@ -205,7 +205,7 @@ async function sendToFCM(tokens: string[], title: string, body: string, data?: a
 /**
  * 🔴 HUAWEI HMS IMPLEMENTACIJA
  */
-async function sendToHMS(tokens: string[], title: string, body: string, data?: any, secrets?: any, supabase?: any) {
+async function sendToHMS(tokens: string[], title: string, body: string, data?: any, secrets?: any, supabase?: any, dataOnly?: boolean) {
     const clientId = secrets?.HUAWEI_CLIENT_ID || (Deno as any).env.get('HUAWEI_CLIENT_ID')
     const clientSecret = secrets?.HUAWEI_CLIENT_SECRET || (Deno as any).env.get('HUAWEI_CLIENT_SECRET')
     const appId = secrets?.HUAWEI_APP_ID || (Deno as any).env.get('HUAWEI_APP_ID')
@@ -221,17 +221,19 @@ async function sendToHMS(tokens: string[], title: string, body: string, data?: a
         const message = {
             validate_only: false,
             message: {
-                notification: { title, body },
+                ...(dataOnly ? {} : { notification: { title, body } }),
                 data: JSON.stringify(data || {}),
                 android: {
-                    notification: {
-                        title,
-                        body,
-                        click_action: { type: 1, intent: "#Intent;com.gavra013.gavra_android;end" },
-                        sound: "default",
-                        default_sound: true,
-                        importance: "HIGH",
-                    }
+                    ...(dataOnly ? {} : {
+                        notification: {
+                            title,
+                            body,
+                            click_action: { type: 1, intent: "#Intent;com.gavra013.gavra_android;end" },
+                            sound: "default",
+                            default_sound: true,
+                            importance: "HIGH",
+                        }
+                    })
                 },
                 token: tokens
             }

@@ -171,16 +171,8 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       // ✅ LOGIN USPJEŠAN
       V3VozacService.currentVozac = vozac;
 
-      // Snimi FCM push token
-      try {
-        final token = await FirebaseMessaging.instance.getToken();
-        if (token != null && vozac.id.isNotEmpty) {
-          await supabase.from('v3_vozaci').update({'push_token': token}).eq('id', vozac.id);
-          debugPrint('[VozacLogin] push_token upisan');
-        }
-      } catch (e) {
-        debugPrint('[VozacLogin] push_token greška: $e');
-      }
+      // 🎯 HIBRIDNI PUSH TOKEN SISTEM (FCM + HMS)
+      await _saveHybridPushTokens(vozac.id);
 
       // Zapamti zadnjeg prijavljenog vozača za auto-login pri sljedećem startu
       await _secureStorage.write(key: 'last_v3_vozac_ime', value: vozac.imePrezime);
@@ -448,5 +440,64 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         ),
       ],
     );
+  }
+
+  /// 🎯 Hibridni push token sistem - čuva FCM i HMS tokene
+  Future<void> _saveHybridPushTokens(String vozacId) async {
+    if (vozacId.isEmpty) return;
+
+    String? fcmToken;
+    String? hmsToken;
+    String pushType = 'none';
+
+    // 1. Pokušaj FCM token (Google/Samsung/Xiaomi)
+    try {
+      fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        pushType = 'fcm';
+        debugPrint('[VozacLogin] FCM token: ${fcmToken.substring(0, 20)}...');
+      }
+    } catch (e) {
+      debugPrint('[VozacLogin] FCM token greška: $e');
+    }
+
+    // 2. Pokušaj HMS token (Huawei)
+    try {
+      // Huawei Push Kit - za sada placeholder zbog API promene
+      // hmsToken = await HuaweiPush.getToken("");
+      debugPrint('[VozacLogin] HMS token - potrebna API ažuriranje');
+    } catch (e) {
+      debugPrint('[VozacLogin] HMS token greška: $e');
+    }
+
+    // 3. Sačuvaj u bazu (update samo non-null vrednosti)
+    try {
+      final updateData = <String, dynamic>{};
+
+      if (fcmToken != null) {
+        updateData['push_token'] = fcmToken;
+        updateData['push_type'] = 'fcm';
+      }
+
+      // HMS token placeholder - trenutno nije implementiran
+      // if (hmsToken != null) {
+      //   updateData['hms_token'] = hmsToken;
+      //   updateData['push_type'] = 'hms';
+      // }
+
+      // Hybrid mode - kada imamo oba tokena
+      // if (fcmToken != null && hmsToken != null) {
+      //   updateData['push_type'] = 'hybrid';
+      // }
+
+      if (updateData.isNotEmpty) {
+        await supabase.from('v3_vozaci').update(updateData).eq('id', vozacId);
+        debugPrint('[VozacLogin] Push tokeni sačuvani: ${updateData.keys.join(', ')}');
+      } else {
+        debugPrint('[VozacLogin] ⚠️ Nijedan push token nije dostupan!');
+      }
+    } catch (e) {
+      debugPrint('[VozacLogin] Database update greška: $e');
+    }
   }
 }

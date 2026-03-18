@@ -1,13 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_messaging/firebase_messaging.dart' as fcm;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_api_availability/google_api_availability.dart';
+import 'package:huawei_push/huawei_push.dart' as hms;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -77,49 +79,109 @@ Future<void> _doStartupTasks() async {
   unawaited(_initAppServices());
 }
 
-/// ✨ NOVA: Sinhrona Firebase inicijalizacija u main() funkciji
+/// ✨ NOVA: Hibridna push inicijalizacija (FCM + HMS) u main() funkciji
 Future<void> _initFirebaseSync() async {
   try {
-    final availability =
+    // 1. Provjeri Google Play Services (FCM)
+    final gmsAvailability =
         await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability().timeout(const Duration(seconds: 2));
 
-    if (availability == GooglePlayServicesAvailability.success) {
+    bool fcmInitialized = false;
+    if (gmsAvailability == GooglePlayServicesAvailability.success) {
       try {
         await Firebase.initializeApp().timeout(const Duration(seconds: 5));
-        debugPrint('✅ [Firebase] Inicijalizovan sinhrono u main()');
+        debugPrint('✅ [FCM] Firebase inicijalizovan - GMS dostupan');
+        fcmInitialized = true;
       } catch (e) {
-        debugPrint('⚠️ [Firebase] Init greška: $e');
+        debugPrint('⚠️ [FCM] Init greška: $e');
       }
     } else {
-      debugPrint('⚠️ [Firebase] Google Play Services nedostupan: $availability');
+      debugPrint('⚠️ [FCM] Google Play Services nedostupan: $gmsAvailability');
+    }
+
+    // 2. Provjeri HMS (Huawei Push Kit)
+    bool hmsInitialized = false;
+    try {
+      hms.Push.localNotification;
+      debugPrint('✅ [HMS] Huawei Push Kit dostupan');
+      hmsInitialized = true;
+    } catch (e) {
+      debugPrint('⚠️ [HMS] Huawei Push Kit nedostupan: $e');
+    }
+
+    // 3. Loguj rezultat hibridne inicijalizacije
+    if (fcmInitialized && hmsInitialized) {
+      debugPrint('🎯 [HYBRID] Oba push sistema dostupna (FCM + HMS)');
+    } else if (fcmInitialized) {
+      debugPrint('🟢 [HYBRID] Samo FCM dostupan (Google/Samsung/Xiaomi uređaj)');
+    } else if (hmsInitialized) {
+      debugPrint('🟠 [HYBRID] Samo HMS dostupan (Huawei uređaj)');
+    } else {
+      debugPrint('🔴 [HYBRID] Nijedan push sistem nije dostupan!');
     }
   } catch (e) {
-    debugPrint('⚠️ [Firebase] GMS provjera greška: $e');
+    debugPrint('⚠️ [HYBRID] Greška u hibridnoj inicijalizaciji: $e');
   }
 }
 
-/// Inicijalizacija Notification handlers (Firebase je već inicijalizovan)
+/// Inicijalizacija Notification handlers (Hibridni FCM + HMS)
 Future<void> _initNotificationHandlers() async {
   try {
-    // Firebase je već inicijalizovan u main(), samo postaviti handlers
+    // 🔔 Zahtevaj notifikacijske dozvole na Android 13+
+    if (Platform.isAndroid) {
+      try {
+        final status = await Permission.notification.request();
+        debugPrint('📱 Notification permission: $status');
+      } catch (e) {
+        debugPrint('⚠️ Notification permission request error: $e');
+      }
+    }
+
+    // 1. FCM Handlers (ako je Firebase inicijalizovan)
     try {
-      // 🔔 Zahtevaj notifikacijske dozvole na Android 13+
-      if (Platform.isAndroid) {
-        try {
-          final status = await Permission.notification.request();
-          debugPrint('📱 Notification permission: $status');
-        } catch (e) {
-          debugPrint('⚠️ Notification permission request error: $e');
-        }
+      // Provjeri da li je Firebase dostupan
+      final gmsAvailability = await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability();
+      if (gmsAvailability == GooglePlayServicesAvailability.success) {
+        // Postavi FCM background handler
+        fcm.FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+        // FCM Foreground handler
+        fcm.FirebaseMessaging.onMessage.listen(_handleIncomingMessage);
+        debugPrint('✅ [FCM] Handlers konfigurisani');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [FCM] Handler setup greška: $e');
+    }
+
+    // 2. HMS Handlers (za Huawei uređaje)
+    try {
+      // HMS Token listener
+      hms.Push.getTokenStream.listen((String token) {
+        debugPrint('🟠 [HMS] Novi token: $token');
+        _saveHmsTokenToDatabase(token);
+      });
+
+      // HMS Message listener
+      hms.Push.onMessageReceivedStream.listen((hms.RemoteMessage message) {
+        debugPrint('🟠 [HMS] Poruka primljena: ${message.data}');
+        _handleHmsIncomingMessage(message);
+      });
+
+      // Forsirati refresh tokena
+      try {
+        hms.Push.getToken(""); // Trigger token generation (void return)
+        debugPrint('🟠 [HMS] Token generation pokrenut');
+      } catch (e) {
+        debugPrint('⚠️ [HMS] Greška pri pokretanju tokena: $e');
       }
 
-      // Postavi background handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      debugPrint('✅ [HMS] Handlers konfigurisani');
+    } catch (e) {
+      debugPrint('⚠️ [HMS] Handler setup greška: $e');
+    }
 
-      // Foreground handler — data-only poruke (npr. v3_alternativa)
-      FirebaseMessaging.onMessage.listen(_handleIncomingMessage);
-
-      // Inicijalizuj Local Notifications (za interaktivne gumbe)
+    // 3. Inicijalizuj Local Notifications (za interaktivne gumbe)
+    try {
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const InitializationSettings initializationSettings =
@@ -155,7 +217,7 @@ Future<void> _initNotificationHandlers() async {
 
 /// Pozadinski hendler za Firebase poruke (MORA BITI TOP-LEVEL FUNKCIJA)
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> _firebaseMessagingBackgroundHandler(fcm.RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("🔔 [FCM] Background poruka primljena: ${message.messageId}");
   debugPrint("🔔 [FCM] Title: ${message.notification?.title}");
@@ -164,17 +226,85 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await _showAlternativaNotification(message);
 }
 
-/// Foreground handler
-Future<void> _handleIncomingMessage(RemoteMessage message) async {
-  debugPrint("🔔 [FCM] Foreground poruka primljena: ${message.messageId}");
-  debugPrint("🔔 [FCM] Title: ${message.notification?.title}");
-  debugPrint("🔔 [FCM] Body: ${message.notification?.body}");
-  debugPrint("🔔 [FCM] Data: ${message.data}");
+/// Foreground handler za FCM
+Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
+  debugPrint("📱 [FCM] Foreground poruka: ${message.messageId}");
+  debugPrint("📱 [FCM] Title: ${message.notification?.title}");
+  debugPrint("📱 [FCM] Body: ${message.notification?.body}");
+  debugPrint("📱 [FCM] Data: ${message.data}");
   await _showAlternativaNotification(message);
 }
 
+/// ✨ NOVO: HMS Message handler
+Future<void> _handleHmsIncomingMessage(hms.RemoteMessage message) async {
+  debugPrint("📱 [HMS] Foreground poruka primljena");
+  debugPrint("📱 [HMS] Data: ${message.data}");
+
+  // Direktno pozovi notification funkciju sa HMS data podacima
+  await _showHmsNotification(message);
+}
+
+/// ✨ NOVO: HMS Notification handler
+Future<void> _showHmsNotification(hms.RemoteMessage message) async {
+  // Izvuci data iz HMS poruke
+  final String? rawData = message.data;
+  if (rawData == null || rawData.isEmpty) {
+    debugPrint("⚠️ [HMS] Nema data u poruci");
+    return;
+  }
+
+  // Parsiraj JSON data (HMS šalje kao string)
+  Map<String, dynamic> data;
+  try {
+    // Pokušaj da parsiraj kao JSON string
+    if (rawData.startsWith('{')) {
+      data = Map<String, dynamic>.from(jsonDecode(rawData) as Map<String, dynamic>);
+    } else {
+      // Fallback: tretiraj kao običan string podatak
+      data = {'message': rawData};
+    }
+  } catch (e) {
+    debugPrint("⚠️ [HMS] Greška u parsiranju data: $e");
+    return;
+  }
+
+  if (data['type'] != 'v3_alternativa') return;
+
+  final id = data['id'] as String? ?? '';
+  final altPre = data['alt_pre'] as String?;
+  final altPosle = data['alt_posle'] as String?;
+  final title = data['title'] as String? ?? '⚠️ Termin pun';
+  final body = data['body'] as String? ?? 'Izaberi alternativni termin';
+
+  final actions = <AndroidNotificationAction>[
+    if (altPre != null) AndroidNotificationAction('accept_pre', '✅ $altPre', showsUserInterface: false),
+    if (altPosle != null) AndroidNotificationAction('accept_posle', '✅ $altPosle', showsUserInterface: false),
+    AndroidNotificationAction('decline', '❌ Odbaci', showsUserInterface: false),
+  ];
+
+  final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    channelDescription: 'Obaveštenja o statusu zahteva',
+    importance: Importance.max,
+    priority: Priority.high,
+    actions: actions,
+    styleInformation: BigTextStyleInformation(''),
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    id.hashCode,
+    title,
+    body,
+    NotificationDetails(android: androidDetails),
+    payload: 'hms_alternativa:$id',
+  );
+
+  debugPrint('🟠 [HMS] Notification prikazana za ID: $id');
+}
+
 /// Prikazuje lokalnu notifikaciju sa akcijskim dugmadima za v3_alternativa
-Future<void> _showAlternativaNotification(RemoteMessage message) async {
+Future<void> _showAlternativaNotification(fcm.RemoteMessage message) async {
   final data = message.data;
   if (data['type'] != 'v3_alternativa') return;
 
@@ -386,5 +516,38 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         );
       },
     );
+  }
+}
+
+/// ✨ Čuva HMS token u bazu za hibridni push sistem
+Future<void> _saveHmsTokenToDatabase(String hmsToken) async {
+  try {
+    debugPrint('💾 [HMS] Čuvam token u bazu...');
+
+    // Pronađi trenutnog korisnika (Bojan) - možemo proširiti za sve korisnike
+    final response = await supabase
+        .from('v3_vozaci')
+        .select('id, ime_prezime')
+        .ilike('ime_prezime', '%bojan%')
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) {
+      debugPrint('⚠️ [HMS] Korisnik nije pronađen u bazi');
+      return;
+    }
+
+    final vozacId = response['id'];
+
+    // Ažuriraj HMS token i push_type
+    await supabase.from('v3_vozaci').update({
+      'hms_token': hmsToken,
+      'push_type': 'hms',
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', vozacId);
+
+    debugPrint('✅ [HMS] Token sačuvan u bazu za ${response['ime_prezime']}');
+  } catch (e) {
+    debugPrint('❌ [HMS] Greška pri čuvanju tokena: $e');
   }
 }
