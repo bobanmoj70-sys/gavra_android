@@ -658,10 +658,12 @@ class _PutnikDialogState extends State<_PutnikDialog> {
   late final TextEditingController _email = TextEditingController(text: widget.existing?.email ?? '');
   late final TextEditingController _skola = TextEditingController(text: widget.existing?.skola ?? '');
   late final TextEditingController _opis = TextEditingController(text: widget.existing?.opisPosiljke ?? '');
-  late final TextEditingController _cenaDan = TextEditingController(
-      text: widget.existing?.cenaPoDanu != null && widget.existing!.cenaPoDanu > 0
-          ? widget.existing!.cenaPoDanu.toStringAsFixed(0)
-          : '');
+  late final TextEditingController _cenaDan = TextEditingController(text: () {
+    final tip = widget.existing?.tipPutnika ?? 'radnik';
+    final cena =
+        (tip == 'dnevni' || tip == 'posiljka') ? widget.existing?.cenaPoPokupljenju : widget.existing?.cenaPoDanu;
+    return (cena != null && cena > 0) ? cena.toStringAsFixed(0) : '';
+  }());
   late String _tip = widget.existing?.tipPutnika ?? 'radnik';
 
   // Adrese
@@ -705,14 +707,18 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         skola: _tip == 'ucenik' && _skola.text.trim().isNotEmpty ? _skola.text.trim() : null,
         opisPosiljke: _tip == 'posiljka' && _opis.text.trim().isNotEmpty ? _opis.text.trim() : null,
         tipPutnika: _tip,
-        cenaPoDanu: double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0,
+        cenaPoDanu: (_tip == 'dnevni' || _tip == 'posiljka')
+            ? (widget.existing?.cenaPoDanu ?? 0.0)
+            : double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0,
         aktivno: widget.existing?.aktivno ?? true,
         adresaBcId: _adresaBc1?.id,
         adresaBcId2: _adresaBc2?.id,
         adresaVsId: _adresaVs1?.id,
         adresaVsId2: _adresaVs2?.id,
         pin: widget.existing?.pin,
-        cenaPoPokupljenju: widget.existing?.cenaPoPokupljenju ?? 0.0,
+        cenaPoPokupljenju: (_tip == 'dnevni' || _tip == 'posiljka')
+            ? double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0
+            : (widget.existing?.cenaPoPokupljenju ?? 0.0),
         placeniMesec: widget.existing?.placeniMesec,
         placenaGodina: widget.existing?.placenaGodina,
       );
@@ -859,8 +865,11 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                     TextField(
                       controller: _cenaDan,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                          labelText: 'Cena po danu', border: OutlineInputBorder(), isDense: true, suffixText: 'din'),
+                      decoration: InputDecoration(
+                          labelText: (_tip == 'dnevni' || _tip == 'posiljka') ? 'Cena po pokupljanju' : 'Cena po danu',
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                          suffixText: 'din'),
                     ),
                     // Škola
                     if (_tip == 'ucenik') ...[

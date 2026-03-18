@@ -18,7 +18,7 @@ class V3DugService {
     final dugovi = <V3Dug>[];
     for (final row in cache.values) {
       final naplataSt = row['naplata_status'] as String? ?? 'nije_placeno';
-      if (naplataSt != 'nije_placeno' && naplataSt != 'ceka') continue;
+      if (naplataSt != 'nije_placeno') continue;
       final putnikId = row['putnik_id'] as String? ?? '';
       final putnikData = rm.putniciCache[putnikId];
       if (putnikData == null) continue;
