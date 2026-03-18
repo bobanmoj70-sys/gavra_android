@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../realtime/v3_master_realtime_manager.dart';
-import 'v3_audit_log_service.dart';
 
 class V3PinZahtevService {
   V3PinZahtevService._();
@@ -142,12 +141,6 @@ class V3PinZahtevService {
         'status': 'odobren',
       }).eq('id', zahtevId);
 
-      V3AuditLogService.log(
-        tip: 'pin_zahtev_odobren',
-        putnikId: putnikId,
-        aktorTip: 'admin',
-        detalji: 'pin_zahtev_id: $zahtevId',
-      );
       return true;
     } catch (e) {
       debugPrint('[V3PinZahtevService] odobriZahtev error: $e');
@@ -162,11 +155,6 @@ class V3PinZahtevService {
         'status': 'odbijen',
       }).eq('id', zahtevId);
 
-      V3AuditLogService.log(
-        tip: 'pin_zahtev_odbijen',
-        aktorTip: 'admin',
-        detalji: 'pin_zahtev_id: $zahtevId',
-      );
       return true;
     } catch (e) {
       debugPrint('[V3PinZahtevService] odbijZahtev error: $e');

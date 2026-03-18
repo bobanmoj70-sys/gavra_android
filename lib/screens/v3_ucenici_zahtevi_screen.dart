@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 
 /// V3 ekran — Monitoring Učenika
@@ -252,7 +253,7 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          zahtev.imePrezime ?? 'Učenik',
+                          zahtev.imePrezime ?? V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Učenik',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

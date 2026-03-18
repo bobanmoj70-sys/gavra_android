@@ -10,6 +10,7 @@ import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
+import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
@@ -290,8 +291,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     for (final pz in _mojiPutnici) {
       // Adresa zavisno od smjera (grad iz selektovanog termina) — bez fallback na drugi grad
       final adresa = _selectedGrad.toUpperCase() == 'BC'
-          ? (pz.putnik.adresaBcNaziv ?? pz.putnik.adresaBcNaziv2 ?? '')
-          : (pz.putnik.adresaVsNaziv ?? pz.putnik.adresaVsNaziv2 ?? '');
+          ? (V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ??
+              V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ??
+              '')
+          : (V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ??
+              V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ??
+              '');
       if (adresa.isEmpty) continue;
       final encoded = Uri.encodeComponent('$adresa, Serbia');
       waypointsBuffer.write('${first ? '?' : '&'}waypoint$idx=$encoded');

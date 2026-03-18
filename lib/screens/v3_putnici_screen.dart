@@ -392,9 +392,10 @@ class _PutnikCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? adresa = putnik.adresaBcNaziv != null || putnik.adresaVsNaziv != null
-        ? '${putnik.adresaBcNaziv ?? "/"} → ${putnik.adresaVsNaziv ?? "/"}'
-        : null;
+    final String? adresa;
+    final bcNaziv = V3AdresaService.getAdresaById(putnik.adresaBcId)?.naziv;
+    final vsNaziv = V3AdresaService.getAdresaById(putnik.adresaVsId)?.naziv;
+    adresa = (bcNaziv != null || vsNaziv != null) ? '${bcNaziv ?? "/"} → ${vsNaziv ?? "/"}' : null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -707,13 +708,9 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         cenaPoDanu: double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0,
         aktivno: widget.existing?.aktivno ?? true,
         adresaBcId: _adresaBc1?.id,
-        adresaBcNaziv: _adresaBc1?.naziv,
         adresaBcId2: _adresaBc2?.id,
-        adresaBcNaziv2: _adresaBc2?.naziv,
         adresaVsId: _adresaVs1?.id,
-        adresaVsNaziv: _adresaVs1?.naziv,
         adresaVsId2: _adresaVs2?.id,
-        adresaVsNaziv2: _adresaVs2?.naziv,
         pin: widget.existing?.pin,
         cenaPoPokupljenju: widget.existing?.cenaPoPokupljenju ?? 0.0,
         placeniMesec: widget.existing?.placeniMesec,

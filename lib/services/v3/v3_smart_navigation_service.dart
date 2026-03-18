@@ -1,4 +1,5 @@
 import '../../models/v3_putnik.dart';
+import 'v3_adresa_service.dart';
 
 class V3NavigationResult {
   final bool success;
@@ -51,8 +52,12 @@ class V3SmartNavigationService {
   /// Vraća adresu putnika za određeni grad
   static String getAdresaZaGrad(V3Putnik p, String grad) {
     if (grad.toUpperCase() == 'BC') {
-      return p.adresaBcNaziv ?? p.adresaBcNaziv2 ?? '';
+      return V3AdresaService.getAdresaById(p.adresaBcId)?.naziv
+          ?? V3AdresaService.getAdresaById(p.adresaBcId2)?.naziv
+          ?? '';
     }
-    return p.adresaVsNaziv ?? p.adresaVsNaziv2 ?? '';
+    return V3AdresaService.getAdresaById(p.adresaVsId)?.naziv
+        ?? V3AdresaService.getAdresaById(p.adresaVsId2)?.naziv
+        ?? '';
   }
 }

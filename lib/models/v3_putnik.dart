@@ -13,10 +13,6 @@ class V3Putnik {
   final String? adresaVsId;
   final String? adresaBcId2;
   final String? adresaVsId2;
-  final String? adresaBcNaziv;
-  final String? adresaVsNaziv;
-  final String? adresaBcNaziv2;
-  final String? adresaVsNaziv2;
 
   // Specific fields
   final String? opisPosiljke;
@@ -45,10 +41,6 @@ class V3Putnik {
     this.adresaVsId,
     this.adresaBcId2,
     this.adresaVsId2,
-    this.adresaBcNaziv,
-    this.adresaVsNaziv,
-    this.adresaBcNaziv2,
-    this.adresaVsNaziv2,
     this.opisPosiljke,
     this.skola,
     this.cenaPoDanu = 0.0,
@@ -74,10 +66,6 @@ class V3Putnik {
       adresaVsId: json['adresa_vs_id'] as String?,
       adresaBcId2: json['adresa_bc_id_2'] as String?,
       adresaVsId2: json['adresa_vs_id_2'] as String?,
-      adresaBcNaziv: json['adresa_bc_naziv'] as String?,
-      adresaVsNaziv: json['adresa_vs_naziv'] as String?,
-      adresaBcNaziv2: json['adresa_bc_naziv_2'] as String?,
-      adresaVsNaziv2: json['adresa_vs_naziv_2'] as String?,
       opisPosiljke: json['opis_posiljke'] as String?,
       skola: json['skola'] as String?,
       cenaPoDanu: (json['cena_po_danu'] as num?)?.toDouble() ?? 0.0,
@@ -104,10 +92,6 @@ class V3Putnik {
       'adresa_vs_id': adresaVsId,
       'adresa_bc_id_2': adresaBcId2,
       'adresa_vs_id_2': adresaVsId2,
-      'adresa_bc_naziv': adresaBcNaziv,
-      'adresa_vs_naziv': adresaVsNaziv,
-      'adresa_bc_naziv_2': adresaBcNaziv2,
-      'adresa_vs_naziv_2': adresaVsNaziv2,
       'opis_posiljke': opisPosiljke,
       'skola': skola,
       'cena_po_danu': cenaPoDanu,
@@ -131,10 +115,6 @@ class V3Putnik {
     String? adresaVsId,
     String? adresaBcId2,
     String? adresaVsId2,
-    String? adresaBcNaziv,
-    String? adresaVsNaziv,
-    String? adresaBcNaziv2,
-    String? adresaVsNaziv2,
     String? opisPosiljke,
     String? skola,
     double? cenaPoDanu,
@@ -155,10 +135,6 @@ class V3Putnik {
       adresaVsId: adresaVsId ?? this.adresaVsId,
       adresaBcId2: adresaBcId2 ?? this.adresaBcId2,
       adresaVsId2: adresaVsId2 ?? this.adresaVsId2,
-      adresaBcNaziv: adresaBcNaziv ?? this.adresaBcNaziv,
-      adresaVsNaziv: adresaVsNaziv ?? this.adresaVsNaziv,
-      adresaBcNaziv2: adresaBcNaziv2 ?? this.adresaBcNaziv2,
-      adresaVsNaziv2: adresaVsNaziv2 ?? this.adresaVsNaziv2,
       opisPosiljke: opisPosiljke ?? this.opisPosiljke,
       skola: skola ?? this.skola,
       cenaPoDanu: cenaPoDanu ?? this.cenaPoDanu,

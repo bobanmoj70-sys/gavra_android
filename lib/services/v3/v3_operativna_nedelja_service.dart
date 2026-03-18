@@ -7,7 +7,6 @@ import '../realtime/v3_master_realtime_manager.dart';
 class V3OperativnaNedeljaEntry {
   final String id;
   final String putnikId;
-  final String? imePrezime;
   final DateTime datum;
   final String? grad;
   final String? vreme;
@@ -37,7 +36,6 @@ class V3OperativnaNedeljaEntry {
   V3OperativnaNedeljaEntry({
     required this.id,
     required this.putnikId,
-    this.imePrezime,
     required this.datum,
     this.grad,
     this.vreme,
@@ -69,7 +67,6 @@ class V3OperativnaNedeljaEntry {
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
       putnikId: json['putnik_id'] as String? ?? '',
-      imePrezime: json['ime_prezime'] as String?,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String?,
       vreme: json['vreme'] as String?,
@@ -102,7 +99,6 @@ class V3OperativnaNedeljaEntry {
     return {
       'id': id,
       'putnik_id': putnikId,
-      'ime_prezime': imePrezime,
       'datum': datum.toIso8601String().split('T')[0],
       'grad': grad,
       'vreme': vreme,
@@ -339,7 +335,6 @@ class V3OperativnaNedeljaService {
   /// Ako već postoji aktivan zapis za isti putnik+datum+grad → UPDATE vreme+status.
   static Future<void> createOrUpdateByVozac({
     required String putnikId,
-    required String imePrezime,
     required String datum, // yyyy-MM-dd
     required String grad,
     required String zeljenoVreme, // HH:mm
@@ -370,7 +365,6 @@ class V3OperativnaNedeljaService {
         // INSERT direktno u operativna_nedelja
         await supabase.from('v3_operativna_nedelja').insert({
           'putnik_id': putnikId,
-          'ime_prezime': imePrezime,
           'datum': datum,
           'grad': grad,
           'zeljeno_vreme': zeljenoVreme,

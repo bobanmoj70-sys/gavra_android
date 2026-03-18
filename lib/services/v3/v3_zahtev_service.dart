@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../realtime/v3_master_realtime_manager.dart';
-import 'v3_audit_log_service.dart';
 import 'v3_vozac_service.dart';
 
 /// Service for V3 passenger travel requests (`v3_zahtevi`).
@@ -56,14 +55,6 @@ class V3ZahtevService {
       final row = await supabase.from('v3_zahtevi').insert(data).select().single();
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-      V3AuditLogService.log(
-        tip: 'zahtev_kreiran',
-        putnikId: zahtev.putnikId,
-        putnikIme: zahtev.imePrezime,
-        datumIso: zahtev.datum.toIso8601String().split('T')[0],
-        grad: zahtev.grad,
-        vreme: zahtev.zeljenoVreme,
-      );
       return V3Zahtev.fromJson(row);
     } catch (e) {
       debugPrint('[V3ZahtevService] Error: $e');
@@ -199,12 +190,6 @@ class V3ZahtevService {
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
-        V3AuditLogService.log(
-          tip: 'zahtev_otkazan',
-          aktorId: otkazaoVozacId,
-          aktorTip: 'vozac',
-          detalji: 'zahtev_id: $id',
-        );
       } else {
         // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovdje
         final String updBy = otkazaoPutnikId != null ? 'putnik:$otkazaoPutnikId' : 'sistem';
@@ -224,12 +209,6 @@ class V3ZahtevService {
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
-        V3AuditLogService.log(
-          tip: 'zahtev_otkazan',
-          aktorId: otkazaoPutnikId,
-          aktorTip: 'putnik',
-          detalji: 'zahtev_id: $id',
-        );
       }
     } catch (e) {
       debugPrint('[V3ZahtevService] Otkazi error: $e');
@@ -237,7 +216,7 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> oznaciPokupljen(String id, {String? pokupljenVozacId, String? operativnaId}) async {
+  static Future<void> oznaciPokupljen({String? pokupljenVozacId, String? operativnaId}) async {
     try {
       final query = supabase.from('v3_operativna_nedelja').update({
         'vreme_pokupljen': DateTime.now().toIso8601String(),
@@ -249,12 +228,6 @@ class V3ZahtevService {
       } else {
         throw Exception('operativnaId je obavezan za pokupljanje');
       }
-      V3AuditLogService.log(
-        tip: 'pokupljen',
-        aktorId: pokupljenVozacId,
-        aktorTip: pokupljenVozacId != null ? 'vozac' : null,
-        detalji: 'zahtev_id: $id',
-      );
     } catch (e) {
       debugPrint('[V3ZahtevService] Pokupljen error: $e');
       rethrow;

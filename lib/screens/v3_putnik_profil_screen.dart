@@ -243,9 +243,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
     final hasSecondary =
         grad == 'BC' ? (putnikCache?['adresa_bc_id_2'] != null) : (putnikCache?['adresa_vs_id_2'] != null);
-    final secondaryNaziv = grad == 'BC'
-        ? (putnikCache?['adresa_bc_naziv_2'] as String? ?? 'Druga adresa')
-        : (putnikCache?['adresa_vs_naziv_2'] as String? ?? 'Druga adresa');
+    String? secondaryId;
+    if (grad == 'BC') {
+      secondaryId = putnikCache?['adresa_bc_id_2'] as String?;
+    } else {
+      secondaryId = putnikCache?['adresa_vs_id_2'] as String?;
+    }
+    final secondaryNaziv = V3AdresaService.getAdresaById(secondaryId)?.naziv ?? 'Druga adresa';
 
     bool koristiSekundarnu = false;
 
@@ -324,8 +328,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                     koristiSekundarnu
                                         ? secondaryNaziv
                                         : (grad == 'BC'
-                                            ? (putnikCache?['adresa_bc_naziv'] as String? ?? 'Glavna adresa')
-                                            : (putnikCache?['adresa_vs_naziv'] as String? ?? 'Glavna adresa')),
+                                            ? (V3AdresaService.getAdresaById(putnikCache?['adresa_bc_id'] as String?)
+                                                    ?.naziv ??
+                                                'Glavna adresa')
+                                            : (V3AdresaService.getAdresaById(putnikCache?['adresa_vs_id'] as String?)
+                                                    ?.naziv ??
+                                                'Glavna adresa')),
                                     style:
                                         const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                                     maxLines: 1,

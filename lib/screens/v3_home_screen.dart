@@ -213,7 +213,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               ),
               const SizedBox(height: 16),
               Text(
-                '👤 ${(zahtev.imePrezime ?? 'Putnik').toUpperCase()}',
+                '👤 ${(V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Putnik').toUpperCase()}',
                 style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1),
               ),
               Text(
@@ -553,7 +553,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       // Direktan INSERT u v3_operativna_nedelja — bez zahteva
                                       await V3OperativnaNedeljaService.createOrUpdateByVozac(
                                         putnikId: selectedPutnik!.id,
-                                        imePrezime: selectedPutnik!.imePrezime,
                                         datum: isoDate,
                                         grad: _selectedGrad,
                                         zeljenoVreme: _selectedVreme,
@@ -1052,8 +1051,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               final aRank = sortRank(a);
               final bRank = sortRank(b);
               if (aRank != bRank) return aRank.compareTo(bRank);
-              final aIme = a.imePrezime ?? V3PutnikService.getPutnikById(a.putnikId)?.imePrezime ?? '';
-              final bIme = b.imePrezime ?? V3PutnikService.getPutnikById(b.putnikId)?.imePrezime ?? '';
+              final aIme = V3PutnikService.getPutnikById(a.putnikId)?.imePrezime ?? '';
+              final bIme = V3PutnikService.getPutnikById(b.putnikId)?.imePrezime ?? '';
               return aIme.compareTo(bIme);
             });
 

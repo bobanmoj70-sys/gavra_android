@@ -358,7 +358,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     BoxDecoration(color: Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
               )),
               const SizedBox(height: 16),
-              Text('👤 ${(zahtev.imePrezime ?? 'Putnik').toUpperCase()}',
+              Text('👤 ${(V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Putnik').toUpperCase()}',
                   style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1)),
               Text('$_selectedGrad $_selectedVreme — $_selectedDatumIso',
                   style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1)),

@@ -90,11 +90,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac == null) throw 'Niste logovani u V3 sistem';
       final isAlreadyPokupljen = widget.entry?.pokupljen ?? false;
-      // Pokupljanje uvijek ide kroz v3_zahtevi
-      final zahtevId = widget.zahtev?.id;
-      if (zahtevId == null || zahtevId.isEmpty) throw 'Nema zahteva za pokupljanje';
-      await V3ZahtevService.oznaciPokupljen(zahtevId,
-          pokupljenVozacId: currentVozac.id, operativnaId: widget.entry?.id);
+      await V3ZahtevService.oznaciPokupljen(pokupljenVozacId: currentVozac.id, operativnaId: widget.entry?.id);
       await V2HapticService.putnikPokupljen();
       if (mounted) {
         V3AppSnackBar.success(context, isAlreadyPokupljen ? 'Vraćeno u obradu' : 'Putnik pokupljen');
@@ -122,8 +118,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Future<void> _handlePayment() async {
     if (widget.entry == null && widget.zahtev == null) return;
     if (_globalProcessingLock || _isProcessing) return;
-    final zahtevId = widget.zahtev?.id;
-    if (zahtevId == null || zahtevId.isEmpty) return;
     final tip = widget.putnik.tipPutnika;
     final defaultCena =
         (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
@@ -141,7 +135,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         putnikId: widget.putnik.id,
         imePrezime: widget.putnik.imePrezime,
         rezultat: rezultat,
-        zahtevId: zahtevId,
       );
       if (ok && widget.entry != null) {
         await V3OperativnaNedeljaService.updateNaplata(
@@ -191,10 +184,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Future<void> _handleOtkazivanje() async {
-    final zahtevId = widget.zahtev?.id;
-    if (zahtevId == null || zahtevId.isEmpty) return;
-    // Koristimo zahtev za ime, ali id može biti iz entry
-    final zahtev = widget.zahtev;
+    final operativnaId = widget.entry?.id;
+    if (operativnaId == null || operativnaId.isEmpty) return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -239,8 +230,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
     if (confirm == true) {
       try {
-        await V3ZahtevService.otkaziZahtev(zahtevId,
-            otkazaoVozacId: V3VozacService.currentVozac?.id, operativnaId: widget.entry?.id);
+        await V3ZahtevService.otkaziZahtev('',
+            otkazaoVozacId: V3VozacService.currentVozac?.id, operativnaId: operativnaId);
         if (mounted) {
           V3AppSnackBar.warning(context, 'Otkazano: ${widget.putnik.imePrezime}');
           widget.onChanged?.call();
@@ -363,13 +354,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final grad = widget.entry?.grad ?? widget.zahtev?.grad ?? '';
     final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
     if (grad.toUpperCase() == 'BC') {
-      return (koristiSekundarnu ? widget.putnik.adresaBcNaziv2 : widget.putnik.adresaBcNaziv) ??
-          widget.putnik.adresaBcNaziv ??
-          widget.putnik.adresaBcNaziv2;
+      final id = koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId;
+      return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaBcId)?.naziv ??
+          V3AdresaService.getAdresaById(widget.putnik.adresaBcId2)?.naziv;
     }
-    return (koristiSekundarnu ? widget.putnik.adresaVsNaziv2 : widget.putnik.adresaVsNaziv) ??
-        widget.putnik.adresaVsNaziv ??
-        widget.putnik.adresaVsNaziv2;
+    final id = koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId;
+    return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaVsId)?.naziv ??
+        V3AdresaService.getAdresaById(widget.putnik.adresaVsId2)?.naziv;
   }
 
   Color? _parseHexColor(String? hex) {
