@@ -850,13 +850,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               ),
             ),
           ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text(
-              'Aktivni tjedni zahtevi',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11),
-            ),
-          ),
           const SizedBox(height: 16),
 
           // Header
