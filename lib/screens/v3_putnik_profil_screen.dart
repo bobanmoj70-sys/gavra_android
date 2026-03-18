@@ -188,7 +188,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         if (mounted) V3AppSnackBar.success(context, '✅ Polazak otkazan: $dan $grad');
       } else if (trenutniInfo != null && (trenutniInfo.status == 'obrada' || trenutniInfo.status == 'odobreno')) {
         // Ažuriraj vreme i adresu na postojećem zahtevu (vraća u obrada)
-        await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, novoVreme, koristiSekundarnu: koristiSekundarnu);
+        await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, novoVreme,
+            koristiSekundarnu: koristiSekundarnu);
         if (mounted) V3AppSnackBar.success(context, '✅ Zahtev ažuriran: $novoVreme');
       } else {
         // Kreiraj novi zahtev
