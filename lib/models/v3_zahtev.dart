@@ -11,6 +11,7 @@ class V3Zahtev {
   final String? napomena;
   final String? dodeljenoVreme;
   final bool koristiSekundarnu;
+  final String? adresaIdOverride;
   final String? altVremePre;
   final String? altVremePosle;
   final String? altNapomena;
@@ -30,6 +31,7 @@ class V3Zahtev {
     this.napomena,
     this.dodeljenoVreme,
     this.koristiSekundarnu = false,
+    this.adresaIdOverride,
     this.altVremePre,
     this.altVremePosle,
     this.altNapomena,
@@ -51,6 +53,7 @@ class V3Zahtev {
       napomena: json['napomena'] as String?,
       dodeljenoVreme: json['dodeljeno_vreme'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
+      adresaIdOverride: json['adresa_id_override'] as String?,
       altVremePre: json['alt_vreme_pre'] as String?,
       altVremePosle: json['alt_vreme_posle'] as String?,
       altNapomena: json['alt_napomena'] as String?,
@@ -73,6 +76,7 @@ class V3Zahtev {
       'napomena': napomena,
       'dodeljeno_vreme': dodeljenoVreme,
       'koristi_sekundarnu': koristiSekundarnu,
+      'adresa_id_override': adresaIdOverride,
       'alt_vreme_pre': altVremePre,
       'alt_vreme_posle': altVremePosle,
       'alt_napomena': altNapomena,
@@ -92,6 +96,7 @@ class V3Zahtev {
     String? napomena,
     String? dodeljenoVreme,
     bool? koristiSekundarnu,
+    String? adresaIdOverride,
     String? altVremePre,
     String? altVremePosle,
     String? altNapomena,
@@ -110,6 +115,7 @@ class V3Zahtev {
       napomena: napomena ?? this.napomena,
       dodeljenoVreme: dodeljenoVreme ?? this.dodeljenoVreme,
       koristiSekundarnu: koristiSekundarnu ?? this.koristiSekundarnu,
+      adresaIdOverride: adresaIdOverride ?? this.adresaIdOverride,
       altVremePre: altVremePre ?? this.altVremePre,
       altVremePosle: altVremePosle ?? this.altVremePosle,
       altNapomena: altNapomena ?? this.altNapomena,

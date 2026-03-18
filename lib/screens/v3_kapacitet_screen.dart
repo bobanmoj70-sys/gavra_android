@@ -25,7 +25,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _streamTrigger = V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_operativna_nedelja'],
+      tables: ['v3_kapacitet_slots'],
       build: () {},
     );
   }

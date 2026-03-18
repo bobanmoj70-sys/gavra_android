@@ -289,14 +289,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     bool first = true;
     int idx = 0;
     for (final pz in _mojiPutnici) {
-      // Adresa zavisno od smjera (grad iz selektovanog termina) — bez fallback na drugi grad
-      final adresa = _selectedGrad.toUpperCase() == 'BC'
-          ? (V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ??
-              V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ??
-              '')
-          : (V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ??
-              V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ??
-              '');
+      // Adresa zavisno od smjera (grad iz selektovanog termina) — poštuje override iz entry-ja
+      final String adresa;
+      final override = pz.entry?.adresaIdOverride;
+      if (override != null) {
+        adresa = V3AdresaService.getAdresaById(override)?.naziv ?? '';
+      } else {
+        final koristiSekundarnu = pz.entry?.koristiSekundarnu ?? false;
+        if (_selectedGrad.toUpperCase() == 'BC') {
+          adresa = koristiSekundarnu
+              ? (V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ??
+                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ?? '')
+              : (V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ??
+                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ?? '');
+        } else {
+          adresa = koristiSekundarnu
+              ? (V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ??
+                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ?? '')
+              : (V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ??
+                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ?? '');
+        }
+      }
       if (adresa.isEmpty) continue;
       final encoded = Uri.encodeComponent('$adresa, Serbia');
       waypointsBuffer.write('${first ? '?' : '&'}waypoint$idx=$encoded');
