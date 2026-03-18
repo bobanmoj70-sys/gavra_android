@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "lib": [
+            "deno.window",
+            "deno.ns"
+        ],
+        "strict": false,
+        "allowUmdGlobalAccess": true,
+        "typeRoots": [
+            "./types"
+        ],
+        "types": [
+            "./types/deno.d.ts"
+        ]
+    },
+    "lint": {
+        "rules": {
+            "tags": [
+                "recommended"
+            ]
+        }
+    },
+    "fmt": {
+        "files": {
+            "exclude": [
+                "README.md"
+            ]
+        }
+    }
+}

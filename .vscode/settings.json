@@ -195,6 +195,17 @@
   "dart.vmAdditionalArgs": [
     "--old_gen_heap_size=1024"
   ],
+  // Deno configuration for Supabase Edge Functions
+  "deno.enable": true,
+  "deno.enablePaths": [
+    "./supabase/functions"
+  ],
+  "deno.config": "./supabase/functions/deno.json",
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "typescript.suggest.autoImports": false,
   "github.copilot.chat.mcp": {
     "supabase": {
       "type": "http",
