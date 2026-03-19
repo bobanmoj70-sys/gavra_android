@@ -181,37 +181,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
 
     // 2. Putnici za ovaj dan/grad/vreme:
-    //    a) Svi iz v3_operativna_nedelja za isti datum+grad+vreme koji nisu odbijeni/otkazani
-    //       (vozač ima termin → sve putnike tog termina preuzima automatski)
-    //    b) Individualni override iz v3_raspored_putnik (putnik dodijeljen direktno ovom vozaču
-    //       za drugačiji termin od termina — npr. drugačije vreme unutar istog dana)
-    //    c) Putnici iz v3_raspored_putnik koji su eksplicitno dodijeljeni ovom vozaču
-    //       za ovaj datum+grad+vreme (individualna dodjela)
+    //    NOVA LOGIKA: Direktno iz v3_raspored_termin (fizička veza putnik-termin)
+    //    + Individualni override iz v3_raspored_putnik za drugačija vremena
 
-    // Skup putnik_id-eva koji su individualno dodijeljeni DRUGOM vozaču za isti termin
-    // (override — isključi ih iz automatskog popunjavanja)
-    final individualniDrugiVozac = rm.rasporedPutnikCache.values
-        .where((r) =>
-            r['vozac_id']?.toString() != vozac.id &&
-            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
-            r['grad']?.toString().toUpperCase() == _selectedGrad &&
-            normalizeV(r['vreme']?.toString()) == selectedVNorm &&
-            r['aktivno'] != false)
-        .map((r) => r['putnik_id']?.toString())
-        .whereType<String>()
-        .toSet();
+    // Putnici iz v3_raspored_termin za ovog vozača i ovaj termin
+    final terminPutnici = rm.rasporedTerminCache.values.where((r) =>
+        r['vozac_id']?.toString() == vozac.id &&
+        (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+        r['grad']?.toString().toUpperCase() == _selectedGrad &&
+        normalizeV(r['vreme']?.toString()) == selectedVNorm &&
+        r['putnik_id'] != null &&
+        r['aktivno'] != false);
 
-    // Putnici iz v3_operativna_nedelja za ovaj termin (automatski, jer vozač ima termin)
-    final operativniPutnici = terminPostoji
-        ? rm.operativnaNedeljaCache.values.where((r) =>
-            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
-            r['grad']?.toString().toUpperCase() == _selectedGrad &&
-            normalizeV(r['vreme']?.toString()) == selectedVNorm &&
-            r['status_final'] != 'odbijeno' &&
-            !individualniDrugiVozac.contains(r['putnik_id']?.toString()))
-        : <Map<String, dynamic>>[];
-
-    // Putnici individualno dodijeljeni OVOM vozaču (v3_raspored_putnik)
+    // Putnici individualno dodijeljeni OVOM vozaču (v3_raspored_putnik) - override
     final individualniOvajVozac = rm.rasporedPutnikCache.values.where((r) =>
         r['vozac_id']?.toString() == vozac.id &&
         (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
@@ -219,10 +201,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         normalizeV(r['vreme']?.toString()) == selectedVNorm &&
         r['aktivno'] != false);
 
-    // Unija putnik_id-eva (bez duplikata)
+    // Unija putnik_id-eva (prioritet: individualni override > termin)
+    final individualniSet = individualniOvajVozac.map((r) => r['putnik_id']?.toString()).whereType<String>().toSet();
     final svePutnikIds = <String>{
-      ...operativniPutnici.map((r) => r['putnik_id']?.toString()).whereType<String>(),
-      ...individualniOvajVozac.map((r) => r['putnik_id']?.toString()).whereType<String>(),
+      ...individualniSet,
+      ...terminPutnici
+          .map((r) => r['putnik_id']?.toString())
+          .whereType<String>()
+          .where((id) => !individualniSet.contains(id)),
     };
 
     // 3. Za svakog putnika izgradimo _PutnikEntry iz operativna_nedelja
@@ -244,7 +230,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         );
         entry = V3OperativnaNedeljaEntry.fromJson(entryData);
       } catch (_) {
-        // nema entry-ja
+        // nema entry-ja - može biti iz override-a
       }
 
       putnici.add(_PutnikEntry(putnik: putnik, entry: entry));
@@ -398,6 +384,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   int _getPutnikCount(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
+    final vozac = V3VozacService.currentVozac;
+    if (vozac == null) return 0;
+
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
       final p = v.split(':');
@@ -407,13 +396,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vremeNorm = normV(vreme);
     final gradUp = grad.toUpperCase();
 
-    return rm.operativnaNedeljaCache.values
+    // ISPRAVNO: broji putnice iz v3_raspored_termin gde je ovaj vozač dodeljen
+    return rm.rasporedTerminCache.values
         .where((r) =>
+            r['vozac_id']?.toString() == vozac.id &&
             (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
             r['grad']?.toString().toUpperCase() == gradUp &&
             normV(r['vreme']?.toString()) == vremeNorm &&
-            r['status_final'] != 'odbijeno' &&
-            r['status_final'] != 'otkazano')
+            r['putnik_id'] != null &&
+            r['aktivno'] != false)
         .length;
   }
 

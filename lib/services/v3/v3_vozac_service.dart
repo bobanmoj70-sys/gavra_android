@@ -92,22 +92,62 @@ class V3VozacService {
 
     final vremeNorm = normV(vreme);
     final rm = V3MasterRealtimeManager.instance;
+
+    // DEBUG: print search parameters
+    print(
+        '🔍 VOZAC COLOR SEARCH: danPuni=$danPuni → datumIso=$datumIso, grad=$grad, vreme=$vreme → vremeNorm=$vremeNorm');
+
     try {
-      final termin = rm.rasporedTerminCache.values.firstWhere(
-        (r) =>
-            (r['datum'] as String?)?.split('T')[0] == datumIso &&
-            r['grad']?.toString().toUpperCase() == grad.toUpperCase() &&
-            normV(r['vreme']?.toString()) == vremeNorm &&
-            r['aktivno'] == true,
+      final matchingTermini = rm.rasporedTerminCache.values.where(
+        (r) {
+          final datumMatch = (r['datum'] as String?)?.split('T')[0] == datumIso;
+          final gradMatch = r['grad']?.toString().toUpperCase() == grad.toUpperCase();
+          final vremeMatch = normV(r['vreme']?.toString()) == vremeNorm;
+          final aktivnoMatch = r['aktivno'] == true;
+
+          if (datumMatch && gradMatch && vremeMatch) {
+            print(
+                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} aktivno=${r['aktivno']} vozac_id=${r['vozac_id']}');
+          }
+
+          return datumMatch && gradMatch && vremeMatch && aktivnoMatch;
+        },
       );
+
+      if (matchingTermini.isEmpty) {
+        print(
+            '❌ NO MATCH FOUND in cache for $datumIso $grad $vremeNorm - cache size: ${rm.rasporedTerminCache.length}');
+        // Print first few cache items for debug
+        final cacheItems = rm.rasporedTerminCache.values.take(3).toList();
+        for (final item in cacheItems) {
+          print(
+              '   Cache sample: datum=${item['datum']} grad=${item['grad']} vreme=${item['vreme']} aktivno=${item['aktivno']}');
+        }
+        return null;
+      }
+
+      final termin = matchingTermini.first;
       final vozacId = termin['vozac_id']?.toString();
-      if (vozacId == null) return null;
+      if (vozacId == null) {
+        print('❌ VOZAC_ID is null for termin ${termin['id']}');
+        return null;
+      }
       final vozac = rm.vozaciCache[vozacId];
-      final hex = vozac?['boja']?.toString();
-      if (hex == null || hex.isEmpty) return null;
+      if (vozac == null) {
+        print('❌ VOZAC not found in cache for vozac_id $vozacId');
+        return null;
+      }
+      final hex = vozac['boja']?.toString();
+      if (hex == null || hex.isEmpty) {
+        print('❌ VOZAC BOJA is null/empty for vozac $vozacId');
+        return null;
+      }
       final clean = hex.replaceFirst('#', '');
-      return Color(int.parse('FF$clean', radix: 16));
-    } catch (_) {
+      final color = Color(int.parse('FF$clean', radix: 16));
+      print('✅ VOZAC COLOR FOUND: $hex → $color for vozac $vozacId');
+      return color;
+    } catch (e) {
+      print('❌ ERROR in getVozacColorForTermin: $e');
       return null;
     }
   }

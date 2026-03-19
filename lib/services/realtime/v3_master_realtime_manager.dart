@@ -28,6 +28,8 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
+  final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
+  final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
@@ -53,6 +55,8 @@ class V3MasterRealtimeManager {
         supabase.from('v3_operativna_nedelja').select(),
         supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
         supabase.from('v3_app_settings').select(),
+        supabase.from('v3_gps_activation_schedule').select().order('created_at', ascending: false).limit(100),
+        supabase.from('v3_gps_trigger_stats').select().order('datum', ascending: false).limit(30),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -70,6 +74,8 @@ class V3MasterRealtimeManager {
       _fillCache(operativnaNedeljaCache, results[12] as List);
       _fillCache(kapacitetSlotsCache, results[13] as List);
       _fillCache(appSettingsCache, results[14] as List);
+      _fillCache(gpsActivationScheduleCache, results[15] as List);
+      _fillCache(gpsTriggerStatsCache, results[16] as List);
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -105,6 +111,8 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
     _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
+    _setupTableRealtime('v3_gps_activation_schedule', gpsActivationScheduleCache, hasActiveKey: false);
+    _setupTableRealtime('v3_gps_trigger_stats', gpsTriggerStatsCache, hasActiveKey: false);
 
     _v3Channel!.subscribe();
   }
@@ -190,6 +198,12 @@ class V3MasterRealtimeManager {
       case 'v3_kapacitet_slots':
         kapacitetSlotsCache[id] = row;
         break;
+      case 'v3_gps_activation_schedule':
+        gpsActivationScheduleCache[id] = row;
+        break;
+      case 'v3_gps_trigger_stats':
+        gpsTriggerStatsCache[id] = row;
+        break;
       case 'v3_pin_zahtevi':
         if (row['status'] == 'ceka') {
           pinZahteviCache[id] = row;
@@ -239,6 +253,12 @@ class V3MasterRealtimeManager {
         return operativnaNedeljaCache;
       case 'v3_kapacitet_slots':
         return kapacitetSlotsCache;
+      case 'v3_app_settings':
+        return appSettingsCache;
+      case 'v3_gps_activation_schedule':
+        return gpsActivationScheduleCache;
+      case 'v3_gps_trigger_stats':
+        return gpsTriggerStatsCache;
       default:
         return {};
     }

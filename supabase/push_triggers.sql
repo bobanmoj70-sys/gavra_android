@@ -577,3 +577,88 @@ DROP TRIGGER IF EXISTS tr_v3_notify_gps_tracking_start ON v3_gps_activation_sche
 CREATE TRIGGER tr_v3_notify_gps_tracking_start
 AFTER UPDATE OF status ON v3_gps_activation_schedule  
 FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_gps_tracking_start();
+
+-- ==========================================
+-- 16. FUNKCIJA: Auto GPS Start iz Background Notification
+--     Poziva se kada vozač klikne "Pokreni GPS" dugme u notification-u
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.fn_v3_trigger_auto_gps_start(
+  p_vozac_id uuid,
+  p_polazak_vreme timestamptz
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_vozac_ime text;
+  v_putnici_count integer;
+  v_grad text;
+  v_vreme_str text;
+BEGIN
+  -- Dohvati vozača info
+  SELECT ime_prezime INTO v_vozac_ime
+  FROM public.v3_vozaci 
+  WHERE id = p_vozac_id;
+  
+  IF v_vozac_ime IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'message', 'Vozač nije pronađen'
+    );
+  END IF;
+  
+  -- Parsiraj polazak info
+  SELECT 
+    CASE 
+      WHEN EXTRACT(hour FROM p_polazak_vreme) < 12 THEN 'BC'
+      ELSE 'VS'
+    END,
+    to_char(p_polazak_vreme, 'HH24:MI')
+  INTO v_grad, v_vreme_str;
+  
+  -- Broji putnike za ovaj termin
+  SELECT COUNT(rp.id) INTO v_putnici_count
+  FROM public.v3_raspored_putnik rp
+  JOIN public.v3_raspored_termin rt ON rp.termin_id = rt.id
+  WHERE rt.vozac_id = p_vozac_id
+    AND DATE(rt.polazak_vreme) = DATE(p_polazak_vreme)
+    AND rt.polazak_vreme::time = p_polazak_vreme::time
+    AND rp.aktivno = true;
+  
+  -- Označi kao completed u GPS activation schedule
+  UPDATE public.v3_gps_activation_schedule
+  SET 
+    status = 'completed',
+    updated_at = now()
+  WHERE vozac_id = p_vozac_id
+    AND DATE(polazak_vreme_full) = DATE(p_polazak_vreme)
+    AND polazak_vreme = p_polazak_vreme::time
+    AND status = 'activated';
+  
+  -- Zapisuj GPS aktivnost (ovo će triggering aktivni GPS tracking)
+  INSERT INTO public.v3_vozac_lokacije (vozac_id, lat, lng, grad, vreme_polaska, aktivno)
+  VALUES (
+    p_vozac_id,
+    CASE WHEN v_grad = 'BC' THEN 44.8972 ELSE 45.1167 END, -- Default koordinate
+    CASE WHEN v_grad = 'BC' THEN 21.4247 ELSE 21.3036 END,
+    v_grad,
+    v_vreme_str,
+    true
+  )
+  ON CONFLICT (vozac_id) DO UPDATE SET
+    aktivno = true,
+    grad = EXCLUDED.grad,
+    vreme_polaska = EXCLUDED.vreme_polaska,
+    updated_at = now();
+  
+  RETURN jsonb_build_object(
+    'success', true,
+    'message', format('GPS tracking automatski aktiviran za %s', v_vozac_ime),
+    'vozac_ime', v_vozac_ime,
+    'grad', v_grad,
+    'vreme', v_vreme_str,
+    'putnici_count', v_putnici_count
+  );
+END;
+$$;

@@ -135,16 +135,21 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   int _getPutnikCount(String grad, String vreme) {
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
     final targetDatum = _selectedDatumIso;
+
+    // Ispravka: koristi v3_operativna_nedelja cache i broji broj_mesta
     return V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((r) {
       final datumStr = r['datum'] as String?;
       if (datumStr == null) return false;
       final d = datumStr.split('T')[0];
+      final statusFinal = r['status_final'] as String?;
       return d == targetDatum &&
           r['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(r['vreme'] as String? ?? '') == normV &&
-          r['status_final'] != 'odbijeno' &&
-          r['status_final'] != 'otkazano';
-    }).fold(0, (sum, r) => sum + ((r['broj_mesta'] as num?)?.toInt() ?? 1));
+          r['aktivno'] == true &&
+          statusFinal != 'otkazano' &&
+          statusFinal != 'odbijeno' &&
+          statusFinal != 'obrada';
+    }).fold(0, (sum, r) => sum + ((r['broj_mesta'] as int?) ?? 1));
   }
 
   Color? _getVozacBoja(String grad, String vreme) {
@@ -167,14 +172,56 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Future<void> _dodelijTermin(String grad, String vreme, V3Vozac vozac) async {
     try {
       final datum = _selectedDatumIso;
+
+      // Obriši postojeće termine za ovaj grad/vreme/datum
       await supabase.from('v3_raspored_termin').delete().eq('datum', datum).eq('grad', grad).eq('vreme', vreme);
+
+      // Obriši postojeće GPS schedule za ovaj termin da izbegnemo constraint conflict
+      await supabase.from('v3_gps_activation_schedule').delete().eq('datum', datum).eq('grad', grad).eq('vreme', vreme);
+
+      // Uvek kreiraj osnovni termin sa vozačem (bez putnik_id)
       await supabase.from('v3_raspored_termin').insert({
         'datum': datum,
         'grad': grad,
         'vreme': vreme,
         'vozac_id': vozac.id,
+        'putnik_id': null, // Prazan termin - čeka putnike
+        'created_by': 'admin:dodeljeno',
+        'updated_by': 'admin:dodeljeno',
       });
-      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → $grad $vreme ($datum)');
+
+      // Pronađi sve putnike iz operativne nedelje za ovaj termin
+      final rm = V3MasterRealtimeManager.instance;
+      final putnici = rm.operativnaNedeljaCache.values.where((r) {
+        final datumStr = r['datum'] as String?;
+        if (datumStr == null) return false;
+        final d = datumStr.split('T')[0];
+        return d == datum &&
+            r['grad'] == grad &&
+            V2GradAdresaValidator.normalizeTime(r['vreme'] as String? ?? '') ==
+                V2GradAdresaValidator.normalizeTime(vreme) &&
+            r['status_final'] != 'odbijeno' &&
+            r['status_final'] != 'otkazano' &&
+            r['aktivno'] == true;
+      }).toList();
+
+      // Kreiraj/updatej putnik assignmente u v3_raspored_putnik (izbegava duplikate)
+      for (final putnik in putnici) {
+        await supabase.from('v3_raspored_putnik').upsert({
+          'datum': datum,
+          'grad': grad,
+          'vreme': vreme,
+          'vozac_id': vozac.id,
+          'putnik_id': putnik['putnik_id'],
+          'created_by': 'admin:dodeljeno',
+          'updated_by': 'admin:dodeljeno',
+          'aktivno': true,
+        }, onConflict: 'putnik_id,datum,grad,vreme');
+      }
+
+      if (mounted)
+        V3AppSnackBar.success(
+            context, '✅ ${vozac.imePrezime} → $grad $vreme ($datum) - osnovni termin + ${putnici.length} putnika');
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
     }
