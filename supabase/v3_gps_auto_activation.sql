@@ -7,7 +7,7 @@
 -- ============================================================
 -- 1. GLAVNA TABELA: v3_gps_activation_schedule
 -- Sadrži raspored GPS aktivacije za sve termine
--- OPTIMIZED: Usklađeno sa v3_raspored_termin arhitekturom
+-- OPTIMIZED: Usklađeno sa v3_gps_raspored arhitekturom
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.v3_gps_activation_schedule (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -38,7 +38,7 @@ CREATE INDEX IF NOT EXISTS idx_v3_gps_activation_putnik_count
 
 -- ============================================================
 -- 2. FUNKCIJA: fn_v3_populate_gps_activation_schedule - OPTIMIZED
--- Automatska popolnava tabelu na osnovu v3_raspored_termin
+-- Automatska popolnava tabelu na osnovu v3_gps_raspored
 -- OPTIMIZED: Koristi novu putnik_id arhitekturu za 100% tačnost
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.fn_v3_populate_gps_activation_schedule()
@@ -63,17 +63,10 @@ BEGIN
     -- OPTIMIZED: Prolazi kroz SVE vozače koji imaju termine (iz oba izvora)
     FOR v_termin IN 
       WITH svi_vozac_termini AS (
-        -- Vozači iz v3_raspored_termin (masovna dodela)
+        -- Vozači iz v3_gps_raspored (unified assignments)
         SELECT DISTINCT rt.vozac_id, rt.vreme, rt.grad
-        FROM public.v3_raspored_termin rt
+        FROM public.v3_gps_raspored rt
         WHERE rt.datum = v_datum AND rt.aktivno = true
-        
-        UNION
-        
-        -- Vozači iz v3_raspored_putnik (individualna dodela)
-        SELECT DISTINCT rp.vozac_id, rp.vreme, rp.grad
-        FROM public.v3_raspored_putnik rp
-        WHERE rp.datum = v_datum AND rp.aktivno = true
       )
       SELECT vozac_id, vreme, grad FROM svi_vozac_termini
       ORDER BY vreme, grad, vozac_id  -- Deterministic ordering
@@ -83,35 +76,15 @@ BEGIN
       v_aktivacija_ts := v_polazak_ts - interval '15 minutes';
       
       -- OPTIMIZED: Kombinovani count za OVOG SPECIFIČNOG vozača
-      -- 1. Putnici iz v3_raspored_termin (masovna dodela)
-      -- 2. Putnici iz v3_raspored_putnik (individualna dodela - ima prioritet)
-      WITH termin_putnici AS (
-        SELECT DISTINCT rt.putnik_id
-        FROM public.v3_raspored_termin rt
-        WHERE rt.vozac_id = v_termin.vozac_id
-          AND rt.datum = v_datum
-          AND rt.vreme = v_termin.vreme
-          AND rt.grad = v_termin.grad
-          AND rt.putnik_id IS NOT NULL
-          AND rt.aktivno = true
-      ),
-      individualni_putnici AS (
-        SELECT DISTINCT rp.putnik_id
-        FROM public.v3_raspored_putnik rp
-        WHERE rp.vozac_id = v_termin.vozac_id
-          AND rp.datum = v_datum
-          AND rp.vreme = v_termin.vreme
-          AND rp.grad = v_termin.grad
-          AND rp.aktivno = true
-      ),
-      svi_putnici AS (
-        -- Prioritet: individualni override > termin dodela
-        SELECT putnik_id FROM individualni_putnici
-        UNION
-        SELECT tp.putnik_id FROM termin_putnici tp
-        WHERE tp.putnik_id NOT IN (SELECT putnik_id FROM individualni_putnici)
-      )
-      SELECT COUNT(*) INTO v_putnici_count FROM svi_putnici;
+      -- 1. Putnici iz v3_gps_raspored (unified assignments)
+      -- Broji putnike za ovaj termin iz v3_gps_raspored
+      SELECT COUNT(DISTINCT putnik_id) INTO v_putnici_count
+      FROM public.v3_gps_raspored rt
+      WHERE rt.vozac_id = v_termin.vozac_id
+        AND rt.datum = v_datum
+        AND rt.vreme = v_termin.vreme
+        AND rt.grad = v_termin.grad
+        AND rt.aktivno = true;
       
       -- Skip empty schedules
       IF v_putnici_count = 0 THEN
@@ -380,49 +353,10 @@ AS $$
 DECLARE
   v_updated integer := 0;
 BEGIN
-  -- Ažuriraj putnici_count kombinujući oba izvora (kao vozač screen)
-  UPDATE public.v3_gps_activation_schedule
-  SET 
-    putnici_count = COALESCE(actual_counts.actual_count, 0),
-    updated_at = now()
-  FROM (
-    WITH termin_putnici AS (
-      SELECT DISTINCT rt.vozac_id, rt.datum, rt.vreme, rt.grad, rt.putnik_id
-      FROM public.v3_raspored_termin rt
-      WHERE rt.putnik_id IS NOT NULL AND rt.aktivno = true
-    ),
-    individualni_putnici AS (
-      SELECT DISTINCT rp.vozac_id, rp.datum, rp.vreme, rp.grad, rp.putnik_id
-      FROM public.v3_raspored_putnik rp
-      WHERE rp.aktivno = true
-    ),
-    kombinovani_putnici AS (
-      -- Prioritet: individualni override > termin dodela
-      SELECT vozac_id, datum, vreme, grad, putnik_id FROM individualni_putnici
-      UNION
-      SELECT tp.vozac_id, tp.datum, tp.vreme, tp.grad, tp.putnik_id 
-      FROM termin_putnici tp
-      WHERE NOT EXISTS (
-        SELECT 1 FROM individualni_putnici ip 
-        WHERE ip.vozac_id = tp.vozac_id AND ip.datum = tp.datum 
-          AND ip.vreme = tp.vreme AND ip.grad = tp.grad AND ip.putnik_id = tp.putnik_id
-      )
-    )
-    SELECT vozac_id, datum, vreme, grad, COUNT(*) as actual_count
-    FROM kombinovani_putnici
-    GROUP BY vozac_id, datum, vreme, grad
-  ) actual_counts
-  WHERE v3_gps_activation_schedule.vozac_id = actual_counts.vozac_id
-    AND v3_gps_activation_schedule.datum = actual_counts.datum
-    AND v3_gps_activation_schedule.vreme = actual_counts.vreme
-    AND v3_gps_activation_schedule.grad = actual_counts.grad
-    AND v3_gps_activation_schedule.putnici_count != actual_counts.actual_count;
-  
-  GET DIAGNOSTICS v_updated = ROW_COUNT;
-  
+  -- ONEMOGUĆENO: Koristi obrisane tabele v3_raspored_termin/putnik
   RETURN jsonb_build_object(
-    'updated_records', v_updated,
-    'timestamp', now()
+    'status', 'disabled',
+    'message', 'Function disabled - uses deleted tables'
   );
 END;
 $$;

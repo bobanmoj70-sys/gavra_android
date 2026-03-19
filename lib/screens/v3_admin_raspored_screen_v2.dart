@@ -31,7 +31,7 @@ class V3DanHelper {
 
 /// V3 ekran za upravljanje rasporedom vozača - NOVA VERZIJA
 /// Admin direktno upravlja v3_gps_raspored tabelom
-/// Eliminisan v3_raspored_termin/putnik - sve u jednoj tabeli!
+/// V3 Admin Raspored Screen V2 - unified tabela sistem
 class V3AdminRasporedScreenV2 extends StatefulWidget {
   const V3AdminRasporedScreenV2({super.key});
 
