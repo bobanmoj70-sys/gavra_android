@@ -70,7 +70,5 @@
 		<string>com.gavra013.gavra_android.gps_sync</string>
 	</array>
 	
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 </dict>
 </plist>
