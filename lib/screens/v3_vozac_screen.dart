@@ -15,6 +15,7 @@ import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
+import '../services/v3/v3_route_optimization_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -473,57 +474,115 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Future<void> _optimizujRutu() async {
     if (_mojiPutnici.isEmpty) return;
 
-    final data = _mojiPutnici.map((p) => {'putnik': p.putnik, 'entry': p.entry}).toList();
-
-    // 🎯 NOVO: REAL-TIME GPS OPTIMIZACIJA!
-    // → Dobija trenutnu GPS poziciju vozača iz baze
-    // → Optimizuje redosled na osnovu trenutne lokacije vozača
-    // → Štedi vreme i gorivo sa preciznijim rutama
-
-    double? driverLat;
-    double? driverLng;
+    final vozac = V3VozacService.currentVozac;
+    if (vozac == null) return;
 
     try {
-      // Pokušaj da dobijem real-time GPS poziciju vozača iz baze
-      final vozac = V3VozacService.currentVozac;
-      if (vozac != null) {
+      // 1. PRVO: Optimizuj v3_gps_raspored tabelu pomoću SQL funkcije
+      final result = await V3RouteOptimizationService.optimizePickupRoute(
+        vozacId: vozac.id,
+        datum: DateTime.parse(_selectedDatumIso),
+        grad: _selectedGrad,
+        vreme: _selectedVreme,
+      );
+
+      if (result != null && result['success'] == true) {
+        debugPrint('[V3VozacScreen] Route optimization uspešna: ${result['putnik_count']} putnika');
+      }
+
+      // 2. ZATIM: Dobij optimizovane putnice iz v3_gps_raspored tabele
+      final optimizovaniPutnici = V3RouteOptimizationService.getOptimizedPutnici(
+        vozacId: vozac.id,
+        datum: DateTime.parse(_selectedDatumIso),
+        grad: _selectedGrad,
+        vreme: _selectedVreme,
+      );
+
+      if (optimizovaniPutnici.isNotEmpty) {
+        // Kreiraj novu listu _mojiPutnici na osnovu optimizovanog redosleda
+        final List<_PutnikEntry> noviRedosled = [];
+
+        for (final optPutnik in optimizovaniPutnici) {
+          final putnikId = optPutnik['putnik_id'] as String;
+          final postojeciEntry = _mojiPutnici.firstWhere(
+            (entry) => entry.putnik.id == putnikId,
+            orElse: () => _PutnikEntry(
+              putnik: V3Putnik(
+                id: '',
+                imePrezime: '',
+                tipPutnika: 'dnevni',
+              ),
+              entry: null,
+            ),
+          );
+
+          if (postojeciEntry.putnik.id.isNotEmpty) {
+            noviRedosled.add(postojeciEntry);
+          }
+        }
+
+        setState(() {
+          _mojiPutnici = noviRedosled;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🗺️ Ruta optimizovana: ${optimizovaniPutnici.length} putnika'),
+              backgroundColor: Colors.green.withOpacity(0.8),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[V3VozacScreen] Route optimization greška: $e');
+
+      // Fallback na stari algoritam
+      final data = _mojiPutnici.map((p) => {'putnik': p.putnik, 'entry': p.entry}).toList();
+
+      double? driverLat;
+      double? driverLng;
+
+      try {
         final gpsPosition = await _getCurrentDriverPosition(vozac.id);
         if (gpsPosition != null) {
           driverLat = gpsPosition['lat'] as double?;
           driverLng = gpsPosition['lng'] as double?;
-          debugPrint('[V3VozacScreen] Koristi real-time GPS: lat=$driverLat, lng=$driverLng');
+          debugPrint('[V3VozacScreen] Fallback koristi real-time GPS: lat=$driverLat, lng=$driverLng');
         }
+      } catch (e) {
+        debugPrint('[V3VozacScreen] Fallback real-time GPS greška: $e');
       }
-    } catch (e) {
-      debugPrint('[V3VozacScreen] Real-time GPS greška: $e');
-    }
 
-    // Fallback na centar grada ako nema GPS pozicije
-    driverLat ??= _selectedGrad.toUpperCase() == 'BC' ? 44.8972 : 45.1167;
-    driverLng ??= _selectedGrad.toUpperCase() == 'BC' ? 21.4247 : 21.3036;
+      // Fallback na centar grada ako nema GPS pozicije
+      driverLat ??= _selectedGrad.toUpperCase() == 'BC' ? 44.8972 : 45.1167;
+      driverLng ??= _selectedGrad.toUpperCase() == 'BC' ? 21.4247 : 21.3036;
 
-    final res = await V3SmartNavigationService.optimizeV3Route(
-      data: data,
-      fromCity: _selectedGrad,
-      driverLat: driverLat,
-      driverLng: driverLng,
-    );
+      final res = await V3SmartNavigationService.optimizeV3Route(
+        data: data,
+        fromCity: _selectedGrad,
+        driverLat: driverLat,
+        driverLng: driverLng,
+      );
 
-    if (res.success && res.optimizedData != null) {
-      setState(() {
-        _mojiPutnici = res.optimizedData!.map((d) {
-          return _PutnikEntry(putnik: d['putnik'] as V3Putnik, entry: d['entry'] as V3OperativnaNedeljaEntry?);
-        }).toList();
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res.message),
-            backgroundColor: Colors.green.withOpacity(0.8),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      if (res.success && res.optimizedData != null) {
+        setState(() {
+          _mojiPutnici = res.optimizedData!.map((d) {
+            return _PutnikEntry(putnik: d['putnik'] as V3Putnik, entry: d['entry'] as V3OperativnaNedeljaEntry?);
+          }).toList();
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res.message),
+              backgroundColor: Colors.green.withOpacity(0.8),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
