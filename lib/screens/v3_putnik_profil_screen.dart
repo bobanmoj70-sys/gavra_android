@@ -15,6 +15,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../widgets/v3_putnik_tracking_widget.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_welcome_screen.dart';
 
@@ -548,6 +549,56 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   // _showAlternativaDialog obrisan jer alternativa ide samo preko push notifikacije.
 
+  // ─── TRACKING WIDGETS ────────────────────────────────────────────
+
+  Widget _buildTrackingWidgets() {
+    final putnikId = _putnikData['id']?.toString();
+    if (putnikId == null) return const SizedBox.shrink();
+
+    final danas = DateTime.now();
+    final danasIso = "${danas.year}-${danas.month.toString().padLeft(2, '0')}-${danas.day.toString().padLeft(2, '0')}";
+    final rm = V3MasterRealtimeManager.instance;
+
+    // Pronađi danas aktivne vožnje
+    final aktivneVoznje = <Widget>[];
+
+    // Proveri zahteve putnika za danas
+    final zahtevi = rm.zahteviCache.values
+        .where((z) => z['putnik_id'] == putnikId)
+        .where((z) => (z['datum'] as String?)?.split('T')[0] == danasIso)
+        .where((z) => z['status'] == 'odobreno')
+        .toList();
+
+    for (final zahtev in zahtevi) {
+      // Pronađi dodeljenog vozača iz operativna_nedelja
+      final operativni = rm.operativnaNedeljaCache.values
+          .where((op) => op['putnik_id'] == putnikId)
+          .where((op) => (op['datum'] as String?)?.split('T')[0] == danasIso)
+          .where((op) => op['grad'] == zahtev['grad'])
+          .where((op) => op['zeljeno_vreme'] == zahtev['zeljeno_vreme'])
+          .firstOrNull;
+
+      if (operativni != null && operativni['pokupljen_vozac_id'] != null) {
+        final vozacId = operativni['pokupljen_vozac_id'] as String;
+        final grad = zahtev['grad'] as String? ?? '';
+        final vreme = zahtev['zeljeno_vreme'] as String? ?? '';
+
+        aktivneVoznje.add(V3PutnikTrackingWidget(
+          putnikId: putnikId,
+          vozacId: vozacId,
+          vreme: vreme,
+          grad: grad,
+          datum: danas,
+        ));
+      }
+    }
+
+    // Ako nema aktivnih vožnji, ne prikazuj ništa
+    if (aktivneVoznje.isEmpty) return const SizedBox.shrink();
+
+    return Column(children: aktivneVoznje);
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // BUILD
   // ─────────────────────────────────────────────────────────────────
@@ -609,6 +660,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             children: [
               // Update banner (opcioni/obavezni)
               const V3UpdateBanner(),
+
+              // ── TRACKING WIDGET ──────────────────────────────────
+              _buildTrackingWidgets(),
+
               // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
               if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
                 _NotifBanner(onEnable: _requestNotifPermission),
