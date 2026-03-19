@@ -60,8 +60,6 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
-		<string>background-processing</string>
-		<string>background-fetch</string>
 	</array>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Gavra aplikacija koristi GPS tracking za praćenje vozača tokom vožnje putnika. Ovo omogućava putnicima da vide gde se nalazi vozač u realnom vremenu.</string>
