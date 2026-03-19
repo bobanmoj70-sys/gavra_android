@@ -20,8 +20,6 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> postavkeKapacitetaCache = {};
   final Map<String, Map<String, dynamic>> pumpaStanjeCache = {};
   final Map<String, Map<String, dynamic>> pumpaRezervoarCache = {};
-  final Map<String, Map<String, dynamic>> rasporedTerminCache = {};
-  final Map<String, Map<String, dynamic>> rasporedPutnikCache = {};
   final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> finansijeStanjeCache = {};
@@ -31,6 +29,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
   final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
+  final Map<String, Map<String, dynamic>> v3GpsRasporedCache = {};
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
@@ -47,8 +46,6 @@ class V3MasterRealtimeManager {
         supabase.from('v3_zahtevi').select().eq('aktivno', true),
         supabase.from('v3_pumpa_stanje').select().eq('aktivno', true),
         supabase.from('v3_pumpa_rezervoar').select(),
-        supabase.from('v3_raspored_termin').select().order('created_at', ascending: false).limit(200),
-        supabase.from('v3_raspored_putnik').select().order('created_at', ascending: false).limit(500),
         supabase.from('v3_vozac_lokacije').select(),
         supabase.from('v3_troskovi').select().eq('aktivno', true),
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
@@ -57,6 +54,7 @@ class V3MasterRealtimeManager {
         supabase.from('v3_app_settings').select(),
         supabase.from('v3_gps_activation_schedule').select().order('created_at', ascending: false).limit(100),
         supabase.from('v3_gps_trigger_stats').select().order('datum', ascending: false).limit(30),
+        supabase.from('v3_gps_raspored').select().order('created_at', ascending: false).limit(1000),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -66,16 +64,15 @@ class V3MasterRealtimeManager {
       _fillCache(zahteviCache, results[4] as List);
       _fillCache(pumpaStanjeCache, results[5] as List);
       _fillCache(pumpaRezervoarCache, results[6] as List);
-      _fillCache(rasporedTerminCache, results[7] as List);
-      _fillCache(rasporedPutnikCache, results[8] as List);
-      _fillCache(vozacLokacijeCache, results[9] as List);
-      _fillCache(troskoviCache, results[10] as List);
-      _fillCache(finansijeStanjeCache, results[11] as List);
-      _fillCache(operativnaNedeljaCache, results[12] as List);
-      _fillCache(kapacitetSlotsCache, results[13] as List);
-      _fillCache(appSettingsCache, results[14] as List);
-      _fillCache(gpsActivationScheduleCache, results[15] as List);
-      _fillCache(gpsTriggerStatsCache, results[16] as List);
+      _fillCache(vozacLokacijeCache, results[7] as List);
+      _fillCache(troskoviCache, results[8] as List);
+      _fillCache(finansijeStanjeCache, results[9] as List);
+      _fillCache(operativnaNedeljaCache, results[10] as List);
+      _fillCache(kapacitetSlotsCache, results[11] as List);
+      _fillCache(appSettingsCache, results[12] as List);
+      _fillCache(gpsActivationScheduleCache, results[13] as List);
+      _fillCache(gpsTriggerStatsCache, results[14] as List);
+      _fillCache(v3GpsRasporedCache, results[15] as List);
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -102,8 +99,6 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_zahtevi', zahteviCache);
     _setupTableRealtime('v3_pumpa_stanje', pumpaStanjeCache);
     _setupTableRealtime('v3_pumpa_rezervoar', pumpaRezervoarCache, hasActiveKey: false);
-    _setupTableRealtime('v3_raspored_termin', rasporedTerminCache, hasActiveKey: false);
-    _setupTableRealtime('v3_raspored_putnik', rasporedPutnikCache, hasActiveKey: false);
     _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
     _setupTableRealtime('v3_troskovi', troskoviCache);
     _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
@@ -113,6 +108,7 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
     _setupTableRealtime('v3_gps_activation_schedule', gpsActivationScheduleCache, hasActiveKey: false);
     _setupTableRealtime('v3_gps_trigger_stats', gpsTriggerStatsCache, hasActiveKey: false);
+    _setupTableRealtime('v3_gps_raspored', v3GpsRasporedCache, hasActiveKey: false);
 
     _v3Channel!.subscribe();
   }
@@ -177,12 +173,6 @@ class V3MasterRealtimeManager {
       case 'v3_pumpa_rezervoar':
         pumpaRezervoarCache[id] = row;
         break;
-      case 'v3_raspored_termin':
-        rasporedTerminCache[id] = row;
-        break;
-      case 'v3_raspored_putnik':
-        rasporedPutnikCache[id] = row;
-        break;
       case 'v3_vozac_lokacije':
         vozacLokacijeCache[id] = row;
         break;
@@ -204,6 +194,9 @@ class V3MasterRealtimeManager {
       case 'v3_gps_trigger_stats':
         gpsTriggerStatsCache[id] = row;
         break;
+      case 'v3_gps_raspored':
+        v3GpsRasporedCache[id] = row;
+        break;
       case 'v3_pin_zahtevi':
         if (row['status'] == 'ceka') {
           pinZahteviCache[id] = row;
@@ -214,6 +207,18 @@ class V3MasterRealtimeManager {
     }
 
     _changeController.add(null);
+  }
+
+  /// Osvži v3_gps_raspored cache nakon izmena
+  Future<void> refreshV3GpsRaspored() async {
+    try {
+      final result = await supabase.from('v3_gps_raspored').select().order('created_at', ascending: false).limit(1000);
+      _fillCache(v3GpsRasporedCache, result);
+      _changeController.add(null);
+      debugPrint('[V3MasterRealtimeManager] v3_gps_raspored cache refreshed: ${v3GpsRasporedCache.length} records');
+    } catch (e) {
+      debugPrint('[V3MasterRealtimeManager] Error refreshing v3_gps_raspored: $e');
+    }
   }
 
   Map<String, dynamic>? getVozac(String id) => vozaciCache[id];
@@ -237,10 +242,6 @@ class V3MasterRealtimeManager {
         return pumpaStanjeCache;
       case 'v3_pumpa_rezervoar':
         return pumpaRezervoarCache;
-      case 'v3_raspored_termin':
-        return rasporedTerminCache;
-      case 'v3_raspored_putnik':
-        return rasporedPutnikCache;
       case 'v3_vozac_lokacije':
         return vozacLokacijeCache;
       case 'v3_troskovi':
@@ -259,6 +260,8 @@ class V3MasterRealtimeManager {
         return gpsActivationScheduleCache;
       case 'v3_gps_trigger_stats':
         return gpsTriggerStatsCache;
+      case 'v3_gps_raspored':
+        return v3GpsRasporedCache;
       default:
         return {};
     }

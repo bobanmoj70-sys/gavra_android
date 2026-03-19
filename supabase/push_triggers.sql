@@ -492,8 +492,14 @@ DECLARE
   v_vreme         text;
   v_putnici_count integer;
 BEGIN
+  -- Pokreći se samo kada se schedule označi kao 'activated'
   IF NEW.status <> 'activated' OR OLD.status = 'activated' THEN 
     RETURN NEW; 
+  END IF;
+  
+  -- Ako je notifikacija već poslana, ne šalji ponovo
+  IF NEW.notification_sent = true THEN
+    RETURN NEW;
   END IF;
 
   -- Dohvati info o vozaču
@@ -552,7 +558,7 @@ BEGIN
     );
   END IF;
 
-  -- Notifikacija putnicima
+  -- Push notifikacija putnicima
   IF v_putnici_tokens IS NOT NULL THEN
     PERFORM notify_push(
       v_putnici_tokens,  
@@ -567,6 +573,9 @@ BEGIN
       )
     );
   END IF;
+
+  -- Označi da je notifikacija poslana (modifikujem NEW rekord)
+  NEW.notification_sent := true;
 
   RETURN NEW;
 END;

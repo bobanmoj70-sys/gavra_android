@@ -30,8 +30,8 @@ import 'v3_promena_sifre_screen.dart';
 import 'v3_welcome_screen.dart';
 
 /// V3VozacScreen — ekran za vozača (Voja).
-/// Prikazuje samo putnike iz v3_raspored_putnik dodeljene ovom vozaču,
-/// i samo termine iz v3_raspored_termin dodeljene ovom vozaču.
+/// V3 Vozač Screen - prikazuje dodjeljene termine i putnike
+/// iz unified v3_gps_raspored tabele.
 ///
 /// 🎯 KLJUČNE OPTIMIZACIJE SA FIKSNIM ADRESAMA PUTNIKA:
 /// ✅ Nema Geocoding API poziva (štedi Google API quota i novac)
@@ -80,10 +80,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   /// Efektivni vozač
   dynamic get _efektivniVozac => V3VozacService.currentVozac;
 
-  // Moji termini (iz v3_raspored_termin) za trenutni dan
+  // Moji termini iz v3_gps_raspored za trenutni dan
   List<Map<String, dynamic>> _mojiTermini = [];
 
-  // Moji putnici (iz v3_raspored_putnik) za trenutni dan/grad/vreme
+  // Moji putnici iz v3_gps_raspored za trenutni dan/grad/vreme
   List<_PutnikEntry> _mojiPutnici = [];
 
   List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
@@ -146,8 +146,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     final selectedVNorm = normalizeV(_selectedVreme);
 
-    // 1. Moji termini za ovaj datum (iz v3_raspored_termin)
-    _mojiTermini = rm.rasporedTerminCache.values
+    // 1. Moji termini za ovaj datum (iz v3_gps_raspored)
+    _mojiTermini = rm.v3GpsRasporedCache.values
         .where((r) =>
             r['vozac_id']?.toString() == vozac.id &&
             (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
@@ -159,12 +159,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
 
     // Provjeri da li postoji individualna dodjela za ovog vozača za selektovani grad/vreme
-    final imaIndividualnuDodjelu = rm.rasporedPutnikCache.values.any((r) =>
-        r['vozac_id']?.toString() == vozac.id &&
-        (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
-        r['grad']?.toString().toUpperCase() == _selectedGrad &&
-        normalizeV(r['vreme']?.toString()) == selectedVNorm &&
-        r['aktivno'] != false);
+    final imaIndividualnuDodjelu = rm.v3GpsRasporedCache.values
+        .any((r) => r['vozac_id']?.toString() == vozac.id && r['putnik_id'] != null && r['aktivno'] == true);
 
     if (!terminPostoji && !imaIndividualnuDodjelu) {
       final staroVreme = _selectedVreme;
@@ -182,11 +178,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
 
     // 2. Putnici za ovaj dan/grad/vreme:
-    //    NOVA LOGIKA: Direktno iz v3_raspored_termin (fizička veza putnik-termin)
-    //    + Individualni override iz v3_raspored_putnik za drugačija vremena
+    //    NOVA LOGIKA: Direktno iz v3_gps_raspored unified tabele
 
-    // Putnici iz v3_raspored_termin za ovog vozača i ovaj termin
-    final terminPutnici = rm.rasporedTerminCache.values.where((r) =>
+    // Putnici iz v3_gps_raspored za ovog vozača i ovaj termin
+    final terminPutnici = rm.v3GpsRasporedCache.values.where((r) =>
         r['vozac_id']?.toString() == vozac.id &&
         (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
         r['grad']?.toString().toUpperCase() == _selectedGrad &&
@@ -194,8 +189,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         r['putnik_id'] != null &&
         r['aktivno'] != false);
 
-    // Putnici individualno dodijeljeni OVOM vozaču (v3_raspored_putnik) - override
-    final individualniOvajVozac = rm.rasporedPutnikCache.values.where((r) =>
+    // Putnici individualno dodijeljeni OVOM vozaču (v3_gps_raspored) - override
+    final individualniOvajVozac = rm.v3GpsRasporedCache.values.where((r) =>
         r['vozac_id']?.toString() == vozac.id &&
         (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
         r['grad']?.toString().toUpperCase() == _selectedGrad &&
@@ -397,8 +392,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vremeNorm = normV(vreme);
     final gradUp = grad.toUpperCase();
 
-    // ISPRAVNO: broji putnice iz v3_raspored_termin gde je ovaj vozač dodeljen
-    return rm.rasporedTerminCache.values
+    // ISPRAVNO: broji putnice iz v3_gps_raspored gde je ovaj vozač dodeljen
+    return rm.v3GpsRasporedCache.values
         .where((r) =>
             r['vozac_id']?.toString() == vozac.id &&
             (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
@@ -629,7 +624,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       );
     }
 
-    // Termini za BottomNavBar — unija iz v3_raspored_termin i v3_raspored_putnik
+    // Termini za BottomNavBar — iz v3_gps_raspored
     final vozacId = _efektivniVozac?.id ?? '';
     final rm = V3MasterRealtimeManager.instance;
     String normV(String? v) {
@@ -647,7 +642,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (g == 'BC') bcVremenaSet.add(v);
       if (g == 'VS') vsVremenaSet.add(v);
     }
-    for (final r in rm.rasporedPutnikCache.values) {
+    for (final r in rm.v3GpsRasporedCache.values) {
       if (r['vozac_id']?.toString() != vozacId) continue;
       if ((r['datum'] as String?)?.split('T')[0] != _selectedDatumIso) continue;
       if (r['aktivno'] == false) continue;

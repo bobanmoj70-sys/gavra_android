@@ -98,7 +98,7 @@ class V3VozacService {
         '🔍 VOZAC COLOR SEARCH: danPuni=$danPuni → datumIso=$datumIso, grad=$grad, vreme=$vreme → vremeNorm=$vremeNorm');
 
     try {
-      final matchingTermini = rm.rasporedTerminCache.values.where(
+      final matchingTermini = rm.v3GpsRasporedCache.values.where(
         (r) {
           final datumMatch = (r['datum'] as String?)?.split('T')[0] == datumIso;
           final gradMatch = r['grad']?.toString().toUpperCase() == grad.toUpperCase();
@@ -115,10 +115,9 @@ class V3VozacService {
       );
 
       if (matchingTermini.isEmpty) {
-        print(
-            '❌ NO MATCH FOUND in cache for $datumIso $grad $vremeNorm - cache size: ${rm.rasporedTerminCache.length}');
+        print('❌ NO MATCH FOUND in cache for $datumIso $grad $vremeNorm - cache size: ${rm.v3GpsRasporedCache.length}');
         // Print first few cache items for debug
-        final cacheItems = rm.rasporedTerminCache.values.take(3).toList();
+        final cacheItems = rm.v3GpsRasporedCache.values.take(3).toList();
         for (final item in cacheItems) {
           print(
               '   Cache sample: datum=${item['datum']} grad=${item['grad']} vreme=${item['vreme']} aktivno=${item['aktivno']}');

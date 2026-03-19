@@ -187,7 +187,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   /// saVS/ukBC widget — aktivnih termin-ova / ukupno
   Widget _buildSaVsWidget(BuildContext context) {
-    final termini = V3MasterRealtimeManager.instance.rasporedTerminCache;
+    final termini = V3MasterRealtimeManager.instance.v3GpsRasporedCache;
     final ukBC = termini.length;
     final saVS = termini.values.where((r) => (r['aktivan'] == true)).length;
     return Container(

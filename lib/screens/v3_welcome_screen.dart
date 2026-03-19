@@ -92,14 +92,27 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _init() async {
     if (mounted) setState(() => _isLoading = true);
 
+    debugPrint('[V3WelcomeScreen] _init() started - waiting for vozaciCache...');
+
     int retries = 0;
-    while (V3MasterRealtimeManager.instance.vozaciCache.isEmpty && retries < 20) {
+    while (V3MasterRealtimeManager.instance.vozaciCache.isEmpty && retries < 40) {
       await Future.delayed(const Duration(milliseconds: 300));
       retries++;
+
+      if (retries % 10 == 0) {
+        debugPrint(
+            '[V3WelcomeScreen] Retry ${retries}/40 - vozaciCache still empty. Cache size: ${V3MasterRealtimeManager.instance.vozaciCache.length}');
+      }
+    }
+
+    if (V3MasterRealtimeManager.instance.vozaciCache.isEmpty) {
+      debugPrint('[V3WelcomeScreen] TIMEOUT! vozaciCache is still empty after ${retries} retries');
     }
 
     final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno && v.imePrezime.isNotEmpty).toList()
       ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+
+    debugPrint('[V3WelcomeScreen] Loaded ${vozaci.length} active vozaci');
 
     if (mounted) {
       setState(() {

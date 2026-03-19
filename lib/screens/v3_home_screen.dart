@@ -123,7 +123,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
-    for (final row in rm.rasporedPutnikCache.values) {
+    for (final row in rm.v3GpsRasporedCache.values) {
       if (row['putnik_id'] == putnikId &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
@@ -137,20 +137,17 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   Future<void> _dodelijPutnikuHome(String putnikId, V3Vozac vozac, String grad, String vreme, String datum) async {
     try {
-      await supabase
-          .from('v3_raspored_putnik')
-          .delete()
-          .eq('putnik_id', putnikId)
-          .eq('grad', grad)
-          .eq('vreme', vreme)
-          .eq('datum', datum);
-      await supabase.from('v3_raspored_putnik').insert({
-        'putnik_id': putnikId,
+      await supabase.from('v3_gps_raspored').insert({
         'vozac_id': vozac.id,
+        'putnik_id': putnikId,
+        'datum': datum,
         'grad': grad,
         'vreme': vreme,
-        'datum': datum,
+        'nav_bar_type': 'vozac_home',
+        'gps_status': 'pending',
+        'created_by': 'home_assignment',
       });
+      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
       if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
@@ -160,12 +157,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   Future<void> _ukloniPutnikDodjeluHome(String putnikId, String grad, String vreme, String datum) async {
     try {
       await supabase
-          .from('v3_raspored_putnik')
+          .from('v3_gps_raspored')
           .delete()
           .eq('putnik_id', putnikId)
           .eq('grad', grad)
           .eq('vreme', vreme)
           .eq('datum', datum);
+      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
       if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
@@ -1057,7 +1055,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   // Nema individualne — provjeri terminskog vozača
                   final rm = V3MasterRealtimeManager.instance;
                   final normV = V2GradAdresaValidator.normalizeTime(e.vreme ?? '');
-                  for (final row in rm.rasporedTerminCache.values) {
+                  for (final row in rm.v3GpsRasporedCache.values) {
                     if ((row['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
                         row['grad'] == e.grad &&
                         V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV) {

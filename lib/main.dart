@@ -519,46 +519,8 @@ Future<void> _triggerAutoGpsStartFallback(String vozacId, String polazakVreme) a
       return;
     }
 
-    // Učitaj termine za vozača
-    final response = await Supabase.instance.client
-        .from('v3_raspored_termin')
-        .select('*, v3_putnici(*)')
-        .eq('vozac_id', vozacId)
-        .gte('polazak_vreme', polazakVreme.substring(0, 10)) // Samo datum
-        .order('polazak_vreme')
-        .limit(1);
-
-    if (response.isNotEmpty) {
-      final terminData = response.first;
-
-      // Pokreni GPS tracking - sa praznom listom putnika (simplifikovan)
-      final success = await V3ForegroundGpsService.startTracking(
-        vozacId: vozacId,
-        vozacIme: vozacData['ime_prezime'] ?? 'Vozač',
-        polazakVreme: terminData['polazak_vreme_tekst'] ?? '',
-        putnici: [], // Simplified zbog import problema
-        grad: terminData['grad'] ?? 'BC',
-      );
-
-      if (success) {
-        debugPrint('✅ [GPS AutoStart Fallback] GPS tracking started for $vozacId');
-
-        // Prikaži notification
-        await flutterLocalNotificationsPlugin.show(
-          999,
-          '✅ GPS Automatski Pokrenut (Fallback)',
-          '${vozacData['ime_prezime']} - ${terminData['grad']} ${terminData['polazak_vreme_tekst']}',
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'gavra_gps_fallback',
-              'GPS Fallback',
-              importance: Importance.max,
-              priority: Priority.high,
-            ),
-          ),
-        );
-      }
-    }
+    debugPrint('⚠️ [GPS AutoStart Fallback] Onemogućen - koristi novi v3_gps_raspored sistem');
+    return;
   } catch (e) {
     debugPrint('❌ [GPS AutoStart Fallback] Error: $e');
   }
