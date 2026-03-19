@@ -473,3 +473,107 @@ DROP TRIGGER IF EXISTS tr_v3_notify_putnik_pin_zahtev ON v3_pin_zahtevi;
 CREATE TRIGGER tr_v3_notify_putnik_pin_zahtev
 AFTER UPDATE OF status ON v3_pin_zahtevi
 FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_putnik_on_pin_update();
+
+-- ==========================================
+-- 14. FUNKCIJA: GPS Tracking Start Notifikacija
+--     Šalje push notifikaciju vozaču i putnicima 15 min pre polaska
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.fn_v3_notify_gps_tracking_start()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_vozac_tokens  jsonb;
+  v_putnici_tokens jsonb;
+  v_vozac_ime     text;
+  v_polazak_info  text;
+  v_grad          text;
+  v_vreme         text;
+  v_putnici_count integer;
+BEGIN
+  IF NEW.status <> 'activated' OR OLD.status = 'activated' THEN 
+    RETURN NEW; 
+  END IF;
+
+  -- Dohvati info o vozaču
+  SELECT ime_prezime INTO v_vozac_ime
+  FROM public.v3_vozaci 
+  WHERE id = NEW.vozac_id LIMIT 1;
+
+  -- Parsiraj polazak info
+  SELECT 
+    CASE 
+      WHEN rt.polazak_mesto = 'BC' THEN 'Bela Crkva'
+      WHEN rt.polazak_mesto = 'VS' THEN 'Vršac'
+      ELSE rt.polazak_mesto
+    END,
+    to_char(rt.polazak_vreme, 'HH24:MI')
+  INTO v_grad, v_vreme
+  FROM public.v3_raspored_termin rt 
+  WHERE rt.vozac_id = NEW.vozac_id 
+    AND rt.polazak_vreme = NEW.polazak_vreme
+  LIMIT 1;
+
+  v_polazak_info := v_grad || ' ' || v_vreme;
+  v_putnici_count := NEW.putnici_count;
+
+  -- Token vozača
+  SELECT jsonb_build_array(
+    jsonb_build_object('token', push_token, 'provider', 'fcm')
+  ) INTO v_vozac_tokens
+  FROM public.v3_vozaci 
+  WHERE id = NEW.vozac_id AND push_token IS NOT NULL;
+
+  -- Tokeni putnika za ovaj termin  
+  SELECT jsonb_agg(
+    jsonb_build_object('token', p.push_token, 'provider', 'fcm')
+  ) INTO v_putnici_tokens
+  FROM public.v3_raspored_termin rt
+  JOIN public.v3_raspored_putnik rp ON rt.id = rp.termin_id
+  JOIN public.v3_putnici p ON rp.putnik_id = p.id
+  WHERE rt.vozac_id = NEW.vozac_id 
+    AND rt.polazak_vreme = NEW.polazak_vreme
+    AND p.push_token IS NOT NULL;
+
+  -- Notifikacija vozaču
+  IF v_vozac_tokens IS NOT NULL THEN
+    PERFORM notify_push(
+      v_vozac_tokens,
+      '🚗 GPS Tracking Pokrenut',
+      format('Tracking aktivan za %s (%s putnika)', v_polazak_info, v_putnici_count),
+      jsonb_build_object(
+        'type', 'gps_tracking_start',
+        'vozac_id', NEW.vozac_id,
+        'polazak_vreme', NEW.polazak_vreme,
+        'putnici_count', v_putnici_count,
+        'action_start_foreground', 'true'
+      )
+    );
+  END IF;
+
+  -- Notifikacija putnicima
+  IF v_putnici_tokens IS NOT NULL THEN
+    PERFORM notify_push(
+      v_putnici_tokens,  
+      '🚗 Vozač kreće za 15 minuta',
+      format('%s kreće za %s u %s', v_vozac_ime, v_grad, v_vreme),
+      jsonb_build_object(
+        'type', 'vozac_krece_uskoro',
+        'vozac_id', NEW.vozac_id,
+        'vozac_ime', v_vozac_ime,
+        'polazak_mesto', v_grad,
+        'polazak_vreme', v_vreme
+      )
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+-- 15. TRIGGER: GPS Tracking aktivacija
+DROP TRIGGER IF EXISTS tr_v3_notify_gps_tracking_start ON v3_gps_activation_schedule;
+CREATE TRIGGER tr_v3_notify_gps_tracking_start
+AFTER UPDATE OF status ON v3_gps_activation_schedule  
+FOR EACH ROW EXECUTE FUNCTION fn_v3_notify_gps_tracking_start();

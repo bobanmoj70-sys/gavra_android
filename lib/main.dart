@@ -20,6 +20,7 @@ import 'globals.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v2_theme_manager.dart';
+import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 
 // Globalna instanca za lokalne notifikacije
@@ -232,7 +233,57 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
   debugPrint("📱 [FCM] Title: ${message.notification?.title}");
   debugPrint("📱 [FCM] Body: ${message.notification?.body}");
   debugPrint("📱 [FCM] Data: ${message.data}");
-  await _showAlternativaNotification(message);
+
+  // Provjeri tip notifikacije
+  final type = message.data['type'] as String?;
+  if (type == 'gps_tracking_start') {
+    await _handleGpsTrackingStart(message.data);
+  } else {
+    await _showAlternativaNotification(message);
+  }
+}
+
+/// Rukovanje GPS tracking start notifikacijom
+Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
+  final vozacId = data['vozac_id'] as String?;
+  final polazakVreme = data['polazak_vreme'] as String?;
+  final putniciBroj = data['putnici_count'] as int? ?? 0;
+
+  if (vozacId == null || polazakVreme == null) {
+    debugPrint('⚠️ [GPS] Nedostaju podaci u notification: vozacId=$vozacId, polazak=$polazakVreme');
+    return;
+  }
+
+  // Prikaži notification sa Auto Start dugmetom
+  final androidDetails = AndroidNotificationDetails(
+    'gavra_gps_auto',
+    'GPS Auto Start',
+    channelDescription: 'Automatsko pokretanje GPS trackinga',
+    importance: Importance.max,
+    priority: Priority.high,
+    actions: [
+      AndroidNotificationAction(
+        'auto_start_gps',
+        '🚗 Pokreni GPS',
+        showsUserInterface: false,
+      ),
+      AndroidNotificationAction(
+        'dismiss_gps',
+        '❌ Odbaci',
+        showsUserInterface: false,
+      ),
+    ],
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    999, // Fixed ID za GPS tracking
+    '🚗 GPS Tracking',
+    'Kreće za 15 min ($putniciBroj putnika) - Pokreni GPS tracking?',
+    NotificationDetails(android: androidDetails),
+    payload: 'gps_auto_start:$vozacId:$polazakVreme',
+  );
+
+  debugPrint('📍 [GPS] Auto start notification prikazana za vozača $vozacId');
 }
 
 /// ✨ NOVO: HMS Message handler
@@ -375,14 +426,25 @@ void onNotificationTap(NotificationResponse response) async {
     }
   }
 
-  // Akcije za V3 zahtev: accept_pre, accept_posle, reject
-  // payload format: "id|altPre|altPosle"
-  final parts = payload.split('|');
-  final zahtevId = parts[0];
-  final altPre = parts.length > 1 ? parts[1] : '';
-  final altPosle = parts.length > 2 ? parts[2] : '';
-
   try {
+    // GPS Auto Start handling
+    if (payload.startsWith('gps_auto_start:') && actionId == 'auto_start_gps') {
+      final parts = payload.split(':');
+      if (parts.length >= 3) {
+        final vozacId = parts[1];
+        final polazakVreme = parts[2];
+        await _triggerAutoGpsStart(vozacId, polazakVreme);
+      }
+      return;
+    }
+
+    // V3 alternativa handling
+    // payload format: "id|altPre|altPosle"
+    final parts = payload.split('|');
+    final zahtevId = parts[0];
+    final altPre = parts.length > 1 ? parts[1] : '';
+    final altPosle = parts.length > 2 ? parts[2] : '';
+
     if (actionId == 'accept_pre' && altPre.isNotEmpty) {
       await V3ZahtevService.prihvatiPonudu(zahtevId, altPre);
     } else if (actionId == 'accept_posle' && altPosle.isNotEmpty) {
@@ -395,8 +457,85 @@ void onNotificationTap(NotificationResponse response) async {
   }
 }
 
+/// Pokreće GPS tracking iz background notification
+Future<void> _triggerAutoGpsStart(String vozacId, String polazakVreme) async {
+  try {
+    // Dobij vozača iz baze
+    final vozacData =
+        await Supabase.instance.client.from('v3_vozaci').select('id, ime_prezime').eq('id', vozacId).maybeSingle();
+
+    if (vozacData == null) {
+      debugPrint('⚠️ [GPS AutoStart] Vozač not found: $vozacId');
+      return;
+    }
+
+    // Parse polazak info (format: "2026-03-19T07:00:00.000Z")
+    final polazakTime = DateTime.tryParse(polazakVreme);
+    if (polazakTime == null) {
+      debugPrint('⚠️ [GPS AutoStart] Invalid polazak time: $polazakVreme');
+      return;
+    }
+
+    // Dobij putnike za ovaj termin
+    final putnici = await Supabase.instance.client
+        .from('v3_raspored_putnik')
+        .select('''
+          putnik_id,
+          v3_putnici!inner(id, ime_prezime, tip_putnika)
+        ''')
+        .eq('vozac_id', vozacId)
+        .eq('datum', polazakTime.toIso8601String().split('T')[0])
+        .eq('vreme',
+            '${polazakTime.hour.toString().padLeft(2, '0')}:${polazakTime.minute.toString().padLeft(2, '0')}:00')
+        .eq('aktivno', true);
+
+    final grad = polazakTime.hour < 12 ? 'BC' : 'VS'; // Aproksimacija
+
+    // Pokreni GPS tracking
+    final success = await V3ForegroundGpsService.startTracking(
+      vozacId: vozacId,
+      vozacIme: vozacData['ime_prezime'] ?? 'Vozač',
+      polazakVreme:
+          '$grad ${polazakTime.hour.toString().padLeft(2, '0')}:${polazakTime.minute.toString().padLeft(2, '0')}',
+      putnici: [], // Simplified - dodati parsing ako potrebno
+      grad: grad,
+    );
+
+    if (success) {
+      debugPrint('✅ [GPS AutoStart] GPS tracking pokrenut za vozača $vozacId');
+
+      // Prikaži success notification
+      await flutterLocalNotificationsPlugin.show(
+        888,
+        '✅ GPS Pokrenut',
+        'GPS tracking je automatski pokrenut za ${vozacData['ime_prezime']}',
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'gavra_gps_success',
+            'GPS Success',
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    } else {
+      debugPrint('❌ [GPS AutoStart] Failed to start GPS for $vozacId');
+    }
+  } catch (e) {
+    debugPrint('❌ [GPS AutoStart] Error: $e');
+  }
+}
+
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
+  // Inicijalizuj V3 Foreground GPS Service
+  try {
+    await V3ForegroundGpsService.initialize();
+    debugPrint('✅ [main] V3ForegroundGpsService inicijalizovan');
+  } catch (e) {
+    debugPrint('⚠️ [main] V3ForegroundGpsService greška: $e');
+  }
+
   // Učitaj nav_bar_type + verziju iz baze
   try {
     final settings = await Supabase.instance.client

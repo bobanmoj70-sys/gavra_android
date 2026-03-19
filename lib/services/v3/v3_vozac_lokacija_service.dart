@@ -51,17 +51,21 @@ class V3VozacLokacijaService {
   V3VozacLokacijaService._();
 
   /// Updates driver's location in the database using Fire-and-Forget.
-  /// This is called frequently (e.g., every 5-10 seconds) during active transit.
+  /// SQL trigeri automatski filtriraju nepotrebne pozive i validiraju koordinate.
+  /// Poziva se često iz GPS stream-a - trigeri se brinu za optimizaciju.
   static Future<void> updateLokacija(V3VozacLokacijaUpdate update) async {
     try {
-      // V3 Arhitektura: Fire and Forget.
-      // Upsert based on vozac_id ensures we only have one row per driver in the live table.
+      // V3 Arhitektura: Fire and Forget sa SQL trigger optimizacijom.
+      // fn_v3_smart_gps_filter() će automatski filtrirati nepotrebne pozive.
+      // fn_v3_validate_gps_coordinates() će validirati i popraviti koordinate.
       await supabase.from('v3_vozac_lokacije').upsert(
             update.toJson(),
             onConflict: 'vozac_id',
           );
+      // Trigger će automatski setovati updated_at timestamp
     } catch (e) {
       debugPrint('[V3VozacLokacijaService] updateLokacija error: $e');
+      // Ne rethrow - GPS pozivi su fire-and-forget
     }
   }
 

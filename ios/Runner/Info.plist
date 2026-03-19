@@ -55,6 +55,21 @@
 	<string>Aplikacija koristi vašu lokaciju za prikaz vremenske prognoze i lokalno relevantnih informacija.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Koristite Face ID za brzu prijavu u aplikaciju umesto unosa PIN-a.</string>
+	
+	<!-- GPS Background Tracking za Gavra vozače -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>background-processing</string>
+		<string>background-fetch</string>
+	</array>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Gavra aplikacija koristi GPS tracking za praćenje vozača tokom vožnje putnika. Ovo omogućava putnicima da vide gde se nalazi vozač u realnom vremenu.</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.gavra013.gavra_android.gps_sync</string>
+	</array>
+	
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
