@@ -104,13 +104,14 @@ class V3VozacService {
           final gradMatch = r['grad']?.toString().toUpperCase() == grad.toUpperCase();
           final vremeMatch = normV(r['vreme']?.toString()) == vremeNorm;
           final aktivnoMatch = r['aktivno'] == true;
+          final masterTermin = r['putnik_id'] == null; // ← SAMO MASTER ZAPISI
 
           if (datumMatch && gradMatch && vremeMatch) {
             print(
-                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} aktivno=${r['aktivno']} vozac_id=${r['vozac_id']}');
+                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} aktivno=${r['aktivno']} vozac_id=${r['vozac_id']} master=$masterTermin');
           }
 
-          return datumMatch && gradMatch && vremeMatch && aktivnoMatch;
+          return datumMatch && gradMatch && vremeMatch && aktivnoMatch && masterTermin;
         },
       );
 
