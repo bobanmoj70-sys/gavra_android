@@ -203,7 +203,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: Theme.of(context).colorScheme.outline, width: 2),
+          side: BorderSide(color: Theme.of(context).colorScheme.outline, width: 1),
         ),
         title: Text(
           'Otkazivanje putnika',
@@ -265,7 +265,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           colors: [Color(0xFFFFCDD2), Color(0xFFEF9A9A)],
         ),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE57373), width: 1.2),
+        border: Border.all(color: const Color(0xFFE57373), width: 0.6),
         boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
       );
     }
@@ -280,7 +280,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
             colors: [Color(0xFFC8E6C9), Color(0xFFA5D6A7)],
           ),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF81C784), width: 1.2),
+          border: Border.all(color: const Color(0xFF81C784), width: 0.6),
           boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
         );
       }
@@ -291,17 +291,33 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           colors: [Color(0xFFBBDEFB), Color(0xFF90CAF9)],
         ),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF64B5F6), width: 1.2),
+        border: Border.all(color: const Color(0xFF64B5F6), width: 0.6),
         boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
       );
     }
     // Bijela kartica — default
+    if (widget.vozacBoja != null) {
+      // Diskretno označavanje vozača boje
+      return BoxDecoration(
+        color: widget.vozacBoja!.withValues(alpha: 0.04), // Vrlo blaga background boja vozača
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: widget.vozacBoja!.withValues(alpha: 0.6),
+          width: 1.2, // Diskretno deblji border
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 3, offset: const Offset(0, 1)),
+          BoxShadow(
+              color: widget.vozacBoja!.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2)), // Blagi glow
+        ],
+      );
+    }
     return BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(10),
       border: Border.all(
-        color: widget.vozacBoja ?? const Color(0xFFE0E0E0),
-        width: widget.vozacBoja != null ? 4.0 : 1.0,
+        color: const Color(0xFFE0E0E0),
+        width: 0.8,
       ),
       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 3, offset: const Offset(0, 1))],
     );
@@ -467,7 +483,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                   decoration: BoxDecoration(
                                     color: textColor.withOpacity(0.18),
                                     borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: textColor.withOpacity(0.45), width: 1),
+                                    border: Border.all(color: textColor.withOpacity(0.45), width: 0.6),
                                   ),
                                   child: Text(
                                     'x$brojMesta',
