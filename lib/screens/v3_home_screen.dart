@@ -240,7 +240,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
-                          width: isSelected ? 2 : 1,
+                          width: isSelected ? 1.2 : 0.6,
                         ),
                       ),
                       child: Row(
@@ -340,7 +340,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               decoration: BoxDecoration(
                 gradient: Theme.of(ctx).backgroundGradient,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(ctx).glassBorder, width: 1.5),
+                border: Border.all(color: Theme.of(ctx).glassBorder, width: 0.8),
                 boxShadow: [
                   BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 8))
                 ],
@@ -1101,7 +1101,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 child: Container(
                   decoration: BoxDecoration(
                     color: Theme.of(context).glassContainer,
-                    border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(25),
                       bottomRight: Radius.circular(25),
@@ -1148,7 +1148,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   decoration: BoxDecoration(
                                     color: _getVozacColor(vozac),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                   ),
                                   child: Center(
                                     child: Text(
@@ -1181,7 +1181,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     decoration: BoxDecoration(
                                       color: Theme.of(context).glassContainer,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                     ),
                                     child: Center(
                                       child: Text(
@@ -1206,7 +1206,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).glassContainer,
                                     borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                   ),
                                   child: DropdownButtonHideUnderline(
                                     child: DropdownButton2<String>(
@@ -1226,7 +1226,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         decoration: BoxDecoration(
                                           gradient: Theme.of(context).backgroundGradient,
                                           borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                          border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                         ),
                                         elevation: 8,
                                       ),
@@ -1336,7 +1336,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: Theme.of(context).glassContainer,
-                                  border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                  border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
@@ -1399,7 +1399,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).glassContainer,
-                                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text(
@@ -1542,7 +1542,7 @@ class _V3HomeButton extends StatelessWidget {
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Theme.of(context).glassContainer,
-          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+          border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(

@@ -705,7 +705,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+          border: Border.all(color: color.withValues(alpha: 0.5), width: 0.8),
         ),
         child: Row(
           children: [
@@ -750,7 +750,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
-              width: isSelected ? 2 : 1,
+              width: isSelected ? 1 : 0.6,
             ),
           ),
           child: Row(
