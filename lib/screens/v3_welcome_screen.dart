@@ -15,6 +15,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_validation_utils.dart';
@@ -502,12 +503,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: V2ThemeManager().currentGradient,
-        ),
+      body: V3ContainerUtils.backgroundContainer(
+        gradient: V2ThemeManager().currentGradient,
         child: SafeArea(
           child: SingleChildScrollView(
             child: Padding(

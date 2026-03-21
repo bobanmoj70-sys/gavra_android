@@ -4,6 +4,7 @@ import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_string_utils.dart';
 
@@ -70,13 +71,12 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
                 ),
                 if (brObrada > 0) ...[
                   const SizedBox(width: 8),
-                  Container(
+                  V3ContainerUtils.badgeContainer(
+                    backgroundColor: Colors.lightBlueAccent.withValues(alpha: 0.3),
+                    borderColor: Colors.lightBlueAccent.withValues(alpha: 0.6),
+                    borderWidth: 1,
+                    borderRadius: 10,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.lightBlueAccent.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.lightBlueAccent.withValues(alpha: 0.6)),
-                    ),
                     child: Text(
                       '$brObrada',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
@@ -86,8 +86,8 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
               ],
             ),
           ),
-          body: Container(
-            decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+          body: V3ContainerUtils.backgroundContainer(
+            gradient: Theme.of(context).backgroundGradient,
             child: SafeArea(
               child: Column(
                 children: [
@@ -147,13 +147,10 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
     );
   }
 
-  Widget _badge(String tekst, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
-        ),
+  Widget _badge(String tekst, Color color) => V3ContainerUtils.badgeContainer(
+        backgroundColor: color.withValues(alpha: 0.15),
+        borderColor: color.withValues(alpha: 0.5),
+        borderWidth: 1,
         child: Text(tekst, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
       );
 }
@@ -236,13 +233,10 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: borderColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.school_outlined, color: borderColor, size: 22),
+            V3ContainerUtils.iconContainer(
+              backgroundColor: borderColor.withValues(alpha: 0.15),
+              borderRadius: 10,
+              icon: Icon(Icons.school_outlined, color: borderColor, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(

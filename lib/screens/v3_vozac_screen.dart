@@ -20,6 +20,7 @@ import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
@@ -589,8 +590,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         value: SystemUiOverlayStyle.light,
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          body: Container(
-            decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
+          body: V3ContainerUtils.backgroundContainer(
+            gradient: V2ThemeManager().currentGradient,
             child: const Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
         ),
@@ -635,8 +636,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: Container(
-        decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
+      child: V3ContainerUtils.backgroundContainer(
+        gradient: V2ThemeManager().currentGradient,
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: PreferredSize(

@@ -9,6 +9,7 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
@@ -167,8 +168,8 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+    return V3ContainerUtils.backgroundContainer(
+      gradient: Theme.of(context).backgroundGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: StreamBuilder<void>(
@@ -338,13 +339,12 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
         child: Row(
           children: [
-            Container(
+            V3ContainerUtils.styledContainer(
               width: 4,
               height: 18,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
-              ),
+              backgroundColor: color,
+              borderRadius: BorderRadius.circular(2),
+              child: const SizedBox(),
             ),
             const SizedBox(width: 8),
             Text(
@@ -357,12 +357,10 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
+            V3ContainerUtils.badgeContainer(
+              backgroundColor: color.withValues(alpha: 0.2),
+              borderRadius: 10,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
               child: Text(
                 '$count',
                 style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
