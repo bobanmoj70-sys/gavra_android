@@ -15,6 +15,7 @@ import '../../services/v3/v3_operativna_nedelja_service.dart';
 import '../../services/v3/v3_vozac_service.dart';
 import '../../services/v3/v3_zahtev_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
+import '../../utils/v3_container_utils.dart';
 import '../../utils/v3_dan_helper.dart';
 import '../../utils/v3_error_utils.dart';
 import '../../utils/v3_navigation_utils.dart';
@@ -450,13 +451,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                             if (brojMesta > 1)
                               Padding(
                                 padding: const EdgeInsets.only(left: 4),
-                                child: Container(
+                                child: V3ContainerUtils.styledContainer(
                                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: textColor.withOpacity(0.18),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: textColor.withOpacity(0.45), width: 0.6),
-                                  ),
+                                  backgroundColor: textColor.withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: textColor.withOpacity(0.45), width: 0.6),
                                   child: Text(
                                     'x$brojMesta',
                                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: textColor),
@@ -494,13 +493,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                               // Tip badge
                               Align(
                                 alignment: Alignment.topRight,
-                                child: Container(
+                                child: V3ContainerUtils.styledContainer(
                                   margin: const EdgeInsets.only(bottom: 6),
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: _getTipColor().withOpacity(0.20),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
+                                  backgroundColor: _getTipColor().withOpacity(0.20),
+                                  borderRadius: BorderRadius.circular(8),
                                   child: Text(
                                     _getTipLabel(),
                                     style: TextStyle(
