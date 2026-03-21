@@ -642,15 +642,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           backgroundColor: Colors.transparent,
           appBar: PreferredSize(
             preferredSize: const Size.fromHeight(88),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).glassContainer,
-                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(25),
-                  bottomRight: Radius.circular(25),
-                ),
+            child: V3ContainerUtils.styledContainer(
+              backgroundColor: Theme.of(context).glassContainer,
+              border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(25),
+                bottomRight: Radius.circular(25),
               ),
+              padding: EdgeInsets.zero,
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -723,17 +722,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                               ),
                             ],
                             padding: EdgeInsets.zero,
-                            child: Container(
+                            child: V3ContainerUtils.iconContainer(
                               width: 30,
                               height: 30,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.more_vert, color: Colors.white, size: 16),
-                              ),
+                              backgroundColor: Colors.white.withValues(alpha: 0.1),
+                              borderRadiusGeometry: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.more_vert, color: Colors.white, size: 16),
                             ),
                           ),
                         ],
@@ -796,14 +792,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Widget _buildBody() {
     if (_mojiPutnici.isEmpty) {
       return Center(
-        child: Container(
+        child: V3ContainerUtils.styledContainer(
           margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Theme.of(context).glassContainer,
-            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-            borderRadius: BorderRadius.circular(16),
-          ),
+          backgroundColor: Theme.of(context).glassContainer,
+          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+          borderRadius: BorderRadius.circular(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -828,13 +822,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         Expanded(
           child: _mojiPutnici.isEmpty
               ? Center(
-                  child: Container(
+                  child: V3ContainerUtils.styledContainer(
                     margin: const EdgeInsets.all(24),
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).glassContainer,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    backgroundColor: Theme.of(context).glassContainer,
+                    borderRadius: BorderRadius.circular(16),
                     child: const Text('Nema putnika za ovaj polazak', style: TextStyle(color: Colors.white70)),
                   ),
                 )
@@ -904,13 +896,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: Container(
+      child: V3ContainerUtils.styledContainer(
         height: 30,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.6)),
-        ),
+        backgroundColor: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+        padding: EdgeInsets.zero,
         child: Center(
           child: Text(
             label,
@@ -931,13 +922,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return InkWell(
       onTap: _showDanDialog,
       borderRadius: BorderRadius.circular(8),
-      child: Container(
+      child: V3ContainerUtils.styledContainer(
         height: 30,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-        ),
+        backgroundColor: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+        padding: EdgeInsets.zero,
         child: Center(
           child: Text(
             _selectedDay.substring(0, 3).toUpperCase(),
