@@ -51,4 +51,9 @@ class V3FormatUtils {
   static String formatProcenat(double procenat) {
     return '${procenat.toStringAsFixed(1)}%';
   }
+
+  /// Formatira gorivo sa jednom decimalom
+  static String formatGorivo(num litara) {
+    return _gorivoFormatter.format(litara);
+  }
 }
