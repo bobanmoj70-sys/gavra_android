@@ -103,6 +103,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'VS').where((z) => z.putnikId == putnikId).toList();
 
       final infos = <_ZahtevInfo>[];
+      final relevantnaDatumi = V3DanHelper.relevantnaSedmicaIsoLista().toSet(); // Za brže lookup
+
       for (final z in bcList) {
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
         final datumIso = z.datum.toIso8601String().split('T')[0];
@@ -111,7 +113,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               e['putnik_id'] == z.putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               e['grad'] == 'BC' &&
-              e['aktivno'] == true,
+              e['aktivno'] == true &&
+              relevantnaDatumi.contains(e['datum'] as String?),
           orElse: () => <String, dynamic>{},
         );
         final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
@@ -132,7 +135,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               e['putnik_id'] == z.putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               e['grad'] == 'VS' &&
-              e['aktivno'] == true,
+              e['aktivno'] == true &&
+              relevantnaDatumi.contains(e['datum'] as String?),
           orElse: () => <String, dynamic>{},
         );
         final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
@@ -285,7 +289,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _daniLabel[dan] ?? dan,
+                        _getDanLabel(dan),
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                       ),
                     ],
@@ -498,13 +502,16 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
   }
 
-  static const _daniLabel = {
-    'pon': 'Ponedeljak',
-    'uto': 'Utorak',
-    'sre': 'Sreda',
-    'cet': 'Četvrtak',
-    'pet': 'Petak',
-  };
+  /// Helper za konverziju kratice dana u puni naziv koristeći V3DanHelper.
+  String _getDanLabel(String danAbbr) {
+    try {
+      final datum = V3DanHelper.datumZaDanAbbr(danAbbr);
+      return V3DanHelper.fullName(datum);
+    } catch (e) {
+      // Fallback ako kratica nije validna
+      return danAbbr;
+    }
+  }
 
   Future<void> _logout() async {
     final ok = await showDialog<bool>(
@@ -880,13 +887,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   Widget _buildRasporedCard() {
     const dani = ['pon', 'uto', 'sre', 'cet', 'pet'];
-    const daniLabel = {
-      'pon': 'Ponedeljak',
-      'uto': 'Utorak',
-      'sre': 'Sreda',
-      'cet': 'Četvrtak',
-      'pet': 'Petak',
-    };
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -955,7 +955,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   SizedBox(
                     width: 96,
                     child: Text(
-                      daniLabel[dan] ?? dan,
+                      _getDanLabel(dan),
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                   ),

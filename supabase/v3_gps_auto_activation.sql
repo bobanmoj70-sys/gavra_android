@@ -2,7 +2,43 @@
 -- V3 GPS AUTO-ACTIVATION SISTEM - SQL TABELA & FUNCTIONS
 -- Automatski pokreće GPS tracking 15 minuta pre polaska
 -- Pošalje push notifikacije vozaču i putnicima
+-- VIKEND LOGIKA: Usklađeno sa V3DanHelper (vikend → sledeća sedmica)
 -- ============================================================
+
+-- ============================================================
+-- 0. HELPER FUNKCIJA: fn_v3_relevantna_sedmica_datumi
+-- SQL implementacija V3DanHelper.relevantnaSedmicaIsoLista()
+-- Vikend → sledeća sedmica, ostalo → tekuća sedmica
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.fn_v3_relevantna_sedmica_datumi()
+RETURNS date[]
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_today         date := CURRENT_DATE;
+  v_weekday       integer := EXTRACT(DOW FROM v_today);  -- 0=Sunday, 6=Saturday
+  v_is_weekend    boolean := (v_weekday = 0 OR v_weekday = 6);
+  v_monday        date;
+  v_result        date[];
+  i               integer;
+BEGIN
+  -- Pronađi ponedeljak tekuće sedmice
+  v_monday := v_today - (v_weekday - 1) * interval '1 day';
+  
+  -- Za vikend → sledeća sedmica
+  IF v_is_weekend THEN
+    v_monday := v_monday + interval '7 days';
+  END IF;
+  
+  -- Generiši 7 datuma (ponedeljak → nedelja)
+  v_result := ARRAY[]::date[];
+  FOR i IN 0..6 LOOP
+    v_result := array_append(v_result, v_monday + (i || ' days')::interval);
+  END LOOP;
+  
+  RETURN v_result;
+END
+$$;
 
 -- ============================================================
 -- 1. GLAVNA TABELA: v3_gps_activation_schedule
@@ -55,10 +91,14 @@ DECLARE
   v_updated       integer := 0;
   v_current_ts    timestamptz := now();
   v_cleanup_count integer := 0;
+  v_relevantni_datumi date[];
 BEGIN
-  -- Popuni za danas, sutra + prekosutra (3 dana unapred)
-  FOR i IN 0..2 LOOP
-    v_datum := CURRENT_DATE + (i || ' days')::interval;
+  -- NOVA LOGIKA: Koristi vikend logiku umesto fiksnih datuma
+  -- Za vikend → sledeća sedmica, inače → tekuća sedmica
+  v_relevantni_datumi := public.fn_v3_relevantna_sedmica_datumi();
+  
+  -- Popuni za sve relevantne datume (umesto danas+3 dana)
+  FOREACH v_datum IN ARRAY v_relevantni_datumi LOOP
     
     -- OPTIMIZED: Prolazi kroz SVE vozače koji imaju termine (iz oba izvora)
     FOR v_termin IN 
@@ -137,7 +177,7 @@ BEGIN
         v_inserted := v_inserted + 1;
       END IF;
     END LOOP;
-  END LOOP;
+  END LOOP; -- FOREACH v_datum IN ARRAY v_relevantni_datumi
   
   -- OPTIMIZED: Cleanup old completed records (older than 7 days)
   DELETE FROM public.v3_gps_activation_schedule 
@@ -148,6 +188,8 @@ BEGIN
   
   RETURN jsonb_build_object(
     'success', true,
+    'message', 'GPS activation schedule updated with weekend logic',
+    'datumi_processed', array_to_string(v_relevantni_datumi, ', '),
     'inserted', v_inserted,
     'updated', v_updated,
     'total_processed', v_inserted + v_updated,

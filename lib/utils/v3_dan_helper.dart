@@ -65,11 +65,39 @@ class V3DanHelper {
   static String datumIsoZaDanAbbr(String danAbbr) {
     final idx = _abbrs.indexWhere((a) => a.toLowerCase() == danAbbr.toLowerCase());
     if (idx == -1) return _todayIso();
+
+    // Za vikend + ponedeljak → sledeći ponedeljak, ne prošli (kao u datumIsoZaDanPuni)
+    final now = DateTime.now();
+    final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
+    final isPonedeljak = (danAbbr.toLowerCase() == 'pon' && idx == 0);
+
+    if (isWeekend && isPonedeljak) {
+      final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
+      final sledeciPonedeljak = ponedeljak.add(const Duration(days: 7));
+      return sledeciPonedeljak.toIso8601String().split('T')[0];
+    }
+
     return _isoZaIdx(idx);
   }
 
   /// DateTime za datu kraticu dana.
   static DateTime datumZaDanAbbr(String danAbbr) => DateTime.parse(datumIsoZaDanAbbr(danAbbr));
+
+  /// Vraća sve ISO datume (yyyy-MM-dd) relevantne sedmice na osnovu vikend logike.
+  /// Za vikend → sledeća sedmica, inače → tekuća sedmica.
+  static List<String> relevantnaSedmicaIsoLista() {
+    final now = DateTime.now();
+    final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
+
+    final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
+    final bazniPonedeljak = isWeekend ? ponedeljak.add(const Duration(days: 7)) : ponedeljak;
+
+    return List.generate(
+        7,
+        (i) => DateTime(bazniPonedeljak.year, bazniPonedeljak.month, bazniPonedeljak.day + i)
+            .toIso8601String()
+            .split('T')[0]);
+  }
 
   // ─── interno ────────────────────────────────────────────────────
 
