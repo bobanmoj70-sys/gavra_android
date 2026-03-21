@@ -11,6 +11,7 @@ import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import 'v3_home_screen.dart';
@@ -187,11 +188,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       if (!mounted) return;
 
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
-      Navigator.pushReplacement(
+      V3NavigationUtils.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
-        ),
+        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
       );
     } catch (e) {
       V3AppSnackBar.error(context, 'Greška: $e');

@@ -152,11 +152,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       _autoLoginDone = true;
       if (!mounted) return;
       await _stopAudio();
-      Navigator.pushReplacement(
+      V3NavigationUtils.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => V3PutnikProfilScreen(putnikData: V3PutnikService.currentPutnik!),
-        ),
+        V3PutnikProfilScreen(putnikData: V3PutnikService.currentPutnik!),
       );
       return;
     }
@@ -219,11 +217,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (!mounted) return;
       await _stopAudio();
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
-      Navigator.pushReplacement(
+      V3NavigationUtils.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
-        ),
+        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
       );
     } catch (_) {
       // Tiho ignoriši grešku auto-login-a
@@ -259,11 +255,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     if (!mounted) return;
     await _stopAudio();
 
-    Navigator.pushReplacement(
+    V3NavigationUtils.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) => V3PutnikProfilScreen(putnikData: found!),
-      ),
+      V3PutnikProfilScreen(putnikData: found),
     );
   }
 
@@ -651,9 +645,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     opacity: _fadeAnimation,
                     child: GestureDetector(
                       onTap: () {
-                        Navigator.push(
+                        V3NavigationUtils.pushScreen(
                           context,
-                          MaterialPageRoute(builder: (_) => const V3PutnikLoginScreen()),
+                          const V3PutnikLoginScreen(),
                         );
                       },
                       child: Container(
@@ -704,9 +698,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              Navigator.push(
+                              V3NavigationUtils.pushScreen(
                                 context,
-                                MaterialPageRoute(builder: (_) => const V3ONamaScreen()),
+                                const V3ONamaScreen(),
                               );
                             },
                             child: Container(

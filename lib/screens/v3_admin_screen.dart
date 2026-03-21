@@ -241,9 +241,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     Expanded(
                       child: _NavBtn(
                         color: Colors.teal,
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3AdreseScreen()),
+                          const V3AdreseScreen(),
                         ),
                         child: const Text('📍', style: TextStyle(fontSize: 20)),
                       ),
@@ -253,9 +253,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     Expanded(
                       child: _NavBtn(
                         color: Colors.green,
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3KapacitetScreen()),
+                          const V3VozaciAdminScreen(),
                         ),
                         child: const Text('💰', style: TextStyle(fontSize: 20)),
                       ),
@@ -274,9 +274,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     Expanded(
                       child: _NavBtn(
                         color: Colors.orange,
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3GorivoScreen()),
+                          const V3GorivoScreen(),
                         ),
                         child: const Text('⛽', style: TextStyle(fontSize: 20)),
                       ),
@@ -326,8 +326,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             if (val == null) return;
                             if (val == '__vozaci__') {
                               if (context.mounted) {
-                                Navigator.push(
-                                    context, MaterialPageRoute<void>(builder: (_) => const V3VozaciAdminScreen()));
+                                V3NavigationUtils.pushScreen<void>(
+                                    context, const V3VozaciAdminScreen());
                               }
                               return;
                             }
@@ -356,9 +356,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     // 📅 Raspored
                     _NavBtn(
                       color: Colors.blue,
-                      onTap: () => Navigator.push(
+                      onTap: () => V3NavigationUtils.pushScreen<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (_) => const V3AdminRasporedScreen()),
+                        const V3KapacitetScreen(),
                       ),
                       child: const Text('📅', style: TextStyle(fontSize: 20)),
                     ),
@@ -367,9 +367,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     Expanded(
                       child: _NavBtn(
                         color: Colors.blueGrey,
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3PutniciScreen()),
+                          const V3PutniciScreen(),
                         ),
                         child: const FittedBox(
                           fit: BoxFit.scaleDown,
@@ -398,9 +398,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     Expanded(
                       child: _NavBtn(
                         color: Colors.indigo,
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3DnevnikNaplateScreen()),
+                          const V3DnevnikNaplateScreen(),
                         ),
                         child: const FittedBox(
                           fit: BoxFit.scaleDown,
@@ -434,9 +434,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         emoji: '🔔',
                         color: Colors.deepOrange,
                         badgeCount: _getZahteviCount(),
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3ZahteviDnevniScreen()),
+                          const V3ZahteviDnevniScreen(),
                         ),
                       ),
                     ),
@@ -447,9 +447,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         emoji: '🎓',
                         color: Colors.lightBlue,
                         badgeCount: _getUceniciZahteviCount(),
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3UceniciZahteviScreen()),
+                          const V3UceniciZahteviScreen(),
                         ),
                       ),
                     ),
@@ -460,9 +460,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         emoji: '👷',
                         color: Colors.green,
                         badgeCount: _getRadniciZahteviCount(),
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3RadniciZahteviScreen()),
+                          const V3RadniciZahteviScreen(),
                         ),
                       ),
                     ),
@@ -473,9 +473,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         emoji: '📦',
                         color: Colors.deepOrangeAccent,
                         badgeCount: _getPosiljkeZahteviCount(),
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3PosiljkeZahteviScreen()),
+                          const V3PosiljkeZahteviScreen(),
                         ),
                       ),
                     ),
@@ -486,9 +486,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         emoji: '🔑',
                         color: Colors.amber,
                         badgeCount: _getPinZahteviCount(),
-                        onTap: () => Navigator.push(
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          MaterialPageRoute<void>(builder: (_) => const V3PinZahteviScreen()),
+                          const V3PinZahteviScreen(),
                         ),
                       ),
                     ),
@@ -573,9 +573,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
         // Dužnici dugme
         InkWell(
-          onTap: () => Navigator.push(
+          onTap: () => V3NavigationUtils.pushScreen<void>(
             context,
-            MaterialPageRoute<void>(builder: (_) => const V3DugoviScreen()),
+            const V3DugoviScreen(),
           ),
           borderRadius: BorderRadius.circular(10),
           child: Container(

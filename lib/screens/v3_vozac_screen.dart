@@ -725,11 +725,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                             onSelected: (val) {
                               if (val == 'sifra') {
                                 if (!mounted || vozac == null) return;
-                                Navigator.push(
+                                V3NavigationUtils.pushScreen<void>(
                                   context,
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
-                                  ),
+                                  V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
                                 );
                               } else if (val == 'logout') {
                                 _logout();

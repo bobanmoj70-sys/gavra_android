@@ -10,6 +10,7 @@ import '../services/v3/v3_pin_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import 'v3_putnik_profil_screen.dart';
@@ -505,11 +506,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       }
 
       if (!mounted) return;
-      Navigator.pushReplacement(
+      V3NavigationUtils.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => V3PutnikProfilScreen(putnikData: _putnikData!),
-        ),
+        V3PutnikProfilScreen(putnikData: _putnikData!),
       );
     } catch (e) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška pri prijavi: $e');

@@ -19,6 +19,7 @@ import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -64,10 +65,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   Future<void> _initData() async {
     if (V3VozacService.currentVozac == null) {
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
+        V3NavigationUtils.pushAndRemoveUntil<void>(
           context,
-          MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),
-          (r) => false,
+          const V3WelcomeScreen(),
         );
       }
       return;
@@ -1275,9 +1275,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             child: _V3HomeButton(
                               label: 'Ja',
                               icon: Icons.person,
-                              onTap: () => Navigator.push(
+                              onTap: () => V3NavigationUtils.pushScreen(
                                 context,
-                                MaterialPageRoute(builder: (_) => const V3VozacScreen()),
+                                const V3VozacScreen(),
                               ),
                             ),
                           ),
@@ -1288,9 +1288,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             child: _V3HomeButton(
                               label: 'Admin',
                               icon: Icons.admin_panel_settings,
-                              onTap: () => Navigator.push(
+                              onTap: () => V3NavigationUtils.pushScreen(
                                 context,
-                                MaterialPageRoute(builder: (_) => const V3AdminScreen()),
+                                const V3AdminScreen(),
                               ),
                             ),
                           ),
@@ -1299,9 +1299,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             child: _V3HomeButton(
                               label: 'Ja',
                               icon: Icons.person,
-                              onTap: () => Navigator.push(
+                              onTap: () => V3NavigationUtils.pushScreen(
                                 context,
-                                MaterialPageRoute(builder: (_) => const V3VozacScreen()),
+                                const V3VozacScreen(),
                               ),
                             ),
                           ),

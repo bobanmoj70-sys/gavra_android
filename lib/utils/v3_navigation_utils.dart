@@ -197,6 +197,66 @@ class V3NavigationUtils {
     );
   }
 
+  // ─── ADVANCED NAVIGATION ───────────────────────────────────────────────
+
+  /// Push named route
+  static Future<T?> pushNamed<T extends Object?>(
+    BuildContext context,
+    String routeName, {
+    Object? arguments,
+  }) async {
+    if (!context.mounted) return null;
+    return Navigator.pushNamed<T>(context, routeName, arguments: arguments);
+  }
+
+  /// Push named and remove until
+  static Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
+    BuildContext context,
+    String newRouteName, {
+    bool Function(Route<dynamic>)? predicate,
+    Object? arguments,
+  }) async {
+    if (!context.mounted) return null;
+    return Navigator.pushNamedAndRemoveUntil<T>(
+      context,
+      newRouteName,
+      predicate ?? (route) => false,
+      arguments: arguments,
+    );
+  }
+
+  /// Push replacement named
+  static Future<T?> pushReplacementNamed<T extends Object?, TO extends Object?>(
+    BuildContext context,
+    String routeName, {
+    TO? result,
+    Object? arguments,
+  }) async {
+    if (!context.mounted) return null;
+    return Navigator.pushReplacementNamed<T, TO>(
+      context,
+      routeName,
+      result: result,
+      arguments: arguments,
+    );
+  }
+
+  /// Pop until route
+  static void popUntil(BuildContext context, String routeName) {
+    if (!context.mounted) return;
+    Navigator.popUntil(context, ModalRoute.withName(routeName));
+  }
+
+  /// Pop and push (restart navigation stack)
+  static Future<T?> popAndPush<T extends Object?>(
+    BuildContext context,
+    Widget screen,
+  ) async {
+    if (!context.mounted) return null;
+    Navigator.pop(context);
+    return pushScreen<T>(context, screen);
+  }
+
   // ─── VALIDATION HELPERS ────────────────────────────────────────────────
 
   /// Proverava da li je context još uvek mounted
