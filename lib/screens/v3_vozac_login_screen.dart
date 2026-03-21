@@ -10,6 +10,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import 'v3_home_screen.dart';
@@ -149,7 +150,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
       // Provjera emaila
       if ((vozac.email ?? '').toLowerCase() != email) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Pogrešan email.');
+        V3ErrorUtils.validationError(this, context, '❌ Pogrešan email.');
         return;
       }
 
@@ -158,14 +159,14 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       final stored2 = _normalizePhone(vozac.telefon2 ?? '');
       final telefonMatch = (stored1.isNotEmpty && stored1 == telefon) || (stored2.isNotEmpty && stored2 == telefon);
       if (stored1.isNotEmpty && !telefonMatch) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Pogrešan broj telefona.');
+        V3ErrorUtils.validationError(this, context, '❌ Pogrešan broj telefona.');
         return;
       }
 
       // Provjera šifre (ako postoji)
       final storedSifra = vozac.sifra ?? '';
       if (storedSifra.isNotEmpty && storedSifra != sifra) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Pogrešna šifra.');
+        V3ErrorUtils.validationError(this, context, '❌ Pogrešna šifra.');
         return;
       }
 

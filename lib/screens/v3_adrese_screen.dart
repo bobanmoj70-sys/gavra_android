@@ -4,6 +4,7 @@ import 'package:gavra_android/services/v3/v3_adresa_service.dart';
 import 'package:gavra_android/theme.dart';
 
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_string_utils.dart';
 
@@ -75,7 +76,7 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
         );
         if (mounted) V3AppSnackBar.success(context, adresa == null ? '✅ Adresa dodata' : '✅ Adresa izmenjena');
       } catch (e) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+        V3ErrorUtils.asyncError(this, context, e);
       }
     }
   }
@@ -95,7 +96,7 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
         await V3AdresaService.deleteAdresa(adresa.id);
         if (mounted) V3AppSnackBar.success(context, '🗑️ Adresa obrisana');
       } catch (e) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+        V3ErrorUtils.asyncError(this, context, e);
       }
     }
   }

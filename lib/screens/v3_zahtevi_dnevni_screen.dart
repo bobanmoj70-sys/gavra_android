@@ -9,6 +9,7 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_string_utils.dart';
 
 class V3ZahteviDnevniScreen extends StatefulWidget {
@@ -70,7 +71,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
         V3AppSnackBar.success(context, label);
       }
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 
@@ -169,7 +170,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
         );
         if (mounted) V3AppSnackBar.success(context, 'Ponuđena alternativa putniku');
       } catch (e) {
-        if (mounted) V3AppSnackBar.error(context, 'Greška pri slanju alternative: $e');
+        V3ErrorUtils.safeError(this, context, 'Greška pri slanju alternative: $e');
       }
     }
   }

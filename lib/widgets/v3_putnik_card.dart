@@ -16,6 +16,7 @@ import '../../services/v3/v3_vozac_service.dart';
 import '../../services/v3/v3_zahtev_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
 import '../../utils/v3_dan_helper.dart';
+import '../../utils/v3_error_utils.dart';
 import '../../utils/v3_state_utils.dart';
 import '../../utils/v3_validation_utils.dart';
 
@@ -100,7 +101,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         widget.onChanged?.call();
       }
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, 'Greška pri pokupljenju: $e');
+      V3ErrorUtils.safeError(this, context, 'Greška pri pokupljenju: $e');
     } finally {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
@@ -148,7 +149,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       }
       widget.onChanged?.call();
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, 'Greška pri plaćanju: $e');
+      V3ErrorUtils.safeError(this, context, 'Greška pri plaćanju: $e');
     } finally {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
@@ -251,7 +252,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           widget.onChanged?.call();
         }
       } catch (e) {
-        if (mounted) V3AppSnackBar.error(context, 'Greška: $e');
+        V3ErrorUtils.safeError(this, context, 'Greška: $e');
       }
     }
   }

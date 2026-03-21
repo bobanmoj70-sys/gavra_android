@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 
 class V3DugoviScreen extends StatefulWidget {
@@ -149,7 +150,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
         await V3DugService.markAsPaid(dug.id, iznos: dug.iznos);
         if (mounted) V3AppSnackBar.success(context, '✅ Dug naplaćen i arhiviran');
       } catch (e) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+        V3ErrorUtils.asyncError(this, context, e);
       }
     }
   }

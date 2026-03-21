@@ -6,6 +6,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 
 /// V3 admin ekran za upravljanje vozačima.
 /// Dodaj / uredi / deaktiviraj vozače.
@@ -232,7 +233,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                               );
                             }
                           } catch (e) {
-                            if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+                            V3ErrorUtils.asyncError(this, context, e);
                           }
                         },
                         child: Text(
@@ -289,7 +290,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
       await V3VozacService.deactivateVozac(vozac.id);
       if (mounted) V3AppSnackBar.success(context, '🗑️ ${vozac.imePrezime} deaktiviran');
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 
@@ -298,7 +299,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
       await supabase.from('v3_vozaci').update({'aktivno': true}).eq('id', vozac.id);
       if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} reaktiviran');
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 

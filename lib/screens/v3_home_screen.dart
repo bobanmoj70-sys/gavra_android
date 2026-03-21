@@ -18,6 +18,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -151,7 +152,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
       if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 
@@ -167,7 +168,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
       if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 

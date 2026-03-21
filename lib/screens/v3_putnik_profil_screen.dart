@@ -15,6 +15,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_putnik_tracking_widget.dart';
@@ -212,7 +213,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         }
       }
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 

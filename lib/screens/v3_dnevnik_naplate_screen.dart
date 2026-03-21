@@ -15,6 +15,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_error_utils.dart';
 
 /// DNEVNIK NAPLATE — V3
 /// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
@@ -274,7 +275,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       if (!mounted) return;
       await OpenFilex.open(file.path);
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška pri izvozu PDF: $e');
+      V3ErrorUtils.safeError(this, context, '❌ Greška pri izvozu PDF: $e');
     }
   }
 
@@ -561,7 +562,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
         V3AppSnackBar.success(context, '✅ Predaja sačuvana');
       }
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška pri čuvanju: $e');
+      V3ErrorUtils.safeError(this, context, '❌ Greška pri čuvanju: $e');
     }
   }
 

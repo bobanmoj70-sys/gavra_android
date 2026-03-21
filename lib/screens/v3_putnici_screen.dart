@@ -9,6 +9,7 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
@@ -279,7 +280,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
         V3AppSnackBar.success(context, p.aktivno ? '${p.imePrezime} deaktiviran' : '${p.imePrezime} aktiviran');
       }
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 
@@ -334,7 +335,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
       await V3PutnikService.deactivatePutnik(p.id);
       if (mounted) V3AppSnackBar.success(context, '${p.imePrezime} obrisan');
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     }
   }
 

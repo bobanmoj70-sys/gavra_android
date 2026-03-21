@@ -9,6 +9,7 @@ import '../services/v3/v3_finansije_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_state_utils.dart';
 
@@ -656,7 +657,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3ErrorUtils.asyncError(this, context, e);
     } finally {
       V3StateUtils.safeSetState(this, () => _saving = false);
     }

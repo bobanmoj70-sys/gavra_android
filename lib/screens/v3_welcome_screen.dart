@@ -604,7 +604,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: GestureDetector(
-                      onPressed: () async {
+                      onTap: () async {
                         await V2ThemeManager().nextTheme();
                         V3StateUtils.safeSetState(this, () => setState(() {}));
                       },

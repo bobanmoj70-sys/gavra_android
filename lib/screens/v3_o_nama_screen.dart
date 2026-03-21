@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/v2_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_error_utils.dart';
 
 class V3ONamaScreen extends StatefulWidget {
   const V3ONamaScreen({super.key});
@@ -38,7 +39,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     if (!status.isGranted) {
       final result = await Permission.phone.request();
       if (!result.isGranted) {
-        if (mounted) V3AppSnackBar.error(context, 'Dozvola za pozive je potrebna');
+        V3ErrorUtils.validationError(this, context, 'Dozvola za pozive je potrebna');
         return;
       }
     }
