@@ -257,28 +257,24 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   }
 
   Widget _buildPotrazivanjaCard(double iznos) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.orange.shade800, Colors.orange.shade600],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: Colors.orange.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))
-        ],
+    return V3ContainerUtils.gradientContainer(
+      gradient: LinearGradient(
+        colors: [Colors.orange.shade800, Colors.orange.shade600],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: [
+        BoxShadow(color: Colors.orange.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))
+      ],
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Row(
         children: [
-          Container(
+          V3ContainerUtils.iconContainer(
             width: 52,
             height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(14),
-            ),
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            borderRadiusGeometry: BorderRadius.circular(14),
             child: const Center(child: Text('💰', style: TextStyle(fontSize: 26))),
           ),
           const SizedBox(width: 14),
@@ -314,24 +310,20 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
     final isPositive = neto >= 0;
     final netoColor = isPositive ? const Color(0xFF4ADE80) : const Color(0xFFF87171);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E2235),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
+    return V3ContainerUtils.iconContainer(
+      backgroundColor: const Color(0xFF1E2235),
+      borderRadiusGeometry: BorderRadius.circular(18),
+      border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+      boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))],
       child: Column(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+          V3ContainerUtils.gradientContainer(
+            gradient: LinearGradient(
+              colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
@@ -347,13 +339,11 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     ],
                   ),
                 ),
-                Container(
+                V3ContainerUtils.iconContainer(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: color.withValues(alpha: 0.5)),
-                  ),
+                  backgroundColor: color.withValues(alpha: 0.25),
+                  borderRadiusGeometry: BorderRadius.circular(20),
+                  border: Border.all(color: color.withValues(alpha: 0.5)),
                   child: Text(voznjiLabel,
                       style: TextStyle(
                           color: color == Colors.grey ? Colors.white70 : color,
