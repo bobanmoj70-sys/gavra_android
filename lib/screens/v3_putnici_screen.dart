@@ -10,6 +10,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -114,8 +115,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
           },
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+      body: V3ContainerUtils.backgroundContainer(
+        gradient: Theme.of(context).backgroundGradient,
         child: SafeArea(
           child: Column(
             children: [

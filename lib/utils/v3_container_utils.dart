@@ -94,9 +94,7 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null 
-          ? Border.all(color: borderColor, width: borderWidth)
-          : null,
+        border: borderColor != null ? Border.all(color: borderColor, width: borderWidth) : null,
       ),
       child: child,
     );
@@ -164,9 +162,7 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.blue,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null && borderWidth != null
-          ? Border.all(color: borderColor, width: borderWidth)
-          : null,
+        border: borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null,
       ),
       child: child,
     );
@@ -190,9 +186,7 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null && borderWidth != null
-          ? Border.all(color: borderColor, width: borderWidth)
-          : null,
+        border: borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null,
         boxShadow: boxShadow,
       ),
       child: icon,
@@ -216,26 +210,25 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.grey[50],
         borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null 
-          ? Border.all(color: borderColor)
-          : null,
+        border: borderColor != null ? Border.all(color: borderColor) : null,
       ),
-      child: title != null 
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: titleStyle ?? const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+      child: title != null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: titleStyle ??
+                      const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-              ),
-              const SizedBox(height: 12.0),
-              child,
-            ],
-          )
-        : child,
+                const SizedBox(height: 12.0),
+                child,
+              ],
+            )
+          : child,
     );
   }
 

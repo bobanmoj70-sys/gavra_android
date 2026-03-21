@@ -16,6 +16,7 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -590,8 +591,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final parts = imePrezime.trim().split(' ');
     final initials = '${parts.isNotEmpty && parts[0].isNotEmpty ? parts[0][0].toUpperCase() : ''}'
         '${parts.length > 1 && parts.last.isNotEmpty ? parts.last[0].toUpperCase() : ''}';
-    return Container(
-      decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
+    return V3ContainerUtils.backgroundContainer(
+      gradient: V2ThemeManager().currentGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
