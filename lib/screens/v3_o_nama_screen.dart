@@ -8,6 +8,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_telefon_helper.dart';
 
 class V3ONamaScreen extends StatefulWidget {
   const V3ONamaScreen({super.key});
@@ -37,43 +38,19 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
-    final status = await Permission.phone.status;
-    if (!status.isGranted) {
-      final result = await Permission.phone.request();
-      if (!result.isGranted) {
-        V3ErrorUtils.validationError(this, context, 'Dozvola za pozive je potrebna');
-        return;
-      }
-    }
-    final uri = Uri(scheme: 'tel', path: phoneNumber);
-    if (!mounted) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else if (mounted) {
-      V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za pozive');
-    }
+    await V3TelefonHelper.pozovi(this, context, phoneNumber);
   }
 
   Future<void> _sendEmail(String email) async {
-    final uri = Uri(scheme: 'mailto', path: email);
-    if (!mounted) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else if (mounted) {
-      V3AppSnackBar.error(context, 'Ne mogu da otvorim email aplikaciju');
-    }
+    await V3TelefonHelper.posaljiEmail(this, context, email);
   }
 
   Future<void> _openMaps() async {
-    final uri = Uri.parse(
+    await V3TelefonHelper.otvoriMaps(
+      this,
+      context,
       'https://share.here.com/r/44.8983,21.4152,Mihajla+Pupina+74+Bela+Crkva',
     );
-    if (!mounted) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
-    }
   }
 
   @override
