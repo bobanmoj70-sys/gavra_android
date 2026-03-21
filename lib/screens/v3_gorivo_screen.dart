@@ -235,15 +235,13 @@ class _V3BrojcanikCard extends StatelessWidget {
             ? Colors.green
             : Colors.orange;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: barColor.withValues(alpha: 0.5), width: 2),
-        boxShadow: [
-          BoxShadow(color: barColor.withValues(alpha: 0.15), blurRadius: 16, spreadRadius: 1),
-        ],
-      ),
+    return V3ContainerUtils.styledContainer(
+      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: barColor.withValues(alpha: 0.5), width: 2),
+      boxShadow: [
+        BoxShadow(color: barColor.withValues(alpha: 0.15), blurRadius: 16, spreadRadius: 1),
+      ],
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -315,12 +313,10 @@ class _V3DetaljiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).glassBorder),
-      ),
+    return V3ContainerUtils.styledContainer(
+      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Theme.of(context).glassBorder),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
