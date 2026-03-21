@@ -453,8 +453,8 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
+    return V3ContainerUtils.backgroundContainer(
+      gradient: V2ThemeManager().currentGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,

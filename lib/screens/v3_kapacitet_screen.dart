@@ -6,6 +6,8 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
 
@@ -107,8 +109,8 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+    return V3ContainerUtils.backgroundContainer(
+      gradient: Theme.of(context).backgroundGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(

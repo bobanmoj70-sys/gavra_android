@@ -4,6 +4,10 @@ import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart'
 import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
 import 'package:gavra_android/theme.dart';
 
+import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 
 class V3GorivoScreen extends StatefulWidget {
@@ -100,8 +104,8 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
           ],
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+      body: V3ContainerUtils.backgroundContainer(
+        gradient: Theme.of(context).backgroundGradient,
         child: TabBarView(
           controller: _tabController,
           children: [
