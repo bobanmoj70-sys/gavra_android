@@ -409,7 +409,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             dropdownSearchData: DropdownSearchData(
                               searchController: V3TextUtils.searchController,
                               searchInnerWidgetHeight: 50,
-                              searchInnerWidget: Container(
+                              searchInnerWidget: V3ContainerUtils.iconContainer(
                                 height: 50,
                                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                                 child: TextFormField(
