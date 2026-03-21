@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'v3_container_utils.dart';
+
 /// V3ButtonUtils - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ BUTTON-ИМА
 /// Елиминише све ElevatedButton/TextButton/OutlinedButton дупликате!
 class V3ButtonUtils {
@@ -319,15 +321,13 @@ class V3ButtonUtils {
       child: InkWell(
         onTap: onPressed,
         borderRadius: borderRadius ?? BorderRadius.circular(12),
-        child: Container(
+        child: V3ContainerUtils.styledContainer(
           padding: padding ?? const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: backgroundColor ?? Colors.white.withValues(alpha: 0.15),
-            borderRadius: borderRadius ?? BorderRadius.circular(12),
-            border: Border.all(
-              color: borderColor ?? Colors.white.withValues(alpha: 0.6),
-              width: 1,
-            ),
+          backgroundColor: backgroundColor ?? Colors.white.withValues(alpha: 0.15),
+          borderRadius: borderRadius ?? BorderRadius.circular(12),
+          border: Border.all(
+            color: borderColor ?? Colors.white.withValues(alpha: 0.6),
+            width: 1,
           ),
           child: Center(child: child),
         ),
