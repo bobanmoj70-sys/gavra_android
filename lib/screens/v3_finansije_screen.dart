@@ -264,9 +264,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
         end: Alignment.bottomRight,
       ),
       borderRadius: BorderRadius.circular(18),
-      boxShadow: [
-        BoxShadow(color: Colors.orange.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))
-      ],
+      boxShadow: [BoxShadow(color: Colors.orange.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))],
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Row(
         children: [

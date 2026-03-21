@@ -204,13 +204,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Container(
+                child: V3ContainerUtils.iconContainer(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  backgroundColor: Colors.white.withValues(alpha: 0.4),
+                  borderRadiusGeometry: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 16),
@@ -342,15 +340,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header
-                  Container(
+                  V3ContainerUtils.iconContainer(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(ctx).glassContainer,
-                      borderRadius:
-                          const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                      border: Border(bottom: BorderSide(color: Theme.of(ctx).glassBorder)),
-                    ),
+                    backgroundColor: Theme.of(ctx).glassContainer,
+                    borderRadiusGeometry: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                    border: Border(bottom: BorderSide(color: Theme.of(ctx).glassBorder)),
                     child: Row(
                       children: [
                         const Expanded(
@@ -359,13 +354,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(dialogCtx),
-                          child: Container(
+                          child: V3ContainerUtils.iconContainer(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
-                            ),
+                            backgroundColor: Colors.red.withValues(alpha: 0.2),
+                            borderRadiusGeometry: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
                             child: const Icon(Icons.close, color: Colors.white, size: 20),
                           ),
                         ),
@@ -380,14 +373,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Info o ruti
-                          Container(
+                          V3ContainerUtils.iconContainer(
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(ctx).glassContainer,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Theme.of(ctx).glassBorder),
-                            ),
+                            backgroundColor: Theme.of(ctx).glassContainer,
+                            borderRadiusGeometry: BorderRadius.circular(12),
+                            border: Border.all(color: Theme.of(ctx).glassBorder),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -449,13 +440,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           ),
                           const SizedBox(height: 12),
                           // Broj mesta
-                          Container(
+                          V3ContainerUtils.iconContainer(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade400),
-                            ),
+                            backgroundColor: Colors.grey.shade100,
+                            borderRadiusGeometry: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade400),
                             child: Row(
                               children: [
                                 const Icon(Icons.event_seat, color: Colors.grey),
@@ -490,14 +479,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     ),
                   ),
                   // Actions
-                  Container(
+                  V3ContainerUtils.iconContainer(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(ctx).glassContainer,
-                      borderRadius:
-                          const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
-                      border: Border(top: BorderSide(color: Theme.of(ctx).glassBorder)),
-                    ),
+                    backgroundColor: Theme.of(ctx).glassContainer,
+                    borderRadiusGeometry: const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
+                    border: Border(top: BorderSide(color: Theme.of(ctx).glassBorder)),
                     child: Row(
                       children: [
                         Expanded(

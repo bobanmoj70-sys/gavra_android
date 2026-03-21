@@ -5,7 +5,6 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_text_utils.dart';
@@ -162,13 +161,11 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                   fontWeight: FontWeight.bold,
                 ),
                 const SizedBox(height: 24),
-                Container(
+                V3ContainerUtils.styledContainer(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white24),
-                  ),
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24),
                   child: Row(
                     children: [
                       const Icon(Icons.info_outline, color: Colors.white54, size: 20),
