@@ -1,3 +1,5 @@
+import '../utils/v3_dan_helper.dart';
+
 class V3Vozilo {
   final String id;
   final String registracija;
@@ -82,7 +84,7 @@ class V3Vozilo {
 
   static String formatDatum(DateTime? d) {
     if (d == null) return '-';
-    return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+    return V3DanHelper.formatDatumPuni(d);
   }
 
   bool get registracijaIstekla => registracijaVaziDo != null && registracijaVaziDo!.isBefore(DateTime.now());
@@ -146,25 +148,32 @@ class V3Vozilo {
       if (brojSasije != null) 'broj_sasije': brojSasije,
       if (godinaProizvodnje != null) 'godina_proizvodnje': godinaProizvodnje,
       if (napomena != null) 'napomena': napomena,
-      if (registracijaVaziDo != null) 'registracija_vazi_do': registracijaVaziDo!.toIso8601String().split('T')[0],
-      if (maliServisDatum != null) 'mali_servis_datum': maliServisDatum!.toIso8601String().split('T')[0],
+      if (registracijaVaziDo != null)
+        'registracija_vazi_do': V3DanHelper.parseIsoDatePart(registracijaVaziDo!.toIso8601String()),
+      if (maliServisDatum != null)
+        'mali_servis_datum': V3DanHelper.parseIsoDatePart(maliServisDatum!.toIso8601String()),
       if (maliServisKm != null) 'mali_servis_km': maliServisKm,
-      if (velikiServisDatum != null) 'veliki_servis_datum': velikiServisDatum!.toIso8601String().split('T')[0],
+      if (velikiServisDatum != null)
+        'veliki_servis_datum': V3DanHelper.parseIsoDatePart(velikiServisDatum!.toIso8601String()),
       if (velikiServisKm != null) 'veliki_servis_km': velikiServisKm,
-      if (alternatorDatum != null) 'alternator_datum': alternatorDatum!.toIso8601String().split('T')[0],
+      if (alternatorDatum != null) 'alternator_datum': V3DanHelper.parseIsoDatePart(alternatorDatum!.toIso8601String()),
       if (alternatorKm != null) 'alternator_km': alternatorKm,
-      if (akumulatorDatum != null) 'akumulator_datum': akumulatorDatum!.toIso8601String().split('T')[0],
+      if (akumulatorDatum != null) 'akumulator_datum': V3DanHelper.parseIsoDatePart(akumulatorDatum!.toIso8601String()),
       if (akumulatorKm != null) 'akumulator_km': akumulatorKm,
-      if (plocicePrednjeDatum != null) 'plocice_prednje_datum': plocicePrednjeDatum!.toIso8601String().split('T')[0],
+      if (plocicePrednjeDatum != null)
+        'plocice_prednje_datum': V3DanHelper.parseIsoDatePart(plocicePrednjeDatum!.toIso8601String()),
       if (plocicePrednjeKm != null) 'plocice_prednje_km': plocicePrednjeKm,
-      if (plociceZadnjeDatum != null) 'plocice_zadnje_datum': plociceZadnjeDatum!.toIso8601String().split('T')[0],
+      if (plociceZadnjeDatum != null)
+        'plocice_zadnje_datum': V3DanHelper.parseIsoDatePart(plociceZadnjeDatum!.toIso8601String()),
       if (plociceZadnjeKm != null) 'plocice_zadnje_km': plociceZadnjeKm,
-      if (trapDatum != null) 'trap_datum': trapDatum!.toIso8601String().split('T')[0],
+      if (trapDatum != null) 'trap_datum': V3DanHelper.parseIsoDatePart(trapDatum!.toIso8601String()),
       if (trapKm != null) 'trap_km': trapKm,
-      if (gumePrednjeDatum != null) 'gume_prednje_datum': gumePrednjeDatum!.toIso8601String().split('T')[0],
+      if (gumePrednjeDatum != null)
+        'gume_prednje_datum': V3DanHelper.parseIsoDatePart(gumePrednjeDatum!.toIso8601String()),
       if (gumePrednjeOpis != null) 'gume_prednje_opis': gumePrednjeOpis,
       if (gumePrednjeKm != null) 'gume_prednje_km': gumePrednjeKm,
-      if (gumeZadnjeDatum != null) 'gume_zadnje_datum': gumeZadnjeDatum!.toIso8601String().split('T')[0],
+      if (gumeZadnjeDatum != null)
+        'gume_zadnje_datum': V3DanHelper.parseIsoDatePart(gumeZadnjeDatum!.toIso8601String()),
       if (gumeZadnjeOpis != null) 'gume_zadnje_opis': gumeZadnjeOpis,
       if (gumeZadnjeKm != null) 'gume_zadnje_km': gumeZadnjeKm,
       if (radio != null) 'radio': radio,

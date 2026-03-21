@@ -83,6 +83,9 @@ class V3DanHelper {
   /// DateTime za datu kraticu dana.
   static DateTime datumZaDanAbbr(String danAbbr) => DateTime.parse(datumIsoZaDanAbbr(danAbbr));
 
+  /// ISO datum string (yyyy-MM-dd) za datu kraticu dana direktno.
+  static String datumIsoStringZaDanAbbr(String danAbbr) => toIsoDate(datumZaDanAbbr(danAbbr));
+
   /// Vraća sve ISO datume (yyyy-MM-dd) relevantne sedmice na osnovu vikend logike.
   /// Za vikend → sledeća sedmica, inače → tekuća sedmica.
   static List<String> relevantnaSedmicaIsoLista() {
@@ -99,13 +102,70 @@ class V3DanHelper {
             .split('T')[0]);
   }
 
+  // ─── Utility metode za datum konverzije ─────────────────────────
+
+  /// Trenutni datum kao ISO string (yyyy-MM-dd).
+  static String todayIso() => DateTime.now().toIso8601String().split('T')[0];
+
+  /// Konvertuje DateTime u ISO datum string format (YYYY-MM-DD)
+  static String toIsoDate(DateTime datum) {
+    return '${datum.year}-${datum.month.toString().padLeft(2, '0')}-${datum.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Parse-uje ISO datum string i vraća samo datum deo (YYYY-MM-DD)
+  static String parseIsoDatePart(String isoString) {
+    return isoString.split('T')[0];
+  }
+
+  /// Formatira vreme u HH:MM format
+  static String formatVreme(int hour, int minute) {
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Formatira datum u DD.MM format
+  static String formatDanMesec(DateTime datum) {
+    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}';
+  }
+
+  /// Formatira datetime u DD.MM.YYYY HH:MM format
+  static String formatDatumVreme(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Formatira datetime u DD.MM. HH:MM format (kratko)
+  static String formatDatumVremeKratko(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}. '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Formatira datum u DD.MM.YYYY format (puni)
+  static String formatDatumPuni(DateTime datum) {
+    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year}';
+  }
+
+  /// Kreira DateTime samo sa datumom (bez vremena) - samo year/month/day
+  static DateTime dateOnly(DateTime datum) {
+    return DateTime(datum.year, datum.month, datum.day);
+  }
+
+  /// Kreira DateTime sa specifikovanim year, month, day (bez vremena)
+  static DateTime dateOnlyFrom(int year, int month, int day) {
+    return DateTime(year, month, day);
+  }
+
+  /// Formatira datum u dd.MM.yyyy format koristeći DateFormat
+  static String formatDatumDdMmYyyy(DateTime datum) {
+    return formatDatumPuni(datum); // Koristi već postojeću metodu
+  }
+
   // ─── interno ────────────────────────────────────────────────────
 
-  static String _todayIso() => DateTime.now().toIso8601String().split('T')[0];
+  static String _todayIso() => todayIso(); // Redirectuj na javnu metodu
 
   static String _isoZaIdx(int targetIdx) {
     final now = DateTime.now();
     final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-    return DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day + targetIdx).toIso8601String().split('T')[0];
+    return toIsoDate(DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day + targetIdx));
   }
 }

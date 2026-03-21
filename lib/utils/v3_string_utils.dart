@@ -55,4 +55,29 @@ class V3StringUtils {
     if (needle.isEmpty) return true;
     return forSearch(haystack).contains(forSearch(needle));
   }
+
+  // ─── VREME TRIMMING UTILITIES ──────────────────────────────────────────
+
+  /// Trimuje vreme string sa HH:mm:ss na HH:mm format
+  /// Primer: "15:30:00" → "15:30", "09:15" → "09:15"
+  static String trimTimeToHhMm(String time) {
+    if (time.length >= 5) {
+      return time.substring(0, 5);
+    }
+    return time;
+  }
+
+  /// Safe trimovanje vremena - proverava da li je dovoljno dugačak string
+  /// Isti kao trimTimeToHhMm ali eksplicitno pokazuje da se proverava length
+  static String safeSubstringTime(String time) {
+    return time.length >= 5 ? time.substring(0, 5) : time;
+  }
+
+  /// Normalizuje alternativno vreme za prikaz (null-safe)
+  /// Koristi se za z.altVremePre?.toString().substring(0,5) patterne
+  static String formatAlternativeTime(dynamic altTime) {
+    if (altTime == null) return '';
+    final timeStr = altTime.toString();
+    return safeSubstringTime(timeStr);
+  }
 }

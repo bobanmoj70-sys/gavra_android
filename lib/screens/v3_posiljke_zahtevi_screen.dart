@@ -4,6 +4,8 @@ import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
+import '../utils/v3_dan_helper.dart';
+import '../utils/v3_string_utils.dart';
 
 /// V3 ekran za prikaz i upravljanje zahtevima tipa "pošiljka".
 /// Admin odobrava / odbija / otkazuje pošiljke.
@@ -182,9 +184,7 @@ class _ZahtevKartica extends StatelessWidget {
     if (created == null) return const SizedBox.shrink();
 
     String fmt(DateTime dt) {
-      final h = dt.hour.toString().padLeft(2, '0');
-      final m = dt.minute.toString().padLeft(2, '0');
-      return '$h:$m';
+      return V3DanHelper.formatVreme(dt.hour, dt.minute);
     }
 
     String odgovorInfo;
@@ -197,8 +197,8 @@ class _ZahtevKartica extends StatelessWidget {
       String odgovorLabel;
       if ((z.status == 'alternativa' || z.status == 'ponuda') && (z.altVremePre != null || z.altVremePosle != null)) {
         final alts = [
-          if (z.altVremePre != null) z.altVremePre.toString().substring(0, 5),
-          if (z.altVremePosle != null) z.altVremePosle.toString().substring(0, 5),
+          if (z.altVremePre != null) V3StringUtils.formatAlternativeTime(z.altVremePre),
+          if (z.altVremePosle != null) V3StringUtils.formatAlternativeTime(z.altVremePosle),
         ].join(' / ');
         odgovorLabel = '⚠️ alt: $alts';
       } else {

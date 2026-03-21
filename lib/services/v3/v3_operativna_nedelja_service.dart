@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_date_utils.dart';
+import '../../utils/v3_string_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
 class V3OperativnaNedeljaEntry {
@@ -102,7 +103,7 @@ class V3OperativnaNedeljaEntry {
     return {
       'id': id,
       'putnik_id': putnikId,
-      'datum': datum.toIso8601String().split('T')[0],
+      'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       'vreme': vreme,
       'status_final': statusFinal,
@@ -138,7 +139,7 @@ class V3OperativnaNedeljaService {
     required DateTime datum,
   }) {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-    final datumStr = datum.toIso8601String().split('T')[0];
+    final datumStr = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
 
     return cache
         .where((r) =>
@@ -164,7 +165,7 @@ class V3OperativnaNedeljaService {
 
     // Tekuća sedmica: pon–ned
     final now = DateTime.now();
-    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final monday = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
     final sunday = monday.add(const Duration(days: 6));
 
     return cache
@@ -175,7 +176,7 @@ class V3OperativnaNedeljaService {
           if (datum == null) return false;
 
           // Samo tekuća sedmica
-          final d = DateTime(datum.year, datum.month, datum.day);
+          final d = V3DanHelper.dateOnlyFrom(datum.year, datum.month, datum.day);
           if (d.isBefore(monday) || d.isAfter(sunday)) return false;
 
           final targetAbbr = V3DanHelper.abbr(datum);
@@ -212,7 +213,7 @@ class V3OperativnaNedeljaService {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     return cache
         .where((r) {
-          final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+          final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
           return rDatum == datumIso && r['grad'] == grad;
         })
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
@@ -232,7 +233,7 @@ class V3OperativnaNedeljaService {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     return cache
         .where((r) {
-          final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+          final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
           return rDatum == datumIso;
         })
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
@@ -284,10 +285,10 @@ class V3OperativnaNedeljaService {
   /// Vraća null ako slot nije pronađen.
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
     final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
-    final datumStr = datum.toIso8601String().split('T')[0];
+    final datumStr = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
     for (final r in cache) {
       if (r['grad'] == grad &&
-          r['vreme'].toString().substring(0, 5) == vreme &&
+          V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
           r['datum'].toString().startsWith(datumStr) &&
           r['aktivno'] == true) {
         return (r['max_mesta'] as num?)?.toInt();
@@ -353,7 +354,7 @@ class V3OperativnaNedeljaService {
       // Provjeri postoji li već aktivan zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
-        final rDatum = (r['datum'] as String? ?? '').split('T')[0];
+        final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
         return r['putnik_id'] == putnikId && rDatum == datum && r['grad'] == grad && r['aktivno'] == true;
       }).toList();
 

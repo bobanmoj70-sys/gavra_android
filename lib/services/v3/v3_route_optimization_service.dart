@@ -18,7 +18,7 @@ class V3RouteOptimizationService {
     try {
       final response = await supabase.rpc('fn_v3_optimize_pickup_route', params: {
         'p_vozac_id': vozacId,
-        'p_datum': datum.toIso8601String().split('T')[0], // YYYY-MM-DD format
+        'p_datum': V3DanHelper.toIsoDate(datum), // YYYY-MM-DD format
         'p_grad': grad,
         'p_vreme': vreme,
       });
@@ -40,7 +40,7 @@ class V3RouteOptimizationService {
   static Future<Map<String, dynamic>?> optimizeAllRoutesForDate(DateTime datum) async {
     try {
       final response = await supabase.rpc('fn_v3_optimize_all_routes_for_date', params: {
-        'p_datum': datum.toIso8601String().split('T')[0], // YYYY-MM-DD format
+        'p_datum': V3DanHelper.toIsoDate(datum), // YYYY-MM-DD format
       });
 
       if (response != null && response['success'] == true) {
@@ -67,12 +67,12 @@ class V3RouteOptimizationService {
     try {
       // Dobija podatke iz v3_gps_raspored cache-a
       final cache = V3MasterRealtimeManager.instance.v3GpsRasporedCache;
-      final datumStr = datum.toIso8601String().split('T')[0];
+      final datumStr = V3DanHelper.toIsoDate(datum);
 
       final putnici = cache.values
           .where((row) =>
               row['vozac_id'] == vozacId &&
-              row['datum']?.toString().split('T')[0] == datumStr &&
+              V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') == datumStr &&
               row['grad'] == grad &&
               row['vreme'] == vreme &&
               row['aktivno'] == true &&

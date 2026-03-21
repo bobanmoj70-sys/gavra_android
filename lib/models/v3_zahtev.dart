@@ -1,3 +1,4 @@
+import '../utils/v3_dan_helper.dart';
 import '../utils/v3_date_utils.dart';
 
 class V3Zahtev {
@@ -68,8 +69,7 @@ class V3Zahtev {
     return {
       if (id.isNotEmpty) 'id': id,
       'putnik_id': putnikId.isNotEmpty ? putnikId : null,
-      'datum': datum.toIso8601String().split('T')[0],
-      'grad': grad,
+      'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'zeljeno_vreme': zeljenoVreme,
       'broj_mesta': brojMesta,
       'status': status,

@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/v3_vozilo.dart';
 import '../services/v3/v3_vozilo_service.dart';
-import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_dan_helper.dart';
+import '../utils/v3_format_utils.dart';
+import '../utils/v3_ui_utils.dart';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-final _fmtBroj = NumberFormat('#,###', 'sr');
 
 Color _getVoziloColor(String reg) {
   if (reg.contains('066')) return Colors.blue;
@@ -40,7 +39,7 @@ String _formatServis(DateTime? datum, int? km) {
   if (datum == null && km == null) return '-';
   final parts = <String>[];
   if (datum != null) parts.add(V3Vozilo.formatDatum(datum));
-  if (km != null) parts.add('${_fmtBroj.format(km)} km');
+  if (km != null) parts.add('${V3FormatUtils.formatBroj(km)} km');
   return parts.join(' · ');
 }
 
@@ -48,7 +47,7 @@ String? _formatGumeSubtitle(DateTime? datum, int? km) {
   if (datum == null && km == null) return null;
   final parts = <String>[];
   if (datum != null) parts.add('Menjane: ${V3Vozilo.formatDatum(datum)}');
-  if (km != null) parts.add('${_fmtBroj.format(km)} km');
+  if (km != null) parts.add('${V3FormatUtils.formatBroj(km)} km');
   return parts.join(' · ');
 }
 
@@ -229,7 +228,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                       const Icon(Icons.speed, size: 16, color: Colors.white),
                       const SizedBox(width: 6),
                       Text('Kilometraža: ', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-                      Text('${_fmtBroj.format(v.trenutnaKm)} km',
+                      Text('${V3FormatUtils.formatBroj(v.trenutnaKm)} km',
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                     ],
                   ),
@@ -386,10 +385,11 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
     );
     if (picked == null || !mounted) return;
     try {
-      await V3VoziloService.updateKolskaKnjiga(_selected!.id, {field: picked.toIso8601String().split('T')[0]});
-      if (mounted) V3AppSnackBar.success(context, '✅ Sačuvano');
+      await V3VoziloService.updateKolskaKnjiga(
+          _selected!.id, {field: V3DanHelper.parseIsoDatePart(picked.toIso8601String())});
+      V3UIUtils.showSaveSuccess(context);
     } catch (_) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška pri čuvanju');
+      V3UIUtils.showSaveError(context);
     }
   }
 
@@ -615,11 +615,11 @@ class _TextDialogState extends State<_TextDialog> {
               );
               if (!context.mounted) return;
               Navigator.pop(context);
-              V3AppSnackBar.success(context, '✅ Sačuvano');
+              V3UIUtils.showSaveSuccess(context);
             } catch (_) {
               if (!context.mounted) return;
               Navigator.pop(context);
-              V3AppSnackBar.error(context, '❌ Greška pri čuvanju');
+              V3UIUtils.showSaveError(context);
             }
           },
           child: const Text('Sačuvaj', style: TextStyle(color: Colors.orange)),
@@ -737,18 +737,18 @@ class _ServisSheetState extends State<_ServisSheet> {
                   onPressed: () async {
                     final kmValue = int.tryParse(_kmCtrl.text);
                     final data = <String, dynamic>{
-                      '${widget.prefix}_datum': _datum?.toIso8601String().split('T')[0],
+                      '${widget.prefix}_datum': V3DanHelper.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
                       '${widget.prefix}_km': kmValue,
                     };
                     try {
                       await V3VoziloService.updateKolskaKnjiga(widget.voziloId, data);
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      V3AppSnackBar.success(context, '✅ Sačuvano');
+                      V3UIUtils.showSaveSuccess(context);
                     } catch (_) {
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      V3AppSnackBar.error(context, '❌ Greška pri čuvanju');
+                      V3UIUtils.showSaveError(context);
                     }
                   },
                   icon: const Icon(Icons.save),
@@ -960,7 +960,7 @@ class _GumeSheetState extends State<_GumeSheet> {
                     final kmValue = int.tryParse(_kmCtrl.text);
                     final dbPrefix = 'gume_${widget.pozicija}';
                     final data = <String, dynamic>{
-                      '${dbPrefix}_datum': _datum?.toIso8601String().split('T')[0],
+                      '${dbPrefix}_datum': V3DanHelper.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
                       '${dbPrefix}_opis': finalOpis.isEmpty ? null : finalOpis,
                       '${dbPrefix}_km': kmValue,
                     };
@@ -968,11 +968,11 @@ class _GumeSheetState extends State<_GumeSheet> {
                       await V3VoziloService.updateKolskaKnjiga(widget.voziloId, data);
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      V3AppSnackBar.success(context, '✅ Sačuvano');
+                      V3UIUtils.showSaveSuccess(context);
                     } catch (_) {
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      V3AppSnackBar.error(context, '❌ Greška pri čuvanju');
+                      V3UIUtils.showSaveError(context);
                     }
                   },
                   icon: const Icon(Icons.save),

@@ -14,6 +14,7 @@ import '../services/v3/v3_dnevna_predaja_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_dan_helper.dart';
 
 /// DNEVNIK NAPLATE — V3
 /// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
@@ -99,8 +100,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
       final ime = row['ime_prezime'] as String? ?? row['putnik_ime'] as String? ?? '?';
       final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
-      final vreme = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-
+      final vreme = V3DanHelper.formatVreme(dt.hour, dt.minute);
       rows.add(_NaplataRow(
         id: row['id']?.toString() ?? '',
         ime: ime,
@@ -421,10 +421,8 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-String _toDateStr(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-String _formatDatum(DateTime d) =>
-    '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+String _toDateStr(DateTime d) => V3DanHelper.toIsoDate(d);
+String _formatDatum(DateTime d) => V3DanHelper.formatDatumPuni(d);
 
 pw.Widget _pdfCell(String text, {required pw.TextStyle style}) => pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/v3/v3_pin_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_dan_helper.dart';
 
 /// PIN ZAHTEVI SCREEN
 /// Admin vidi sve zahteve za PIN i može da odobri/odbije
@@ -128,8 +129,7 @@ Widget _pinZahtevCard({
   if (createdAt != null) {
     final dt = DateTime.tryParse(createdAt)?.toLocal();
     if (dt != null) {
-      vremeZahteva = '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
-          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      vremeZahteva = V3DanHelper.formatDatumVreme(dt);
     }
   }
 

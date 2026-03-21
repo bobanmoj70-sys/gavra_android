@@ -1,3 +1,4 @@
+import '../utils/v3_dan_helper.dart';
 import '../utils/v3_date_utils.dart';
 
 /// Model za dnevne predaje vozača u V3 migraciji.
@@ -48,7 +49,7 @@ class V3DnevnaPredaja {
         'id': id,
         'vozac_id': vozacId,
         'vozac_ime_prezime': vozacImePrezime,
-        'datum': "${datum.year}-${datum.month.toString().padLeft(2, '0')}-${datum.day.toString().padLeft(2, '0')}",
+        'datum': V3DanHelper.toIsoDate(datum),
         'predao_iznos': predaoIznos,
         'ukupno_naplaceno': ukupnoNaplaceno,
         'razlika': razlika,

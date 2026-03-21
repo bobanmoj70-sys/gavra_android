@@ -1,4 +1,8 @@
 /// Validator i normalizer za grad/adresa/vreme podatke.
+library;
+
+import 'v3_dan_helper.dart';
+
 class V2GradAdresaValidator {
   V2GradAdresaValidator._();
 
@@ -12,24 +16,24 @@ class V2GradAdresaValidator {
     // HH:mm:ss format (iz baze) → uzmi samo HH:mm
     final withSecondsMatch = RegExp(r'^(\d{1,2}):(\d{2}):\d{2}$').firstMatch(trimmed);
     if (withSecondsMatch != null) {
-      final h = int.parse(withSecondsMatch.group(1)!).toString().padLeft(2, '0');
-      final m = withSecondsMatch.group(2)!;
-      return '$h:$m';
+      final h = int.parse(withSecondsMatch.group(1)!);
+      final m = int.parse(withSecondsMatch.group(2)!);
+      return V3DanHelper.formatVreme(h, m);
     }
 
     // Već u ispravnom formatu HH:mm
     final fullMatch = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(trimmed);
     if (fullMatch != null) {
-      final h = int.parse(fullMatch.group(1)!).toString().padLeft(2, '0');
-      final m = fullMatch.group(2)!;
-      return '$h:$m';
+      final h = int.parse(fullMatch.group(1)!);
+      final m = int.parse(fullMatch.group(2)!);
+      return V3DanHelper.formatVreme(h, m);
     }
 
     // Samo sati bez minuta
     final hourOnly = RegExp(r'^(\d{1,2})$').firstMatch(trimmed);
     if (hourOnly != null) {
-      final h = int.parse(hourOnly.group(1)!).toString().padLeft(2, '0');
-      return '$h:00';
+      final h = int.parse(hourOnly.group(1)!);
+      return V3DanHelper.formatVreme(h, 0);
     }
 
     return trimmed;

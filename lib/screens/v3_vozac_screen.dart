@@ -150,7 +150,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     _mojiTermini = rm.v3GpsRasporedCache.values
         .where((r) =>
             r['vozac_id']?.toString() == vozac.id &&
-            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+            V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             (r['aktivno'] == true || r['aktivno'] == null))
         .toList();
 
@@ -183,7 +183,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     // Putnici iz v3_gps_raspored za ovog vozača i ovaj termin
     final terminPutnici = rm.v3GpsRasporedCache.values.where((r) =>
         r['vozac_id']?.toString() == vozac.id &&
-        (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+        V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
         r['grad']?.toString().toUpperCase() == _selectedGrad &&
         normalizeV(r['vreme']?.toString()) == selectedVNorm &&
         r['putnik_id'] != null &&
@@ -192,7 +192,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     // Putnici individualno dodijeljeni OVOM vozaču (v3_gps_raspored) - override
     final individualniOvajVozac = rm.v3GpsRasporedCache.values.where((r) =>
         r['vozac_id']?.toString() == vozac.id &&
-        (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+        V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
         r['grad']?.toString().toUpperCase() == _selectedGrad &&
         normalizeV(r['vreme']?.toString()) == selectedVNorm &&
         r['aktivno'] != false);
@@ -220,7 +220,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         final entryData = rm.operativnaNedeljaCache.values.firstWhere(
           (r) =>
               r['putnik_id']?.toString() == putnikId &&
-              (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+              V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
               r['grad']?.toString().toUpperCase() == _selectedGrad &&
               normalizeV(r['vreme']?.toString()) == selectedVNorm,
         );
@@ -271,7 +271,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       final diff = (mins - current).abs();
       if (diff < minDiff) {
         minDiff = diff;
-        bestVreme = '${tp[0].padLeft(2, '0')}:${tp[1]}';
+        bestVreme = V3DanHelper.formatVreme(int.tryParse(tp[0]) ?? 0, int.tryParse(tp[1]) ?? 0);
         bestGrad = grad;
       }
     }
@@ -386,7 +386,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
       final p = v.split(':');
-      return p.length >= 2 ? '${p[0].padLeft(2, '0')}:${p[1]}' : v;
+      if (p.length >= 2) {
+        final hour = int.tryParse(p[0]) ?? 0;
+        final minute = int.tryParse(p[1]) ?? 0;
+        return V3DanHelper.formatVreme(hour, minute);
+      }
+      return v;
     }
 
     final vremeNorm = normV(vreme);
@@ -396,7 +401,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return rm.v3GpsRasporedCache.values
         .where((r) =>
             r['vozac_id']?.toString() == vozac.id &&
-            (r['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+            V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             r['grad']?.toString().toUpperCase() == gradUp &&
             normV(r['vreme']?.toString()) == vremeNorm &&
             r['putnik_id'] != null &&
@@ -630,7 +635,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
       final p = v.split(':');
-      return p.length >= 2 ? '${p[0].padLeft(2, '0')}:${p[1]}' : v;
+      if (p.length >= 2) {
+        final hour = int.tryParse(p[0]) ?? 0;
+        final minute = int.tryParse(p[1]) ?? 0;
+        return V3DanHelper.formatVreme(hour, minute);
+      }
+      return v;
     }
 
     final bcVremenaSet = <String>{};
@@ -644,7 +654,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
     for (final r in rm.v3GpsRasporedCache.values) {
       if (r['vozac_id']?.toString() != vozacId) continue;
-      if ((r['datum'] as String?)?.split('T')[0] != _selectedDatumIso) continue;
+      if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
       if (r['aktivno'] == false) continue;
       final g = r['grad']?.toString().toUpperCase() ?? '';
       final v = normV(r['vreme']?.toString());

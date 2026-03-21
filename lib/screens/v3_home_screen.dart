@@ -127,7 +127,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       if (row['putnik_id'] == putnikId &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
-          (row['datum'] as String?)?.split('T')[0] == datum) {
+          V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum) {
         final vozacId = row['vozac_id'] as String?;
         if (vozacId != null) return V3VozacService.getVozacById(vozacId);
       }
@@ -174,7 +174,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final grad = zahtev.grad ?? '';
     final vreme = zahtev.vreme ?? '';
     final dt = zahtev.datum;
-    final datum = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    final datum = V3DanHelper.toIsoDate(dt);
     final trenutni = _getVozacZaPutnika(zahtev.putnikId, grad, vreme, datum);
     V3Vozac? odabran = trenutni;
     final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno).toList();
@@ -696,8 +696,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   // ─── Dialog: Račun za firme (B2B) ────────────────────────────────
   void _showRacunZaFirmeDialog() {
     // Pripremi listu putnika sa aktivnim zahtevima za odabrani dan/grad/vreme
-    final putnici = V3PutnikService.getKombinovaniPutniciByDatumGradVreme(
-      datumIso: _selectedDatumIso,
+    final putnici = V3PutnikService.getKombinovaniPutniciFiltrirano(
       grad: _selectedGrad,
       vreme: _selectedVreme,
     );
@@ -1048,7 +1047,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   final rm = V3MasterRealtimeManager.instance;
                   final normV = V2GradAdresaValidator.normalizeTime(e.vreme ?? '');
                   for (final row in rm.v3GpsRasporedCache.values) {
-                    if ((row['datum'] as String?)?.split('T')[0] == _selectedDatumIso &&
+                    if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == _selectedDatumIso &&
                         row['grad'] == e.grad &&
                         V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV) {
                       return row['vozac_id'] == currentVozacId ? 0 : 1;

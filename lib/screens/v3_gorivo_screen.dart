@@ -3,7 +3,8 @@ import 'package:gavra_android/models/v3_gorivo.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
 import 'package:gavra_android/theme.dart';
-import 'package:intl/intl.dart';
+
+import '../utils/v3_format_utils.dart';
 
 class V3GorivoScreen extends StatefulWidget {
   const V3GorivoScreen({super.key});
@@ -15,7 +16,6 @@ class V3GorivoScreen extends StatefulWidget {
 class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   static const Color _accent = Color(0xFFFF9800);
-  static final _fmt = NumberFormat('#,##0.0', 'sr');
 
   @override
   void initState() {
@@ -136,14 +136,14 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
             kapacitet: stanje.kapacitetLitri,
             procenat: procenat,
             ispodAlarma: ispodAlarma,
-            fmt: _fmt,
           ),
           const SizedBox(height: 16),
           _V3DetaljiCard(
             children: [
+              _gorivoDetaljiRow('🔫 Stanje brojača pištolja',
+                  '${V3FormatUtils.formatGorivo(stanje.stanjeBrojacPistolj)} L', Colors.white70),
               _gorivoDetaljiRow(
-                  '🔫 Stanje brojača pištolja', '${_fmt.format(stanje.stanjeBrojacPistolj)} L', Colors.white70),
-              _gorivoDetaljiRow('📦 Kapacitet', '${_fmt.format(stanje.kapacitetLitri)} L', Colors.white70),
+                  '📦 Kapacitet', '${V3FormatUtils.formatGorivo(stanje.kapacitetLitri)} L', Colors.white70),
               _gorivoDetaljiRow('🔖 Naziv', stanje.naziv, Colors.white70),
               _gorivoDetaljiRow(
                   '✅ Aktivno', stanje.aktivno ? 'Da' : 'Ne', stanje.aktivno ? Colors.greenAccent : Colors.redAccent),
@@ -176,17 +176,16 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
             kapacitet: r.kapacitetMax,
             procenat: procenat,
             ispodAlarma: r.ispodAlarma,
-            fmt: _fmt,
           ),
           const SizedBox(height: 16),
           _V3DetaljiCard(
             children: [
               _gorivoDetaljiRow(
                 '🔔 Alarm nivo',
-                '${_fmt.format(r.alarmNivo)} L',
+                '${V3FormatUtils.formatGorivo(r.alarmNivo)} L',
                 r.ispodAlarma ? Colors.redAccent : Colors.white54,
               ),
-              _gorivoDetaljiRow('📦 Kapacitet', '${_fmt.format(r.kapacitetMax)} L', Colors.white70),
+              _gorivoDetaljiRow('📦 Kapacitet', '${V3FormatUtils.formatGorivo(r.kapacitetMax)} L', Colors.white70),
             ],
           ),
         ],
@@ -219,7 +218,6 @@ class _V3BrojcanikCard extends StatelessWidget {
     required this.kapacitet,
     required this.procenat,
     required this.ispodAlarma,
-    required this.fmt,
   });
 
   final String label;
@@ -227,7 +225,6 @@ class _V3BrojcanikCard extends StatelessWidget {
   final double kapacitet;
   final double procenat;
   final bool ispodAlarma;
-  final NumberFormat fmt;
 
   static const Color _accent = Color(0xFFFF9800);
 
@@ -276,11 +273,11 @@ class _V3BrojcanikCard extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              '${fmt.format(trenutno)} L',
+              '${V3FormatUtils.formatGorivo(trenutno)} L',
               style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: barColor),
             ),
             Text(
-              'od ${fmt.format(kapacitet)} L kapaciteta',
+              'od ${V3FormatUtils.formatGorivo(kapacitet)} L kapaciteta',
               style: const TextStyle(color: Colors.white54, fontSize: 14),
             ),
             const SizedBox(height: 20),
@@ -303,7 +300,7 @@ class _V3BrojcanikCard extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.bold, color: barColor),
                 ),
                 Text(
-                  '${fmt.format(kapacitet)} L',
+                  '${V3FormatUtils.formatGorivo(kapacitet)} L',
                   style: const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
               ],

@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_app_snack_bar.dart';
+import '../../utils/v3_dan_helper.dart';
 
 /// V3 servis za generisanje PDF računa.
 class V3RacunService {
@@ -167,8 +168,8 @@ class V3RacunService {
     );
     final ukupno = cena * kolicina;
     final fmt = NumberFormat('#,##0.00', 'sr_Latn_RS');
-    final datumStr = DateFormat('dd.MM.yyyy').format(datumPrometa);
-    final danasDatumStr = DateFormat('dd.MM.yyyy').format(DateTime.now());
+    final datumStr = V3DanHelper.formatDatumPuni(datumPrometa);
+    final danasDatumStr = V3DanHelper.formatDatumPuni(DateTime.now());
 
     pdf.addPage(
       pw.Page(
@@ -307,8 +308,8 @@ class V3RacunService {
     final ukupno = cenaPoVoznji * brojVoznji;
     final fmt = NumberFormat('#,##0.00', 'sr_Latn_RS');
     final mesecGodina = DateFormat('MMMM yyyy', 'sr_Latn_RS').format(datumPrometa);
-    final danasDatumStr = DateFormat('dd.MM.yyyy').format(DateTime.now());
-    final datumStr = DateFormat('dd.MM.yyyy').format(datumPrometa);
+    final danasDatumStr = V3DanHelper.formatDatumPuni(DateTime.now());
+    final datumStr = V3DanHelper.formatDatumPuni(datumPrometa);
 
     final firmaNaziv = firma?['firma_naziv']?.toString() ?? imePutnika;
     final firmaAdresa = firma?['firma_adresa']?.toString() ?? '---';

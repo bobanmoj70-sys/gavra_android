@@ -73,7 +73,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
     final datum = _selectedDatumIso;
     for (final row in rm.v3GpsRasporedCache.values) {
-      if ((row['datum'] as String?)?.split('T')[0] == datum &&
+      if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
           row['putnik_id'] == null) {
@@ -94,7 +94,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       if (row['putnik_id'] == putnikId &&
           row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
-          (row['datum'] as String?)?.split('T')[0] == datum) {
+          V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum) {
         final vozacId = row['vozac_id'] as String?;
         if (vozacId != null) return V3VozacService.getVozacById(vozacId);
       }
@@ -112,7 +112,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     for (final row in rm.v3GpsRasporedCache.values) {
       if (row['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
-          (row['datum'] as String?)?.split('T')[0] == datum &&
+          V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum &&
           row['putnik_id'] != null &&
           row['aktivno'] == true) {
         final putnikId = row['putnik_id'] as String;
@@ -132,7 +132,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     return V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((r) {
       final datumStr = r['datum'] as String?;
       if (datumStr == null) return false;
-      final d = datumStr.split('T')[0];
+      final d = V3DanHelper.parseIsoDatePart(datumStr);
       final statusFinal = r['status_final'] as String?;
       return d == targetDatum &&
           r['grad'] == grad &&
@@ -183,7 +183,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       final putnici = rm.operativnaNedeljaCache.values.where((r) {
         final datumStr = r['datum'] as String?;
         if (datumStr == null) return false;
-        final d = datumStr.split('T')[0];
+        final d = V3DanHelper.parseIsoDatePart(datumStr);
         return d == datum &&
             r['grad'] == grad &&
             V2GradAdresaValidator.normalizeTime(r['vreme'] as String? ?? '') ==

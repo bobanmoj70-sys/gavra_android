@@ -87,7 +87,12 @@ class V3VozacService {
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
       final p = v.split(':');
-      return p.length >= 2 ? '${p[0].padLeft(2, '0')}:${p[1]}' : v;
+      if (p.length >= 2) {
+        final hour = int.tryParse(p[0]) ?? 0;
+        final minute = int.tryParse(p[1]) ?? 0;
+        return V3DanHelper.formatVreme(hour, minute);
+      }
+      return v;
     }
 
     final vremeNorm = normV(vreme);
@@ -100,7 +105,7 @@ class V3VozacService {
     try {
       final matchingTermini = rm.v3GpsRasporedCache.values.where(
         (r) {
-          final datumMatch = (r['datum'] as String?)?.split('T')[0] == datumIso;
+          final datumMatch = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == datumIso;
           final gradMatch = r['grad']?.toString().toUpperCase() == grad.toUpperCase();
           final vremeMatch = normV(r['vreme']?.toString()) == vremeNorm;
           final aktivnoMatch = r['aktivno'] == true;

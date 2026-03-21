@@ -1,7 +1,6 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../models/v3_finansije.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -9,6 +8,8 @@ import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_dan_helper.dart';
+import '../utils/v3_format_utils.dart';
 
 /// FINANSIJE — V3
 /// Prihodi: dnevneOperacijeCache (naplata_status='placeno', iznos_naplacen)
@@ -62,12 +63,12 @@ _V3IzvestajData _buildIzvestaj() {
 
   // Nedelja: od ponedjeljka do nedjelje
   final dayOfWeek = now.weekday; // 1=Mon
-  final nedStart = DateTime(now.year, now.month, now.day - (dayOfWeek - 1));
+  final nedStart = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day - (dayOfWeek - 1));
   final nedEnd = nedStart.add(const Duration(days: 7));
 
   // Mesec
-  final mesStart = DateTime(now.year, now.month, 1);
-  final mesEnd = DateTime(now.year, now.month + 1, 1);
+  final mesStart = V3DanHelper.dateOnlyFrom(now.year, now.month, 1);
+  final mesEnd = V3DanHelper.dateOnlyFrom(now.year, now.month + 1, 1);
 
   // Prošla godina
   final proslaGod = now.year - 1;
@@ -119,8 +120,8 @@ _V3IzvestajData _buildIzvestaj() {
   final potr = dugovi.fold(0.0, (s, d) => s + d.iznos);
 
   // Period string za nedelju
-  final nedeljaPeriod = '${nedStart.day.toString().padLeft(2, '0')}.${nedStart.month.toString().padLeft(2, '0')} — '
-      '${(nedEnd.subtract(const Duration(days: 1))).day.toString().padLeft(2, '0')}.${(nedEnd.subtract(const Duration(days: 1))).month.toString().padLeft(2, '0')}';
+  final nedeljaPeriod = '${V3DanHelper.formatDanMesec(nedStart)} — '
+      '${V3DanHelper.formatDanMesec(nedEnd.subtract(const Duration(days: 1)))}';
 
   return _V3IzvestajData(
     potrazivanjaIznos: potr,
@@ -160,8 +161,6 @@ String _katLabel(String? kat) {
 // ─── State ────────────────────────────────────────────────────────────────────
 
 class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
-  static final _fmt = NumberFormat('#,###', 'sr');
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<void>(
@@ -490,12 +489,13 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
       final mesec = row['mesec'] as int? ?? 0;
       final godina = row['godina'] as int? ?? 0;
       final tDt = DateTime(godina, mesec);
-      if (!tDt.isBefore(DateTime(from.year, from.month)) && !tDt.isAfter(DateTime(to.year, to.month))) {
+      if (!tDt.isBefore(V3DanHelper.dateOnlyFrom(from.year, from.month, 1)) &&
+          !tDt.isAfter(V3DanHelper.dateOnlyFrom(to.year, to.month, 1))) {
         troskovi += (row['iznos'] as num?)?.toDouble() ?? 0.0;
       }
     }
     final neto = prihod - troskovi;
-    final df = DateFormat('dd.MM.yyyy');
+    // Koristimo V3DanHelper umesto DateFormat
 
     showDialog(
       context: context,
@@ -504,7 +504,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
         title: Column(
           children: [
             const Text('📊 Izveštaj za period'),
-            Text('${df.format(from)} — ${df.format(to)}',
+            Text('${V3DanHelper.formatDatumPuni(from)} — ${V3DanHelper.formatDatumPuni(to)}',
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.grey)),
           ],
         ),
@@ -531,7 +531,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-String _fmtIznos(double iznos) => '${_V3FinansijeScreenState._fmt.format(iznos.round())} din';
+String _fmtIznos(double iznos) => '${V3FormatUtils.formatBroj(iznos.round())} din';
 
 String _mesecNaziv(int m) {
   const names = [
@@ -622,7 +622,6 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
     for (final s in _stavke) s.$1: TextEditingController(),
   };
   bool _saving = false;
-  static final _fmt = NumberFormat('#,###', 'sr');
 
   @override
   void dispose() {
@@ -701,7 +700,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                             Text(s.$3, style: const TextStyle(fontSize: 16)),
                             if ((widget.poKat[_katLabel(s.$1)] ?? 0) > 0)
                               Text(
-                                'Trenutno: ${_fmt.format((widget.poKat[_katLabel(s.$1)] ?? 0).round())}',
+                                'Trenutno: ${V3FormatUtils.formatBroj((widget.poKat[_katLabel(s.$1)] ?? 0).round())}',
                                 style:
                                     TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
                               ),

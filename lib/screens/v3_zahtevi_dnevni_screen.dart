@@ -8,6 +8,8 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_dan_helper.dart';
+import '../utils/v3_string_utils.dart';
 
 class V3ZahteviDnevniScreen extends StatefulWidget {
   const V3ZahteviDnevniScreen({super.key});
@@ -22,7 +24,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
   List<V3Zahtev> _getZahtevi(String status) {
     final rm = V3MasterRealtimeManager.instance;
     final today = DateTime.now();
-    final todayOnly = DateTime(today.year, today.month, today.day);
+    final todayOnly = V3DanHelper.dateOnlyFrom(today.year, today.month, today.day);
     final windowEnd = todayOnly.add(const Duration(days: 14));
     return rm.zahteviCache.values.map((v) => V3Zahtev.fromJson(v)).where((z) {
       if (!z.aktivno) return false;
@@ -34,7 +36,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
         if (z.status != status) return false;
       }
 
-      final d = DateTime(z.datum.year, z.datum.month, z.datum.day);
+      final d = V3DanHelper.dateOnlyFrom(z.datum.year, z.datum.month, z.datum.day);
       if (d.isBefore(todayOnly) || d.isAfter(windowEnd)) return false;
       final p = rm.putniciCache[z.putnikId];
       final tip = (p?['tip_putnika'] as String? ?? '').toLowerCase();
@@ -88,8 +90,8 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       final dPre = d.subtract(const Duration(minutes: 15));
       final dPosle = d.add(const Duration(minutes: 15));
 
-      preController.text = "${dPre.hour.toString().padLeft(2, '0')}:${dPre.minute.toString().padLeft(2, '0')}";
-      posleController.text = "${dPosle.hour.toString().padLeft(2, '0')}:${dPosle.minute.toString().padLeft(2, '0')}";
+      preController.text = V3DanHelper.formatVreme(dPre.hour, dPre.minute);
+      posleController.text = V3DanHelper.formatVreme(dPosle.hour, dPosle.minute);
     }
 
     final result = await showDialog<bool>(
@@ -452,7 +454,7 @@ class _ZahtevCard extends StatelessWidget {
     final tipColor = _tipColor(tip);
     final statusColor = _statusColor(zahtev.status);
     final danLabel = V3DanHelper.label(zahtev.datum);
-    final vreme = zahtev.zeljenoVreme.length >= 5 ? zahtev.zeljenoVreme.substring(0, 5) : zahtev.zeljenoVreme;
+    final vreme = V3StringUtils.safeSubstringTime(zahtev.zeljenoVreme);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),

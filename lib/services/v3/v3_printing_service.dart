@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../services/v3/v3_putnik_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
+import '../../utils/v3_dan_helper.dart';
 
 /// V3 servis za generisanje PDF spiska putnika za dati polazak.
 class V3PrintingService {
@@ -33,8 +34,7 @@ class V3PrintingService {
   }) async {
     try {
       // Putnici iz v3 cache-a za dati polazak
-      final putnici = V3PutnikService.getKombinovaniPutniciByDatumGradVreme(
-        datumIso: datumIso,
+      final putnici = V3PutnikService.getKombinovaniPutniciFiltrirano(
         grad: grad,
         vreme: vreme,
       );
@@ -83,7 +83,7 @@ class V3PrintingService {
       ..sort();
 
     final relacija = _relacija(grad, vreme);
-    final danas = DateFormat('dd.MM.yyyy').format(DateTime.now());
+    final danas = V3DanHelper.formatDatumPuni(DateTime.now());
 
     final theme = pw.ThemeData.withFont(
       base: _regular,

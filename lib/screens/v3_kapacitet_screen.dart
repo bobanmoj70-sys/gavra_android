@@ -1,15 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_string_utils.dart';
 
 /// Admin ekran za podešavanje kapaciteta polazaka
 class V3KapacitetScreen extends StatefulWidget {
   const V3KapacitetScreen({super.key});
-
   @override
   State<V3KapacitetScreen> createState() => _V3KapacitetScreenState();
 }
@@ -19,7 +19,6 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
   late final Stream<void> _streamTrigger;
   String _selectedDay = V3DanHelper.defaultDay();
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
-
   @override
   void initState() {
     super.initState();
@@ -36,11 +35,10 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
     final bcVremena = V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
     final vsVremena = V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
     final datumIso = _selectedDatumIso;
-
     int? _find(String grad, String vreme) {
       for (final r in cache) {
         if (r['grad'] == grad &&
-            r['vreme'].toString().substring(0, 5) == vreme &&
+            V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
             r['datum'].toString().startsWith(datumIso) &&
             r['aktivno'] == true) {
           return (r['max_mesta'] as num?)?.toInt();
@@ -208,7 +206,6 @@ Color _kapacitetGetBoja(int mesta) {
 }
 
 // ─── top-level tab builder ───────────────────────────────────────────────────
-
 Widget _kapacitetGradTab(
   String grad,
   List<String> vremena,
@@ -322,7 +319,7 @@ String? _getSlotId(String grad, String vreme, String datumIso) {
   final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
   for (final r in cache) {
     if (r['grad'] == grad &&
-        r['vreme'].toString().substring(0, 5) == vreme &&
+        V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
         r['datum'].toString().startsWith(datumIso) &&
         r['aktivno'] == true) {
       return r['id'] as String?;
@@ -332,7 +329,6 @@ String? _getSlotId(String grad, String vreme, String datumIso) {
 }
 
 // ─── _KapacitetEditDialog ────────────────────────────────────────────────────
-
 class _KapacitetEditDialog extends StatefulWidget {
   const _KapacitetEditDialog({
     required this.grad,
@@ -342,14 +338,12 @@ class _KapacitetEditDialog extends StatefulWidget {
   final String grad;
   final String vreme;
   final int trenutni;
-
   @override
   State<_KapacitetEditDialog> createState() => _KapacitetEditDialogState();
 }
 
 class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
   late final TextEditingController _ctrl;
-
   @override
   void initState() {
     super.initState();

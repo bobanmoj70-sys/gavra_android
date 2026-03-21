@@ -52,7 +52,7 @@ class V3PutnikService {
 
   /// Get all active v3 passengers + their requests for today
   static List<Map<String, dynamic>> getKombinovaniPutniciDanas() {
-    final nowIso = DateTime.now().toIso8601String().split('T')[0];
+    final nowIso = V3DanHelper.todayIso();
     final rm = V3MasterRealtimeManager.instance;
 
     final rez = <Map<String, dynamic>>[];
@@ -85,7 +85,7 @@ class V3PutnikService {
     required String grad,
     required String vreme,
   }) {
-    final nowIso = DateTime.now().toIso8601String().split('T')[0];
+    final nowIso = V3DanHelper.todayIso();
     final rm = V3MasterRealtimeManager.instance;
 
     final rez = <Map<String, dynamic>>[];
@@ -127,7 +127,7 @@ class V3PutnikService {
       build: () {
         final rm = V3MasterRealtimeManager.instance;
         final matchingZahtevi = rm.zahteviCache.values.where((z) {
-          final rDatum = (z['datum'] as String? ?? '').split('T')[0];
+          final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
           return rDatum == datumIso && z['aktivno'] == true;
         });
 
@@ -165,7 +165,7 @@ class V3PutnikService {
     final rez = <String, Map<String, dynamic>>{};
 
     final zahtevi = rm.zahteviCache.values.where((z) {
-      final rDatum = (z['datum'] as String? ?? '').split('T')[0];
+      final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
       return rDatum == datumIso &&
           z['grad'] == grad &&
           z['zeljeno_vreme'] == vreme &&

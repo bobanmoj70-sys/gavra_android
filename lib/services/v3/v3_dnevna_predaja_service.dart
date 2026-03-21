@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../globals.dart';
 import '../../models/v3_dnevna_predaja.dart';
+import '../../utils/v3_dan_helper.dart';
 
 class V3DnevnaPredajaService {
   static final _supabase = Supabase.instance.client;
@@ -10,7 +12,7 @@ class V3DnevnaPredajaService {
     required String vozacId,
     required DateTime datum,
   }) async {
-    final dateStr = "${datum.year}-${datum.month.toString().padLeft(2, '0')}-${datum.day.toString().padLeft(2, '0')}";
+    final dateStr = V3DanHelper.toIsoDate(datum);
     try {
       final res =
           await _supabase.from('v3_dnevna_predaja').select().eq('vozac_id', vozacId).eq('datum', dateStr).maybeSingle();

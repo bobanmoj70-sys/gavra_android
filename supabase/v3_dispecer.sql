@@ -2,10 +2,11 @@
 -- V3 DIGITALNI DISPEČER — SQL funkcija + pg_cron job
 -- Zamjenjuje v2_pokreni_dispecera() za V3 arhitekturu
 -- AŽURIRANO: vreme kolona u audit_log je time (ne text), v_alt1/v_alt2 su time
+-- VIKEND LOGIKA: Usklađeno sa V3DanHelper (obrađuje samo relevantnu sedmicu)
 -- ============================================================
 
 -- ============================================================
--- 1. GLAVNA FUNKCIJA
+-- 1. GLAVNA FUNKCIJA - OPTIMIZED sa vikend logikom
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.fn_v3_pokreni_dispecera()
 RETURNS jsonb
@@ -24,9 +25,13 @@ DECLARE
   v_alt2        time;
   v_processed   int := 0;
   v_now         timestamptz := now();
+  v_relevantni_datumi date[]; -- NOVO: Vikend logika
 BEGIN
+  -- NOVA LOGIKA: Koristi vikend logiku za filtriranje zahteva
+  -- Za vikend → sledeća sedmica, inače → tekuća sedmica  
+  v_relevantni_datumi := public.fn_v3_relevantna_sedmica_datumi();
 
-  -- Za svaki zahtev na 'obrada' (osim dnevnih) po redu kreiranja
+  -- Za svaki zahtev na 'obrada' (osim dnevnih) SAMO iz relevantne sedmice
   FOR v_req IN
     SELECT
       z.id,
@@ -44,6 +49,7 @@ BEGIN
     WHERE z.status = 'obrada'
       AND z.aktivno = true
       AND p.tip_putnika != 'dnevni'
+      AND z.datum = ANY(v_relevantni_datumi) -- KLJUČNO: Samo relevantna sedmica
     ORDER BY z.created_at ASC
   LOOP
 
@@ -117,13 +123,15 @@ BEGIN
       END IF;
 
       -- Zauzetost: suma aktivnih mesta u operativnom planu za isti grad/vreme/datum
+      -- FILTER: Samo relevantna sedmica
       SELECT COALESCE(SUM(op.broj_mesta), 0) INTO v_zauzeto
       FROM v3_operativna_nedelja op
       WHERE op.grad         = v_req.grad
         AND op.datum        = v_req.datum
         AND op.vreme::text  = v_req.zeljeno_vreme::text
         AND op.status_final IN ('obrada', 'odobreno', 'pokupljen')
-        AND op.aktivno      = true;
+        AND op.aktivno      = true
+        AND op.datum = ANY(v_relevantni_datumi); -- KLJUČNO: Samo relevantna sedmica
 
       v_ima_mesta := (v_max_mesta - v_zauzeto) >= COALESCE(v_req.broj_mesta, 1);
     END IF;
@@ -137,12 +145,14 @@ BEGIN
       v_novi_status := 'odbijeno';
 
       -- Alternativa ranije — prethodni slobodan slot iz kapacitet_slots
+      -- FILTER: Samo relevantna sedmica
       SELECT ks.vreme INTO v_alt1
       FROM v3_kapacitet_slots ks
       WHERE ks.grad    = v_req.grad
         AND ks.datum   = v_req.datum
         AND ks.vreme   < v_req.zeljeno_vreme
         AND ks.aktivno = true
+        AND ks.datum = ANY(v_relevantni_datumi) -- FILTER: Relevantna sedmica
         AND (ks.max_mesta - COALESCE((
               SELECT SUM(op2.broj_mesta)
               FROM v3_operativna_nedelja op2
@@ -151,17 +161,20 @@ BEGIN
                 AND op2.vreme::text  = ks.vreme::text
                 AND op2.status_final IN ('obrada', 'odobreno', 'pokupljen')
                 AND op2.aktivno      = true
+                AND op2.datum = ANY(v_relevantni_datumi) -- FILTER: Relevantna sedmica
             ), 0)) >= COALESCE(v_req.broj_mesta, 1)
       ORDER BY ks.vreme DESC
       LIMIT 1;
 
-      -- Alternativa kasnije — sljedeći slobodan slot
+      -- Alternativa kasnije — sledeći slobodan slot iz kapacitet_slots
+      -- FILTER: Samo relevantna sedmica
       SELECT ks.vreme INTO v_alt2
       FROM v3_kapacitet_slots ks
       WHERE ks.grad    = v_req.grad
         AND ks.datum   = v_req.datum
         AND ks.vreme   > v_req.zeljeno_vreme
         AND ks.aktivno = true
+        AND ks.datum = ANY(v_relevantni_datumi) -- FILTER: Relevantna sedmica
         AND (ks.max_mesta - COALESCE((
               SELECT SUM(op3.broj_mesta)
               FROM v3_operativna_nedelja op3
@@ -170,6 +183,7 @@ BEGIN
                 AND op3.vreme::text  = ks.vreme::text
                 AND op3.status_final IN ('obrada', 'odobreno', 'pokupljen')
                 AND op3.aktivno      = true
+                AND op3.datum = ANY(v_relevantni_datumi) -- FILTER: Relevantna sedmica
             ), 0)) >= COALESCE(v_req.broj_mesta, 1)
       ORDER BY ks.vreme ASC
       LIMIT 1;
