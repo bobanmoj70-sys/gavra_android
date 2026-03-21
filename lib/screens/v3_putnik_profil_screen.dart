@@ -264,12 +264,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         builder: (context, setDialogState) => Dialog(
           backgroundColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
+          child: V3ContainerUtils.gradientContainer(
             width: 320,
-            decoration: BoxDecoration(
-              gradient: V2ThemeManager().currentGradient,
-              borderRadius: BorderRadius.circular(16),
-            ),
+            gradient: V2ThemeManager().currentGradient,
+            borderRadius: BorderRadius.circular(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -298,17 +296,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     child: InkWell(
                       onTap: () => setDialogState(() => koristiSekundarnu = !koristiSekundarnu),
                       borderRadius: BorderRadius.circular(8),
-                      child: Container(
+                      child: V3ContainerUtils.styledContainer(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: koristiSekundarnu
-                              ? Colors.orange.withValues(alpha: 0.15)
-                              : Colors.white.withValues(alpha: 0.05),
-                          border: Border.all(
-                            color: koristiSekundarnu ? Colors.orange : Colors.white12,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
+                        backgroundColor: koristiSekundarnu
+                            ? Colors.orange.withValues(alpha: 0.15)
+                            : Colors.white.withValues(alpha: 0.05),
+                        border: Border.all(
+                          color: koristiSekundarnu ? Colors.orange : Colors.white12,
                         ),
+                        borderRadius: BorderRadius.circular(8),
                         child: Row(
                           children: [
                             Icon(
@@ -674,13 +670,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }) {
     final avatarColors = _avatarColors(tip);
     final tipLabel = _tipLabel(tip);
-    return Container(
+    return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
-      ),
+      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
       child: Column(
         children: [
           // Avatar

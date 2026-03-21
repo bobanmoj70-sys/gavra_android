@@ -484,9 +484,8 @@ class _VozacKartica extends StatelessWidget {
 
     return Opacity(
       opacity: jeNeaktivan ? 0.55 : 1.0,
-      child: Container(
+      child: V3ContainerUtils.iconContainer(
         margin: const EdgeInsets.only(bottom: 10),
-        child: V3ContainerUtils.iconContainer(
           backgroundColor: cardColor.withValues(alpha: 0.08),
           borderRadiusGeometry: BorderRadius.circular(14),
           border: Border.all(color: cardColor.withValues(alpha: 0.5), width: 1.5),
@@ -600,7 +599,6 @@ class _VozacKartica extends StatelessWidget {
               ],
             ),
           ),
-        ),
       ),
     );
   }
