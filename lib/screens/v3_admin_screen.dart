@@ -7,6 +7,7 @@ import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
+import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
 import 'v3_dugovi_screen.dart';
@@ -316,11 +317,20 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                     child: Text('🎉  Praznici', style: TextStyle(color: Colors.white))),
                                 const PopupMenuDivider(),
                                 const PopupMenuItem(
+                                    value: '__kapacitet__',
+                                    child: Text('📅  Kapacitet termina', style: TextStyle(color: Colors.white))),
+                                const PopupMenuItem(
                                     value: '__vozaci__',
                                     child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
                               ],
                             );
                             if (val == null) return;
+                            if (val == '__kapacitet__') {
+                              if (context.mounted) {
+                                V3NavigationUtils.pushScreen<void>(context, const V3KapacitetScreen());
+                              }
+                              return;
+                            }
                             if (val == '__vozaci__') {
                               if (context.mounted) {
                                 V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
@@ -354,7 +364,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       color: Colors.blue,
                       onTap: () => V3NavigationUtils.pushScreen<void>(
                         context,
-                        const V3KapacitetScreen(),
+                        const V3AdminRasporedScreen(),
                       ),
                       child: const Text('📅', style: TextStyle(fontSize: 20)),
                     ),
