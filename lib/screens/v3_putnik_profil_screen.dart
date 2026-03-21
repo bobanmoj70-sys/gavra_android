@@ -831,13 +831,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   Widget _buildRasporedCard() {
     final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (bez vikenda)
-    return Container(
+    return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
-      ),
+      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -984,14 +982,12 @@ class _NotifBanner extends StatelessWidget {
   const _NotifBanner({required this.onEnable});
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return V3ContainerUtils.styledContainer(
       margin: const EdgeInsets.only(top: 8, bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.redAccent),
-      ),
+      backgroundColor: Colors.red.withValues(alpha: 0.85),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.redAccent),
       child: Row(
         children: [
           const Icon(Icons.notifications_off, color: Colors.white, size: 22),
@@ -1031,13 +1027,11 @@ class _Badge extends StatelessWidget {
   const _Badge({required this.label, required this.color});
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-      ),
+      backgroundColor: color.withValues(alpha: 0.28),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
       child: Text(
         label,
         style: const TextStyle(
@@ -1059,13 +1053,11 @@ class _ZahtevCell extends StatelessWidget {
     if (info == null) {
       return GestureDetector(
         onTap: onTap,
-        child: Container(
+        child: V3ContainerUtils.styledContainer(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
-          ),
+          backgroundColor: Colors.white.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1106,13 +1098,11 @@ class _ZahtevCell extends StatelessWidget {
     final vreme = V3StringUtils.safeSubstringTime(info!.vreme);
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: V3ContainerUtils.styledContainer(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: statusColor.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: statusColor.withValues(alpha: 0.4)),
-        ),
+        backgroundColor: statusColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: statusColor.withValues(alpha: 0.4)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
