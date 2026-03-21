@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../utils/v3_animation_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// Prikazuje se samo jednom — pri prvom pokretanju aplikacije.
@@ -37,7 +38,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _animCtrl = V3AnimationUtils.createPermissionController(vsync: this);
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
       CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
@@ -47,7 +48,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
 
   @override
   void dispose() {
-    _animCtrl.dispose();
+    V3AnimationUtils.disposeController('permission');
     super.dispose();
   }
 

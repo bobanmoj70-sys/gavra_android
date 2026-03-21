@@ -11,6 +11,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../utils/v3_text_utils.dart';
 
 class V3ZahteviDnevniScreen extends StatefulWidget {
   const V3ZahteviDnevniScreen({super.key});
@@ -76,10 +77,6 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
   }
 
   Future<void> _showAlternativaDialog(V3Zahtev zahtev) async {
-    final TextEditingController preController = TextEditingController();
-    final TextEditingController posleController = TextEditingController();
-    final TextEditingController napomenaController = TextEditingController();
-
     // Inicijalno popunjavanje sugerisanim terminima (npr. +- 15 ili 30 min)
     final zVreme = zahtev.zeljenoVreme; // HH:mm
     if (zVreme.length == 5) {
@@ -91,8 +88,8 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       final dPre = d.subtract(const Duration(minutes: 15));
       final dPosle = d.add(const Duration(minutes: 15));
 
-      preController.text = V3DanHelper.formatVreme(dPre.hour, dPre.minute);
-      posleController.text = V3DanHelper.formatVreme(dPosle.hour, dPosle.minute);
+      V3TextUtils.setControllerText('pre', V3DanHelper.formatVreme(dPre.hour, dPre.minute));
+      V3TextUtils.setControllerText('posle', V3DanHelper.formatVreme(dPosle.hour, dPosle.minute));
     }
 
     final result = await showDialog<bool>(
@@ -119,12 +116,12 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
               ),
               const SizedBox(height: 16),
-              _timeInput('Prvi termin (obično pre)', preController),
+              _timeInput('Prvi termin (obično pre)', V3TextUtils.preController),
               const SizedBox(height: 12),
-              _timeInput('Drugi termin (obično posle)', posleController),
+              _timeInput('Drugi termin (obično posle)', V3TextUtils.posleController),
               const SizedBox(height: 12),
               TextField(
-                controller: napomenaController,
+                controller: V3TextUtils.napomenaController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Napomena (opciono)',
@@ -164,9 +161,9 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       try {
         await V3ZahtevService.ponudiAlternativu(
           id: zahtev.id,
-          vremePre: preController.text.isNotEmpty ? preController.text : null,
-          vremePosle: posleController.text.isNotEmpty ? posleController.text : null,
-          napomena: napomenaController.text.isNotEmpty ? napomenaController.text : null,
+          vremePre: V3TextUtils.isEmpty('pre') ? null : V3TextUtils.getControllerText('pre'),
+          vremePosle: V3TextUtils.isEmpty('posle') ? null : V3TextUtils.getControllerText('posle'),
+          napomena: V3TextUtils.isEmpty('napomena') ? null : V3TextUtils.getControllerText('napomena'),
         );
         if (mounted) V3AppSnackBar.success(context, 'Ponuđena alternativa putniku');
       } catch (e) {

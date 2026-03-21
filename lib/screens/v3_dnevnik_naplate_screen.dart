@@ -17,6 +17,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_text_utils.dart';
 
 /// DNEVNIK NAPLATE — V3
 /// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
@@ -514,7 +515,6 @@ class _PredajaFooter extends StatefulWidget {
 }
 
 class _PredajaFooterState extends State<_PredajaFooter> {
-  final _ctrl = TextEditingController();
   bool _sacuvan = false;
 
   @override
@@ -525,7 +525,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    V3TextUtils.disposeController('iznos');
     super.dispose();
   }
 
@@ -538,13 +538,13 @@ class _PredajaFooterState extends State<_PredajaFooter> {
     final iznos = (predaja != null && predaja.predaoIznos > 0) ? predaja.predaoIznos : null;
     widget.onPredaoChanged?.call(iznos);
     setState(() {
-      _ctrl.text = iznos != null ? iznos.toStringAsFixed(0) : '';
+      V3TextUtils.setControllerText('iznos', iznos != null ? iznos.toStringAsFixed(0) : '');
       _sacuvan = iznos != null;
     });
   }
 
   Future<void> _sacuvaj() async {
-    final predaoVal = double.tryParse(_ctrl.text.replaceAll(',', '.'));
+    final predaoVal = double.tryParse(V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
     if (predaoVal == null) return;
 
     try {
@@ -569,7 +569,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
 
   @override
   Widget build(BuildContext context) {
-    final predaoVal = double.tryParse(_ctrl.text.replaceAll(',', '.'));
+    final predaoVal = double.tryParse(V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
     final razlika = predaoVal != null ? predaoVal - widget.ukupnoIznos : null;
 
     return Container(
@@ -603,7 +603,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
-                  controller: _ctrl,
+                  controller: V3TextUtils.iznosController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(color: Colors.white, fontSize: 15),
                   decoration: InputDecoration(

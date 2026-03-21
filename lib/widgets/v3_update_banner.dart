@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
+import '../utils/v3_animation_utils.dart';
 
 /// Banner koji se prikazuje kada postoji update (opcioni ili obavezni).
 /// Koristi se na V3HomeScreen, V3PutnikProfilScreen i V3VozacScreen.
@@ -38,18 +39,21 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(
+    _pulseCtrl = V3AnimationUtils.createPulseController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.85, end: 1.1).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    _pulseAnim = V3AnimationUtils.createTween(
+      controller: _pulseCtrl,
+      begin: 0.85,
+      end: 1.1,
+      curve: Curves.easeInOut,
     );
   }
 
   @override
   void dispose() {
-    _pulseCtrl.dispose();
+    V3AnimationUtils.disposeController('pulse');
     super.dispose();
   }
 
@@ -211,18 +215,22 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
+    _pulse = V3AnimationUtils.getController(
+      key: 'pulse_forced',
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 1.0, end: 1.18).animate(
-      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    _scale = V3AnimationUtils.createTween(
+      controller: _pulse,
+      begin: 1.0,
+      end: 1.18,
+      curve: Curves.easeInOut,
     );
   }
 
   @override
   void dispose() {
-    _pulse.dispose();
+    V3AnimationUtils.disposeController('pulse_forced');
     super.dispose();
   }
 

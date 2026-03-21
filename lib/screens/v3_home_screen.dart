@@ -21,6 +21,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_text_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
@@ -306,7 +307,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     V3Adresa? selectedAdresa; // override adresa (null = koristi putnikovu)
     int brojMesta = 1;
     bool isLoading = false;
-    final searchController = TextEditingController();
 
     // Spoji sve tipove putnika iz V3
     final aktivniPutnici = [
@@ -416,13 +416,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
                             ),
                             dropdownSearchData: DropdownSearchData(
-                              searchController: searchController,
+                              searchController: V3TextUtils.searchController,
                               searchInnerWidgetHeight: 50,
                               searchInnerWidget: Container(
                                 height: 50,
                                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                                 child: TextFormField(
-                                  controller: searchController,
+                                  controller: V3TextUtils.searchController,
                                   expands: true,
                                   maxLines: null,
                                   decoration: InputDecoration(
@@ -592,7 +592,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           );
         },
       ),
-    ).then((_) => searchController.dispose());
+    ).then((_) => V3TextUtils.disposeController('search'));
   }
 
   Widget _buildStatRow(String label, String value) {
@@ -855,10 +855,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   // ─── Dialog: Novi račun za fizičko lice ───────────────────────────
   void _showNoviRacunDialog() {
-    final imeCtrl = TextEditingController();
-    final adresaCtrl = TextEditingController();
-    final opisCtrl = TextEditingController();
-    final iznosCtrl = TextEditingController();
     final kolicinaCtrl = TextEditingController(text: '1');
     String jedMera = 'usluga';
     DateTime datumPrometa = DateTime.now();
@@ -873,14 +869,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _dialogField(imeCtrl, 'Ime i prezime kupca'),
+                _dialogField(V3TextUtils.imeController, 'Ime i prezime kupca'),
                 const SizedBox(height: 8),
-                _dialogField(adresaCtrl, 'Adresa kupca'),
+                _dialogField(V3TextUtils.adresaController, 'Adresa kupca'),
                 const SizedBox(height: 8),
-                _dialogField(opisCtrl, 'Opis usluge'),
+                _dialogField(V3TextUtils.opisController, 'Opis usluge'),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: _dialogField(iznosCtrl, 'Cena', numeric: true)),
+                  Expanded(child: _dialogField(V3TextUtils.iznosController, 'Cena', numeric: true)),
                   const SizedBox(width: 8),
                   Expanded(child: _dialogField(kolicinaCtrl, 'Količina', numeric: true)),
                 ]),
@@ -938,11 +934,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.8)),
               onPressed: () async {
-                if (imeCtrl.text.trim().isEmpty || opisCtrl.text.trim().isEmpty) {
+                if (V3TextUtils.isEmpty('ime') || V3TextUtils.isEmpty('opis')) {
                   V3AppSnackBar.error(ctx, '⚠️ Popunite ime i opis');
                   return;
                 }
-                final cena = double.tryParse(iznosCtrl.text.trim()) ?? 0;
+                final cena = double.tryParse(V3TextUtils.getControllerText('iznos').trim()) ?? 0;
                 final kolicina = double.tryParse(kolicinaCtrl.text.trim()) ?? 1;
                 if (cena <= 0) {
                   V3AppSnackBar.error(ctx, '⚠️ Unesite ispravnu cenu');
@@ -954,9 +950,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 if (!mounted) return;
                 await V3RacunService.stampajRacun(
                   brojRacuna: broj,
-                  imePrezimeKupca: imeCtrl.text.trim(),
-                  adresaKupca: adresaCtrl.text.trim(),
-                  opisUsluge: opisCtrl.text.trim(),
+                  imePrezimeKupca: V3TextUtils.getControllerText('ime').trim(),
+                  adresaKupca: V3TextUtils.getControllerText('adresa').trim(),
+                  opisUsluge: V3TextUtils.getControllerText('opis').trim(),
                   cena: cena,
                   kolicina: kolicina,
                   jedinicaMere: jedMera,
@@ -970,10 +966,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         ),
       ),
     ).then((_) {
-      imeCtrl.dispose();
-      adresaCtrl.dispose();
-      opisCtrl.dispose();
-      iznosCtrl.dispose();
+      V3TextUtils.disposeController('ime');
+      V3TextUtils.disposeController('adresa');
+      V3TextUtils.disposeController('opis');
+      V3TextUtils.disposeController('iznos');
       kolicinaCtrl.dispose();
     });
   }

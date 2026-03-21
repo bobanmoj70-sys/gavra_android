@@ -13,6 +13,7 @@ import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../utils/v3_animation_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_validation_utils.dart';
@@ -64,20 +65,24 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   void _setupAnimations() {
-    _fadeController = AnimationController(
+    _fadeController = V3AnimationUtils.createFadeController(
+      vsync: this,
       duration: const Duration(milliseconds: 1500),
-      vsync: this,
     );
-    _slideController = AnimationController(
+    _slideController = V3AnimationUtils.createSlideController(
+      vsync: this,
       duration: const Duration(milliseconds: 1200),
-      vsync: this,
     );
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+    _pulseController = V3AnimationUtils.getController(
+      key: 'welcome_pulse',
       vsync: this,
+      duration: const Duration(milliseconds: 2500),
     )..repeat();
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    _fadeAnimation = V3AnimationUtils.createTween(
+      controller: _fadeController,
+      begin: 0.0,
+      end: 1.0,
+      curve: Curves.easeInOut,
     );
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -264,9 +269,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _fadeController.dispose();
-    _slideController.dispose();
-    _pulseController.dispose();
+    V3AnimationUtils.disposeController('fade');
+    V3AnimationUtils.disposeController('slide');
+    V3AnimationUtils.disposeController('welcome_pulse');
     _audioPlayer.stop();
     _audioPlayer.dispose();
     super.dispose();
