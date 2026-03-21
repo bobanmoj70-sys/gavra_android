@@ -110,6 +110,8 @@ class V3ContainerUtils {
     double? height,
     BorderRadiusGeometry? borderRadius,
     AlignmentGeometry? alignment,
+    BoxBorder? border,
+    List<BoxShadow>? boxShadow,
   }) {
     return Container(
       width: width,
@@ -120,6 +122,8 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: borderRadius ?? BorderRadius.circular(8.0),
+        border: border,
+        boxShadow: boxShadow,
       ),
       child: child,
     );
