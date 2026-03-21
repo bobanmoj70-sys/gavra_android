@@ -168,7 +168,8 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.blue,
         borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ?? (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
+        border: border ??
+            (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
       ),
       child: child,
     );
@@ -199,7 +200,8 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ?? (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
+        border: border ??
+            (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
         boxShadow: boxShadow,
       ),
       child: child ?? icon,
