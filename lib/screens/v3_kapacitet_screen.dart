@@ -269,13 +269,11 @@ Widget _kapacitetGradTab(
                     : null,
                 icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
               ),
-              Container(
+              V3ContainerUtils.iconContainer(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(
-                  color: maxMesta != null ? _kapacitetGetBoja(maxMesta) : Colors.grey,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                backgroundColor: maxMesta != null ? _kapacitetGetBoja(maxMesta) : Colors.grey,
+                borderRadiusGeometry: BorderRadius.circular(8),
                 child: Center(
                   child: Text(
                     maxMesta != null ? '$maxMesta' : '?',
@@ -365,33 +363,29 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
-        decoration: BoxDecoration(
-          gradient: Theme.of(context).backgroundGradient,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+      child: V3ContainerUtils.gradientContainer(
+        width: 320,
+        gradient: Theme.of(context).backgroundGradient,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 10),
+          ),
+        ],
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Zaglavlje
-            Container(
+            V3ContainerUtils.iconContainer(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).glassContainer,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
-              ),
+              backgroundColor: Theme.of(context).glassContainer,
+              borderRadiusGeometry: const BorderRadius.vertical(top: Radius.circular(20)),
+              border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
               child: Row(
                 children: [
                   Expanded(
@@ -407,13 +401,11 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: Container(
+                    child: V3ContainerUtils.iconContainer(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
-                      ),
+                      backgroundColor: Colors.red.withValues(alpha: 0.2),
+                      borderRadiusGeometry: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
                       child: const Icon(Icons.close, color: Colors.white, size: 18),
                     ),
                   ),
@@ -431,12 +423,10 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).glassContainer,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Theme.of(context).glassBorder),
-                    ),
+                  V3ContainerUtils.iconContainer(
+                    backgroundColor: Theme.of(context).glassContainer,
+                    borderRadiusGeometry: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).glassBorder),
                     child: V3InputUtils.numberField(
                       controller: _ctrl,
                       label: '',

@@ -19,6 +19,7 @@ import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -193,12 +194,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => Container(
-          decoration: BoxDecoration(
-            gradient: Theme.of(context).backgroundGradient,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          ),
+        builder: (ctx, setS) => V3ContainerUtils.gradientContainer(
+          gradient: Theme.of(context).backgroundGradient,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
