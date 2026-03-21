@@ -14,6 +14,7 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../utils/v3_text_utils.dart';
 
 class V3PutniciScreen extends StatefulWidget {
   const V3PutniciScreen({super.key});
@@ -24,11 +25,10 @@ class V3PutniciScreen extends StatefulWidget {
 
 class _V3PutniciScreenState extends State<V3PutniciScreen> {
   String _selectedFilter = 'svi';
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
-    _searchController.dispose();
+    V3TextUtils.disposeController('search');
     super.dispose();
   }
 
@@ -50,7 +50,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
       lista = lista.where((p) => p.tipPutnika == _selectedFilter).toList();
     }
 
-    final search = _searchController.text.trim();
+    final search = V3TextUtils.getControllerText('search').trim();
     if (search.isNotEmpty) {
       lista = lista.where((p) => V3StringUtils.containsSearch(p.imePrezime, search)).toList();
     }
@@ -127,9 +127,9 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                   ],
                 ),
                 child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchController,
+                  valueListenable: V3TextUtils.searchController,
                   builder: (context, val, _) => TextField(
-                    controller: _searchController,
+                    controller: V3TextUtils.searchController,
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
                       hintText: 'Pretraži putnike...',
@@ -140,7 +140,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                       suffixIcon: val.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, color: Colors.grey),
-                              onPressed: () => _searchController.clear(),
+                              onPressed: () => V3TextUtils.clearController('search'),
                             )
                           : null,
                     ),
@@ -153,7 +153,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                   stream: V3MasterRealtimeManager.instance.onChange,
                   builder: (context, _) {
                     return ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _searchController,
+                      valueListenable: V3TextUtils.searchController,
                       builder: (context, _, __) {
                         final lista = _filtriraj();
                         final total = V3MasterRealtimeManager.instance.putniciCache.values
@@ -169,13 +169,17 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  _searchController.text.isNotEmpty ? Icons.search_off : Icons.group_off,
+                                  V3TextUtils.getControllerText('search').isNotEmpty
+                                      ? Icons.search_off
+                                      : Icons.group_off,
                                   size: 64,
                                   color: Colors.white38,
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  _searchController.text.isNotEmpty ? 'Nema rezultata pretrage' : 'Nema putnika',
+                                  V3TextUtils.getControllerText('search').isNotEmpty
+                                      ? 'Nema rezultata pretrage'
+                                      : 'Nema putnika',
                                   style: const TextStyle(fontSize: 18, color: Colors.white60),
                                 ),
                               ],
@@ -559,7 +563,7 @@ class _PutnikCard extends StatelessWidget {
                   subtitle: Text(putnik.telefon2!),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
-                    Navigator.pop(ctx);
+                    Navigator.pop(context);
                     await launchUrl(Uri.parse('tel:${putnik.telefon2}'), mode: LaunchMode.externalApplication);
                   },
                 ),

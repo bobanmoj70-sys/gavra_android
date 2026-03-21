@@ -14,6 +14,7 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_text_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_vozac_screen.dart';
 
@@ -31,9 +32,6 @@ class V3VozacLoginScreen extends StatefulWidget {
 
 class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _telefonController = TextEditingController();
-  final _sifraController = TextEditingController();
   static const _secureStorage = FlutterSecureStorage();
 
   bool _isLoading = false;
@@ -55,9 +53,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _telefonController.dispose();
-    _sifraController.dispose();
+    V3TextUtils.disposeController('email');
+    V3TextUtils.disposeController('telefon');
+    V3TextUtils.disposeController('sifra');
     super.dispose();
   }
 
@@ -90,9 +88,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
   Future<void> _saveBiometricCredentials() async {
     if (!_biometricAvailable) return;
     final data = jsonEncode({
-      'email': _emailController.text.trim(),
-      'telefon': _telefonController.text.trim(),
-      'sifra': _sifraController.text,
+      'email': V3TextUtils.getControllerText('email').trim(),
+      'telefon': V3TextUtils.getControllerText('telefon').trim(),
+      'sifra': V3TextUtils.getControllerText('sifra'),
     });
     await _secureStorage.write(key: _biometricKey, value: data);
   }
@@ -120,9 +118,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     if (!mounted) return;
 
     final data = jsonDecode(raw) as Map<String, dynamic>;
-    _emailController.text = data['email']?.toString() ?? '';
-    _telefonController.text = data['telefon']?.toString() ?? '';
-    _sifraController.text = data['sifra']?.toString() ?? '';
+    V3TextUtils.setControllerText('email', data['email']?.toString() ?? '');
+    V3TextUtils.setControllerText('telefon', data['telefon']?.toString() ?? '');
+    V3TextUtils.setControllerText('sifra', data['sifra']?.toString() ?? '');
 
     await _login(saveBiometric: false);
   }
@@ -145,9 +143,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         return;
       }
 
-      final email = _emailController.text.trim().toLowerCase();
-      final telefon = _normalizePhone(_telefonController.text.trim());
-      final sifra = _sifraController.text;
+      final email = V3TextUtils.getControllerText('email').trim().toLowerCase();
+      final telefon = _normalizePhone(V3TextUtils.getControllerText('telefon').trim());
+      final sifra = V3TextUtils.getControllerText('sifra');
 
       // Provjera emaila
       if ((vozac.email ?? '').toLowerCase() != email) {
@@ -269,7 +267,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
                 // ── Email ────────────────────────────────────────
                 TextFormField(
-                  controller: _emailController,
+                  controller: V3TextUtils.emailController,
                   style: const TextStyle(color: Colors.white),
                   keyboardType: TextInputType.emailAddress,
                   decoration: _inputDecoration('Email adresa', Icons.email),
@@ -283,7 +281,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
                 // ── Telefon ──────────────────────────────────────
                 TextFormField(
-                  controller: _telefonController,
+                  controller: V3TextUtils.telefonController,
                   style: const TextStyle(color: Colors.white),
                   keyboardType: TextInputType.phone,
                   decoration: _inputDecoration('Broj telefona', Icons.phone),
@@ -296,7 +294,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
                 // ── Šifra ────────────────────────────────────────
                 TextFormField(
-                  controller: _sifraController,
+                  controller: V3TextUtils.sifraController,
                   style: const TextStyle(color: Colors.white),
                   obscureText: !_sifraVisible,
                   decoration: _inputDecoration('Šifra', Icons.lock).copyWith(

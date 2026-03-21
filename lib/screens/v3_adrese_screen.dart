@@ -7,6 +7,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../utils/v3_text_utils.dart';
 
 class V3AdreseScreen extends StatefulWidget {
   const V3AdreseScreen({super.key});
@@ -135,11 +136,10 @@ class _AdreseFilterPanel extends StatefulWidget {
 class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
   String _filterGrad = 'Svi';
   String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
-    _searchController.dispose();
+    V3TextUtils.disposeController('search');
     super.dispose();
   }
 
@@ -181,7 +181,7 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
               const SizedBox(height: 12),
               // SEARCH
               TextField(
-                controller: _searchController,
+                controller: V3TextUtils.searchController,
                 decoration: InputDecoration(
                   hintText: 'Pretraži adrese...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
@@ -190,7 +190,7 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.white70),
                           onPressed: () {
-                            _searchController.clear();
+                            V3TextUtils.clearController('search');
                             setState(() => _searchQuery = '');
                           },
                         )

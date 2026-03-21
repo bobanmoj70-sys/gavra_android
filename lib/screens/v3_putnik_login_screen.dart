@@ -13,6 +13,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_text_utils.dart';
 import 'v3_putnik_profil_screen.dart';
 
 enum _LoginStep { telefon, email, pin, zahtevPoslat }
@@ -25,10 +26,6 @@ class V3PutnikLoginScreen extends StatefulWidget {
 }
 
 class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
-  final _telefonController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _pinController = TextEditingController();
-
   _LoginStep _currentStep = _LoginStep.telefon;
   bool _isLoading = false;
   String? _errorMessage;
@@ -71,9 +68,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   @override
   void dispose() {
     _pinSub?.cancel();
-    _telefonController.dispose();
-    _emailController.dispose();
-    _pinController.dispose();
+    V3TextUtils.disposeController('telefon');
+    V3TextUtils.disposeController('email');
+    V3TextUtils.disposeController('pin');
     super.dispose();
   }
 
@@ -81,7 +78,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   // Korak 1: Provjeri telefon u v3_putnici
   Future<void> _checkTelefon() async {
-    final telefon = _telefonController.text.trim();
+    final telefon = V3TextUtils.getControllerText('telefon').trim();
     if (telefon.isEmpty) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite broj telefona');
       return;
@@ -159,7 +156,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   }
 
   Future<void> _saveEmail() async {
-    final email = _emailController.text.trim();
+    final email = V3TextUtils.getControllerText('email').trim();
     if (email.isEmpty) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite email adresu');
       return;
@@ -238,7 +235,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     });
     try {
       final putnikId = _putnikData!['id'].toString();
-      final telefon = _normalizePhone(_telefonController.text.trim());
+      final telefon = _normalizePhone(V3TextUtils.getControllerText('telefon').trim());
       final success = await V3PinZahtevService.posaljiZahtev(
         putnikId: putnikId,
         telefon: telefon,
@@ -295,8 +292,8 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     if (!ok || !mounted) return;
 
     // Popuni polja i uradi login
-    _telefonController.text = creds['phone']!;
-    _pinController.text = creds['pin']!;
+    V3TextUtils.setControllerText('telefon', creds['phone']!);
+    V3TextUtils.setControllerText('pin', creds['pin']!);
 
     // Pronadi putnika
     final normalized = _normalizePhone(creds['phone']!);
@@ -397,7 +394,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   // Korak 2: Login sa PIN-om
   Future<void> _loginWithPin({bool skipBiometricSetup = false}) async {
-    final pin = _pinController.text.trim();
+    final pin = V3TextUtils.getControllerText('pin').trim();
     if (pin.isEmpty) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite PIN');
       return;
@@ -444,7 +441,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       if (!skipBiometricSetup) {
         if (_biometricAvailable && !_biometricEnabled) {
           await _showBiometricSetupDialog(
-            phone: _normalizePhone(_telefonController.text.trim()),
+            phone: _normalizePhone(V3TextUtils.getControllerText('telefon').trim()),
             pin: pin,
           );
         } else if (!_biometricAvailable || !_biometricEnabled) {
@@ -452,7 +449,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
           final isRememberMe = await _biometric.isRememberMeEnabled();
           if (!isRememberMe) {
             await _showRememberMeDialog(
-              phone: _normalizePhone(_telefonController.text.trim()),
+              phone: _normalizePhone(V3TextUtils.getControllerText('telefon').trim()),
               pin: pin,
             );
           }
@@ -567,7 +564,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     switch (_currentStep) {
       case _LoginStep.telefon:
         return _inputField(
-          controller: _telefonController,
+          controller: V3TextUtils.telefonController,
           hint: '06x xxx xxxx',
           icon: Icons.phone_android,
           keyboardType: TextInputType.phone,
@@ -575,7 +572,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         );
       case _LoginStep.email:
         return _inputField(
-          controller: _emailController,
+          controller: V3TextUtils.emailController,
           hint: 'va�email@example.com',
           icon: Icons.email,
           keyboardType: TextInputType.emailAddress,
@@ -786,7 +783,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
       ),
       child: TextField(
-        controller: _pinController,
+        controller: V3TextUtils.pinController,
         style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 8),
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,

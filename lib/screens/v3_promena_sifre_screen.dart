@@ -4,6 +4,7 @@ import '../globals.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_text_utils.dart';
 
 /// PROMENA ŠIFRE SCREEN (v3)
 /// Vozač može da promeni svoju šifru nakon uspešnog logina
@@ -18,9 +19,6 @@ class V3PromenaSifreScreen extends StatefulWidget {
 
 class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _staraSifraController = TextEditingController();
-  final _novaSifraController = TextEditingController();
-  final _potvrdaSifraController = TextEditingController();
 
   bool _isLoading = false;
   bool _staraSifraVisible = false;
@@ -37,9 +35,9 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
 
   @override
   void dispose() {
-    _staraSifraController.dispose();
-    _novaSifraController.dispose();
-    _potvrdaSifraController.dispose();
+    V3TextUtils.disposeController('stara_sifra');
+    V3TextUtils.disposeController('nova_sifra');
+    V3TextUtils.disposeController('potvrda_sifra');
     super.dispose();
   }
 
@@ -62,13 +60,15 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
     V3StateUtils.safeSetState(this, () => _isLoading = true);
 
     try {
-      final staraSifra = _staraSifraController.text;
+      final staraSifra = V3TextUtils.getControllerText('stara_sifra');
       if (_trenutnaSifra != null && _trenutnaSifra!.isNotEmpty && _trenutnaSifra != staraSifra) {
         V3AppSnackBar.error(context, 'Pogrešna trenutna šifra.');
         return;
       }
 
-      await supabase.from('v3_vozaci').update({'sifra': _novaSifraController.text}).eq('ime_prezime', widget.vozacIme);
+      await supabase
+          .from('v3_vozaci')
+          .update({'sifra': V3TextUtils.getControllerText('nova_sifra')}).eq('ime_prezime', widget.vozacIme);
 
       if (!mounted) return;
 
@@ -121,7 +121,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                 const SizedBox(height: 32),
                 if (imaSifru) ...[
                   _sifreTextField(
-                    controller: _staraSifraController,
+                    controller: V3TextUtils.staraSifraController,
                     label: 'Trenutna šifra',
                     icon: Icons.lock_outline,
                     visible: _staraSifraVisible,
@@ -131,7 +131,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                   const SizedBox(height: 16),
                 ],
                 _sifreTextField(
-                  controller: _novaSifraController,
+                  controller: V3TextUtils.novaSifraController,
                   label: 'Nova šifra',
                   icon: Icons.lock,
                   visible: _novaSifraVisible,
@@ -144,14 +144,14 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                 ),
                 const SizedBox(height: 16),
                 _sifreTextField(
-                  controller: _potvrdaSifraController,
+                  controller: V3TextUtils.potvrdaSifraController,
                   label: 'Potvrdi novu šifru',
                   icon: Icons.lock_clock,
                   visible: _potvrdaVisible,
                   onToggle: () => V3StateUtils.safeSetState(this, () => _potvrdaVisible = !_potvrdaVisible),
                   validator: (v) {
                     if (v?.isEmpty == true) return 'Potvrdite novu šifru';
-                    if (v != _novaSifraController.text) return 'Šifre se ne poklapaju';
+                    if (v != V3TextUtils.getControllerText('nova_sifra')) return 'Šifre se ne poklapaju';
                     return null;
                   },
                 ),
