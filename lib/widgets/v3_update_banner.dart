@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
 import '../utils/v3_animation_utils.dart';
+import '../utils/v3_container_utils.dart';
 
 /// Banner koji se prikazuje kada postoji update (opcioni ili obavezni).
 /// Koristi se na V3HomeScreen, V3PutnikProfilScreen i V3VozacScreen.
@@ -89,14 +90,13 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.withValues(alpha: 0.25),
+              child: V3ContainerUtils.styledContainer(
+                backgroundColor: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withValues(alpha: 0.25),
                       blurRadius: 32,
                       spreadRadius: 2,
                     ),
@@ -140,13 +140,11 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 10),
-                    Container(
+                    V3ContainerUtils.styledContainer(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
-                      ),
+                      backgroundColor: Colors.redAccent.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                       child: Text(
                         'verzija ${widget.info.latestVersion}',
                         style: const TextStyle(
@@ -273,14 +271,12 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
               // Pulsirajuća ikonica
               ScaleTransition(
                 scale: _scale,
-                child: Container(
+                child: V3ContainerUtils.styledContainer(
                   width: 42,
                   height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.15),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.2),
-                  ),
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(21),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.2),
                   child: const Icon(Icons.new_releases_rounded, color: Colors.white, size: 22),
                 ),
               ),
@@ -313,13 +309,11 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
               ),
               const SizedBox(width: 8),
               // Dugme
-              Container(
+              V3ContainerUtils.styledContainer(
                 padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.45), width: 1),
-                ),
+                backgroundColor: Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.45), width: 1),
                 child: const Text(
                   'Ažuriraj',
                   style: TextStyle(
