@@ -679,7 +679,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   Widget _stepIndicator() {
     final idx = _currentStep.index;
-    dot(bool a) => Container(
+    dot(bool a) => V3ContainerUtils.iconContainer(
           width: 12,
           height: 12,
           decoration: BoxDecoration(

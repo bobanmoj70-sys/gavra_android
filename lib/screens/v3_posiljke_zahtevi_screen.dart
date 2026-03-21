@@ -78,7 +78,7 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
                 ),
                 if (brObrada > 0) ...[
                   const SizedBox(width: 8),
-                  Container(
+                  V3ContainerUtils.backgroundContainer(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.orangeAccent.withValues(alpha: 0.3),
