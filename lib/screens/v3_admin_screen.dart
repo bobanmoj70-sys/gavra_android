@@ -83,7 +83,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   subtitle: const Text('Servisi, registracija, gume...'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    Navigator.pop(ctx);
+                    Navigator.pop(context);
                     V3NavigationUtils.pushScreen(context, const V3OdrzavanjeScreen());
                   },
                 ),

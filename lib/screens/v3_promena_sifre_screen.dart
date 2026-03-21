@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_text_utils.dart';
 
@@ -120,40 +121,32 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                 ),
                 const SizedBox(height: 32),
                 if (imaSifru) ...[
-                  _sifreTextField(
+                  V3InputUtils.passwordField(
                     controller: V3TextUtils.staraSifraController,
+                    isVisible: _staraSifraVisible,
+                    onToggleVisibility: () =>
+                        V3StateUtils.safeSetState(this, () => _staraSifraVisible = !_staraSifraVisible),
                     label: 'Trenutna šifra',
-                    icon: Icons.lock_outline,
-                    visible: _staraSifraVisible,
-                    onToggle: () => V3StateUtils.safeSetState(this, () => _staraSifraVisible = !_staraSifraVisible),
-                    validator: (v) => (v?.isEmpty == true) ? 'Unesite trenutnu šifru' : null,
+                    validator: (v) => V3InputUtils.requiredValidator(v, 'Unesite trenutnu šifru'),
                   ),
                   const SizedBox(height: 16),
                 ],
-                _sifreTextField(
+                V3InputUtils.passwordField(
                   controller: V3TextUtils.novaSifraController,
+                  isVisible: _novaSifraVisible,
+                  onToggleVisibility: () =>
+                      V3StateUtils.safeSetState(this, () => _novaSifraVisible = !_novaSifraVisible),
                   label: 'Nova šifra',
-                  icon: Icons.lock,
-                  visible: _novaSifraVisible,
-                  onToggle: () => V3StateUtils.safeSetState(this, () => _novaSifraVisible = !_novaSifraVisible),
-                  validator: (v) {
-                    if (v?.isEmpty == true) return 'Unesite novu šifru';
-                    if (v!.length < 4) return 'Šifra mora imati minimum 4 karaktera';
-                    return null;
-                  },
+                  validator: V3InputUtils.passwordValidator,
                 ),
                 const SizedBox(height: 16),
-                _sifreTextField(
+                V3InputUtils.passwordField(
                   controller: V3TextUtils.potvrdaSifraController,
+                  isVisible: _potvrdaVisible,
+                  onToggleVisibility: () => V3StateUtils.safeSetState(this, () => _potvrdaVisible = !_potvrdaVisible),
                   label: 'Potvrdi novu šifru',
-                  icon: Icons.lock_clock,
-                  visible: _potvrdaVisible,
-                  onToggle: () => V3StateUtils.safeSetState(this, () => _potvrdaVisible = !_potvrdaVisible),
-                  validator: (v) {
-                    if (v?.isEmpty == true) return 'Potvrdite novu šifru';
-                    if (v != V3TextUtils.getControllerText('nova_sifra')) return 'Šifre se ne poklapaju';
-                    return null;
-                  },
+                  validator: (v) =>
+                      V3InputUtils.confirmPasswordValidator(v, V3TextUtils.getControllerText('nova_sifra')),
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
@@ -204,54 +197,3 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
     );
   }
 }
-
-// ─── Top-level helpers ───────────────────────────────────────────────────────
-
-InputDecoration _sifreInputDecoration(
-  String label,
-  IconData prefixIcon, {
-  required bool visible,
-  required VoidCallback onToggle,
-}) =>
-    InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-      prefixIcon: Icon(prefixIcon, color: Colors.amber),
-      suffixIcon: IconButton(
-        icon: Icon(
-          visible ? Icons.visibility_off : Icons.visibility,
-          color: Colors.amber,
-        ),
-        onPressed: onToggle,
-      ),
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.1),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.amber),
-      ),
-    );
-
-Widget _sifreTextField({
-  required TextEditingController controller,
-  required String label,
-  required IconData icon,
-  required bool visible,
-  required VoidCallback onToggle,
-  required String? Function(String?) validator,
-}) =>
-    TextFormField(
-      controller: controller,
-      style: const TextStyle(color: Colors.white),
-      obscureText: !visible,
-      decoration: _sifreInputDecoration(label, icon, visible: visible, onToggle: onToggle),
-      validator: validator,
-    );

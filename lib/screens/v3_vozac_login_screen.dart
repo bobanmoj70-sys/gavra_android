@@ -11,6 +11,7 @@ import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -201,36 +202,6 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
   String _normalizePhone(String phone) => V3PhoneUtils.normalize(phone);
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-      prefixIcon: Icon(icon, color: Colors.amber),
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.1),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.amber),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-    );
-  }
-
   // ─── Build ─────────────────────────────────────────────────────
 
   @override
@@ -265,47 +236,26 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
                 _buildHeader(),
                 const SizedBox(height: 32),
 
-                // ── Email ────────────────────────────────────────
-                TextFormField(
+                // ── Email ────────────────────────────────────
+                V3InputUtils.emailField(
                   controller: V3TextUtils.emailController,
-                  style: const TextStyle(color: Colors.white),
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: _inputDecoration('Email adresa', Icons.email),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Unesite email';
-                    if (!v.contains('@') || !v.contains('.')) return 'Neispravan email';
-                    return null;
-                  },
+                  label: 'Email adresa',
                 ),
                 const SizedBox(height: 16),
 
-                // ── Telefon ──────────────────────────────────────
-                TextFormField(
+                // ── Telefon ────────────────────────────────────
+                V3InputUtils.phoneField(
                   controller: V3TextUtils.telefonController,
-                  style: const TextStyle(color: Colors.white),
-                  keyboardType: TextInputType.phone,
-                  decoration: _inputDecoration('Broj telefona', Icons.phone),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Unesite telefon';
-                    return null;
-                  },
+                  label: 'Broj telefona',
                 ),
                 const SizedBox(height: 16),
 
-                // ── Šifra ────────────────────────────────────────
-                TextFormField(
+                // ── Šifra ────────────────────────────────────
+                V3InputUtils.passwordField(
                   controller: V3TextUtils.sifraController,
-                  style: const TextStyle(color: Colors.white),
-                  obscureText: !_sifraVisible,
-                  decoration: _inputDecoration('Šifra', Icons.lock).copyWith(
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _sifraVisible ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.amber,
-                      ),
-                      onPressed: () => V3StateUtils.safeSetState(this, () => _sifraVisible = !_sifraVisible),
-                    ),
-                  ),
+                  isVisible: _sifraVisible,
+                  onToggleVisibility: () => V3StateUtils.safeSetState(this, () => _sifraVisible = !_sifraVisible),
+                  label: 'Šifra',
                 ),
                 const SizedBox(height: 32),
 

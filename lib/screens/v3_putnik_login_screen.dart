@@ -10,6 +10,7 @@ import '../services/v3/v3_pin_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -566,25 +567,33 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   Widget _buildStepContent() {
     switch (_currentStep) {
       case _LoginStep.telefon:
-        return _inputField(
+        return V3InputUtils.textField(
           controller: V3TextUtils.telefonController,
+          label: 'Broj telefona',
           hint: '06x xxx xxxx',
           icon: Icons.phone_android,
           keyboardType: TextInputType.phone,
-          onSubmit: (_) => _checkTelefon(),
+          onSubmitted: (_) => _checkTelefon(),
         );
       case _LoginStep.email:
-        return _inputField(
+        return V3InputUtils.textField(
           controller: V3TextUtils.emailController,
-          hint: 'va�email@example.com',
+          label: 'Email adresa',
+          hint: 'vašemail@example.com',
           icon: Icons.email,
           keyboardType: TextInputType.emailAddress,
-          onSubmit: (_) => _saveEmail(),
+          onSubmitted: (_) => _saveEmail(),
         );
       case _LoginStep.pin:
         return Column(
           children: [
-            _pinInput(),
+            V3InputUtils.pinField(
+              controller: V3TextUtils.pinController,
+              label: 'PIN kod',
+              hint: '• • • •',
+              maxLength: 4,
+              onSubmitted: (_) => _loginWithPin(),
+            ),
             const SizedBox(height: 12),
             if (_biometricAvailable && _biometricEnabled) ...[
               OutlinedButton.icon(
@@ -744,63 +753,6 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
           const SizedBox(width: 8),
           Expanded(child: Text(msg, style: TextStyle(color: color, fontSize: 13))),
         ],
-      ),
-    );
-  }
-
-  Widget _inputField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    required TextInputType keyboardType,
-    required ValueChanged<String> onSubmit,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-      ),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(color: Colors.white, fontSize: 18),
-        keyboardType: keyboardType,
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
-          prefixIcon: Icon(icon, color: Colors.amber),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        onSubmitted: onSubmit,
-      ),
-    );
-  }
-
-  Widget _pinInput() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-      ),
-      child: TextField(
-        controller: V3TextUtils.pinController,
-        style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 8),
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 4,
-        obscureText: true,
-        decoration: InputDecoration(
-          hintText: '� � � �',
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), letterSpacing: 8),
-          prefixIcon: const Icon(Icons.lock, color: Colors.amber),
-          border: InputBorder.none,
-          counterText: '',
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        onSubmitted: (_) => _loginWithPin(),
       ),
     );
   }
