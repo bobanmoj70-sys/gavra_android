@@ -376,27 +376,25 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+        child: V3ContainerUtils.gradientContainer(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          padding: const EdgeInsets.all(20),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -438,26 +436,24 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         Navigator.pop(ctx);
                         unawaited(_loginAsVozac(vozac));
                       },
-                      child: Container(
+                      child: V3ContainerUtils.gradientContainer(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
                           vertical: 14,
                           horizontal: 20,
                         ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              color.withValues(alpha: 0.8),
-                              Colors.white.withValues(alpha: 0.1),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: color.withValues(alpha: 0.6),
-                            width: 1.5,
-                          ),
+                        gradient: LinearGradient(
+                          colors: [
+                            color.withValues(alpha: 0.8),
+                            Colors.white.withValues(alpha: 0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.6),
+                          width: 1.5,
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -626,23 +622,21 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                           const V3PutnikLoginScreen(),
                         );
                       },
-                      child: Container(
+                      child: V3ContainerUtils.gradientContainer(
                         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.amber, Colors.amber.shade700],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.amber.withValues(alpha: 0.4),
-                              blurRadius: 15,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
+                        gradient: LinearGradient(
+                          colors: [Colors.amber, Colors.amber.shade700],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.amber.withValues(alpha: 0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -679,15 +673,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                                 const V3ONamaScreen(),
                               );
                             },
-                            child: Container(
+                            child: V3ContainerUtils.styledContainer(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  width: 1.5,
-                                ),
+                              backgroundColor: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1.5,
                               ),
                               child: Column(
                                 children: [
@@ -711,15 +703,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         Expanded(
                           child: GestureDetector(
                             onTap: () => unawaited(_showVozacDialog()),
-                            child: Container(
+                            child: V3ContainerUtils.styledContainer(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  width: 1.5,
-                                ),
+                              backgroundColor: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1.5,
                               ),
                               child: Column(
                                 children: [
@@ -750,19 +740,19 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     opacity: _fadeAnimation,
                     child: Column(
                       children: [
-                        Container(
+                        V3ContainerUtils.gradientContainer(
                           width: 60,
                           height: 3,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                Colors.white.withValues(alpha: 0.3),
-                                Colors.transparent,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(2),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              Colors.white.withValues(alpha: 0.3),
+                              Colors.transparent,
+                            ],
                           ),
+                          borderRadius: BorderRadius.circular(2),
+                          padding: EdgeInsets.zero,
+                          child: const SizedBox.shrink(),
                         ),
                         const SizedBox(height: 20),
                         Text(
@@ -784,15 +774,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
+                        V3ContainerUtils.styledContainer(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 4,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
                           child: Text(
                             '$_appVersion 2025-2026',
                             style: TextStyle(
