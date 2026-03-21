@@ -9,6 +9,7 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 
@@ -126,23 +127,23 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
   void _startTracking() {
     // Real-time subscription na vozačevu lokaciju
     V3StreamUtils.subscribe<void>(
-      key: 'putnik_tracking_location',
-      stream: V3MasterRealtimeManager.instance.onChange,
-      onData: (_) {
-      _updateVozacLokacija();
-    });
+        key: 'putnik_tracking_location',
+        stream: V3MasterRealtimeManager.instance.onChange,
+        onData: (_) {
+          _updateVozacLokacija();
+        });
 
     // Periodic refresh za visibility check
     V3StreamUtils.createRefreshTimer(
-      key: 'putnik_tracking',
-      period: const Duration(seconds: 30),
-      onRefresh: () {
-      _checkVisibility();
-      if (_isVisible) {
-        _updateETA();
-      }
-      V3StateUtils.safeSetState(this, () {});
-    });
+        key: 'putnik_tracking',
+        period: const Duration(seconds: 30),
+        onRefresh: () {
+          _checkVisibility();
+          if (_isVisible) {
+            _updateETA();
+          }
+          V3StateUtils.safeSetState(this, () {});
+        });
 
     // Initial update
     _updateVozacLokacija();
@@ -271,12 +272,10 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
           // Header sa ikonom i vozač info
           Row(
             children: [
-              Container(
+              V3ContainerUtils.styledContainer(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: vozacColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                backgroundColor: vozacColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
                 child: const Icon(
                   Icons.directions_car,
                   color: Colors.white,
@@ -351,12 +350,10 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
 
               // ETA broj
               if (_etaMinutes != null)
-                Container(
+                V3ContainerUtils.styledContainer(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: vozacColor.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  backgroundColor: vozacColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(20),
                   child: Text(
                     '${_etaMinutes}min',
                     style: const TextStyle(
