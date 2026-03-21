@@ -632,7 +632,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
   }
 
   Future<void> _sacuvaj() async {
-    setState(() => _saving = true);
+    V3StateUtils.safeSetState(this, () => _saving = true);
     final now = DateTime.now();
     try {
       final futures = <Future<void>>[];

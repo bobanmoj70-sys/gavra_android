@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/v2_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_state_utils.dart';
 
 class V3ONamaScreen extends StatefulWidget {
   const V3ONamaScreen({super.key});
@@ -27,10 +28,10 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     try {
       final info = await PackageInfo.fromPlatform();
       if (!mounted) return;
-      setState(() => _appVersion = 'v${info.version} (${info.buildNumber})');
+      V3StateUtils.safeSetState(this, () => _appVersion = 'v${info.version} (${info.buildNumber})');
     } catch (_) {
       if (!mounted) return;
-      setState(() => _appVersion = 'v1.0.0');
+      V3StateUtils.safeSetState(this, () => _appVersion = 'v1.0.0');
     }
   }
 

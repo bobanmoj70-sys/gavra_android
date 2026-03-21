@@ -7,6 +7,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_state_utils.dart';
 
 /// V3 admin ekran za upravljanje vozačima.
 /// Dodaj / uredi / deaktiviraj vozače.
@@ -366,7 +367,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                       child: InkWell(
-                        onTap: () => setState(() => _showNeaktivni = !_showNeaktivni),
+                        onTap: () => V3StateUtils.safeSetState(this, () => _showNeaktivni = !_showNeaktivni),
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

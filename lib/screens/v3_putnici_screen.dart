@@ -247,7 +247,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
               color: isSelected ? Colors.white : Colors.white60,
               shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
           tooltip: tip == 'svi' ? 'Svi' : tip[0].toUpperCase() + tip.substring(1),
-          onPressed: () => setState(() => _selectedFilter = isSelected ? 'svi' : tip),
+          onPressed: () => V3StateUtils.safeSetState(this, () => _selectedFilter = isSelected ? 'svi' : tip),
         ),
         if (count > 0)
           Positioned(
@@ -700,7 +700,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
       V3AppSnackBar.error(context, '❌ Ime je obavezno');
       return;
     }
-    setState(() => _saving = true);
+    V3StateUtils.safeSetState(this, () => _saving = true);
     try {
       final putnik = V3Putnik(
         id: widget.existing?.id ?? '',
@@ -734,7 +734,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
     } catch (e) {
       V3AppSnackBar.error(context, 'Greška: $e');
     } finally {
-      V3StateUtils.safeSetState(this, () => setState(() => _saving = false));
+      V3StateUtils.safeSetState(this, () => _saving = false);
     }
   }
 
@@ -823,7 +823,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         DropdownMenuItem(value: 'dnevni', child: Text('🚶 Dnevni')),
                         DropdownMenuItem(value: 'posiljka', child: Text('📦 Pošiljka')),
                       ],
-                      onChanged: isEdit ? null : (v) => setState(() => _tip = v!),
+                      onChanged: isEdit ? null : (v) => V3StateUtils.safeSetState(this, () => _tip = v!),
                     ),
                     const SizedBox(height: 10),
                     // Ime
@@ -910,14 +910,14 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       label: 'BC — Adresa 1',
                       grad: 'BC',
                       value: _adresaBc1,
-                      onChanged: (v) => setState(() => _adresaBc1 = v),
+                      onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc1 = v),
                     ),
                     const SizedBox(height: 8),
                     _adresaDropdown(
                       label: 'BC — Adresa 2 (opciono)',
                       grad: 'BC',
                       value: _adresaBc2,
-                      onChanged: (v) => setState(() => _adresaBc2 = v),
+                      onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc2 = v),
                     ),
                     const SizedBox(height: 14),
                     // ── Adrese VS ──
@@ -935,14 +935,14 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       label: 'VS — Adresa 1',
                       grad: 'VS',
                       value: _adresaVs1,
-                      onChanged: (v) => setState(() => _adresaVs1 = v),
+                      onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs1 = v),
                     ),
                     const SizedBox(height: 8),
                     _adresaDropdown(
                       label: 'VS — Adresa 2 (opciono)',
                       grad: 'VS',
                       value: _adresaVs2,
-                      onChanged: (v) => setState(() => _adresaVs2 = v),
+                      onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs2 = v),
                     ),
                     const SizedBox(height: 8),
                   ],

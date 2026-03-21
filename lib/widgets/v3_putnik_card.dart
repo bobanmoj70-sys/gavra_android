@@ -88,7 +88,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     if (widget.entry == null && widget.zahtev == null) return;
     if (_globalProcessingLock || _isProcessing) return;
     _globalProcessingLock = true;
-    V3StateUtils.safeSetState(this, () => setState(() => _isProcessing = true));
+    V3StateUtils.safeSetState(this, () => _isProcessing = true);
     try {
       V2HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
@@ -132,7 +132,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     );
     if (rezultat == null) return;
     _globalProcessingLock = true;
-    V3StateUtils.safeSetState(this, () => setState(() => _isProcessing = true));
+    V3StateUtils.safeSetState(this, () => _isProcessing = true);
     try {
       final ok = await V3PlacanjeDialogHelper.sacuvajPlacanje(
         context: context,

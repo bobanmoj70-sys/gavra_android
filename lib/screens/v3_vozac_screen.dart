@@ -125,7 +125,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     if (mounted) {
       _rebuild();
-      setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 
@@ -171,7 +171,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         return;
       }
       // Nema termina za ovaj dan — prikaži prazno
-      V3StateUtils.safeSetState(this, () => setState(() => _mojiPutnici = []));
+      V3StateUtils.safeSetState(this, () => _mojiPutnici = []);
       return;
     }
 
@@ -244,7 +244,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
     });
 
-    V3StateUtils.safeSetState(this, () => setState(() => _mojiPutnici = putnici));
+    V3StateUtils.safeSetState(this, () => _mojiPutnici = putnici);
   }
 
   void _selectClosestTermin() {
@@ -413,7 +413,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     if (!_isTracking) {
       // 1. START FOREGROUND GPS TRACKING SA PERSISTENT NOTIFICATION
-      setState(() => _isTracking = true);
+      V3StateUtils.safeSetState(this, () => _isTracking = true);
 
       try {
         // Pokreni foreground GPS service sa notification
@@ -439,20 +439,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             // Optimizacija rute će biti automatski triggerovana database trigger-ima
           }
         } else {
-          setState(() => _isTracking = false);
+          V3StateUtils.safeSetState(this, () => _isTracking = false);
           if (mounted) {
             V3AppSnackBar.error(context, '❌ Greška pri pokretanju GPS trackinga. Provjerite dozvole u Settings.');
           }
         }
       } catch (e) {
-        setState(() => _isTracking = false);
+        V3StateUtils.safeSetState(this, () => _isTracking = false);
         if (mounted) {
           V3AppSnackBar.error(context, '❌ Greška pri pokretanju GPS trackinga: $e');
         }
       }
     } else {
       // 2. STOP FOREGROUND GPS TRACKING
-      setState(() => _isTracking = false);
+      V3StateUtils.safeSetState(this, () => _isTracking = false);
 
       // Zaustavi foreground service i notification
       await V3ForegroundGpsService.stopTracking();
@@ -997,7 +997,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       ),
     ).then((dan) {
       if (dan != null && mounted) {
-        setState(() => _selectedDay = dan);
+        V3StateUtils.safeSetState(this, () => _selectedDay = dan);
         _rebuild();
       }
     });

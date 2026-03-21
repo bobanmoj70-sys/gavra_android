@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
+import '../utils/v3_state_utils.dart';
 
 class V3DugoviScreen extends StatefulWidget {
   const V3DugoviScreen({super.key});
@@ -94,7 +95,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
-                        onChanged: (v) => setState(() => _filter = v),
+                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _filter = v),
                       ),
                     ),
                   ),

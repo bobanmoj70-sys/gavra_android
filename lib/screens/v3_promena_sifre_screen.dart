@@ -59,7 +59,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
   Future<void> _promeniSifru() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    V3StateUtils.safeSetState(this, () => _isLoading = true);
 
     try {
       final staraSifra = _staraSifraController.text;
@@ -125,7 +125,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                     label: 'Trenutna šifra',
                     icon: Icons.lock_outline,
                     visible: _staraSifraVisible,
-                    onToggle: () => setState(() => _staraSifraVisible = !_staraSifraVisible),
+                    onToggle: () => V3StateUtils.safeSetState(this, () => _staraSifraVisible = !_staraSifraVisible),
                     validator: (v) => (v?.isEmpty == true) ? 'Unesite trenutnu šifru' : null,
                   ),
                   const SizedBox(height: 16),
@@ -135,7 +135,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                   label: 'Nova šifra',
                   icon: Icons.lock,
                   visible: _novaSifraVisible,
-                  onToggle: () => setState(() => _novaSifraVisible = !_novaSifraVisible),
+                  onToggle: () => V3StateUtils.safeSetState(this, () => _novaSifraVisible = !_novaSifraVisible),
                   validator: (v) {
                     if (v?.isEmpty == true) return 'Unesite novu šifru';
                     if (v!.length < 4) return 'Šifra mora imati minimum 4 karaktera';
@@ -148,7 +148,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                   label: 'Potvrdi novu šifru',
                   icon: Icons.lock_clock,
                   visible: _potvrdaVisible,
-                  onToggle: () => setState(() => _potvrdaVisible = !_potvrdaVisible),
+                  onToggle: () => V3StateUtils.safeSetState(this, () => _potvrdaVisible = !_potvrdaVisible),
                   validator: (v) {
                     if (v?.isEmpty == true) return 'Potvrdite novu šifru';
                     if (v != _novaSifraController.text) return 'Šifre se ne poklapaju';

@@ -53,7 +53,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
 
   Future<void> _onOdobri() async {
     if (_loading) return;
-    setState(() => _loading = true);
+    V3StateUtils.safeSetState(this, () => _loading = true);
 
     try {
       // 1. GPS (Request and wait)
@@ -78,7 +78,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
     } catch (e) {
       debugPrint('Greška pri proveri: $e');
     } finally {
-      V3StateUtils.safeSetState(this, () => setState(() => _loading = false));
+      V3StateUtils.safeSetState(this, () => _loading = false);
     }
 
     // Tek nakon što su svi dijalozi prošli, pišemo da je prikazano i gasimo screen

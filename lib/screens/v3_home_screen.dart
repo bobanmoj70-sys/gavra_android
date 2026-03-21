@@ -74,7 +74,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
     if (mounted) {
       _selectClosestDeparture();
-      setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 

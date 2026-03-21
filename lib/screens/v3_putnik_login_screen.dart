@@ -82,7 +82,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   Future<void> _checkTelefon() async {
     final telefon = _telefonController.text.trim();
     if (telefon.isEmpty) {
-      setState(() => _errorMessage = 'Unesite broj telefona');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite broj telefona');
       return;
     }
     setState(() {
@@ -116,7 +116,8 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       if (!mounted) return;
 
       if (found == null) {
-        setState(() => _errorMessage = 'Niste pronadeni u sistemu.\nKontaktirajte admina za registraciju.');
+        V3StateUtils.safeSetState(
+            this, () => _errorMessage = 'Niste pronadeni u sistemu.\nKontaktirajte admina za registraciju.');
         return;
       }
 
@@ -159,32 +160,32 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   Future<void> _saveEmail() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      setState(() => _errorMessage = 'Unesite email adresu');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite email adresu');
       return;
     }
     final emailRegex = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}\$');
     if (!emailRegex.hasMatch(email)) {
-      setState(() => _errorMessage = 'Unesite validnu email adresu');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite validnu email adresu');
       return;
     }
     final emailLower = email.toLowerCase();
     final local = emailLower.split('@')[0];
     final domain = emailLower.split('@')[1];
     if (local.length < 3 || domain.split('.')[0].length < 3) {
-      setState(() => _errorMessage = 'Email adresa je previ�e kratka');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Email adresa je previ�e kratka');
       return;
     }
     if (RegExp(r'^(.)\1{2,}').hasMatch(local)) {
-      setState(() => _errorMessage = 'Unesite stvarnu email adresu');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite stvarnu email adresu');
       return;
     }
     const fakeDomains = ['test.com', 'fake.com', 'example.com', 'asdf.com', 'qwer.com', 'aaa.com'];
     if (fakeDomains.any((d) => domain == d)) {
-      setState(() => _errorMessage = 'Unesite stvarnu email adresu');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite stvarnu email adresu');
       return;
     }
 
-    setState(() {
+    V3StateUtils.batchUpdate(this, () {
       _isLoading = true;
       _errorMessage = null;
     });
@@ -193,7 +194,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       final success = await V3PinZahtevService.azurirajEmail(putnikId, email);
       if (!mounted) return;
       if (!success) {
-        setState(() => _errorMessage = 'Gre�ka pri cuvanju emaila');
+        V3StateUtils.safeSetState(this, () => _errorMessage = 'Gre�ka pri cuvanju emaila');
         return;
       }
       _putnikData!['email'] = email;
@@ -273,7 +274,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         });
         _listenForPin();
       } else {
-        setState(() => _errorMessage = 'Gre�ka pri slanju zahteva');
+        V3StateUtils.safeSetState(this, () => _errorMessage = 'Gre�ka pri slanju zahteva');
       }
     } catch (e) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška: $e');
@@ -340,9 +341,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
     if (!mounted) return;
     if (found == null) {
-      setState(() => _errorMessage = 'Sacuvani podaci su zastarjeli. Prijavite se rucno.');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Sacuvani podaci su zastarjeli. Prijavite se rucno.');
       await _biometric.clearCredentials();
-      setState(() => _biometricEnabled = false);
+      V3StateUtils.safeSetState(this, () => _biometricEnabled = false);
       return;
     }
 
@@ -443,11 +444,11 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   Future<void> _loginWithPin({bool skipBiometricSetup = false}) async {
     final pin = _pinController.text.trim();
     if (pin.isEmpty) {
-      setState(() => _errorMessage = 'Unesite PIN');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite PIN');
       return;
     }
     if (pin.length != 4) {
-      setState(() => _errorMessage = 'PIN mora imati 4 cifre');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'PIN mora imati 4 cifre');
       return;
     }
 
@@ -463,7 +464,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         final fresh = await supabase.from('v3_putnici').select('pin').eq('id', _putnikData!['id']).single();
         if (!mounted) return;
         if (pin != fresh['pin']?.toString()) {
-          setState(() => _errorMessage = 'Pogre�an PIN. Poku�ajte ponovo.');
+          V3StateUtils.safeSetState(this, () => _errorMessage = 'Pogre�an PIN. Poku�ajte ponovo.');
           return;
         }
       }

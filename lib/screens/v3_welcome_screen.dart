@@ -88,12 +88,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _loadAppVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      V3StateUtils.safeSetState(this, () => setState(() => _appVersion = 'v${info.version}'));
+      V3StateUtils.safeSetState(this, () => _appVersion = 'v${info.version}');
     } catch (_) {}
   }
 
   Future<void> _init() async {
-    V3StateUtils.safeSetState(this, () => setState(() => _isLoading = true));
+    V3StateUtils.safeSetState(this, () => _isLoading = true);
 
     debugPrint('[V3WelcomeScreen] _init() started - waiting for vozaciCache...');
 
@@ -297,7 +297,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     try {
       if (_isAudioPlaying) {
         await _audioPlayer.stop();
-        V3StateUtils.safeSetState(this, () => setState(() => _isAudioPlaying = false));
+        V3StateUtils.safeSetState(this, () => _isAudioPlaying = false);
       }
     } catch (_) {}
   }
@@ -551,11 +551,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         try {
                           if (_isAudioPlaying) {
                             await _audioPlayer.stop();
-                            V3StateUtils.safeSetState(this, () => setState(() => _isAudioPlaying = false));
+                            V3StateUtils.safeSetState(this, () => _isAudioPlaying = false);
                           } else {
                             await _audioPlayer.setVolume(0.5);
                             await _audioPlayer.play(AssetSource('kasno_je.mp3'));
-                            V3StateUtils.safeSetState(this, () => setState(() => _isAudioPlaying = true));
+                            V3StateUtils.safeSetState(this, () => _isAudioPlaying = true);
                           }
                         } catch (e) {
                           debugPrint('[V3WelcomeScreen] Audio error: $e');
@@ -606,7 +606,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     child: GestureDetector(
                       onTap: () async {
                         await V2ThemeManager().nextTheme();
-                        V3StateUtils.safeSetState(this, () => setState(() {}));
+                        V3StateUtils.safeSetState(this, () {});
                       },
                       child: ShaderMask(
                         shaderCallback: (bounds) => LinearGradient(

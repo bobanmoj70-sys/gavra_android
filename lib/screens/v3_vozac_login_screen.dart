@@ -131,7 +131,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
   Future<void> _login({bool saveBiometric = true}) async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    V3StateUtils.safeSetState(this, () => _isLoading = true);
 
     try {
       // Učitaj vozača iz cache-a po imenu
@@ -196,7 +196,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     } catch (e) {
       V3AppSnackBar.error(context, 'Greška: $e');
     } finally {
-      V3StateUtils.safeSetState(this, () => setState(() => _isLoading = false));
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 
@@ -306,7 +306,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
                         _sifraVisible ? Icons.visibility_off : Icons.visibility,
                         color: Colors.amber,
                       ),
-                      onPressed: () => setState(() => _sifraVisible = !_sifraVisible),
+                      onPressed: () => V3StateUtils.safeSetState(this, () => _sifraVisible = !_sifraVisible),
                     ),
                   ),
                 ),

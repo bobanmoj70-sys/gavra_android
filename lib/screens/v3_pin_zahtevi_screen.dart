@@ -6,6 +6,7 @@ import '../services/v3/v3_pin_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_state_utils.dart';
 
 /// PIN ZAHTEVI SCREEN
 /// Admin vidi sve zahteve za PIN i može da odobri/odbije
@@ -307,7 +308,7 @@ class _PinOdobriDialogState extends State<_PinOdobriDialog> {
           ),
           const SizedBox(height: 12),
           TextButton.icon(
-            onPressed: () => setState(() => _pinCtrl.text = V3PinZahtevService.generatePin()),
+            onPressed: () => V3StateUtils.safeSetState(this, () => _pinCtrl.text = V3PinZahtevService.generatePin()),
             icon: const Icon(Icons.refresh, color: Colors.amber),
             label: const Text('Generiši novi', style: TextStyle(color: Colors.amber)),
           ),

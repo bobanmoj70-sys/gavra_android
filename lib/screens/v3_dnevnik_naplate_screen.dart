@@ -16,6 +16,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_state_utils.dart';
 
 /// DNEVNIK NAPLATE — V3
 /// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
@@ -73,7 +74,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
   void _ucitajVozace() {
     final list = V3VozacService.getAllVozaci().map((v) => _VozacItem(id: v.id, ime: v.imePrezime)).toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
-    setState(() => _vozaci = list);
+    V3StateUtils.safeSetState(this, () => _vozaci = list);
   }
 
   void _prikaziNaplate() {
