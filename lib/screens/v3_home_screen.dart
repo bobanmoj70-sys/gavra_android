@@ -1125,14 +1125,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     V3StateUtils.safeSetState(this, () => setState(() {}));
                                   },
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Container(
+                                  child: V3ContainerUtils.iconContainer(
                                     height: 33,
                                     padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).glassContainer,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                    ),
+                                    backgroundColor: Theme.of(context).glassContainer,
+                                    borderRadiusGeometry: BorderRadius.circular(12),
+                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                     child: Center(
                                       child: Text(
                                         'Tema',
@@ -1150,14 +1148,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               // Dan dropdown
                               Expanded(
                                 flex: 35,
-                                child: Container(
+                                child: V3ContainerUtils.iconContainer(
                                   height: 33,
                                   padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).glassContainer,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                  ),
+                                  backgroundColor: Theme.of(context).glassContainer,
+                                  borderRadiusGeometry: BorderRadius.circular(14),
+                                  border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                   child: DropdownButtonHideUnderline(
                                     child: DropdownButton2<String>(
                                       value: _selectedDay,
@@ -1282,13 +1278,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   _showNoviRacunDialog();
                                 }
                               },
-                              child: Container(
+                              child: V3ContainerUtils.iconContainer(
                                 padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).glassContainer,
-                                  border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                backgroundColor: Theme.of(context).glassContainer,
+                                border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                borderRadiusGeometry: BorderRadius.circular(12),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1346,15 +1340,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         ? Center(
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).glassContainer,
+                              child: V3ContainerUtils.iconContainer(
+                                padding: const EdgeInsets.all(16),
+                                backgroundColor: Theme.of(context).glassContainer,
                                 border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                'Nema planiranih putnika.',
-                                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                borderRadiusGeometry: BorderRadius.circular(12),
+                                child: const Text(
+                                  'Nema planiranih putnika.',
+                                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                ),
                               ),
                             ),
                           )
@@ -1488,13 +1482,11 @@ class _V3HomeButton extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
+      child: V3ContainerUtils.iconContainer(
         padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: Theme.of(context).glassContainer,
-          border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-          borderRadius: BorderRadius.circular(12),
-        ),
+        backgroundColor: Theme.of(context).glassContainer,
+        border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+        borderRadiusGeometry: BorderRadius.circular(12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
