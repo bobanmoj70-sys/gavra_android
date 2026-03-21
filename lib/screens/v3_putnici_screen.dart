@@ -77,12 +77,10 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
         child: StreamBuilder<void>(
           stream: V3MasterRealtimeManager.instance.onChange,
           builder: (context, _) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).glassContainer,
-                border: Border(
-                  bottom: BorderSide(color: Theme.of(context).glassBorder, width: 1.5),
-                ),
+            return V3ContainerUtils.iconContainer(
+              backgroundColor: Theme.of(context).glassContainer,
+              border: Border(
+                bottom: BorderSide(color: Theme.of(context).glassBorder, width: 1.5),
               ),
               child: SafeArea(
                 child: Padding(
@@ -262,14 +260,13 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
           Positioned(
             right: 2,
             top: 2,
-            child: Container(
+            child: V3ContainerUtils.gradientContainer(
               padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [c1, c2]),
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: c2.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2))],
-              ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              gradient: LinearGradient(colors: [c1, c2]),
+              borderRadius: BorderRadius.circular(9), // Circle effect
+              boxShadow: [BoxShadow(color: c2.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2))],
+              width: 18,
+              height: 18,
               child: Text(
                 count > 99 ? '99+' : '$count',
                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
@@ -380,16 +377,14 @@ class _PutnikCard extends StatelessWidget {
       elevation: 4,
       shadowColor: Colors.black26,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [const Color(0xFF1E2235), const Color(0xFF252840)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          border: Border.all(color: _tipColor.withValues(alpha: 0.35), width: 1.5),
+      child: V3ContainerUtils.gradientContainer(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [const Color(0xFF1E2235), const Color(0xFF252840)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        border: Border.all(color: _tipColor.withValues(alpha: 0.35), width: 1.5),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -510,14 +505,12 @@ class _PutnikCard extends StatelessWidget {
   }) {
     return SizedBox(
       height: 32,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.08)],
-          ),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
+      child: V3ContainerUtils.gradientContainer(
+        gradient: LinearGradient(
+          colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.08)],
         ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
         child: V3ButtonUtils.elevatedButton(
           onPressed: onPressed,
           text: label,
@@ -760,13 +753,11 @@ class _PutnikDialogState extends State<_PutnikDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Header ──
-            Container(
+            V3ContainerUtils.gradientContainer(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.8)],
-                ),
+              gradient: LinearGradient(
+                colors: [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.8)],
               ),
               child: Text(
                 isEdit ? '✏️ Uredi putnika' : '➕ Novi putnik',
