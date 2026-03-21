@@ -14,7 +14,7 @@ import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_dialog_utils.dart';
-import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -218,7 +218,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   }
 
   void _showPinRequestDialog() async {
-    final result = await V3NavigationUtils.showConfirmDialog(
+    final result = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'PIN nije dodeljen',
       message: 'Nemate dodeljeni PIN za pristup.\n\nŽelite li da pošaljete zahtev adminu za dodelu PIN-a?',
@@ -363,7 +363,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   Future<void> _showRememberMeDialog({required String phone, required String pin}) async {
     if (!mounted) return;
-    final ok = await V3NavigationUtils.showConfirmDialog(
+    final ok = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'Zapamti me',
       message:

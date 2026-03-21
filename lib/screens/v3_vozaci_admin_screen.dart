@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -258,7 +259,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
   }
 
   Future<void> _confirmDeactivate(V3Vozac vozac) async {
-    final potvrda = await V3NavigationUtils.showConfirmDialog(
+    final potvrda = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'Deaktiviraj vozača',
       message: 'Vozač ${vozac.imePrezime} neće moći da se prijavi.\nMoguće reaktivirati kasnije.',

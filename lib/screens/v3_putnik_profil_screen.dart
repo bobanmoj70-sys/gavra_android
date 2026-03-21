@@ -17,6 +17,7 @@ import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -501,7 +502,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _logout() async {
-    final ok = await V3NavigationUtils.showConfirmDialog(
+    final ok = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'Odjava',
       message: 'Da li ste sigurni da želite da se odjavite?',

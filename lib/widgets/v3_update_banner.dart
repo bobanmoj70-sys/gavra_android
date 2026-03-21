@@ -97,11 +97,10 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
                 boxShadow: [
                   BoxShadow(
                     color: Colors.red.withValues(alpha: 0.25),
-                      blurRadius: 32,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
+                    blurRadius: 32,
+                    spreadRadius: 2,
+                  ),
+                ],
                 padding: const EdgeInsets.fromLTRB(28, 36, 28, 32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

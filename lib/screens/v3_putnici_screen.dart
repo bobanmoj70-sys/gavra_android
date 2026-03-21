@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -18,7 +19,6 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
-import '../utils/v3_telefon_helper.dart';
 import '../utils/v3_text_utils.dart';
 
 class V3PutniciScreen extends StatefulWidget {
@@ -546,7 +546,10 @@ class _PutnikCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
                     Navigator.pop(context);
-                    await V3TelefonHelper.pozoviBrzo(this, context, putnik.telefon1!);
+                    final uri = Uri(scheme: 'tel', path: putnik.telefon1!);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
                   },
                 ),
               if (putnik.telefon2?.isNotEmpty == true)
@@ -557,7 +560,10 @@ class _PutnikCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
                     Navigator.pop(context);
-                    await V3TelefonHelper.pozoviBrzo(this, context, putnik.telefon2!);
+                    final uri = Uri(scheme: 'tel', path: putnik.telefon2!);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
                   },
                 ),
               const SizedBox(height: 8),
