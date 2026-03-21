@@ -167,12 +167,10 @@ Widget _pinZahtevCard({
                   style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-              Container(
+              V3ContainerUtils.iconContainer(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                backgroundColor: Colors.orange.withValues(alpha: 0.2),
+                borderRadiusGeometry: BorderRadius.circular(8),
                 child: const Text(
                   '⏳ Čeka',
                   style: TextStyle(color: Colors.orange, fontSize: 12),

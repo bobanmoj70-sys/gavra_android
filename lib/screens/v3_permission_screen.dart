@@ -117,16 +117,14 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                     const SizedBox(height: 24),
 
                     // Ikona
-                    Container(
+                    V3ContainerUtils.iconContainer(
                       width: 88,
                       height: 88,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.blueAccent.withValues(alpha: 0.12),
-                        border: Border.all(
-                          color: Colors.blueAccent.withValues(alpha: 0.4),
-                          width: 2,
-                        ),
+                      backgroundColor: Colors.blueAccent.withValues(alpha: 0.12),
+                      borderRadiusGeometry: BorderRadius.circular(44), // Circle effect
+                      border: Border.all(
+                        color: Colors.blueAccent.withValues(alpha: 0.4),
+                        width: 2,
                       ),
                       child: const Icon(
                         Icons.shield_rounded,
@@ -278,13 +276,11 @@ class _PermissionItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
+          V3ContainerUtils.iconContainer(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            backgroundColor: color.withValues(alpha: 0.15),
+            borderRadiusGeometry: BorderRadius.circular(10),
             child: Icon(icon, color: color, size: 22),
           ),
           const SizedBox(width: 16),

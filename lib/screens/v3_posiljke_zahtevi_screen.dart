@@ -250,12 +250,10 @@ class _ZahtevKartica extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Icon
-            Container(
+            V3ContainerUtils.iconContainer(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: borderColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
+              backgroundColor: borderColor.withValues(alpha: 0.15),
+              borderRadiusGeometry: BorderRadius.circular(10),
               child: Icon(Icons.local_shipping_outlined, color: borderColor, size: 22),
             ),
             const SizedBox(width: 12),
@@ -313,13 +311,11 @@ class _ZahtevKartica extends StatelessWidget {
                   if (zahtev.dodeljenoVreme != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Container(
+                      child: V3ContainerUtils.iconContainer(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.purpleAccent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.4)),
-                        ),
+                        backgroundColor: Colors.purpleAccent.withValues(alpha: 0.15),
+                        borderRadiusGeometry: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.4)),
                         child: Text(
                           '🕐 Vreme: ${zahtev.dodeljenoVreme}',
                           style: const TextStyle(color: Colors.purpleAccent, fontSize: 12, fontWeight: FontWeight.w600),
