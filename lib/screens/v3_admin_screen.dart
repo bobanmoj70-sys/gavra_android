@@ -5,6 +5,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
@@ -52,13 +53,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
+                V3ContainerUtils.styledContainer(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  backgroundColor: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                  child: const SizedBox(),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -606,17 +606,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         const SizedBox(height: 6),
 
         // Ukupan pazar
-        Container(
+        V3ContainerUtils.styledContainer(
           height: 72,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.green.withValues(alpha: 0.5), width: 1.5),
-            boxShadow: [
-              BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
-            ],
-          ),
+          backgroundColor: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.5), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
+          ],
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

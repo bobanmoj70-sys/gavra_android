@@ -3,6 +3,7 @@
 import '../models/v3_vozilo.dart';
 import '../services/v3/v3_vozilo_service.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -155,31 +156,27 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
+                    V3ContainerUtils.styledContainer(
                       padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: isSel
-                            ? (color == Colors.white
-                                ? Colors.grey.shade200.withValues(alpha: 0.3)
-                                : color.withValues(alpha: 0.25))
-                            : Colors.white10,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: borderColor, width: isSel ? 2 : 1),
-                        boxShadow: senka,
-                      ),
+                      backgroundColor: isSel
+                          ? (color == Colors.white
+                              ? Colors.grey.shade200.withValues(alpha: 0.3)
+                              : color.withValues(alpha: 0.25))
+                          : Colors.white10,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: borderColor, width: isSel ? 2 : 1),
+                      boxShadow: senka,
                       child: Icon(Icons.airport_shuttle,
                           size: 32,
                           color: color,
                           shadows: [Shadow(color: Colors.black54, blurRadius: 2, offset: const Offset(1, 1))]),
                     ),
                     const SizedBox(height: 3),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(3),
-                        border: Border.all(
-                          color: isSel ? Colors.amber : Colors.transparent,
-                          width: isSel ? 2 : 0,
-                        ),
+                    V3ContainerUtils.styledContainer(
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: isSel ? Colors.amber : Colors.transparent,
+                        width: isSel ? 2 : 0,
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(2),
@@ -218,12 +215,10 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                 if (v.godinaProizvodnje != null)
                   Text('Godina: ${v.godinaProizvodnje}', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
                 const SizedBox(height: 10),
-                Container(
+                V3ContainerUtils.styledContainer(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -514,13 +509,11 @@ class _EditableField extends StatelessWidget {
                         ),
                       ),
                       if (badge != null)
-                        Container(
+                        V3ContainerUtils.styledContainer(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: badgeColor?.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: badgeColor ?? Colors.white, width: 0.8),
-                          ),
+                          backgroundColor: badgeColor?.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: badgeColor ?? Colors.white, width: 0.8),
                           child: Text(badge!,
                               style: TextStyle(
                                   fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor ?? Colors.white)),

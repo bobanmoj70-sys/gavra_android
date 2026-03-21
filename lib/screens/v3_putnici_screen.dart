@@ -119,15 +119,13 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
           child: Column(
             children: [
               // ── Search bar ──────────────────────────────────────────────
-              Container(
+              V3ContainerUtils.styledContainer(
                 margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 3))
-                  ],
-                ),
+                backgroundColor: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 3))
+                ],
                 child: ValueListenableBuilder<TextEditingValue>(
                   valueListenable: V3TextUtils.searchController,
                   builder: (context, val, _) => TextField(
@@ -899,7 +897,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
               ),
             ),
             // ── Actions ──
-            Container(
+            V3ContainerUtils.styledContainer(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,

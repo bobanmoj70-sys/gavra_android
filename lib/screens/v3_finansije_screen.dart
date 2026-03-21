@@ -396,15 +396,13 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
       ),
       child: Column(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.red.withValues(alpha: 0.3), Colors.red.withValues(alpha: 0.1)],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+          V3ContainerUtils.gradientContainer(
+            gradient: LinearGradient(
+              colors: [Colors.red.withValues(alpha: 0.3), Colors.red.withValues(alpha: 0.1)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -663,10 +661,12 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
+                V3ContainerUtils.styledContainer(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2)),
+                  backgroundColor: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                  child: const SizedBox(),
                 ),
                 const SizedBox(height: 16),
                 const Text('⚙️ Dodaj troškove', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

@@ -161,14 +161,12 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
 
     return Column(
       children: [
-        Container(
+        V3ContainerUtils.styledContainer(
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).glassContainer,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Theme.of(context).glassBorder),
-          ),
+          backgroundColor: Theme.of(context).glassContainer,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).glassBorder),
           child: Column(
             children: [
               // STATS
