@@ -42,9 +42,22 @@ class V3DanHelper {
 
   /// ISO datum (yyyy-MM-dd) za dati puni naziv dana u tekućoj nedelji.
   /// Prošli dani vraćaju prošli datum — nema skakanja na sledeću nedelju.
+  /// EXCEPTION: Za vikend (subota/nedelja) + 'Ponedeljak' → sledeći ponedeljak.
   static String datumIsoZaDanPuni(String danPuni) {
     final idx = _names.indexWhere((d) => d.toLowerCase() == danPuni.toLowerCase());
     if (idx == -1) return _todayIso();
+
+    // Za vikend + ponedeljak → sledeći ponedeljak, ne prošli
+    final now = DateTime.now();
+    final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
+    final isPonedeljak = (danPuni.toLowerCase() == 'ponedeljak' && idx == 0);
+
+    if (isWeekend && isPonedeljak) {
+      final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
+      final sledeciPonedeljak = ponedeljak.add(const Duration(days: 7));
+      return sledeciPonedeljak.toIso8601String().split('T')[0];
+    }
+
     return _isoZaIdx(idx);
   }
 

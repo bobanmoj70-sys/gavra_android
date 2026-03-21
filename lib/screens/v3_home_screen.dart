@@ -245,15 +245,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: color.withValues(alpha: 0.3),
-                            child: Text(
-                              v.imePrezime.isNotEmpty ? v.imePrezime[0].toUpperCase() : '?',
-                              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 16), // Umesto avatar-a
                           Text(
                             v.imePrezime,
                             style: TextStyle(

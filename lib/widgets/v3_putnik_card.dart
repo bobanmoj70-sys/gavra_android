@@ -297,18 +297,12 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     }
     // Bijela kartica — default
     if (widget.vozacBoja != null) {
-      // Diskretno označavanje vozača boje
+      // Diskretno označavanje vozača boje - bela kartica sa obojenom senkom
       return BoxDecoration(
-        color: widget.vozacBoja!.withValues(alpha: 0.04), // Vrlo blaga background boja vozača
+        color: Colors.white, // Bela kartica
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: widget.vozacBoja!.withValues(alpha: 0.6),
-          width: 1.2, // Diskretno deblji border
-        ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 3, offset: const Offset(0, 1)),
-          BoxShadow(
-              color: widget.vozacBoja!.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2)), // Blagi glow
+          BoxShadow(color: widget.vozacBoja!.withOpacity(0.15), blurRadius: 3, offset: const Offset(0, 1)),
         ],
       );
     }
