@@ -24,6 +24,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
+import '../utils/v3_telefon_helper.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
@@ -294,10 +295,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   Future<void> _openMapa() async {
     if (_mojiPutnici.isEmpty) {
-      final uri = Uri.parse('https://wego.here.com/');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      await V3TelefonHelper.otvoriMaps(this, context, 'https://wego.here.com/');
       return;
     }
 

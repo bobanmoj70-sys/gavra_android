@@ -9,6 +9,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_telefon_helper.dart';
 
 /// PIN ZAHTEVI SCREEN
 /// Admin vidi sve zahteve za PIN i može da odobri/odbije
@@ -95,6 +96,9 @@ class _V3PinZahteviScreenState extends State<V3PinZahteviScreen> {
 // ─── top-level: pošalji PIN SMS ─────────────────────────────────────────────
 
 Future<void> _pinPosaljiSms(BuildContext ctx, String brojTelefona, String pin, String ime) async {
+  // Koristimo V3TelefonHelper za centralizovano SMS slanje
+  // Problem: funkcija nije u State context-u pa ne možemo koristiti State param
+  // Ova funkcija je top-level pa moramo zadržati original pattern ili refaktorisati
   final smsUri = Uri(
     scheme: 'sms',
     path: brojTelefona,
@@ -106,7 +110,8 @@ Future<void> _pinPosaljiSms(BuildContext ctx, String brojTelefona, String pin, S
   );
   try {
     if (await canLaunchUrl(smsUri)) {
-      await launchUrl(smsUri);
+      await launchUrl(smsUri, mode: LaunchMode.externalApplication);
+    } else if (ctx.mounted) {
     } else if (ctx.mounted) {
       V3AppSnackBar.warning(ctx, 'Ne mogu da otvorim SMS aplikaciju');
     }

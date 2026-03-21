@@ -116,9 +116,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Future<void> _handleCall() async {
     final tel = widget.putnik.telefon1 ?? widget.putnik.telefon2;
     if (tel == null || tel.isEmpty) return;
+
+    // Za widgets koristimo direktnu implementaciju sa basic error handling
     final uri = Uri(scheme: 'tel', path: tel);
     try {
-      if (await canLaunchUrl(uri)) await launchUrl(uri);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     } catch (e) {
       debugPrint('[V3PutnikCard._handleCall] Greška: $e');
     }

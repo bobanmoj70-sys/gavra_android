@@ -18,6 +18,7 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../utils/v3_telefon_helper.dart';
 import '../utils/v3_text_utils.dart';
 
 class V3PutniciScreen extends StatefulWidget {
@@ -545,7 +546,7 @@ class _PutnikCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
                     Navigator.pop(context);
-                    await launchUrl(Uri.parse('tel:${putnik.telefon1}'), mode: LaunchMode.externalApplication);
+                    await V3TelefonHelper.pozoviBrzo(this, context, putnik.telefon1!);
                   },
                 ),
               if (putnik.telefon2?.isNotEmpty == true)
@@ -556,7 +557,7 @@ class _PutnikCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
                     Navigator.pop(context);
-                    await launchUrl(Uri.parse('tel:${putnik.telefon2}'), mode: LaunchMode.externalApplication);
+                    await V3TelefonHelper.pozoviBrzo(this, context, putnik.telefon2!);
                   },
                 ),
               const SizedBox(height: 8),
