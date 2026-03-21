@@ -84,12 +84,10 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: Theme.of(context).backgroundGradient,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-            ),
+          child: V3ContainerUtils.gradientContainer(
+            gradient: Theme.of(context).backgroundGradient,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             child: SingleChildScrollView(
               child: Form(
@@ -99,13 +97,13 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Center(
-                      child: Container(
+                      child: V3ContainerUtils.styledContainer(
                         width: 40,
                         height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+                        backgroundColor: Colors.white.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(2),
+                        padding: EdgeInsets.zero,
+                        child: const SizedBox.shrink(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -317,13 +315,11 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 const SizedBox(width: 8),
-                Container(
+                V3ContainerUtils.badgeContainer(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.blueAccent.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5)),
-                  ),
+                  backgroundColor: Colors.blueAccent.withValues(alpha: 0.3),
+                  borderRadiusGeometry: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5)),
                   child: Text(
                     '${aktivni.length}',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
@@ -351,13 +347,11 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                       child: InkWell(
                         onTap: () => V3StateUtils.safeSetState(this, () => _showNeaktivni = !_showNeaktivni),
                         borderRadius: BorderRadius.circular(10),
-                        child: Container(
+                        child: V3ContainerUtils.styledContainer(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
-                          ),
+                          backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                           child: Row(
                             children: [
                               Icon(
@@ -530,14 +524,12 @@ class _VozacKartica extends StatelessWidget {
                           ),
                         ),
                         if (jeNeaktivan)
-                          Container(
+                          V3ContainerUtils.styledContainer(
                             margin: const EdgeInsets.only(left: 6),
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
-                            ),
+                            backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
                             child: const Text('neaktivan', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
                           ),
                       ],
