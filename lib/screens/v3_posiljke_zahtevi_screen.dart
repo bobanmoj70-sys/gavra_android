@@ -93,8 +93,8 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
               ],
             ),
           ),
-          body: Container(
-            decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+          body: V3ContainerUtils.backgroundContainer(
+            gradient: Theme.of(context).backgroundGradient,
             child: SafeArea(
               child: Column(
                 children: [

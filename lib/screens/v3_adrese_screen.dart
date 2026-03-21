@@ -5,6 +5,8 @@ import 'package:gavra_android/theme.dart';
 
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_string_utils.dart';
@@ -30,8 +32,8 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
-      body: Container(
-        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+      body: V3ContainerUtils.backgroundContainer(
+        gradient: Theme.of(context).backgroundGradient,
         child: SafeArea(
           child: StreamBuilder<List<V3Adresa>>(
             stream: V3AdresaService.streamAdrese(),

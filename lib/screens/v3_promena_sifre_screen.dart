@@ -4,7 +4,8 @@ import '../globals.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
-import '../utils/v3_input_utils.dart';
+import '../utils/v3_container_utils.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_text_utils.dart';
 
@@ -98,8 +99,8 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+      body: V3ContainerUtils.backgroundContainer(
+        gradient: Theme.of(context).backgroundGradient,
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + kToolbarHeight + 24, 24, 24),
           child: Form(
