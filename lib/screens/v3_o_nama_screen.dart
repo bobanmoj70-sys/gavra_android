@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/v2_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
 
@@ -77,10 +78,8 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: V2ThemeManager().currentGradient,
-      ),
+    return V3ContainerUtils.gradientContainer(
+      gradient: V2ThemeManager().currentGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
@@ -204,13 +203,11 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              Container(
+              V3ContainerUtils.iconContainer(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                ),
+                backgroundColor: Colors.white.withValues(alpha: 0.05),
+                borderRadiusGeometry: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                 child: Column(
                   children: [
                     const Text('🕯️', style: TextStyle(fontSize: 32)),
@@ -245,28 +242,26 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
   static Widget _buildHeader() {
     return Column(
       children: [
-        Container(
+        V3ContainerUtils.gradientContainer(
           width: 100,
           height: 100,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.3),
-                Colors.white.withValues(alpha: 0.1),
-              ],
-            ),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 20,
-                spreadRadius: 2,
-              ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withValues(alpha: 0.3),
+              Colors.white.withValues(alpha: 0.1),
             ],
           ),
+          borderRadius: BorderRadius.circular(50), // Circle effect
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
           child: ClipOval(
             child: Image.asset(
               'assets/logo_transparent.png',
@@ -308,13 +303,11 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
+        V3ContainerUtils.iconContainer(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
-          ),
+          backgroundColor: Colors.green.withValues(alpha: 0.3),
+          borderRadiusGeometry: BorderRadius.circular(20),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -340,28 +333,26 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     required String title,
     required Widget child,
   }) {
-    return Container(
+    return V3ContainerUtils.gradientContainer(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.15),
-            Colors.white.withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            spreadRadius: 1,
-          ),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withValues(alpha: 0.15),
+          Colors.white.withValues(alpha: 0.05),
         ],
       ),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.1),
+          blurRadius: 10,
+          spreadRadius: 1,
+        ),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

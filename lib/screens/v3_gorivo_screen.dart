@@ -68,13 +68,11 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
         ),
         title: Row(
           children: [
-            Container(
+            V3ContainerUtils.iconContainer(
               padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: _accent.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _accent.withValues(alpha: 0.5)),
-              ),
+              backgroundColor: _accent.withValues(alpha: 0.25),
+              borderRadiusGeometry: BorderRadius.circular(10),
+              border: Border.all(color: _accent.withValues(alpha: 0.5)),
               child: const Icon(Icons.local_gas_station, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 10),
@@ -258,13 +256,11 @@ class _V3BrojcanikCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
                 ),
                 if (ispodAlarma)
-                  Container(
+                  V3ContainerUtils.iconContainer(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red),
-                    ),
+                    backgroundColor: Colors.red.withValues(alpha: 0.15),
+                    borderRadiusGeometry: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red),
                     child: const Text(
                       '⚠️ MALO GORIVA',
                       style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
