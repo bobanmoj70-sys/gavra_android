@@ -5,6 +5,7 @@ import '../services/v3/v3_pin_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -44,8 +45,8 @@ class _V3PinZahteviScreenState extends State<V3PinZahteviScreen> {
             automaticallyImplyLeading: true,
             iconTheme: const IconThemeData(color: Colors.white),
           ),
-          body: Container(
-            decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+          body: V3ContainerUtils.gradientContainer(
+            gradient: Theme.of(context).backgroundGradient,
             child: SafeArea(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator(color: Colors.white))

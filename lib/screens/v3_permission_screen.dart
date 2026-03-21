@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// Prikazuje se samo jednom — pri prvom pokretanju aplikacije.
@@ -97,13 +98,11 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B2A),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D1B2A), Color(0xFF1A2E44)],
-          ),
+      body: V3ContainerUtils.gradientContainer(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0D1B2A), Color(0xFF1A2E44)],
         ),
         child: SafeArea(
           child: FadeTransition(
