@@ -492,115 +492,115 @@ class _VozacKartica extends StatelessWidget {
           border: Border.all(color: cardColor.withValues(alpha: 0.5), width: 1.5),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              // Avatar
-              CircleAvatar(
-                backgroundColor: cardColor.withValues(alpha: 0.3),
-                radius: 24,
-                child: Text(
-                  vozac.imePrezime.isNotEmpty ? vozac.imePrezime[0].toUpperCase() : '?',
-                  style: TextStyle(color: cardColor, fontWeight: FontWeight.bold, fontSize: 18),
+            child: Row(
+              children: [
+                // Avatar
+                CircleAvatar(
+                  backgroundColor: cardColor.withValues(alpha: 0.3),
+                  radius: 24,
+                  child: Text(
+                    vozac.imePrezime.isNotEmpty ? vozac.imePrezime[0].toUpperCase() : '?',
+                    style: TextStyle(color: cardColor, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
+                const SizedBox(width: 14),
 
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            vozac.imePrezime,
-                            style: TextStyle(
-                              color: cardColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        if (jeNeaktivan)
-                          V3ContainerUtils.styledContainer(
-                            margin: const EdgeInsets.only(left: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
-                            child: const Text('neaktivan', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
-                          ),
-                      ],
-                    ),
-                    if (vozac.email?.isNotEmpty == true)
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Row(
                         children: [
-                          const Icon(Icons.email, size: 12, color: Colors.white38),
-                          const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              vozac.email!,
-                              style: const TextStyle(color: Colors.white60, fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
+                              vozac.imePrezime,
+                              style: TextStyle(
+                                color: cardColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
+                          if (jeNeaktivan)
+                            V3ContainerUtils.styledContainer(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                              child: const Text('neaktivan', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
+                            ),
                         ],
                       ),
-                    if (vozac.telefon1?.isNotEmpty == true)
-                      Row(
-                        children: [
-                          const Icon(Icons.phone, size: 12, color: Colors.white38),
-                          const SizedBox(width: 4),
-                          Text(vozac.telefon1!, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                          if (vozac.telefon2?.isNotEmpty == true) ...[
-                            const SizedBox(width: 8),
-                            const Text('/', style: TextStyle(color: Colors.white38, fontSize: 13)),
-                            const SizedBox(width: 8),
-                            Text(vozac.telefon2!, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                      if (vozac.email?.isNotEmpty == true)
+                        Row(
+                          children: [
+                            const Icon(Icons.email, size: 12, color: Colors.white38),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                vozac.email!,
+                                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
-                        ],
+                        ),
+                      if (vozac.telefon1?.isNotEmpty == true)
+                        Row(
+                          children: [
+                            const Icon(Icons.phone, size: 12, color: Colors.white38),
+                            const SizedBox(width: 4),
+                            Text(vozac.telefon1!, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                            if (vozac.telefon2?.isNotEmpty == true) ...[
+                              const SizedBox(width: 8),
+                              const Text('/', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                              const SizedBox(width: 8),
+                              Text(vozac.telefon2!, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                            ],
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Akcije
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit, color: cardColor, size: 20),
+                      onPressed: onEdit,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Uredi',
+                    ),
+                    if (onReactivate != null)
+                      IconButton(
+                        icon: const Icon(Icons.restore, color: Colors.greenAccent, size: 20),
+                        onPressed: onReactivate,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Reaktiviraj',
+                      )
+                    else if (onDeactivate != null)
+                      IconButton(
+                        icon: const Icon(Icons.person_off, color: Colors.redAccent, size: 20),
+                        onPressed: onDeactivate,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Deaktiviraj',
                       ),
                   ],
                 ),
-              ),
-
-              // Akcije
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.edit, color: cardColor, size: 20),
-                    onPressed: onEdit,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    visualDensity: VisualDensity.compact,
-                    tooltip: 'Uredi',
-                  ),
-                  if (onReactivate != null)
-                    IconButton(
-                      icon: const Icon(Icons.restore, color: Colors.greenAccent, size: 20),
-                      onPressed: onReactivate,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Reaktiviraj',
-                    )
-                  else if (onDeactivate != null)
-                    IconButton(
-                      icon: const Icon(Icons.person_off, color: Colors.redAccent, size: 20),
-                      onPressed: onDeactivate,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Deaktiviraj',
-                    ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

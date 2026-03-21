@@ -419,13 +419,11 @@ class _ZahtevCard extends StatelessWidget {
     final danLabel = V3DanHelper.label(zahtev.datum);
     final vreme = V3StringUtils.safeSubstringTime(zahtev.zeljenoVreme);
 
-    return Container(
+    return V3ContainerUtils.iconContainer(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
+      backgroundColor: Colors.white.withValues(alpha: 0.07),
+      borderRadiusGeometry: BorderRadius.circular(14),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(

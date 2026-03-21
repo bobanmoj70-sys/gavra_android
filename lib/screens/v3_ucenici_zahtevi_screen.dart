@@ -221,13 +221,11 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
       _ => (Colors.white24, zahtev.status),
     };
 
-    return Container(
+    return V3ContainerUtils.iconContainer(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: borderColor.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor.withValues(alpha: 0.45), width: 1.5),
-      ),
+      backgroundColor: borderColor.withValues(alpha: 0.06),
+      borderRadiusGeometry: BorderRadius.circular(14),
+      border: Border.all(color: borderColor.withValues(alpha: 0.45), width: 1.5),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(

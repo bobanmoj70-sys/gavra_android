@@ -184,6 +184,7 @@ class V3ContainerUtils {
     double? width,
     double? height,
     EdgeInsetsGeometry? padding,
+    EdgeInsetsGeometry? margin,
     double borderRadius = 8.0,
     BorderRadiusGeometry? borderRadiusGeometry,
     Color? borderColor,
@@ -196,6 +197,7 @@ class V3ContainerUtils {
       width: width ?? size,
       height: height ?? size,
       padding: padding ?? const EdgeInsets.all(8.0),
+      margin: margin,
       alignment: alignment,
       decoration: BoxDecoration(
         color: backgroundColor,
