@@ -215,43 +215,20 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     }
   }
 
-  void _showPinRequestDialog() {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.vpn_key, color: Colors.amber),
-            SizedBox(width: 8),
-            Expanded(child: Text('PIN nije dodeljen', style: TextStyle(color: Colors.white))),
-          ],
-        ),
-        content: const Text(
-          'Nemate dodeljeni PIN za pristup.\n\n�elite li da po�aljete zahtev adminu za dodelu PIN-a?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-            },
-            child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _sendPinRequest();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            child: const Text('Po�alji zahtev', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
+  void _showPinRequestDialog() async {
+    final result = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'PIN nije dodeljen',
+      message: 'Nemate dodeljeni PIN za pristup.\n\nŽelite li da pošaljete zahtev adminu za dodelu PIN-a?',
+      confirmText: 'Pošalji zahtev',
+      cancelText: 'Odustani',
     );
+    
+    if (result == true) {
+      _sendPinRequest();
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _sendPinRequest() async {
@@ -405,36 +382,12 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   Future<void> _showRememberMeDialog({required String phone, required String pin}) async {
     if (!mounted) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.save, color: Colors.amber, size: 28),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text('Zapamti me', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-        content: const Text(
-          '�elite li da aplikacija zapamti va�e podatke?\n\nSledeci put cete se prijaviti automatski bez kucanja PIN-a.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Ne, hvala', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            child: const Text('Zapamti me', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
+    final ok = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Zapamti me',
+      message: 'Želite li da aplikacija zapamti vaše podatke?\n\nSledeći put ćete se prijaviti automatski bez kucanja PIN-a.',
+      confirmText: 'Zapamti me',
+      cancelText: 'Ne, hvala',
     );
     if (ok == true) {
       await _biometric.saveCredentials(phone, pin, isBiometric: false);

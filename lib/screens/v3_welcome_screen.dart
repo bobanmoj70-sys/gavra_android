@@ -346,36 +346,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _secureStorage.write(key: shownKey, value: 'true');
 
       final brandName = androidInfo.manufacturer;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.battery_alert, color: Colors.orangeAccent, size: 28),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Upozorenje – $brandName',
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            '$brandName uređaji često agresivno gase pozadinske procese. '
+      V3NavigationUtils.showInfoDialog(
+        context,
+        title: 'Upozorenje – $brandName',
+        message: '$brandName uređaji često agresivno gase pozadinske procese. '
             'Za pouzdane notifikacije i lokaciju idite u:\n\n'
             'Podešavanja → Aplikacije → Gavra → Baterija → Bez ograničenja',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Razumio', style: TextStyle(color: Colors.orangeAccent)),
-            ),
-          ],
-        ),
+        okText: 'Razumio',
       );
     } catch (_) {}
   }

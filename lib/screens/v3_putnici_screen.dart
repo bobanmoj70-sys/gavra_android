@@ -290,7 +290,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
     final potvrda = await V3NavigationUtils.showConfirmDialog(
       context,
       title: 'Potvrdi brisanje',
-      message: 'Da li ste sigurni da želite da obrišete "${p.imePrezime}"?\n\n⚠️ VAŽNO:\n• Putnik će biti TRAJNO obrisan\n• Sve vožnje i statistike se brišu\n• Ova akcija je NEPOVRATNA!',
+      message:
+          'Da li ste sigurni da želite da obrišete "${p.imePrezime}"?\n\n⚠️ VAŽNO:\n• Putnik će biti TRAJNO obrisan\n• Sve vožnje i statistike se brišu\n• Ova akcija je NEPOVRATNA!',
       confirmText: 'Obriši',
       cancelText: 'Otkaži',
       isDangerous: true,
