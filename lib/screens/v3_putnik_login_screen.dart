@@ -682,10 +682,8 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     dot(bool a) => V3ContainerUtils.iconContainer(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: a ? Colors.amber : Colors.white.withValues(alpha: 0.3),
-          ),
+          backgroundColor: a ? Colors.amber : Colors.white.withValues(alpha: 0.3),
+          borderRadiusGeometry: const BorderRadius.all(Radius.circular(6)),
         );
     line(bool a) => Container(
           width: 40,

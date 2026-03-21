@@ -344,7 +344,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     backgroundColor: Theme.of(ctx).glassContainer,
-                    borderRadiusGeometry: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                    borderRadiusGeometry:
+                        const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
                     border: Border(bottom: BorderSide(color: Theme.of(ctx).glassBorder)),
                     child: Row(
                       children: [
@@ -482,7 +483,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   V3ContainerUtils.iconContainer(
                     padding: const EdgeInsets.all(16),
                     backgroundColor: Theme.of(ctx).glassContainer,
-                    borderRadiusGeometry: const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
+                    borderRadiusGeometry:
+                        const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
                     border: Border(top: BorderSide(color: Theme.of(ctx).glassBorder)),
                     child: Row(
                       children: [

@@ -78,13 +78,11 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
                 ),
                 if (brObrada > 0) ...[
                   const SizedBox(width: 8),
-                  V3ContainerUtils.backgroundContainer(
+                  V3ContainerUtils.iconContainer(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.orangeAccent.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.6)),
-                    ),
+                    backgroundColor: Colors.orangeAccent.withValues(alpha: 0.3),
+                    borderRadiusGeometry: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.6)),
                     child: Text(
                       '$brObrada',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
