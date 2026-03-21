@@ -11,6 +11,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// FINANSIJE — V3
@@ -442,11 +443,9 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   }
 
   void _showTroskoviDialog(Map<String, double> poKat) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _TroskoviBottomSheet(poKat: poKat),
+    V3NavigationUtils.showBottomSheet(
+      context,
+      child: _TroskoviBottomSheet(poKat: poKat),
     );
   }
 

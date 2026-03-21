@@ -38,11 +38,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   }
 
   void _showStatistikeMenu(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => SafeArea(
+    V3NavigationUtils.showBottomSheet<void>(
+      context,
+      child: SafeArea(
         top: false,
         child: Container(
           decoration: BoxDecoration(
@@ -74,7 +72,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   subtitle: const Text('Prihodi, troškovi, neto zarada'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    Navigator.pop(ctx);
+                    Navigator.pop(context);
                     V3NavigationUtils.pushScreen(context, const V3FinansijeScreen());
                   },
                 ),

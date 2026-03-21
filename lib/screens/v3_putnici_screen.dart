@@ -529,10 +529,9 @@ class _PutnikCard extends StatelessWidget {
   }
 
   void _pokaziKontakt(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
+    V3NavigationUtils.showBottomSheet<void>(
+      context,
+      child: SafeArea(
         top: false,
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -549,7 +548,7 @@ class _PutnikCard extends StatelessWidget {
                   subtitle: Text(putnik.telefon1!),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
-                    Navigator.pop(ctx);
+                    Navigator.pop(context);
                     await launchUrl(Uri.parse('tel:${putnik.telefon1}'), mode: LaunchMode.externalApplication);
                   },
                 ),
@@ -565,7 +564,7 @@ class _PutnikCard extends StatelessWidget {
                   },
                 ),
               const SizedBox(height: 8),
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Otkaži')),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Otkaži')),
             ],
           ),
         ),

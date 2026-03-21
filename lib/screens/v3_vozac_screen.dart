@@ -508,14 +508,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         });
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('🗺️ Ruta optimizovana: ${optimizovaniPutnici.length} putnika'),
-              backgroundColor: Colors.green.withOpacity(0.8),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          V3AppSnackBar.success(context, '🗺️ Ruta optimizovana: ${optimizovaniPutnici.length} putnika');
         }
       }
     } catch (e) {
@@ -556,14 +549,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           }).toList();
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res.message),
-              backgroundColor: Colors.green.withOpacity(0.8),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          V3AppSnackBar.success(context, res.message);
         }
       }
     }

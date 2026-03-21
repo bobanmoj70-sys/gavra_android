@@ -223,7 +223,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       confirmText: 'Pošalji zahtev',
       cancelText: 'Odustani',
     );
-    
+
     if (result == true) {
       _sendPinRequest();
     } else {
@@ -385,7 +385,8 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     final ok = await V3NavigationUtils.showConfirmDialog(
       context,
       title: 'Zapamti me',
-      message: 'Želite li da aplikacija zapamti vaše podatke?\n\nSledeći put ćete se prijaviti automatski bez kucanja PIN-a.',
+      message:
+          'Želite li da aplikacija zapamti vaše podatke?\n\nSledeći put ćete se prijaviti automatski bez kucanja PIN-a.',
       confirmText: 'Zapamti me',
       cancelText: 'Ne, hvala',
     );
