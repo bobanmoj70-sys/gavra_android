@@ -641,13 +641,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       ));
     }
 
-    return Container(
+    return V3ContainerUtils.iconContainer(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: selected != null ? Colors.blue.shade400 : Colors.grey.shade400),
-      ),
+      backgroundColor: Colors.white,
+      borderRadiusGeometry: BorderRadius.circular(12),
+      border: Border.all(color: selected != null ? Colors.blue.shade400 : Colors.grey.shade400),
       child: Row(
         children: [
           const Icon(Icons.location_on, color: Colors.blueAccent, size: 20),
@@ -960,8 +958,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         value: SystemUiOverlayStyle.light,
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          body: Container(
-            decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
+          body: V3ContainerUtils.gradientContainer(
+            gradient: V2ThemeManager().currentGradient,
             child: const Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
         ),
@@ -1044,8 +1042,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
           }
 
-          return Container(
-            decoration: BoxDecoration(gradient: V2ThemeManager().currentGradient),
+          return V3ContainerUtils.gradientContainer(
+            gradient: V2ThemeManager().currentGradient,
             child: Scaffold(
               backgroundColor: Colors.transparent,
               appBar: PreferredSize(
@@ -1094,14 +1092,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               // Vozač
                               Expanded(
                                 flex: 35,
-                                child: Container(
+                                child: V3ContainerUtils.iconContainer(
                                   height: 33,
                                   padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: _getVozacColor(vozac),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                  ),
+                                  backgroundColor: _getVozacColor(vozac),
+                                  borderRadiusGeometry: BorderRadius.circular(12),
+                                  border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                   child: Center(
                                     child: Text(
                                       vozac?.imePrezime ?? '—',
