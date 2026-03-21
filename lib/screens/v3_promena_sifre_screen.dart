@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_state_utils.dart';
 
 /// PROMENA ŠIFRE SCREEN (v3)
 /// Vozač može da promeni svoju šifru nakon uspešnog logina
@@ -76,7 +77,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
     } catch (e) {
       V3AppSnackBar.error(context, 'Greška: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 

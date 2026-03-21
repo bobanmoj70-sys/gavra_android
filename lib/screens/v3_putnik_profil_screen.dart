@@ -15,6 +15,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_putnik_tracking_widget.dart';
 import '../widgets/v3_update_banner.dart';
@@ -69,12 +70,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   Future<void> _checkNotifPermission() async {
     final status = await Permission.notification.status;
-    if (mounted) setState(() => _notifStatus = status);
+    V3StateUtils.safeSetState(this, () => _notifStatus = status);
   }
 
   Future<void> _requestNotifPermission() async {
     final status = await Permission.notification.request();
-    if (mounted) setState(() => _notifStatus = status);
+    V3StateUtils.safeSetState(this, () => _notifStatus = status);
     if (status.isPermanentlyDenied) await openAppSettings();
   }
 
@@ -619,7 +620,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               tooltip: 'Tema',
               onPressed: () async {
                 await V2ThemeManager().nextTheme();
-                if (mounted) setState(() {});
+                V3StateUtils.safeSetState(this, () {});
               },
             ),
             IconButton(

@@ -5,6 +5,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../utils/v3_navigation_utils.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
@@ -75,10 +76,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(ctx);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(builder: (_) => const V3FinansijeScreen()),
-                    );
+                    V3NavigationUtils.pushScreen(context, const V3FinansijeScreen());
                   },
                 ),
                 const Divider(),
@@ -89,10 +87,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(ctx);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(builder: (_) => const V3OdrzavanjeScreen()),
-                    );
+                    V3NavigationUtils.pushScreen(context, const V3OdrzavanjeScreen());
                   },
                 ),
                 const SizedBox(height: 8),

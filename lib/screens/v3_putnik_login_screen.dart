@@ -11,6 +11,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_phone_utils.dart';
+import '../utils/v3_state_utils.dart';
 import 'v3_putnik_profil_screen.dart';
 
 enum _LoginStep { telefon, email, pin, zahtevPoslat }
@@ -149,9 +150,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = 'Greška pri povezivanju: $e');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška pri povezivanju: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 
@@ -206,9 +207,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = 'Greška: $e');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 
@@ -275,9 +276,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         setState(() => _errorMessage = 'Gre�ka pri slanju zahteva');
       }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = 'Greška: $e');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 
@@ -306,7 +307,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     if (creds == null) {
       // Sacuvani kredencijali ne postoje � resetuj
       await _biometric.clearCredentials();
-      if (mounted) setState(() => _biometricEnabled = false);
+      V3StateUtils.safeSetState(this, () => _biometricEnabled = false);
       return;
     }
     final ok = await _biometric.authenticate(
@@ -394,7 +395,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
     if (result == 'biometric') {
       await _biometric.saveCredentials(phone, pin, isBiometric: true);
-      if (mounted) setState(() => _biometricEnabled = true);
+      V3StateUtils.safeSetState(this, () => _biometricEnabled = true);
     } else if (result == 'remember') {
       await _biometric.saveCredentials(phone, pin, isBiometric: false);
     }
@@ -510,9 +511,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         ),
       );
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = 'Greška pri prijavi: $e');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška pri prijavi: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
 

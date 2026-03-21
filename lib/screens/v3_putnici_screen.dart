@@ -10,6 +10,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_phone_utils.dart';
+import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 
 class V3PutniciScreen extends StatefulWidget {
@@ -730,9 +731,9 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3AppSnackBar.error(context, 'Greška: $e');
     } finally {
-      if (mounted) setState(() => _saving = false);
+      V3StateUtils.safeSetState(this, () => setState(() => _saving = false));
     }
   }
 

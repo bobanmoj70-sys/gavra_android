@@ -16,6 +16,8 @@ import '../../services/v3/v3_vozac_service.dart';
 import '../../services/v3/v3_zahtev_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
 import '../../utils/v3_dan_helper.dart';
+import '../../utils/v3_state_utils.dart';
+import '../../utils/v3_validation_utils.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
 /// Vizuelni stil i logika prepisani iz V2PutnikCard.
@@ -85,7 +87,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     if (widget.entry == null && widget.zahtev == null) return;
     if (_globalProcessingLock || _isProcessing) return;
     _globalProcessingLock = true;
-    if (mounted) setState(() => _isProcessing = true);
+    V3StateUtils.safeSetState(this, () => setState(() => _isProcessing = true));
     try {
       V2HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
@@ -101,7 +103,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       if (mounted) V3AppSnackBar.error(context, 'Greška pri pokupljenju: $e');
     } finally {
       _globalProcessingLock = false;
-      if (mounted) setState(() => _isProcessing = false);
+      V3StateUtils.safeSetState(this, () => _isProcessing = false);
     }
   }
 
@@ -129,7 +131,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     );
     if (rezultat == null) return;
     _globalProcessingLock = true;
-    if (mounted) setState(() => _isProcessing = true);
+    V3StateUtils.safeSetState(this, () => setState(() => _isProcessing = true));
     try {
       final ok = await V3PlacanjeDialogHelper.sacuvajPlacanje(
         context: context,
@@ -149,7 +151,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       if (mounted) V3AppSnackBar.error(context, 'Greška pri plaćanju: $e');
     } finally {
       _globalProcessingLock = false;
-      if (mounted) setState(() => _isProcessing = false);
+      V3StateUtils.safeSetState(this, () => _isProcessing = false);
     }
   }
 
@@ -160,7 +162,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     if (overrideId != null && overrideId.isNotEmpty) {
       adresaId = overrideId;
     } else {
-      final grad = (widget.entry?.grad ?? widget.zahtev?.grad ?? '').toUpperCase().trim();
+      final grad = V3ValidationUtils.normalizeGrad(widget.entry?.grad ?? widget.zahtev?.grad ?? '');
       final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
       if (grad != 'BC' && grad != 'VS') {
         if (mounted) V3AppSnackBar.warning(context, '⚠️ Grad nije definisan za ovog putnika');
@@ -381,7 +383,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     if (overrideId != null && overrideId.isNotEmpty) {
       return V3AdresaService.getAdresaById(overrideId)?.naziv;
     }
-    final grad = (widget.entry?.grad ?? widget.zahtev?.grad ?? '').toUpperCase().trim();
+    final grad = V3ValidationUtils.normalizeGrad(widget.entry?.grad ?? widget.zahtev?.grad ?? '');
     final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
     if (grad == 'BC') {
       final id = koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId;

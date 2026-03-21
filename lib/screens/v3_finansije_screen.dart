@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_format_utils.dart';
+import '../utils/v3_state_utils.dart';
 
 /// FINANSIJE — V3
 /// Prihodi: dnevneOperacijeCache (naplata_status='placeno', iznos_naplacen)
@@ -657,7 +658,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
     } catch (e) {
       if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
     } finally {
-      if (mounted) setState(() => _saving = false);
+      V3StateUtils.safeSetState(this, () => _saving = false);
     }
   }
 

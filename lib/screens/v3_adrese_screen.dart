@@ -4,6 +4,7 @@ import 'package:gavra_android/services/v3/v3_adresa_service.dart';
 import 'package:gavra_android/theme.dart';
 
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_string_utils.dart';
 
 class V3AdreseScreen extends StatefulWidget {
@@ -80,19 +81,13 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
   }
 
   Future<void> _confirmDelete(V3Adresa adresa) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Potvrda brisanja'),
-        content: Text('Da li ste sigurni da želite obrisati adresu "${adresa.naziv}"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('NE')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('DA', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+    final confirm = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Potvrda brisanja',
+      message: 'Da li ste sigurni da želite obrisati adresu "${adresa.naziv}"?',
+      confirmText: 'DA',
+      cancelText: 'NE',
+      isDangerous: true,
     );
 
     if (confirm == true) {

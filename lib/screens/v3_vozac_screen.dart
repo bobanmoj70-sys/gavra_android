@@ -21,6 +21,8 @@ import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_navigation_utils.dart';
+import '../utils/v3_state_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
@@ -112,11 +114,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Future<void> _initData() async {
     if (V3VozacService.currentVozac == null) {
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),
-          (r) => false,
-        );
+        V3NavigationUtils.pushAndRemoveUntil(context, const V3WelcomeScreen());
       }
       return;
     }
@@ -173,7 +171,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         return;
       }
       // Nema termina za ovaj dan — prikaži prazno
-      if (mounted) setState(() => _mojiPutnici = []);
+      V3StateUtils.safeSetState(this, () => setState(() => _mojiPutnici = []));
       return;
     }
 
@@ -246,7 +244,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
     });
 
-    if (mounted) setState(() => _mojiPutnici = putnici);
+    V3StateUtils.safeSetState(this, () => setState(() => _mojiPutnici = putnici));
   }
 
   void _selectClosestTermin() {

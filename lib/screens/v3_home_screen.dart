@@ -18,6 +18,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_state_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
@@ -1163,7 +1164,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 child: InkWell(
                                   onTap: () async {
                                     await V2ThemeManager().nextTheme();
-                                    if (mounted) setState(() {});
+                                    V3StateUtils.safeSetState(this, () => setState(() {}));
                                   },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
@@ -1237,7 +1238,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                               ))
                                           .toList(),
                                       onChanged: (val) {
-                                        if (mounted) setState(() => _selectedDay = val!);
+                                        V3StateUtils.safeSetState(this, () => setState(() => _selectedDay = val!));
                                       },
                                     ),
                                   ),

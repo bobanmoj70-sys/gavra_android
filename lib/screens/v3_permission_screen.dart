@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../utils/v3_state_utils.dart';
+
 /// Prikazuje se samo jednom — pri prvom pokretanju aplikacije.
 /// Traži GPS, Pozive i Notifikacije.
 class V3PermissionScreen extends StatefulWidget {
@@ -74,9 +76,9 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
         );
       }
     } catch (e) {
-      debugPrint('Permission request error: $e');
+      debugPrint('Greška pri proveri: $e');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      V3StateUtils.safeSetState(this, () => setState(() => _loading = false));
     }
 
     // Tek nakon što su svi dijalozi prošli, pišemo da je prikazano i gasimo screen

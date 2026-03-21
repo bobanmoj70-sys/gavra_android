@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
 import 'package:gavra_android/services/v3/v3_dug_service.dart';
-import 'package:gavra_android/utils/v3_app_snack_bar.dart';
 import 'package:gavra_android/utils/v3_string_utils.dart';
 import 'package:intl/intl.dart';
 
 import '../theme.dart';
+import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_navigation_utils.dart';
 
 class V3DugoviScreen extends StatefulWidget {
   const V3DugoviScreen({super.key});
@@ -135,21 +136,12 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
   }
 
   Future<void> _markAsPaid(V3Dug dug) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Potvrda naplate'),
-        content: Text(
-          'Da li je putnik ${dug.imePrezime} platio dug od ${dug.iznos.toStringAsFixed(2)} RSD?',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('NE')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('DA', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+    final confirm = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Potvrda naplate',
+      message: 'Da li je putnik ${dug.imePrezime} platio dug od ${dug.iznos.toStringAsFixed(2)} RSD?',
+      confirmText: 'DA',
+      cancelText: 'NE',
     );
 
     if (confirm == true) {

@@ -13,6 +13,9 @@ import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../utils/v3_navigation_utils.dart';
+import '../utils/v3_state_utils.dart';
+import '../utils/v3_validation_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
 import 'v3_permission_screen.dart';
@@ -85,12 +88,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _loadAppVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      if (mounted) setState(() => _appVersion = 'v${info.version}');
+      V3StateUtils.safeSetState(this, () => setState(() => _appVersion = 'v${info.version}'));
     } catch (_) {}
   }
 
   Future<void> _init() async {
-    if (mounted) setState(() => _isLoading = true);
+    V3StateUtils.safeSetState(this, () => setState(() => _isLoading = true));
 
     debugPrint('[V3WelcomeScreen] _init() started - waiting for vozaciCache...');
 
@@ -138,11 +141,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _stopAudio();
       final vozac = V3VozacService.currentVozac!;
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
-      Navigator.pushReplacement(
+      V3NavigationUtils.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
-        ),
+        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
       );
       return;
     }
@@ -237,12 +238,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       retries++;
     }
 
-    final normalized = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    final normalized = V3ValidationUtils.normalizePhone(phone);
     Map<String, dynamic>? found;
     final cache = V3MasterRealtimeManager.instance.putniciCache;
     for (final row in cache.values) {
-      final t1 = (row['telefon_1']?.toString() ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '');
-      final t2 = (row['telefon_2']?.toString() ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      final t1 = V3ValidationUtils.normalizePhone(row['telefon_1']?.toString() ?? '');
+      final t2 = V3ValidationUtils.normalizePhone(row['telefon_2']?.toString() ?? '');
       if (t1 == normalized || (t2.isNotEmpty && t2 == normalized)) {
         found = Map<String, dynamic>.from(row);
         break;
@@ -296,7 +297,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     try {
       if (_isAudioPlaying) {
         await _audioPlayer.stop();
-        if (mounted) setState(() => _isAudioPlaying = false);
+        V3StateUtils.safeSetState(this, () => setState(() => _isAudioPlaying = false));
       }
     } catch (_) {}
   }
@@ -388,11 +389,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _loginAsVozac(V3Vozac vozac) async {
     await _stopAudio();
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => V3VozacLoginScreen(vozac: vozac),
-      ),
-    );
+    V3NavigationUtils.pushScreen(context, V3VozacLoginScreen(vozac: vozac));
   }
 
   Future<void> _showVozacDialog() async {
@@ -554,11 +551,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         try {
                           if (_isAudioPlaying) {
                             await _audioPlayer.stop();
-                            if (mounted) setState(() => _isAudioPlaying = false);
+                            V3StateUtils.safeSetState(this, () => setState(() => _isAudioPlaying = false));
                           } else {
                             await _audioPlayer.setVolume(0.5);
                             await _audioPlayer.play(AssetSource('kasno_je.mp3'));
-                            if (mounted) setState(() => _isAudioPlaying = true);
+                            V3StateUtils.safeSetState(this, () => setState(() => _isAudioPlaying = true));
                           }
                         } catch (e) {
                           debugPrint('[V3WelcomeScreen] Audio error: $e');
@@ -607,9 +604,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: GestureDetector(
-                      onTap: () async {
+                      onPressed: () async {
                         await V2ThemeManager().nextTheme();
-                        if (mounted) setState(() {});
+                        V3StateUtils.safeSetState(this, () => setState(() {}));
                       },
                       child: ShaderMask(
                         shaderCallback: (bounds) => LinearGradient(

@@ -11,6 +11,7 @@ import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_phone_utils.dart';
+import '../utils/v3_state_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_vozac_screen.dart';
 
@@ -192,9 +193,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         ),
       );
     } catch (e) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+      V3AppSnackBar.error(context, 'Greška: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      V3StateUtils.safeSetState(this, () => setState(() => _isLoading = false));
     }
   }
 

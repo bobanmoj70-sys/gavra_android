@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../../models/v3_adresa.dart';
+import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
 /// Service for interacting with universal V3 addresses.
@@ -34,10 +35,10 @@ class V3AdresaService {
 
   static List<V3Adresa> getAdreseZaGrad(String grad) {
     final cache = V3MasterRealtimeManager.instance.adreseCache.values;
-    final normalizedGrad = grad.trim().toUpperCase();
+    final normalizedGrad = V3ValidationUtils.normalizeGrad(grad);
     if (normalizedGrad.isEmpty) return [];
     return cache
-        .where((r) => (r['grad'] as String?)?.trim().toUpperCase() == normalizedGrad)
+        .where((r) => V3ValidationUtils.normalizeGrad(r['grad'] as String? ?? '') == normalizedGrad)
         .map((r) => V3Adresa.fromJson(r))
         .toList()
       ..sort((a, b) => a.naziv.compareTo(b.naziv));
@@ -51,7 +52,7 @@ class V3AdresaService {
     double? lng,
   }) async {
     try {
-      final normalizedGrad = grad.trim().toUpperCase();
+      final normalizedGrad = V3ValidationUtils.normalizeGrad(grad);
       final data = <String, dynamic>{
         if (id != null) 'id': id,
         'naziv': naziv,

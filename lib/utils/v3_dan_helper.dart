@@ -1,3 +1,5 @@
+import 'v3_validation_utils.dart';
+
 /// Helper za konverziju DateTime u naziv/kraticu dana i naziva u datume.
 class V3DanHelper {
   V3DanHelper._();
@@ -44,13 +46,14 @@ class V3DanHelper {
   /// Prošli dani vraćaju prošli datum — nema skakanja na sledeću nedelju.
   /// EXCEPTION: Za vikend (subota/nedelja) + 'Ponedeljak' → sledeći ponedeljak.
   static String datumIsoZaDanPuni(String danPuni) {
-    final idx = _names.indexWhere((d) => d.toLowerCase() == danPuni.toLowerCase());
+    final idx = _names
+        .indexWhere((d) => V3ValidationUtils.normalizeForSearch(d) == V3ValidationUtils.normalizeForSearch(danPuni));
     if (idx == -1) return _todayIso();
 
     // Za vikend + ponedeljak → sledeći ponedeljak, ne prošli
     final now = DateTime.now();
     final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
-    final isPonedeljak = (danPuni.toLowerCase() == 'ponedeljak' && idx == 0);
+    final isPonedeljak = (V3ValidationUtils.normalizeForSearch(danPuni) == 'ponedeljak' && idx == 0);
 
     if (isWeekend && isPonedeljak) {
       final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
@@ -63,13 +66,14 @@ class V3DanHelper {
 
   /// ISO datum (yyyy-MM-dd) za datu kraticu dana (npr. 'pon').
   static String datumIsoZaDanAbbr(String danAbbr) {
-    final idx = _abbrs.indexWhere((a) => a.toLowerCase() == danAbbr.toLowerCase());
+    final idx = _abbrs
+        .indexWhere((a) => V3ValidationUtils.normalizeForSearch(a) == V3ValidationUtils.normalizeForSearch(danAbbr));
     if (idx == -1) return _todayIso();
 
     // Za vikend + ponedeljak → sledeći ponedeljak, ne prošli (kao u datumIsoZaDanPuni)
     final now = DateTime.now();
     final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
-    final isPonedeljak = (danAbbr.toLowerCase() == 'pon' && idx == 0);
+    final isPonedeljak = (V3ValidationUtils.normalizeForSearch(danAbbr) == 'pon' && idx == 0);
 
     if (isWeekend && isPonedeljak) {
       final ponedeljak = now.subtract(Duration(days: now.weekday - 1));

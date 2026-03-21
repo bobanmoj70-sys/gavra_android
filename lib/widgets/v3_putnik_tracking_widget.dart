@@ -9,6 +9,7 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../utils/v3_state_utils.dart';
 
 /// Widget za praćenje dolaska vozača u real-time.
 /// Prikazuje ETA countdown i status vožnje za putnika.
@@ -85,7 +86,7 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
       }
     }
 
-    if (mounted) setState(() {});
+    V3StateUtils.safeSetState(this, () {});
   }
 
   void _checkVisibility() {
@@ -136,7 +137,7 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
       if (_isVisible) {
         _updateETA();
       }
-      if (mounted) setState(() {});
+      V3StateUtils.safeSetState(this, () {});
     });
 
     // Initial update

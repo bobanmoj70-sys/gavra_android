@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../globals.dart';
 import '../../models/v3_vozac.dart';
+import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
 /// Service for V3 drivers (`v3_vozaci`).
@@ -88,8 +89,8 @@ class V3VozacService {
       if (v == null || v.isEmpty) return '';
       final p = v.split(':');
       if (p.length >= 2) {
-        final hour = int.tryParse(p[0]) ?? 0;
-        final minute = int.tryParse(p[1]) ?? 0;
+        final hour = V3ValidationUtils.safeParseInt(p[0]);
+        final minute = V3ValidationUtils.safeParseInt(p[1]);
         return V3DanHelper.formatVreme(hour, minute);
       }
       return v;
