@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_text_utils.dart';
@@ -149,24 +150,14 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
                       V3InputUtils.confirmPasswordValidator(v, V3TextUtils.getControllerText('nova_sifra')),
                 ),
                 const SizedBox(height: 32),
-                ElevatedButton(
+                V3ButtonUtils.elevatedButton(
                   onPressed: _isLoading ? null : _promeniSifru,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
-                        )
-                      : Text(
-                          imaSifru ? '🔄 Promeni šifru' : '✅ Postavi šifru',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                  text: imaSifru ? '🔄 Promeni šifru' : '✅ Postavi šifru',
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  isLoading: _isLoading,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
                 const SizedBox(height: 24),
                 Container(

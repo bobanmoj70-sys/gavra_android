@@ -2,8 +2,10 @@
 
 import '../models/v3_vozilo.dart';
 import '../services/v3/v3_vozilo_service.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_format_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_ui_utils.dart';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -588,25 +590,18 @@ class _TextDialogState extends State<_TextDialog> {
     return AlertDialog(
       backgroundColor: Colors.grey.shade900,
       title: Text(widget.label, style: const TextStyle(color: Colors.white)),
-      content: TextField(
+      content: V3InputUtils.textField(
         controller: _ctrl,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          hintText: 'Unesi ${widget.label}',
-          hintStyle: const TextStyle(color: Colors.white38),
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.orange)),
-        ),
+        label: 'Unesi ${widget.label}',
         maxLines: widget.multiline ? 4 : 1,
-        autofocus: true,
       ),
       actions: [
-        TextButton(
+        V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Otkaži', style: TextStyle(color: Colors.white60)),
+          text: 'Otkaži',
+          foregroundColor: Colors.white60,
         ),
-        TextButton(
+        V3ButtonUtils.textButton(
           onPressed: () async {
             try {
               await V3VoziloService.updateKolskaKnjiga(
@@ -622,7 +617,8 @@ class _TextDialogState extends State<_TextDialog> {
               V3UIUtils.showSaveError(context);
             }
           },
-          child: const Text('Sačuvaj', style: TextStyle(color: Colors.orange)),
+          text: 'Sačuvaj',
+          foregroundColor: Colors.orange,
         ),
       ],
     );
@@ -715,25 +711,14 @@ class _ServisSheetState extends State<_ServisSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                V3InputUtils.numberField(
                   controller: _kmCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Kilometraža servisa',
-                    labelStyle: const TextStyle(color: Colors.white60),
-                    hintText: 'Trenutno: ${widget.trenutnaKm} km',
-                    hintStyle: const TextStyle(color: Colors.white30),
-                    border: const OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.orange)),
-                    prefixIcon: const Icon(Icons.speed, color: Colors.white60),
-                    suffixText: 'km',
-                    suffixStyle: const TextStyle(color: Colors.white60),
-                  ),
+                  label: 'Kilometraža servisa',
+                  hint: 'Trenutno: ${widget.trenutnaKm} km',
+                  suffixText: 'km',
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton.icon(
+                V3ButtonUtils.elevatedButton(
                   onPressed: () async {
                     final kmValue = int.tryParse(_kmCtrl.text);
                     final data = <String, dynamic>{
@@ -751,13 +736,10 @@ class _ServisSheetState extends State<_ServisSheet> {
                       V3UIUtils.showSaveError(context);
                     }
                   },
-                  icon: const Icon(Icons.save),
-                  label: const Text('Sačuvaj'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
+                  text: 'Sačuvaj',
+                  icon: Icons.save,
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
                 ),
               ],
             ),
@@ -879,20 +861,11 @@ class _GumeSheetState extends State<_GumeSheet> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                V3InputUtils.textField(
                   controller: _opisCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Marka i dimenzija',
-                    labelStyle: const TextStyle(color: Colors.white60),
-                    hintText: 'npr. Michelin 215/65 R16',
-                    hintStyle: const TextStyle(color: Colors.white30),
-                    border: const OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.orange)),
-                    prefixIcon: const Icon(Icons.description, color: Colors.white60),
-                  ),
-                  maxLines: 2,
+                  label: 'Marka i dimenzija',
+                  hint: 'npr. Michelin 215/65 R16',
+                  icon: Icons.description,
                 ),
                 const SizedBox(height: 16),
                 InkWell(
@@ -920,25 +893,14 @@ class _GumeSheetState extends State<_GumeSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                V3InputUtils.numberField(
                   controller: _kmCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Kilometraža zamene',
-                    labelStyle: const TextStyle(color: Colors.white60),
-                    hintText: 'Trenutno: ${widget.trenutnaKm} km',
-                    hintStyle: const TextStyle(color: Colors.white30),
-                    border: const OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.orange)),
-                    prefixIcon: const Icon(Icons.speed, color: Colors.white60),
-                    suffixText: 'km',
-                    suffixStyle: const TextStyle(color: Colors.white60),
-                  ),
+                  label: 'Kilometraža zamene',
+                  hint: 'Trenutno: ${widget.trenutnaKm} km',
+                  suffixText: 'km',
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton.icon(
+                V3ButtonUtils.elevatedButton(
                   onPressed: () async {
                     String finalOpis = _opisCtrl.text.trim();
                     if (_tip != null && finalOpis.isEmpty) {
@@ -975,13 +937,10 @@ class _GumeSheetState extends State<_GumeSheet> {
                       V3UIUtils.showSaveError(context);
                     }
                   },
-                  icon: const Icon(Icons.save),
-                  label: const Text('Sačuvaj'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
+                  text: 'Sačuvaj',
+                  icon: Icons.save,
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
                 ),
               ],
             ),

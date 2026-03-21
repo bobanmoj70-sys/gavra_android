@@ -9,7 +9,10 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
+import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -514,19 +517,16 @@ class _PutnikCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
-        child: ElevatedButton.icon(
+        child: V3ButtonUtils.elevatedButton(
           onPressed: onPressed,
-          icon: Icon(icon, size: 13, color: color),
-          label: Text(label,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
-              overflow: TextOverflow.ellipsis),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          ),
+          text: label,
+          icon: icon,
+          backgroundColor: Colors.transparent,
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          borderRadius: BorderRadius.circular(8),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -568,7 +568,7 @@ class _PutnikCard extends StatelessWidget {
                   },
                 ),
               const SizedBox(height: 8),
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Otkaži')),
+              V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'Otkaži'),
             ],
           ),
         ),
@@ -578,38 +578,36 @@ class _PutnikCard extends StatelessWidget {
 
   void _showPinDialog(BuildContext context) {
     final ctrl = TextEditingController(text: putnik.pin ?? '');
-    showDialog(
+    V3DialogUtils.showCustomDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text('🔐 PIN — ${putnik.imePrezime}'),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          decoration: const InputDecoration(
-            labelText: 'PIN kod',
-            hintText: 'Unesi 4–6 cifara',
-            border: OutlineInputBorder(),
-          ),
+      title: '🔐 PIN — ${putnik.imePrezime}',
+      content: TextField(
+        controller: ctrl,
+        keyboardType: TextInputType.number,
+        maxLength: 6,
+        decoration: const InputDecoration(
+          labelText: 'PIN kod',
+          hintText: 'Unesi 4–6 cifara',
+          border: OutlineInputBorder(),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Otkaži')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await supabase
-                    .from('v3_putnici')
-                    .update({'pin': ctrl.text.isEmpty ? null : ctrl.text}).eq('id', putnik.id);
-                if (context.mounted) V3AppSnackBar.success(context, '✅ PIN sačuvan');
-              } catch (e) {
-                if (context.mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
-              }
-            },
-            child: const Text('Sačuvaj'),
-          ),
-        ],
       ),
+      actions: [
+        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'Otkaži'),
+        V3ButtonUtils.primaryButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            try {
+              await supabase
+                  .from('v3_putnici')
+                  .update({'pin': ctrl.text.isEmpty ? null : ctrl.text}).eq('id', putnik.id);
+              if (context.mounted) V3AppSnackBar.success(context, '✅ PIN sačuvan');
+            } catch (e) {
+              if (context.mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+            }
+          },
+          text: 'Sačuvaj',
+        ),
+      ],
     );
   }
 }
@@ -796,71 +794,61 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                     ),
                     const SizedBox(height: 10),
                     // Ime
-                    TextField(
+                    V3InputUtils.textField(
                       controller: _ime,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                          labelText: 'Ime i prezime *', border: OutlineInputBorder(), isDense: true),
+                      label: 'Ime i prezime *',
+                      icon: Icons.person,
                     ),
                     const SizedBox(height: 10),
                     // Telefoni
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
+                          child: V3InputUtils.phoneField(
                             controller: _tel1,
-                            keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
-                                labelText: 'Telefon 1', border: OutlineInputBorder(), isDense: true),
+                            label: 'Telefon 1',
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: TextField(
+                          child: V3InputUtils.phoneField(
                             controller: _tel2,
-                            keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
-                                labelText: 'Telefon 2', border: OutlineInputBorder(), isDense: true),
+                            label: 'Telefon 2',
+                            isRequired: false,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     // Email
-                    TextField(
+                    V3InputUtils.emailField(
                       controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                          labelText: 'Email (opciono)', border: OutlineInputBorder(), isDense: true),
+                      label: 'Email (opciono)',
+                      isRequired: false,
                     ),
                     const SizedBox(height: 10),
                     // Cena
-                    TextField(
+                    V3InputUtils.numberField(
                       controller: _cenaDan,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                          labelText: (_tip == 'dnevni' || _tip == 'posiljka') ? 'Cena po pokupljanju' : 'Cena po danu',
-                          border: const OutlineInputBorder(),
-                          isDense: true,
-                          suffixText: 'din'),
+                      label: (_tip == 'dnevni' || _tip == 'posiljka') ? 'Cena po pokupljanju' : 'Cena po danu',
+                      suffixText: 'din',
                     ),
-                    // Škola
+                    // Школa
                     if (_tip == 'ucenik') ...[
                       const SizedBox(height: 10),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: _skola,
-                        textCapitalization: TextCapitalization.words,
-                        decoration:
-                            const InputDecoration(labelText: 'Škola', border: OutlineInputBorder(), isDense: true),
+                        label: 'Школa',
+                        icon: Icons.school,
                       ),
                     ],
                     // Opis pošiljke
                     if (_tip == 'posiljka') ...[
                       const SizedBox(height: 10),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: _opis,
-                        decoration: const InputDecoration(
-                            labelText: 'Opis pošiljke', border: OutlineInputBorder(), isDense: true),
+                        label: 'Opis pošiljke',
+                        icon: Icons.description,
                       ),
                     ],
                     const SizedBox(height: 14),
@@ -924,25 +912,16 @@ class _PutnikDialogState extends State<_PutnikDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
+                  V3ButtonUtils.textButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Otkaži'),
+                    text: 'Otkaži',
                   ),
                   const SizedBox(width: 8),
-                  ElevatedButton.icon(
+                  V3ButtonUtils.primaryButton(
                     onPressed: _saving ? null : _sacuvaj,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    ),
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.save, size: 18),
-                    label: Text(isEdit ? 'Sačuvaj' : 'Dodaj'),
+                    text: isEdit ? 'Sačuvaj' : 'Dodaj',
+                    icon: Icons.save,
+                    isLoading: _saving,
                   ),
                 ],
               ),

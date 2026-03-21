@@ -5,6 +5,8 @@ import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
 
 /// Admin ekran za podešavanje kapaciteta polazaka
@@ -434,16 +436,9 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Theme.of(context).glassBorder),
                     ),
-                    child: TextField(
+                    child: V3InputUtils.numberField(
                       controller: _ctrl,
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 16),
-                      ),
+                      label: '',
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -464,7 +459,7 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton(
+                        child: V3ButtonUtils.successButton(
                           onPressed: () {
                             final value = int.tryParse(_ctrl.text);
                             if (value != null && value > 0 && value <= 20) {
@@ -473,12 +468,7 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
                               V3AppSnackBar.error(context, 'Unesite broj između 1 i 20');
                             }
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Sačuvaj', style: TextStyle(fontSize: 16, color: Colors.white)),
+                          text: 'Sačuvaj',
                         ),
                       ),
                     ],

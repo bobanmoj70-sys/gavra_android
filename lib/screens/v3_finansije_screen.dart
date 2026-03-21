@@ -8,9 +8,12 @@ import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 
@@ -233,15 +236,13 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
+                      child: V3ButtonUtils.outlinedButton(
                         onPressed: () => _showTroskoviDialog(iz.troskoviPoKategoriji),
-                        icon: const Icon(Icons.edit, color: Colors.white70),
-                        label: const Text('Dodaj troškove', style: TextStyle(color: Colors.white70)),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white24),
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                        text: 'Dodaj troškove',
+                        icon: Icons.edit,
+                        borderColor: Colors.white24,
+                        foregroundColor: Colors.white70,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ],
@@ -498,34 +499,29 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
     final neto = prihod - troskovi;
     // Koristimo V3DanHelper umesto DateFormat
 
-    showDialog(
+    V3DialogUtils.showCustomDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Column(
-          children: [
-            const Text('📊 Izveštaj za period'),
-            Text('${V3DanHelper.formatDatumPuni(from)} — ${V3DanHelper.formatDatumPuni(to)}',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.grey)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _FinRow('Prihod', prihod, Colors.green),
-            const SizedBox(height: 8),
-            _FinRow('Troškovi', troskovi, Colors.red),
-            const Divider(),
-            _FinRow('NETO', neto, neto >= 0 ? Colors.green : Colors.red, isBold: true),
-            const SizedBox(height: 16),
-            Text('$voznje vožnji u ovom periodu',
-                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black54)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ZATVORI')),
+      borderRadius: 20,
+      title: '📊 Izveštaj za period',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${V3DanHelper.formatDatumPuni(from)} — ${V3DanHelper.formatDatumPuni(to)}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.grey)),
+          const SizedBox(height: 16),
+          _FinRow('Prihod', prihod, Colors.green),
+          const SizedBox(height: 8),
+          _FinRow('Troškovi', troskovi, Colors.red),
+          const Divider(),
+          _FinRow('NETO', neto, neto >= 0 ? Colors.green : Colors.red, isBold: true),
+          const SizedBox(height: 16),
+          Text('$voznje vožnji u ovom periodu',
+              style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black54)),
         ],
       ),
+      actions: [
+        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'ZATVORI'),
+      ],
     );
   }
 }
@@ -710,17 +706,10 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                       ),
                       Expanded(
                         flex: 3,
-                        child: TextField(
-                          controller: _ctrls[s.$1],
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.right,
-                          decoration: InputDecoration(
-                            hintText: 'Dodaj...',
-                            suffixText: 'din',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            isDense: true,
-                          ),
+                        child: V3InputUtils.numberField(
+                          controller: _ctrls[s.$1]!,
+                          label: 'Dodaj...',
+                          suffixText: 'din',
                         ),
                       ),
                     ],
@@ -730,20 +719,11 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                 const SizedBox(height: 4),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: V3ButtonUtils.successButton(
                     onPressed: _saving ? null : _sacuvaj,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.add_circle),
-                    label: const Text('Dodaj troškove'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
+                    text: 'Dodaj troškove',
+                    icon: Icons.add_circle,
+                    isLoading: _saving,
                   ),
                 ),
                 const SizedBox(height: 8),

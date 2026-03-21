@@ -8,8 +8,11 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 
@@ -92,69 +95,48 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       V3TextUtils.setControllerText('posle', V3DanHelper.formatVreme(dPosle.hour, dPosle.minute));
     }
 
-    final result = await showDialog<bool>(
+    final result = await V3DialogUtils.showCustomDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.orangeAccent.withValues(alpha: 0.3)),
-        ),
-        title: const Row(
+      title: 'Ponudi alternativu',
+      titleIcon: Icons.sync_alt,
+      titleIconColor: Colors.orangeAccent,
+      backgroundColor: const Color(0xFF1A1A1A),
+      borderRadius: 20,
+      borderColor: Colors.orangeAccent,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.sync_alt, color: Colors.orangeAccent),
-            SizedBox(width: 10),
-            Text('Ponudi alternativu', style: TextStyle(color: Colors.white)),
+            Text(
+              'Termin ${zahtev.zeljenoVreme} je pun. Ponudite putniku druga vremena:',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            _timeInput('Prvi termin (obično pre)', V3TextUtils.preController),
+            const SizedBox(height: 12),
+            _timeInput('Drugi termin (obično posle)', V3TextUtils.posleController),
+            const SizedBox(height: 12),
+            V3InputUtils.textField(
+              controller: V3TextUtils.napomenaController,
+              label: 'Napomena (opciono)',
+            ),
           ],
         ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Termin ${zahtev.zeljenoVreme} je pun. Ponudite putniku druga vremena:',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              _timeInput('Prvi termin (obično pre)', V3TextUtils.preController),
-              const SizedBox(height: 12),
-              _timeInput('Drugi termin (obično posle)', V3TextUtils.posleController),
-              const SizedBox(height: 12),
-              TextField(
-                controller: V3TextUtils.napomenaController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Napomena (opciono)',
-                  labelStyle: const TextStyle(color: Colors.white54),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Colors.white12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Colors.orangeAccent),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Odustani', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orangeAccent,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Pošalji ponudu', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
       ),
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          text: 'Odustani',
+          foregroundColor: Colors.white54,
+        ),
+        V3ButtonUtils.elevatedButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          text: 'Pošalji ponudu',
+          backgroundColor: Colors.orangeAccent,
+          foregroundColor: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ],
     );
 
     if (result == true) {
@@ -173,23 +155,11 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
   }
 
   Widget _timeInput(String label, TextEditingController controller) {
-    return TextField(
+    return V3InputUtils.textField(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
+      label: label,
+      icon: Icons.access_time,
       keyboardType: TextInputType.datetime,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white54),
-        prefixIcon: const Icon(Icons.access_time, color: Colors.white54, size: 20),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.white12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.orangeAccent),
-        ),
-      ),
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:gavra_android/services/v3/v3_adresa_service.dart';
 import 'package:gavra_android/theme.dart';
 
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_string_utils.dart';
@@ -401,8 +402,8 @@ class _AdresaDialogState extends State<_AdresaDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('ODUSTANI')),
-        ElevatedButton(
+        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'ODUSTANI'),
+        V3ButtonUtils.primaryButton(
           onPressed: () {
             if (_naziv.text.isEmpty) {
               return;
@@ -414,7 +415,7 @@ class _AdresaDialogState extends State<_AdresaDialog> {
               'lng': double.tryParse(_lng.text),
             });
           },
-          child: const Text('SAČUVAJ'),
+          text: 'SAČUVAJ',
         ),
       ],
     );

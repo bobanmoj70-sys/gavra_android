@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../utils/v3_animation_utils.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// Prikazuje se samo jednom — pri prvom pokretanju aplikacije.
@@ -227,35 +228,16 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                         const SizedBox(width: 12),
                         Expanded(
                           flex: 2,
-                          child: ElevatedButton.icon(
+                          child: V3ButtonUtils.elevatedButton(
                             onPressed: _loading ? null : _onOdobri,
-                            icon: _loading
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.check_circle_rounded, size: 20),
-                            label: const Text(
-                              'ODOBRI',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF34C759),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              elevation: 0,
-                            ),
+                            text: 'ODOBRI',
+                            icon: Icons.check_circle_rounded,
+                            backgroundColor: const Color(0xFF34C759),
+                            foregroundColor: Colors.white,
+                            isLoading: _loading,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                       ],

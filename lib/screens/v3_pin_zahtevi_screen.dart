@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/v3/v3_pin_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// PIN ZAHTEVI SCREEN
@@ -188,28 +189,20 @@ Widget _pinZahtevCard({
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: V3ButtonUtils.outlinedButton(
                   onPressed: onOdbij,
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text('Odbij'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+                  text: 'Odbij',
+                  icon: Icons.close,
+                  borderColor: Colors.red,
+                  foregroundColor: Colors.red,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton.icon(
+                child: V3ButtonUtils.successButton(
                   onPressed: onOdobri,
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text('Dodeli PIN'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+                  text: 'Dodeli PIN',
+                  icon: Icons.check,
                 ),
               ),
             ],
@@ -287,24 +280,9 @@ class _PinOdobriDialogState extends State<_PinOdobriDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
+          V3InputUtils.pinField(
             controller: _pinCtrl,
-            style: const TextStyle(color: Colors.white, fontSize: 28, letterSpacing: 12),
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 4,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              hintText: '0000',
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-              counterText: '',
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.green)),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.green)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.green, width: 2)),
-            ),
+            label: 'PIN',
           ),
           const SizedBox(height: 12),
           TextButton.icon(
@@ -315,11 +293,12 @@ class _PinOdobriDialogState extends State<_PinOdobriDialog> {
         ],
       ),
       actions: [
-        TextButton(
+        V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
+          text: 'Odustani',
+          foregroundColor: Colors.grey,
         ),
-        ElevatedButton(
+        V3ButtonUtils.successButton(
           onPressed: () async {
             if (_pinCtrl.text.length != 4) {
               V3AppSnackBar.warning(context, 'PIN mora imati 4 cifre');
@@ -344,8 +323,7 @@ class _PinOdobriDialogState extends State<_PinOdobriDialog> {
               V3AppSnackBar.error(context, '❌ Greška pri dodeli PIN-a');
             }
           },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          child: const Text('Dodeli PIN', style: TextStyle(color: Colors.white)),
+          text: 'Dodeli PIN',
         ),
       ],
     );
@@ -377,11 +355,12 @@ class _PinOdbijDialog extends StatelessWidget {
         style: const TextStyle(color: Colors.white70),
       ),
       actions: [
-        TextButton(
+        V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
+          text: 'Odustani',
+          foregroundColor: Colors.grey,
         ),
-        ElevatedButton(
+        V3ButtonUtils.dangerButton(
           onPressed: () async {
             Navigator.pop(context);
             final success = await V3PinZahtevService.odbijZahtev(zahtevId);
@@ -392,8 +371,7 @@ class _PinOdbijDialog extends StatelessWidget {
               V3AppSnackBar.error(context, '❌ Greška pri odbijanju');
             }
           },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          child: const Text('Odbij', style: TextStyle(color: Colors.white)),
+          text: 'Odbij',
         ),
       ],
     );

@@ -10,6 +10,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -260,44 +261,28 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
                 const SizedBox(height: 32),
 
                 // ── Prijavi se dugme ─────────────────────────────
-                ElevatedButton(
+                V3ButtonUtils.elevatedButton(
                   onPressed: _isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
-                        )
-                      : const Text(
-                          'Prijavi se',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                  text: 'Prijavi se',
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  isLoading: _isLoading,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
 
                 // ── Biometrija ───────────────────────────────────
                 if (_biometricAvailable && _hasSavedCredentials) ...[
                   const SizedBox(height: 16),
-                  OutlinedButton.icon(
+                  V3ButtonUtils.outlinedButton(
                     onPressed: _isLoading ? null : _loginWithBiometric,
-                    icon: Icon(_biometricIcon, color: Colors.amber),
-                    label: const Text(
-                      'Prijava biometrijom',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.amber),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                    text: 'Prijava biometrijom',
+                    icon: _biometricIcon,
+                    borderColor: Colors.amber,
+                    foregroundColor: Colors.white,
+                    isLoading: _isLoading,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ],
 

@@ -18,7 +18,9 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_text_utils.dart';
@@ -278,20 +280,18 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.15),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                child: V3ButtonUtils.elevatedButton(
                   onPressed: odabran == null
                       ? null
                       : () async {
                           Navigator.pop(ctx);
                           await _dodelijPutnikuHome(zahtev.putnikId, odabran!, grad, vreme, datum);
                         },
-                  child: const Text('Potvrdi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  text: 'Potvrdi',
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  foregroundColor: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -502,30 +502,17 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     child: Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
+                          child: V3ButtonUtils.outlinedButton(
                             onPressed: () => Navigator.pop(dialogCtx),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.red),
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Otkaži'),
+                            text: 'Otkaži',
+                            borderColor: Colors.red,
+                            foregroundColor: Colors.white,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           flex: 2,
-                          child: ElevatedButton.icon(
-                            icon: isLoading
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Icon(Icons.add),
-                            label: Text(isLoading ? 'Dodaje...' : 'Dodaj'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.withValues(alpha: 0.7),
-                              foregroundColor: Colors.white,
-                            ),
+                          child: V3ButtonUtils.elevatedButton(
                             onPressed: isLoading
                                 ? null
                                 : () async {
@@ -581,6 +568,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       if (ctx.mounted) V3AppSnackBar.error(ctx, '❌ Greška: $e');
                                     }
                                   },
+                            text: isLoading ? 'Dodaje...' : 'Dodaj',
+                            icon: Icons.add,
+                            backgroundColor: Colors.green.withValues(alpha: 0.7),
+                            foregroundColor: Colors.white,
+                            isLoading: isLoading,
                           ),
                         ),
                       ],
@@ -736,7 +728,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   children: [
                     const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
                     const SizedBox(width: 8),
-                    TextButton(
+                    V3ButtonUtils.textButton(
                       onPressed: () async {
                         final d = await showDatePicker(
                           context: ctx,
@@ -746,10 +738,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         );
                         if (d != null) setS(() => datumPrometa = d);
                       },
-                      child: Text(
-                        '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
-                        style: const TextStyle(color: Colors.amber),
-                      ),
+                      text: '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
+                      foregroundColor: Colors.amber,
                     ),
                   ],
                 ),
@@ -765,26 +755,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     subtitle: selected[id] == true
                         ? Row(children: [
                             Expanded(
-                              child: TextField(
-                                controller: brojVoznjiController[id],
-                                decoration: const InputDecoration(
-                                  labelText: 'Dana',
-                                  labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                                ),
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(color: Colors.white),
+                              child: V3InputUtils.numberField(
+                                controller: brojVoznjiController[id]!,
+                                label: 'Dana',
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: TextField(
-                                controller: ceneController[id],
-                                decoration: const InputDecoration(
-                                  labelText: 'Cena/dan',
-                                  labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                                ),
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(color: Colors.white),
+                              child: V3InputUtils.numberField(
+                                controller: ceneController[id]!,
+                                label: 'Cena/dan',
                               ),
                             ),
                           ])
@@ -796,12 +776,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             ),
           ),
           actions: [
-            TextButton(
+            V3ButtonUtils.textButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Otkaži', style: TextStyle(color: Colors.red)),
+              text: 'Otkaži',
+              foregroundColor: Colors.red,
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.8)),
+            V3ButtonUtils.successButton(
               onPressed: () async {
                 final odabrani = putnici.where((p) {
                   final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
@@ -842,7 +822,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 for (final c in ceneController.values) c.dispose();
                 for (final c in brojVoznjiController.values) c.dispose();
               },
-              child: const Text('Štampaj'),
+              text: 'Štampaj',
             ),
           ],
         ),
@@ -907,7 +887,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 Row(children: [
                   const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
-                  TextButton(
+                  V3ButtonUtils.textButton(
                     onPressed: () async {
                       final d = await showDatePicker(
                         context: ctx,
@@ -917,22 +897,20 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       );
                       if (d != null) setS(() => datumPrometa = d);
                     },
-                    child: Text(
-                      '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
-                      style: const TextStyle(color: Colors.amber),
-                    ),
+                    text: '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
+                    foregroundColor: Colors.amber,
                   ),
                 ]),
               ],
             ),
           ),
           actions: [
-            TextButton(
+            V3ButtonUtils.textButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Otkaži', style: TextStyle(color: Colors.red)),
+              text: 'Otkaži',
+              foregroundColor: Colors.red,
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.8)),
+            V3ButtonUtils.successButton(
               onPressed: () async {
                 if (V3TextUtils.isEmpty('ime') || V3TextUtils.isEmpty('opis')) {
                   V3AppSnackBar.error(ctx, '⚠️ Popunite ime i opis');
@@ -960,7 +938,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   context: context,
                 );
               },
-              child: const Text('Štampaj'),
+              text: 'Štampaj',
             ),
           ],
         ),
@@ -975,17 +953,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   }
 
   Widget _dialogField(TextEditingController ctrl, String label, {bool numeric = false}) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: numeric ? TextInputType.number : TextInputType.text,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white54),
-        enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
-      ),
-    );
+    return numeric
+        ? V3InputUtils.numberField(
+            controller: ctrl,
+            label: label,
+          )
+        : V3InputUtils.textField(
+            controller: ctrl,
+            label: label,
+          );
   }
 
   @override

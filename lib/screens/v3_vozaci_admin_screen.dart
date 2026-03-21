@@ -6,6 +6,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -204,14 +205,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     // Sačuvaj
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: selectedColor.withValues(alpha: 0.3),
-                          foregroundColor: Colors.white,
-                          side: BorderSide(color: selectedColor, width: 1.5),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                      child: V3ButtonUtils.elevatedButton(
                         onPressed: () async {
                           if (!formKey.currentState!.validate()) return;
                           final novi = V3Vozac(
@@ -238,10 +232,11 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                             V3ErrorUtils.asyncError(this, context, e);
                           }
                         },
-                        child: Text(
-                          isEdit ? 'Sačuvaj izmjene' : 'Dodaj vozača',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
+                        text: isEdit ? 'Sačuvaj izmjene' : 'Dodaj vozača',
+                        backgroundColor: selectedColor.withValues(alpha: 0.3),
+                        foregroundColor: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],

@@ -14,8 +14,10 @@ import '../services/v3/v3_dnevna_predaja_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_text_utils.dart';
@@ -608,36 +610,20 @@ class _PredajaFooterState extends State<_PredajaFooter> {
               const Text('Predao:', style: TextStyle(color: Colors.white70, fontSize: 14)),
               const SizedBox(width: 10),
               Expanded(
-                child: TextField(
+                child: V3InputUtils.numberField(
                   controller: V3TextUtils.iznosController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: '0',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    suffixText: 'din',
-                    suffixStyle: const TextStyle(color: Colors.white54, fontSize: 13),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.07),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  onChanged: (_) => setState(() => _sacuvan = false),
+                  label: '0',
+                  suffixText: 'din',
                 ),
               ),
               const SizedBox(width: 8),
-              ElevatedButton(
+              V3ButtonUtils.elevatedButton(
                 onPressed: _sacuvaj,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _sacuvan ? Colors.green[700] : Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                child: Text(_sacuvan ? '✅' : 'Sačuvaj'),
+                text: _sacuvan ? '✅' : 'Sačuvaj',
+                backgroundColor: _sacuvan ? Colors.green[700] : Colors.green,
+                foregroundColor: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
             ],
           ),

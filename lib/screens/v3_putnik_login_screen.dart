@@ -10,6 +10,8 @@ import '../services/v3/v3_pin_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
+import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
@@ -337,40 +339,17 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   Future<void> _showBiometricSetupDialog({required String phone, required String pin}) async {
     if (!mounted) return;
-    final result = await showDialog<String>(
+    final result = await V3DialogUtils.showChoiceDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(_biometricIcon, color: Colors.amber, size: 28),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text('Brza prijava', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-        content: Text(
-          '�elite li se sledeci put prijaviti pomocu \\n\nNe morate unositi telefon i PIN.',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'no'),
-            child: const Text('Ne, hvala', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'remember'),
-            child: const Text('Samo me zapamti', style: TextStyle(color: Colors.amber)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, 'biometric'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            child: const Text('Ukljuci biometriju', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
+      title: 'Brza prijava',
+      titleIcon: _biometricIcon,
+      backgroundColor: const Color(0xFF1a1a2e),
+      content: 'Želite li se sledeći put prijaviti pomoću $_biometricText?\n\nNe morate unositi telefon i PIN.',
+      choices: {
+        'no': 'Ne, hvala',
+        'remember': 'Samo me zapamti',
+        'biometric': 'Uključi biometriju',
+      },
     );
 
     if (result == 'biometric') {
@@ -641,37 +620,29 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   }
 
   void _showForgotPinDialog() {
-    showDialog<void>(
+    V3DialogUtils.showCustomDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.help_outline, color: Colors.amber),
-            SizedBox(width: 8),
-            Text('Zaboravili ste PIN?', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: const Text(
-          'Mo�emo poslati zahtev adminu da vam dodeli novi PIN.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Odustani', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _sendPinRequest();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            child: const Text('Zatra�i novi PIN', style: TextStyle(color: Colors.black)),
-          ),
-        ],
+      title: 'Zaboravili ste PIN?',
+      titleIcon: Icons.help_outline,
+      backgroundColor: const Color(0xFF1a1a2e),
+      content: const Text(
+        'Možemo poslati zahtev adminu da vam dodeli novi PIN.',
+        style: TextStyle(color: Colors.white70),
       ),
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context),
+          text: 'Odustani',
+          foregroundColor: Colors.grey,
+        ),
+        V3ButtonUtils.amberButton(
+          onPressed: () {
+            Navigator.pop(context);
+            _sendPinRequest();
+          },
+          text: 'Zatraži novi PIN',
+        ),
+      ],
     );
   }
 

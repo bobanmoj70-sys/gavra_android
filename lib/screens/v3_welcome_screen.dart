@@ -14,6 +14,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_animation_utils.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_validation_utils.dart';
@@ -481,15 +482,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                   );
                 }),
               const SizedBox(height: 16),
-              TextButton(
+              V3ButtonUtils.textButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  'Otkaži',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 16,
-                  ),
-                ),
+                text: 'Otkaži',
+                foregroundColor: Colors.white.withValues(alpha: 0.7),
+                fontSize: 16,
               ),
             ],
           ),

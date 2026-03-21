@@ -15,6 +15,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -365,18 +366,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       if (hasActive)
                         SizedBox(
                           width: double.infinity,
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent, size: 18),
-                            label: const Text('Otkaži termin', style: TextStyle(color: Colors.redAccent, fontSize: 14)),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.redAccent),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
+                          child: V3ButtonUtils.outlinedButton(
                             onPressed: () async {
                               Navigator.of(dialogCtx).pop();
                               await _updatePolazak(dan, grad, null, trenutniInfo: info);
                             },
+                            text: 'Otkaži termin',
+                            icon: Icons.cancel_outlined,
+                            borderColor: Colors.redAccent,
+                            foregroundColor: Colors.redAccent,
+                            fontSize: 14,
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       if (hasActive) const SizedBox(height: 10),
@@ -478,9 +478,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 // Zatvori
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: TextButton(
+                  child: V3ButtonUtils.textButton(
                     onPressed: () => Navigator.of(dialogCtx).pop(),
-                    child: const Text('Zatvori', style: TextStyle(color: Colors.white54)),
+                    text: 'Zatvori',
+                    foregroundColor: Colors.white54,
                   ),
                 ),
               ],
@@ -1015,16 +1016,13 @@ class _NotifBanner extends StatelessWidget {
               ],
             ),
           ),
-          TextButton(
+          V3ButtonUtils.textButton(
             onPressed: onEnable,
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.red,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('UKLJUČI', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            text: 'UKLJUČI',
+            foregroundColor: Colors.red,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
           ),
         ],
       ),

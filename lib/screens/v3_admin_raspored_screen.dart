@@ -10,6 +10,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -348,20 +349,18 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.15),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                child: V3ButtonUtils.elevatedButton(
                   onPressed: odabran == null
                       ? null
                       : () async {
                           Navigator.pop(ctx);
                           await _dodelijTermin(grad, vreme, odabran!);
                         },
-                  child: const Text('Potvrdi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  text: 'Potvrdi',
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  foregroundColor: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -431,20 +430,18 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.15),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                child: V3ButtonUtils.elevatedButton(
                   onPressed: odabran == null
                       ? null
                       : () async {
                           Navigator.pop(ctx);
                           await _dodelijPutniku(zahtev.putnikId, odabran!, _selectedGrad, _selectedVreme);
                         },
-                  child: const Text('Potvrdi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  text: 'Potvrdi',
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  foregroundColor: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
