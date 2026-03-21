@@ -291,7 +291,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
 
   // ─── Delete ───────────────────────────────────────────────────────────────
   Future<void> _obrisi(V3Putnik p) async {
-    final potvrda = await V3NavigationUtils.showConfirmDialog(
+    final potvrda = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'Potvrdi brisanje',
       message:

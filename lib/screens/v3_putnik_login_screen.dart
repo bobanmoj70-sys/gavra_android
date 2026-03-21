@@ -12,8 +12,9 @@ import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_dialog_utils.dart';
-import '../utils/v3_input_utils.dart';
+import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -620,7 +621,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   }
 
   void _showForgotPinDialog() {
-    V3DialogUtils.showCustomDialog<void>(
+    V3DialogHelper.showCustomDialog<void>(
       context: context,
       title: 'Zaboravili ste PIN?',
       titleIcon: Icons.help_outline,

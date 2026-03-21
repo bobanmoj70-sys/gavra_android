@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../services/v2_theme_manager.dart';
-import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_telefon_helper.dart';
 

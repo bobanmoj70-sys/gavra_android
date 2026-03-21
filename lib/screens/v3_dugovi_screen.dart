@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -138,7 +139,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
   }
 
   Future<void> _markAsPaid(V3Dug dug) async {
-    final confirm = await V3NavigationUtils.showConfirmDialog(
+    final confirm = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'Potvrda naplate',
       message: 'Da li je putnik ${dug.imePrezime} platio dug od ${dug.iznos.toStringAsFixed(2)} RSD?',

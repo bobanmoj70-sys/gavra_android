@@ -11,7 +11,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_dialog_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -486,7 +486,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
     final neto = prihod - troskovi;
     // Koristimo V3DanHelper umesto DateFormat
 
-    V3DialogUtils.showCustomDialog<void>(
+    V3DialogHelper.showCustomDialog<void>(
       context: context,
       borderRadius: 20,
       title: '📊 Izveštaj za period',

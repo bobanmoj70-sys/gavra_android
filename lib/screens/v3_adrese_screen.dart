@@ -6,6 +6,7 @@ import 'package:gavra_android/theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_string_utils.dart';
@@ -85,7 +86,7 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
   }
 
   Future<void> _confirmDelete(V3Adresa adresa) async {
-    final confirm = await V3NavigationUtils.showConfirmDialog(
+    final confirm = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'Potvrda brisanja',
       message: 'Da li ste sigurni da želite obrisati adresu "${adresa.naziv}"?',
