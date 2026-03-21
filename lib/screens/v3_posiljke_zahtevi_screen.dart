@@ -156,13 +156,11 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
     );
   }
 
-  Widget _badge(String tekst, Color color) => Container(
+  Widget _badge(String tekst, Color color) => V3ContainerUtils.styledContainer(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
-        ),
+        backgroundColor: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
         child: Text(tekst, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
       );
 }
@@ -235,13 +233,11 @@ class _ZahtevKartica extends StatelessWidget {
       _ => (Colors.white24, zahtev.status),
     };
 
-    return Container(
+    return V3ContainerUtils.styledContainer(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: borderColor.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor.withValues(alpha: 0.45), width: 1.5),
-      ),
+      backgroundColor: borderColor.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: borderColor.withValues(alpha: 0.45), width: 1.5),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(

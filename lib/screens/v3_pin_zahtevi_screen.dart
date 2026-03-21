@@ -136,16 +136,14 @@ Widget _pinZahtevCard({
     }
   }
 
-  return Container(
+  return V3ContainerUtils.styledContainer(
     margin: const EdgeInsets.only(bottom: 12),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.06),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Theme.of(context).glassBorder),
-      boxShadow: [
-        BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8),
-      ],
-    ),
+    backgroundColor: Colors.white.withValues(alpha: 0.06),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Theme.of(context).glassBorder),
+    boxShadow: [
+      BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8),
+    ],
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(

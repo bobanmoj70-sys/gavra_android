@@ -685,10 +685,11 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
           backgroundColor: a ? Colors.amber : Colors.white.withValues(alpha: 0.3),
           borderRadiusGeometry: const BorderRadius.all(Radius.circular(6)),
         );
-    line(bool a) => Container(
+    line(bool a) => V3ContainerUtils.styledContainer(
           width: 40,
           height: 2,
-          color: a ? Colors.amber : Colors.white.withValues(alpha: 0.3),
+          backgroundColor: a ? Colors.amber : Colors.white.withValues(alpha: 0.3),
+          child: const SizedBox(),
         );
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -705,13 +706,11 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   }
 
   Widget _infoBox(String msg, Color color) {
-    return Container(
+    return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
+      backgroundColor: color.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withValues(alpha: 0.5)),
       child: Row(
         children: [
           Icon(
@@ -727,13 +726,11 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   }
 
   Widget _zahtevPoslatContent() {
-    return Container(
+    return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-      ),
+      backgroundColor: Colors.green.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
       child: Column(
         children: [
           const Icon(Icons.check_circle, color: Colors.green, size: 64),
@@ -760,12 +757,10 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       _LoginStep.pin => 'PIN ste dobili od admina. Ako ste ga zaboravili, koristite opciju ispod.',
       _LoginStep.zahtevPoslat => 'Mo�ete zatvoriti aplikaciju. Obave�tavamo vas kada PIN bude dodeljen.',
     };
-    return Container(
+    return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      backgroundColor: Colors.white.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(12),
       child: Row(
         children: [
           const Icon(Icons.info_outline, color: Colors.white54, size: 20),
