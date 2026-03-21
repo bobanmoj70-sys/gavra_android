@@ -290,13 +290,11 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
                 const SizedBox(height: 16),
 
                 // ── Info box ─────────────────────────────────────
-                Container(
+                V3ContainerUtils.styledContainer(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white24),
-                  ),
+                  backgroundColor: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24),
                   child: Row(
                     children: [
                       Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.5), size: 20),
@@ -335,22 +333,19 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
     return Column(
       children: [
-        Container(
+        V3ContainerUtils.iconContainer(
           width: 72,
           height: 72,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: boja.withValues(alpha: 0.25),
-            border: Border.all(color: boja.withValues(alpha: 0.6), width: 2.5),
-          ),
-          child: Center(
-            child: Text(
-              initials,
-              style: TextStyle(
-                color: boja,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
+          backgroundColor: boja.withValues(alpha: 0.25),
+          border: Border.all(color: boja.withValues(alpha: 0.6), width: 2.5),
+          borderRadiusGeometry: BorderRadius.circular(36),
+          alignment: Alignment.center,
+          child: Text(
+            initials,
+            style: TextStyle(
+              color: boja,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
