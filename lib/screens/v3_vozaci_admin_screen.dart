@@ -486,13 +486,12 @@ class _VozacKartica extends StatelessWidget {
       opacity: jeNeaktivan ? 0.55 : 1.0,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: cardColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
+        child: V3ContainerUtils.iconContainer(
+          backgroundColor: cardColor.withValues(alpha: 0.08),
+          borderRadiusGeometry: BorderRadius.circular(14),
           border: Border.all(color: cardColor.withValues(alpha: 0.5), width: 1.5),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
               // Avatar
@@ -601,6 +600,7 @@ class _VozacKartica extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
