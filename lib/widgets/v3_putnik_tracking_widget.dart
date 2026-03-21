@@ -10,6 +10,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_stream_utils.dart';
 
 /// Widget za praćenje dolaska vozača u real-time.
 /// Prikazuje ETA countdown i status vožnje za putnika.
@@ -37,10 +38,7 @@ class V3PutnikTrackingWidget extends StatefulWidget {
 }
 
 class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
-  StreamSubscription<void>? _locationSub;
-  Timer? _refreshTimer;
-
-  // ETA podaci
+  // ETA подaci
   int? _etaMinutes;
   String _status = 'Priprema se...';
   bool _isVisible = false;
@@ -61,8 +59,8 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
 
   @override
   void dispose() {
-    _locationSub?.cancel();
-    _refreshTimer?.cancel();
+    V3StreamUtils.cancelSubscription('putnik_tracking_location');
+    V3StreamUtils.cancelTimer('putnik_tracking_refresh');
     super.dispose();
   }
 
@@ -127,12 +125,18 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
 
   void _startTracking() {
     // Real-time subscription na vozačevu lokaciju
-    _locationSub = V3MasterRealtimeManager.instance.onChange.listen((_) {
+    V3StreamUtils.subscribe<void>(
+      key: 'putnik_tracking_location',
+      stream: V3MasterRealtimeManager.instance.onChange,
+      onData: (_) {
       _updateVozacLokacija();
     });
 
     // Periodic refresh za visibility check
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    V3StreamUtils.createRefreshTimer(
+      key: 'putnik_tracking',
+      period: const Duration(seconds: 30),
+      onRefresh: () {
       _checkVisibility();
       if (_isVisible) {
         _updateETA();

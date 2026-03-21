@@ -23,6 +23,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_stream_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
@@ -74,9 +75,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isLoading = true;
   bool _isTracking = false;
 
-  StreamSubscription<void>? _realtimeSub;
-  StreamSubscription<Position>? _gpsStreamSub; // GPS stream subscription (umesto Timer-a)
-  Timer? _routeOptimizationTimer; // Timer za kontinuiranu optimizaciju rute
   Map<String, double>? _lastOptimizationPosition; // Poslednja pozicija za optimizaciju
 
   /// Efektivni vozač
@@ -105,9 +103,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   @override
   void dispose() {
-    _realtimeSub?.cancel();
-    _gpsStreamSub?.cancel();
-    _routeOptimizationTimer?.cancel();
+    V3StreamUtils.cancelSubscription('vozac_screen_realtime');
+    V3StreamUtils.cancelSubscription('vozac_screen_gps');
+    V3StreamUtils.cancelTimer('vozac_screen_route_optimization');
     super.dispose();
   }
 
@@ -119,9 +117,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return;
     }
 
-    _realtimeSub = V3MasterRealtimeManager.instance.onChange.listen((_) {
-      if (mounted) _rebuild();
-    });
+    V3StreamUtils.subscribe<void>(
+      key: 'vozac_screen_realtime',
+      stream: V3MasterRealtimeManager.instance.onChange,
+      onData: (_) {
+        if (mounted) _rebuild();
+      },
+    );
 
     if (mounted) {
       _rebuild();
@@ -443,8 +445,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       await V3VozacLokacijaService.postaviAktivnost(vozac.id, false);
 
       // Route optimization se automatski zaustavlja database trigger-ima
-      _routeOptimizationTimer?.cancel();
-      _routeOptimizationTimer = null;
+      V3StreamUtils.cancelTimer('vozac_screen_route_optimization');
       _lastOptimizationPosition = null;
 
       if (mounted) {

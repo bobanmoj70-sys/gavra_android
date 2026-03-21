@@ -17,6 +17,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_stream_utils.dart';
 import '../utils/v3_text_utils.dart';
 
 /// DNEVNIK NAPLATE — V3
@@ -40,35 +41,40 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
   List<_VozacItem> _vozaci = [];
 
-  StreamSubscription<void>? _cacheSub;
-  Timer? _refreshDebounce;
-
   @override
   void initState() {
     super.initState();
     _ucitajVozace();
 
-    _cacheSub = V3MasterRealtimeManager.instance.onChange.listen((_) {
-      if (!mounted) return;
-      _ucitajVozace();
+    V3StreamUtils.subscribe<void>(
+      key: 'dnevnik_naplate_cache',
+      stream: V3MasterRealtimeManager.instance.onChange,
+      onData: (_) {
+        if (!mounted) return;
+        _ucitajVozace();
 
-      if (_selectedVozacId == null) return;
-      final today = DateTime.now();
-      final isToday =
-          _selectedDate.year == today.year && _selectedDate.month == today.month && _selectedDate.day == today.day;
-      if (!isToday) return;
+        if (_selectedVozacId == null) return;
+        final today = DateTime.now();
+        final isToday =
+            _selectedDate.year == today.year && _selectedDate.month == today.month && _selectedDate.day == today.day;
+        if (!isToday) return;
 
-      _refreshDebounce?.cancel();
-      _refreshDebounce = Timer(const Duration(milliseconds: 300), () {
-        if (mounted) _prikaziNaplate();
-      });
-    });
+        V3StreamUtils.cancelTimer('dnevnik_naplate_refresh_debounce');
+        V3StreamUtils.createTimer(
+          key: 'dnevnik_naplate_refresh_debounce',
+          duration: const Duration(milliseconds: 300),
+          callback: () {
+            if (mounted) _prikaziNaplate();
+          },
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
-    _cacheSub?.cancel();
-    _refreshDebounce?.cancel();
+    V3StreamUtils.cancelSubscription('dnevnik_naplate_cache');
+    V3StreamUtils.cancelTimer('dnevnik_naplate_refresh_debounce');
     super.dispose();
   }
 

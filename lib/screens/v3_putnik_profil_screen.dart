@@ -18,6 +18,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_putnik_tracking_widget.dart';
 import '../widgets/v3_update_banner.dart';
@@ -39,7 +40,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // Dugovanje
   double _ukupnoDugovanje = 0.0;
   int _brojNeplacenih = 0;
-  late StreamSubscription<void> _cacheSub;
   @override
   void initState() {
     super.initState();
@@ -48,18 +48,22 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     _checkNotifPermission();
     _refresh();
     // Pratimo promjene cache-a
-    _cacheSub = V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-      tables: const ['v3_putnici', 'v3_zahtevi', 'v3_operativna_nedelja'],
-      build: () {},
-    ).listen((_) {
-      if (mounted) _refresh();
-    });
+    V3StreamUtils.subscribe<void>(
+      key: 'putnik_profil_cache',
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_putnici', 'v3_zahtevi', 'v3_operativna_nedelja'],
+        build: () {},
+      ),
+      onData: (_) {
+        if (mounted) _refresh();
+      },
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cacheSub.cancel();
+    V3StreamUtils.cancelSubscription('putnik_profil_cache');
     super.dispose();
   }
 
@@ -509,7 +513,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
     if (ok != true || !mounted) return;
     // Otkaži stream subscription prije brisanja sesije
-    await _cacheSub.cancel();
+    V3StreamUtils.cancelSubscription('putnik_profil_cache');
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
     await V3BiometricService().clearCredentials();

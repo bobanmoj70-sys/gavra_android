@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../models/v3_putnik.dart';
+import '../../utils/v3_stream_utils.dart';
 import 'v3_vozac_lokacija_service.dart';
 
 /// V3 Foreground GPS Service sa Persistent Notification
@@ -24,8 +25,6 @@ class V3ForegroundGpsService {
   static String? _currentVozacId;
   static String? _currentPolazakVreme;
   static List<V3Putnik> _currentPutnici = [];
-  static Timer? _gpsTimer;
-  static StreamSubscription<Position>? _positionSubscription;
 
   /// Inicijalizuje notification channel
   static Future<void> initialize() async {
@@ -254,10 +253,12 @@ class V3ForegroundGpsService {
         timeLimit: Duration(seconds: 15),
       );
 
-      _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: locationSettings,
-      ).listen(
-        (position) async {
+      V3StreamUtils.subscribeToGPS<Position>(
+        key: 'foreground_gps_service',
+        positionStream: Geolocator.getPositionStream(
+          locationSettings: locationSettings,
+        ),
+        onPosition: (position) async {
           if (!_isRunning || _currentVozacId == null) return;
 
           // Pošalji GPS update
@@ -290,10 +291,8 @@ class V3ForegroundGpsService {
 
   /// Zaustavlja GPS poziciju streaming
   static Future<void> _stopGpsTracking() async {
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
-    _gpsTimer?.cancel();
-    _gpsTimer = null;
+    V3StreamUtils.cancelSubscription('foreground_gps_service_gps');
+    V3StreamUtils.cancelTimer('foreground_gps_timer');
   }
 
   /// Ažurira notification sa trenutnom brzinom

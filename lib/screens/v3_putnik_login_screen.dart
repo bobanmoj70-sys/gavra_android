@@ -13,6 +13,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_stream_utils.dart';
 import '../utils/v3_text_utils.dart';
 import 'v3_putnik_profil_screen.dart';
 
@@ -32,7 +33,6 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   String? _infoMessage;
 
   Map<String, dynamic>? _putnikData;
-  StreamSubscription<List<Map<String, dynamic>>>? _pinSub;
 
   // Biometrija
   final _biometric = V3BiometricService();
@@ -67,7 +67,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   @override
   void dispose() {
-    _pinSub?.cancel();
+    V3StreamUtils.cancelSubscription('putnik_login_pin');
     V3TextUtils.disposeController('telefon');
     V3TextUtils.disposeController('email');
     V3TextUtils.disposeController('pin');
@@ -259,21 +259,24 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   }
 
   void _listenForPin() {
-    _pinSub?.cancel();
+    V3StreamUtils.cancelSubscription('putnik_login_pin');
     final putnikId = _putnikData?['id']?.toString();
-    _pinSub = V3PinZahtevService.streamZahteviKojiCekaju().listen((lista) {
-      if (!mounted) return;
-      // Kada zahtev nestane iz liste cekanja ? PIN je odobren
-      final josCeka = lista.any((z) => z['putnik_id']?.toString() == putnikId);
-      if (!josCeka && _currentStep == _LoginStep.zahtevPoslat) {
-        _pinSub?.cancel();
-        setState(() {
-          _currentStep = _LoginStep.pin;
-          _infoMessage = '? PIN je dodeljen! Unesite PIN koji ste dobili.';
-          _errorMessage = null;
+    V3StreamUtils.subscribeToPinRequests(
+        key: 'putnik_login',
+        pinStream: V3PinZahtevService.streamZahteviKojiCekaju(),
+        onPinUpdate: (lista) {
+          if (!mounted) return;
+          // Kada zahtev nestane iz liste cekanja ? PIN je odobren
+          final josCeka = lista.any((z) => z['putnik_id']?.toString() == putnikId);
+          if (!josCeka && _currentStep == _LoginStep.zahtevPoslat) {
+            V3StreamUtils.cancelSubscription('putnik_login_pin');
+            setState(() {
+              _currentStep = _LoginStep.pin;
+              _infoMessage = '? PIN je dodeljen! Unesite PIN koji ste dobili.';
+              _errorMessage = null;
+            });
+          }
         });
-      }
-    });
   }
 
   // Biometrijski login

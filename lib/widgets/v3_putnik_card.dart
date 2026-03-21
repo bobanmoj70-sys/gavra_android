@@ -19,6 +19,7 @@ import '../../utils/v3_dan_helper.dart';
 import '../../utils/v3_error_utils.dart';
 import '../../utils/v3_navigation_utils.dart';
 import '../../utils/v3_state_utils.dart';
+import '../../utils/v3_stream_utils.dart';
 import '../../utils/v3_validation_utils.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
@@ -48,7 +49,6 @@ class V3PutnikCard extends StatefulWidget {
 }
 
 class _V3PutnikCardState extends State<V3PutnikCard> {
-  Timer? _longPressTimer;
   bool _isLongPressActive = false;
   bool _isProcessing = false;
 
@@ -57,29 +57,32 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   @override
   void dispose() {
-    _longPressTimer?.cancel();
+    V3StreamUtils.cancelTimer('putnik_card_${widget.putnik.id}_longpress');
     super.dispose();
   }
 
   // ─── Long press za pokupljanje (1.5s) ──────────────────────────
 
   void _startLongPressTimer() {
-    _longPressTimer?.cancel();
+    V3StreamUtils.cancelTimer('putnik_card_${widget.putnik.id}_longpress');
     _isLongPressActive = true;
     V2HapticService.selectionClick();
-    _longPressTimer = Timer(const Duration(milliseconds: 1500), () {
-      if (_isLongPressActive && mounted) {
-        final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-        final isPokupljen = widget.entry?.pokupljen ?? false;
-        if (status != 'otkazano' && !isPokupljen) {
-          _handlePickup();
-        }
-      }
-    });
+    V3StreamUtils.createLongPressTimer(
+        key: 'putnik_card_${widget.putnik.id}',
+        duration: const Duration(milliseconds: 1500),
+        onLongPress: () {
+          if (_isLongPressActive && mounted) {
+            final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
+            final isPokupljen = widget.entry?.pokupljen ?? false;
+            if (status != 'otkazano' && !isPokupljen) {
+              _handlePickup();
+            }
+          }
+        });
   }
 
   void _cancelLongPressTimer() {
-    _longPressTimer?.cancel();
+    V3StreamUtils.cancelTimer('putnik_card_${widget.putnik.id}_longpress');
     _isLongPressActive = false;
   }
 
