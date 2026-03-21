@@ -152,7 +152,7 @@ class V3ContainerUtils {
     );
   }
 
-  /// Badge container
+  /// Badge container (enhanced version)
   static Widget badgeContainer({
     required Widget child,
     Color? backgroundColor,
@@ -160,40 +160,49 @@ class V3ContainerUtils {
     EdgeInsetsGeometry? padding,
     double borderRadius = 20.0,
     double? borderWidth,
+    BoxBorder? border,
+    BorderRadiusGeometry? borderRadiusGeometry,
   }) {
     return Container(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.blue,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null,
+        borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
+        border: border ?? (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
       ),
       child: child,
     );
   }
 
-  /// Icon container
+  /// Icon container (enhanced version)
   static Widget iconContainer({
-    required Widget icon,
+    Widget? icon,
+    Widget? child,
     Color? backgroundColor,
     double? size,
+    double? width,
+    double? height,
     EdgeInsetsGeometry? padding,
     double borderRadius = 8.0,
+    BorderRadiusGeometry? borderRadiusGeometry,
     Color? borderColor,
     double? borderWidth,
+    BoxBorder? border,
     List<BoxShadow>? boxShadow,
+    AlignmentGeometry? alignment,
   }) {
     return Container(
-      width: size,
-      height: size,
+      width: width ?? size,
+      height: height ?? size,
       padding: padding ?? const EdgeInsets.all(8.0),
+      alignment: alignment,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null,
+        borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
+        border: border ?? (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
         boxShadow: boxShadow,
       ),
-      child: icon,
+      child: child ?? icon,
     );
   }
 

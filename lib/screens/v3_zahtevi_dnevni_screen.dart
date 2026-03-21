@@ -190,20 +190,19 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                   snap: true,
                   automaticallyImplyLeading: false,
                   flexibleSpace: FlexibleSpaceBar(
-                    background: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(24),
-                          bottomRight: Radius.circular(24),
-                        ),
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.13),
-                            width: 1.5,
-                          ),
+                    background: V3ContainerUtils.styledContainer(
+                      backgroundColor: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
+                      ),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.13),
+                          width: 1.5,
                         ),
                       ),
+                      padding: EdgeInsets.zero,
                       child: SafeArea(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -384,13 +383,11 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return V3ContainerUtils.badgeContainer(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
+      backgroundColor: color.withValues(alpha: 0.22),
+      borderRadiusGeometry: BorderRadius.circular(12),
+      border: Border.all(color: color.withValues(alpha: 0.5)),
       child: Text(
         label,
         style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
@@ -434,22 +431,19 @@ class _ZahtevCard extends StatelessWidget {
         child: Row(
           children: [
             // Avatar
-            Container(
+            V3ContainerUtils.iconContainer(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: tipColor.withValues(alpha: 0.25),
-                border: Border.all(color: tipColor.withValues(alpha: 0.5)),
-              ),
-              child: Center(
-                child: Text(
-                  _initials(putnik?.imePrezime ?? '?'),
-                  style: TextStyle(
-                    color: tipColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+              backgroundColor: tipColor.withValues(alpha: 0.25),
+              border: Border.all(color: tipColor.withValues(alpha: 0.5)),
+              borderRadiusGeometry: BorderRadius.circular(22),
+              alignment: Alignment.center,
+              child: Text(
+                _initials(putnik?.imePrezime ?? '?'),
+                style: TextStyle(
+                  color: tipColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
                 ),
               ),
             ),
@@ -473,13 +467,11 @@ class _ZahtevCard extends StatelessWidget {
                         ),
                       ),
                       // Status chip
-                      Container(
+                      V3ContainerUtils.badgeContainer(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: statusColor.withValues(alpha: 0.5)),
-                        ),
+                        backgroundColor: statusColor.withValues(alpha: 0.2),
+                        borderRadiusGeometry: BorderRadius.circular(8),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.5)),
                         child: Text(
                           zahtev.status.toUpperCase(),
                           style: TextStyle(
@@ -636,14 +628,12 @@ class _ActionBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: V3ContainerUtils.iconContainer(
         width: 36,
         height: 36,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.15),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
+        backgroundColor: color.withValues(alpha: 0.15),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        borderRadiusGeometry: BorderRadius.circular(18),
         child: Icon(icon, color: color, size: 20),
       ),
     );
