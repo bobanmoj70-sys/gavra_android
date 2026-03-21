@@ -343,29 +343,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<void> _logout() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(ctx).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Column(
-          children: [
-            Icon(Icons.logout, color: Colors.red, size: 40),
-            SizedBox(height: 12),
-            Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text('Da li ste sigurni da želite da se odjavite?', textAlign: TextAlign.center),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Otkaži')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    final ok = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Logout',
+      message: 'Da li ste sigurni da želite da se odjavite?',
+      confirmText: 'Logout',
+      cancelText: 'Otkaži',
+      isDangerous: true,
     );
     if (ok == true && mounted) {
       V3VozacService.currentVozac = null;

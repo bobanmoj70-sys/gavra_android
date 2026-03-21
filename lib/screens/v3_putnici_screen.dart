@@ -10,6 +10,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
@@ -286,49 +287,13 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
 
   // ─── Delete ───────────────────────────────────────────────────────────────
   Future<void> _obrisi(V3Putnik p) async {
-    final potvrda = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Potvrdi brisanje'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Da li ste sigurni da želite da obrišete "${p.imePrezime}"?'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Icon(Icons.info, color: Colors.red, size: 18),
-                    SizedBox(width: 8),
-                    Text('Važno:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ]),
-                  SizedBox(height: 8),
-                  Text('• Putnik će biti TRAJNO obrisan'),
-                  Text('• Sve vožnje i statistike se brišu'),
-                  Text('• Ova akcija je NEPOVRATNA!', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Otkaži')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Obriši', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    final potvrda = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Potvrdi brisanje',
+      message: 'Da li ste sigurni da želite da obrišete "${p.imePrezime}"?\n\n⚠️ VAŽNO:\n• Putnik će biti TRAJNO obrisan\n• Sve vožnje i statistike se brišu\n• Ova akcija je NEPOVRATNA!',
+      confirmText: 'Obriši',
+      cancelText: 'Otkaži',
+      isDangerous: true,
     );
     if (potvrda != true || !mounted) return;
     try {

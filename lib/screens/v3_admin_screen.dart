@@ -6,7 +6,6 @@ import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_navigation_utils.dart';
-import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
 import 'v3_dugovi_screen.dart';
@@ -326,8 +325,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             if (val == null) return;
                             if (val == '__vozaci__') {
                               if (context.mounted) {
-                                V3NavigationUtils.pushScreen<void>(
-                                    context, const V3VozaciAdminScreen());
+                                V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
                               }
                               return;
                             }

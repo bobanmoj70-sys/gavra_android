@@ -16,6 +16,7 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_putnik_tracking_widget.dart';
@@ -498,29 +499,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _logout() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(ctx).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Column(
-          children: [
-            Icon(Icons.logout, color: Colors.red, size: 40),
-            SizedBox(height: 12),
-            Text('Odjava', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text('Da li ste sigurni da želite da se odjavite?', textAlign: TextAlign.center),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Otkaži')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Odjavi se', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    final ok = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Odjava',
+      message: 'Da li ste sigurni da želite da se odjavite?',
+      confirmText: 'Odjavi se',
+      cancelText: 'Otkaži',
+      isDangerous: true,
     );
     if (ok != true || !mounted) return;
     // Otkaži stream subscription prije brisanja sesije

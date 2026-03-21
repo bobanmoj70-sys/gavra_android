@@ -17,6 +17,7 @@ import '../../services/v3/v3_zahtev_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
 import '../../utils/v3_dan_helper.dart';
 import '../../utils/v3_error_utils.dart';
+import '../../utils/v3_navigation_utils.dart';
 import '../../utils/v3_state_utils.dart';
 import '../../utils/v3_validation_utils.dart';
 
@@ -201,46 +202,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Future<void> _handleOtkazivanje() async {
     final operativnaId = widget.entry?.id;
     if (operativnaId == null || operativnaId.isEmpty) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: Theme.of(context).colorScheme.outline, width: 1),
-        ),
-        title: Text(
-          'Otkazivanje putnika',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-        ),
-        actions: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade600]),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Ne', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF1976D2), Color(0xFF0D47A1)]),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Da', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
+    final confirm = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Otkazivanje putnika',
+      message: 'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
+      confirmText: 'Da',
+      cancelText: 'Ne',
+      isDangerous: true,
     );
 
     if (confirm == true) {

@@ -7,6 +7,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// V3 admin ekran za upravljanje vozačima.
@@ -263,28 +264,13 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
   }
 
   Future<void> _confirmDeactivate(V3Vozac vozac) async {
-    final potvrda = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Deaktiviraj vozača', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'Vozač ${vozac.imePrezime} neće moći da se prijavi.\nMoguće reaktivirati kasnije.',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Otkaži'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Deaktiviraj', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    final potvrda = await V3NavigationUtils.showConfirmDialog(
+      context,
+      title: 'Deaktiviraj vozača',
+      message: 'Vozač ${vozac.imePrezime} neće moći da se prijavi.\nMoguće reaktivirati kasnije.',
+      confirmText: 'Deaktiviraj',
+      cancelText: 'Otkaži',
+      isDangerous: true,
     );
     if (potvrda != true) return;
     try {
