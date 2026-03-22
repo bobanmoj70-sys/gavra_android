@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -72,12 +71,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   //    • Brži odziv sistema, manja potrošnja baterije
   //    • Enterprise-level performanse (kao Uber/Tesla)
 
-  String _selectedDay = 'Ponedeljak';
+  DateTime _selectedDate = V3DanHelper.dateOnly(DateTime.now());
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
   bool _isLoading = true;
   bool _isTracking = false;
-  bool _userSelectedDay = false;
 
   Map<String, double>? _lastOptimizationPosition; // Poslednja pozicija za optimizaciju
 
@@ -101,7 +99,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDay = V3DanHelper.defaultDay();
     _initData();
   }
 
@@ -166,23 +163,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             (r['aktivno'] == true || r['aktivno'] == null))
         .toList();
-
-    if (_mojiTermini.isEmpty && !_userSelectedDay) {
-      final nearestDatumIso = _findNearestDatumIsoForVozac(rm, vozac.id);
-      if (nearestDatumIso != null && nearestDatumIso != _selectedDatumIso) {
-        final nearestDate = DateTime.tryParse(nearestDatumIso);
-        if (nearestDate != null) {
-          final nearestDay = V3DanHelper.fullName(nearestDate);
-          if (nearestDay != _selectedDay) {
-            V3StateUtils.safeSetState(this, () => _selectedDay = nearestDay);
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _rebuild();
-            });
-            return;
-          }
-        }
-      }
-    }
 
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
     final terminPostoji = _mojiTermini.any((t) =>
@@ -327,29 +307,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
-  String? _findNearestDatumIsoForVozac(V3MasterRealtimeManager rm, String vozacId) {
-    final todayIso = V3DanHelper.todayIso();
-    final dates = rm.v3GpsRasporedCache.values
-        .where((row) => row['vozac_id']?.toString() == vozacId && (row['aktivno'] == true || row['aktivno'] == null))
-        .map((row) => V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? ''))
-        .where((iso) => iso.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+  String get _selectedDay => V3DanHelper.fullName(_selectedDate);
 
-    if (dates.isEmpty) return null;
-
-    for (final iso in dates) {
-      if (iso.compareTo(todayIso) >= 0) return iso;
-    }
-
-    return dates.last;
-  }
-
-  /// ISO datum za izabrani dan u tekućoj sedmici (ne forsira sledeću sedmicu).
   String get _selectedDatumIso {
-    final dayAbbr = _normalizeSelectedDayToAbbr(_selectedDay);
-    return V3DanHelper.datumIsoZaDanAbbrNapred(dayAbbr);
+    return V3DanHelper.toIsoDate(_selectedDate);
   }
 
   String _normalizeSelectedDayToAbbr(String day) {
@@ -378,6 +339,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     final dayAbbr = _normalizeSelectedDayToAbbr(day);
     final dayIso = V3DanHelper.datumIsoZaDanAbbrNapred(dayAbbr);
+    final parsedDayDate = DateTime.tryParse(dayIso);
+    if (parsedDayDate == null) return;
+    final selectedDayDate = V3DanHelper.dateOnly(parsedDayDate);
     final rm = V3MasterRealtimeManager.instance;
 
     String normV(String? v) {
@@ -408,8 +372,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       });
 
     V3StateUtils.safeSetState(this, () {
-      _selectedDay = day;
-      _userSelectedDay = true;
+      _selectedDate = selectedDayDate;
 
       if (dayTerms.isNotEmpty) {
         _selectedGrad = dayTerms.first['grad']?.toString().toUpperCase() ?? _selectedGrad;
@@ -943,11 +906,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Widget _buildBody() {
-    final rm = V3MasterRealtimeManager.instance;
-
     return Column(
       children: [
-        if (kDebugMode) _buildDebugStatusBar(rm),
         // Update banner (opcioni/obavezni)
         const V3UpdateBanner(),
         // Lista putnika
@@ -989,34 +949,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
   }
 
-  Widget _buildDebugStatusBar(V3MasterRealtimeManager rm) {
-    final text =
-        'DBG day=$_selectedDay date=$_selectedDatumIso grad=$_selectedGrad vreme=$_selectedVreme | mojiTermini=${_mojiTermini.length} mojiPutnici=${_mojiPutnici.length} | gpsCache=${rm.v3GpsRasporedCache.length} putniciCache=${rm.putniciCache.length} operCache=${rm.operativnaNedeljaCache.length}';
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.yellowAccent,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
   // ── V2 stil: digitalni datum prikaz ──
   Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
     final now = DateTime.now();
-    final selectedDate = DateTime.tryParse(_selectedDatumIso) ?? now;
+    final selectedDate = _selectedDate;
     final dayName = _selectedDay.trim().toUpperCase();
     final dateStr = DateFormat('dd.MM.yy').format(selectedDate);
     final timeStr = DateFormat('HH:mm').format(now);
