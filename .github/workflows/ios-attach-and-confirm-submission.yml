@@ -1,0 +1,42 @@
+name: 🍎 iOS Attach & Confirm Submission
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  attach-and-confirm:
+    name: 🔗 Attach Version and Confirm Review Submission
+    runs-on: macos-latest
+    env:
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APPSTORE_KEY_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APPSTORE_API_KEY_P8 }}
+      REVIEW_SUBMISSION_ID: a882d84e-6371-4f8b-a165-ea0924f79264
+      APP_STORE_VERSION_ID: 7ba7f57a-d1aa-42da-b595-8f13c4802937
+
+    steps:
+      - name: Install Codemagic CLI Tools
+        run: pip install codemagic-cli-tools
+
+      - name: Attach App Store version to submission
+        run: |
+          app-store-connect review-submission-items create "$REVIEW_SUBMISSION_ID" --version-id "$APP_STORE_VERSION_ID" --json
+
+      - name: List submission items
+        run: |
+          app-store-connect review-submissions items "$REVIEW_SUBMISSION_ID" --json
+
+      - name: Confirm review submission
+        run: |
+          app-store-connect review-submissions confirm "$REVIEW_SUBMISSION_ID" --json
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🍎 iOS Attach & Confirm Submission" >> $GITHUB_STEP_SUMMARY
+          echo "submissionId: $REVIEW_SUBMISSION_ID" >> $GITHUB_STEP_SUMMARY
+          echo "versionId: $APP_STORE_VERSION_ID" >> $GITHUB_STEP_SUMMARY
+          echo "result: see logs" >> $GITHUB_STEP_SUMMARY
