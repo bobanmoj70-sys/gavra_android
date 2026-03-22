@@ -177,11 +177,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final terminPostoji = _mojiTermini.any((t) =>
         t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
 
-    // Provjeri da li postoji individualna dodjela za ovog vozača za selektovani grad/vreme
-    final imaIndividualnuDodjelu = rm.v3GpsRasporedCache.values
-        .any((r) => r['vozac_id']?.toString() == vozac.id && r['putnik_id'] != null && r['aktivno'] == true);
-
-    if (!terminPostoji && !imaIndividualnuDodjelu) {
+    if (!terminPostoji) {
       final staroVreme = _selectedVreme;
       _selectClosestTermin();
       if (_selectedVreme != staroVreme && _selectedVreme.isNotEmpty) {
