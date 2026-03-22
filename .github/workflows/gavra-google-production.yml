@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
+      VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
 
     steps:
       - name: Checkout
@@ -256,18 +257,12 @@ jobs:
           echo "**Build:** ${{ steps.version.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
           echo "**Track:** Production" >> $GITHUB_STEP_SUMMARY
 
-      - name: Save version for next job
-        run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
-          VERSION_CODE=$(grep '^version:' pubspec.yaml | sed 's/.*+//g')
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "APP_VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
-          echo "Saved: $VERSION ($VERSION_CODE)"
-
   update-supabase:
     name: 📦 Update Supabase versions
     runs-on: ubuntu-latest
     needs: build-and-upload
+    env:
+      VERSION: ${{ needs.build-and-upload.outputs.VERSION_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -279,7 +274,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
+          if [ -z "$VERSION" ]; then
+            echo "❌ Missing VERSION from build job output"
+            exit 1
+          fi
 
           # min_version = latest - 3 (npr. latest=6.0.116 → min=6.0.113)
           MAJOR=$(echo "$VERSION" | cut -d. -f1)
@@ -309,7 +307,6 @@ jobs:
 
       - name: Summary
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
           echo "## ✅ Supabase ažuriran!" >> $GITHUB_STEP_SUMMARY
           echo "**latest_version:** $VERSION" >> $GITHUB_STEP_SUMMARY
           echo "**min_version:** prethodna latest_version (putnici imaju 1 verziju fore)" >> $GITHUB_STEP_SUMMARY
