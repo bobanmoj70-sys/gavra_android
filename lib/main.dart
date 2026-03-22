@@ -246,6 +246,8 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
     await _handlePutnikEtaStart(message.data);
   } else if (type == 'v3_zahtev_odobren') {
     await _handleZahtevOdobren(message.data);
+  } else if (type == 'v3_novi_dnevni_zahtev') {
+    await _handleNoviDnevniZahtev(message.data);
   } else {
     await _showAlternativaNotification(message);
   }
@@ -332,6 +334,26 @@ Future<void> _handleZahtevOdobren(Map<String, dynamic> data) async {
     body,
     const NotificationDetails(android: androidDetails),
     payload: 'zahtev_odobren:${data['zahtev_id'] ?? ''}',
+  );
+}
+
+Future<void> _handleNoviDnevniZahtev(Map<String, dynamic> data) async {
+  final title = data['title'] as String? ?? '🔔 Novi dnevni zahtev';
+  final body = data['body'] as String? ?? 'Stigao je novi dnevni zahtev.';
+
+  const androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    importance: Importance.max,
+    priority: Priority.high,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    const NotificationDetails(android: androidDetails),
+    payload: 'novi_dnevni_zahtev:${data['zahtev_id'] ?? ''}',
   );
 }
 
