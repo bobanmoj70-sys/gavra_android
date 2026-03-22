@@ -277,7 +277,18 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
                   backgroundColor: V3StyleHelper.whiteAlpha15,
                   borderRadius: BorderRadius.circular(21),
                   border: Border.all(color: V3StyleHelper.whiteAlpha3, width: 1.2),
-                  child: const Icon(Icons.new_releases_rounded, color: Colors.white, size: 22),
+                  child: const Center(
+                    child: Text(
+                      '!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 13),
