@@ -371,7 +371,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         return va.compareTo(vb);
       });
 
-    V3StateUtils.safeSetState(this, () {
+    if (!mounted) return;
+    setState(() {
       _selectedDate = selectedDayDate;
 
       if (dayTerms.isNotEmpty) {
