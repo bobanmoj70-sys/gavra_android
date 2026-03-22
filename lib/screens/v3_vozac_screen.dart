@@ -895,30 +895,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Widget _buildBody() {
     final rm = V3MasterRealtimeManager.instance;
 
-    if (_mojiPutnici.isEmpty) {
-      return Center(
-        child: V3ContainerUtils.styledContainer(
-          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          padding: const EdgeInsets.all(20),
-          backgroundColor: Theme.of(context).glassContainer,
-          border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.inbox, color: Colors.white54, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                'Nema putnika za $_selectedGrad $_selectedVreme',
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Column(
       children: [
         if (kDebugMode) _buildDebugStatusBar(rm),
@@ -929,11 +905,23 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           child: _mojiPutnici.isEmpty
               ? Center(
                   child: V3ContainerUtils.styledContainer(
-                    margin: const EdgeInsets.all(24),
+                    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     padding: const EdgeInsets.all(20),
                     backgroundColor: Theme.of(context).glassContainer,
+                    border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
                     borderRadius: BorderRadius.circular(16),
-                    child: const Text('Nema putnika za ovaj polazak', style: TextStyle(color: Colors.white70)),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.inbox, color: Colors.white54, size: 48),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Nema putnika za $_selectedGrad $_selectedVreme',
+                          style: const TextStyle(color: Colors.white70, fontSize: 16),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : ListView.builder(
