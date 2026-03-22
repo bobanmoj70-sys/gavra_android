@@ -305,11 +305,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   /// ISO datum za izabrani dan u tekućoj sedmici (ne forsira sledeću sedmicu).
   String get _selectedDatumIso {
-    final dayIndex = V3DanHelper.dayNames.indexOf(_selectedDay);
-    if (dayIndex < 0 || dayIndex >= V3DanHelper.dayAbbrs.length) {
-      return V3DanHelper.todayIso();
-    }
-    return V3DanHelper.datumIsoZaDanAbbr(V3DanHelper.dayAbbrs[dayIndex]);
+    final dayAbbr = _normalizeSelectedDayToAbbr(_selectedDay);
+    return V3DanHelper.datumIsoZaDanAbbr(dayAbbr);
+  }
+
+  String _normalizeSelectedDayToAbbr(String day) {
+    final normalized = day.trim().toLowerCase();
+    if (normalized.startsWith('pon')) return 'pon';
+    if (normalized.startsWith('uto')) return 'uto';
+    if (normalized.startsWith('sre')) return 'sre';
+    if (normalized.startsWith('čet') || normalized.startsWith('cet')) return 'cet';
+    if (normalized.startsWith('pet')) return 'pet';
+    if (normalized.startsWith('sub')) return 'sub';
+    if (normalized.startsWith('ned')) return 'ned';
+    return V3DanHelper.abbr(DateTime.now());
   }
 
   void _onPolazakChanged(String grad, String vreme) {
@@ -900,7 +909,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
     final now = DateTime.now();
     final selectedDate = DateTime.tryParse(_selectedDatumIso) ?? now;
-    final dayName = V3DanHelper.fullNameUpper(selectedDate);
+    final dayName = _selectedDay.trim().toUpperCase();
     final dateStr = DateFormat('dd.MM.yy').format(selectedDate);
     final timeStr = DateFormat('HH:mm').format(now);
     final vozacBoja = _getVozacBojaRaw(vozac);

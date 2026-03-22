@@ -244,6 +244,8 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
     await _handleGpsTrackingComplete(message.data);
   } else if (type == 'v3_putnik_eta_start') {
     await _handlePutnikEtaStart(message.data);
+  } else if (type == 'v3_zahtev_odobren') {
+    await _handleZahtevOdobren(message.data);
   } else {
     await _showAlternativaNotification(message);
   }
@@ -310,6 +312,26 @@ Future<void> _handlePutnikEtaStart(Map<String, dynamic> data) async {
     body,
     const NotificationDetails(android: androidDetails),
     payload: 'putnik_eta_start:${data['putnik_id'] ?? ''}',
+  );
+}
+
+Future<void> _handleZahtevOdobren(Map<String, dynamic> data) async {
+  final title = data['title'] as String? ?? '✅ Zahtev odobren';
+  final body = data['body'] as String? ?? 'Vaš zahtev za vožnju je odobren.';
+
+  const androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    importance: Importance.max,
+    priority: Priority.high,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    const NotificationDetails(android: androidDetails),
+    payload: 'zahtev_odobren:${data['zahtev_id'] ?? ''}',
   );
 }
 

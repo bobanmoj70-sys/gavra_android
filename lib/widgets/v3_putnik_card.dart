@@ -197,11 +197,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
         return;
       }
-      final googleUrl = Uri.parse('https://maps.google.com/?q=${adresa.gpsLat},${adresa.gpsLng}');
-      if (await canLaunchUrl(googleUrl)) {
-        await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
-        return;
+      if (mounted) {
+        V3AppSnackBar.warning(context, '⚠️ HERE aplikacija nije dostupna na uređaju');
       }
+      return;
     }
     if (mounted) {
       final naziv = adresaNaziv ?? '/';
