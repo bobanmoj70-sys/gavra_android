@@ -392,21 +392,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               ),
               const SizedBox(height: 6),
 
-              // ─── RED 2: Raspored, Putnici ───
+              // ─── RED 2: Putnici ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                 child: Row(
                   children: [
-                    // 📅 Raspored
-                    _NavBtn(
-                      color: Colors.blue,
-                      onTap: () => V3NavigationUtils.pushScreen<void>(
-                        context,
-                        const V3AdminRasporedScreen(),
-                      ),
-                      child: const Text('📅', style: TextStyle(fontSize: 20)),
-                    ),
-                    const SizedBox(width: 6),
                     // Putnici
                     Expanded(
                       child: _NavBtn(
@@ -433,11 +423,36 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 ),
               ),
 
-              // ─── RED 3: Dnevnik naplate, saVS/ukBC ───
+              // ─── RED 3: Kalendar, Dnevnik, pasulj ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
                   children: [
+                    // 📅 Raspored
+                    Expanded(
+                      flex: 1,
+                      child: _NavBtn(
+                        color: Colors.blue,
+                        height: V3ContainerUtils.responsiveHeight(context, 50),
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
+                          context,
+                          const V3AdminRasporedScreen(),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '📅',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.white,
+                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     // Dnevnik naplate
                     Expanded(
                       flex: 1,
@@ -463,13 +478,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // saVS/ukBC statistika
-                    Expanded(
-                      flex: 2,
-                      child: _buildSaVsWidget(context),
-                    ),
+                    const Expanded(flex: 1, child: SizedBox.shrink()),
                     const SizedBox(width: 6),
-                    const Expanded(flex: 2, child: SizedBox.shrink()),
+                    // saVS/ukBC statistika (skroz desno)
+                    Expanded(flex: 2, child: _buildSaVsWidget(context)),
                   ],
                 ),
               ),
