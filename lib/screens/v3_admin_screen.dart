@@ -135,14 +135,50 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }
   }
 
-  /// Broj zahteva sa statusom 'na_cekanju' iz zahteviCache
-  int _getUceniciZahteviCount() {
+  Map<String, int> _getUceniciBcVsSummary() {
     final rm = V3MasterRealtimeManager.instance;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final uceniciIds = rm.putniciCache.values
         .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
         .map((p) => p['id'] as String)
         .toSet();
-    return rm.zahteviCache.values.where((r) => uceniciIds.contains(r['putnik_id']) && r['status'] == 'obrada').length;
+
+    int bc = 0;
+    int vs = 0;
+
+    for (final r in rm.operativnaNedeljaCache.values) {
+      if (!uceniciIds.contains(r['putnik_id'])) continue;
+      if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
+      if (r['aktivno'] != true) continue;
+
+      final datumRaw = r['datum']?.toString();
+      if (datumRaw == null || datumRaw.isEmpty) continue;
+      final datum = DateTime.tryParse(datumRaw);
+      if (datum == null) continue;
+      final datumOnly = DateTime(datum.year, datum.month, datum.day);
+      if (datumOnly.isBefore(today)) continue;
+
+      final grad = (r['grad']?.toString() ?? '').toUpperCase();
+      final brojMesta = (r['broj_mesta'] as num?)?.toInt() ?? 1;
+      if (grad == 'BC') {
+        bc += brojMesta;
+      } else if (grad == 'VS') {
+        vs += brojMesta;
+      }
+    }
+
+    final ostalo = bc - vs;
+    return {
+      'bcTotal': bc,
+      'vsTotal': vs,
+      'preostalo': ostalo < 0 ? 0 : ostalo,
+    };
+  }
+
+  /// Broj učenika za organizaciju: odobreno BC - odobreno VS (od danas pa nadalje)
+  int _getUceniciZahteviCount() {
+    return _getUceniciBcVsSummary()['preostalo'] ?? 0;
   }
 
   int _getRadniciZahteviCount() {
@@ -179,11 +215,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .length;
   }
 
-  /// saVS/ukBC widget — aktivnih termin-ova / ukupno
+  /// Učenici brojač u pasulj formatu: ukupno/preostalo (npr. 50/49)
   Widget _buildSaVsWidget(BuildContext context) {
-    final termini = V3MasterRealtimeManager.instance.v3GpsRasporedCache;
-    final ukBC = termini.length;
-    final saVS = termini.values.where((r) => (r['aktivan'] == true)).length;
+    final stats = _getUceniciBcVsSummary();
+    final ukupno = stats['bcTotal'] ?? 0;
+    final preostalo = stats['preostalo'] ?? 0;
+
     return Container(
       height: V3ContainerUtils.responsiveHeight(context, 60),
       decoration: BoxDecoration(
@@ -196,7 +233,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '$saVS/$ukBC',
+            '$ukupno/$preostalo',
             style: const TextStyle(
               color: Colors.orange,
               fontSize: 16,
@@ -204,7 +241,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             ),
           ),
           const Text(
-            'akt/uk',
+            'uk/preost',
             style: TextStyle(color: Colors.white70, fontSize: 9),
           ),
         ],
