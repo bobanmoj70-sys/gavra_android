@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../globals.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_style_helper.dart';
 
 /// Banner koji se prikazuje kada postoji update (opcioni ili obavezni).
 /// Koristi se na V3HomeScreen, V3PutnikProfilScreen i V3VozacScreen.
@@ -91,9 +92,9 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: V3ContainerUtils.styledContainer(
-                backgroundColor: Colors.white.withValues(alpha: 0.06),
+                backgroundColor: V3StyleHelper.whiteAlpha15,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
+                border: Border.all(color: V3StyleHelper.whiteAlpha3, width: 1.2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.red.withValues(alpha: 0.25),
@@ -158,7 +159,7 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
                     Text(
                       'Ova verzija aplikacije više nije podržana. Molimo ažurirajte kako biste nastavili s korišćenjem.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: V3StyleHelper.whiteAlpha75,
                         fontSize: 13,
                         height: 1.6,
                       ),
@@ -254,7 +255,7 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
             end: Alignment.centerRight,
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.2),
+          border: Border.all(color: V3StyleHelper.whiteAlpha15, width: 1.2),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF1565C0).withValues(alpha: 0.5),
@@ -273,9 +274,9 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
                 child: V3ContainerUtils.styledContainer(
                   width: 42,
                   height: 42,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  backgroundColor: V3StyleHelper.whiteAlpha15,
                   borderRadius: BorderRadius.circular(21),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.2),
+                  border: Border.all(color: V3StyleHelper.whiteAlpha3, width: 1.2),
                   child: const Icon(Icons.new_releases_rounded, color: Colors.white, size: 22),
                 ),
               ),
@@ -298,7 +299,7 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
                     Text(
                       'v${widget.info.latestVersion} — tapni za preuzimanje',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: V3StyleHelper.whiteAlpha75,
                         fontSize: 11,
                         letterSpacing: 0.1,
                       ),
@@ -310,9 +311,9 @@ class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleT
               // Dugme
               V3ContainerUtils.styledContainer(
                 padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                backgroundColor: Colors.white.withValues(alpha: 0.22),
+                backgroundColor: V3StyleHelper.whiteAlpha22,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.45), width: 1),
+                border: Border.all(color: V3StyleHelper.whiteAlpha45, width: 1),
                 child: const Text(
                   'Ažuriraj',
                   style: TextStyle(

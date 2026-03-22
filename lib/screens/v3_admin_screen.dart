@@ -7,6 +7,7 @@ import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
+import '../utils/v3_safe_text.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
@@ -555,7 +556,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
+                  child: V3SafeText.userName(
                     v.imePrezime,
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: boja),
                   ),

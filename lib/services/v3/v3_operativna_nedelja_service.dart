@@ -160,40 +160,6 @@ class V3OperativnaNedeljaService {
     );
   }
 
-  static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByDanAndGrad(String danAbbr, String grad) {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-
-    // Tekuća sedmica: pon–ned
-    final now = DateTime.now();
-    final monday = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-
-    return cache
-        .where((r) {
-          final datumStr = r['datum'] as String?;
-          if (datumStr == null) return false;
-          final datum = DateTime.tryParse(datumStr);
-          if (datum == null) return false;
-
-          // Samo tekuća sedmica
-          final d = V3DanHelper.dateOnlyFrom(datum.year, datum.month, datum.day);
-          if (d.isBefore(monday) || d.isAfter(sunday)) return false;
-
-          final targetAbbr = V3DanHelper.abbr(datum);
-
-          return targetAbbr == danAbbr && r['grad'] == grad;
-        })
-        .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
-        .toList();
-  }
-
-  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByDanAndGrad(String danAbbr, String grad) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_operativna_nedelja'],
-      build: () => getOperativnaNedeljaByDanAndGrad(danAbbr, grad),
-    );
-  }
-
   /// Vraća sve zapise za dati grad za celu nedelju (bez filtera po danu).
   static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByGrad(String grad) {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;

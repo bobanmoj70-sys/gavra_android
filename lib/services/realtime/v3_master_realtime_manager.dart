@@ -37,6 +37,7 @@ class V3MasterRealtimeManager {
   RealtimeChannel? _v3Channel;
 
   Future<void> initV3() async {
+    debugPrint('[V3MasterRealtimeManager] ⚡ STARTED initV3()');
     try {
       final results = await Future.wait([
         supabase.from('v3_adrese').select().eq('aktivno', true),
@@ -52,8 +53,6 @@ class V3MasterRealtimeManager {
         supabase.from('v3_operativna_nedelja').select(),
         supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
         supabase.from('v3_app_settings').select(),
-        supabase.from('v3_gps_activation_schedule').select().order('created_at', ascending: false).limit(100),
-        supabase.from('v3_gps_trigger_stats').select().order('datum', ascending: false).limit(30),
         supabase.from('v3_gps_raspored').select().order('created_at', ascending: false).limit(1000),
       ]);
 
@@ -70,9 +69,7 @@ class V3MasterRealtimeManager {
       _fillCache(operativnaNedeljaCache, results[10] as List);
       _fillCache(kapacitetSlotsCache, results[11] as List);
       _fillCache(appSettingsCache, results[12] as List);
-      _fillCache(gpsActivationScheduleCache, results[13] as List);
-      _fillCache(gpsTriggerStatsCache, results[14] as List);
-      _fillCache(v3GpsRasporedCache, results[15] as List);
+      _fillCache(v3GpsRasporedCache, results[13] as List);
 
       _setupRealtime();
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
@@ -106,8 +103,6 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
     _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
-    _setupTableRealtime('v3_gps_activation_schedule', gpsActivationScheduleCache, hasActiveKey: false);
-    _setupTableRealtime('v3_gps_trigger_stats', gpsTriggerStatsCache, hasActiveKey: false);
     _setupTableRealtime('v3_gps_raspored', v3GpsRasporedCache, hasActiveKey: false);
 
     _v3Channel!.subscribe();
@@ -188,12 +183,6 @@ class V3MasterRealtimeManager {
       case 'v3_kapacitet_slots':
         kapacitetSlotsCache[id] = row;
         break;
-      case 'v3_gps_activation_schedule':
-        gpsActivationScheduleCache[id] = row;
-        break;
-      case 'v3_gps_trigger_stats':
-        gpsTriggerStatsCache[id] = row;
-        break;
       case 'v3_gps_raspored':
         v3GpsRasporedCache[id] = row;
         break;
@@ -256,10 +245,6 @@ class V3MasterRealtimeManager {
         return kapacitetSlotsCache;
       case 'v3_app_settings':
         return appSettingsCache;
-      case 'v3_gps_activation_schedule':
-        return gpsActivationScheduleCache;
-      case 'v3_gps_trigger_stats':
-        return gpsTriggerStatsCache;
       case 'v3_gps_raspored':
         return v3GpsRasporedCache;
       default:

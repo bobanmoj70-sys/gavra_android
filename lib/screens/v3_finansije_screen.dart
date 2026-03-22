@@ -68,10 +68,9 @@ _V3IzvestajData _buildIzvestaj() {
   final rm = V3MasterRealtimeManager.instance;
   final ops = rm.operativnaNedeljaCache.values;
 
-  // Nedelja: od ponedjeljka do nedjelje
-  final dayOfWeek = now.weekday; // 1=Mon
-  final nedStart = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day - (dayOfWeek - 1));
-  final nedEnd = nedStart.add(const Duration(days: 7));
+  // Direktno radimo sa danasnjim datumom - bez sedmicne logike
+  final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
+  final sutra = danas.add(const Duration(days: 1));
 
   // Mesec
   final mesStart = V3DanHelper.dateOnlyFrom(now.year, now.month, 1);
@@ -80,8 +79,8 @@ _V3IzvestajData _buildIzvestaj() {
   // Prošla godina
   final proslaGod = now.year - 1;
 
-  double prihodNed = 0, prihodMes = 0, prihodGod = 0;
-  int voznjiNed = 0, voznjiMes = 0, voznjiGod = 0;
+  double prihodDan = 0, prihodMes = 0, prihodGod = 0;
+  int voznjiDan = 0, voznjiMes = 0, voznjiGod = 0;
 
   for (final row in ops) {
     if ((row['naplata_status'] as String?) != 'placeno') continue;
@@ -91,14 +90,17 @@ _V3IzvestajData _buildIzvestaj() {
     if (dt == null) continue;
     final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
 
-    if (!dt.isBefore(nedStart) && dt.isBefore(nedEnd)) {
-      prihodNed += iznos;
-      voznjiNed++;
+    // Dnevni period (danas)
+    if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
+      prihodDan += iznos;
+      voznjiDan++;
     }
+    // Mesecni period
     if (!dt.isBefore(mesStart) && dt.isBefore(mesEnd)) {
       prihodMes += iznos;
       voznjiMes++;
     }
+    // Godišnji period (prošla godina)
     if (dt.year == proslaGod) {
       prihodGod += iznos;
       voznjiGod++;
@@ -106,7 +108,7 @@ _V3IzvestajData _buildIzvestaj() {
   }
 
   // Troškovi iz cache
-  double trosakNed = 0, trosakMes = 0, trosakGod = 0;
+  double trosakDan = 0, trosakMes = 0, trosakGod = 0;
   final troskoviMes = V3FinansijeService.getTroskoviMesec(mesec: now.month, godina: now.year);
   final troskoviGod = V3FinansijeService.getTroskoviMesec(mesec: null, godina: proslaGod);
 
@@ -115,26 +117,24 @@ _V3IzvestajData _buildIzvestaj() {
     trosakMes += t.iznos;
     final kat = _katLabel(t.kategorija);
     poKat[kat] = (poKat[kat] ?? 0) + t.iznos;
-    // Nedelja: troškovi nemaju tačan datum, zanemarujemo za nedelju
   }
   for (final t in troskoviGod) {
     trosakGod += t.iznos;
   }
-  trosakNed = 0; // troškovi su mesečni, nemamo nedeljna
+  trosakDan = 0; // troškovi su mesečni, nemamo dnevne
 
   // Potraživanja
   final dugovi = V3DugService.getDugovi();
   final potr = dugovi.fold(0.0, (s, d) => s + d.iznos);
 
-  // Period string za nedelju
-  final nedeljaPeriod = '${V3DanHelper.formatDanMesec(nedStart)} — '
-      '${V3DanHelper.formatDanMesec(nedEnd.subtract(const Duration(days: 1)))}';
+  // Period string za dan
+  final danPeriod = V3DanHelper.formatDanMesec(danas);
 
   return _V3IzvestajData(
     potrazivanjaIznos: potr,
-    prihodNedelja: prihodNed,
-    trosakNedelja: trosakNed,
-    voznjiNedelja: voznjiNed,
+    prihodNedelja: prihodDan, // koristi dnevne podatke
+    trosakNedelja: trosakDan,
+    voznjiNedelja: voznjiDan,
     prihodMesec: prihodMes,
     trosakMesec: trosakMes,
     voznjiMesec: voznjiMes,
@@ -142,7 +142,7 @@ _V3IzvestajData _buildIzvestaj() {
     trosakGodina: trosakGod,
     voznjiGodina: voznjiGod,
     troskoviPoKategoriji: poKat,
-    nedeljaPeriod: nedeljaPeriod,
+    nedeljaPeriod: danPeriod, // koristi dnevni period
     godinaBroj: proslaGod,
   );
 }
@@ -205,9 +205,9 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     const SizedBox(height: 16),
                     _buildPeriodCard(
                       icon: '📅',
-                      naslov: 'Ova nedelja',
-                      podnaslov: iz.nedeljaPeriod,
-                      prihod: iz.prihodNedelja,
+                      naslov: 'Danas',
+                      podnaslov: iz.nedeljaPeriod, // sada je dnevni period
+                      prihod: iz.prihodNedelja, // sada su dnevni podaci
                       troskovi: iz.trosakNedelja,
                       voznjiLabel: '${iz.voznjiNedelja} vožnji',
                       color: Colors.blue,

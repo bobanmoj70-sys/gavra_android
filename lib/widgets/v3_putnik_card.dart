@@ -19,8 +19,10 @@ import '../../utils/v3_container_utils.dart';
 import '../../utils/v3_dan_helper.dart';
 import '../../utils/v3_error_utils.dart';
 import '../../utils/v3_navigation_utils.dart';
+import '../../utils/v3_safe_text.dart';
 import '../../utils/v3_state_utils.dart';
 import '../../utils/v3_stream_utils.dart';
+import '../../utils/v3_style_helper.dart';
 import '../../utils/v3_validation_utils.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
@@ -237,66 +239,14 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   BoxDecoration _getCardDecoration() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-    if (status == 'otkazano') {
-      return BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFFCDD2), Color(0xFFEF9A9A)],
-        ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE57373), width: 0.6),
-        boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
-      );
-    }
     final bool isPokupljen = widget.entry?.pokupljen ?? false;
-    if (isPokupljen) {
-      final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
-      if (isPlacen) {
-        return BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFC8E6C9), Color(0xFFA5D6A7)],
-          ),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF81C784), width: 0.6),
-          boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
-        );
-      }
-      return BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFBBDEFB), Color(0xFF90CAF9)],
-        ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF64B5F6), width: 0.6),
-        boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
-      );
-    }
-    // Bijela kartica — default
-    if (widget.vozacBoja != null) {
-      // Color blending - bleda boja vozača preko bele osnove
-      final blendedColor = Color.lerp(Colors.white, widget.vozacBoja!, 0.20)!; // 20% mix
-      return BoxDecoration(
-        color: blendedColor, // Blended boja
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFFE0E0E0),
-          width: 0.8,
-        ),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 3, offset: const Offset(0, 1))],
-      );
-    }
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(
-        color: const Color(0xFFE0E0E0),
-        width: 0.8,
-      ),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 3, offset: const Offset(0, 1))],
+    final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
+
+    return V3StyleHelper.putnikCard(
+      status: status,
+      isPokupljen: isPokupljen,
+      isPlacen: isPlacen,
+      vozacBoja: widget.vozacBoja,
     );
   }
 
@@ -440,7 +390,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                         Row(
                           children: [
                             Flexible(
-                              child: Text(
+                              child: V3SafeText.userName(
                                 widget.putnik.imePrezime,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
@@ -448,8 +398,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                   fontSize: 14,
                                   color: textColor,
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
                               ),
                             ),
                             if (brojMesta > 1)
@@ -471,11 +419,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                         if (hasAdresa)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Text(
+                            child: V3SafeText.userAddress(
                               adresaNaziv,
                               style: TextStyle(fontSize: 13, color: secondaryTextColor, fontWeight: FontWeight.w500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                       ],

@@ -22,6 +22,7 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../utils/v3_style_helper.dart';
 import '../widgets/v3_putnik_tracking_widget.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_welcome_screen.dart';
@@ -93,17 +94,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Osvježi putnik iz cache-a
     final cached = V3MasterRealtimeManager.instance.putniciCache[putnikId];
     if (cached != null) _putnikData = Map<String, dynamic>.from(cached);
-    // Raspored po danima iz v3_zahtevi — filtrira po relevantnim datumima
-    final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (bez vikenda)
-    final relevantnaDatumi = V3DanHelper.relevantnaSedmicaIsoLista().toSet(); // GLAVNI filter za datume
+    // Raspored po danima iz v3_zahtevi — direktno po datumu bez nepotrebnog filtriranja
+    final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
-      final datumIso = V3DanHelper.datumIsoStringZaDanAbbr(dan);
-      // KLJUČNO: Filtriraj zahteve SAMO za relevantnu sedmicu
-      if (!relevantnaDatumi.contains(datumIso)) {
-        newMap[dan] = []; // Prazan raspored za datume van relevantne sedmice
-        continue;
-      }
+      final datumIso = V3DanHelper.datumIsoZaDanAbbr(dan);
       final bcList =
           V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'BC').where((z) => z.putnikId == putnikId).toList();
       final vsList =
@@ -118,8 +113,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               e['putnik_id'] == z.putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               e['grad'] == 'BC' &&
-              e['aktivno'] == true &&
-              relevantnaDatumi.contains(e['datum'] as String?),
+              e['aktivno'] == true,
           orElse: () => <String, dynamic>{},
         );
         final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
@@ -141,8 +135,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               e['putnik_id'] == z.putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               e['grad'] == 'VS' &&
-              e['aktivno'] == true &&
-              relevantnaDatumi.contains(e['datum'] as String?),
+              e['aktivno'] == true,
           orElse: () => <String, dynamic>{},
         );
         final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
@@ -283,7 +276,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       const SizedBox(height: 2),
                       Text(
                         _getDanLabel(dan),
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                        style: TextStyle(color: V3StyleHelper.whiteAlpha5, fontSize: 12),
                       ),
                     ],
                   ),
@@ -298,9 +291,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       borderRadius: BorderRadius.circular(8),
                       child: V3ContainerUtils.styledContainer(
                         padding: const EdgeInsets.all(10),
-                        backgroundColor: koristiSekundarnu
-                            ? Colors.orange.withValues(alpha: 0.15)
-                            : Colors.white.withValues(alpha: 0.05),
+                        backgroundColor:
+                            koristiSekundarnu ? Colors.orange.withValues(alpha: 0.15) : V3StyleHelper.whiteAlpha05,
                         border: Border.all(
                           color: koristiSekundarnu ? Colors.orange : Colors.white12,
                         ),
@@ -432,10 +424,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                     },
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: isLocked
-                                    ? Colors.white.withValues(alpha: 0.04)
+                                    ? V3StyleHelper.whiteAlpha05
                                     : isSelected
                                         ? Colors.green.withValues(alpha: 0.45)
-                                        : Colors.white.withValues(alpha: 0.15),
+                                        : V3StyleHelper.whiteAlpha15,
                                 side: BorderSide(
                                   color: isLocked
                                       ? Colors.white12
@@ -527,23 +519,18 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   Widget _buildAktivneVoznjeWidget() {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return const SizedBox.shrink();
-    final relevantnaDatumi = V3DanHelper.relevantnaSedmicaIsoLista().toSet();
-    final rm = V3MasterRealtimeManager.instance;
-    // Pronađi aktivne vožnje za relevantnu sedmicu (ne samo danas)
+    // Pronađi aktivne vožnje za tekuću sedmicu
     final aktivneVoznje = <Widget>[];
-    // Proveri zahteve putnika za relevantnu sedmicu
+    final rm = V3MasterRealtimeManager.instance;
+    // Proveri zahteve putnika
     final zahtevi = rm.zahteviCache.values
         .where((z) => z['putnik_id'] == putnikId)
-        .where((z) =>
-            relevantnaDatumi.contains(V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? ''))) // WEEKEND LOGIKA
         .where((z) => z['status'] == 'odobreno')
         .toList();
     for (final zahtev in zahtevi) {
       // Pronađi dodeljenog vozača iz operativna_nedelja
       final operativni = rm.operativnaNedeljaCache.values
           .where((op) => op['putnik_id'] == putnikId)
-          .where((op) =>
-              relevantnaDatumi.contains(V3DanHelper.parseIsoDatePart(op['datum'] as String? ?? ''))) // WEEKEND LOGIKA
           .where((op) => op['grad'] == zahtev['grad'])
           .where((op) => op['zeljeno_vreme'] == zahtev['zeljeno_vreme'])
           .firstOrNull;
@@ -672,9 +659,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final tipLabel = _tipLabel(tip);
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(20),
-      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      backgroundColor: V3StyleHelper.whiteAlpha06,
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+      border: Border.all(color: V3StyleHelper.whiteAlpha13),
       child: Column(
         children: [
           // Avatar
@@ -688,7 +675,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 end: Alignment.bottomRight,
                 colors: avatarColors,
               ),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
+              border: Border.all(color: V3StyleHelper.whiteAlpha4, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: avatarColors[0].withValues(alpha: 0.5),
@@ -737,7 +724,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           // Adrese
           if (adresaBcNaziv != null || adresaVsNaziv != null) ...[
             const SizedBox(height: 12),
-            Divider(color: Colors.white.withValues(alpha: 0.15)),
+            Divider(color: V3StyleHelper.whiteAlpha15),
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,9 +740,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           const SizedBox(width: 4),
                           Text('BC',
                               style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.45),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold)),
+                                  color: V3StyleHelper.whiteAlpha45, fontSize: 11, fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 3),
                         Row(children: [
@@ -763,7 +748,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(adresaBcNaziv,
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
+                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
                                   overflow: TextOverflow.ellipsis)),
                         ]),
                         if (adresaBcNaziv2 != null && adresaBcNaziv2.isNotEmpty) ...[
@@ -773,7 +758,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaBcNaziv2,
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
+                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -794,9 +779,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           const SizedBox(width: 4),
                           Text('VS',
                               style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.45),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold)),
+                                  color: V3StyleHelper.whiteAlpha45, fontSize: 11, fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 3),
                         Row(children: [
@@ -804,7 +787,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(adresaVsNaziv,
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
+                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
                                   overflow: TextOverflow.ellipsis)),
                         ]),
                         if (adresaVsNaziv2 != null && adresaVsNaziv2.isNotEmpty) ...[
@@ -814,7 +797,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaVsNaziv2,
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
+                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -830,12 +813,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Widget _buildRasporedCard() {
-    final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (bez vikenda)
+    final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(16),
-      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      backgroundColor: V3StyleHelper.whiteAlpha06,
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+      border: Border.all(color: V3StyleHelper.whiteAlpha13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -859,7 +842,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   child: Text(
                     'BC',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65),
+                      color: V3StyleHelper.whiteAlpha65,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -871,7 +854,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   child: Text(
                     'VS',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65),
+                      color: V3StyleHelper.whiteAlpha65,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -881,7 +864,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             ],
           ),
           const SizedBox(height: 8),
-          Divider(color: Colors.white.withValues(alpha: 0.1)),
+          Divider(color: V3StyleHelper.whiteAlpha1),
           ...dani.map((dan) {
             final infos = _rasporedMap[dan] ?? [];
             final bcInfo = infos.where((i) => i.grad == 'BC').firstOrNull;
@@ -1031,7 +1014,7 @@ class _Badge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       backgroundColor: color.withValues(alpha: 0.28),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+      border: Border.all(color: V3StyleHelper.whiteAlpha25),
       child: Text(
         label,
         style: const TextStyle(
@@ -1055,9 +1038,9 @@ class _ZahtevCell extends StatelessWidget {
         onTap: onTap,
         child: V3ContainerUtils.styledContainer(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          backgroundColor: Colors.white.withValues(alpha: 0.25),
+          backgroundColor: V3StyleHelper.whiteAlpha25,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+          border: Border.all(color: V3StyleHelper.whiteAlpha5),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1109,13 +1092,13 @@ class _ZahtevCell extends StatelessWidget {
             Text(
               '$statusIcon $vreme',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
+                color: V3StyleHelper.whiteAlpha9,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.edit, size: 10, color: Colors.white.withValues(alpha: 0.3)),
+            Icon(Icons.edit, size: 10, color: V3StyleHelper.whiteAlpha3),
           ],
         ),
       ),

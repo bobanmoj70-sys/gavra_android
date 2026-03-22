@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'services/v2_theme_manager.dart';
+import 'utils/v3_style_helper.dart';
 
 // GLOBALNO REŠENJE ZA SRPSKU DJAKRITIKU (š, đ, č, ć, ž)
 // Unicode normalizacija i font fallback-ovi
@@ -376,7 +377,7 @@ final ThemeData tripleBlueFashionTheme = ThemeData(
 class TripleBlueFashionStyles {
   static BoxDecoration cardDecoration = BoxDecoration(
     color: Colors.white,
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: V3StyleHelper.radius20,
     border: Border.all(
       width: 2,
       color: const Color(0xFF1FA2FF).withOpacity(0.4),
@@ -408,7 +409,7 @@ class TripleBlueFashionStyles {
 
   static BoxDecoration gradientButton = BoxDecoration(
     gradient: tripleBlueFashionGradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       width: 1.5,
       color: const Color(0xFF1FA2FF).withOpacity(0.6),
@@ -425,7 +426,7 @@ class TripleBlueFashionStyles {
 
   static BoxDecoration dropdownDecoration = BoxDecoration(
     color: const Color(0xFFF0F9FF), // Svetla pozadina
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       color: const Color(0xFF1FA2FF).withOpacity(0.4), // Plavi border
       width: 1.5,
@@ -441,7 +442,7 @@ class TripleBlueFashionStyles {
 
   static BoxDecoration popupDecoration = BoxDecoration(
     color: Colors.white,
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: V3StyleHelper.radius24,
     border: Border.all(
       color: const Color(0xFF1FA2FF).withOpacity(0.5), // Plavi border
       width: 2,
@@ -461,7 +462,7 @@ class TripleBlueFashionStyles {
 class DarkSteelGreyStyles {
   static BoxDecoration cardDecoration = BoxDecoration(
     color: Colors.white,
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: V3StyleHelper.radius20,
     border: Border.all(
       width: 2,
       color: Colors.grey.withOpacity(0.4), // Siva boja umesto plave
@@ -475,7 +476,7 @@ class DarkSteelGreyStyles {
 
   static BoxDecoration gradientButton = BoxDecoration(
     gradient: darkSteelGreyGradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       width: 1.5,
       color: Colors.grey.withOpacity(0.6), // Siva boja umesto plave
@@ -485,7 +486,7 @@ class DarkSteelGreyStyles {
 
   static BoxDecoration dropdownDecoration = BoxDecoration(
     color: Colors.grey[800], // Tamno siva pozadina
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       color: Colors.grey.withOpacity(0.4), // Siva boja umesto plave
       width: 1.5,
@@ -495,7 +496,7 @@ class DarkSteelGreyStyles {
 
   static BoxDecoration popupDecoration = BoxDecoration(
     color: Colors.grey[900], // Tamno siva pozadina
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: V3StyleHelper.radius24,
     border: Border.all(
       color: Colors.grey.withOpacity(0.5), // Siva boja umesto plave
       width: 2,
@@ -508,7 +509,7 @@ class DarkSteelGreyStyles {
 class DarkPinkStyles {
   static BoxDecoration cardDecoration = BoxDecoration(
     color: const Color(0xFF2D1F2D), // Tamno ljubičasta pozadina
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: V3StyleHelper.radius20,
     border: Border.all(
       width: 2,
       color: const Color(0xFFE91E8C).withOpacity(0.5), // Neon pink border
@@ -529,7 +530,7 @@ class DarkPinkStyles {
 
   static BoxDecoration gradientButton = BoxDecoration(
     gradient: darkPinkGradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       width: 1.5,
       color: const Color(0xFFE91E8C).withOpacity(0.6), // Neon pink border
@@ -546,7 +547,7 @@ class DarkPinkStyles {
 
   static BoxDecoration dropdownDecoration = BoxDecoration(
     color: const Color(0xFF2D1F2D), // Tamno ljubičasta pozadina
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       color: const Color(0xFFE91E8C).withOpacity(0.4), // Pink border
       width: 1.5,
@@ -562,7 +563,7 @@ class DarkPinkStyles {
 
   static BoxDecoration popupDecoration = BoxDecoration(
     color: const Color(0xFF1A0A14), // Skoro crna pozadina
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: V3StyleHelper.radius24,
     border: Border.all(
       color: const Color(0xFFE91E8C).withOpacity(0.5), // Pink border
       width: 2,
@@ -582,7 +583,7 @@ class DarkPinkStyles {
 class PassionateRoseStyles {
   static BoxDecoration cardDecoration = BoxDecoration(
     color: const Color(0xFFFFF8F9), // Skoro bela sa pink odsjajem
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: V3StyleHelper.radius20,
     border: Border.all(
       width: 2,
       color: const Color(0xFFDC143C).withOpacity(0.4), // Crimson border
@@ -608,7 +609,7 @@ class PassionateRoseStyles {
 
   static BoxDecoration gradientButton = BoxDecoration(
     gradient: passionateRoseGradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       width: 1.5,
       color: const Color(0xFFDC143C).withOpacity(0.6), // Crimson border
@@ -625,7 +626,7 @@ class PassionateRoseStyles {
 
   static BoxDecoration dropdownDecoration = BoxDecoration(
     color: const Color(0xFFFFF8F9), // Skoro bela pozadina
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: V3StyleHelper.radius16,
     border: Border.all(
       color: const Color(0xFFDC143C).withOpacity(0.4), // Crimson border
       width: 1.5,
@@ -641,7 +642,7 @@ class PassionateRoseStyles {
 
   static BoxDecoration popupDecoration = BoxDecoration(
     color: Colors.white, // Bela pozadina
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: V3StyleHelper.radius24,
     border: Border.all(
       color: const Color(0xFFDC143C).withOpacity(0.5), // Crimson border
       width: 2,

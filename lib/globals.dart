@@ -36,7 +36,7 @@ bool get isSupabaseReady {
 /// 'zimski' = zimski raspored
 /// 'letnji' = letnji raspored
 /// 'praznici' = praznični raspored
-final ValueNotifier<String> navBarTypeNotifier = ValueNotifier<String>('letnji');
+final ValueNotifier<String> navBarTypeNotifier = ValueNotifier<String>('');
 
 /// ZIMSKI MOD - Proverava da li je zimski red voznje aktivan SADA
 bool get isWinter => navBarTypeNotifier.value == 'zimski';

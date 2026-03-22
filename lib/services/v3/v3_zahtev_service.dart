@@ -100,15 +100,11 @@ class V3ZahtevService {
 
   static List<V3Zahtev> getZahteviByDatumAndGrad(String datumIso, String grad) {
     final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-    final relevantnaDatumi = V3DanHelper.relevantnaSedmicaIsoLista().toSet();
 
     return cache
         .where((r) {
           final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
-          return rDatum == datumIso &&
-              r['grad'] == grad &&
-              r['aktivno'] == true &&
-              relevantnaDatumi.contains(rDatum); // WEEKEND LOGIKA
+          return rDatum == datumIso && r['grad'] == grad && r['aktivno'] == true;
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()

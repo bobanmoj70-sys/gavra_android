@@ -17,6 +17,7 @@ class V3ContainerUtils {
     AlignmentGeometry? alignment,
     DecorationImage? backgroundImage,
     Gradient? gradient,
+    Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
       width: width,
@@ -24,6 +25,7 @@ class V3ContainerUtils {
       padding: padding ?? const EdgeInsets.all(16.0),
       margin: margin,
       alignment: alignment,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: borderRadius ?? BorderRadius.circular(8.0),
@@ -48,6 +50,7 @@ class V3ContainerUtils {
     double borderRadius = 12.0,
     AlignmentGeometry? alignment,
     BoxBorder? border,
+    Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
       width: width,
@@ -55,6 +58,7 @@ class V3ContainerUtils {
       padding: padding ?? const EdgeInsets.all(16.0),
       margin: margin ?? const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       alignment: alignment,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.white,
         borderRadius: BorderRadius.circular(borderRadius),
@@ -84,6 +88,7 @@ class V3ContainerUtils {
     double borderRadius = 8.0,
     double borderWidth = 1.0,
     AlignmentGeometry? alignment,
+    Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
       width: width,
@@ -91,6 +96,7 @@ class V3ContainerUtils {
       padding: padding ?? const EdgeInsets.all(12.0),
       margin: margin,
       alignment: alignment,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(borderRadius),
@@ -112,6 +118,7 @@ class V3ContainerUtils {
     AlignmentGeometry? alignment,
     BoxBorder? border,
     List<BoxShadow>? boxShadow,
+    Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
       width: width,
@@ -119,6 +126,7 @@ class V3ContainerUtils {
       padding: padding ?? const EdgeInsets.all(16.0),
       margin: margin,
       alignment: alignment,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: borderRadius ?? BorderRadius.circular(8.0),
@@ -137,12 +145,14 @@ class V3ContainerUtils {
     Gradient? gradient,
     EdgeInsetsGeometry? padding,
     AlignmentGeometry? alignment,
+    Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
       width: double.infinity,
       height: double.infinity,
       padding: padding,
       alignment: alignment,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
         image: backgroundImage,
@@ -162,9 +172,11 @@ class V3ContainerUtils {
     double? borderWidth,
     BoxBorder? border,
     BorderRadiusGeometry? borderRadiusGeometry,
+    Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.blue,
         borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
@@ -192,6 +204,7 @@ class V3ContainerUtils {
     BoxBorder? border,
     List<BoxShadow>? boxShadow,
     AlignmentGeometry? alignment,
+    Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
       width: width ?? size,
@@ -199,6 +212,7 @@ class V3ContainerUtils {
       padding: padding ?? const EdgeInsets.all(8.0),
       margin: margin,
       alignment: alignment,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
@@ -275,31 +289,29 @@ class V3ContainerUtils {
     Color? loadingColor,
     String? loadingText,
   }) {
-    return Container(
-      child: Stack(
-        children: [
-          child,
-          if (isLoading)
-            Container(
-              color: (loadingColor ?? Colors.black).withOpacity(0.3),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(color: Colors.white),
-                    if (loadingText != null) ...[
-                      const SizedBox(height: 16.0),
-                      Text(
-                        loadingText,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
+    return Stack(
+      children: [
+        child,
+        if (isLoading)
+          Container(
+            color: (loadingColor ?? Colors.black).withOpacity(0.3),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Colors.white),
+                  if (loadingText != null) ...[
+                    const SizedBox(height: 16.0),
+                    Text(
+                      loadingText,
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 

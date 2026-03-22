@@ -2,7 +2,7 @@
 class V2RouteConfig {
   V2RouteConfig._();
 
-  // 🏙️ BELA CRKVA - Zimski raspored (oktobar-mart)
+  // 🏙️ BELA CRKVA - Zimski raspored
   static const List<String> _bcVremenaZimski = [
     '05:00',
     '06:00',
@@ -17,7 +17,7 @@ class V2RouteConfig {
     '18:00',
   ];
 
-  // 🌆 VRŠAC - Zimski raspored (oktobar-mart)
+  // 🌆 VRŠAC - Zimski raspored
   static const List<String> _vsVremenaZimski = [
     '06:00',
     '07:00',

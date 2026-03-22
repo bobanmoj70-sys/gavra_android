@@ -14,6 +14,7 @@ import '../utils/v3_dan_helper.dart';
 import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
+import '../utils/v3_safe_text.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 
@@ -455,7 +456,7 @@ class _ZahtevCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
+                        child: V3SafeText.userName(
                           putnik?.imePrezime ?? 'Nepoznat',
                           style: const TextStyle(
                             color: Colors.white,

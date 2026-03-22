@@ -1,5 +1,3 @@
-import 'v3_validation_utils.dart';
-
 /// Helper za konverziju DateTime u naziv/kraticu dana i naziva u datume.
 class V3DanHelper {
   V3DanHelper._();
@@ -33,102 +31,80 @@ class V3DanHelper {
 
   // ─── Inicijalizacija tekućeg dana ───────────────────────────────
 
-  /// Danas kao puni naziv; vikend → 'Ponedeljak'.
+  /// Danas kao puni naziv.
   static String defaultDay() {
     final w = DateTime.now().weekday;
-    if (w == DateTime.saturday || w == DateTime.sunday) return 'Ponedeljak';
     return _names[w - 1];
   }
 
-  // ─── naziv/kratica → ISO datum (uvijek tekuća sedmica) ──────────
+  // ─── naziv/kratica → ISO datum (RAČUNANJE PO SEDMICI) ────────
 
-  /// ISO datum (yyyy-MM-dd) za dati puni naziv dana u tekućoj nedelji.
-  /// Prošli dani vraćaju prošli datum — nema skakanja na sledeću nedelju.
-  /// EXCEPTION: Za vikend (subota/nedelja) + 'Ponedeljak' → sledeći ponedeljak.
+  /// ISO datum (yyyy-MM-dd) za izabrani dan - uvek SLEDEĆI taj dan.
+  /// Računa sledeći datum: Ponedeljak → sledeći ponedeljak, itd.
   static String datumIsoZaDanPuni(String danPuni) {
-    final idx = _names
-        .indexWhere((d) => V3ValidationUtils.normalizeForSearch(d) == V3ValidationUtils.normalizeForSearch(danPuni));
-    if (idx == -1) return _todayIso();
-
-    // Za vikend + ponedeljak → sledeći ponedeljak, ne prošli
-    final now = DateTime.now();
-    final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
-    final isPonedeljak = (V3ValidationUtils.normalizeForSearch(danPuni) == 'ponedeljak' && idx == 0);
-
-    if (isWeekend && isPonedeljak) {
-      final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-      final sledeciPonedeljak = ponedeljak.add(const Duration(days: 7));
-      return sledeciPonedeljak.toIso8601String().split('T')[0];
-    }
-
-    return _isoZaIdx(idx);
+    final today = DateTime.now();
+    final todayWeekday = today.weekday; // 1=pon, 7=ned
+    final targetIndex = _names.indexOf(danPuni);
+    if (targetIndex == -1) return todayIso(); // fallback
+    final targetWeekday = targetIndex + 1; // 1=pon, 7=ned
+    int diff = targetWeekday - todayWeekday;
+    if (diff <= 0) diff += 7; // Ako je dan prošao, idi na sledeću sedmicu
+    final targetDate = today.add(Duration(days: diff));
+    return toIsoDate(targetDate);
   }
 
-  /// ISO datum (yyyy-MM-dd) za datu kraticu dana (npr. 'pon').
+  /// ISO datum (yyyy-MM-dd) za izabrani dan u trenutnoj sedmici.
+  /// Računa pravi datum: pon → datum ponedeljka u sedmici, itd.
   static String datumIsoZaDanAbbr(String danAbbr) {
-    final idx = _abbrs
-        .indexWhere((a) => V3ValidationUtils.normalizeForSearch(a) == V3ValidationUtils.normalizeForSearch(danAbbr));
-    if (idx == -1) return _todayIso();
-
-    // Za vikend + ponedeljak → sledeći ponedeljak, ne prošli (kao u datumIsoZaDanPuni)
-    final now = DateTime.now();
-    final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
-    final isPonedeljak = (V3ValidationUtils.normalizeForSearch(danAbbr) == 'pon' && idx == 0);
-
-    if (isWeekend && isPonedeljak) {
-      final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-      final sledeciPonedeljak = ponedeljak.add(const Duration(days: 7));
-      return sledeciPonedeljak.toIso8601String().split('T')[0];
-    }
-
-    return _isoZaIdx(idx);
+    final today = DateTime.now();
+    final todayWeekday = today.weekday; // 1=pon, 7=ned
+    final targetIndex = _abbrs.indexOf(danAbbr);
+    if (targetIndex == -1) return todayIso(); // fallback
+    final targetWeekday = targetIndex + 1; // 1=pon, 7=ned
+    final diff = targetWeekday - todayWeekday;
+    final targetDate = today.add(Duration(days: diff));
+    return toIsoDate(targetDate);
   }
 
-  /// DateTime za datu kraticu dana.
-  static DateTime datumZaDanAbbr(String danAbbr) => DateTime.parse(datumIsoZaDanAbbr(danAbbr));
-
-  /// ISO datum string (yyyy-MM-dd) za datu kraticu dana direktno.
-  static String datumIsoStringZaDanAbbr(String danAbbr) => toIsoDate(datumZaDanAbbr(danAbbr));
-
-  /// Vraća sve ISO datume (yyyy-MM-dd) relevantne sedmice na osnovu vikend logike.
-  /// Za vikend → sledeća sedmica, inače → tekuća sedmica.
-  static List<String> relevantnaSedmicaIsoLista() {
-    final now = DateTime.now();
-    final isWeekend = (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday);
-
-    final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-    final bazniPonedeljak = isWeekend ? ponedeljak.add(const Duration(days: 7)) : ponedeljak;
-
-    return List.generate(
-        7,
-        (i) => DateTime(bazniPonedeljak.year, bazniPonedeljak.month, bazniPonedeljak.day + i)
-            .toIso8601String()
-            .split('T')[0]);
+  /// DateTime za izabrani dan u sledećoj sedmici (uvek ide napred).
+  static DateTime datumZaDanAbbr(String danAbbr) {
+    final today = DateTime.now();
+    final todayWeekday = today.weekday; // 1=pon, 7=ned
+    final targetIndex = _abbrs.indexOf(danAbbr);
+    if (targetIndex == -1) return today; // fallback
+    final targetWeekday = targetIndex + 1; // 1=pon, 7=ned
+    int diff = targetWeekday - todayWeekday;
+    if (diff <= 0) diff += 7; // Ako je dan prošao, idi na sledeću sedmicu
+    return today.add(Duration(days: diff));
   }
 
-  // ─── Utility metode za datum konverzije ─────────────────────────
+  /// ISO datum string (yyyy-MM-dd) za izabrani dan u trenutnoj sedmici.
+  static String isoStringZaDan(String danAbbr) => datumIsoZaDanAbbr(danAbbr);
 
-  /// Trenutni datum kao ISO string (yyyy-MM-dd).
-  static String todayIso() => DateTime.now().toIso8601String().split('T')[0];
+  // ─── parsiranje/formatiranje ───────────────────────────────────
 
-  /// Konvertuje DateTime u ISO datum string format (YYYY-MM-DD)
-  static String toIsoDate(DateTime datum) {
-    return '${datum.year}-${datum.month.toString().padLeft(2, '0')}-${datum.day.toString().padLeft(2, '0')}';
-  }
-
-  /// Parse-uje ISO datum string i vraća samo datum deo (YYYY-MM-DD)
+  /// Čisti ISO datum deo (yyyy-MM-dd) iz ISO string-a.
   static String parseIsoDatePart(String isoString) {
-    return isoString.split('T')[0];
+    if (isoString.length >= 10) return isoString.substring(0, 10);
+    return isoString;
   }
 
-  /// Formatira vreme u HH:MM format
-  static String formatVreme(int hour, int minute) {
-    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  /// ISO datum string iz DateTime.
+  static String toIsoDate(DateTime datum) {
+    return datum.toIso8601String().substring(0, 10);
+  }
+
+  /// Današnji ISO datum (yyyy-MM-dd).
+  static String todayIso() => toIsoDate(DateTime.now());
+
+  /// Formatuje vreme iz sati/minuta u "HH:mm".
+  static String formatVreme(int sati, int minuti) {
+    return '${sati.toString().padLeft(2, '0')}:${minuti.toString().padLeft(2, '0')}';
   }
 
   /// Formatira datum u DD.MM format
   static String formatDanMesec(DateTime datum) {
-    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}';
+    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year.toString().substring(2)}';
   }
 
   /// Formatira datetime u DD.MM.YYYY HH:MM format
@@ -153,23 +129,13 @@ class V3DanHelper {
     return DateTime(datum.year, datum.month, datum.day);
   }
 
-  /// Kreira DateTime sa specifikovanim year, month, day (bez vremena)
-  static DateTime dateOnlyFrom(int year, int month, int day) {
-    return DateTime(year, month, day);
+  /// Generira DateTime sa datumom (god, mes, dan) i vremenom na 00:00:00.
+  static DateTime dateOnlyFrom(int godina, int mesec, int dan) {
+    return DateTime(godina, mesec, dan);
   }
 
-  /// Formatira datum u dd.MM.yyyy format koristeći DateFormat
+  /// Formatira datum u dd.MM.yyyy format - alias za formatDatumPuni
   static String formatDatumDdMmYyyy(DateTime datum) {
-    return formatDatumPuni(datum); // Koristi već postojeću metodu
-  }
-
-  // ─── interno ────────────────────────────────────────────────────
-
-  static String _todayIso() => todayIso(); // Redirectuj na javnu metodu
-
-  static String _isoZaIdx(int targetIdx) {
-    final now = DateTime.now();
-    final ponedeljak = now.subtract(Duration(days: now.weekday - 1));
-    return toIsoDate(DateTime(ponedeljak.year, ponedeljak.month, ponedeljak.day + targetIdx));
+    return formatDatumPuni(datum);
   }
 }

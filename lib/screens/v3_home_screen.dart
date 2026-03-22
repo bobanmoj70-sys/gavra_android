@@ -23,6 +23,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
+import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
@@ -431,7 +432,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             items: aktivniPutnici
                                 .map((p) => DropdownMenuItem(
                                       value: p,
-                                      child: Text(p.imePrezime, overflow: TextOverflow.ellipsis),
+                                      child: V3SafeText.userName(p.imePrezime),
                                     ))
                                 .toList(),
                             onChanged: (p) => setS(() {
@@ -637,7 +638,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     for (final a in ostale) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: a,
-        child: Text(a.naziv, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+        child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13)),
       ));
     }
 

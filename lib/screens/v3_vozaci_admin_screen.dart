@@ -10,6 +10,7 @@ import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 
 /// V3 admin ekran za upravljanje vozačima.
@@ -512,7 +513,7 @@ class _VozacKartica extends StatelessWidget {
                     Row(
                       children: [
                         Flexible(
-                          child: Text(
+                          child: V3SafeText.userName(
                             vozac.imePrezime,
                             style: TextStyle(
                               color: cardColor,
@@ -538,10 +539,9 @@ class _VozacKartica extends StatelessWidget {
                           const Icon(Icons.email, size: 12, color: Colors.white38),
                           const SizedBox(width: 4),
                           Flexible(
-                            child: Text(
+                            child: V3SafeText.contact(
                               vozac.email!,
                               style: const TextStyle(color: Colors.white60, fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

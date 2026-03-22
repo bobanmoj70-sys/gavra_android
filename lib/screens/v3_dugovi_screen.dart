@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 
 class V3DugoviScreen extends StatefulWidget {
@@ -241,7 +242,7 @@ class _DugCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(dug.imePrezime,
+                  V3SafeText.userName(dug.imePrezime,
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
                   const SizedBox(height: 2),
                   Row(

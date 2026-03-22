@@ -17,6 +17,7 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
+import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
@@ -729,7 +730,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
       items: [
         ...adrese.map((a) => DropdownMenuItem(
               value: a,
-              child: Text(a.naziv, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+              child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13)),
             )),
       ],
       onChanged: onChanged,
