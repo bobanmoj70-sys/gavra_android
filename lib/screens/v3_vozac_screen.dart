@@ -76,6 +76,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   String _selectedVreme = '';
   bool _isLoading = true;
   bool _isTracking = false;
+  bool _userSelectedDay = false;
 
   Map<String, double>? _lastOptimizationPosition; // Poslednja pozicija za optimizaciju
 
@@ -165,7 +166,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             (r['aktivno'] == true || r['aktivno'] == null))
         .toList();
 
-    if (_mojiTermini.isEmpty) {
+    if (_mojiTermini.isEmpty && !_userSelectedDay) {
       final nearestDatumIso = _findNearestDatumIsoForVozac(rm, vozac.id);
       if (nearestDatumIso != null && nearestDatumIso != _selectedDatumIso) {
         final nearestDate = DateTime.tryParse(nearestDatumIso);
@@ -1059,7 +1060,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       ),
     ).then((dan) {
       if (dan != null && mounted) {
-        V3StateUtils.safeSetState(this, () => _selectedDay = dan);
+        V3StateUtils.safeSetState(this, () {
+          _selectedDay = dan;
+          _userSelectedDay = true;
+        });
         _rebuild();
       }
     });
