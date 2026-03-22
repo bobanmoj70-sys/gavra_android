@@ -159,9 +159,143 @@ jobs:
           sleep 300
           echo "✅ Build should be processed now"
 
+      - name: Set What's New automatically
+        run: |
+          VERSION_STRING="${{ steps.version_bump.outputs.VERSION_NAME }}"
+          RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
+          if [ -z "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES="Ispravke grešaka i poboljšanja performansi."
+          fi
+
+          echo "📝 Setting What's New for iOS version $VERSION_STRING"
+
+          VERSIONS_JSON_FILE=$(mktemp)
+          app-store-connect apps app-store-versions "$APP_ID" \
+            --platform IOS \
+            --version-string "$VERSION_STRING" \
+            --json > "$VERSIONS_JSON_FILE"
+
+          VERSION_ID=$(python3 - "$VERSIONS_JSON_FILE" <<'PYEOF'
+import json, sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+
+items = []
+if isinstance(data, dict):
+    if isinstance(data.get('data'), list):
+        items = data['data']
+    elif isinstance(data.get('appStoreVersions'), list):
+        items = data['appStoreVersions']
+elif isinstance(data, list):
+    items = data
+
+for item in items:
+    if isinstance(item, dict):
+        if item.get('id'):
+            print(item['id'])
+            break
+PYEOF
+)
+
+          if [ -z "$VERSION_ID" ]; then
+            echo "❌ Could not find App Store version ID for $VERSION_STRING"
+            cat "$VERSIONS_JSON_FILE" || true
+            exit 1
+          fi
+
+          echo "✅ App Store version ID: $VERSION_ID"
+
+          LOC_JSON_FILE=$(mktemp)
+          app-store-connect app-store-versions localizations "$VERSION_ID" --json > "$LOC_JSON_FILE"
+
+          read -r LOCALIZATION_ID LOCALIZATION_LOCALE <<EOF
+$(python3 - "$LOC_JSON_FILE" <<'PYEOF'
+import json, sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+
+items = []
+if isinstance(data, dict):
+    if isinstance(data.get('data'), list):
+        items = data['data']
+    elif isinstance(data.get('appStoreVersionLocalizations'), list):
+        items = data['appStoreVersionLocalizations']
+elif isinstance(data, list):
+    items = data
+
+preferred = None
+fallback = None
+for item in items:
+    if not isinstance(item, dict):
+        continue
+    iid = item.get('id')
+    attrs = item.get('attributes', {}) if isinstance(item.get('attributes'), dict) else {}
+    locale = attrs.get('locale') or item.get('locale')
+    if iid and locale:
+        if fallback is None:
+            fallback = (iid, locale)
+        if locale == 'en-US':
+            preferred = (iid, locale)
+            break
+
+chosen = preferred or fallback
+if chosen:
+    print(chosen[0], chosen[1])
+PYEOF
+)
+EOF
+
+          if [ -n "$LOCALIZATION_ID" ]; then
+            echo "✅ Updating existing localization: $LOCALIZATION_LOCALE ($LOCALIZATION_ID)"
+            app-store-connect app-store-version-localizations modify "$LOCALIZATION_ID" --whats-new "$RELEASE_NOTES"
+          else
+            echo "ℹ️ No localization found; creating en-US localization"
+            app-store-connect app-store-version-localizations create "$VERSION_ID" en-US --whats-new "$RELEASE_NOTES"
+          fi
+
+          echo "✅ What's New updated"
+
+      - name: Auto-submit to App Review
+        run: |
+          echo "🚀 Auto-submit to App Review started..."
+          MAX_RETRIES=12
+          RETRY_DELAY=60
+          ATTEMPT=1
+
+          while [ "$ATTEMPT" -le "$MAX_RETRIES" ]; do
+            echo "[Attempt $ATTEMPT/$MAX_RETRIES] Creating review submission..."
+            OUTPUT=$(app-store-connect review-submissions create "$APP_ID" --platform IOS --json 2>&1)
+            EXIT_CODE=$?
+
+            if [ "$EXIT_CODE" -eq 0 ]; then
+              echo "$OUTPUT"
+              echo "✅ Submitted to App Review successfully"
+              break
+            fi
+
+            echo "$OUTPUT"
+
+            if echo "$OUTPUT" | grep -Eiq "already|in review|waiting for review|submitted"; then
+              echo "ℹ️ Review submission already exists / already submitted — treating as success."
+              break
+            fi
+
+            if [ "$ATTEMPT" -eq "$MAX_RETRIES" ]; then
+              echo "❌ Failed to auto-submit to App Review after $MAX_RETRIES attempts."
+              exit 1
+            fi
+
+            echo "⏳ Build may still be processing. Retrying in ${RETRY_DELAY}s..."
+            sleep "$RETRY_DELAY"
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
       - name: Summary
         if: always()
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
+          echo "review: auto-submit enabled" >> $GITHUB_STEP_SUMMARY
 
