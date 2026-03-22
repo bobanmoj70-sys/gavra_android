@@ -372,6 +372,56 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     _rebuild();
   }
 
+  void _onDaySelected(String day) {
+    final vozac = _efektivniVozac;
+    if (vozac == null) return;
+
+    final dayAbbr = _normalizeSelectedDayToAbbr(day);
+    final dayIso = V3DanHelper.datumIsoZaDanAbbrNapred(dayAbbr);
+    final rm = V3MasterRealtimeManager.instance;
+
+    String normV(String? v) {
+      if (v == null || v.isEmpty) return '';
+      final p = v.split(':');
+      if (p.length >= 2) {
+        final hour = int.tryParse(p[0]) ?? 0;
+        final minute = int.tryParse(p[1]) ?? 0;
+        return V3DanHelper.formatVreme(hour, minute);
+      }
+      return v;
+    }
+
+    final dayTerms = rm.v3GpsRasporedCache.values
+        .where((row) =>
+            row['vozac_id']?.toString() == vozac.id &&
+            V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == dayIso &&
+            row['aktivno'] != false)
+        .toList()
+      ..sort((a, b) {
+        final ga = a['grad']?.toString().toUpperCase() ?? '';
+        final gb = b['grad']?.toString().toUpperCase() ?? '';
+        final byGrad = ga.compareTo(gb);
+        if (byGrad != 0) return byGrad;
+        final va = normV(a['vreme']?.toString());
+        final vb = normV(b['vreme']?.toString());
+        return va.compareTo(vb);
+      });
+
+    V3StateUtils.safeSetState(this, () {
+      _selectedDay = day;
+      _userSelectedDay = true;
+
+      if (dayTerms.isNotEmpty) {
+        _selectedGrad = dayTerms.first['grad']?.toString().toUpperCase() ?? _selectedGrad;
+        _selectedVreme = normV(dayTerms.first['vreme']?.toString());
+      } else {
+        _selectedVreme = '';
+      }
+    });
+
+    _rebuild();
+  }
+
   Future<void> _openMapa() async {
     if (_mojiPutnici.isEmpty) {
       await V3TelefonHelper.otvoriMaps(this, context, 'https://wego.here.com/');
@@ -1076,11 +1126,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       ),
     ).then((dan) {
       if (dan != null && mounted) {
-        V3StateUtils.safeSetState(this, () {
-          _selectedDay = dan;
-          _userSelectedDay = true;
-        });
-        _rebuild();
+        _onDaySelected(dan);
       }
     });
   }
