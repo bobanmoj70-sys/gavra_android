@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -892,6 +893,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Widget _buildBody() {
+    final rm = V3MasterRealtimeManager.instance;
+
     if (_mojiPutnici.isEmpty) {
       return Center(
         child: V3ContainerUtils.styledContainer(
@@ -918,6 +921,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     return Column(
       children: [
+        if (kDebugMode) _buildDebugStatusBar(rm),
         // Update banner (opcioni/obavezni)
         const V3UpdateBanner(),
         // Lista putnika
@@ -944,6 +948,30 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDebugStatusBar(V3MasterRealtimeManager rm) {
+    final text =
+        'DBG day=$_selectedDay date=$_selectedDatumIso grad=$_selectedGrad vreme=$_selectedVreme | mojiTermini=${_mojiTermini.length} mojiPutnici=${_mojiPutnici.length} | gpsCache=${rm.v3GpsRasporedCache.length} putniciCache=${rm.putniciCache.length} operCache=${rm.operativnaNedeljaCache.length}';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.yellowAccent,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
