@@ -349,7 +349,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   /// ISO datum za izabrani dan u tekućoj sedmici (ne forsira sledeću sedmicu).
   String get _selectedDatumIso {
     final dayAbbr = _normalizeSelectedDayToAbbr(_selectedDay);
-    return V3DanHelper.datumIsoZaDanAbbr(dayAbbr);
+    return V3DanHelper.datumIsoZaDanAbbrNapred(dayAbbr);
   }
 
   String _normalizeSelectedDayToAbbr(String day) {
