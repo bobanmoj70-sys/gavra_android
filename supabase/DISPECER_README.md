@@ -69,12 +69,12 @@ SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
 
 ### 1. Novi zahtev stiže
 - Putnik šalje zahtev kroz aplikaciju
-- **Trigger automatski postavlja `process_after`** timestamp na osnovu dispecer pravila
+- **Trigger automatski postavlja `scheduled_at`** timestamp na osnovu dispecer pravila
 - Zahtev dobija status `'obrada'`
 
 ### 2. Cron job procesira
 - Svakih 3 minuta pokreće se `process_pending_zahtevi()`
-- Uzima sve zahteve gde je `process_after <= NOW()`
+- Uzima sve zahteve gde je `scheduled_at <= NOW()`
 - Primenjuje dispecer pravila za svaki tip putnika
 
 ### 3. Rezultat obrade
@@ -148,12 +148,12 @@ ORDER BY start_time DESC LIMIT 5;
 
 - Funkcije koriste `SECURITY DEFINER` - pokreću se sa privilegijama vlasnika
 - Svi updates prate `updated_by = 'dispecer_cron'` za audit trail
-- Trigger automatski postavlja `process_after` - nema manuelnog mešanja
+- Trigger automatski postavlja `scheduled_at` - nema manuelnog mešanja
 
 ## 📈 Performance
 
-- Cron job procesira samo zahteve gde je `process_after <= NOW()`
-- Koristi indexe na `status`, `aktivno` i `process_after` kolone
+- Cron job procesira samo zahteve gde je `scheduled_at <= NOW()`
+- Koristi indexe na `status`, `aktivno` i `scheduled_at` kolone
 - Minimal impact - obično obrađuje 0-20 zahteva po pokretanju
 
 ## 🎯 Sledeći koraci
