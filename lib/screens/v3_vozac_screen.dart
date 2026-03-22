@@ -119,9 +119,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return;
     }
 
+    final rm = V3MasterRealtimeManager.instance;
+    if (rm.v3GpsRasporedCache.isEmpty || rm.putniciCache.isEmpty) {
+      try {
+        await rm.initV3();
+      } catch (_) {
+        // Realtime manager već loguje detalje; ekran će prikazati šta je dostupno
+      }
+    }
+
     V3StreamUtils.subscribe<void>(
       key: 'vozac_screen_realtime',
-      stream: V3MasterRealtimeManager.instance.onChange,
+      stream: rm.onChange,
       onData: (_) {
         if (mounted) _rebuild();
       },
