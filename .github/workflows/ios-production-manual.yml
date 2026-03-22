@@ -1,0 +1,21 @@
+name: 🍎 iOS Production Manual Dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_version:
+        description: 'Auto-bump version in pubspec.yaml?'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  run-ios-production:
+    name: 🚀 Call iOS Production Workflow
+    uses: ./.github/workflows/ios-production.yml
+    with:
+      bump_version: ${{ inputs.bump_version }}
+    secrets: inherit
