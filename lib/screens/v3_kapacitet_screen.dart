@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../config/v2_route_config.dart';
 import '../globals.dart';
@@ -270,8 +270,8 @@ Widget _kapacitetGradTab(
                 icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
               ),
               V3ContainerUtils.iconContainer(
-                width: 40,
-                height: 40,
+                width: V3ContainerUtils.responsiveHeight(ctx, 40),
+                height: V3ContainerUtils.responsiveHeight(ctx, 40),
                 backgroundColor: maxMesta != null ? _kapacitetGetBoja(maxMesta) : Colors.grey,
                 borderRadiusGeometry: BorderRadius.circular(8),
                 child: Center(

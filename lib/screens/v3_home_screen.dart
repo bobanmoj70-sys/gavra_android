@@ -20,7 +20,6 @@ import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -133,170 +132,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     for (final row in rm.v3GpsRasporedCache.values) {
       if (row['putnik_id'] == putnikId &&
           row['grad'] == grad &&
+          row['aktivno'] == true &&
           V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
           V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum) {
         final vozacId = row['vozac_id'] as String?;
-        if (vozacId != null) return V3VozacService.getVozacById(vozacId);
+        if (vozacId != null && vozacId.isNotEmpty) {
+          return V3VozacService.getVozacById(vozacId);
+        }
       }
     }
     return null;
-  }
-
-  Future<void> _dodelijPutnikuHome(String putnikId, V3Vozac vozac, String grad, String vreme, String datum) async {
-    try {
-      await supabase.from('v3_gps_raspored').insert({
-        'vozac_id': vozac.id,
-        'putnik_id': putnikId,
-        'datum': datum,
-        'grad': grad,
-        'vreme': vreme,
-        'nav_bar_type': 'vozac_home',
-        'gps_status': 'pending',
-        'created_by': 'home_assignment',
-      });
-      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
-      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
-    } catch (e) {
-      V3ErrorUtils.asyncError(this, context, e);
-    }
-  }
-
-  Future<void> _ukloniPutnikDodjeluHome(String putnikId, String grad, String vreme, String datum) async {
-    try {
-      await supabase
-          .from('v3_gps_raspored')
-          .delete()
-          .eq('putnik_id', putnikId)
-          .eq('grad', grad)
-          .eq('vreme', vreme)
-          .eq('datum', datum);
-      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
-      if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
-    } catch (e) {
-      V3ErrorUtils.asyncError(this, context, e);
-    }
-  }
-
-  Future<void> _showPutnikAssignDialog(V3OperativnaNedeljaEntry zahtev) async {
-    final grad = zahtev.grad ?? '';
-    final vreme = zahtev.vreme ?? '';
-    final dt = zahtev.datum;
-    final datum = V3DanHelper.toIsoDate(dt);
-    final trenutni = _getVozacZaPutnika(zahtev.putnikId, grad, vreme, datum);
-    V3Vozac? odabran = trenutni;
-    final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno).toList();
-    if (vozaci.isEmpty) {
-      if (mounted) V3AppSnackBar.warning(context, 'Nema registrovanih vozača');
-      return;
-    }
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => V3ContainerUtils.gradientContainer(
-          gradient: Theme.of(context).backgroundGradient,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: V3ContainerUtils.iconContainer(
-                  width: 40,
-                  height: 4,
-                  backgroundColor: Colors.white.withValues(alpha: 0.4),
-                  borderRadiusGeometry: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '👤 ${(V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Putnik').toUpperCase()}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1),
-              ),
-              Text(
-                '$grad $vreme — $datum',
-                style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Dodeli vozača putniku',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              ...vozaci.map((v) {
-                final isSelected = odabran?.id == v.id;
-                final color = _parseVozacColor(v.boja);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    onTap: () => setS(() => odabran = isSelected ? null : v),
-                    borderRadius: BorderRadius.circular(12),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
-                          width: isSelected ? 1.2 : 0.6,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 16), // Umesto avatar-a
-                          Text(
-                            v.imePrezime,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white70,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-              const SizedBox(height: 8),
-              if (trenutni != null)
-                TextButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await _ukloniPutnikDodjeluHome(zahtev.putnikId, grad, vreme, datum);
-                  },
-                  icon: const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 18),
-                  label: const Text('Ukloni individualnu dodjelu', style: TextStyle(color: Colors.redAccent)),
-                ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: V3ButtonUtils.elevatedButton(
-                  onPressed: odabran == null
-                      ? null
-                      : () async {
-                          Navigator.pop(ctx);
-                          await _dodelijPutnikuHome(zahtev.putnikId, odabran!, grad, vreme, datum);
-                        },
-                  text: 'Potvrdi',
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  foregroundColor: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   /// Dijalog za dodavanje novog zahteva (rezervacije)
@@ -404,14 +249,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               fillColor: Colors.white,
                             ),
                             dropdownStyleData: DropdownStyleData(
-                              maxHeight: 280,
+                              maxHeight: V3ContainerUtils.responsiveHeight(ctx, 280),
                               decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
                             ),
                             dropdownSearchData: DropdownSearchData(
                               searchController: V3TextUtils.searchController,
-                              searchInnerWidgetHeight: 50,
+                              searchInnerWidgetHeight: V3ContainerUtils.responsiveHeight(ctx, 50),
                               searchInnerWidget: V3ContainerUtils.iconContainer(
-                                height: 50,
+                                height: V3ContainerUtils.responsiveHeight(ctx, 50),
                                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                                 child: TextFormField(
                                   controller: V3TextUtils.searchController,
@@ -982,13 +827,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             return v;
           }
 
+          String slotVreme(V3OperativnaNedeljaEntry z) => z.dodeljivoVreme ?? '';
+
           final selectedVremeNorm = normalizeVreme(_selectedVreme);
 
           // Lista: datum dolazi iz stream-a, filtriraj samo po gradu i vremenu
           final currentVozacId = V3VozacService.currentVozac?.id;
           final prikazaniZapisi = sviZapisi.where((z) {
             if (z.grad != _selectedGrad) return false;
-            if (normalizeVreme(z.vreme) != selectedVremeNorm) return false;
+            if (normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
             if (z.statusFinal == 'odbijeno') return false;
             if (z.statusFinal == 'obrada') return false;
             return true;
@@ -999,19 +846,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 if (e.pokupljen) return 2;
                 // Provjeri da li je putnik dodijeljen logovanom vozaču
                 if (currentVozacId != null) {
-                  final indiv = _getVozacZaPutnika(e.putnikId, e.grad ?? '', e.vreme ?? '', _selectedDatumIso);
+                  final indiv = _getVozacZaPutnika(e.putnikId, e.grad ?? '', slotVreme(e), _selectedDatumIso);
                   if (indiv != null) {
                     return indiv.id == currentVozacId ? 0 : 1;
-                  }
-                  // Nema individualne — provjeri terminskog vozača
-                  final rm = V3MasterRealtimeManager.instance;
-                  final normV = V2GradAdresaValidator.normalizeTime(e.vreme ?? '');
-                  for (final row in rm.v3GpsRasporedCache.values) {
-                    if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == _selectedDatumIso &&
-                        row['grad'] == e.grad &&
-                        V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV) {
-                      return row['vozac_id'] == currentVozacId ? 0 : 1;
-                    }
                   }
                 }
                 return 1;
@@ -1030,7 +867,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             final targetVremeNorm = normalizeVreme(vreme);
             return sviZapisi.where((z) {
               if (z.grad != grad) return false;
-              if (normalizeVreme(z.vreme) != targetVremeNorm) return false;
+              if (normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
               if (z.statusFinal == 'otkazano' || z.statusFinal == 'odbijeno') return false;
               if (z.statusFinal == 'obrada') return false;
               return true;
@@ -1043,12 +880,35 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
           }
 
+          Color? getVozacColorForTermin(String grad, String vreme) {
+            final vremeNorm = V2GradAdresaValidator.normalizeTime(vreme);
+            final rm = V3MasterRealtimeManager.instance;
+            for (final row in rm.v3GpsRasporedCache.values) {
+              if (row['grad'] != grad) continue;
+              if (row['aktivno'] != true) continue;
+              if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != _selectedDatumIso) continue;
+              if (V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') != vremeNorm) continue;
+              final vozacId = row['vozac_id'] as String?;
+              if (vozacId == null || vozacId.isEmpty) continue;
+              final vozac = V3VozacService.getVozacById(vozacId);
+              if (vozac != null) {
+                return _parseVozacColor(vozac.boja);
+              }
+            }
+            return null;
+          }
+
+          final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
+          final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
+          final appBarHeight = 97 + (headerScaleExtra * 20);
+          final headerControlHeight = 33 + (headerScaleExtra * 8);
+
           return V3ContainerUtils.gradientContainer(
             gradient: V2ThemeManager().currentGradient,
             child: Scaffold(
               backgroundColor: Colors.transparent,
               appBar: PreferredSize(
-                preferredSize: const Size.fromHeight(93),
+                preferredSize: Size.fromHeight(appBarHeight),
                 child: V3ContainerUtils.iconContainer(
                   backgroundColor: Theme.of(context).glassContainer,
                   border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
@@ -1058,7 +918,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   ),
                   child: SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1084,7 +944,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           // Red 2 - vozač, tema, dan
                           Row(
                             children: [
@@ -1092,7 +952,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               Expanded(
                                 flex: 35,
                                 child: V3ContainerUtils.iconContainer(
-                                  height: 33,
+                                  height: headerControlHeight,
                                   padding: const EdgeInsets.all(6),
                                   backgroundColor: _getVozacColor(vozac),
                                   borderRadiusGeometry: BorderRadius.circular(12),
@@ -1123,7 +983,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   },
                                   borderRadius: BorderRadius.circular(12),
                                   child: V3ContainerUtils.iconContainer(
-                                    height: 33,
+                                    height: headerControlHeight,
                                     padding: const EdgeInsets.all(6),
                                     backgroundColor: Theme.of(context).glassContainer,
                                     borderRadiusGeometry: BorderRadius.circular(12),
@@ -1146,7 +1006,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               Expanded(
                                 flex: 35,
                                 child: V3ContainerUtils.iconContainer(
-                                  height: 33,
+                                  height: headerControlHeight,
                                   padding: const EdgeInsets.all(6),
                                   backgroundColor: Theme.of(context).glassContainer,
                                   borderRadiusGeometry: BorderRadius.circular(14),
@@ -1162,16 +1022,23 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
                                           ),
+                                          maxLines: 1,
+                                          softWrap: false,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       dropdownStyleData: DropdownStyleData(
+                                        width: 170,
+                                        maxHeight: 320,
                                         decoration: BoxDecoration(
                                           gradient: Theme.of(context).backgroundGradient,
                                           borderRadius: BorderRadius.circular(8),
                                           border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                         ),
                                         elevation: 8,
+                                      ),
+                                      menuItemStyleData: const MenuItemStyleData(
+                                        height: 44,
                                       ),
                                       items: V3DanHelper.dayNames
                                           .map((d) => DropdownMenuItem(
@@ -1183,6 +1050,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                                       color: Theme.of(context).colorScheme.onPrimary,
                                                       fontWeight: FontWeight.w700,
                                                     ),
+                                                    maxLines: 1,
+                                                    softWrap: false,
+                                                    overflow: TextOverflow.ellipsis,
                                                     textAlign: TextAlign.center,
                                                   ),
                                                 ),
@@ -1286,8 +1156,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   children: [
                                     Icon(Icons.print, color: Theme.of(context).colorScheme.onPrimary, size: 18),
                                     const SizedBox(height: 4),
-                                    const SizedBox(
-                                      height: 16,
+                                    SizedBox(
+                                      height: V3ContainerUtils.responsiveHeight(context, 16),
                                       child: FittedBox(
                                         fit: BoxFit.scaleDown,
                                         child: Text('Štampaj',
@@ -1336,7 +1206,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     child: prikazaniZapisi.isEmpty
                         ? Center(
                             child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                               child: V3ContainerUtils.iconContainer(
                                 padding: const EdgeInsets.all(16),
                                 backgroundColor: Theme.of(context).glassContainer,
@@ -1350,7 +1220,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.only(top: 4, bottom: 16),
                             itemCount: prikazaniZapisi.length,
                             itemBuilder: (ctx, i) {
                               final z = prikazaniZapisi[i];
@@ -1358,11 +1228,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               if (p == null) return const SizedBox.shrink();
 
                               final grad = z.grad ?? '';
-                              final vreme = z.vreme ?? '';
+                              final vreme = slotVreme(z);
                               final indivVozac = _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
                               final vozacBoja = indivVozac != null
                                   ? _parseVozacColor(indivVozac.boja)
-                                  : V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme);
+                                  : getVozacColorForTermin(grad, vreme);
 
                               // Kumulativni redni broj — uzima u obzir broj_mesta prethodnih putnika
                               final redniBroj =
@@ -1375,7 +1245,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   entry: z,
                                   redniBroj: redniBroj,
                                   vozacBoja: vozacBoja,
-                                  onDodeliVozaca: _isAdmin ? () => _showPutnikAssignDialog(z) : null,
                                 ),
                               );
                             },
@@ -1387,7 +1256,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               bottomNavigationBar: ValueListenableBuilder<String>(
                 valueListenable: navBarTypeNotifier,
                 builder: (ctx, navType, _) {
-                  return _buildBottomNavBar(getPutnikCount, getKapacitet);
+                  return _buildBottomNavBar(getPutnikCount, getKapacitet, getVozacColorForTermin);
                 },
               ),
             ),
@@ -1409,7 +1278,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
   }
 
-  Widget _buildBottomNavBar(int Function(String, String) getPutnikCount, int? Function(String, String) getKapacitet) {
+  Widget _buildBottomNavBar(
+    int Function(String, String) getPutnikCount,
+    int? Function(String, String) getKapacitet,
+    Color? Function(String, String) getVozacColor,
+  ) {
     return ValueListenableBuilder<String>(
       valueListenable: navBarTypeNotifier,
       builder: (context, navType, _) {
@@ -1427,7 +1300,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
             showVozacBoja: true,
-            getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
+            getVozacColor: getVozacColor,
           );
         } else if (navType == 'praznici') {
           return V3BottomNavBarPraznici(
@@ -1443,7 +1316,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
             showVozacBoja: true,
-            getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
+            getVozacColor: getVozacColor,
           );
         } else {
           // Default: letnji
@@ -1460,7 +1333,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             getPutnikCount: getPutnikCount,
             getKapacitet: getKapacitet,
             showVozacBoja: true,
-            getVozacColor: (grad, vreme) => V3VozacService.getVozacColorForTermin(_selectedDay, grad, vreme),
+            getVozacColor: getVozacColor,
           );
         }
       },
@@ -1491,7 +1364,7 @@ class _V3HomeButton extends StatelessWidget {
             Icon(icon, color: Theme.of(context).colorScheme.onPrimary, size: 18),
             const SizedBox(height: 4),
             SizedBox(
-              height: 16,
+              height: V3ContainerUtils.responsiveHeight(context, 16),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(

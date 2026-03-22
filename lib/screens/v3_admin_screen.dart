@@ -57,7 +57,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               children: [
                 V3ContainerUtils.styledContainer(
                   width: 40,
-                  height: 4,
+                  height: V3ContainerUtils.responsiveHeight(context, 4, intensity: 0.2),
                   backgroundColor: Colors.grey.shade400,
                   borderRadius: BorderRadius.circular(2),
                   child: const SizedBox(),
@@ -185,7 +185,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final ukBC = termini.length;
     final saVS = termini.values.where((r) => (r['aktivan'] == true)).length;
     return Container(
-      height: 60,
+      height: V3ContainerUtils.responsiveHeight(context, 60),
       decoration: BoxDecoration(
         color: Colors.orange.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(12),
@@ -306,7 +306,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               items: [
                                 PopupMenuItem(
                                   enabled: false,
-                                  height: 28,
+                                  height: V3ContainerUtils.responsiveHeight(context, 28),
                                   child: Text('Tip rasporeda', style: TextStyle(color: Colors.white54, fontSize: 12)),
                                 ),
                                 const PopupMenuItem(
@@ -536,7 +536,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           final boja = _bojaVozaca(v.id);
           final pazar = pazarPoVozacu[v.id] ?? 0.0;
           return Container(
-            height: 56,
+            height: V3ContainerUtils.responsiveHeight(context, 56),
             margin: const EdgeInsets.only(bottom: 4),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -586,7 +586,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           ),
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            height: 52,
+            height: V3ContainerUtils.responsiveHeight(context, 52),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.red.withValues(alpha: 0.15),
@@ -618,7 +618,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
         // Ukupan pazar
         V3ContainerUtils.styledContainer(
-          height: 72,
+          height: V3ContainerUtils.responsiveHeight(context, 72),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           backgroundColor: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(10),
@@ -681,7 +681,7 @@ class _NavBtn extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 40,
+        height: V3ContainerUtils.responsiveHeight(context, 40),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
@@ -718,7 +718,7 @@ class _BadgeBtn extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            height: 50,
+            height: V3ContainerUtils.responsiveHeight(context, 50),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
@@ -737,7 +737,10 @@ class _BadgeBtn extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              constraints: BoxConstraints(
+                minWidth: V3ContainerUtils.responsiveHeight(context, 20),
+                minHeight: V3ContainerUtils.responsiveHeight(context, 20),
+              ),
               child: Text(
                 '$badgeCount',
                 style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),

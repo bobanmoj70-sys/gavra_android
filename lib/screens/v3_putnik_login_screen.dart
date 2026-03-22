@@ -64,7 +64,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       _biometricTypeText = info.text;
       _biometricIcon = info.icon;
     });
-    // Ako je biometrija ukljucena, odmah poku�aj automatski
+    // Ako je biometrija uključena, odmah pokušaj automatski
     if (enabled) {
       _loginWithBiometric(auto: true);
     }
@@ -95,7 +95,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
     try {
       final normalized = _normalizePhone(telefon);
-      // Tra�imo u v3_putnici cache-u ili direktno u DB
+      // Tražimo u v3_putnici cache-u ili direktno u DB
       Map<String, dynamic>? found;
 
       // Prvo cache
@@ -120,7 +120,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
       if (found == null) {
         V3StateUtils.safeSetState(
-            this, () => _errorMessage = 'Niste pronadeni u sistemu.\nKontaktirajte admina za registraciju.');
+            this, () => _errorMessage = 'Niste pronađeni u sistemu.\nKontaktirajte admina za registraciju.');
         return;
       }
 
@@ -129,19 +129,19 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       final pin = found['pin'] as String?;
 
       if (email == null || email.trim().isEmpty) {
-        // Nema email � tra�i ga
+        // Nema email — traži ga
         setState(() {
           _currentStep = _LoginStep.email;
-          _infoMessage = 'Pronadeni ste! Unesite email za kontakt.';
+          _infoMessage = 'Pronađeni ste! Unesite email za kontakt.';
         });
       } else if (pin == null || pin.isEmpty) {
-        // Ima email ali nema PIN � provjeri zahtjev
+        // Ima email ali nema PIN — proveri zahtev
         final imaZahtev = await V3PinZahtevService.imaZahtevKojiCekaAsync(found['id'].toString());
         if (!mounted) return;
         if (imaZahtev) {
           setState(() {
             _currentStep = _LoginStep.zahtevPoslat;
-            _infoMessage = 'Va� zahtev za PIN je vec poslat. Molimo sacekajte da admin odobri.';
+            _infoMessage = 'Vaš zahtev za PIN je već poslat. Molimo sačekajte da admin odobri.';
           });
           _listenForPin();
         } else {
@@ -150,7 +150,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       } else {
         setState(() {
           _currentStep = _LoginStep.pin;
-          _infoMessage = 'Pronadeni ste! Unesite svoj 4-cifreni PIN.';
+          _infoMessage = 'Pronađeni ste! Unesite svoj 4-cifreni PIN.';
         });
       }
     } catch (e) {
@@ -175,7 +175,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     final local = emailLower.split('@')[0];
     final domain = emailLower.split('@')[1];
     if (local.length < 3 || domain.split('.')[0].length < 3) {
-      V3StateUtils.safeSetState(this, () => _errorMessage = 'Email adresa je previ�e kratka');
+      V3StateUtils.safeSetState(this, () => _errorMessage = 'Email adresa je previše kratka');
       return;
     }
     if (RegExp(r'^(.)\1{2,}').hasMatch(local)) {
@@ -197,7 +197,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       final success = await V3PinZahtevService.azurirajEmail(putnikId, email);
       if (!mounted) return;
       if (!success) {
-        V3StateUtils.safeSetState(this, () => _errorMessage = 'Gre�ka pri cuvanju emaila');
+        V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška pri čuvanju emaila');
         return;
       }
       _putnikData!['email'] = email;
@@ -207,7 +207,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       } else {
         setState(() {
           _currentStep = _LoginStep.pin;
-          _infoMessage = 'Email sacuvan! Unesite svoj 4-cifreni PIN.';
+          _infoMessage = 'Email sačuvan! Unesite svoj 4-cifreni PIN.';
         });
       }
     } catch (e) {
@@ -250,11 +250,11 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
       if (success) {
         setState(() {
           _currentStep = _LoginStep.zahtevPoslat;
-          _infoMessage = 'Zahtev je uspe�no poslat! Admin ce vam dodeliti PIN.';
+          _infoMessage = 'Zahtev je uspešno poslat! Admin će vam dodeliti PIN.';
         });
         _listenForPin();
       } else {
-        V3StateUtils.safeSetState(this, () => _errorMessage = 'Gre�ka pri slanju zahteva');
+        V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška pri slanju zahteva');
       }
     } catch (e) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Greška: $e');
@@ -271,13 +271,13 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
         pinStream: V3PinZahtevService.streamZahteviKojiCekaju(),
         onPinUpdate: (lista) {
           if (!mounted) return;
-          // Kada zahtev nestane iz liste cekanja ? PIN je odobren
+          // Kada zahtev nestane iz liste čekanja — PIN je odobren
           final josCeka = lista.any((z) => z['putnik_id']?.toString() == putnikId);
           if (!josCeka && _currentStep == _LoginStep.zahtevPoslat) {
             V3StreamUtils.cancelSubscription('putnik_login_pin');
             setState(() {
               _currentStep = _LoginStep.pin;
-              _infoMessage = '? PIN je dodeljen! Unesite PIN koji ste dobili.';
+              _infoMessage = '✅ PIN je dodeljen! Unesite PIN koji ste dobili.';
               _errorMessage = null;
             });
           }
@@ -289,7 +289,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     if (!_biometricAvailable || !_biometricEnabled) return;
     final creds = await _biometric.getSavedCredentials();
     if (creds == null) {
-      // Sacuvani kredencijali ne postoje � resetuj
+      // Sačuvani kredencijali ne postoje — resetuj
       await _biometric.clearCredentials();
       V3StateUtils.safeSetState(this, () => _biometricEnabled = false);
       return;
@@ -396,11 +396,11 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     try {
       final storedPin = _putnikData!['pin']?.toString() ?? '';
       if (pin != storedPin) {
-        // Provjeri ponovo iz DB (mo�da je PIN promijenjen)
+        // Proveri ponovo iz DB (možda je PIN promenjen)
         final fresh = await supabase.from('v3_putnici').select('pin').eq('id', _putnikData!['id']).single();
         if (!mounted) return;
         if (pin != fresh['pin']?.toString()) {
-          V3StateUtils.safeSetState(this, () => _errorMessage = 'Pogre�an PIN. Poku�ajte ponovo.');
+          V3StateUtils.safeSetState(this, () => _errorMessage = 'Pogrešan PIN. Pokušajte ponovo.');
           return;
         }
       }
@@ -503,17 +503,17 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
+                          ? SizedBox(
+                              width: V3ContainerUtils.responsiveHeight(context, 24),
+                              height: V3ContainerUtils.responsiveHeight(context, 24),
                               child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
                             )
                           : Text(
                               _currentStep == _LoginStep.telefon
-                                  ? '?? Nastavi'
+                                  ? '➡️ Nastavi'
                                   : _currentStep == _LoginStep.email
-                                      ? '?? Sacuvaj email'
-                                      : '?? Pristupi',
+                                      ? '💾 Sačuvaj email'
+                                      : '🔓 Pristupi',
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                     ),
@@ -530,7 +530,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('?? Nazad na pocetnu', style: TextStyle(fontSize: 16)),
+                      child: const Text('↩️ Nazad na početnu', style: TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],
@@ -660,7 +660,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   Widget _stepTitle() {
     final title = switch (_currentStep) {
       _LoginStep.telefon => 'Prijava putnika',
-      _LoginStep.email => 'Va� email',
+      _LoginStep.email => 'Vaš email',
       _LoginStep.pin => 'Unesite PIN',
       _LoginStep.zahtevPoslat => 'Zahtev poslat',
     };
@@ -670,9 +670,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   Widget _stepSubtitle() {
     final sub = switch (_currentStep) {
       _LoginStep.telefon => 'Unesite broj telefona sa kojim ste registrovani',
-      _LoginStep.email => 'Potreban nam je va� email za kontakt',
+      _LoginStep.email => 'Potreban nam je vaš email za kontakt',
       _LoginStep.pin => 'Unesite svoj 4-cifreni PIN',
-      _LoginStep.zahtevPoslat => 'Sacekajte odobrenje od admina',
+      _LoginStep.zahtevPoslat => 'Sačekajte odobrenje od admina',
     };
     return Text(sub,
         style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14), textAlign: TextAlign.center);
@@ -682,13 +682,13 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
     final idx = _currentStep.index;
     dot(bool a) => V3ContainerUtils.iconContainer(
           width: 12,
-          height: 12,
+          height: V3ContainerUtils.responsiveHeight(context, 12),
           backgroundColor: a ? Colors.amber : Colors.white.withValues(alpha: 0.3),
           borderRadiusGeometry: const BorderRadius.all(Radius.circular(6)),
         );
     line(bool a) => V3ContainerUtils.styledContainer(
           width: 40,
-          height: 2,
+          height: V3ContainerUtils.responsiveHeight(context, 2, intensity: 0.2),
           backgroundColor: a ? Colors.amber : Colors.white.withValues(alpha: 0.3),
           child: const SizedBox(),
         );
@@ -742,7 +742,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Admin ce pregledati va� zahtev i dodeliti vam PIN.\nBicete obave�teni kada PIN bude spreman.',
+            'Admin će pregledati vaš zahtev i dodeliti vam PIN.\nBićete obavešteni kada PIN bude spreman.',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
             textAlign: TextAlign.center,
           ),
@@ -754,9 +754,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   Widget _infoHint() {
     final hint = switch (_currentStep) {
       _LoginStep.telefon => 'Unesite broj telefona koji ste dali prilikom registracije.',
-      _LoginStep.email => 'Email koristimo za obave�tenja i komunikaciju sa adminom.',
+      _LoginStep.email => 'Email koristimo za obaveštenja i komunikaciju sa adminom.',
       _LoginStep.pin => 'PIN ste dobili od admina. Ako ste ga zaboravili, koristite opciju ispod.',
-      _LoginStep.zahtevPoslat => 'Mo�ete zatvoriti aplikaciju. Obave�tavamo vas kada PIN bude dodeljen.',
+      _LoginStep.zahtevPoslat => 'Možete zatvoriti aplikaciju. Obaveštavamo vas kada PIN bude dodeljen.',
     };
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(12),

@@ -1,4 +1,7 @@
 {
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "files.eol": "\n",
   // 🚫 SUPABASE CLI И DENO КОНФИГУРАЦИЈА УКЛОЊЕНА
   // Ове setting-е не користимо јер радимо са Supabase Cloud преко REST API
   // Уместо локалног CLI-ја користимо:

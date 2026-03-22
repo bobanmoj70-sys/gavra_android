@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_gorivo.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
@@ -280,7 +280,7 @@ class _V3BrojcanikCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: procenat,
-                minHeight: 24,
+                minHeight: V3ContainerUtils.responsiveHeight(context, 24),
                 backgroundColor: Colors.grey.withValues(alpha: 0.2),
                 valueColor: AlwaysStoppedAnimation<Color>(barColor),
               ),

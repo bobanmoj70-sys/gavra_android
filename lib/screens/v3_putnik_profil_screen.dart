@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -528,17 +528,28 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         .where((z) => z['status'] == 'odobreno')
         .toList();
     for (final zahtev in zahtevi) {
-      // Pronađi dodeljenog vozača iz operativna_nedelja
-      final operativni = rm.operativnaNedeljaCache.values
-          .where((op) => op['putnik_id'] == putnikId)
-          .where((op) => op['grad'] == zahtev['grad'])
-          .where((op) => op['zeljeno_vreme'] == zahtev['zeljeno_vreme'])
+      final zahtevGrad = (zahtev['grad'] as String? ?? '').toUpperCase();
+      final zahtevDatumIso = V3DanHelper.parseIsoDatePart(zahtev['datum'] as String? ?? '');
+      final zahtevVreme = V3StringUtils.safeSubstringTime(zahtev['zeljeno_vreme'] as String? ?? '');
+
+      // Pronađi GPS dodelu (aktivira widget čim vozač postoji za termin)
+      final gpsDodjela = rm.v3GpsRasporedCache.values
+          .where((r) => r['putnik_id'] == putnikId)
+          .where((r) => r['aktivno'] != false)
+          .where((r) => (r['vozac_id'] as String?) != null)
+          .where((r) => ((r['grad'] as String? ?? '').toUpperCase()) == zahtevGrad)
+          .where((r) => V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == zahtevDatumIso)
+          .where((r) => V3StringUtils.safeSubstringTime(r['vreme']?.toString() ?? '') == zahtevVreme)
           .firstOrNull;
-      if (operativni != null && operativni['pokupljen_vozac_id'] != null) {
-        final vozacId = operativni['pokupljen_vozac_id'] as String;
-        final grad = zahtev['grad'] as String? ?? '';
-        final vreme = zahtev['zeljeno_vreme'] as String? ?? '';
-        final datum = DateTime.parse(zahtev['datum'] as String? ?? '');
+
+      if (gpsDodjela != null) {
+        final vozacId = gpsDodjela['vozac_id'] as String;
+        final grad = gpsDodjela['grad'] as String? ?? (zahtev['grad'] as String? ?? '');
+        final vreme = V3StringUtils.safeSubstringTime(
+            gpsDodjela['vreme']?.toString() ?? (zahtev['zeljeno_vreme'] as String? ?? ''));
+        final datum = DateTime.tryParse(gpsDodjela['datum'] as String? ?? '') ??
+            DateTime.tryParse(zahtev['datum'] as String? ?? '');
+        if (datum == null) continue;
         aktivneVoznje.add(V3PutnikTrackingWidget(
           putnikId: putnikId,
           vozacId: vozacId,
@@ -666,8 +677,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         children: [
           // Avatar
           Container(
-            width: 80,
-            height: 80,
+            width: V3ContainerUtils.responsiveHeight(context, 80),
+            height: V3ContainerUtils.responsiveHeight(context, 80),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -767,7 +778,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   ),
                 if (adresaBcNaziv != null && adresaVsNaziv != null)
                   Container(
-                      width: 1, height: 40, color: Colors.white12, margin: const EdgeInsets.symmetric(horizontal: 10)),
+                      width: 1,
+                      height: V3ContainerUtils.responsiveHeight(context, 40),
+                      color: Colors.white12,
+                      margin: const EdgeInsets.symmetric(horizontal: 10)),
                 // VS kolona
                 if (adresaVsNaziv != null && adresaVsNaziv.isNotEmpty)
                   Expanded(
@@ -1046,7 +1060,17 @@ class _ZahtevCell extends StatelessWidget {
             children: [
               Icon(Icons.add, size: 12, color: Colors.black),
               const SizedBox(width: 3),
-              Text('dodaj', style: TextStyle(color: Colors.black, fontSize: 11)),
+              Text(
+                'dodaj',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.1,
+                ),
+              ),
             ],
           ),
         ),
@@ -1055,26 +1079,26 @@ class _ZahtevCell extends StatelessWidget {
     final Color statusColor;
     final String statusIcon;
     if (info!.pokupljen) {
-      statusColor = Colors.lightBlue.shade600;
+      statusColor = Colors.lightBlue.shade700;
       statusIcon = '🚗';
     } else {
       switch (info!.status) {
         case 'odobreno':
-          statusColor = Colors.green.shade600;
+          statusColor = Colors.green.shade700;
           statusIcon = '✅';
         case 'obrada':
-          statusColor = Colors.orange;
+          statusColor = Colors.orange.shade700;
           statusIcon = '⏳';
         case 'alternativa':
         case 'ponuda':
-          statusColor = Colors.orangeAccent;
+          statusColor = Colors.deepOrangeAccent;
           statusIcon = '🔄';
         case 'odbijeno':
         case 'otkazano':
-          statusColor = Colors.red.shade600;
+          statusColor = Colors.red.shade700;
           statusIcon = '🚫';
         default:
-          statusColor = Colors.grey;
+          statusColor = Colors.blueGrey.shade600;
           statusIcon = '•';
       }
     }
@@ -1083,9 +1107,12 @@ class _ZahtevCell extends StatelessWidget {
       onTap: onTap,
       child: V3ContainerUtils.styledContainer(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        backgroundColor: statusColor.withValues(alpha: 0.15),
+        backgroundColor: statusColor.withValues(alpha: 0.24),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.78),
+          width: 1.2,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

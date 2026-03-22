@@ -17,10 +17,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'globals.dart';
+import 'screens/v3_putnik_profil_screen.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v2_theme_manager.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
+import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 
 // Globalna instanca za lokalne notifikacije
@@ -44,7 +46,7 @@ void main() async {
       anonKey: configService.getSupabaseAnonKey(),
     );
   } catch (e) {
-    debugPrint('âŒ [main] Supabase.initialize greÅ¡ka: $e');
+    debugPrint('âŒ [main] Supabase.initialize greška: $e');
   }
 
   // 1. Pokreni V3 Realtime Manager ODMAH (prije UI-a, da ima max vremena za fetch)
@@ -69,7 +71,7 @@ Future<void> _doStartupTasks() async {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   } catch (e) {
-    debugPrint('âš ï¸ [main] Wakelock/SystemChrome greÅ¡ka: $e');
+    debugPrint('âš ï¸ [main] Wakelock/SystemChrome greška: $e');
   }
 
   // Locale - UTF-8 podrska za dijakritiku
@@ -238,6 +240,10 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
   final type = message.data['type'] as String?;
   if (type == 'gps_tracking_start') {
     await _handleGpsTrackingStart(message.data);
+  } else if (type == 'gps_tracking_complete') {
+    await _handleGpsTrackingComplete(message.data);
+  } else if (type == 'v3_putnik_eta_start') {
+    await _handlePutnikEtaStart(message.data);
   } else {
     await _showAlternativaNotification(message);
   }
@@ -247,7 +253,7 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
 Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
   final vozacId = data['vozac_id'] as String?;
   final polazakVreme = data['polazak_vreme'] as String?;
-  final putniciBroj = data['putnici_count'] as int? ?? 0;
+  final putniciBroj = int.tryParse('${data['putnici_count'] ?? 0}') ?? 0;
 
   if (vozacId == null || polazakVreme == null) {
     debugPrint('⚠️ [GPS] Nedostaju podaci u notification: vozacId=$vozacId, polazak=$polazakVreme');
@@ -284,6 +290,50 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
   );
 
   debugPrint('📍 [GPS] Auto start notification prikazana za vozača $vozacId');
+}
+
+/// Putnik: vozač je krenuo, ETA/live tracking aktivan
+Future<void> _handlePutnikEtaStart(Map<String, dynamic> data) async {
+  final title = data['title'] as String? ?? '🚗 Vozač je krenuo';
+  final body = data['body'] as String? ?? 'ETA tracking je aktivan. Pratite dolazak uživo.';
+
+  const androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    importance: Importance.max,
+    priority: Priority.high,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    const NotificationDetails(android: androidDetails),
+    payload: 'putnik_eta_start:${data['putnik_id'] ?? ''}',
+  );
+}
+
+/// Vozač: svi pokupljeni → ugasi foreground GPS tracking
+Future<void> _handleGpsTrackingComplete(Map<String, dynamic> data) async {
+  final shouldStop = '${data['action_stop_foreground'] ?? ''}'.toLowerCase() == 'true';
+
+  if (!shouldStop) return;
+
+  await V3ForegroundGpsService.stopTracking();
+
+  const androidDetails = AndroidNotificationDetails(
+    'gavra_gps_success',
+    'GPS Success',
+    importance: Importance.high,
+    priority: Priority.high,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    890,
+    '✅ GPS tracking završen',
+    'Svi putnici su pokupljeni. Tracking je automatski zaustavljen.',
+    const NotificationDetails(android: androidDetails),
+  );
 }
 
 /// ✨ NOVO: HMS Message handler
@@ -408,7 +458,15 @@ void onNotificationTap(NotificationResponse response) async {
   final String? payload = response.payload;
   final String? actionId = response.actionId;
 
-  if (payload == null || actionId == null) return;
+  if (payload == null) return;
+
+  // Tap na samu notifikaciju (bez action dugmeta) za putnik ETA flow
+  if (payload.startsWith('putnik_eta_start')) {
+    await _openPutnikProfilFromNotification(payload);
+    return;
+  }
+
+  if (actionId == null) return;
 
   debugPrint('Notification Action Clicked: $actionId, Payload: $payload');
 
@@ -454,6 +512,73 @@ void onNotificationTap(NotificationResponse response) async {
     }
   } catch (e) {
     debugPrint('[onNotificationTap] Greška pri obradi akcije: $e');
+  }
+}
+
+Future<void> _openPutnikProfilFromNotification(String payload) async {
+  try {
+    if (!isSupabaseReady) {
+      await configService.initializeBasic();
+      await Supabase.initialize(
+        url: configService.getSupabaseUrl(),
+        anonKey: configService.getSupabaseAnonKey(),
+      );
+    }
+
+    final nav = navigatorKey.currentState;
+    if (nav == null) {
+      debugPrint('⚠️ [Push] Ne mogu da otvorim putnik profil (nema navigatora).');
+      return;
+    }
+
+    Map<String, dynamic>? putnikData = V3PutnikService.currentPutnik;
+
+    // 1) Payload id fallback: putnik_eta_start:<putnik_id>
+    final parts = payload.split(':');
+    final payloadPutnikId = parts.length > 1 ? parts[1] : '';
+    if ((putnikData == null) && payloadPutnikId.isNotEmpty) {
+      putnikData = V3MasterRealtimeManager.instance.getPutnik(payloadPutnikId);
+      putnikData ??=
+          await supabase.from('v3_putnici').select().eq('id', payloadPutnikId).eq('aktivno', true).maybeSingle();
+    }
+
+    // 2) FCM token fallback: nađi putnika po push_token
+    if (putnikData == null) {
+      final token = await fcm.FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        putnikData =
+            await supabase.from('v3_putnici').select().eq('push_token', token).eq('aktivno', true).maybeSingle();
+      }
+    }
+
+    // 3) Cache refresh fallback
+    if (putnikData == null) {
+      await V3MasterRealtimeManager.instance.initV3();
+      final token = await fcm.FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        putnikData = V3MasterRealtimeManager.instance.putniciCache.values
+            .cast<Map<String, dynamic>?>()
+            .firstWhere((p) => p != null && p['aktivno'] == true && p['push_token'] == token, orElse: () => null);
+      }
+    }
+
+    if (putnikData == null) {
+      debugPrint('⚠️ [Push] Ne mogu da otvorim putnik profil (putnik nije pronađen).');
+      return;
+    }
+
+    final resolvedPutnikData = Map<String, dynamic>.from(putnikData);
+    V3PutnikService.currentPutnik = resolvedPutnikData;
+
+    nav.push(
+      MaterialPageRoute<void>(
+        builder: (_) => V3PutnikProfilScreen(
+          putnikData: resolvedPutnikData,
+        ),
+      ),
+    );
+  } catch (e) {
+    debugPrint('❌ [Push] Greška pri otvaranju putnik profila: $e');
   }
 }
 

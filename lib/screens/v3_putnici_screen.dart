@@ -32,6 +32,27 @@ class V3PutniciScreen extends StatefulWidget {
 class _V3PutniciScreenState extends State<V3PutniciScreen> {
   String _selectedFilter = 'svi';
 
+  String _normalizeTip(dynamic tip) => (tip?.toString() ?? '').trim().toLowerCase();
+
+  bool _isAktivan(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 't' ||
+          normalized == 'yes' ||
+          normalized == 'da';
+    }
+    return false;
+  }
+
+  bool _matchesFilterTip(dynamic tipValue, String selectedTip) {
+    if (selectedTip == 'svi') return true;
+    return _normalizeTip(tipValue) == _normalizeTip(selectedTip);
+  }
+
   @override
   void dispose() {
     V3TextUtils.disposeController('search');
@@ -41,19 +62,18 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
   // ─── Badge counts ─────────────────────────────────────────────────────────
   int _count(String tip) {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    if (tip == 'svi') return cache.where((r) => r['aktivno'] == true).length;
-    return cache.where((r) => r['aktivno'] == true && r['tip_putnika'] == tip).length;
+    return cache.where((r) => _isAktivan(r['aktivno']) && _matchesFilterTip(r['tip_putnika'], tip)).length;
   }
 
   // ─── Filtered list ────────────────────────────────────────────────────────
   List<V3Putnik> _filtriraj() {
     var lista = V3MasterRealtimeManager.instance.putniciCache.values
-        .where((r) => r['aktivno'] == true)
+        .where((r) => _isAktivan(r['aktivno']))
         .map((r) => V3Putnik.fromJson(r))
         .toList();
 
     if (_selectedFilter != 'svi') {
-      lista = lista.where((p) => p.tipPutnika == _selectedFilter).toList();
+      lista = lista.where((p) => _matchesFilterTip(p.tipPutnika, _selectedFilter)).toList();
     }
 
     final search = V3TextUtils.getControllerText('search').trim();
@@ -71,11 +91,15 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
   // ─── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
+    final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
+    final appBarHeight = 72 + (headerScaleExtra * 16);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(72),
+        preferredSize: Size.fromHeight(appBarHeight),
         child: StreamBuilder<void>(
           stream: V3MasterRealtimeManager.instance.onChange,
           builder: (context, _) {
@@ -159,9 +183,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                       builder: (context, _, __) {
                         final lista = _filtriraj();
                         final total = V3MasterRealtimeManager.instance.putniciCache.values
-                            .where((r) =>
-                                r['aktivno'] == true &&
-                                (_selectedFilter == 'svi' || r['tip_putnika'] == _selectedFilter))
+                            .where(
+                                (r) => _isAktivan(r['aktivno']) && _matchesFilterTip(r['tip_putnika'], _selectedFilter))
                             .length;
                         final isTruncated = total > 50;
 
@@ -266,7 +289,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
               borderRadius: BorderRadius.circular(9), // Circle effect
               boxShadow: [BoxShadow(color: c2.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2))],
               width: 18,
-              height: 18,
+              height: V3ContainerUtils.responsiveHeight(context, 18),
               child: Text(
                 count > 99 ? '99+' : '$count',
                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
@@ -444,6 +467,7 @@ class _PutnikCard extends StatelessWidget {
                 children: [
                   Expanded(
                       child: _actionBtn(
+                    context: context,
                     icon: putnik.aktivno ? Icons.toggle_on_outlined : Icons.toggle_off_outlined,
                     label: putnik.aktivno ? 'Aktivan' : 'Neaktivan',
                     color: putnik.aktivno ? Colors.green : Colors.grey,
@@ -452,6 +476,7 @@ class _PutnikCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                       child: _actionBtn(
+                    context: context,
                     icon: Icons.lock_outline,
                     label: 'PIN',
                     color: Colors.amber,
@@ -466,6 +491,7 @@ class _PutnikCard extends StatelessWidget {
                   if (putnik.telefon1 != null || putnik.telefon2 != null) ...[
                     Expanded(
                         child: _actionBtn(
+                      context: context,
                       icon: Icons.phone,
                       label: 'Pozovi',
                       color: Colors.green,
@@ -475,6 +501,7 @@ class _PutnikCard extends StatelessWidget {
                   ],
                   Expanded(
                       child: _actionBtn(
+                    context: context,
                     icon: Icons.edit_outlined,
                     label: 'Uredi',
                     color: Colors.blue,
@@ -483,6 +510,7 @@ class _PutnikCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                       child: _actionBtn(
+                    context: context,
                     icon: Icons.delete_outline,
                     label: 'Obriši',
                     color: Colors.red,
@@ -498,14 +526,16 @@ class _PutnikCard extends StatelessWidget {
   }
 
   Widget _actionBtn({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required Color color,
     required VoidCallback onPressed,
   }) {
     return SizedBox(
-      height: 32,
+      height: V3ContainerUtils.responsiveHeight(context, 32),
       child: V3ContainerUtils.gradientContainer(
+        padding: EdgeInsets.zero,
         gradient: LinearGradient(
           colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.08)],
         ),

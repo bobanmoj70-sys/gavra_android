@@ -3,6 +3,18 @@ import 'package:flutter/material.dart';
 /// V3ContainerUtils - Centralized container management
 /// Eliminira sve Container duplikate sa konzistentnim stilizovanjem
 class V3ContainerUtils {
+  /// Responsive visina zasnovana na text scale faktoru
+  static double responsiveHeight(
+    BuildContext context,
+    double base, {
+    double maxScaleExtra = 0.7,
+    double intensity = 0.35,
+  }) {
+    final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
+    final extra = (textScaleFactor - 1.0).clamp(0.0, maxScaleExtra).toDouble();
+    return base * (1 + (extra * intensity));
+  }
+
   /// Basic styled container sa padding
   static Widget styledContainer({
     required Widget child,

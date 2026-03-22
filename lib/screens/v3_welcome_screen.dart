@@ -556,7 +556,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                           },
                           child: Image.asset(
                             'assets/logo_transparent.png',
-                            height: 180,
+                            height: V3ContainerUtils.responsiveHeight(context, 180),
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -742,7 +742,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                       children: [
                         V3ContainerUtils.gradientContainer(
                           width: 60,
-                          height: 3,
+                          height: V3ContainerUtils.responsiveHeight(context, 3, intensity: 0.2),
                           gradient: LinearGradient(
                             colors: [
                               Colors.transparent,

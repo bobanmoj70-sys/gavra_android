@@ -100,7 +100,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     Center(
                       child: V3ContainerUtils.styledContainer(
                         width: 40,
-                        height: 4,
+                        height: V3ContainerUtils.responsiveHeight(context, 4, intensity: 0.2),
                         backgroundColor: Colors.white.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(2),
                         padding: EdgeInsets.zero,
@@ -185,7 +185,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
                             width: 40,
-                            height: 40,
+                            height: V3ContainerUtils.responsiveHeight(context, 40),
                             decoration: BoxDecoration(
                               color: c,
                               shape: BoxShape.circle,
@@ -572,7 +572,10 @@ class _VozacKartica extends StatelessWidget {
                     icon: Icon(Icons.edit, color: cardColor, size: 20),
                     onPressed: onEdit,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: BoxConstraints(
+                      minWidth: V3ContainerUtils.responsiveHeight(context, 32),
+                      minHeight: V3ContainerUtils.responsiveHeight(context, 32),
+                    ),
                     visualDensity: VisualDensity.compact,
                     tooltip: 'Uredi',
                   ),
@@ -581,7 +584,10 @@ class _VozacKartica extends StatelessWidget {
                       icon: const Icon(Icons.restore, color: Colors.greenAccent, size: 20),
                       onPressed: onReactivate,
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints: BoxConstraints(
+                        minWidth: V3ContainerUtils.responsiveHeight(context, 32),
+                        minHeight: V3ContainerUtils.responsiveHeight(context, 32),
+                      ),
                       visualDensity: VisualDensity.compact,
                       tooltip: 'Reaktiviraj',
                     )
@@ -590,7 +596,10 @@ class _VozacKartica extends StatelessWidget {
                       icon: const Icon(Icons.person_off, color: Colors.redAccent, size: 20),
                       onPressed: onDeactivate,
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints: BoxConstraints(
+                        minWidth: V3ContainerUtils.responsiveHeight(context, 32),
+                        minHeight: V3ContainerUtils.responsiveHeight(context, 32),
+                      ),
                       visualDensity: VisualDensity.compact,
                       tooltip: 'Deaktiviraj',
                     ),

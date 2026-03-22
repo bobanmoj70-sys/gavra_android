@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -270,7 +270,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
         children: [
           V3ContainerUtils.iconContainer(
             width: 52,
-            height: 52,
+            height: V3ContainerUtils.responsiveHeight(context, 52),
             backgroundColor: Colors.white.withValues(alpha: 0.2),
             borderRadiusGeometry: BorderRadius.circular(14),
             child: const Center(child: Text('💰', style: TextStyle(fontSize: 26))),
@@ -663,7 +663,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
               children: [
                 V3ContainerUtils.styledContainer(
                   width: 40,
-                  height: 4,
+                  height: V3ContainerUtils.responsiveHeight(context, 4, intensity: 0.2),
                   backgroundColor: Colors.grey.shade400,
                   borderRadius: BorderRadius.circular(2),
                   child: const SizedBox(),

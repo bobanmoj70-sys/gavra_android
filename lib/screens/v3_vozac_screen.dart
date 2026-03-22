@@ -209,6 +209,25 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           .where((id) => !individualniSet.contains(id)),
     };
 
+    int? extractRouteOrder(Map<String, dynamic> row) {
+      final value = row['route_order'];
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '');
+    }
+
+    final routeOrderByPutnik = <String, int?>{};
+    for (final row in terminPutnici) {
+      final putnikId = row['putnik_id']?.toString();
+      if (putnikId == null || putnikId.isEmpty) continue;
+      routeOrderByPutnik[putnikId] ??= extractRouteOrder(row);
+    }
+    for (final row in individualniOvajVozac) {
+      final putnikId = row['putnik_id']?.toString();
+      if (putnikId == null || putnikId.isEmpty) continue;
+      routeOrderByPutnik[putnikId] = extractRouteOrder(row) ?? routeOrderByPutnik[putnikId];
+    }
+
     // 3. Za svakog putnika izgradimo _PutnikEntry iz operativna_nedelja
     final putnici = <_PutnikEntry>[];
     for (final putnikId in svePutnikIds) {
@@ -231,20 +250,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         // nema entry-ja - može biti iz override-a
       }
 
-      putnici.add(_PutnikEntry(putnik: putnik, entry: entry));
+      putnici.add(
+        _PutnikEntry(
+          putnik: putnik,
+          entry: entry,
+          routeOrder: routeOrderByPutnik[putnikId],
+        ),
+      );
     }
 
-    // Sort identičan home screenu: otkazano(3) → pokupljen(2) → ostali(1) → ime
     putnici.sort((a, b) {
-      int rank(_PutnikEntry p) {
-        if (p.entry?.statusFinal == 'otkazano') return 3;
-        if (p.entry?.pokupljen == true) return 2;
-        return 1;
+      if (_isTracking) {
+        final aOrder = a.routeOrder ?? 999999;
+        final bOrder = b.routeOrder ?? 999999;
+        if (aOrder != bOrder) return aOrder.compareTo(bOrder);
       }
-
-      final aR = rank(a);
-      final bR = rank(b);
-      if (aR != bR) return aR.compareTo(bR);
       return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
     });
 
@@ -283,8 +303,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
-  /// ISO datum za izabrani dan u tekućoj nedelji.
-  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
+  /// ISO datum za izabrani dan u tekućoj sedmici (ne forsira sledeću sedmicu).
+  String get _selectedDatumIso {
+    final dayIndex = V3DanHelper.dayNames.indexOf(_selectedDay);
+    if (dayIndex < 0 || dayIndex >= V3DanHelper.dayAbbrs.length) {
+      return V3DanHelper.todayIso();
+    }
+    return V3DanHelper.datumIsoZaDanAbbr(V3DanHelper.dayAbbrs[dayIndex]);
+  }
 
   void _onPolazakChanged(String grad, String vreme) {
     setState(() {
@@ -495,11 +521,23 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                 tipPutnika: 'dnevni',
               ),
               entry: null,
+              routeOrder: null,
             ),
           );
 
           if (postojeciEntry.putnik.id.isNotEmpty) {
-            noviRedosled.add(postojeciEntry);
+            final routeOrderValue = optPutnik['route_order'];
+            final routeOrder = routeOrderValue is int
+                ? routeOrderValue
+                : (routeOrderValue is num ? routeOrderValue.toInt() : int.tryParse(routeOrderValue?.toString() ?? ''));
+
+            noviRedosled.add(
+              _PutnikEntry(
+                putnik: postojeciEntry.putnik,
+                entry: postojeciEntry.entry,
+                routeOrder: routeOrder ?? postojeciEntry.routeOrder,
+              ),
+            );
           }
         }
 
@@ -545,7 +583,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (res.success && res.optimizedData != null) {
         setState(() {
           _mojiPutnici = res.optimizedData!.map((d) {
-            return _PutnikEntry(putnik: d['putnik'] as V3Putnik, entry: d['entry'] as V3OperativnaNedeljaEntry?);
+            final routeOrderValue = d['route_order'];
+            final routeOrder = routeOrderValue is int
+                ? routeOrderValue
+                : (routeOrderValue is num ? routeOrderValue.toInt() : int.tryParse(routeOrderValue?.toString() ?? ''));
+            return _PutnikEntry(
+              putnik: d['putnik'] as V3Putnik,
+              entry: d['entry'] as V3OperativnaNedeljaEntry?,
+              routeOrder: routeOrder,
+            );
           }).toList();
         });
         if (mounted) {
@@ -632,6 +678,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
     final bcVremenaToShow = bcVremenaSet.toList()..sort();
     final vsVremenaToShow = vsVremenaSet.toList()..sort();
+    final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
+    final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.7).toDouble();
+    final appBarHeight = 88 + (headerScaleExtra * 18);
+    final appBarButtonHeight = 30 + (headerScaleExtra * 6);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -640,7 +690,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(88),
+            preferredSize: Size.fromHeight(appBarHeight),
             child: V3ContainerUtils.styledContainer(
               backgroundColor: Theme.of(context).glassContainer,
               border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
@@ -668,6 +718,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                               context: context,
                               label: _isTracking ? 'STOP' : 'START',
                               color: _isTracking ? Colors.red : Colors.green,
+                              height: appBarButtonHeight,
                               onTap: _toggleTracking,
                             ),
                           ),
@@ -679,6 +730,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                               context: context,
                               label: 'MAPA',
                               color: Colors.blue,
+                              height: appBarButtonHeight,
                               onTap: _openMapa,
                             ),
                           ),
@@ -686,7 +738,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                           // Dan picker
                           Expanded(
                             flex: 2,
-                            child: _buildDanPickerBtn(context),
+                            child: _buildDanPickerBtn(context, height: appBarButtonHeight),
                           ),
                           const SizedBox(width: 4),
                           // ⚙️ Popup meni — šifra + logout
@@ -722,8 +774,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                             ],
                             padding: EdgeInsets.zero,
                             child: V3ContainerUtils.iconContainer(
-                              width: 30,
-                              height: 30,
+                              width: V3ContainerUtils.responsiveHeight(context, 30),
+                              height: V3ContainerUtils.responsiveHeight(context, 30),
                               backgroundColor: Colors.white.withValues(alpha: 0.1),
                               borderRadiusGeometry: BorderRadius.circular(8),
                               border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
@@ -847,8 +899,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   // ── V2 stil: digitalni datum prikaz ──
   Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
     final now = DateTime.now();
-    final dayName = V3DanHelper.fullNameUpper(now);
-    final dateStr = DateFormat('dd.MM.yy').format(now);
+    final selectedDate = DateTime.tryParse(_selectedDatumIso) ?? now;
+    final dayName = V3DanHelper.fullNameUpper(selectedDate);
+    final dateStr = DateFormat('dd.MM.yy').format(selectedDate);
     final timeStr = DateFormat('HH:mm').format(now);
     final vozacBoja = _getVozacBojaRaw(vozac);
     return Row(
@@ -890,13 +943,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     required BuildContext context,
     required String label,
     required Color color,
+    required double height,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: V3ContainerUtils.styledContainer(
-        height: 30,
+        height: height,
         backgroundColor: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.6)),
@@ -917,12 +971,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   // ── Dan picker dugme (AppBar stil) ──
-  Widget _buildDanPickerBtn(BuildContext context) {
+  Widget _buildDanPickerBtn(BuildContext context, {required double height}) {
     return InkWell(
       onTap: _showDanDialog,
       borderRadius: BorderRadius.circular(8),
       child: V3ContainerUtils.styledContainer(
-        height: 30,
+        height: height,
         backgroundColor: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
@@ -982,5 +1036,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 class _PutnikEntry {
   final V3Putnik putnik;
   final V3OperativnaNedeljaEntry? entry;
-  const _PutnikEntry({required this.putnik, this.entry});
+  final int? routeOrder;
+  const _PutnikEntry({required this.putnik, this.entry, this.routeOrder});
 }

@@ -67,7 +67,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              _buildHeader(),
+              _buildHeader(context),
               const SizedBox(height: 24),
               _buildGlassCard(
                 icon: Icons.history,
@@ -212,12 +212,12 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     );
   }
 
-  static Widget _buildHeader() {
+  static Widget _buildHeader(BuildContext context) {
     return Column(
       children: [
         V3ContainerUtils.gradientContainer(
-          width: 100,
-          height: 100,
+          width: V3ContainerUtils.responsiveHeight(context, 100),
+          height: V3ContainerUtils.responsiveHeight(context, 100),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -239,7 +239,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
             child: Image.asset(
               'assets/logo_transparent.png',
               width: 90,
-              height: 90,
+              height: V3ContainerUtils.responsiveHeight(context, 90),
               fit: BoxFit.cover,
             ),
           ),

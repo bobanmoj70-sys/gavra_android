@@ -186,7 +186,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                 // ── AppBar ────────────────────────────────────────
                 SliverAppBar(
                   backgroundColor: Colors.transparent,
-                  expandedHeight: 110,
+                  expandedHeight: V3ContainerUtils.responsiveHeight(context, 110),
                   floating: true,
                   snap: true,
                   automaticallyImplyLeading: false,
@@ -341,7 +341,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
           children: [
             V3ContainerUtils.styledContainer(
               width: 4,
-              height: 18,
+              height: V3ContainerUtils.responsiveHeight(context, 18),
               backgroundColor: color,
               borderRadius: BorderRadius.circular(2),
               child: const SizedBox(),
@@ -432,7 +432,7 @@ class _ZahtevCard extends StatelessWidget {
             // Avatar
             V3ContainerUtils.iconContainer(
               width: 44,
-              height: 44,
+              height: V3ContainerUtils.responsiveHeight(context, 44),
               backgroundColor: tipColor.withValues(alpha: 0.25),
               border: Border.all(color: tipColor.withValues(alpha: 0.5)),
               borderRadiusGeometry: BorderRadius.circular(22),
@@ -629,7 +629,7 @@ class _ActionBtn extends StatelessWidget {
       onTap: onTap,
       child: V3ContainerUtils.iconContainer(
         width: 36,
-        height: 36,
+        height: V3ContainerUtils.responsiveHeight(context, 36),
         backgroundColor: color.withValues(alpha: 0.15),
         border: Border.all(color: color.withValues(alpha: 0.5)),
         borderRadiusGeometry: BorderRadius.circular(18),

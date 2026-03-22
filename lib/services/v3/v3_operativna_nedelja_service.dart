@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_date_utils.dart';
@@ -67,12 +67,14 @@ class V3OperativnaNedeljaEntry {
   });
 
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
+    final efektivnoVreme = (json['dodeljeno_vreme'] as String?) ?? (json['zeljeno_vreme'] as String?);
+
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
       putnikId: json['putnik_id'] as String? ?? '',
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String?,
-      vreme: json['vreme'] as String?,
+      vreme: efektivnoVreme,
       statusFinal: json['status_final'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
@@ -142,8 +144,13 @@ class V3OperativnaNedeljaService {
     final datumStr = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
 
     return cache
-        .where((r) =>
-            r['grad'] == grad && r['vreme'] == vreme && r['datum'].toString() == datumStr && r['aktivno'] == true)
+        .where((r) {
+          final efektivnoVreme = (r['dodeljeno_vreme'] as String?) ?? (r['zeljeno_vreme'] as String?);
+          return r['grad'] == grad &&
+              efektivnoVreme == vreme &&
+              r['datum'].toString() == datumStr &&
+              r['aktivno'] == true;
+        })
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
         .toList()
       ..sort((a, b) => a.id.compareTo(b.id)); // Default sort

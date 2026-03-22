@@ -118,8 +118,8 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
 
                     // Ikona
                     V3ContainerUtils.iconContainer(
-                      width: 88,
-                      height: 88,
+                      width: V3ContainerUtils.responsiveHeight(context, 88),
+                      height: V3ContainerUtils.responsiveHeight(context, 88),
                       backgroundColor: Colors.blueAccent.withValues(alpha: 0.12),
                       borderRadiusGeometry: BorderRadius.circular(44), // Circle effect
                       border: Border.all(
@@ -277,8 +277,8 @@ class _PermissionItem extends StatelessWidget {
       child: Row(
         children: [
           V3ContainerUtils.iconContainer(
-            width: 42,
-            height: 42,
+            width: V3ContainerUtils.responsiveHeight(context, 42),
+            height: V3ContainerUtils.responsiveHeight(context, 42),
             backgroundColor: color.withValues(alpha: 0.15),
             borderRadiusGeometry: BorderRadius.circular(10),
             child: Icon(icon, color: color, size: 22),

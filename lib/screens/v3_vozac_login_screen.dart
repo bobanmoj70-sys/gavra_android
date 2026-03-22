@@ -334,8 +334,8 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     return Column(
       children: [
         V3ContainerUtils.iconContainer(
-          width: 72,
-          height: 72,
+          width: V3ContainerUtils.responsiveHeight(context, 72),
+          height: V3ContainerUtils.responsiveHeight(context, 72),
           backgroundColor: boja.withValues(alpha: 0.25),
           border: Border.all(color: boja.withValues(alpha: 0.6), width: 2.5),
           borderRadiusGeometry: BorderRadius.circular(36),

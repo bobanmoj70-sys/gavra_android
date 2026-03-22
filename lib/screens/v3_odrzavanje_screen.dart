@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/v3_vozilo.dart';
 import '../services/v3/v3_vozilo_service.dart';
@@ -180,8 +180,8 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(2),
-                        child:
-                            Image.asset(_getTablicaImage(v.registracija), width: 60, height: 15, fit: BoxFit.contain),
+                        child: Image.asset(_getTablicaImage(v.registracija),
+                            width: 60, height: V3ContainerUtils.responsiveHeight(context, 15), fit: BoxFit.contain),
                       ),
                     ),
                   ],
@@ -533,7 +533,10 @@ class _EditableField extends StatelessWidget {
               icon: const Icon(Icons.edit, size: 18, color: Colors.white70),
               onPressed: onEdit,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints: BoxConstraints(
+                minWidth: V3ContainerUtils.responsiveHeight(context, 32),
+                minHeight: V3ContainerUtils.responsiveHeight(context, 32),
+              ),
             ),
           ],
         ),

@@ -122,6 +122,8 @@ class V3ZahtevService {
 
     // Mapiramo ih nazad u V3Zahtev objekte
     return opFiltered.map((op) {
+      final efektivnoDodeljeno = (op['dodeljeno_vreme'] as String?) ?? (op['zeljeno_vreme'] as String?) ?? '00:00';
+      final efektivnoZeljeno = (op['zeljeno_vreme'] as String?) ?? efektivnoDodeljeno;
       final putnikId = op['putnik_id'] as String?;
       if (putnikId != null) {
         final base = zCache.firstWhere(
@@ -137,7 +139,8 @@ class V3ZahtevService {
           // Prepisujemo operativnim podacima
           return z.copyWith(
             status: op['status_final'] as String? ?? z.status,
-            dodeljenoVreme: op['vreme'] as String?,
+            zeljenoVreme: efektivnoZeljeno,
+            dodeljenoVreme: efektivnoDodeljeno,
           );
         }
       }
@@ -147,8 +150,8 @@ class V3ZahtevService {
         putnikId: op['putnik_id'] as String? ?? '',
         grad: grad,
         datum: DateTime.tryParse(datum) ?? DateTime.now(),
-        zeljenoVreme: op['vreme'] as String? ?? '00:00',
-        dodeljenoVreme: op['vreme'] as String?,
+        zeljenoVreme: efektivnoZeljeno,
+        dodeljenoVreme: efektivnoDodeljeno,
         status: op['status_final'] as String? ?? 'obrada',
       );
     }).toList()
