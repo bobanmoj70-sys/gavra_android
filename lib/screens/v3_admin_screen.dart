@@ -222,7 +222,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final preostalo = stats['preostalo'] ?? 0;
 
     return Container(
-      height: V3ContainerUtils.responsiveHeight(context, 60),
+      height: V3ContainerUtils.responsiveHeight(context, 50),
       decoration: BoxDecoration(
         color: Colors.orange.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(12),
@@ -236,7 +236,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             '$ukupno/$preostalo',
             style: const TextStyle(
               color: Colors.orange,
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -440,8 +440,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   children: [
                     // Dnevnik naplate
                     Expanded(
+                      flex: 1,
                       child: _NavBtn(
                         color: Colors.indigo,
+                        height: V3ContainerUtils.responsiveHeight(context, 50),
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
                           const V3DnevnikNaplateScreen(),
@@ -462,7 +464,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     ),
                     const SizedBox(width: 6),
                     // saVS/ukBC statistika
-                    _buildSaVsWidget(context),
+                    Expanded(
+                      flex: 2,
+                      child: _buildSaVsWidget(context),
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(flex: 2, child: SizedBox.shrink()),
                   ],
                 ),
               ),
@@ -706,11 +713,13 @@ class _NavBtn extends StatelessWidget {
     required this.onTap,
     required this.child,
     this.color = Colors.blueGrey,
+    this.height,
   });
 
   final VoidCallback onTap;
   final Widget child;
   final Color color;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -718,7 +727,7 @@ class _NavBtn extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: V3ContainerUtils.responsiveHeight(context, 40),
+        height: height ?? V3ContainerUtils.responsiveHeight(context, 40),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
