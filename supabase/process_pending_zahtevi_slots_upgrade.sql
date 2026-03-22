@@ -120,6 +120,7 @@ BEGIN
                 INTO best_alt_pre
                 FROM usage_by_slot
                 WHERE vreme < zahtev_record.zeljeno_vreme
+                                    AND vreme >= (zahtev_record.zeljeno_vreme - INTERVAL '180 minutes')
                   AND used_count < max_mesta;
 
                 WITH usage_by_slot AS (
@@ -147,6 +148,7 @@ BEGIN
                 INTO best_alt_posle
                 FROM usage_by_slot
                 WHERE vreme > zahtev_record.zeljeno_vreme
+                                    AND vreme <= (zahtev_record.zeljeno_vreme + INTERVAL '180 minutes')
                   AND used_count < max_mesta;
             END IF;
 
