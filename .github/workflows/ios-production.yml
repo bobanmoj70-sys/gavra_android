@@ -175,10 +175,7 @@ jobs:
             --version-string "$VERSION_STRING" \
             --json > "$VERSIONS_JSON_FILE"
 
-          VERSION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=[]; \
-if isinstance(data, dict): items=data.get('data') if isinstance(data.get('data'), list) else (data.get('appStoreVersions') if isinstance(data.get('appStoreVersions'), list) else []); \
-elif isinstance(data, list): items=data; \
-print(next((i.get('id') for i in items if isinstance(i, dict) and i.get('id')), ''))" "$VERSIONS_JSON_FILE")
+          VERSION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersions') if isinstance(data,dict) and isinstance(data.get('appStoreVersions'),list) else (data if isinstance(data,list) else []))); print(next((i.get('id') for i in items if isinstance(i,dict) and i.get('id')), ''))" "$VERSIONS_JSON_FILE")
 
           if [ -z "$VERSION_ID" ]; then
             echo "❌ Could not find App Store version ID for $VERSION_STRING"
@@ -191,17 +188,7 @@ print(next((i.get('id') for i in items if isinstance(i, dict) and i.get('id')), 
           LOC_JSON_FILE=$(mktemp)
           app-store-connect app-store-versions localizations "$VERSION_ID" --json > "$LOC_JSON_FILE"
 
-          LOC_RESULT=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=[]; \
-if isinstance(data, dict): items=data.get('data') if isinstance(data.get('data'), list) else (data.get('appStoreVersionLocalizations') if isinstance(data.get('appStoreVersionLocalizations'), list) else []); \
-elif isinstance(data, list): items=data; \
-preferred=None; fallback=None; \
-for item in items: \
-    if not isinstance(item, dict): continue; \
-    iid=item.get('id'); attrs=item.get('attributes', {}) if isinstance(item.get('attributes'), dict) else {}; locale=attrs.get('locale') or item.get('locale'); \
-    if iid and locale: \
-        fallback = fallback or (iid, locale); \
-        preferred = (iid, locale) if locale == 'en-US' and preferred is None else preferred; \
-chosen=preferred or fallback; print((chosen[0] + ' ' + chosen[1]) if chosen else '')" "$LOC_JSON_FILE")
+            LOC_RESULT=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersionLocalizations') if isinstance(data,dict) and isinstance(data.get('appStoreVersionLocalizations'),list) else (data if isinstance(data,list) else []))); picked=[(i.get('id'), ((i.get('attributes') or {}).get('locale') if isinstance(i.get('attributes'),dict) else i.get('locale'))) for i in items if isinstance(i,dict) and i.get('id') and (((i.get('attributes') or {}).get('locale') if isinstance(i.get('attributes'),dict) else i.get('locale')) )]; en=next((p for p in picked if p[1]=='en-US'), None); ch=en or (picked[0] if picked else None); print((ch[0]+' '+ch[1]) if ch else '')" "$LOC_JSON_FILE")
 
           LOCALIZATION_ID=$(echo "$LOC_RESULT" | awk '{print $1}')
           LOCALIZATION_LOCALE=$(echo "$LOC_RESULT" | awk '{print $2}')
