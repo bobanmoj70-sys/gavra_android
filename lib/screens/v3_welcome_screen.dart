@@ -102,6 +102,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _init() async {
     V3StateUtils.safeSetState(this, () => _isLoading = true);
 
+    try {
+      await V3MasterRealtimeManager.instance.initV3();
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] initV3 error: $e');
+    }
+
     debugPrint('[V3WelcomeScreen] _init() started - waiting for vozaciCache...');
 
     int retries = 0;

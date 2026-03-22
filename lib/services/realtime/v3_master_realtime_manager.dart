@@ -35,8 +35,25 @@ class V3MasterRealtimeManager {
   Stream<void> get onChange => _changeController.stream;
 
   RealtimeChannel? _v3Channel;
+  Future<void>? _initInFlight;
+  bool _isInitialized = false;
 
   Future<void> initV3() async {
+    if (_isInitialized) return;
+    if (_initInFlight != null) {
+      await _initInFlight;
+      return;
+    }
+
+    _initInFlight = _initV3Internal();
+    try {
+      await _initInFlight;
+    } finally {
+      _initInFlight = null;
+    }
+  }
+
+  Future<void> _initV3Internal() async {
     debugPrint('[V3MasterRealtimeManager] ⚡ STARTED initV3()');
     try {
       final results = await Future.wait([
@@ -75,10 +92,13 @@ class V3MasterRealtimeManager {
       _fillCache(appSettingsCache, results[12] as List);
       _fillCache(v3GpsRasporedCache, results[13] as List);
 
-      _setupRealtime();
+      await _setupRealtime();
+      _isInitialized = true;
+      _changeController.add(null);
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] Initialization error: $e');
+      rethrow;
     }
   }
 
@@ -90,7 +110,14 @@ class V3MasterRealtimeManager {
     }
   }
 
-  void _setupRealtime() {
+  Future<void> _setupRealtime() async {
+    if (_v3Channel != null) {
+      try {
+        await supabase.removeChannel(_v3Channel!);
+      } catch (_) {}
+      _v3Channel = null;
+    }
+
     _v3Channel = supabase.channel('v3_realtime_all');
 
     _setupTableRealtime('v3_adrese', adreseCache);
