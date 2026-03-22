@@ -175,28 +175,10 @@ jobs:
             --version-string "$VERSION_STRING" \
             --json > "$VERSIONS_JSON_FILE"
 
-            VERSION_ID=$(python3 - "$VERSIONS_JSON_FILE" <<'PYEOF'
-            import json, sys
-            path = sys.argv[1]
-            with open(path, 'r', encoding='utf-8') as f:
-              data = json.load(f)
-
-            items = []
-            if isinstance(data, dict):
-              if isinstance(data.get('data'), list):
-                items = data['data']
-              elif isinstance(data.get('appStoreVersions'), list):
-                items = data['appStoreVersions']
-            elif isinstance(data, list):
-              items = data
-
-            for item in items:
-              if isinstance(item, dict):
-                if item.get('id'):
-                  print(item['id'])
-                  break
-            PYEOF
-            )
+          VERSION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=[]; \
+if isinstance(data, dict): items=data.get('data') if isinstance(data.get('data'), list) else (data.get('appStoreVersions') if isinstance(data.get('appStoreVersions'), list) else []); \
+elif isinstance(data, list): items=data; \
+print(next((i.get('id') for i in items if isinstance(i, dict) and i.get('id')), ''))" "$VERSIONS_JSON_FILE")
 
           if [ -z "$VERSION_ID" ]; then
             echo "❌ Could not find App Store version ID for $VERSION_STRING"
@@ -209,43 +191,20 @@ jobs:
           LOC_JSON_FILE=$(mktemp)
           app-store-connect app-store-versions localizations "$VERSION_ID" --json > "$LOC_JSON_FILE"
 
-            read -r LOCALIZATION_ID LOCALIZATION_LOCALE <<EOF
-            $(python3 - "$LOC_JSON_FILE" <<'PYEOF'
-            import json, sys
-            path = sys.argv[1]
-            with open(path, 'r', encoding='utf-8') as f:
-              data = json.load(f)
+          LOC_RESULT=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=[]; \
+if isinstance(data, dict): items=data.get('data') if isinstance(data.get('data'), list) else (data.get('appStoreVersionLocalizations') if isinstance(data.get('appStoreVersionLocalizations'), list) else []); \
+elif isinstance(data, list): items=data; \
+preferred=None; fallback=None; \
+for item in items: \
+    if not isinstance(item, dict): continue; \
+    iid=item.get('id'); attrs=item.get('attributes', {}) if isinstance(item.get('attributes'), dict) else {}; locale=attrs.get('locale') or item.get('locale'); \
+    if iid and locale: \
+        fallback = fallback or (iid, locale); \
+        preferred = (iid, locale) if locale == 'en-US' and preferred is None else preferred; \
+chosen=preferred or fallback; print((chosen[0] + ' ' + chosen[1]) if chosen else '')" "$LOC_JSON_FILE")
 
-            items = []
-            if isinstance(data, dict):
-              if isinstance(data.get('data'), list):
-                items = data['data']
-              elif isinstance(data.get('appStoreVersionLocalizations'), list):
-                items = data['appStoreVersionLocalizations']
-            elif isinstance(data, list):
-              items = data
-
-            preferred = None
-            fallback = None
-            for item in items:
-              if not isinstance(item, dict):
-                continue
-              iid = item.get('id')
-              attrs = item.get('attributes', {}) if isinstance(item.get('attributes'), dict) else {}
-              locale = attrs.get('locale') or item.get('locale')
-              if iid and locale:
-                if fallback is None:
-                  fallback = (iid, locale)
-                if locale == 'en-US':
-                  preferred = (iid, locale)
-                  break
-
-            chosen = preferred or fallback
-            if chosen:
-              print(chosen[0], chosen[1])
-            PYEOF
-            )
-            EOF
+          LOCALIZATION_ID=$(echo "$LOC_RESULT" | awk '{print $1}')
+          LOCALIZATION_LOCALE=$(echo "$LOC_RESULT" | awk '{print $2}')
 
           if [ -n "$LOCALIZATION_ID" ]; then
             echo "✅ Updating existing localization: $LOCALIZATION_LOCALE ($LOCALIZATION_ID)"
