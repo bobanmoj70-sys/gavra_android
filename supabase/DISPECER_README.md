@@ -1,167 +1,72 @@
-# 🚗 DISPECER CRON JOB - Automatska obrada zahteva
+# 🚗 DISPECER CRON JOB - Live stanje baze
 
-Automatski sistem za obradu putničkih zahteva prema definisanim pravilima čekanja.
+Ovo je dokumentacija za stvarno stanje u Supabase bazi, ne samo za repo fajl.
 
-## 📋 Pregled sistema
+## Šta je trenutno u bazi
 
-Dispecer cron job automatski procesira zahteve iz `v3_zahtevi` tabele i primenjuje sledeća pravila:
+Pronađeno je sledeće:
 
-| Tip putnika | Grad | Uslov | Čekanje | Provera kapaciteta |
-|-------------|------|-------|---------|-------------------|
-| **Učenik** | BC | za sutra, do 16h | ⏱️ **5 min** | ❌ Garantovano |
-| **Učenik** | BC | za sutra, posle 16h | ⏱️ **10 min** | ✅ Da |
-| **Radnik** | BC | — | ⏱️ **5 min** | ✅ Da |
-| **Učenik/Radnik** | VS | — | ⏱️ **10 min** | ✅ Da |
-| **Pošiljka** | bilo koji | — | ⏱️ **10 min** | ❌ Ne zauzima mesta |
-| **Dnevni** | bilo koji | — | ♾️ **nikad auto** | 🔐 Admin ručno |
+- `set_zahtev_scheduled_at()` - trigger funkcija koja postavlja `scheduled_at`
+- `fn_v3_dispatcher()` - trigger na `v3_zahtevi`
+- `process_pending_zahtevi_slots()` - glavni slots-based procesor
+- `process_pending_zahtevi_v2()` - starija verzija procesora
+- `process_pending_zahtevi_final()` - još jedna verzija procesora
+- `cron.job` sadrži job `simple-dispatcher` koji trenutno radi direktan `UPDATE`
 
-## 🔧 Instalacija
+## Važan problem
 
-### 1. Pokreni SQL skriptu u Supabase
+Trenutni cron job u bazi je previše jednostavan:
 
 ```sql
--- Kopiraj i pokreni sadržaj iz: supabase/dispecer_cron.sql
--- Ovo će kreirati sve potrebne funkcije i trigger-e
+UPDATE v3_zahtevi
+SET status = 'odobreno', dodeljeno_vreme = zeljeno_vreme
+WHERE status = 'obrada' AND aktivno = true AND scheduled_at <= NOW();
 ```
 
-### 2. Aktiviraj pg_cron extension
+To znači da **preskače kapacitet logiku** i ne koristi slots proveru.
+
+## Šta treba koristiti
+
+Preporuka je da cron poziva:
 
 ```sql
--- U Supabase SQL Editor (potrebne admin privilegije):
-CREATE EXTENSION IF NOT EXISTS pg_cron;
+SELECT * FROM public.process_pending_zahtevi();
 ```
 
-### 3. Setup cron job
+Repo fajl `supabase/dispecer_cron.sql` sada pravi wrapper koji zove:
 
 ```sql
--- Pokreni dispecer svakih 3 minuta:
-SELECT cron.schedule(
-    'dispecer-auto-process',
-    '*/3 * * * *', 
-    'SELECT * FROM process_pending_zahtevi();'
-);
+SELECT * FROM public.process_pending_zahtevi_slots();
 ```
 
-## 🎮 Korišćenje
-
-### Manuelno pokretanje
-```sql
--- Pokreni obradu odmah (za testiranje):
-SELECT * FROM manual_process_zahtevi();
-```
-
-### Pregled pending zahteva
-```sql
--- Vidi koji zahtevi čekaju obradu:
-SELECT * FROM get_pending_zahtevi_status();
-```
-
-### Monitoring cron job-ova
-```sql
--- Pregled svih cron job-ova:
-SELECT * FROM cron.job;
-
--- Pregled logova:
-SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
-```
-
-## 🔄 Kako funkcioniše
-
-### 1. Novi zahtev stiže
-- Putnik šalje zahtev kroz aplikaciju
-- **Trigger automatski postavlja `scheduled_at`** timestamp na osnovu dispecer pravila
-- Zahtev dobija status `'obrada'`
-
-### 2. Cron job procesira
-- Svakih 3 minuta pokreće se `process_pending_zahtevi()`
-- Uzima sve zahteve gde je `scheduled_at <= NOW()`
-- Primenjuje dispecer pravila za svaki tip putnika
-
-### 3. Rezultat obrade
-- **ODOBRENO**: Kreira se termin u `v3_gps_raspored` tabeli
-- **ALTERNATIVA**: Ponuđuje vremena ±15 min od željenog
-
-## 📊 Rezultati funkcije
+## Kako proveriti trenutno stanje
 
 ```sql
--- process_pending_zahtevi() vraća:
-{
-  "processed_count": 5,     -- Ukupno obrađeno zahteva  
-  "approved_count": 3,      -- Odobreno direktno
-  "alternative_count": 2,   -- Ponuđena alternativa
-  "log_message": "Obrađeno 5 zahteva - 3 odobreno, 2 alternativa"
-}
+SELECT * FROM cron.job ORDER BY jobid;
+SELECT * FROM public.get_pending_zahtevi_status();
+SELECT * FROM v3_zahtevi WHERE status = 'obrada' AND aktivno = true ORDER BY scheduled_at;
 ```
 
-## ⚙️ Konfiguracija
+## Kako popraviti cron
 
-### Promena intervala cron job-a
+Pokreni sadržaj iz `supabase/dispecer_cron.sql` u Supabase SQL Editor-u.
+
+To će:
+
+- dodati kompatibilne wrapper funkcije
+- ukinuti `simple-dispatcher`
+- napraviti novi job `dispecer-slots`
+- usmeriti obradu na slots logiku
+
+## Manuelno testiranje
+
 ```sql
--- Za češće pokretanje (svakih 2 minuta):
-SELECT cron.unschedule('dispecer-auto-process');
-SELECT cron.schedule('dispecer-auto-process', '*/2 * * * *', 'SELECT * FROM process_pending_zahtevi();');
+SELECT * FROM public.manual_process_zahtevi();
 ```
 
-### Promena kapaciteta vozila
-```sql
--- U funkciji process_pending_zahtevi(), menjaj:
-IF existing_count >= 8 THEN  -- <- Ovde menjaj broj mesta
-    should_approve := false;
-END IF;
-```
+## Bitno za tebe
 
-### Promena pravila čekanja
-```sql
--- U funkciji set_zahtev_process_after(), menjaj:
-cekanje_minuta := 5;  -- <- Nova vrednost u minutima
-```
-
-## 🚨 Troubleshooting
-
-### Cron job se ne pokreće
-```sql
--- Proveri da li je extension aktiviran:
-SELECT * FROM pg_extension WHERE extname = 'pg_cron';
-
--- Proveri cron job status:
-SELECT * FROM cron.job WHERE jobname = 'dispecer-auto-process';
-```
-
-### Zahtevi se ne obrađuju
-```sql
--- Proveri pending zahteve:
-SELECT * FROM get_pending_zahtevi_status();
-
--- Manuelno pokreni obradu:
-SELECT * FROM manual_process_zahtevi();
-```
-
-### Greške u logovima
-```sql
--- Pregled error logova:
-SELECT * FROM cron.job_run_details 
-WHERE status = 'failed' 
-ORDER BY start_time DESC LIMIT 5;
-```
-
-## 🔒 Bezbednost
-
-- Funkcije koriste `SECURITY DEFINER` - pokreću se sa privilegijama vlasnika
-- Svi updates prate `updated_by = 'dispecer_cron'` za audit trail
-- Trigger automatski postavlja `scheduled_at` - nema manuelnog mešanja
-
-## 📈 Performance
-
-- Cron job procesira samo zahteve gde je `scheduled_at <= NOW()`
-- Koristi indexe na `status`, `aktivno` i `scheduled_at` kolone
-- Minimal impact - obično obrađuje 0-20 zahteva po pokretanju
-
-## 🎯 Sledeći koraci
-
-1. **Monitoring dashboard** - Kreiranje admin panela za praćenje
-2. **Push notifikacije** - Slanje obaveštenja putnicima o rezultatu
-3. **Napredna optimizacija** - AI-based predlog termina
-4. **Analytics** - Statistike uspešnosti automatske obrade
+Ako želiš da aplikacija radi po pravilima koja si opisao, **ne smeš ostaviti stari cron job** koji direktno odobrava zahteve.
 
 ---
-*Kreiran: 2026-03-22 | Verzija: 1.0 | Autor: GitHub Copilot*
+*Ažurirano: 2026-03-22*

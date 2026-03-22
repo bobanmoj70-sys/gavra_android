@@ -44,7 +44,11 @@ class V3MasterRealtimeManager {
         supabase.from('v3_vozaci').select().eq('aktivno', true),
         supabase.from('v3_vozila').select().eq('aktivno', true),
         supabase.from('v3_putnici').select().eq('aktivno', true),
-        supabase.from('v3_zahtevi').select('id, putnik_id, datum, grad, zeljeno_vreme, broj_mesta, status, napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, aktivno, created_at, updated_at, created_by, scheduled_at').eq('aktivno', true),
+        supabase
+            .from('v3_zahtevi')
+            .select(
+                'id, putnik_id, datum, grad, zeljeno_vreme, broj_mesta, status, napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, aktivno, created_at, updated_at, created_by, scheduled_at')
+            .eq('aktivno', true),
         supabase.from('v3_pumpa_stanje').select().eq('aktivno', true),
         supabase.from('v3_pumpa_rezervoar').select(),
         supabase.from('v3_vozac_lokacije').select(),

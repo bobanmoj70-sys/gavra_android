@@ -221,7 +221,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                               alignment: WrapAlignment.center,
                               spacing: 6,
                               children: [
-                                if (obrada.isNotEmpty) _StatusBadge('⏳ ${obrada.length} obrada', Colors.orange),
+                                if (obrada.isNotEmpty) _StatusBadge('⏰ ${obrada.length} obrada', Colors.orange),
                                 if (odobreno.isNotEmpty) _StatusBadge('✅ ${odobreno.length} odobreno', Colors.green),
                                 if (odbijeno.isNotEmpty) _StatusBadge('❌ ${odbijeno.length} odbijeno', Colors.red),
                                 if (otkazano.isNotEmpty)
@@ -245,7 +245,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
 
                 // ── Sekcija: NA ČEKANJU ───────────────────────────
                 if (obrada.isNotEmpty) ...[
-                  _sectionHeader('⏳ Na čekanju', Colors.orange, obrada.length),
+                  _sectionHeader('⏰ Na čekanju', Colors.orange, obrada.length),
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (ctx, i) => _ZahtevCard(

@@ -78,6 +78,12 @@ class V3DanHelper {
     return today.add(Duration(days: diff));
   }
 
+  /// ISO datum string (yyyy-MM-dd) za izabrani dan u sledećoj sedmici (uvek ide napred).
+  /// Koristi istu logiku kao datumZaDanAbbr ali vraća ISO string.
+  static String datumIsoZaDanAbbrNapred(String danAbbr) {
+    return toIsoDate(datumZaDanAbbr(danAbbr));
+  }
+
   /// ISO datum string (yyyy-MM-dd) za izabrani dan u trenutnoj sedmici.
   static String isoStringZaDan(String danAbbr) => datumIsoZaDanAbbr(danAbbr);
 

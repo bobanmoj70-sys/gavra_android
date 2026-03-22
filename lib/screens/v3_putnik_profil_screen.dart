@@ -98,7 +98,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
-      final datumIso = V3DanHelper.datumIsoZaDanAbbr(dan);
+      final datumIso = V3DanHelper.datumIsoZaDanAbbrNapred(dan);
       final bcList =
           V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'BC').where((z) => z.putnikId == putnikId).toList();
       final vsList =
@@ -1089,12 +1089,15 @@ class _ZahtevCell extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '$statusIcon $vreme',
-              style: TextStyle(
-                color: V3StyleHelper.whiteAlpha9,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+            Flexible(
+              child: Text(
+                info!.status == 'obrada' ? '$statusIcon $vreme obrada' : '$statusIcon $vreme',
+                style: TextStyle(
+                  color: V3StyleHelper.whiteAlpha9,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 4),
