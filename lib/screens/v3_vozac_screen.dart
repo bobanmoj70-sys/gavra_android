@@ -241,17 +241,32 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
       // Pronađi entry iz operativna_nedelja za ovog putnika
       V3OperativnaNedeljaEntry? entry;
-      try {
-        final entryData = rm.operativnaNedeljaCache.values.firstWhere(
-          (r) =>
-              r['putnik_id']?.toString() == putnikId &&
-              V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
-              r['grad']?.toString().toUpperCase() == _selectedGrad &&
-              normalizeV(r['vreme']?.toString()) == selectedVNorm,
-        );
-        entry = V3OperativnaNedeljaEntry.fromJson(entryData);
-      } catch (_) {
-        // nema entry-ja - može biti iz override-a
+      Map<String, dynamic>? matchedEntryData;
+      for (final r in rm.operativnaNedeljaCache.values) {
+        if (r['putnik_id']?.toString() != putnikId) continue;
+        if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
+        if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
+        if (normalizeV(r['vreme']?.toString()) == selectedVNorm) {
+          matchedEntryData = r;
+          break;
+        }
+      }
+
+      // Fallback: ako je u operativnoj vreme NULL, ipak veži entry po putnik/datum/grad
+      if (matchedEntryData == null) {
+        for (final r in rm.operativnaNedeljaCache.values) {
+          if (r['putnik_id']?.toString() != putnikId) continue;
+          if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
+          if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
+          if (r['vreme'] == null) {
+            matchedEntryData = r;
+            break;
+          }
+        }
+      }
+
+      if (matchedEntryData != null) {
+        entry = V3OperativnaNedeljaEntry.fromJson(matchedEntryData);
       }
 
       putnici.add(
