@@ -1,0 +1,64 @@
+name: 🍎 iOS Submit Review Only
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  APP_ID: '6757114361'
+
+jobs:
+  submit-review:
+    name: 🚀 Submit Existing Version to Review
+    runs-on: macos-latest
+    env:
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APPSTORE_KEY_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APPSTORE_API_KEY_P8 }}
+
+    steps:
+      - name: Install Codemagic CLI Tools
+        run: pip install codemagic-cli-tools
+
+      - name: Submit to App Review (retry)
+        run: |
+          echo "🚀 Submit existing iOS version to App Review"
+          MAX_RETRIES=12
+          RETRY_DELAY=60
+          ATTEMPT=1
+
+          while [ "$ATTEMPT" -le "$MAX_RETRIES" ]; do
+            echo "[Attempt $ATTEMPT/$MAX_RETRIES] Creating review submission..."
+            OUTPUT=$(app-store-connect review-submissions create "$APP_ID" --platform IOS --json 2>&1)
+            EXIT_CODE=$?
+
+            echo "$OUTPUT"
+
+            if [ "$EXIT_CODE" -eq 0 ]; then
+              echo "✅ Submitted to App Review successfully"
+              exit 0
+            fi
+
+            if echo "$OUTPUT" | grep -Eiq "already|in review|waiting for review|submitted"; then
+              echo "ℹ️ Already submitted/in-review — treating as success."
+              exit 0
+            fi
+
+            if [ "$ATTEMPT" -eq "$MAX_RETRIES" ]; then
+              echo "❌ Failed to auto-submit to App Review after $MAX_RETRIES attempts."
+              exit 1
+            fi
+
+            echo "⏳ Retrying in ${RETRY_DELAY}s..."
+            sleep "$RETRY_DELAY"
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🍎 iOS Submit Review Only" >> $GITHUB_STEP_SUMMARY
+          echo "appId: $APP_ID" >> $GITHUB_STEP_SUMMARY
+          echo "result: see logs" >> $GITHUB_STEP_SUMMARY
