@@ -156,6 +156,23 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             (r['aktivno'] == true || r['aktivno'] == null))
         .toList();
 
+    if (_mojiTermini.isEmpty) {
+      final nearestDatumIso = _findNearestDatumIsoForVozac(rm, vozac.id);
+      if (nearestDatumIso != null && nearestDatumIso != _selectedDatumIso) {
+        final nearestDate = DateTime.tryParse(nearestDatumIso);
+        if (nearestDate != null) {
+          final nearestDay = V3DanHelper.fullName(nearestDate);
+          if (nearestDay != _selectedDay) {
+            V3StateUtils.safeSetState(this, () => _selectedDay = nearestDay);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _rebuild();
+            });
+            return;
+          }
+        }
+      }
+    }
+
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
     final terminPostoji = _mojiTermini.any((t) =>
         t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
@@ -301,6 +318,25 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       _selectedVreme = bestVreme;
       _selectedGrad = bestGrad;
     }
+  }
+
+  String? _findNearestDatumIsoForVozac(V3MasterRealtimeManager rm, String vozacId) {
+    final todayIso = V3DanHelper.todayIso();
+    final dates = rm.v3GpsRasporedCache.values
+        .where((row) => row['vozac_id']?.toString() == vozacId && (row['aktivno'] == true || row['aktivno'] == null))
+        .map((row) => V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? ''))
+        .where((iso) => iso.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    if (dates.isEmpty) return null;
+
+    for (final iso in dates) {
+      if (iso.compareTo(todayIso) >= 0) return iso;
+    }
+
+    return dates.last;
   }
 
   /// ISO datum za izabrani dan u tekućoj sedmici (ne forsira sledeću sedmicu).
