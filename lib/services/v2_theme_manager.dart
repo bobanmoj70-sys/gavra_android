@@ -41,6 +41,7 @@ class V2ThemeManager extends ChangeNotifier {
     _currentThemeId = themeId;
     _currentTheme = V2ThemeRegistry.getTheme(themeId)!;
     _themeNotifier.value = _currentTheme.themeData;
+    _themeNotifier.notifyListeners();
     notifyListeners();
   }
 

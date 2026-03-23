@@ -54,6 +54,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     return normalized;
   }
 
+  String _formatNedeljaOpsegLabel() {
+    final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon');
+    final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet');
+    final od = '${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')}.';
+    final doDatuma = '${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}.';
+    return '$od - $doDatuma';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -531,6 +539,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     V3PutnikService.currentPutnik = null;
     await V3BiometricService().clearCredentials();
     if (!mounted) return;
+    V3AppSnackBar.success(context, '✅ Uspešno odjavljeni');
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),
       (r) => false,
@@ -610,39 +621,46 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
     final adresaBcNaziv2 = V3AdresaService.getNazivAdreseById(adresaBcId2);
     final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
-    return V3ContainerUtils.backgroundContainer(
-      gradient: V2ThemeManager().currentGradient,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Update banner (opcioni/obavezni)
-              const V3UpdateBanner(),
-              // ── TRACKING WIDGET ──────────────────────────────────
-              _buildAktivneVoznjeWidget(),
-              // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
-              if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
-                _NotifBanner(onEnable: _requestNotifPermission),
-              const SizedBox(height: 8),
-              // ── HEADER CARD ──────────────────────────────────────
-              _buildHeaderCard(
-                tip: tip,
-                imePrezime: imePrezime,
-                telefon: telefon,
-                telefon2: telefon2,
-                adresaBcNaziv: adresaBcNaziv,
-                adresaVsNaziv: adresaVsNaziv,
-                adresaBcNaziv2: adresaBcNaziv2,
-                adresaVsNaziv2: adresaVsNaziv2,
+    final nedeljaOpseg = _formatNedeljaOpsegLabel();
+    final nedeljaInfo = 'Aktivna nedelja: $nedeljaOpseg';
+    return ValueListenableBuilder<ThemeData>(
+      valueListenable: V2ThemeManager().themeNotifier,
+      builder: (context, _, __) => V3ContainerUtils.backgroundContainer(
+        gradient: V2ThemeManager().currentGradient,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Update banner (opcioni/obavezni)
+                  const V3UpdateBanner(),
+                  // ── TRACKING WIDGET ──────────────────────────────────
+                  _buildAktivneVoznjeWidget(),
+                  // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
+                  if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
+                    _NotifBanner(onEnable: _requestNotifPermission),
+                  const SizedBox(height: 8),
+                  // ── HEADER CARD ──────────────────────────────────────
+                  _buildHeaderCard(
+                    tip: tip,
+                    imePrezime: imePrezime,
+                    telefon: telefon,
+                    telefon2: telefon2,
+                    adresaBcNaziv: adresaBcNaziv,
+                    adresaVsNaziv: adresaVsNaziv,
+                    adresaBcNaziv2: adresaBcNaziv2,
+                    adresaVsNaziv2: adresaVsNaziv2,
+                  ),
+                  const SizedBox(height: 16),
+                  // ── RASPORED ZAHTEVA ─────────────────────────────────
+                  _buildRasporedCard(nedeljaInfo: nedeljaInfo),
+                  const SizedBox(height: 16),
+                ],
               ),
-              const SizedBox(height: 16),
-              // ── RASPORED ZAHTEVA ─────────────────────────────────
-              _buildRasporedCard(),
-              const SizedBox(height: 16),
-            ],
+            ),
           ),
         ),
       ),
@@ -678,7 +696,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 tooltip: 'Tema',
                 onPressed: () async {
                   await V2ThemeManager().nextTheme();
-                  V3StateUtils.safeSetState(this, () {});
+                  V3StateUtils.safeSetState(this, () => setState(() {}));
+                  if (!mounted) return;
+                  V3AppSnackBar.info(context, '🎨 Tema promenjena');
                 },
               ),
               Expanded(
@@ -807,7 +827,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
   }
 
-  Widget _buildRasporedCard() {
+  Widget _buildRasporedCard({required String nedeljaInfo}) {
     final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(16),
@@ -817,6 +837,18 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Center(
+            child: Text(
+              nedeljaInfo,
+              style: TextStyle(
+                color: V3StyleHelper.whiteAlpha75,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 6),
           const Center(
             child: Text(
               '🕐 Raspored termina',
