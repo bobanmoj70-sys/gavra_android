@@ -867,7 +867,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         children: [
           const Center(
             child: Text(
-              '🕐 Raspored prevoza',
+              '🕐 Raspored termina',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -882,25 +882,49 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               const SizedBox(width: 96),
               Expanded(
                 child: Center(
-                  child: Text(
-                    'BC',
-                    style: TextStyle(
-                      color: V3StyleHelper.whiteAlpha65,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'BC',
+                        style: TextStyle(
+                          color: V3StyleHelper.whiteAlpha65,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        '(Bela Crkva)',
+                        style: TextStyle(
+                          color: V3StyleHelper.whiteAlpha45,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               Expanded(
                 child: Center(
-                  child: Text(
-                    'VS',
-                    style: TextStyle(
-                      color: V3StyleHelper.whiteAlpha65,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'VS',
+                        style: TextStyle(
+                          color: V3StyleHelper.whiteAlpha65,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        '(Vrsac)',
+                        style: TextStyle(
+                          color: V3StyleHelper.whiteAlpha45,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
