@@ -9,7 +9,9 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   putnik_token text;
+  putnik_ime_prezime text;
   efektivno_vreme text;
+  termin_opis text;
   v_title text;
   v_body text;
 BEGIN
@@ -19,8 +21,8 @@ BEGIN
   END IF;
 
   IF NEW.status = 'odobreno' AND COALESCE(OLD.status, '') <> 'odobreno' THEN
-    SELECT p.push_token
-      INTO putnik_token
+    SELECT p.push_token, COALESCE(NULLIF(BTRIM(p.ime_prezime), ''), 'putniče')
+      INTO putnik_token, putnik_ime_prezime
     FROM public.v3_putnici p
     WHERE p.id = NEW.putnik_id
       AND p.aktivno = true
@@ -30,13 +32,14 @@ BEGIN
 
     IF putnik_token IS NOT NULL THEN
       efektivno_vreme := COALESCE(NULLIF(NEW.dodeljeno_vreme, ''), NULLIF(NEW.zeljeno_vreme, ''), '');
+      termin_opis := CASE
+        WHEN efektivno_vreme <> ''
+          THEN format('%s %s u %s', to_char(NEW.datum::date, 'DD.MM.YYYY.'), NEW.grad, efektivno_vreme)
+        ELSE format('%s %s', to_char(NEW.datum::date, 'DD.MM.YYYY.'), NEW.grad)
+      END;
 
       v_title := '✅ Zahtev odobren';
-      v_body := CASE
-        WHEN efektivno_vreme <> ''
-          THEN format('Vaš termin za %s u %s je odobren.', NEW.grad, efektivno_vreme)
-        ELSE format('Vaš termin za %s je odobren.', NEW.grad)
-      END;
+      v_body := format('Poštovani %s, Vaš zahtev za termin %s je odobren. Srećan put 😊', putnik_ime_prezime, termin_opis);
 
       PERFORM public.notify_push(
         jsonb_build_array(jsonb_build_object('token', putnik_token, 'provider', 'fcm')),
