@@ -392,38 +392,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               ),
               const SizedBox(height: 6),
 
-              // ─── RED 2: Putnici ───
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                child: Row(
-                  children: [
-                    // Putnici
-                    Expanded(
-                      child: _NavBtn(
-                        color: Colors.blueGrey,
-                        onTap: () => V3NavigationUtils.pushScreen<void>(
-                          context,
-                          const V3PutniciScreen(),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            'Putnici',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ─── RED 3: Kalendar, Dnevnik, pasulj ───
+              // ─── RED 2: Kalendar, Dnevnik, Putnici, pasulj ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
@@ -478,7 +447,30 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Expanded(flex: 1, child: SizedBox.shrink()),
+                    // 👥 Putnici
+                    Expanded(
+                      flex: 1,
+                      child: _NavBtn(
+                        color: Colors.blueGrey,
+                        height: V3ContainerUtils.responsiveHeight(context, 50),
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
+                          context,
+                          const V3PutniciScreen(),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '👥',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.white,
+                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     // saVS/ukBC statistika (skroz desno)
                     Expanded(flex: 2, child: _buildSaVsWidget(context)),
