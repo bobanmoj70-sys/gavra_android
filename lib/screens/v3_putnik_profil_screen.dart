@@ -610,41 +610,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
     final adresaBcNaziv2 = V3AdresaService.getNazivAdreseById(adresaBcId2);
     final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
-    // Avatar inicijali
-    final parts = imePrezime.trim().split(' ');
-    final initials = '${parts.isNotEmpty && parts[0].isNotEmpty ? parts[0][0].toUpperCase() : ''}'
-        '${parts.length > 1 && parts.last.isNotEmpty ? parts.last[0].toUpperCase() : ''}';
     return V3ContainerUtils.backgroundContainer(
       gradient: V2ThemeManager().currentGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: const Text(
-            'Moj profil',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.palette, color: Colors.white),
-              tooltip: 'Tema',
-              onPressed: () async {
-                await V2ThemeManager().nextTheme();
-                V3StateUtils.safeSetState(this, () {});
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.red),
-              tooltip: 'Odjava',
-              onPressed: _logout,
-            ),
-          ],
-        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
           child: Column(
@@ -662,7 +631,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               _buildHeaderCard(
                 tip: tip,
                 imePrezime: imePrezime,
-                initials: initials,
                 telefon: telefon,
                 telefon2: telefon2,
                 adresaBcNaziv: adresaBcNaziv,
@@ -687,7 +655,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   Widget _buildHeaderCard({
     required String tip,
     required String imePrezime,
-    required String initials,
     required String telefon,
     String telefon2 = '',
     required String? adresaBcNaziv,
@@ -704,50 +671,35 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       border: Border.all(color: V3StyleHelper.whiteAlpha13),
       child: Column(
         children: [
-          // Avatar
-          Container(
-            width: V3ContainerUtils.responsiveHeight(context, 80),
-            height: V3ContainerUtils.responsiveHeight(context, 80),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: avatarColors,
+          Row(
+            children: [
+              IconButton(
+                icon: const Text('🎨', style: TextStyle(fontSize: 18)),
+                tooltip: 'Tema',
+                onPressed: () async {
+                  await V2ThemeManager().nextTheme();
+                  V3StateUtils.safeSetState(this, () {});
+                },
               ),
-              border: Border.all(color: V3StyleHelper.whiteAlpha4, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: avatarColors[0].withValues(alpha: 0.5),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 2,
-                  shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black38)],
+              Expanded(
+                child: Text(
+                  imePrezime,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Ime
-          Text(
-            imePrezime,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-            textAlign: TextAlign.center,
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.red),
+                tooltip: 'Odjava',
+                onPressed: _logout,
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           // Tip badge + Telefon badge
@@ -756,7 +708,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             spacing: 8,
             runSpacing: 6,
             children: [
-              _Badge(label: tipLabel, color: avatarColors[0]),
+              if (tip.toLowerCase() != 'radnik') _Badge(label: tipLabel, color: avatarColors[0]),
               if (telefon.isNotEmpty) _Badge(label: '📞 $telefon', color: Colors.white24),
               if (telefon2.isNotEmpty) _Badge(label: '📞 $telefon2', color: Colors.white24),
             ],
@@ -778,9 +730,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         Row(children: [
                           const Icon(Icons.location_city, color: Colors.white38, size: 12),
                           const SizedBox(width: 4),
-                          Text('BC',
+                          Text('Bela Crkva',
                               style: TextStyle(
-                                  color: V3StyleHelper.whiteAlpha45, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  color: V3StyleHelper.whiteAlpha45, fontSize: 14, fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 3),
                         Row(children: [
@@ -788,7 +740,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(adresaBcNaziv,
-                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
+                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
                                   overflow: TextOverflow.ellipsis)),
                         ]),
                         if (adresaBcNaziv2 != null && adresaBcNaziv2.isNotEmpty) ...[
@@ -798,7 +750,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaBcNaziv2,
-                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
+                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -820,9 +772,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         Row(children: [
                           const Icon(Icons.location_city, color: Colors.white38, size: 12),
                           const SizedBox(width: 4),
-                          Text('VS',
+                          Text('Vrsac',
                               style: TextStyle(
-                                  color: V3StyleHelper.whiteAlpha45, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  color: V3StyleHelper.whiteAlpha45, fontSize: 14, fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 3),
                         Row(children: [
@@ -830,7 +782,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(adresaVsNaziv,
-                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
+                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
                                   overflow: TextOverflow.ellipsis)),
                         ]),
                         if (adresaVsNaziv2 != null && adresaVsNaziv2.isNotEmpty) ...[
@@ -840,7 +792,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaVsNaziv2,
-                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 12),
+                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -896,9 +848,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       Text(
                         '(Bela Crkva)',
                         style: TextStyle(
-                          color: V3StyleHelper.whiteAlpha45,
-                          fontSize: 10,
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -920,9 +874,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       Text(
                         '(Vrsac)',
                         style: TextStyle(
-                          color: V3StyleHelper.whiteAlpha45,
-                          fontSize: 10,
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
