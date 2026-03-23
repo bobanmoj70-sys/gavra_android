@@ -70,6 +70,10 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
   // ─── Cache helpers ────────────────────────────────────────────────────────
 
+  String _effectiveTime(Map<String, dynamic> row) {
+    return ((row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?) ?? '').trim();
+  }
+
   /// Vozač za termin iz GPS rasporeda (bez fallback-a).
   V3Vozac? _getVozacZaTermin(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
@@ -77,8 +81,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     final datum = _selectedDatumIso;
 
     for (final row in rm.operativnaNedeljaCache.values) {
-      final rowVreme =
-          (row['vreme'] as String?) ?? (row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?) ?? '';
+      final rowVreme = _effectiveTime(row);
       final statusFinal = row['status_final'] as String?;
       if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum &&
           row['grad'] == grad &&
@@ -103,8 +106,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     final datum = _selectedDatumIso;
 
     for (final row in rm.operativnaNedeljaCache.values) {
-      final rowVreme =
-          (row['vreme'] as String?) ?? (row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?) ?? '';
+      final rowVreme = _effectiveTime(row);
       final statusFinal = row['status_final'] as String?;
       if (row['putnik_id'] == putnikId &&
           row['grad'] == grad &&
@@ -170,8 +172,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         final datumStr = r['datum'] as String?;
         if (datumStr == null) return false;
         final d = V3DanHelper.parseIsoDatePart(datumStr);
-        final rowVreme =
-            (r['vreme'] as String?) ?? (r['dodeljeno_vreme'] as String?) ?? (r['zeljeno_vreme'] as String?) ?? '';
+        final rowVreme = _effectiveTime(r);
         return d == datum &&
             r['grad'] == grad &&
             V2GradAdresaValidator.normalizeTime(rowVreme) == V2GradAdresaValidator.normalizeTime(vreme) &&
@@ -235,7 +236,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           })
           .eq('datum', _selectedDatumIso)
           .eq('grad', grad)
-          .eq('vreme', normVreme);
+          .eq('dodeljeno_vreme', normVreme);
       if (mounted) V3AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($_selectedDatumIso)');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
@@ -251,11 +252,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             r['putnik_id'] == putnikId &&
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == datum &&
             r['grad'] == grad &&
-            V2GradAdresaValidator.normalizeTime((r['vreme'] as String?) ??
-                    (r['dodeljeno_vreme'] as String?) ??
-                    (r['zeljeno_vreme'] as String?) ??
-                    '') ==
-                normVreme &&
+            V2GradAdresaValidator.normalizeTime(_effectiveTime(r)) == normVreme &&
             r['aktivno'] == true,
         orElse: () => <String, dynamic>{},
       );
@@ -298,7 +295,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           })
           .eq('putnik_id', putnikId)
           .eq('grad', grad)
-          .eq('vreme', normVreme)
+          .eq('dodeljeno_vreme', normVreme)
           .eq('datum', _selectedDatumIso);
       if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
     } catch (e) {

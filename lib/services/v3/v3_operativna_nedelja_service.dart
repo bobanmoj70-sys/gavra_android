@@ -107,7 +107,6 @@ class V3OperativnaNedeljaEntry {
       'putnik_id': putnikId,
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
-      'vreme': vreme,
       'status_final': statusFinal,
       'aktivno': aktivno,
       if (zeljenoVreme != null) 'zeljeno_vreme': zeljenoVreme,
@@ -336,7 +335,6 @@ class V3OperativnaNedeljaService {
         await supabase.from('v3_operativna_nedelja').update({
           'zeljeno_vreme': zeljenoVreme,
           'dodeljeno_vreme': dodeljivoVreme,
-          'vreme': dodeljivoVreme,
           'status_final': 'odobreno',
           'updated_by': createdBy,
           if (napomena != null) 'napomena': napomena,
@@ -351,7 +349,6 @@ class V3OperativnaNedeljaService {
           'grad': grad,
           'zeljeno_vreme': zeljenoVreme,
           'dodeljeno_vreme': dodeljivoVreme,
-          'vreme': dodeljivoVreme,
           'broj_mesta': brojMesta,
           'status_final': 'odobreno',
           'aktivno': true,

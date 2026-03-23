@@ -154,6 +154,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return v;
     }
 
+    String operativnaVreme(Map<String, dynamic> row) {
+      return ((row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?) ?? '');
+    }
+
     final selectedVNorm = normalizeV(_selectedVreme);
 
     // 1. Moji termini za ovaj datum (iz v3_gps_raspored)
@@ -246,22 +250,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         if (r['putnik_id']?.toString() != putnikId) continue;
         if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
         if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
-        if (normalizeV(r['vreme']?.toString()) == selectedVNorm) {
+        if (normalizeV(operativnaVreme(r)) == selectedVNorm) {
           matchedEntryData = r;
           break;
-        }
-      }
-
-      // Fallback: ako je u operativnoj vreme NULL, ipak veži entry po putnik/datum/grad
-      if (matchedEntryData == null) {
-        for (final r in rm.operativnaNedeljaCache.values) {
-          if (r['putnik_id']?.toString() != putnikId) continue;
-          if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
-          if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
-          if (r['vreme'] == null) {
-            matchedEntryData = r;
-            break;
-          }
         }
       }
 
