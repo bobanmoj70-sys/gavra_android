@@ -76,6 +76,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   String _selectedVreme = '';
   bool _isLoading = true;
   bool _isTracking = false;
+  Timer? _clockTimer;
 
   Map<String, double>? _lastOptimizationPosition; // Poslednja pozicija za optimizaciju
 
@@ -99,11 +100,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   @override
   void initState() {
     super.initState();
+    _startClockTicker();
     _initData();
+  }
+
+  void _startClockTicker() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      V3StateUtils.safeSetState(this, () => setState(() {}));
+    });
   }
 
   @override
   void dispose() {
+    _clockTimer?.cancel();
     V3StreamUtils.cancelSubscription('vozac_screen_realtime');
     V3StreamUtils.cancelSubscription('vozac_screen_gps');
     V3StreamUtils.cancelTimer('vozac_screen_route_optimization');
@@ -752,8 +762,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vsVremenaToShow = vsVremenaSet.toList()..sort();
     final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
     final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.7).toDouble();
-    final appBarHeight = 88 + (headerScaleExtra * 18);
+    final appBarHeight = 104 + (headerScaleExtra * 18);
     final appBarButtonHeight = 30 + (headerScaleExtra * 6);
+    final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon', anchor: _selectedDate);
+    final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet', anchor: _selectedDate);
+    final aktivnaSedmica =
+        'Aktivna sedmica: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -777,6 +791,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      Text(
+                        aktivnaSedmica,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 3),
                       // ── Red 1: Datum | Dan | Sat (V2 digitalni prikaz) ──
                       _buildDigitalDateDisplay(context, vozac),
                       const SizedBox(height: 6),
@@ -815,8 +839,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                           const SizedBox(width: 4),
                           // ⚙️ Popup meni — šifra + logout
                           PopupMenuButton<String>(
-                            onSelected: (val) {
-                              if (val == 'sifra') {
+                            onSelected: (val) async {
+                              if (val == 'tema') {
+                                await V2ThemeManager().nextTheme();
+                                V3StateUtils.safeSetState(this, () => setState(() {}));
+                                if (!mounted) return;
+                                V3AppSnackBar.info(context, '🎨 Tema promenjena');
+                              } else if (val == 'sifra') {
                                 if (!mounted || vozac == null) return;
                                 V3NavigationUtils.pushScreen<void>(
                                   context,
@@ -827,6 +856,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                               }
                             },
                             itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'tema',
+                                child: Row(children: [
+                                  Icon(Icons.palette, color: Colors.purpleAccent),
+                                  SizedBox(width: 8),
+                                  Text('Promeni temu'),
+                                ]),
+                              ),
+                              PopupMenuDivider(),
                               PopupMenuItem(
                                 value: 'sifra',
                                 child: Row(children: [
@@ -962,7 +1000,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final selectedDate = _selectedDate;
     final dayName = _selectedDay.trim().toUpperCase();
     final dateStr = DateFormat('dd.MM.yy').format(selectedDate);
-    final timeStr = DateFormat('HH:mm').format(now);
+    final timeStr = DateFormat('HH:mm:ss').format(now);
     final vozacBoja = _getVozacBojaRaw(vozac);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

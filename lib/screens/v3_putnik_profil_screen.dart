@@ -37,6 +37,7 @@ class V3PutnikProfilScreen extends StatefulWidget {
 class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with WidgetsBindingObserver {
   late Map<String, dynamic> _putnikData;
   PermissionStatus _notifStatus = PermissionStatus.granted;
+  Timer? _clockTimer;
   // Zahtevi po danu
   // key = dan kratica npr 'pon', value = lista zahteva (BC i VS)
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
@@ -66,6 +67,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _startClockTicker();
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
     _checkNotifPermission();
     _refresh();
@@ -84,9 +86,25 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   @override
   void dispose() {
+    _clockTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
     super.dispose();
+  }
+
+  void _startClockTicker() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      V3StateUtils.safeSetState(this, () => setState(() {}));
+    });
+  }
+
+  String _clockLabel() {
+    final now = DateTime.now();
+    final h = now.hour.toString().padLeft(2, '0');
+    final m = now.minute.toString().padLeft(2, '0');
+    final s = now.second.toString().padLeft(2, '0');
+    return '$h:$m:$s';
   }
 
   @override
@@ -689,6 +707,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       border: Border.all(color: V3StyleHelper.whiteAlpha13),
       child: Column(
         children: [
+          Text(
+            _clockLabel(),
+            style: TextStyle(
+              color: V3StyleHelper.whiteAlpha75,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
           Row(
             children: [
               IconButton(

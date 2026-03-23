@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -46,6 +48,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedDay = 'Ponedeljak';
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
+  Timer? _clockTimer;
 
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici.
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
@@ -63,7 +66,29 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _selectedDay = V3DanHelper.defaultDay();
+    _startClockTicker();
     _initData();
+  }
+
+  void _startClockTicker() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      V3StateUtils.safeSetState(this, () => setState(() {}));
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  String _clockLabel() {
+    final now = DateTime.now();
+    final h = now.hour.toString().padLeft(2, '0');
+    final m = now.minute.toString().padLeft(2, '0');
+    final s = now.second.toString().padLeft(2, '0');
+    return '$h:$m:$s';
   }
 
   Future<void> _initData() async {
@@ -900,8 +925,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
           final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
-          final appBarHeight = 97 + (headerScaleExtra * 20);
+          final appBarHeight = 106 + (headerScaleExtra * 20);
           final headerControlHeight = 33 + (headerScaleExtra * 8);
+          final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon');
+          final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet');
+          final aktivnaNedelja =
+              'Aktivna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
           return V3ContainerUtils.gradientContainer(
             gradient: V2ThemeManager().currentGradient,
@@ -918,9 +947,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   ),
                   child: SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           // Red 1 - naslov
                           Row(
@@ -930,7 +959,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   child: Text(
                                     'R E Z E R V A C I J E',
                                     style: TextStyle(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       color: Theme.of(context).colorScheme.onPrimary,
                                       letterSpacing: 1.4,
@@ -944,67 +973,45 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          // Red 2 - vozač, tema, dan
+                          Text(
+                            aktivnaNedelja,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          // Red 2 - dan
                           Row(
                             children: [
-                              // Vozač
+                              // Sat sa sekundama
                               Expanded(
-                                flex: 35,
                                 child: V3ContainerUtils.iconContainer(
                                   height: headerControlHeight,
                                   padding: const EdgeInsets.all(6),
-                                  backgroundColor: _getVozacColor(vozac),
-                                  borderRadiusGeometry: BorderRadius.circular(12),
+                                  backgroundColor: Theme.of(context).glassContainer,
+                                  borderRadiusGeometry: BorderRadius.circular(14),
                                   border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                   child: Center(
                                     child: Text(
-                                      vozac?.imePrezime ?? '—',
+                                      _clockLabel(),
                                       style: TextStyle(
                                         color: Theme.of(context).colorScheme.onPrimary,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        shadows: const [Shadow(blurRadius: 8, color: Colors.black87)],
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
                                       ),
+                                      maxLines: 1,
+                                      softWrap: false,
                                       overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 2),
-                              // Tema
-                              Expanded(
-                                flex: 25,
-                                child: InkWell(
-                                  onTap: () async {
-                                    await V2ThemeManager().nextTheme();
-                                    V3StateUtils.safeSetState(this, () => setState(() {}));
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: V3ContainerUtils.iconContainer(
-                                    height: headerControlHeight,
-                                    padding: const EdgeInsets.all(6),
-                                    backgroundColor: Theme.of(context).glassContainer,
-                                    borderRadiusGeometry: BorderRadius.circular(12),
-                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                    child: Center(
-                                      child: Text(
-                                        'Tema',
-                                        style: TextStyle(
-                                          color: Theme.of(context).colorScheme.onPrimary,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 2),
+                              const SizedBox(width: 4),
                               // Dan dropdown
                               Expanded(
-                                flex: 35,
                                 child: V3ContainerUtils.iconContainer(
                                   height: headerControlHeight,
                                   padding: const EdgeInsets.all(6),
@@ -1264,18 +1271,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         },
       ),
     );
-  }
-
-  Color _getVozacColor(V3Vozac? vozac) {
-    if (vozac == null) return Colors.transparent;
-    final boja = vozac.boja;
-    if (boja == null || boja.isEmpty) return Colors.blueGrey.withValues(alpha: 0.5);
-    try {
-      final hex = boja.replaceFirst('#', '');
-      return Color(int.parse('FF$hex', radix: 16));
-    } catch (_) {
-      return Colors.blueGrey.withValues(alpha: 0.5);
-    }
   }
 
   Widget _buildBottomNavBar(
