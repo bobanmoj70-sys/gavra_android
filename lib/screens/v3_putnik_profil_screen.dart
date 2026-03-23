@@ -412,11 +412,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             width: 82,
                             child: OutlinedButton(
                               onPressed: isLocked
-                                  ? () {
+                                  ? () async {
+                                      Navigator.of(dialogCtx).pop();
                                       final subota =
                                           datumPolaska.add(Duration(days: DateTime.saturday - datumPolaska.weekday));
                                       final subotaStr = '${subota.day}.${subota.month}.${subota.year}.';
-                                      V3AppSnackBar.info(context,
+                                      await Future<void>.delayed(const Duration(milliseconds: 120));
+                                      if (!mounted) return;
+                                      V3AppSnackBar.info(ctx,
                                           '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu ($subotaStr).');
                                     }
                                   : () async {
