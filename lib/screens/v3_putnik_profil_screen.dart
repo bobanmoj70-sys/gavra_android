@@ -550,23 +550,29 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     for (final zahtev in zahtevi) {
       final zahtevGrad = (zahtev['grad'] as String? ?? '').toUpperCase();
       final zahtevDatumIso = V3DanHelper.parseIsoDatePart(zahtev['datum'] as String? ?? '');
-      final zahtevVreme = V3StringUtils.safeSubstringTime(zahtev['zeljeno_vreme'] as String? ?? '');
+      final zahtevVreme = V3StringUtils.safeSubstringTime(
+        (zahtev['dodeljeno_vreme'] as String?) ?? (zahtev['zeljeno_vreme'] as String? ?? ''),
+      );
 
       // Pronađi GPS dodelu (aktivira widget čim vozač postoji za termin)
-      final gpsDodjela = rm.v3GpsRasporedCache.values
+      final gpsDodjela = rm.operativnaNedeljaCache.values
           .where((r) => r['putnik_id'] == putnikId)
           .where((r) => r['aktivno'] != false)
           .where((r) => (r['vozac_id'] as String?) != null)
           .where((r) => ((r['grad'] as String? ?? '').toUpperCase()) == zahtevGrad)
           .where((r) => V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == zahtevDatumIso)
-          .where((r) => V3StringUtils.safeSubstringTime(r['vreme']?.toString() ?? '') == zahtevVreme)
+          .where((r) =>
+              V3StringUtils.safeSubstringTime(
+                  ((r['dodeljeno_vreme'] as String?) ?? (r['zeljeno_vreme'] as String?)) ?? '') ==
+              zahtevVreme)
           .firstOrNull;
 
       if (gpsDodjela != null) {
         final vozacId = gpsDodjela['vozac_id'] as String;
         final grad = gpsDodjela['grad'] as String? ?? (zahtev['grad'] as String? ?? '');
         final vreme = V3StringUtils.safeSubstringTime(
-            gpsDodjela['vreme']?.toString() ?? (zahtev['zeljeno_vreme'] as String? ?? ''));
+            ((gpsDodjela['dodeljeno_vreme'] as String?) ?? (gpsDodjela['zeljeno_vreme'] as String?)) ??
+                ((zahtev['dodeljeno_vreme'] as String?) ?? (zahtev['zeljeno_vreme'] as String? ?? '')));
         final datum = DateTime.tryParse(gpsDodjela['datum'] as String? ?? '') ??
             DateTime.tryParse(zahtev['datum'] as String? ?? '');
         if (datum == null) continue;
