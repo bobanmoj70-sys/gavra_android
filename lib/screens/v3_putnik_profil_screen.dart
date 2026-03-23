@@ -43,6 +43,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // Dugovanje
   double _ukupnoDugovanje = 0.0;
   int _brojNeplacenih = 0;
+
+  static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
+
+  String? _normalizeValidTime(String? value) {
+    if (value == null) return null;
+    final normalized = V3StringUtils.safeSubstringTime(value).trim();
+    if (normalized.isEmpty) return null;
+    if (!_timeFormat.hasMatch(normalized)) return null;
+    return normalized;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -98,7 +109,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
-      final datumIso = V3DanHelper.datumIsoZaDanAbbrNapred(dan);
+      final datumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dan);
       final bcList =
           V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'BC').where((z) => z.putnikId == putnikId).toList();
       final vsList =
@@ -178,8 +189,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       {_ZahtevInfo? trenutniInfo, bool koristiSekundarnu = false}) async {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
+    final validNovoVreme = _normalizeValidTime(novoVreme);
+
+    if (novoVreme != null && validNovoVreme == null) {
+      if (mounted) V3AppSnackBar.warning(context, '⚠️ Neispravno vreme termina. Pokušajte ponovo.');
+      return;
+    }
+
     try {
-      if (novoVreme == null) {
+      if (validNovoVreme == null) {
         // Otkaži postojeći zahtev
         if (trenutniInfo == null) return;
         await V3ZahtevService.otkaziZahtev(trenutniInfo.zahtevId,
@@ -187,9 +205,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         if (mounted) V3AppSnackBar.success(context, '✅ Polazak otkazan: $dan $grad');
       } else if (trenutniInfo != null && (trenutniInfo.status == 'obrada' || trenutniInfo.status == 'odobreno')) {
         // Ažuriraj vreme i adresu na postojećem zahtevu (vraća u obrada)
-        await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, novoVreme,
+        await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, validNovoVreme,
             koristiSekundarnu: koristiSekundarnu);
-        if (mounted) V3AppSnackBar.success(context, '✅ Zahtev ažuriran: $novoVreme');
+        if (mounted) V3AppSnackBar.success(context, '✅ Zahtev ažuriran: $validNovoVreme');
       } else {
         // Kreiraj novi zahtev
         final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
@@ -198,9 +216,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         final zahtev = V3Zahtev(
           id: const Uuid().v4(),
           putnikId: putnikId,
-          datum: V3DanHelper.datumZaDanAbbr(dan),
+          datum: V3DanHelper.datumZaDanAbbrUTekucojSedmici(dan),
           grad: grad,
-          zeljenoVreme: novoVreme,
+          zeljenoVreme: validNovoVreme,
           brojMesta: brojMesta,
           status: 'obrada',
           koristiSekundarnu: koristiSekundarnu,
@@ -229,9 +247,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
     // Scenario 5: zaključavanje 15 min pre polaska
-    final datumPolaska = V3DanHelper.datumZaDanAbbr(dan);
+    final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(dan);
     final now = DateTime.now();
-    final vremena = V2RouteConfig.getVremenaByNavType(grad, navBarTypeNotifier.value);
+    final vremena = V2RouteConfig.getVremenaByNavType(grad, navBarTypeNotifier.value)
+        .where((v) => _normalizeValidTime(v) != null)
+        .toList();
     final currentVreme = info?.vreme;
     final hasActive = info != null &&
         info.status != 'otkazano' &&
@@ -484,7 +504,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   /// Helper za konverziju kratice dana u puni naziv koristeći V3DanHelper.
   String _getDanLabel(String danAbbr) {
     try {
-      final datum = V3DanHelper.datumZaDanAbbr(danAbbr);
+      final datum = V3DanHelper.datumZaDanAbbrUTekucojSedmici(danAbbr);
       return V3DanHelper.fullName(datum);
     } catch (e) {
       // Fallback ako kratica nije validna

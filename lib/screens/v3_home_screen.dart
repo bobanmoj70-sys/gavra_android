@@ -47,8 +47,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
 
-  /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici (ili sledećoj ako je dan prošao).
-  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
+  /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici.
+  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
 
   // Dinamična vremena prema tipu nav bara
   List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
@@ -359,7 +359,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     }
                                     setS(() => isLoading = true);
                                     try {
-                                      final isoDate = V3DanHelper.datumIsoZaDanPuni(_selectedDay);
+                                      final isoDate = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
                                       final vozacId = V3VozacService.currentVozac?.id ?? 'nepoznat';
 
                                       // Odredi koristiSekundarnu i adresaIdOverride

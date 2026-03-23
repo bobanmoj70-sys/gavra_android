@@ -228,7 +228,8 @@ class V3ZahtevService {
         if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
       });
       if (operativnaId != null && operativnaId.isNotEmpty) {
-        await query.eq('id', operativnaId);
+        final row = await query.eq('id', operativnaId).select().single();
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
       } else {
         throw Exception('operativnaId je obavezan za pokupljanje');
       }

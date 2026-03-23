@@ -31,6 +31,22 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
   final Map<String, Map<String, dynamic>> v3GpsRasporedCache = {};
 
+  void _rebuildGpsCacheFromOperativna() {
+    v3GpsRasporedCache.clear();
+    for (final entry in operativnaNedeljaCache.values) {
+      final id = entry['id']?.toString();
+      final vozacId = entry['vozac_id'];
+      if (id == null || vozacId == null) continue;
+
+      final row = Map<String, dynamic>.from(entry);
+      row['vreme'] = row['vreme'] ?? row['dodeljeno_vreme'] ?? row['zeljeno_vreme'];
+      row['nav_bar_type'] = row['nav_bar_type'] ?? 'zimski';
+      row['gps_status'] = row['gps_status'] ?? 'pending';
+      row['notification_sent'] = row['notification_sent'] ?? false;
+      v3GpsRasporedCache[id] = row;
+    }
+  }
+
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
 
@@ -74,7 +90,6 @@ class V3MasterRealtimeManager {
         supabase.from('v3_operativna_nedelja').select(),
         supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
         supabase.from('v3_app_settings').select(),
-        supabase.from('v3_gps_raspored').select().order('created_at', ascending: false).limit(1000),
       ]);
 
       _fillCache(adreseCache, results[0] as List);
@@ -90,7 +105,7 @@ class V3MasterRealtimeManager {
       _fillCache(operativnaNedeljaCache, results[10] as List);
       _fillCache(kapacitetSlotsCache, results[11] as List);
       _fillCache(appSettingsCache, results[12] as List);
-      _fillCache(v3GpsRasporedCache, results[13] as List);
+      _rebuildGpsCacheFromOperativna();
 
       await _setupRealtime();
       _isInitialized = true;
@@ -134,7 +149,6 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
     _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
-    _setupTableRealtime('v3_gps_raspored', v3GpsRasporedCache, hasActiveKey: false);
 
     _v3Channel!.subscribe();
   }
@@ -161,6 +175,9 @@ class V3MasterRealtimeManager {
           cache.remove(id);
         } else {
           cache[id] = Map<String, dynamic>.from(newRecord);
+        }
+        if (table == 'v3_operativna_nedelja') {
+          _rebuildGpsCacheFromOperativna();
         }
         _changeController.add(null);
       },
@@ -210,6 +227,7 @@ class V3MasterRealtimeManager {
         break;
       case 'v3_operativna_nedelja':
         operativnaNedeljaCache[id] = row;
+        _rebuildGpsCacheFromOperativna();
         break;
       case 'v3_kapacitet_slots':
         kapacitetSlotsCache[id] = row;
@@ -232,8 +250,7 @@ class V3MasterRealtimeManager {
   /// Osvži v3_gps_raspored cache nakon izmena
   Future<void> refreshV3GpsRaspored() async {
     try {
-      final result = await supabase.from('v3_gps_raspored').select().order('created_at', ascending: false).limit(1000);
-      _fillCache(v3GpsRasporedCache, result);
+      _rebuildGpsCacheFromOperativna();
       _changeController.add(null);
       debugPrint('[V3MasterRealtimeManager] v3_gps_raspored cache refreshed: ${v3GpsRasporedCache.length} records');
     } catch (e) {

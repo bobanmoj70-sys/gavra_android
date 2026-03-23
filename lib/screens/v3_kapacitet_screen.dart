@@ -21,7 +21,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
   late final TabController _tabController;
   late final Stream<void> _streamTrigger;
   String _selectedDay = V3DanHelper.defaultDay();
-  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuni(_selectedDay);
+  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
   @override
   void initState() {
     super.initState();
