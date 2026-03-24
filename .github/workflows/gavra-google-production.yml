@@ -69,7 +69,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
           publish_branch: gh-pages
-          force_orphan: true
+          force_orphan: false
           commit_message: "docs: sync privacy/delete-account pages [skip ci]"
 
       - name: Validate policy URLs
