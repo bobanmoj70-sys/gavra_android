@@ -1,72 +1,46 @@
-# 🚗 DISPECER CRON JOB - Live stanje baze
+# 🚗 DISPECER WAKE-ONLY - Live stanje baze
 
-Ovo je dokumentacija za stvarno stanje u Supabase bazi, ne samo za repo fajl.
+Ovo je dokumentacija za trenutno, usklađeno stanje u Supabase bazi.
 
-## Šta je trenutno u bazi
+## Aktivni tok
 
-Pronađeno je sledeće:
+- `tr_v3_dispatcher` na `public.v3_zahtevi` poziva `fn_v3_dispatcher()`.
+- `fn_v3_dispatcher()` postavlja `scheduled_at` po poslovnim pravilima i šalje `pg_notify('dispatcher_wake', ...)`.
+- Obrada ide kroz `process_pending_zahtevi()` -> `process_pending_zahtevi_slots()`.
 
-- `set_zahtev_scheduled_at()` - trigger funkcija koja postavlja `scheduled_at`
-- `fn_v3_dispatcher()` - trigger na `v3_zahtevi`
-- `process_pending_zahtevi_slots()` - glavni slots-based procesor
-- `process_pending_zahtevi_v2()` - starija verzija procesora
-- `process_pending_zahtevi_final()` - još jedna verzija procesora
-- `cron.job` sadrži job `simple-dispatcher` koji trenutno radi direktan `UPDATE`
+## Šta je uklonjeno
 
-## Važan problem
+- Nema `simple-dispatcher` cron job-a.
+- Nema `dispecer-slots` cron job-a.
+- Nema `tr_v3_wake_dispecer_cron` i `wake_dispecer_cron_on_zahtev()`.
+- Nema `ensure_dispecer_cron_running()`.
 
-Trenutni cron job u bazi je previše jednostavan:
-
-```sql
-UPDATE v3_zahtevi
-SET status = 'odobreno', dodeljeno_vreme = zeljeno_vreme
-WHERE status = 'obrada' AND aktivno = true AND scheduled_at <= NOW();
-```
-
-To znači da **preskače kapacitet logiku** i ne koristi slots proveru.
-
-## Šta treba koristiti
-
-Preporuka je da cron poziva:
+## Kako proveriti stanje
 
 ```sql
-SELECT * FROM public.process_pending_zahtevi();
+SELECT jobid, jobname, schedule, command
+FROM cron.job
+WHERE jobname IN ('simple-dispatcher', 'dispecer-slots');
+
+SELECT t.tgname, p.proname AS function_name, pg_get_triggerdef(t.oid) AS trigger_def
+FROM pg_trigger t
+JOIN pg_class c ON c.oid = t.tgrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_proc p ON p.oid = t.tgfoid
+WHERE n.nspname = 'public'
+	AND c.relname = 'v3_zahtevi'
+	AND NOT t.tgisinternal
+ORDER BY t.tgname;
+
+SELECT *
+FROM public.v3_zahtevi
+WHERE status = 'obrada' AND aktivno = true
+ORDER BY scheduled_at;
 ```
 
-Repo fajl `supabase/dispecer_cron.sql` sada pravi wrapper koji zove:
+## Napomena
 
-```sql
-SELECT * FROM public.process_pending_zahtevi_slots();
-```
-
-## Kako proveriti trenutno stanje
-
-```sql
-SELECT * FROM cron.job ORDER BY jobid;
-SELECT * FROM public.get_pending_zahtevi_status();
-SELECT * FROM v3_zahtevi WHERE status = 'obrada' AND aktivno = true ORDER BY scheduled_at;
-```
-
-## Kako popraviti cron
-
-Pokreni sadržaj iz `supabase/dispecer_cron.sql` u Supabase SQL Editor-u.
-
-To će:
-
-- dodati kompatibilne wrapper funkcije
-- ukinuti `simple-dispatcher`
-- napraviti novi job `dispecer-slots`
-- usmeriti obradu na slots logiku
-
-## Manuelno testiranje
-
-```sql
-SELECT * FROM public.manual_process_zahtevi();
-```
-
-## Bitno za tebe
-
-Ako želiš da aplikacija radi po pravilima koja si opisao, **ne smeš ostaviti stari cron job** koji direktno odobrava zahteve.
+Model je wake-only: nema periodičnog cron dispatcher procesa.
 
 ---
-*Ažurirano: 2026-03-22*
+*Ažurirano: 2026-03-23*

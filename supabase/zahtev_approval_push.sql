@@ -31,7 +31,11 @@ BEGIN
     LIMIT 1;
 
     IF putnik_token IS NOT NULL THEN
-      efektivno_vreme := COALESCE(NULLIF(NEW.dodeljeno_vreme, ''), NULLIF(NEW.zeljeno_vreme, ''), '');
+      efektivno_vreme := COALESCE(
+        to_char(NEW.dodeljeno_vreme, 'HH24:MI'),
+        to_char(NEW.zeljeno_vreme, 'HH24:MI'),
+        ''
+      );
       termin_opis := CASE
         WHEN efektivno_vreme <> ''
           THEN format('%s %s u %s', to_char(NEW.datum::date, 'DD.MM.YYYY.'), NEW.grad, efektivno_vreme)

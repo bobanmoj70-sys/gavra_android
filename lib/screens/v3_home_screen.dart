@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,6 +28,7 @@ import '../utils/v3_text_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
+import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_admin_screen.dart';
@@ -48,7 +47,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedDay = 'Ponedeljak';
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
-  Timer? _clockTimer;
 
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici.
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
@@ -66,29 +64,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _selectedDay = V3DanHelper.defaultDay();
-    _startClockTicker();
     _initData();
-  }
-
-  void _startClockTicker() {
-    _clockTimer?.cancel();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      V3StateUtils.safeSetState(this, () => setState(() {}));
-    });
-  }
-
-  @override
-  void dispose() {
-    _clockTimer?.cancel();
-    super.dispose();
-  }
-
-  String _clockLabel() {
-    final now = DateTime.now();
-    final h = now.hour.toString().padLeft(2, '0');
-    final m = now.minute.toString().padLeft(2, '0');
-    final s = now.second.toString().padLeft(2, '0');
-    return '$h:$m:$s';
   }
 
   Future<void> _initData() async {
@@ -859,6 +835,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           // Lista: datum dolazi iz stream-a, filtriraj samo po gradu i vremenu
           final currentVozacId = V3VozacService.currentVozac?.id;
           final prikazaniZapisi = sviZapisi.where((z) {
+            if (!z.aktivno) return false;
             if (z.grad != _selectedGrad) return false;
             if (normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
             if (z.statusFinal == 'odbijeno') return false;
@@ -891,6 +868,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           int getPutnikCount(String grad, String vreme) {
             final targetVremeNorm = normalizeVreme(vreme);
             return sviZapisi.where((z) {
+              if (!z.aktivno) return false;
               if (z.grad != grad) return false;
               if (normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
               if (z.statusFinal == 'otkazano' || z.statusFinal == 'odbijeno') return false;
@@ -995,16 +973,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   borderRadiusGeometry: BorderRadius.circular(14),
                                   border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                   child: Center(
-                                    child: Text(
-                                      _clockLabel(),
+                                    child: V3LiveClockText(
                                       style: TextStyle(
                                         color: Theme.of(context).colorScheme.onPrimary,
                                         fontWeight: FontWeight.w700,
                                         fontSize: 14,
                                       ),
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),

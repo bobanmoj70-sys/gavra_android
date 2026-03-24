@@ -74,29 +74,47 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     return ((row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?) ?? '').trim();
   }
 
+  bool _isPutnikAktivan(String putnikId) {
+    final putnik = V3MasterRealtimeManager.instance.putniciCache[putnikId];
+    return putnik != null && putnik['aktivno'] == true;
+  }
+
   /// Vozač za termin iz GPS rasporeda (bez fallback-a).
   V3Vozac? _getVozacZaTermin(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V2GradAdresaValidator.normalizeTime(vreme);
     final datum = _selectedDatumIso;
 
-    for (final row in rm.operativnaNedeljaCache.values) {
+    final terminRows = rm.operativnaNedeljaCache.values.where((row) {
       final rowVreme = _effectiveTime(row);
       final statusFinal = row['status_final'] as String?;
-      if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum &&
+      final putnikId = row['putnik_id']?.toString() ?? '';
+      return V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum &&
           row['grad'] == grad &&
           row['aktivno'] == true &&
+          _isPutnikAktivan(putnikId) &&
           statusFinal != 'odbijeno' &&
           statusFinal != 'otkazano' &&
-          V2GradAdresaValidator.normalizeTime(rowVreme) == normV) {
-        final vozacId = row['vozac_id'] as String?;
-        if (vozacId != null && vozacId.isNotEmpty) {
-          final vozac = V3VozacService.getVozacById(vozacId);
-          if (vozac != null) return vozac;
-        }
+          V2GradAdresaValidator.normalizeTime(rowVreme) == normV;
+    }).toList();
+
+    if (terminRows.isEmpty) return null;
+
+    String? zajednickiVozacId;
+    for (final row in terminRows) {
+      final vozacId = (row['vozac_id'] as String?)?.trim();
+      if (vozacId == null || vozacId.isEmpty) {
+        return null;
+      }
+      if (zajednickiVozacId == null) {
+        zajednickiVozacId = vozacId;
+      } else if (zajednickiVozacId != vozacId) {
+        return null;
       }
     }
-    return null;
+
+    if (zajednickiVozacId == null) return null;
+    return V3VozacService.getVozacById(zajednickiVozacId);
   }
 
   /// Vozač za putnika iz GPS rasporeda (bez fallback-a).
@@ -135,10 +153,12 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       if (datumStr == null) return false;
       final d = V3DanHelper.parseIsoDatePart(datumStr);
       final statusFinal = r['status_final'] as String?;
+      final putnikId = r['putnik_id']?.toString() ?? '';
       return d == targetDatum &&
           r['grad'] == grad &&
           V2GradAdresaValidator.normalizeTime((r['dodeljeno_vreme']) as String? ?? '') == normV &&
           r['aktivno'] == true &&
+          _isPutnikAktivan(putnikId) &&
           statusFinal != 'otkazano' &&
           statusFinal != 'odbijeno' &&
           statusFinal != 'obrada';
@@ -173,9 +193,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         if (datumStr == null) return false;
         final d = V3DanHelper.parseIsoDatePart(datumStr);
         final rowVreme = _effectiveTime(r);
+        final putnikId = r['putnik_id']?.toString() ?? '';
         return d == datum &&
             r['grad'] == grad &&
             V2GradAdresaValidator.normalizeTime(rowVreme) == V2GradAdresaValidator.normalizeTime(vreme) &&
+            _isPutnikAktivan(putnikId) &&
             r['status_final'] != 'odbijeno' &&
             r['status_final'] != 'otkazano' &&
             r['aktivno'] == true;
@@ -481,6 +503,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             ? (sviZapisi
                 .where((z) =>
                     z.grad == _selectedGrad &&
+                    z.aktivno &&
+                    _isPutnikAktivan(z.putnikId) &&
                     V2GradAdresaValidator.normalizeTime(slotVreme(z)) ==
                         V2GradAdresaValidator.normalizeTime(_selectedVreme) &&
                     z.statusFinal != 'odbijeno')
@@ -613,7 +637,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                       : (terminDodeljen ? _parseColor(vozacTermin.boja) : null);
 
                                   final putnik = V3PutnikService.getPutnikById(z.putnikId);
-                                  if (putnik == null) return const SizedBox.shrink();
+                                  if (putnik == null || !putnik.aktivno) return const SizedBox.shrink();
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 6),
                                     child: V3PutnikCard(

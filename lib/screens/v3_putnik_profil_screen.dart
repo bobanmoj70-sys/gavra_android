@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
@@ -23,6 +21,7 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
+import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_putnik_tracking_widget.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_welcome_screen.dart';
@@ -37,7 +36,6 @@ class V3PutnikProfilScreen extends StatefulWidget {
 class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with WidgetsBindingObserver {
   late Map<String, dynamic> _putnikData;
   PermissionStatus _notifStatus = PermissionStatus.granted;
-  Timer? _clockTimer;
   // Zahtevi po danu
   // key = dan kratica npr 'pon', value = lista zahteva (BC i VS)
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
@@ -46,6 +44,20 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   int _brojNeplacenih = 0;
 
   static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
+
+  int _statusPriorityForCell(String status) {
+    switch (status) {
+      case 'obrada':
+        return 3;
+      case 'alternativa':
+      case 'ponuda':
+        return 2;
+      case 'odobreno':
+        return 1;
+      default:
+        return 0;
+    }
+  }
 
   String? _normalizeValidTime(String? value) {
     if (value == null) return null;
@@ -67,7 +79,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _startClockTicker();
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
     _checkNotifPermission();
     _refresh();
@@ -86,25 +97,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   @override
   void dispose() {
-    _clockTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
     super.dispose();
-  }
-
-  void _startClockTicker() {
-    _clockTimer?.cancel();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      V3StateUtils.safeSetState(this, () => setState(() {}));
-    });
-  }
-
-  String _clockLabel() {
-    final now = DateTime.now();
-    final h = now.hour.toString().padLeft(2, '0');
-    final m = now.minute.toString().padLeft(2, '0');
-    final s = now.second.toString().padLeft(2, '0');
-    return '$h:$m:$s';
   }
 
   @override
@@ -185,7 +180,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             pokupljen: isPokupljen,
             operativnaId: opId2));
       }
-      newMap[dan] = infos;
+      final bestByGrad = <String, _ZahtevInfo>{};
+      for (final info in infos) {
+        final current = bestByGrad[info.grad];
+        if (current == null || _statusPriorityForCell(info.status) > _statusPriorityForCell(current.status)) {
+          bestByGrad[info.grad] = info;
+        }
+      }
+      newMap[dan] = bestByGrad.values.toList();
     }
     // Dugovanje iz v3_dnevne_operacije
     double ukupno = 0.0;
@@ -707,8 +709,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       border: Border.all(color: V3StyleHelper.whiteAlpha13),
       child: Column(
         children: [
-          Text(
-            _clockLabel(),
+          V3LiveClockText(
             style: TextStyle(
               color: V3StyleHelper.whiteAlpha75,
               fontSize: 14,
@@ -1154,7 +1155,7 @@ class _ZahtevCell extends StatelessWidget {
     } else {
       switch (info!.status) {
         case 'odobreno':
-          statusColor = Colors.green.shade700;
+          statusColor = Colors.green.shade600;
           statusIcon = '✅';
         case 'obrada':
           statusColor = Colors.orange.shade700;
@@ -1177,10 +1178,10 @@ class _ZahtevCell extends StatelessWidget {
       onTap: onTap,
       child: V3ContainerUtils.styledContainer(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        backgroundColor: statusColor.withValues(alpha: 0.24),
+        backgroundColor: statusColor.withValues(alpha: 0.50),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.78),
+          color: Colors.white.withValues(alpha: 0.90),
           width: 1.2,
         ),
         child: Row(
@@ -1188,7 +1189,7 @@ class _ZahtevCell extends StatelessWidget {
           children: [
             Flexible(
               child: Text(
-                info!.status == 'obrada' ? '$statusIcon $vreme obrada' : '$statusIcon $vreme',
+                '$statusIcon $vreme',
                 style: TextStyle(
                   color: V3StyleHelper.whiteAlpha9,
                   fontSize: 12,

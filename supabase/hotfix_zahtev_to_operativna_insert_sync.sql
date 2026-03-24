@@ -11,7 +11,10 @@ declare
     target_time time;
     desired_status text;
 begin
-    target_time := coalesce(new.dodeljeno_vreme, new.zeljeno_vreme);
+    target_time := case
+        when new.status = 'alternativa' then null
+        else coalesce(new.dodeljeno_vreme, new.zeljeno_vreme)
+    end;
 
     if new.status in ('obrada','odobreno','alternativa') then
         desired_status := case when new.status = 'alternativa' then 'alternativa' else new.status end;

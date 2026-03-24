@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -29,6 +27,7 @@ import '../utils/v3_telefon_helper.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
+import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_promena_sifre_screen.dart';
@@ -76,7 +75,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   String _selectedVreme = '';
   bool _isLoading = true;
   bool _isTracking = false;
-  Timer? _clockTimer;
 
   Map<String, double>? _lastOptimizationPosition; // Poslednja pozicija za optimizaciju
 
@@ -100,20 +98,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   @override
   void initState() {
     super.initState();
-    _startClockTicker();
     _initData();
-  }
-
-  void _startClockTicker() {
-    _clockTimer?.cancel();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      V3StateUtils.safeSetState(this, () => setState(() {}));
-    });
   }
 
   @override
   void dispose() {
-    _clockTimer?.cancel();
     V3StreamUtils.cancelSubscription('vozac_screen_realtime');
     V3StreamUtils.cancelSubscription('vozac_screen_gps');
     V3StreamUtils.cancelTimer('vozac_screen_route_optimization');
@@ -801,7 +790,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 3),
-                      // ── Red 1: Datum | Dan | Sat (V2 digitalni prikaz) ──
+                      // ── Red 1: Datum | Dan (V2 digitalni prikaz) ──
                       _buildDigitalDateDisplay(context, vozac),
                       const SizedBox(height: 6),
                       // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
@@ -996,11 +985,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   // ── V2 stil: digitalni datum prikaz ──
   Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
-    final now = DateTime.now();
     final selectedDate = _selectedDate;
     final dayName = _selectedDay.trim().toUpperCase();
     final dateStr = DateFormat('dd.MM.yy').format(selectedDate);
-    final timeStr = DateFormat('HH:mm:ss').format(now);
     final vozacBoja = _getVozacBojaRaw(vozac);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1023,8 +1010,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
           ),
         ),
-        Text(
-          timeStr,
+        V3LiveClockText(
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,

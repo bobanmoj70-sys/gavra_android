@@ -291,10 +291,89 @@ class V3ZahtevService {
   }
 
   static Future<void> prihvatiPonudu(String id, String izabranoVreme) async {
+    String toHHmm(String value) {
+      final normalized = value.trim();
+      final parts = normalized.split(':');
+      if (parts.length < 2) {
+        throw Exception('Neispravan format vremena: $value');
+      }
+      final h = parts[0].padLeft(2, '0');
+      final m = parts[1].padLeft(2, '0');
+      return '$h:$m';
+    }
+
+    final izabranoVremeNormalized = izabranoVreme.trim();
+    if (izabranoVremeNormalized.isEmpty) {
+      throw Exception('Izabrano vreme je prazno.');
+    }
+    final selectedHHmm = toHHmm(izabranoVremeNormalized);
+
+    final zahtev = await supabase
+        .from('v3_zahtevi')
+        .select('id, status, grad, datum, putnik_id, alt_vreme_pre, alt_vreme_posle')
+        .eq('id', id)
+        .maybeSingle();
+
+    if (zahtev == null) {
+      throw Exception('Zahtev nije pronađen.');
+    }
+
+    final status = (zahtev['status'] as String? ?? '').trim();
+    if (status != 'alternativa') {
+      throw Exception('Zahtev više nije u statusu alternativa.');
+    }
+
+    final altPre = (zahtev['alt_vreme_pre']?.toString() ?? '').trim();
+    final altPosle = (zahtev['alt_vreme_posle']?.toString() ?? '').trim();
+    final allowedTimes = <String>{
+      if (altPre.isNotEmpty) toHHmm(altPre),
+      if (altPosle.isNotEmpty) toHHmm(altPosle),
+    };
+
+    if (allowedTimes.isNotEmpty && !allowedTimes.contains(selectedHHmm)) {
+      throw Exception('Izabrano vreme nije među ponuđenim alternativama.');
+    }
+
+    final grad = (zahtev['grad'] as String? ?? '').trim();
+    final datum = (zahtev['datum'] as String? ?? '').split('T').first;
+
+    final kapacitetRow = await supabase
+        .from('v3_kapacitet_slots')
+        .select('max_mesta')
+        .eq('grad', grad)
+        .eq('datum', datum)
+        .eq('vreme', izabranoVremeNormalized)
+        .eq('aktivno', true)
+        .maybeSingle();
+
+    if (kapacitetRow == null) {
+      throw Exception('Slot više ne postoji u kapacitetu.');
+    }
+
+    final maxMesta = int.tryParse('${kapacitetRow['max_mesta'] ?? 0}') ?? 0;
+    final usedRows = await supabase
+        .from('v3_operativna_nedelja')
+        .select('dodeljeno_vreme, zeljeno_vreme')
+        .eq('grad', grad)
+        .eq('datum', datum)
+        .eq('status_final', 'odobreno')
+        .eq('aktivno', true);
+
+    final usedCount = usedRows.where((row) {
+      final assigned = (row['dodeljeno_vreme']?.toString() ?? '').trim();
+      final desired = (row['zeljeno_vreme']?.toString() ?? '').trim();
+      final effective = assigned.isNotEmpty ? assigned : desired;
+      if (effective.isEmpty) return false;
+      return toHHmm(effective) == selectedHHmm;
+    }).length;
+    if (maxMesta > 0 && usedCount >= maxMesta) {
+      throw Exception('Termin $izabranoVremeNormalized je trenutno popunjen.');
+    }
+
     await supabase.from('v3_zahtevi').update({
       'status': 'odobreno',
-      'zeljeno_vreme': izabranoVreme,
-      'dodeljeno_vreme': izabranoVreme,
+      'zeljeno_vreme': izabranoVremeNormalized,
+      'dodeljeno_vreme': izabranoVremeNormalized,
       'alt_vreme_pre': null,
       'alt_vreme_posle': null,
       'updated_by': 'putnik:sistem',

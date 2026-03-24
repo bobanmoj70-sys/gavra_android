@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -61,7 +60,6 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
   @override
   void dispose() {
     V3StreamUtils.cancelSubscription('putnik_tracking_location');
-    V3StreamUtils.cancelTimer('putnik_tracking_refresh');
     super.dispose();
   }
 
@@ -130,23 +128,14 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
         key: 'putnik_tracking_location',
         stream: V3MasterRealtimeManager.instance.onChange,
         onData: (_) {
-          _updateVozacLokacija();
-        });
-
-    // Periodic refresh za visibility check
-    V3StreamUtils.createRefreshTimer(
-        key: 'putnik_tracking',
-        period: const Duration(seconds: 30),
-        onRefresh: () {
           _checkVisibility();
-          if (_isVisible) {
-            _updateETA();
-          }
+          _updateVozacLokacija();
           V3StateUtils.safeSetState(this, () {});
         });
 
     // Initial update
     _updateVozacLokacija();
+    V3StateUtils.safeSetState(this, () {});
   }
 
   void _updateVozacLokacija() {

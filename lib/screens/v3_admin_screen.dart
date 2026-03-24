@@ -731,7 +731,7 @@ class _NavBtn extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: height ?? V3ContainerUtils.responsiveHeight(context, 40),
+        height: height ?? V3ContainerUtils.responsiveHeight(context, 50),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
