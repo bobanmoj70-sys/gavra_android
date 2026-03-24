@@ -203,6 +203,30 @@ jobs:
 
           echo "✅ What's New updated"
 
+      - name: Clear active App Review submissions
+        run: |
+          echo "🧹 Checking for active review submissions..."
+
+          ACTIVE_JSON=$(mktemp)
+          app-store-connect apps list-review-submissions "$APP_ID" \
+            --platform IOS \
+            --review-submission-state WAITING_FOR_REVIEW IN_REVIEW READY_FOR_REVIEW UNRESOLVED_ISSUES \
+            --json > "$ACTIVE_JSON"
+
+          ACTIVE_COUNT=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('reviewSubmissions') if isinstance(data,dict) and isinstance(data.get('reviewSubmissions'),list) else (data if isinstance(data,list) else []))); print(len(items))" "$ACTIVE_JSON")
+
+          if [ "$ACTIVE_COUNT" -gt 0 ]; then
+            echo "ℹ️ Found $ACTIVE_COUNT active review submission(s). Canceling..."
+            app-store-connect apps cancel-review-submissions "$APP_ID" \
+              --platform IOS \
+              --review-submission-state WAITING_FOR_REVIEW IN_REVIEW READY_FOR_REVIEW UNRESOLVED_ISSUES \
+              --json || true
+            echo "⏳ Waiting 20s for cancellation to propagate..."
+            sleep 20
+          else
+            echo "✅ No active review submissions found."
+          fi
+
       - name: Auto-submit to App Review
         run: |
           echo "🚀 Auto-submit to App Review started..."
@@ -224,8 +248,12 @@ jobs:
             echo "$OUTPUT"
 
             if echo "$OUTPUT" | grep -Eiq "already|in review|waiting for review|submitted"; then
-              echo "ℹ️ Review submission already exists / already submitted — treating as success."
-              break
+              echo "ℹ️ Existing review submission detected. Trying to cancel and retry..."
+              app-store-connect apps cancel-review-submissions "$APP_ID" \
+                --platform IOS \
+                --review-submission-state WAITING_FOR_REVIEW IN_REVIEW READY_FOR_REVIEW UNRESOLVED_ISSUES \
+                --json || true
+              sleep 20
             fi
 
             if [ "$ATTEMPT" -eq "$MAX_RETRIES" ]; then
