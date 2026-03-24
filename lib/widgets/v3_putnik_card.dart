@@ -140,6 +140,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
     final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
       context: context,
+      putnikId: widget.putnik.id,
       imePrezime: widget.putnik.imePrezime,
       defaultCena: defaultCena,
     );
@@ -239,28 +240,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   // ─── Boje kartice po statusu ───────────────────────────────────
 
   BoxDecoration _getCardDecoration() {
-    if (widget.isExcludedFromOptimization) {
-      return BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFE0E0E0),
-            const Color(0xFFBDBDBD),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF757575), width: 1.3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      );
-    }
-
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     final bool isPokupljen = widget.entry?.pokupljen ?? false;
     final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
@@ -274,7 +253,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Color _getTextColor() {
-    if (widget.isExcludedFromOptimization) return const Color(0xFF212121);
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFB71C1C);
     if (widget.entry?.pokupljen ?? false) {
@@ -285,7 +263,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   Color _getSecondaryTextColor() {
-    if (widget.isExcludedFromOptimization) return const Color(0xFF424242);
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
     if (status == 'otkazano') return const Color(0xFFC62828);
     if (widget.entry?.pokupljen ?? false) {
@@ -485,26 +462,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                   ),
                                 ),
                               ),
-                              if (isExcludedFromOptimization)
-                                Align(
-                                  alignment: Alignment.topRight,
-                                  child: V3ContainerUtils.styledContainer(
-                                    margin: const EdgeInsets.only(bottom: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    backgroundColor: Colors.black.withValues(alpha: 0.14),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.black.withValues(alpha: 0.35), width: 0.9),
-                                    child: const Text(
-                                      'VAN RUTE',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF424242),
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               // Adaptive glassmorphism ikone
                               LayoutBuilder(
                                 builder: (context, constraints) {

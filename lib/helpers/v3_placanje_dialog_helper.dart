@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/v3_finansije.dart';
+import '../../services/realtime/v3_master_realtime_manager.dart';
 import '../../services/v3/v3_finansije_service.dart';
 import '../../services/v3/v3_putnik_service.dart';
 import '../../services/v3/v3_vozac_service.dart';
@@ -20,8 +21,42 @@ class V3PlacanjeRezultat {
 class V3PlacanjeDialogHelper {
   V3PlacanjeDialogHelper._();
 
+  static Map<String, dynamic>? _getZadnjaNaplata(String putnikId) {
+    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    final placenoRows = cache.where((row) {
+      if (row['putnik_id']?.toString() != putnikId) return false;
+      if ((row['naplata_status']?.toString() ?? '') != 'placeno') return false;
+      final vremePlacen = row['vreme_placen']?.toString();
+      return vremePlacen != null && vremePlacen.isNotEmpty;
+    }).toList();
+
+    if (placenoRows.isEmpty) return null;
+
+    placenoRows.sort((a, b) {
+      final aDt = DateTime.tryParse(a['vreme_placen']?.toString() ?? '') ?? DateTime(2000);
+      final bDt = DateTime.tryParse(b['vreme_placen']?.toString() ?? '') ?? DateTime(2000);
+      return bDt.compareTo(aDt);
+    });
+
+    final last = placenoRows.first;
+    final vozacId = last['naplatio_vozac_id']?.toString();
+    final vozacIme = vozacId == null ? null : V3VozacService.getVozacById(vozacId)?.imePrezime;
+
+    return {
+      'vreme_placen': last['vreme_placen'],
+      'iznos_naplacen': (last['iznos_naplacen'] as num?)?.toDouble() ?? 0.0,
+      'naplatio_ime': vozacIme ?? 'Nepoznato',
+    };
+  }
+
+  static String _formatDatumVreme(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
   static Future<V3PlacanjeRezultat?> prikaziDialog({
     required BuildContext context,
+    required String putnikId,
     required String imePrezime,
     required double defaultCena,
   }) async {
@@ -29,15 +64,51 @@ class V3PlacanjeDialogHelper {
 
     int _selectedMonth = DateTime.now().month;
     int _selectedYear = DateTime.now().year;
+    final zadnjaNaplata = _getZadnjaNaplata(putnikId);
+    final vremePlacen = DateTime.tryParse(zadnjaNaplata?['vreme_placen']?.toString() ?? '');
+    final zadnjiIznos = (zadnjaNaplata?['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
+    final naplatioIme = (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
 
     return showDialog<V3PlacanjeRezultat>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Naplata: $imePrezime'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+          contentPadding: const EdgeInsets.fromLTRB(22, 6, 22, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Text(
+            'Naplata: $imePrezime',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (zadnjaNaplata != null)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Zadnja naplata',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text('Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen.toLocal())}'),
+                      Text('Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD'),
+                      Text('Naplatio: $naplatioIme'),
+                    ],
+                  ),
+                ),
               TextField(
                 controller: _iznosController,
                 decoration: const InputDecoration(
@@ -46,7 +117,7 @@ class V3PlacanjeDialogHelper {
                 ),
                 keyboardType: TextInputType.number,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
@@ -62,7 +133,7 @@ class V3PlacanjeDialogHelper {
                       onChanged: (v) => setState(() => _selectedMonth = v!),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButton<int>(
                       value: _selectedYear,
@@ -83,6 +154,10 @@ class V3PlacanjeDialogHelper {
               child: const Text('ODUSTANI'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
               onPressed: () {
                 final iznos = double.tryParse(_iznosController.text) ?? 0;
                 Navigator.pop(

@@ -6,6 +6,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -359,15 +360,100 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _secureStorage.write(key: shownKey, value: 'true');
 
       final brandName = androidInfo.manufacturer;
-      V3NavigationUtils.showInfoDialog(
-        context,
-        title: 'Upozorenje – $brandName',
-        message: '$brandName uređaji često agresivno gase pozadinske procese. '
-            'Za pouzdane notifikacije i lokaciju idite u:\n\n'
-            'Podešavanja → Aplikacije → Gavra → Baterija → Bez ograničenja',
-        okText: 'Razumio',
-      );
+      await _showBatteryOptimizationDialog(brandName);
     } catch (_) {}
+  }
+
+  Future<void> _showBatteryOptimizationDialog(String brandName) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: V3ContainerUtils.gradientContainer(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1.2),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  V3ContainerUtils.styledContainer(
+                    padding: const EdgeInsets.all(8),
+                    borderRadius: BorderRadius.circular(10),
+                    backgroundColor: Colors.orange.withValues(alpha: 0.16),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.45)),
+                    child: const Icon(Icons.battery_alert_rounded, color: Colors.orange, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Važno podešavanje za $brandName',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '$brandName uređaji često gase aplikaciju u pozadini. Ako ovo ne podesite, notifikacije i praćenje lokacije mogu kasniti.',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.88), fontSize: 13.5, height: 1.35),
+              ),
+              const SizedBox(height: 12),
+              V3ContainerUtils.styledContainer(
+                padding: const EdgeInsets.all(12),
+                borderRadius: BorderRadius.circular(12),
+                backgroundColor: Colors.white.withValues(alpha: 0.10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                child: Text(
+                  'Podešavanja → Aplikacije → Gavra → Baterija → Bez ograničenja',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  V3ButtonUtils.textButton(
+                    onPressed: () async {
+                      await openAppSettings();
+                    },
+                    text: 'Otvori podešavanja',
+                    foregroundColor: Colors.white.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(width: 8),
+                  V3ButtonUtils.primaryButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    text: 'Razumeo',
+                    icon: Icons.check_circle_outline,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _loginAsVozac(V3Vozac vozac) async {

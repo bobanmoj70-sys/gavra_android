@@ -30,10 +30,9 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
     return rm.zahteviCache.values
         .where((r) {
           if (!uceniciIds.contains(r['putnik_id'])) return false;
-          // Samo zahtevi koje je putnik sam poslao — created_by ne počinje sa 'vozac:'
-          final createdBy = r['created_by'] as String?;
-          if (createdBy != null && createdBy.startsWith('vozac:')) return false;
-          return true;
+          // Samo zahtevi koje je učenik sam poslao
+          final createdBy = (r['created_by']?.toString() ?? '').trim();
+          return createdBy.startsWith('putnik:');
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()

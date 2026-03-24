@@ -152,12 +152,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
       if (r['aktivno'] != true) continue;
 
+      final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
+      if (dodeljenoVreme.isEmpty) continue;
+
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
       final datum = DateTime.tryParse(datumRaw);
       if (datum == null) continue;
       final datumOnly = DateTime(datum.year, datum.month, datum.day);
-      if (datumOnly.isBefore(today)) continue;
+      if (datumOnly != today) continue;
 
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
       final brojMesta = (r['broj_mesta'] as num?)?.toInt() ?? 1;
@@ -176,9 +179,128 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     };
   }
 
-  /// Broj učenika za organizaciju: odobreno BC - odobreno VS (od danas pa nadalje)
+  Map<String, List<String>> _getUceniciSaDodeljenimVremenomDanasPoGradu() {
+    final rm = V3MasterRealtimeManager.instance;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final uceniciIds = rm.putniciCache.values
+        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
+        .map((p) => p['id'] as String)
+        .toSet();
+
+    final bcNames = <String>{};
+    final vsNames = <String>{};
+
+    for (final r in rm.operativnaNedeljaCache.values) {
+      final putnikId = r['putnik_id']?.toString();
+      if (putnikId == null || !uceniciIds.contains(putnikId)) continue;
+      if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
+      if (r['aktivno'] != true) continue;
+
+      final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
+      if (dodeljenoVreme.isEmpty) continue;
+
+      final datumRaw = r['datum']?.toString();
+      if (datumRaw == null || datumRaw.isEmpty) continue;
+      final datum = DateTime.tryParse(datumRaw);
+      if (datum == null) continue;
+      final datumOnly = DateTime(datum.year, datum.month, datum.day);
+      if (datumOnly != today) continue;
+
+      final ime = (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
+      if (ime.isEmpty) continue;
+
+      final grad = (r['grad']?.toString() ?? '').toUpperCase();
+      if (grad == 'BC') {
+        bcNames.add(ime);
+      } else if (grad == 'VS') {
+        vsNames.add(ime);
+      }
+    }
+
+    final bc = bcNames.toList()..sort();
+    final vs = vsNames.toList()..sort();
+
+    return {
+      'BC': bc,
+      'VS': vs,
+    };
+  }
+
+  void _showUceniciDanasPopup(BuildContext context) {
+    final grouped = _getUceniciSaDodeljenimVremenomDanasPoGradu();
+    final bc = grouped['BC'] ?? const <String>[];
+    final vs = grouped['VS'] ?? const <String>[];
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Theme.of(dialogContext).scaffoldBackgroundColor,
+        title: const Text(
+          'Učenici danas (dodeljeno vreme)',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'BC (${bc.length})',
+                  style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  bc.isEmpty ? '— nema učenika —' : bc.join('\n'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                const Divider(color: Colors.white24),
+                const SizedBox(height: 12),
+                Text(
+                  'VS (${vs.length})',
+                  style: const TextStyle(color: Colors.lightBlueAccent, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  vs.isEmpty ? '— nema učenika —' : vs.join('\n'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Zatvori'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Broj zahteva učenika na čekanju koje su učenici sami poslali
   int _getUceniciZahteviCount() {
-    return _getUceniciBcVsSummary()['preostalo'] ?? 0;
+    final rm = V3MasterRealtimeManager.instance;
+    final uceniciIds = rm.putniciCache.values
+        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
+        .map((p) => p['id'] as String)
+        .toSet();
+
+    return rm.zahteviCache.values.where((row) {
+      if ((row['status']?.toString() ?? '') != 'obrada') return false;
+
+      final putnikId = row['putnik_id']?.toString();
+      if (putnikId == null || putnikId.isEmpty) return false;
+      if (!uceniciIds.contains(putnikId)) return false;
+
+      final createdBy = (row['created_by']?.toString() ?? '').trim();
+      return createdBy.startsWith('putnik:');
+    }).length;
   }
 
   int _getRadniciZahteviCount() {
@@ -187,14 +309,31 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'radnik')
         .map((p) => p['id'] as String)
         .toSet();
-    return rm.zahteviCache.values.where((r) => radniciIds.contains(r['putnik_id']) && r['status'] == 'obrada').length;
+
+    return rm.zahteviCache.values.where((row) {
+      if ((row['status']?.toString() ?? '') != 'obrada') return false;
+
+      final putnikId = row['putnik_id']?.toString();
+      if (putnikId == null || putnikId.isEmpty) return false;
+      if (!radniciIds.contains(putnikId)) return false;
+
+      final createdBy = (row['created_by']?.toString() ?? '').trim();
+      return createdBy.startsWith('putnik:');
+    }).length;
   }
 
   int _getZahteviCount() {
     final rm = V3MasterRealtimeManager.instance;
     return rm.zahteviCache.values.where((row) {
       if ((row['status']?.toString() ?? '') != 'obrada') return false;
-      final createdBy = row['created_by'] as String? ?? '';
+      final putnikId = row['putnik_id']?.toString();
+      if (putnikId == null || putnikId.isEmpty) return false;
+
+      final putnik = rm.putniciCache[putnikId];
+      final tip = (putnik?['tip_putnika'] as String? ?? '').toLowerCase();
+      if (tip != 'dnevni') return false;
+
+      final createdBy = (row['created_by']?.toString() ?? '').trim();
       return createdBy.startsWith('putnik:');
     }).length;
   }
@@ -210,9 +349,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'posiljka')
         .map((p) => p['id'] as String)
         .toSet();
-    return rm.zahteviCache.values
-        .where((r) => posiljkaPutnici.contains(r['putnik_id']) && r['status'] == 'obrada')
-        .length;
+    return rm.zahteviCache.values.where((r) {
+      if ((r['status']?.toString() ?? '') != 'obrada') return false;
+      final putnikId = r['putnik_id']?.toString();
+      if (putnikId == null || putnikId.isEmpty) return false;
+      if (!posiljkaPutnici.contains(putnikId)) return false;
+
+      final createdBy = (r['created_by']?.toString() ?? '').trim();
+      return createdBy.startsWith('putnik:');
+    }).length;
   }
 
   /// Učenici brojač u pasulj formatu: ukupno/preostalo (npr. 50/49)
@@ -221,30 +366,33 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final ukupno = stats['bcTotal'] ?? 0;
     final preostalo = stats['preostalo'] ?? 0;
 
-    return Container(
-      height: V3ContainerUtils.responsiveHeight(context, 50),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.7), width: 1.5),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '$ukupno/$preostalo',
-            style: const TextStyle(
-              color: Colors.orange,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: () => _showUceniciDanasPopup(context),
+      child: Container(
+        height: V3ContainerUtils.responsiveHeight(context, 50),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.7), width: 1.5),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$ukupno/$preostalo',
+              style: const TextStyle(
+                color: Colors.orange,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const Text(
-            'uk/preost',
-            style: TextStyle(color: Colors.white70, fontSize: 9),
-          ),
-        ],
+            const Text(
+              'uk/preost',
+              style: TextStyle(color: Colors.white70, fontSize: 9),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -571,8 +719,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final vozaci = V3VozacService.getAllVozaci();
     final pazarPoVozacu = _getPazarPoVozacu();
     final sveDugovi = V3DugService.getDugovi();
-    // Dužnici = samo dnevni putnici koji nisu platili
-    final dugovi = sveDugovi.where((d) => d.tipPutnika == 'dnevni').toList();
+    // Dužnici = dnevni + pošiljke (naplata po pokupljenju)
+    final dugovi = sveDugovi.where((d) => d.tipPutnika == 'dnevni' || d.tipPutnika == 'posiljka').toList();
     final dugoviIznos = dugovi.fold(0.0, (s, d) => s + d.iznos);
     final ukupnoPazar = pazarPoVozacu.values.fold(0.0, (s, v) => s + v);
 

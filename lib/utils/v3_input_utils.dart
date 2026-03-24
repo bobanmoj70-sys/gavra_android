@@ -25,50 +25,67 @@ class V3InputUtils {
     Color? borderColor,
     Color? focusedBorderColor,
   }) {
-    return TextField(
-      controller: controller,
-      style: const TextStyle(color: Colors.white),
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      maxLines: obscureText ? 1 : maxLines,
-      onSubmitted: onSubmitted,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white30),
-        prefixIcon: icon != null ? Icon(icon, color: Colors.amber) : null,
-        suffixIcon: suffixIcon,
-        suffixText: suffixText,
-        filled: true,
-        fillColor: fillColor ?? Colors.white.withValues(alpha: 0.1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor ?? Colors.white30),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: focusedBorderColor ?? Colors.amber),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        isDense: isDense,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: isDense ? 12 : 16,
-        ),
-      ),
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final cs = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
+        final resolvedFill = fillColor ?? (isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest);
+        final resolvedBorder = borderColor ?? (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
+        final resolvedFocused = focusedBorderColor ?? cs.primary;
+        final textColor = cs.onSurface;
+        final labelColor = cs.onSurface.withValues(alpha: 0.78);
+        final hintColor = cs.onSurface.withValues(alpha: 0.45);
+        final iconColor = isDark ? Colors.amber : cs.primary;
+
+        return TextField(
+          controller: controller,
+          style: TextStyle(color: textColor),
+          cursorColor: cs.primary,
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          maxLines: obscureText ? 1 : maxLines,
+          onSubmitted: onSubmitted,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: labelColor),
+            hintText: hint,
+            hintStyle: TextStyle(color: hintColor),
+            prefixIcon: icon != null ? Icon(icon, color: iconColor) : null,
+            suffixIcon: suffixIcon,
+            suffixText: suffixText,
+            suffixStyle: TextStyle(color: labelColor),
+            filled: true,
+            fillColor: resolvedFill,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: resolvedBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: resolvedFocused),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            isDense: isDense,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: isDense ? 12 : 16,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -91,51 +108,68 @@ class V3InputUtils {
     Color? borderColor,
     Color? focusedBorderColor,
   }) {
-    return TextFormField(
-      controller: controller,
-      style: const TextStyle(color: Colors.white),
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      maxLines: obscureText ? 1 : maxLines,
-      onFieldSubmitted: onSubmitted,
-      onChanged: onChanged,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white30),
-        prefixIcon: icon != null ? Icon(icon, color: Colors.amber) : null,
-        suffixIcon: suffixIcon,
-        suffixText: suffixText,
-        filled: true,
-        fillColor: fillColor ?? Colors.white.withValues(alpha: 0.1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor ?? Colors.white30),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: focusedBorderColor ?? Colors.amber),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        isDense: isDense,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: isDense ? 12 : 16,
-        ),
-      ),
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final cs = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
+        final resolvedFill = fillColor ?? (isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest);
+        final resolvedBorder = borderColor ?? (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
+        final resolvedFocused = focusedBorderColor ?? cs.primary;
+        final textColor = cs.onSurface;
+        final labelColor = cs.onSurface.withValues(alpha: 0.78);
+        final hintColor = cs.onSurface.withValues(alpha: 0.45);
+        final iconColor = isDark ? Colors.amber : cs.primary;
+
+        return TextFormField(
+          controller: controller,
+          style: TextStyle(color: textColor),
+          cursorColor: cs.primary,
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          maxLines: obscureText ? 1 : maxLines,
+          onFieldSubmitted: onSubmitted,
+          onChanged: onChanged,
+          validator: validator,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: labelColor),
+            hintText: hint,
+            hintStyle: TextStyle(color: hintColor),
+            prefixIcon: icon != null ? Icon(icon, color: iconColor) : null,
+            suffixIcon: suffixIcon,
+            suffixText: suffixText,
+            suffixStyle: TextStyle(color: labelColor),
+            filled: true,
+            fillColor: resolvedFill,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: resolvedBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: resolvedFocused),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            isDense: isDense,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: isDense ? 12 : 16,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -197,20 +231,25 @@ class V3InputUtils {
     String? hint,
     String? Function(String?)? validator,
   }) {
-    return formField(
-      controller: controller,
-      label: label,
-      icon: Icons.lock,
-      hint: hint,
-      obscureText: !isVisible,
-      suffixIcon: IconButton(
-        icon: Icon(
-          isVisible ? Icons.visibility_off : Icons.visibility,
-          color: Colors.white60,
-        ),
-        onPressed: onToggleVisibility,
-      ),
-      validator: validator,
+    return Builder(
+      builder: (context) {
+        final color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70);
+        return formField(
+          controller: controller,
+          label: label,
+          icon: Icons.lock,
+          hint: hint,
+          obscureText: !isVisible,
+          suffixIcon: IconButton(
+            icon: Icon(
+              isVisible ? Icons.visibility_off : Icons.visibility,
+              color: color,
+            ),
+            onPressed: onToggleVisibility,
+          ),
+          validator: validator,
+        );
+      },
     );
   }
 
@@ -261,41 +300,50 @@ class V3InputUtils {
     int maxLength = 4,
     ValueChanged<String>? onSubmitted,
   }) {
-    return TextField(
-      controller: controller,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 24,
-        letterSpacing: 8,
-        fontWeight: FontWeight.bold,
-      ),
-      keyboardType: TextInputType.number,
-      textAlign: TextAlign.center,
-      maxLength: maxLength,
-      obscureText: true,
-      onSubmitted: onSubmitted,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white30, letterSpacing: 8),
-        counterText: '', // Сакриј counter
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.amber),
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 20),
-      ),
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final cs = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
+
+        return TextField(
+          controller: controller,
+          style: TextStyle(
+            color: cs.onSurface,
+            fontSize: 24,
+            letterSpacing: 8,
+            fontWeight: FontWeight.bold,
+          ),
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          maxLength: maxLength,
+          obscureText: true,
+          onSubmitted: onSubmitted,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.78)),
+            hintText: hint,
+            hintStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.45), letterSpacing: 8),
+            counterText: '',
+            filled: true,
+            fillColor: isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  BorderSide(color: isDark ? Colors.amber.withValues(alpha: 0.3) : cs.outline.withValues(alpha: 0.6)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: cs.primary),
+            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 20),
+          ),
+        );
+      },
     );
   }
 

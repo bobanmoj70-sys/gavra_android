@@ -9,6 +9,18 @@ import 'v3_vozac_service.dart';
 class V3ZahtevService {
   V3ZahtevService._();
 
+  static void _assertDatumUTekucojNedelji(DateTime datum) {
+    final trazeniDatum = DateTime(datum.year, datum.month, datum.day);
+    final danas = DateTime.now();
+    final danasOnly = DateTime(danas.year, danas.month, danas.day);
+    final ponedeljak = danasOnly.subtract(Duration(days: danasOnly.weekday - 1));
+    final nedelja = ponedeljak.add(const Duration(days: 6));
+
+    if (trazeniDatum.isBefore(ponedeljak) || trazeniDatum.isAfter(nedelja)) {
+      throw Exception('Zakazivanje je dozvoljeno samo u tekućoj nedelji.');
+    }
+  }
+
   static List<V3Zahtev> getZahteviByTip(String tip) {
     final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
     // Filtriramo putnike iz cachea da nađemo one koji su traženog tipa
@@ -50,6 +62,8 @@ class V3ZahtevService {
 
   static Future<V3Zahtev> createZahtev(V3Zahtev zahtev, {String? createdBy}) async {
     try {
+      _assertDatumUTekucojNedelji(zahtev.datum);
+
       final data = zahtev.toJson();
       if (createdBy != null) data['created_by'] = createdBy;
       final row = await supabase.from('v3_zahtevi').insert(data).select().single();

@@ -16,7 +16,7 @@
   <!-- 🛰️ GPS/Location permissions -->
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-  <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> -->
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
   <!-- 🔋 Huawei specific permissions -->
   <uses-permission android:name="com.huawei.permission.external_app_settings.USE_COMPONENT" />
