@@ -107,7 +107,7 @@ class _BottomNavBarPrazniciState extends State<V3BottomNavBarPraznici> {
         color: Colors.transparent,
         border: Border.all(
           color: Theme.of(context).glassBorder,
-          width: 1.5,
+          width: 1.0,
         ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
@@ -258,7 +258,7 @@ class _PolazakRow extends StatelessWidget {
                                               ? const Color(0xFFE91E8C)
                                               : Colors.blue)
                                   : Colors.grey[300]!,
-                          width: hasVozac ? 3 : (selected ? 2.5 : 1),
+                          width: hasVozac ? 1.8 : (selected ? 1.4 : 0.7),
                         ),
                       ),
                       child: Column(

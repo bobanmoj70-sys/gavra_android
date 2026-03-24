@@ -61,6 +61,15 @@ jobs:
         with:
           ref: ${{ inputs.git_ref || github.ref }}
 
+      - name: Deploy policy docs to GitHub Pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "docs: sync privacy/delete-account pages [skip ci]"
+
       - name: Auto-Bump Version
         if: ${{ inputs.bump_version == true && (inputs.version_name == '' || inputs.version_code == '') }}
         shell: bash

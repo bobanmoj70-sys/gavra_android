@@ -225,20 +225,97 @@ jobs:
           echo "📝 Setting What's New for iOS version $VERSION_STRING"
 
           VERSIONS_JSON_FILE=$(mktemp)
-          app-store-connect apps app-store-versions "$APP_ID" \
-            --platform IOS \
-            --version-string "$VERSION_STRING" \
-            --json > "$VERSIONS_JSON_FILE"
+          VERSION_ID=""
 
-          VERSION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersions') if isinstance(data,dict) and isinstance(data.get('appStoreVersions'),list) else (data if isinstance(data,list) else []))); print(next((i.get('id') for i in items if isinstance(i,dict) and i.get('id')), ''))" "$VERSIONS_JSON_FILE")
+          # 1) Pokušaj da nađeš tačnu verziju (Apple ume da kasni dok je build u obradi)
+          for ATTEMPT in $(seq 1 10); do
+            app-store-connect apps app-store-versions "$APP_ID" \
+              --platform IOS \
+              --version-string "$VERSION_STRING" \
+              --json > "$VERSIONS_JSON_FILE" || true
 
+            VERSION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersions') if isinstance(data,dict) and isinstance(data.get('appStoreVersions'),list) else (data if isinstance(data,list) else []))); print(next((i.get('id') for i in items if isinstance(i,dict) and i.get('id')), ''))" "$VERSIONS_JSON_FILE")
+
+            if [ -n "$VERSION_ID" ]; then
+              echo "✅ Found exact App Store version: $VERSION_STRING ($VERSION_ID)"
+              break
+            fi
+
+            if [ "$ATTEMPT" -lt 10 ]; then
+              echo "⏳ Version $VERSION_STRING not visible yet (attempt $ATTEMPT/10), waiting 30s..."
+              sleep 30
+            fi
+          done
+
+          # 2) Fallback: ako tačna verzija još ne postoji, uzmi editabilnu App Store verziju
           if [ -z "$VERSION_ID" ]; then
-            echo "❌ Could not find App Store version ID for $VERSION_STRING"
-            cat "$VERSIONS_JSON_FILE" || true
-            exit 1
+            echo "⚠️ Exact version $VERSION_STRING not found. Falling back to editable App Store version..."
+
+            app-store-connect apps app-store-versions "$APP_ID" \
+              --platform IOS \
+              --json > "$VERSIONS_JSON_FILE"
+
+            FALLBACK_INFO=$(python3 - "$VERSIONS_JSON_FILE" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1], encoding='utf-8'))
+items = (
+    data.get('data')
+    if isinstance(data, dict) and isinstance(data.get('data'), list)
+    else (
+        data.get('appStoreVersions')
+        if isinstance(data, dict) and isinstance(data.get('appStoreVersions'), list)
+        else (data if isinstance(data, list) else [])
+    )
+)
+
+parsed = []
+for item in items:
+    if not isinstance(item, dict):
+        continue
+    attrs = item.get('attributes') if isinstance(item.get('attributes'), dict) else {}
+    state = (attrs.get('appStoreState') or item.get('appStoreState') or '').strip()
+    version = (attrs.get('versionString') or item.get('versionString') or '').strip()
+    version_id = (item.get('id') or '').strip()
+    if version_id:
+        parsed.append((version_id, state, version))
+
+preferred_states = (
+    'PREPARE_FOR_SUBMISSION',
+    'READY_FOR_REVIEW',
+    'WAITING_FOR_REVIEW',
+    'IN_REVIEW',
+    'UNRESOLVED_ISSUES',
+)
+
+pick = None
+for state in preferred_states:
+    pick = next((entry for entry in parsed if entry[1] == state), None)
+    if pick is not None:
+        break
+
+if pick is None and parsed:
+    pick = parsed[0]
+
+print(f"{pick[0]} {pick[1]} {pick[2]}" if pick else "")
+PY
+)
+
+            VERSION_ID=$(echo "$FALLBACK_INFO" | awk '{print $1}')
+            FALLBACK_STATE=$(echo "$FALLBACK_INFO" | awk '{print $2}')
+            FALLBACK_VERSION=$(echo "$FALLBACK_INFO" | awk '{print $3}')
+
+            if [ -z "$VERSION_ID" ]; then
+              echo "❌ Could not resolve any App Store version ID (exact or fallback)."
+              cat "$VERSIONS_JSON_FILE" || true
+              exit 1
+            fi
+
+            echo "⚠️ Using fallback App Store version: ${FALLBACK_VERSION:-unknown} (${FALLBACK_STATE:-unknown}) id=$VERSION_ID"
           fi
 
-          echo "✅ App Store version ID: $VERSION_ID"
+          echo "✅ App Store version ID in use: $VERSION_ID"
 
           LOC_JSON_FILE=$(mktemp)
           app-store-connect app-store-versions localizations "$VERSION_ID" --json > "$LOC_JSON_FILE"
