@@ -50,16 +50,15 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
     V3StreamUtils.subscribe<void>(
       key: 'dnevnik_naplate_cache',
-      stream: V3MasterRealtimeManager.instance.onChange,
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_operativna_nedelja', 'v3_vozaci'],
+        build: () {},
+      ),
       onData: (_) {
         if (!mounted) return;
         _ucitajVozace();
 
         if (_selectedVozacId == null) return;
-        final today = DateTime.now();
-        final isToday =
-            _selectedDate.year == today.year && _selectedDate.month == today.month && _selectedDate.day == today.day;
-        if (!isToday) return;
 
         V3StreamUtils.cancelTimer('dnevnik_naplate_refresh_debounce');
         V3StreamUtils.createTimer(

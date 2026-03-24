@@ -492,7 +492,16 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<V3OperativnaNedeljaEntry>>(
-      stream: V3OperativnaNedeljaService.streamOperativnaNedeljaByDatum(_selectedDatumIso),
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
+        tables: const [
+          'v3_operativna_nedelja',
+          'v3_putnici',
+          'v3_vozaci',
+          'v3_adrese',
+          'v3_kapacitet_slots',
+        ],
+        build: () => V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(_selectedDatumIso),
+      ),
       builder: (context, snapshot) {
         final sviZapisi = snapshot.data ?? [];
         final vozacTermin = _getVozacZaTermin(_selectedGrad, _selectedVreme);

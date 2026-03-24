@@ -49,6 +49,7 @@ class V3MasterRealtimeManager {
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
+  final StreamController<Set<String>> _tableChangeController = StreamController<Set<String>>.broadcast();
 
   RealtimeChannel? _v3Channel;
   Future<void>? _initInFlight;
@@ -110,6 +111,7 @@ class V3MasterRealtimeManager {
       await _setupRealtime();
       _isInitialized = true;
       _changeController.add(null);
+      _tableChangeController.add({'*'});
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] Initialization error: $e');
@@ -180,13 +182,25 @@ class V3MasterRealtimeManager {
           _rebuildGpsCacheFromOperativna();
         }
         _changeController.add(null);
+        _tableChangeController.add({table});
       },
     );
   }
 
   Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
-    return _changeController.stream.map((_) => build()).asBroadcastStream(
-          onListen: (subs) => _changeController.add(null),
+    final watchedTables = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toSet();
+
+    return _tableChangeController.stream
+        .where((changedTables) {
+          if (changedTables.contains('*') || watchedTables.isEmpty) return true;
+          for (final table in watchedTables) {
+            if (changedTables.contains(table)) return true;
+          }
+          return false;
+        })
+        .map((_) => build())
+        .asBroadcastStream(
+          onListen: (subs) => _tableChangeController.add({'*'}),
         );
   }
 
@@ -245,6 +259,7 @@ class V3MasterRealtimeManager {
     }
 
     _changeController.add(null);
+    _tableChangeController.add({table});
   }
 
   /// Osvži v3_gps_raspored cache nakon izmena
@@ -252,6 +267,7 @@ class V3MasterRealtimeManager {
     try {
       _rebuildGpsCacheFromOperativna();
       _changeController.add(null);
+      _tableChangeController.add({'v3_operativna_nedelja', 'v3_gps_raspored'});
       debugPrint('[V3MasterRealtimeManager] v3_gps_raspored cache refreshed: ${v3GpsRasporedCache.length} records');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] Error refreshing v3_gps_raspored: $e');

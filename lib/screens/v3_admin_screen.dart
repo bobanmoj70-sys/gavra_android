@@ -235,51 +235,66 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Theme.of(dialogContext).scaffoldBackgroundColor,
-        title: const Text(
-          'Učenici danas (dodeljeno vreme)',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'BC (${bc.length})',
-                  style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  bc.isEmpty ? '— nema učenika —' : bc.join('\n'),
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 12),
-                const Divider(color: Colors.white24),
-                const SizedBox(height: 12),
-                Text(
-                  'VS (${vs.length})',
-                  style: const TextStyle(color: Colors.lightBlueAccent, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  vs.isEmpty ? '— nema učenika —' : vs.join('\n'),
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ],
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final colorScheme = theme.colorScheme;
+        final onSurface = colorScheme.onSurface;
+
+        return AlertDialog(
+          backgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surface,
+          title: Text(
+            'Učenici danas (dodeljeno vreme)',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: onSurface,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Zatvori'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'BC (${bc.length})',
+                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    bc.isEmpty ? '— nema učenika —' : bc.join('\n'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: onSurface.withValues(alpha: 0.82),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Divider(color: onSurface.withValues(alpha: 0.22)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'VS (${vs.length})',
+                    style: const TextStyle(color: Colors.lightBlueAccent, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    vs.isEmpty ? '— nema učenika —' : vs.join('\n'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: onSurface.withValues(alpha: 0.82),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Zatvori'),
+            ),
+          ],
+        );
+      },
     );
   }
 
