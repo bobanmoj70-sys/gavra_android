@@ -9,6 +9,16 @@ on:
         required: true
         default: 'false'
         type: boolean
+      version_name:
+        description: 'Force version name (e.g. 6.0.120)'
+        required: false
+        default: ''
+        type: string
+      version_code:
+        description: 'Force version code (e.g. 120)'
+        required: false
+        default: ''
+        type: string
   workflow_call:
     inputs:
       git_ref:
@@ -20,6 +30,16 @@ on:
         required: false
         default: true
         type: boolean
+      version_name:
+        description: 'Force version name (e.g. 6.0.120)'
+        required: false
+        default: ''
+        type: string
+      version_code:
+        description: 'Force version code (e.g. 120)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -42,7 +62,7 @@ jobs:
           ref: ${{ inputs.git_ref || github.ref }}
 
       - name: Auto-Bump Version
-        if: ${{ inputs.bump_version == true }}
+        if: ${{ inputs.bump_version == true && (inputs.version_name == '' || inputs.version_code == '') }}
         shell: bash
         run: |
           # Read version from pubspec.yaml
@@ -148,10 +168,13 @@ jobs:
       - name: Get version info
         id: version
         shell: bash
+        env:
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
         run: |
-          if [ -n "$version_name" ]; then
-            VER_NAME="$version_name"
-            VER_CODE="$version_code"
+          if [ -n "$INPUT_VERSION_NAME" ] && [ -n "$INPUT_VERSION_CODE" ]; then
+            VER_NAME="$INPUT_VERSION_NAME"
+            VER_CODE="$INPUT_VERSION_CODE"
           else
             VER_NAME=$(grep '^version:' pubspec.yaml | sed 's/version: //g' | cut -d+ -f1)
             VER_CODE=$(grep '^version:' pubspec.yaml | sed 's/.*+//g')

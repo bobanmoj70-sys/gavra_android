@@ -3,17 +3,52 @@ name: 🍎 iOS Production Release
 on:
   workflow_dispatch:
     inputs:
-      release_notes:
-        description: 'Release notes (optional)'
-        required: false
-        default: ''
-  workflow_call:
-    inputs:
       bump_version:
         description: 'Auto-bump version in pubspec.yaml?'
         required: false
         default: true
         type: boolean
+      version_name:
+        description: 'Force version name (e.g. 6.0.120)'
+        required: false
+        default: ''
+        type: string
+      version_code:
+        description: 'Force version code (e.g. 120)'
+        required: false
+        default: ''
+        type: string
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        default: ''
+        type: string
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'Git ref/sha to checkout (optional)'
+        required: false
+        type: string
+      bump_version:
+        description: 'Auto-bump version in pubspec.yaml?'
+        required: false
+        default: true
+        type: boolean
+      version_name:
+        description: 'Force version name (e.g. 6.0.120)'
+        required: false
+        default: ''
+        type: string
+      version_code:
+        description: 'Force version code (e.g. 120)'
+        required: false
+        default: ''
+        type: string
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,6 +76,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.git_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
@@ -50,12 +86,31 @@ jobs:
           CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
           VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
           VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
+          INPUT_VERSION_NAME="${{ inputs.version_name }}"
+          INPUT_VERSION_CODE="${{ inputs.version_code }}"
           SHOULD_BUMP="${{ inputs.bump_version }}"
           if [ -z "$SHOULD_BUMP" ]; then
             SHOULD_BUMP="true"
           fi
 
-          if [ "$SHOULD_BUMP" = "true" ]; then
+          if [ -n "$INPUT_VERSION_NAME" ] && [ -n "$INPUT_VERSION_CODE" ]; then
+            NEW_NAME="$INPUT_VERSION_NAME"
+            NEW_CODE="$INPUT_VERSION_CODE"
+            NEW_VERSION="${NEW_NAME}+${NEW_CODE}"
+            sed -i '' "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+            echo "VERSION_NAME=$NEW_NAME" >> $GITHUB_OUTPUT
+            echo "VERSION_CODE=$NEW_CODE" >> $GITHUB_OUTPUT
+            echo "📌 Forced version: $CURRENT → $NEW_VERSION"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pubspec.yaml
+            if git diff --staged --quiet; then
+              echo "No changes to commit."
+            else
+              git commit -m "chore: set version to $NEW_VERSION [skip ci]"
+              git push
+            fi
+          elif [ "$SHOULD_BUMP" = "true" ]; then
             NEW_CODE=$((VERSION_CODE + 1))
             MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
             MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
@@ -162,7 +217,7 @@ jobs:
       - name: Set What's New automatically
         run: |
           VERSION_STRING="${{ steps.version_bump.outputs.VERSION_NAME }}"
-          RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
+          RELEASE_NOTES="${{ inputs.release_notes || github.event.inputs.release_notes }}"
           if [ -z "$RELEASE_NOTES" ]; then
             RELEASE_NOTES="Ispravke grešaka i poboljšanja performansi."
           fi
