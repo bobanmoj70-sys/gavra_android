@@ -42,6 +42,7 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
   int? _etaMinutes;
   String _status = 'Priprema se...';
   bool _isVisible = false;
+  double _effectiveSpeedKmh = 40.0;
 
   // Cache
   V3Vozac? _vozac;
@@ -164,8 +165,8 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
       return;
     }
 
-    final vozacLat = _vozacLokacija!['lat'] as double?;
-    final vozacLng = _vozacLokacija!['lng'] as double?;
+    final vozacLat = (_vozacLokacija!['lat'] as num?)?.toDouble();
+    final vozacLng = (_vozacLokacija!['lng'] as num?)?.toDouble();
 
     if (vozacLat == null || vozacLng == null) {
       _status = 'Lokacija nedostupna';
@@ -181,16 +182,20 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
       _putnikAdresa!.gpsLng!,
     );
 
-    // ETA kalkulacija (prosečna brzina 40km/h u gradu)
-    const averageSpeedKmh = 40.0;
+    if (distance < 0.1) {
+      _etaMinutes = 0;
+      _status = 'Vozač je stigao!';
+      return;
+    }
+
+    // Dinamička ETA kalkulacija (koristi realnu brzinu vozača kada je dostupna)
+    final averageSpeedKmh = _resolveEtaSpeedKmh();
     final etaHours = distance / averageSpeedKmh;
-    _etaMinutes = (etaHours * 60).round();
+    final etaRawMinutes = (etaHours * 60).round();
+    _etaMinutes = etaRawMinutes < 0 ? 0 : (etaRawMinutes > (24 * 60) ? 24 * 60 : etaRawMinutes);
 
     // Status na osnovu udaljenosti
-    if (distance < 0.1) {
-      // < 100m
-      _status = 'Vozač je stigao!';
-    } else if (distance < 0.5) {
+    if (distance < 0.5) {
       // < 500m
       _status = 'Vozač je blizu';
     } else if (_etaMinutes! <= 2) {
@@ -198,6 +203,26 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
     } else {
       _status = 'Vozač je na putu';
     }
+  }
+
+  double _resolveEtaSpeedKmh() {
+    final rawSpeed = (_vozacLokacija?['brzina'] as num?)?.toDouble();
+    if (rawSpeed == null) {
+      return _effectiveSpeedKmh;
+    }
+
+    if (rawSpeed >= 3 && rawSpeed <= 160) {
+      final clamped = rawSpeed < 12 ? 12.0 : (rawSpeed > 70 ? 70.0 : rawSpeed);
+      _effectiveSpeedKmh = clamped;
+      return _effectiveSpeedKmh;
+    }
+
+    // Ako vozač trenutno stoji (semafor/stajanje), zadrži poslednju stabilnu brzinu.
+    if (rawSpeed >= 0 && rawSpeed < 3) {
+      return _effectiveSpeedKmh;
+    }
+
+    return _effectiveSpeedKmh;
   }
 
   double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {

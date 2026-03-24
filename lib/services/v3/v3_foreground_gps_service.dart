@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../utils/v3_stream_utils.dart';
 import 'v3_vozac_lokacija_service.dart';
@@ -23,8 +24,100 @@ class V3ForegroundGpsService {
 
   static bool _isRunning = false;
   static String? _currentVozacId;
+  static String? _currentGrad;
   static String? _currentPolazakVreme;
+  static String? _currentPolazakTime;
   static List<V3Putnik> _currentPutnici = [];
+  static DateTime? _lastHeartbeatSentAt;
+  static DateTime? _lastAutoStopCheckAt;
+  static bool _autoStopInProgress = false;
+
+  static String _normalizePolazakTime(String? value) {
+    if (value == null || value.trim().isEmpty) return '';
+    final match = RegExp(r'((?:[01]?\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?)').firstMatch(value);
+    if (match == null) return value.trim();
+    final raw = match.group(1)!;
+    final parts = raw.split(':');
+    if (parts.length < 2) return raw;
+    final h = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
+    final m = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  static String? _extractTimeToken(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final match = RegExp(r'((?:[01]?\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?)').firstMatch(value);
+    if (match == null) return null;
+    final raw = match.group(1)!;
+    final parts = raw.split(':');
+    if (parts.length < 2) return null;
+    final h = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
+    final m = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  static bool _isCanceledOrRejected(String status) {
+    final s = status.trim().toLowerCase();
+    return s == 'otkazano' || s == 'odbijeno';
+  }
+
+  static Future<void> syncTrackingStatus({
+    required String vozacId,
+    required String grad,
+    required String polazakVreme,
+    required String gpsStatus,
+    String? datumIso,
+  }) async {
+    try {
+      final gradUp = grad.trim().toUpperCase();
+      final timeNorm = _normalizePolazakTime(polazakVreme);
+      if (gradUp.isEmpty || timeNorm.isEmpty) return;
+
+      final now = DateTime.now();
+      final fromDate = datumIso ?? DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
+      final toDate = datumIso ??
+          DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
+
+      final rowsRaw = await supabase
+          .from('v3_operativna_nedelja')
+          .select('id, datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, aktivno, putnik_id')
+          .eq('vozac_id', vozacId)
+          .eq('aktivno', true)
+          .gte('datum', fromDate)
+          .lte('datum', toDate);
+
+      final rows = (rowsRaw as List).cast<Map<String, dynamic>>();
+
+      String? rowTime(Map<String, dynamic> row) {
+        final raw = row['dodeljeno_vreme']?.toString() ?? row['zeljeno_vreme']?.toString();
+        return _extractTimeToken(raw);
+      }
+
+      final targetIds = rows
+          .where((row) {
+            if (row['putnik_id'] == null) return false;
+            final status = row['status_final']?.toString() ?? '';
+            if (_isCanceledOrRejected(status)) return false;
+            final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
+            if (rowGrad != gradUp) return false;
+            final rt = rowTime(row);
+            return rt == timeNorm;
+          })
+          .map((row) => row['id']?.toString())
+          .whereType<String>()
+          .toList();
+
+      if (targetIds.isEmpty) return;
+
+      await supabase.from('v3_operativna_nedelja').update({
+        'gps_status': gpsStatus,
+        'updated_by': 'app:foreground_gps_sync',
+        if (gpsStatus == 'tracking') 'notification_sent': true,
+      }).inFilter('id', targetIds);
+    } catch (e) {
+      debugPrint('[V3ForegroundGpsService] syncTrackingStatus error: $e');
+    }
+  }
 
   /// Inicijalizuje notification channel
   static Future<void> initialize() async {
@@ -81,8 +174,12 @@ class V3ForegroundGpsService {
 
       // 3. Postavi tracking parametre
       _currentVozacId = vozacId;
+      _currentGrad = grad;
       _currentPolazakVreme = polazakVreme;
+      _currentPolazakTime = _normalizePolazakTime(polazakVreme);
       _currentPutnici = List.from(putnici);
+      _lastAutoStopCheckAt = null;
+      _autoStopInProgress = false;
       _isRunning = true;
 
       // 4. Pokreni persistent notification
@@ -95,6 +192,14 @@ class V3ForegroundGpsService {
 
       // 5. Pokreni GPS stream
       await _startGpsTracking();
+
+      // 6. Sinhronizuj status termina u bazi
+      await syncTrackingStatus(
+        vozacId: vozacId,
+        grad: grad,
+        polazakVreme: _currentPolazakTime ?? polazakVreme,
+        gpsStatus: 'tracking',
+      );
 
       debugPrint('[V3ForegroundGpsService] Tracking pokrenut uspešno');
       return true;
@@ -109,10 +214,18 @@ class V3ForegroundGpsService {
   static Future<void> stopTracking() async {
     if (!_isRunning) return;
 
+    final vozacId = _currentVozacId;
+    final grad = _currentGrad;
+    final polazakTime = _currentPolazakTime ?? _currentPolazakVreme;
+
     _isRunning = false;
     _currentVozacId = null;
+    _currentGrad = null;
     _currentPolazakVreme = null;
+    _currentPolazakTime = null;
     _currentPutnici.clear();
+    _lastAutoStopCheckAt = null;
+    _autoStopInProgress = false;
 
     // Zaustavi GPS
     await _stopGpsTracking();
@@ -123,6 +236,19 @@ class V3ForegroundGpsService {
     // Zaustavi foreground service
     if (Platform.isAndroid) {
       FlutterBackgroundService().invoke('stop');
+    }
+
+    if (vozacId != null &&
+        grad != null &&
+        polazakTime != null &&
+        grad.trim().isNotEmpty &&
+        polazakTime.trim().isNotEmpty) {
+      await syncTrackingStatus(
+        vozacId: vozacId,
+        grad: grad,
+        polazakVreme: polazakTime,
+        gpsStatus: 'pending',
+      );
     }
 
     debugPrint('[V3ForegroundGpsService] Tracking zaustavljen');
@@ -247,6 +373,8 @@ class V3ForegroundGpsService {
       // Zaustavi postojeći stream
       await _stopGpsTracking();
 
+      _lastHeartbeatSentAt = null;
+
       const locationSettings = LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 10, // Update svakih 10 metara
@@ -261,6 +389,8 @@ class V3ForegroundGpsService {
         onPosition: (position) async {
           if (!_isRunning || _currentVozacId == null) return;
 
+          _lastHeartbeatSentAt = DateTime.now();
+
           // Pošalji GPS update
           await V3VozacLokacijaService.updateLokacija(
             V3VozacLokacijaUpdate(
@@ -269,8 +399,8 @@ class V3ForegroundGpsService {
               lng: position.longitude,
               bearing: position.heading,
               brzina: position.speed * 3.6, // m/s -> km/h
-              grad: '', // Će biti setovano iz konteksta
-              vremePolaska: _currentPolazakVreme ?? '',
+              grad: _currentGrad ?? '',
+              vremePolaska: _currentPolazakTime ?? (_currentPolazakVreme ?? ''),
               aktivno: true,
             ),
           );
@@ -283,9 +413,50 @@ class V3ForegroundGpsService {
         },
       );
 
+      V3StreamUtils.createPeriodicTimer(
+        key: 'foreground_gps_timer',
+        period: const Duration(seconds: 30),
+        callback: (_) {
+          unawaited(_sendHeartbeatGpsUpdate());
+          unawaited(checkAutoStop());
+        },
+      );
+
       debugPrint('[V3ForegroundGpsService] GPS stream pokrenut');
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] Greška pri pokretanju GPS stream-a: $e');
+    }
+  }
+
+  static Future<void> _sendHeartbeatGpsUpdate() async {
+    if (!_isRunning || _currentVozacId == null) return;
+
+    final now = DateTime.now();
+    if (_lastHeartbeatSentAt != null && now.difference(_lastHeartbeatSentAt!) < const Duration(seconds: 20)) {
+      return;
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      _lastHeartbeatSentAt = now;
+
+      await V3VozacLokacijaService.updateLokacija(
+        V3VozacLokacijaUpdate(
+          vozacId: _currentVozacId!,
+          lat: position.latitude,
+          lng: position.longitude,
+          bearing: position.heading,
+          brzina: position.speed * 3.6,
+          grad: _currentGrad ?? '',
+          vremePolaska: _currentPolazakTime ?? (_currentPolazakVreme ?? ''),
+          aktivno: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[V3ForegroundGpsService] Heartbeat GPS update greška: $e');
     }
   }
 
@@ -293,6 +464,7 @@ class V3ForegroundGpsService {
   static Future<void> _stopGpsTracking() async {
     V3StreamUtils.cancelSubscription('foreground_gps_service_gps');
     V3StreamUtils.cancelTimer('foreground_gps_timer');
+    _lastHeartbeatSentAt = null;
   }
 
   /// Ažurira notification sa trenutnom brzinom
@@ -301,7 +473,9 @@ class V3ForegroundGpsService {
 
     final putniciBroj = _currentPutnici.length;
     final brzinaText = brzina > 1.0 ? ' • ${brzina.toStringAsFixed(0)} km/h' : '';
-    final title = 'Gavra GPS - ${_currentPolazakVreme ?? ''}';
+    final gradLabel = (_currentGrad ?? '').trim();
+    final timeLabel = (_currentPolazakTime ?? _currentPolazakVreme ?? '').trim();
+    final title = gradLabel.isNotEmpty ? 'Gavra GPS - $gradLabel $timeLabel' : 'Gavra GPS - $timeLabel';
     final body = '$putniciBroj putnika • Tracking aktivan$brzinaText';
 
     const androidDetails = AndroidNotificationDetails(
@@ -332,11 +506,63 @@ class V3ForegroundGpsService {
 
   /// Automatski zaustavlja tracking kada se svi putnici pokupe
   static Future<void> checkAutoStop() async {
-    if (!_isRunning || _currentPutnici.isEmpty) return;
+    if (!_isRunning || _autoStopInProgress) return;
 
-    // Logika za auto-stop će biti implementirana kada
-    // se implementira fn_v3_auto_detect_adresa trigger
-    // koji će detektovati kada vozač pokupe sve putnike
+    final vozacId = _currentVozacId;
+    final grad = (_currentGrad ?? '').trim().toUpperCase();
+    final vreme = (_currentPolazakTime ?? _currentPolazakVreme ?? '').trim();
+
+    if (vozacId == null || grad.isEmpty || vreme.isEmpty) return;
+
+    final now = DateTime.now();
+    if (_lastAutoStopCheckAt != null && now.difference(_lastAutoStopCheckAt!) < const Duration(seconds: 20)) {
+      return;
+    }
+    _lastAutoStopCheckAt = now;
+
+    _autoStopInProgress = true;
+    try {
+      final fromDate = DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
+      final toDate =
+          DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
+
+      final rowsRaw = await supabase
+          .from('v3_operativna_nedelja')
+          .select('id, datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, aktivno, putnik_id, pokupljen')
+          .eq('vozac_id', vozacId)
+          .eq('aktivno', true)
+          .gte('datum', fromDate)
+          .lte('datum', toDate);
+
+      final rows = (rowsRaw as List).cast<Map<String, dynamic>>();
+
+      String? rowTime(Map<String, dynamic> row) {
+        final raw = row['dodeljeno_vreme']?.toString() ?? row['zeljeno_vreme']?.toString();
+        return _extractTimeToken(raw);
+      }
+
+      final relevantRows = rows.where((row) {
+        if (row['putnik_id'] == null) return false;
+        final status = row['status_final']?.toString() ?? '';
+        if (_isCanceledOrRejected(status)) return false;
+        final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
+        if (rowGrad != grad) return false;
+        final rt = rowTime(row);
+        return rt == _normalizePolazakTime(vreme);
+      }).toList();
+
+      if (relevantRows.isEmpty) return;
+
+      final allPickedUp = relevantRows.every((row) => row['pokupljen'] == true);
+      if (!allPickedUp) return;
+
+      debugPrint('[V3ForegroundGpsService] Auto-stop: svi putnici su pokupljeni, gasim tracking');
+      await stopTracking();
+    } catch (e) {
+      debugPrint('[V3ForegroundGpsService] checkAutoStop error: $e');
+    } finally {
+      _autoStopInProgress = false;
+    }
   }
 
   /// Javni interfejs za notification action handling

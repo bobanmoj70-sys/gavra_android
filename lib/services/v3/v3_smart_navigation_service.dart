@@ -1,6 +1,9 @@
-import '../../models/v3_adresa.dart';
+import 'dart:math' as math;
+
 import '../../models/v3_putnik.dart';
 import 'v3_adresa_service.dart';
+import 'v3_osrm_service.dart';
+import 'v3_photon_geocoding_service.dart';
 
 class V3NavigationResult {
   final bool success;
@@ -14,6 +17,42 @@ class V3NavigationResult {
 
 class V3SmartNavigationService {
   V3SmartNavigationService._();
+
+  static double _toRadians(double degrees) => degrees * math.pi / 180;
+
+  static double _haversineKm({
+    required double lat1,
+    required double lng1,
+    required double lat2,
+    required double lng2,
+  }) {
+    const earthRadiusKm = 6371.0;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLng = _toRadians(lng2 - lng1);
+
+    final a = math.pow(math.sin(dLat / 2), 2) +
+        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) * math.pow(math.sin(dLng / 2), 2);
+
+    return earthRadiusKm * 2 * math.asin(math.sqrt(a));
+  }
+
+  static String? _resolveAdresaIdForTargetCity({
+    required V3Putnik putnik,
+    required dynamic entry,
+    required String targetCity,
+  }) {
+    final String? override = entry?.adresaIdOverride as String?;
+    if (override != null && override.trim().isNotEmpty) {
+      return override;
+    }
+
+    final bool koristiSekundarnu = entry?.koristiSekundarnu == true;
+    if (targetCity.toUpperCase() == 'BC') {
+      return koristiSekundarnu ? (putnik.adresaBcId2 ?? putnik.adresaBcId) : (putnik.adresaBcId ?? putnik.adresaBcId2);
+    }
+
+    return koristiSekundarnu ? (putnik.adresaVsId2 ?? putnik.adresaVsId) : (putnik.adresaVsId ?? putnik.adresaVsId2);
+  }
 
   /// Optimizacija V3 rute — sortira putnike po GPS udaljenosti od vozača,
   /// filtrira putnike bez validnih adresa i završava u suprotnom gradu.
@@ -31,81 +70,155 @@ class V3SmartNavigationService {
       // 1. Odredimo ciljni grad (suprotan od polaznog)
       final targetCity = fromCity.toUpperCase() == 'BC' ? 'VS' : 'BC';
 
-      // 2. Filtriraj putnike sa validnim adresama
-      final validData = <Map<String, dynamic>>[];
+      // 2. Filtriraj putnike sa validnim adresama i probaj Photon geocoding kada fale koordinate
+      final candidates = <_V3RouteCandidate>[];
       final skippedData = <Map<String, dynamic>>[];
+      var geocodedCount = 0;
 
       for (final item in data) {
         final putnik = item['putnik'] as V3Putnik?;
         if (putnik == null) continue;
+        final entry = item['entry'];
 
-        // Dobij adresu za ciljni grad
-        final adresaId =
-            targetCity == 'BC' ? (putnik.adresaBcId ?? putnik.adresaBcId2) : (putnik.adresaVsId ?? putnik.adresaVsId2);
+        final adresaId = _resolveAdresaIdForTargetCity(
+          putnik: putnik,
+          entry: entry,
+          targetCity: targetCity,
+        );
+
+        if (adresaId == null || adresaId.isEmpty) {
+          skippedData.add(item);
+          continue;
+        }
 
         final adresa = V3AdresaService.getAdresaById(adresaId);
-
-        if (adresa != null && adresa.hasValidCoordinates) {
-          validData.add(item);
-        } else {
+        if (adresa == null) {
           skippedData.add(item);
+          continue;
         }
+
+        double? lat = adresa.gpsLat;
+        double? lng = adresa.gpsLng;
+
+        if (lat == null || lng == null) {
+          final geo = await V3PhotonGeocodingService.geocodeAddress(
+            address: adresa.naziv,
+            city: adresa.grad ?? targetCity,
+          );
+
+          if (geo != null) {
+            lat = geo.lat;
+            lng = geo.lng;
+            geocodedCount++;
+
+            try {
+              await V3AdresaService.updateAdresaCoordinates(
+                id: adresa.id,
+                lat: geo.lat,
+                lng: geo.lng,
+              );
+            } catch (_) {
+              // Ne prekidaj optimizaciju ako update koordinata ne uspe.
+            }
+          }
+        }
+
+        if (lat == null || lng == null) {
+          skippedData.add(item);
+          continue;
+        }
+
+        candidates.add(
+          _V3RouteCandidate(
+            item: item,
+            putnik: putnik,
+            lat: lat,
+            lng: lng,
+          ),
+        );
       }
 
-      if (validData.isEmpty) {
+      if (candidates.isEmpty) {
         return V3NavigationResult.error('Nema putnika sa validnim adresama za optimizaciju');
       }
 
       // 3. GPS-bazirana optimizacija ako su prosleđene koordinate vozača
+      var usedOsrm = false;
+      List<_V3RouteCandidate> orderedCandidates = List<_V3RouteCandidate>.from(candidates);
+
       if (driverLat != null && driverLng != null) {
-        // Kreiraj virtuelnu adresu vozača za distance kalkulacije
-        final driverLocation = V3Adresa(
-          id: 'driver_location',
-          naziv: 'Vozač lokacija',
-          grad: fromCity,
-          gpsLat: driverLat,
-          gpsLng: driverLng,
-          aktivno: true,
+        final osrmOrder = await V3OsrmService.optimizeStopOrderByDuration(
+          originLat: driverLat,
+          originLng: driverLng,
+          stops: candidates
+              .map((candidate) => V3OsrmStop(
+                    id: candidate.putnik.id,
+                    lat: candidate.lat,
+                    lng: candidate.lng,
+                  ))
+              .toList(),
         );
 
-        // Sortiri po udaljenosti od vozača
-        validData.sort((a, b) {
-          final putnikA = a['putnik'] as V3Putnik;
-          final putnikB = b['putnik'] as V3Putnik;
+        if (osrmOrder != null && osrmOrder.length == candidates.length) {
+          final byId = <String, _V3RouteCandidate>{
+            for (final candidate in candidates) candidate.putnik.id: candidate,
+          };
 
-          final adresaIdA = targetCity == 'BC'
-              ? (putnikA.adresaBcId ?? putnikA.adresaBcId2)
-              : (putnikA.adresaVsId ?? putnikA.adresaVsId2);
+          orderedCandidates = osrmOrder.map((id) => byId[id]).whereType<_V3RouteCandidate>().toList();
 
-          final adresaIdB = targetCity == 'BC'
-              ? (putnikB.adresaBcId ?? putnikB.adresaBcId2)
-              : (putnikB.adresaVsId ?? putnikB.adresaVsId2);
+          if (orderedCandidates.length == candidates.length) {
+            usedOsrm = true;
+          } else {
+            orderedCandidates = List<_V3RouteCandidate>.from(candidates);
+          }
+        }
 
-          final adresaA = V3AdresaService.getAdresaById(adresaIdA);
-          final adresaB = V3AdresaService.getAdresaById(adresaIdB);
-
-          if (adresaA == null || adresaB == null) return 0;
-
-          final distanceA = driverLocation.distanceTo(adresaA) ?? double.infinity;
-          final distanceB = driverLocation.distanceTo(adresaB) ?? double.infinity;
-
-          return distanceA.compareTo(distanceB);
-        });
+        if (!usedOsrm) {
+          orderedCandidates.sort((a, b) {
+            final distanceA = _haversineKm(
+              lat1: driverLat,
+              lng1: driverLng,
+              lat2: a.lat,
+              lng2: a.lng,
+            );
+            final distanceB = _haversineKm(
+              lat1: driverLat,
+              lng1: driverLng,
+              lat2: b.lat,
+              lng2: b.lng,
+            );
+            return distanceA.compareTo(distanceB);
+          });
+        }
       } else {
         // Fallback: sortiranje po imenu putnika ako nema GPS koordinata
-        validData.sort((a, b) {
-          final pa = a['putnik'] as V3Putnik?;
-          final pb = b['putnik'] as V3Putnik?;
-          return (pa?.imePrezime ?? '').compareTo(pb?.imePrezime ?? '');
+        orderedCandidates.sort((a, b) {
+          return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
         });
       }
 
       // 4. Kombinuj preskočene (na vrhu) + optimizovane
-      final finalData = [...skippedData, ...validData];
+      final finalData = <Map<String, dynamic>>[
+        ...skippedData.map((item) => {
+              'putnik': item['putnik'],
+              'entry': item['entry'],
+              'route_order': null,
+            }),
+      ];
 
-      final message = driverLat != null && driverLng != null
-          ? 'Ruta GPS optimizovana: $fromCity ➔ ${validData.length} putnika ➔ $targetCity'
-          : 'Ruta sortirana: $fromCity ➔ ${validData.length} putnika ➔ $targetCity';
+      for (var index = 0; index < orderedCandidates.length; index++) {
+        final candidate = orderedCandidates[index];
+        finalData.add({
+          'putnik': candidate.item['putnik'],
+          'entry': candidate.item['entry'],
+          'route_order': index + 1,
+        });
+      }
+
+      final usedGeoText = geocodedCount > 0 ? ' • Photon: +$geocodedCount adresa' : '';
+      final modeText =
+          usedOsrm ? 'OSRM optimizovana' : (driverLat != null && driverLng != null ? 'GPS sortirana' : 'Sortirana');
+      final message = '$modeText: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity$usedGeoText';
 
       return V3NavigationResult(
         success: true,
@@ -128,4 +241,18 @@ class V3SmartNavigationService {
         V3AdresaService.getAdresaById(p.adresaVsId2)?.naziv ??
         '';
   }
+}
+
+class _V3RouteCandidate {
+  final Map<String, dynamic> item;
+  final V3Putnik putnik;
+  final double lat;
+  final double lng;
+
+  const _V3RouteCandidate({
+    required this.item,
+    required this.putnik,
+    required this.lat,
+    required this.lng,
+  });
 }

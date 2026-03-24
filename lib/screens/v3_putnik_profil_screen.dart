@@ -137,8 +137,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'VS').where((z) => z.putnikId == putnikId).toList();
       final infos = <_ZahtevInfo>[];
       for (final z in bcList) {
-        // FILTER: Skip otkazane i odbijene zahteve - ne prikazuj ih u rasporedu
-        if (z.status == 'otkazano' || z.status == 'odbijeno') continue;
+        // FILTER: Skip samo odbijene zahteve; otkazano ostaje vidljivo kao crvena ćelija
+        if (z.status == 'odbijeno') continue;
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
         final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
           (e) =>
@@ -159,8 +159,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             operativnaId: opId));
       }
       for (final z in vsList) {
-        // FILTER: Skip otkazane i odbijene zahteve - ne prikazuj ih u rasporedu
-        if (z.status == 'otkazano' || z.status == 'odbijeno') continue;
+        // FILTER: Skip samo odbijene zahteve; otkazano ostaje vidljivo kao crvena ćelija
+        if (z.status == 'odbijeno') continue;
         final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
         final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
           (e) =>

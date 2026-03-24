@@ -76,4 +76,20 @@ class V3AdresaService {
       rethrow;
     }
   }
+
+  static Future<void> updateAdresaCoordinates({
+    required String id,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      await supabase.from('v3_adrese').update({
+        'gps_lat': lat,
+        'gps_lng': lng,
+      }).eq('id', id);
+    } catch (e) {
+      debugPrint('[V3AdresaService] updateAdresaCoordinates error: $e');
+      rethrow;
+    }
+  }
 }

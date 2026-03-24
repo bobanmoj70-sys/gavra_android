@@ -138,7 +138,7 @@ BEGIN
     IF putnik_token_count > 0 THEN
       v_title := '🚗 Vozač je krenuo';
       v_body := format(
-        'Termin %s %s je aktivan. ETA tracking je uključen uživo.',
+        'Termin %s %s je aktivan. Kliknite za praćenje uživo.',
         to_char(term_rec.vreme, 'HH24:MI'),
         term_rec.grad
       );
