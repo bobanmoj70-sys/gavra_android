@@ -100,6 +100,66 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         ..._vsVremena.map((v) => '$v VS'),
       ];
 
+  String _normV(String? v) {
+    if (v == null || v.isEmpty) return '';
+    final parts = v.split(':');
+    if (parts.length >= 2) {
+      final hour = int.tryParse(parts[0]) ?? 0;
+      final minute = int.tryParse(parts[1]) ?? 0;
+      return V3DanHelper.formatVreme(hour, minute);
+    }
+    return v;
+  }
+
+  bool _isGpsRowEligible(Map<String, dynamic> row) {
+    final status = ((row['status_final'] as String?) ?? (row['status'] as String?) ?? '').toLowerCase();
+    return row['aktivno'] != false && status != 'odbijeno' && status != 'otkazano';
+  }
+
+  String _terminKeyFromGpsRow(Map<String, dynamic> row) {
+    final datum = V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
+    final grad = row['grad']?.toString().toUpperCase() ?? '';
+    final vreme = _normV(row['vreme']?.toString());
+    return '$datum|$grad|$vreme';
+  }
+
+  Map<String, String> _buildInheritedVozacByTermin() {
+    final rm = V3MasterRealtimeManager.instance;
+    final inherited = <String, String>{};
+    final passengerVozacIdsByTermin = <String, Set<String>>{};
+
+    for (final row in rm.v3GpsRasporedCache.values) {
+      if (!_isGpsRowEligible(row)) continue;
+      final vozacId = (row['vozac_id']?.toString() ?? '').trim();
+      if (vozacId.isEmpty) continue;
+
+      final key = _terminKeyFromGpsRow(row);
+      final isMasterTerminRow = row['putnik_id'] == null;
+
+      if (isMasterTerminRow) {
+        inherited.putIfAbsent(key, () => vozacId);
+        continue;
+      }
+
+      passengerVozacIdsByTermin.putIfAbsent(key, () => <String>{}).add(vozacId);
+    }
+
+    for (final entry in passengerVozacIdsByTermin.entries) {
+      if (inherited.containsKey(entry.key)) continue;
+      if (entry.value.length == 1) {
+        inherited[entry.key] = entry.value.first;
+      }
+    }
+
+    return inherited;
+  }
+
+  String _effectiveVozacIdForRow(Map<String, dynamic> row, Map<String, String> inheritedVozacByTermin) {
+    final explicit = (row['vozac_id']?.toString() ?? '').trim();
+    if (explicit.isNotEmpty) return explicit;
+    return inheritedVozacByTermin[_terminKeyFromGpsRow(row)] ?? '';
+  }
+
   bool _isExcludedFromOptimization(_PutnikEntry entry) {
     final status = (entry.entry?.statusFinal ?? '').trim().toLowerCase();
     final isPokupljen = entry.entry?.pokupljen ?? false;
@@ -185,14 +245,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (vozac == null) return;
     final rm = V3MasterRealtimeManager.instance;
 
-    // Pomoćna funkcija za normalizaciju vremena (HH:mm)
-    String normalizeV(String? v) {
-      if (v == null || v.isEmpty) return '';
-      final parts = v.split(':');
-      if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
-      return v;
-    }
-
     String operativnaVreme(Map<String, dynamic> row) {
       return ((row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?) ?? '');
     }
@@ -201,52 +253,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     String rowDatum(Map<String, dynamic> row) => V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
 
-    String rowVreme(Map<String, dynamic> row) => normalizeV(row['vreme']?.toString());
-
-    String rowStatus(Map<String, dynamic> row) =>
-        ((row['status_final'] as String?) ?? (row['status'] as String?) ?? '').toLowerCase();
-
-    bool isRowEligible(Map<String, dynamic> row) {
-      final status = rowStatus(row);
-      return row['aktivno'] != false && status != 'odbijeno' && status != 'otkazano';
-    }
-
-    String terminKeyFromRow(Map<String, dynamic> row) => '${rowDatum(row)}|${rowGrad(row)}|${rowVreme(row)}';
-
-    // Ako je u terminu jedan jedini vozač na postojećim redovima,
-    // taj vozač se tretira kao vozač termina i za redove bez eksplicitnog vozac_id.
-    final vozacIdsByTermin = <String, Set<String>>{};
-    for (final row in rm.v3GpsRasporedCache.values) {
-      if (!isRowEligible(row)) continue;
-      final key = terminKeyFromRow(row);
-      final vozacId = (row['vozac_id']?.toString() ?? '').trim();
-      if (vozacId.isEmpty) continue;
-      vozacIdsByTermin.putIfAbsent(key, () => <String>{}).add(vozacId);
-    }
-
-    final inheritedVozacByTermin = <String, String>{};
-    for (final entry in vozacIdsByTermin.entries) {
-      if (entry.value.length == 1) {
-        inheritedVozacByTermin[entry.key] = entry.value.first;
-      }
-    }
-
-    String effectiveVozacId(Map<String, dynamic> row) {
-      final explicit = (row['vozac_id']?.toString() ?? '').trim();
-      if (explicit.isNotEmpty) return explicit;
-      return inheritedVozacByTermin[terminKeyFromRow(row)] ?? '';
-    }
-
-    final selectedVNorm = normalizeV(_selectedVreme);
+    final inheritedVozacByTermin = _buildInheritedVozacByTermin();
+    final selectedVNorm = _normV(_selectedVreme);
 
     // 1. Moji termini za ovaj datum (iz v3_gps_raspored)
     _mojiTermini = rm.v3GpsRasporedCache.values
-        .where((r) => effectiveVozacId(r) == vozac.id && rowDatum(r) == _selectedDatumIso && isRowEligible(r))
+        .where(
+          (r) =>
+              _effectiveVozacIdForRow(r, inheritedVozacByTermin) == vozac.id &&
+              rowDatum(r) == _selectedDatumIso &&
+              _isGpsRowEligible(r),
+        )
         .toList();
 
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
-    final terminPostoji = _mojiTermini.any((t) =>
-        t['grad']?.toString().toUpperCase() == _selectedGrad && normalizeV(t['vreme']?.toString()) == selectedVNorm);
+    final terminPostoji = _mojiTermini.any(
+        (t) => t['grad']?.toString().toUpperCase() == _selectedGrad && _normV(t['vreme']?.toString()) == selectedVNorm);
 
     if (!terminPostoji) {
       final staroVreme = _selectedVreme;
@@ -268,20 +290,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     // Putnici iz v3_gps_raspored za ovog vozača i ovaj termin
     final terminPutnici = rm.v3GpsRasporedCache.values.where((r) =>
-        effectiveVozacId(r) == vozac.id &&
+        _effectiveVozacIdForRow(r, inheritedVozacByTermin) == vozac.id &&
         rowDatum(r) == _selectedDatumIso &&
         rowGrad(r) == _selectedGrad &&
-        rowVreme(r) == selectedVNorm &&
+        _normV(r['vreme']?.toString()) == selectedVNorm &&
         r['putnik_id'] != null &&
-        r['aktivno'] != false);
+        _isGpsRowEligible(r));
 
     // Putnici individualno dodijeljeni OVOM vozaču (v3_gps_raspored) - override
     final individualniOvajVozac = rm.v3GpsRasporedCache.values.where((r) =>
         (r['vozac_id']?.toString() ?? '').trim() == vozac.id &&
         rowDatum(r) == _selectedDatumIso &&
         rowGrad(r) == _selectedGrad &&
-        rowVreme(r) == selectedVNorm &&
-        r['aktivno'] != false);
+        _normV(r['vreme']?.toString()) == selectedVNorm &&
+        _isGpsRowEligible(r));
 
     // Unija putnik_id-eva (prioritet: individualni override > termin)
     final individualniSet = individualniOvajVozac.map((r) => r['putnik_id']?.toString()).whereType<String>().toSet();
@@ -326,7 +348,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         if (r['putnik_id']?.toString() != putnikId) continue;
         if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
         if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
-        if (normalizeV(operativnaVreme(r)) == selectedVNorm) {
+        if (_normV(operativnaVreme(r)) == selectedVNorm) {
           matchedEntryData = r;
           break;
         }
@@ -417,6 +439,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (parsedDayDate == null) return;
     final selectedDayDate = V3DanHelper.dateOnly(parsedDayDate);
     final rm = V3MasterRealtimeManager.instance;
+    final inheritedVozacByTermin = _buildInheritedVozacByTermin();
 
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
@@ -431,9 +454,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     final dayTerms = rm.v3GpsRasporedCache.values
         .where((row) =>
-            row['vozac_id']?.toString() == vozac.id &&
+            _effectiveVozacIdForRow(row, inheritedVozacByTermin) == vozac.id &&
             V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == dayIso &&
-            row['aktivno'] != false)
+            _isGpsRowEligible(row))
         .toList()
       ..sort((a, b) {
         final ga = a['grad']?.toString().toUpperCase() ?? '';
@@ -589,30 +612,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozac = V3VozacService.currentVozac;
     if (vozac == null) return 0;
 
-    String normV(String? v) {
-      if (v == null || v.isEmpty) return '';
-      final p = v.split(':');
-      if (p.length >= 2) {
-        final hour = int.tryParse(p[0]) ?? 0;
-        final minute = int.tryParse(p[1]) ?? 0;
-        return V3DanHelper.formatVreme(hour, minute);
-      }
-      return v;
-    }
-
-    final vremeNorm = normV(vreme);
+    final inheritedVozacByTermin = _buildInheritedVozacByTermin();
+    final vremeNorm = _normV(vreme);
     final gradUp = grad.toUpperCase();
 
-    // ISPRAVNO: broji putnice iz v3_gps_raspored gde je ovaj vozač dodeljen
+    int parseBrojMesta(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 1;
+    }
+
+    // Broji sva mesta za redove koji efektivno pripadaju ovom vozaču
     return rm.v3GpsRasporedCache.values
         .where((r) =>
-            r['vozac_id']?.toString() == vozac.id &&
+            _effectiveVozacIdForRow(r, inheritedVozacByTermin) == vozac.id &&
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             r['grad']?.toString().toUpperCase() == gradUp &&
-            normV(r['vreme']?.toString()) == vremeNorm &&
+            _normV(r['vreme']?.toString()) == vremeNorm &&
             r['putnik_id'] != null &&
-            r['aktivno'] != false)
-        .length;
+            _isGpsRowEligible(r))
+        .fold<int>(0, (sum, r) => sum + parseBrojMesta(r['broj_mesta']));
   }
 
   Future<void> _toggleTracking() async {
@@ -870,6 +889,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     // Termini za BottomNavBar — iz v3_gps_raspored
     final vozacId = _efektivniVozac?.id ?? '';
     final rm = V3MasterRealtimeManager.instance;
+    final inheritedVozacByTermin = _buildInheritedVozacByTermin();
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
       final p = v.split(':');
@@ -891,9 +911,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (g == 'VS') vsVremenaSet.add(v);
     }
     for (final r in rm.v3GpsRasporedCache.values) {
-      if (r['vozac_id']?.toString() != vozacId) continue;
+      if (_effectiveVozacIdForRow(r, inheritedVozacByTermin) != vozacId) continue;
       if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
-      if (r['aktivno'] == false) continue;
+      if (!_isGpsRowEligible(r)) continue;
       final g = r['grad']?.toString().toUpperCase() ?? '';
       final v = normV(r['vreme']?.toString());
       if (v.isEmpty) continue;
