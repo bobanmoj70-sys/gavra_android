@@ -46,6 +46,8 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.35.6'
+  PRIVACY_POLICY_URL: 'https://lakisa-code.github.io/gavra_android/privacy-policy.html'
+  ACCOUNT_DELETION_URL: 'https://lakisa-code.github.io/gavra_android/delete-account.html'
 
 jobs:
   build-and-upload:
@@ -69,6 +71,16 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
           commit_message: "docs: sync privacy/delete-account pages [skip ci]"
+
+      - name: Validate policy URLs
+        run: |
+          echo "Checking Privacy Policy URL: $PRIVACY_POLICY_URL"
+          curl -fsSL "$PRIVACY_POLICY_URL" | grep -qi "Politika privatnosti"
+          echo "✅ Privacy Policy URL is reachable"
+
+          echo "Checking Account Deletion URL: $ACCOUNT_DELETION_URL"
+          curl -fsSL "$ACCOUNT_DELETION_URL" | grep -qi "Brisanje naloga"
+          echo "✅ Account Deletion URL is reachable"
 
       - name: Auto-Bump Version
         if: ${{ inputs.bump_version == true && (inputs.version_name == '' || inputs.version_code == '') }}
@@ -289,6 +301,8 @@ jobs:
           echo "**Version:** ${{ steps.version.outputs.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "**Build:** ${{ steps.version.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
           echo "**Track:** Production" >> $GITHUB_STEP_SUMMARY
+          echo "**Privacy Policy:** $PRIVACY_POLICY_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Account Deletion:** $ACCOUNT_DELETION_URL" >> $GITHUB_STEP_SUMMARY
 
   update-supabase:
     name: 📦 Update Supabase versions
