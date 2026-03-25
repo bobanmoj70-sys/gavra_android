@@ -204,7 +204,8 @@ class V3ZahtevService {
           'otkazao_vozac_id': otkazaoVozacId,
         });
         if (operativnaId != null && operativnaId.isNotEmpty) {
-          await query.eq('id', operativnaId);
+          final row = await query.eq('id', operativnaId).select().single();
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
@@ -223,7 +224,8 @@ class V3ZahtevService {
           if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
         });
         if (operativnaId != null && operativnaId.isNotEmpty) {
-          await query2.eq('id', operativnaId);
+          final row2 = await query2.eq('id', operativnaId).select().single();
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row2);
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
@@ -264,15 +266,30 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> updateZeljenoVreme(String id, String novoVreme, {bool? koristiSekundarnu}) async {
+  static Future<void> updateZeljenoVreme(
+    String id,
+    String novoVreme, {
+    bool? koristiSekundarnu,
+    String? updatedBy,
+  }) async {
     try {
-      // Scenario 3: reset na isto stanje kao novi zahtev
-      // dodeljeno_vreme = NULL jer kron mora ponovo da odluci
+      final nowIso = DateTime.now().toIso8601String();
+
+      // Reset na isto stanje kao novi zahtev:
+      // - ide nazad u `obrada`
+      // - resetuje dodeljeno vreme i alternative
+      // - resetuje scheduling metapodatke da dispecer ide od nule
       final updateData = <String, dynamic>{
         'zeljeno_vreme': novoVreme,
         'dodeljeno_vreme': null,
+        'scheduled_at': null,
+        'created_at': nowIso,
         'status': 'obrada',
-        'updated_by': 'putnik:sistem',
+        'alt_vreme_pre': null,
+        'alt_vreme_posle': null,
+        'alt_napomena': null,
+        'aktivno': true,
+        'updated_by': updatedBy ?? 'putnik:sistem',
       };
       if (koristiSekundarnu != null) {
         updateData['koristi_sekundarnu'] = koristiSekundarnu;

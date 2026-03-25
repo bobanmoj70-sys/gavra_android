@@ -81,6 +81,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   static const String _routeOptimizationTimerKey = 'vozac_screen_route_optimization';
   static const String _routeOptimizationDebounceKey = 'vozac_screen_route_optimization_change';
+  int? _lastRealtimeTick;
 
   /// Efektivni vozač
   dynamic get _efektivniVozac => V3VozacService.currentVozac;
@@ -112,7 +113,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   bool _isGpsRowEligible(Map<String, dynamic> row) {
     final status = ((row['status_final'] as String?) ?? (row['status'] as String?) ?? '').toLowerCase();
-    return row['aktivno'] != false && status != 'odbijeno' && status != 'otkazano';
+    return row['aktivno'] != false && status != 'odbijeno';
+  }
+
+  bool _isGpsRowActiveForCount(Map<String, dynamic> row) {
+    final status = ((row['status_final'] as String?) ?? (row['status'] as String?) ?? '').toLowerCase();
+    return _isGpsRowEligible(row) && status != 'otkazano';
   }
 
   String _terminKeyFromGpsRow(Map<String, dynamic> row) {
@@ -168,14 +174,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   List<_PutnikEntry> _sortPutniciForDisplay(List<_PutnikEntry> putnici) {
     final sorted = List<_PutnikEntry>.from(putnici);
     sorted.sort((a, b) {
-      final aExcluded = _isExcludedFromOptimization(a);
-      final bExcluded = _isExcludedFromOptimization(b);
-
-      if (aExcluded != bExcluded) {
-        return aExcluded ? -1 : 1;
+      int sortRank(_PutnikEntry entry) {
+        final status = (entry.entry?.statusFinal ?? '').trim().toLowerCase();
+        if (status == 'otkazano') return 3;
+        if (entry.entry?.pokupljen == true) return 2;
+        return 1;
       }
 
-      if (!aExcluded && _isTracking) {
+      final aRank = sortRank(a);
+      final bRank = sortRank(b);
+
+      if (aRank != bRank) {
+        return aRank.compareTo(bRank);
+      }
+
+      if (aRank == 1 && _isTracking) {
         final aOrder = a.routeOrder ?? 999999;
         final bOrder = b.routeOrder ?? 999999;
         if (aOrder != bOrder) return aOrder.compareTo(bOrder);
@@ -221,17 +234,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         // Realtime manager već loguje detalje; ekran će prikazati šta je dostupno
       }
     }
-
-    V3StreamUtils.subscribe<void>(
-      key: 'vozac_screen_realtime',
-      stream: rm.onChange,
-      onData: (_) {
-        if (mounted) {
-          _rebuild();
-          _scheduleReoptimizationIfNeeded(reason: 'realtime_change');
-        }
-      },
-    );
 
     if (mounted) {
       _rebuild();
@@ -326,15 +328,24 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
 
     final routeOrderByPutnik = <String, int?>{};
+    final entryIdByPutnik = <String, String>{};
     for (final row in terminPutnici) {
       final putnikId = row['putnik_id']?.toString();
       if (putnikId == null || putnikId.isEmpty) continue;
       routeOrderByPutnik[putnikId] ??= extractRouteOrder(row);
+      final entryId = row['id']?.toString();
+      if (entryId != null && entryId.isNotEmpty) {
+        entryIdByPutnik.putIfAbsent(putnikId, () => entryId);
+      }
     }
     for (final row in individualniOvajVozac) {
       final putnikId = row['putnik_id']?.toString();
       if (putnikId == null || putnikId.isEmpty) continue;
       routeOrderByPutnik[putnikId] = extractRouteOrder(row) ?? routeOrderByPutnik[putnikId];
+      final entryId = row['id']?.toString();
+      if (entryId != null && entryId.isNotEmpty) {
+        entryIdByPutnik[putnikId] = entryId;
+      }
     }
 
     // 3. Za svakog putnika izgradimo _PutnikEntry iz operativna_nedelja
@@ -347,13 +358,31 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       // Pronađi entry iz operativna_nedelja za ovog putnika
       V3OperativnaNedeljaEntry? entry;
       Map<String, dynamic>? matchedEntryData;
-      for (final r in rm.operativnaNedeljaCache.values) {
-        if (r['putnik_id']?.toString() != putnikId) continue;
-        if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
-        if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
-        if (_normV(operativnaVreme(r)) == selectedVNorm) {
-          matchedEntryData = r;
-          break;
+      final exactEntryId = entryIdByPutnik[putnikId];
+      if (exactEntryId != null && exactEntryId.isNotEmpty) {
+        matchedEntryData = rm.operativnaNedeljaCache[exactEntryId];
+      }
+
+      if (matchedEntryData == null) {
+        DateTime? bestUpdatedAt;
+        for (final r in rm.operativnaNedeljaCache.values) {
+          if (r['aktivno'] != true) continue;
+          if (r['putnik_id']?.toString() != putnikId) continue;
+          if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
+          if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
+          if (_normV(operativnaVreme(r)) != selectedVNorm) continue;
+
+          final updatedAtRaw = r['updated_at']?.toString();
+          final updatedAt = updatedAtRaw != null ? DateTime.tryParse(updatedAtRaw) : null;
+          if (matchedEntryData == null) {
+            matchedEntryData = r;
+            bestUpdatedAt = updatedAt;
+            continue;
+          }
+          if (updatedAt != null && (bestUpdatedAt == null || updatedAt.isAfter(bestUpdatedAt))) {
+            matchedEntryData = r;
+            bestUpdatedAt = updatedAt;
+          }
         }
       }
 
@@ -633,7 +662,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             r['grad']?.toString().toUpperCase() == gradUp &&
             _normV(r['vreme']?.toString()) == vremeNorm &&
             r['putnik_id'] != null &&
-            _isGpsRowEligible(r))
+            _isGpsRowActiveForCount(r))
         .fold<int>(0, (sum, r) => sum + parseBrojMesta(r['broj_mesta']));
   }
 
@@ -935,184 +964,202 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final aktivnaSedmica =
         'Aktivna sedmica: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: V3ContainerUtils.backgroundContainer(
-        gradient: V2ThemeManager().currentGradient,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: PreferredSize(
-            preferredSize: Size.fromHeight(appBarHeight),
-            child: V3ContainerUtils.styledContainer(
-              backgroundColor: Theme.of(context).glassContainer,
-              border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(25),
-                bottomRight: Radius.circular(25),
-              ),
-              padding: EdgeInsets.zero,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        aktivnaSedmica,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 3),
-                      // ── Red 1: Datum | Dan (V2 digitalni prikaz) ──
-                      _buildDigitalDateDisplay(context, vozac),
-                      const SizedBox(height: 6),
-                      // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
-                      Row(
+    return StreamBuilder<int>(
+      stream: rm.v3StreamFromCache<int>(
+        tables: const ['v3_operativna_nedelja', 'v3_putnici', 'v3_vozaci', 'v3_adrese', 'v3_kapacitet_slots'],
+        build: () => DateTime.now().microsecondsSinceEpoch,
+      ),
+      builder: (context, snapshot) {
+        final tick = snapshot.data;
+        if (tick != null && tick != _lastRealtimeTick) {
+          _lastRealtimeTick = tick;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _rebuild();
+            _scheduleReoptimizationIfNeeded(reason: 'realtime_stream_tick');
+          });
+        }
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light,
+          child: V3ContainerUtils.backgroundContainer(
+            gradient: V2ThemeManager().currentGradient,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              appBar: PreferredSize(
+                preferredSize: Size.fromHeight(appBarHeight),
+                child: V3ContainerUtils.styledContainer(
+                  backgroundColor: Theme.of(context).glassContainer,
+                  border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(25),
+                    bottomRight: Radius.circular(25),
+                  ),
+                  padding: EdgeInsets.zero,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // START / STOP
-                          Expanded(
-                            flex: 2,
-                            child: _buildAppBarBtn(
-                              context: context,
-                              label: _isTracking ? 'STOP' : 'START',
-                              color: _isTracking ? Colors.red : Colors.green,
-                              height: appBarButtonHeight,
-                              onTap: _toggleTracking,
+                          Text(
+                            aktivnaSedmica,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(width: 4),
-                          // MAPA
-                          Expanded(
-                            flex: 2,
-                            child: _buildAppBarBtn(
-                              context: context,
-                              label: 'MAPA',
-                              color: Colors.blue,
-                              height: appBarButtonHeight,
-                              onTap: _openMapa,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          // Dan picker
-                          Expanded(
-                            flex: 2,
-                            child: _buildDanPickerBtn(context, height: appBarButtonHeight),
-                          ),
-                          const SizedBox(width: 4),
-                          // ⚙️ Popup meni — šifra + logout
-                          PopupMenuButton<String>(
-                            onSelected: (val) async {
-                              if (val == 'tema') {
-                                await V2ThemeManager().nextTheme();
-                                V3StateUtils.safeSetState(this, () => setState(() {}));
-                                if (!mounted) return;
-                                V3AppSnackBar.info(context, '🎨 Tema promenjena');
-                              } else if (val == 'sifra') {
-                                if (!mounted || vozac == null) return;
-                                V3NavigationUtils.pushScreen<void>(
-                                  context,
-                                  V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
-                                );
-                              } else if (val == 'logout') {
-                                _logout();
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'tema',
-                                child: Row(children: [
-                                  Icon(Icons.palette, color: Colors.purpleAccent),
-                                  SizedBox(width: 8),
-                                  Text('Promeni temu'),
-                                ]),
+                          const SizedBox(height: 3),
+                          // ── Red 1: Datum | Dan (V2 digitalni prikaz) ──
+                          _buildDigitalDateDisplay(context, vozac),
+                          const SizedBox(height: 6),
+                          // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
+                          Row(
+                            children: [
+                              // START / STOP
+                              Expanded(
+                                flex: 2,
+                                child: _buildAppBarBtn(
+                                  context: context,
+                                  label: _isTracking ? 'STOP' : 'START',
+                                  color: _isTracking ? Colors.red : Colors.green,
+                                  height: appBarButtonHeight,
+                                  onTap: _toggleTracking,
+                                ),
                               ),
-                              PopupMenuDivider(),
-                              PopupMenuItem(
-                                value: 'sifra',
-                                child: Row(children: [
-                                  Icon(Icons.lock_reset, color: Colors.blueAccent),
-                                  SizedBox(width: 8),
-                                  Text('Promeni šifru'),
-                                ]),
+                              const SizedBox(width: 4),
+                              // MAPA
+                              Expanded(
+                                flex: 2,
+                                child: _buildAppBarBtn(
+                                  context: context,
+                                  label: 'MAPA',
+                                  color: Colors.blue,
+                                  height: appBarButtonHeight,
+                                  onTap: _openMapa,
+                                ),
                               ),
-                              PopupMenuItem(
-                                value: 'logout',
-                                child: Row(children: [
-                                  Icon(Icons.logout, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Logout'),
-                                ]),
+                              const SizedBox(width: 4),
+                              // Dan picker
+                              Expanded(
+                                flex: 2,
+                                child: _buildDanPickerBtn(context, height: appBarButtonHeight),
+                              ),
+                              const SizedBox(width: 4),
+                              // ⚙️ Popup meni — šifra + logout
+                              PopupMenuButton<String>(
+                                onSelected: (val) async {
+                                  if (val == 'tema') {
+                                    await V2ThemeManager().nextTheme();
+                                    V3StateUtils.safeSetState(this, () => setState(() {}));
+                                    if (!mounted) return;
+                                    V3AppSnackBar.info(context, '🎨 Tema promenjena');
+                                  } else if (val == 'sifra') {
+                                    if (!mounted || vozac == null) return;
+                                    V3NavigationUtils.pushScreen<void>(
+                                      context,
+                                      V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
+                                    );
+                                  } else if (val == 'logout') {
+                                    _logout();
+                                  }
+                                },
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'tema',
+                                    child: Row(children: [
+                                      Icon(Icons.palette, color: Colors.purpleAccent),
+                                      SizedBox(width: 8),
+                                      Text('Promeni temu'),
+                                    ]),
+                                  ),
+                                  PopupMenuDivider(),
+                                  PopupMenuItem(
+                                    value: 'sifra',
+                                    child: Row(children: [
+                                      Icon(Icons.lock_reset, color: Colors.blueAccent),
+                                      SizedBox(width: 8),
+                                      Text('Promeni šifru'),
+                                    ]),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'logout',
+                                    child: Row(children: [
+                                      Icon(Icons.logout, color: Colors.red),
+                                      SizedBox(width: 8),
+                                      Text('Logout'),
+                                    ]),
+                                  ),
+                                ],
+                                padding: EdgeInsets.zero,
+                                child: V3ContainerUtils.iconContainer(
+                                  width: V3ContainerUtils.responsiveHeight(context, 30),
+                                  height: V3ContainerUtils.responsiveHeight(context, 30),
+                                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                  borderRadiusGeometry: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                                  alignment: Alignment.center,
+                                  child: const Icon(Icons.more_vert, color: Colors.white, size: 16),
+                                ),
                               ),
                             ],
-                            padding: EdgeInsets.zero,
-                            child: V3ContainerUtils.iconContainer(
-                              width: V3ContainerUtils.responsiveHeight(context, 30),
-                              height: V3ContainerUtils.responsiveHeight(context, 30),
-                              backgroundColor: Colors.white.withValues(alpha: 0.1),
-                              borderRadiusGeometry: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                              alignment: Alignment.center,
-                              child: const Icon(Icons.more_vert, color: Colors.white, size: 16),
-                            ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
+              bottomNavigationBar: ValueListenableBuilder<String>(
+                valueListenable: navBarTypeNotifier,
+                builder: (context, navType, _) {
+                  int? getKapacitet(String grad, String vreme) {
+                    final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+                    return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
+                  }
+
+                  if (navType == 'zimski') {
+                    return V3BottomNavBarZimski(
+                      sviPolasci: _sviPolasci,
+                      selectedGrad: _selectedGrad,
+                      selectedVreme: _selectedVreme,
+                      onPolazakChanged: _onPolazakChanged,
+                      getPutnikCount: _getPutnikCount,
+                      getKapacitet: getKapacitet,
+                      bcVremena: bcVremenaToShow,
+                      vsVremena: vsVremenaToShow,
+                    );
+                  } else if (navType == 'praznici') {
+                    return V3BottomNavBarPraznici(
+                      sviPolasci: _sviPolasci,
+                      selectedGrad: _selectedGrad,
+                      selectedVreme: _selectedVreme,
+                      onPolazakChanged: _onPolazakChanged,
+                      getPutnikCount: _getPutnikCount,
+                      getKapacitet: getKapacitet,
+                      bcVremena: bcVremenaToShow,
+                      vsVremena: vsVremenaToShow,
+                    );
+                  }
+                  return V3BottomNavBarLetnji(
+                    sviPolasci: _sviPolasci,
+                    selectedGrad: _selectedGrad,
+                    selectedVreme: _selectedVreme,
+                    onPolazakChanged: _onPolazakChanged,
+                    getPutnikCount: _getPutnikCount,
+                    getKapacitet: getKapacitet,
+                    bcVremena: bcVremenaToShow,
+                    vsVremena: vsVremenaToShow,
+                  );
+                },
+              ),
+              body: _buildBody(),
             ),
           ),
-          bottomNavigationBar: ValueListenableBuilder<String>(
-            valueListenable: navBarTypeNotifier,
-            builder: (context, navType, _) {
-              int? getKapacitet(String grad, String vreme) {
-                final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
-                return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
-              }
-
-              if (navType == 'zimski') {
-                return V3BottomNavBarZimski(
-                  sviPolasci: _sviPolasci,
-                  selectedGrad: _selectedGrad,
-                  selectedVreme: _selectedVreme,
-                  onPolazakChanged: _onPolazakChanged,
-                  getPutnikCount: _getPutnikCount,
-                  getKapacitet: getKapacitet,
-                  bcVremena: bcVremenaToShow,
-                  vsVremena: vsVremenaToShow,
-                );
-              } else if (navType == 'praznici') {
-                return V3BottomNavBarPraznici(
-                  sviPolasci: _sviPolasci,
-                  selectedGrad: _selectedGrad,
-                  selectedVreme: _selectedVreme,
-                  onPolazakChanged: _onPolazakChanged,
-                  getPutnikCount: _getPutnikCount,
-                  getKapacitet: getKapacitet,
-                  bcVremena: bcVremenaToShow,
-                  vsVremena: vsVremenaToShow,
-                );
-              }
-              return V3BottomNavBarLetnji(
-                sviPolasci: _sviPolasci,
-                selectedGrad: _selectedGrad,
-                selectedVreme: _selectedVreme,
-                onPolazakChanged: _onPolazakChanged,
-                getPutnikCount: _getPutnikCount,
-                getKapacitet: getKapacitet,
-                bcVremena: bcVremenaToShow,
-                vsVremena: vsVremenaToShow,
-              );
-            },
-          ),
-          body: _buildBody(),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1156,6 +1203,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                       putnik: pz.putnik,
                       entry: pz.entry,
                       redniBroj: redniBroj,
+                      onChanged: _rebuild,
                       isExcludedFromOptimization: _isExcludedFromOptimization(pz),
                     );
                   },

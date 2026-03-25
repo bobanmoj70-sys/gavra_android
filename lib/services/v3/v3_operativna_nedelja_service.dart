@@ -241,12 +241,18 @@ class V3OperativnaNedeljaService {
     String? naplatioVozacId,
   }) async {
     try {
-      await supabase.from('v3_operativna_nedelja').update({
-        'naplata_status': 'placeno',
-        'iznos_naplacen': iznos,
-        'vreme_placen': DateTime.now().toIso8601String(),
-        if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
-      }).eq('id', id);
+      final row = await supabase
+          .from('v3_operativna_nedelja')
+          .update({
+            'naplata_status': 'placeno',
+            'iznos_naplacen': iznos,
+            'vreme_placen': DateTime.now().toIso8601String(),
+            if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
+          })
+          .eq('id', id)
+          .select()
+          .single();
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] updateNaplata error: $e');
       rethrow;
