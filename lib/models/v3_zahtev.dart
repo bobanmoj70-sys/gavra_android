@@ -71,7 +71,7 @@ class V3Zahtev {
       'putnik_id': putnikId.isNotEmpty ? putnikId : null,
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
-      'zeljeno_vreme': zeljenoVreme,
+      'zeljeno_vreme': zeljenoVreme.isEmpty ? null : zeljenoVreme,
       'broj_mesta': brojMesta,
       'status': status,
       'napomena': napomena,
