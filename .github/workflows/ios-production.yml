@@ -7,10 +7,20 @@ on:
         description: 'Release notes (optional)'
         required: false
         default: ''
+      auto_submit:
+        description: 'Auto-submit to App Review?'
+        required: false
+        default: true
+        type: boolean
   workflow_call:
     inputs:
       bump_version:
         description: 'Auto-bump version in pubspec.yaml?'
+        required: false
+        default: true
+        type: boolean
+      auto_submit:
+        description: 'Auto-submit to App Review?'
         required: false
         default: true
         type: boolean
@@ -204,6 +214,7 @@ jobs:
           echo "✅ What's New updated"
 
       - name: Auto-submit to App Review
+        if: ${{ inputs.auto_submit == true || inputs.auto_submit == 'true' || inputs.auto_submit == '' }}
         run: |
           echo "🚀 Auto-submit to App Review started..."
           MAX_RETRIES=12
@@ -243,5 +254,5 @@ jobs:
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
-          echo "review: auto-submit enabled" >> $GITHUB_STEP_SUMMARY
+          echo "review auto-submit input: ${{ inputs.auto_submit }}" >> $GITHUB_STEP_SUMMARY
 
