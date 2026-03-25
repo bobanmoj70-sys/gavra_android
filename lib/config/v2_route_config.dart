@@ -22,6 +22,7 @@ class V2RouteConfig {
     '06:00',
     '07:00',
     '08:00',
+    '09:00',
     '10:00',
     '11:00',
     '12:00',
@@ -29,7 +30,6 @@ class V2RouteConfig {
     '14:00',
     '15:30',
     '17:00',
-    '19:00',
   ];
 
   // 🏙️ BELA CRKVA - Letnji raspored (april-septembar)
