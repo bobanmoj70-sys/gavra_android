@@ -38,6 +38,24 @@ bool get isSupabaseReady {
 /// 'praznici' = praznični raspored
 final ValueNotifier<String> navBarTypeNotifier = ValueNotifier<String>('');
 
+/// RASPORED NOTIFIER - vremena polazaka iz baze (v3_app_settings)
+/// Ključevi: 'bc_zimski', 'vs_zimski', 'bc_letnji', 'vs_letnji', 'bc_praznici', 'vs_praznici'
+/// Puni se pri startu i ažurira realtime kad admin promeni rasporede u bazi
+final ValueNotifier<Map<String, List<String>>> rasporedNotifier = ValueNotifier<Map<String, List<String>>>({
+  'bc_zimski': ['05:00', '06:00', '07:00', '08:00', '09:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
+  'vs_zimski': ['06:00', '07:00', '08:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:30', '17:00', '19:00'],
+  'bc_letnji': ['05:00', '06:00', '07:00', '08:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
+  'vs_letnji': ['06:00', '07:00', '08:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
+  'bc_praznici': ['05:00', '06:00', '12:00', '13:00', '15:00'],
+  'vs_praznici': ['06:00', '07:00', '13:00', '14:00', '15:30'],
+});
+
+/// Helper - vraća listu polazaka za grad i sezonu iz rasporedNotifier
+List<String> getRasporedVremena(String grad, String sezona) {
+  final key = '${grad.toLowerCase()}_${sezona.toLowerCase()}';
+  return rasporedNotifier.value[key] ?? [];
+}
+
 /// ZIMSKI MOD - Proverava da li je zimski red voznje aktivan SADA
 bool get isWinter => navBarTypeNotifier.value == 'zimski';
 

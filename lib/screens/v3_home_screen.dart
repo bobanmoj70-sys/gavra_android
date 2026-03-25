@@ -2,7 +2,6 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../config/v3_route_config.dart';
 import '../globals.dart';
 import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
@@ -51,9 +50,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici.
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
 
-  // Dinamična vremena prema tipu nav bara
-  List<String> get _bcVremena => V3RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
-  List<String> get _vsVremena => V3RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
+  // Dinamična vremena prema tipu nav bara (iz baze)
+  List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value);
+  List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value);
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),

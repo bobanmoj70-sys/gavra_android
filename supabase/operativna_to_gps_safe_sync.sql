@@ -1,6 +1,32 @@
--- Sync odobrenih redova iz v3_operativna_nedelja u v3_gps_raspored
--- SAFE MODE: dodela vozača samo kada je za slot (datum+grad+vreme)
--- jednoznačno određen tačno jedan vozac_id.
+-- =====================================================
+-- [ARHIVA - VIŠE SE NE KORISTI]
+-- =====================================================
+-- Ovaj fajl je bio zadužen za sync iz v3_operativna_nedelja u v3_gps_raspored.
+--
+-- MIGRACIJA ZAVRŠENA:
+--   - Tabela v3_gps_raspored je uklonjena iz baze
+--   - Trigger fn_v3_sync_operativna_to_gps_raspored je uklonjen
+--   - Trigger tr_v3_sync_operativna_to_gps_raspored je uklonjen
+--   - Sve GPS kolone su premeštene direktno u v3_operativna_nedelja
+--     (vozac_id, nav_bar_type, pickup_lat/lng, polazak_vreme,
+--      activation_time, gps_status, notification_sent, route_order, estimated_pickup_time)
+--
+-- v3_operativna_nedelja je sada jedini izvor istine za GPS podatke.
+-- GPS cache (v3GpsRasporedCache) u Flutter appu se gradi lokalno
+-- iz v3_operativna_nedelja WHERE vozac_id IS NOT NULL.
+--
+-- Za SQL funkcije koje šalju push notifikacije videti:
+--   supabase/gps_raspored_notifications_cron.sql
+-- Za optimizaciju rute videti:
+--   supabase/gps_route_optimization.sql
+-- =====================================================
+
+-- Skript za uklanjanje (izvršiti jednom ako već nije):
+-- DROP TRIGGER IF EXISTS tr_v3_sync_operativna_to_gps_raspored ON public.v3_operativna_nedelja;
+-- DROP FUNCTION IF EXISTS public.fn_v3_sync_operativna_to_gps_raspored();
+-- DROP TRIGGER IF EXISTS tr_v3_gps_raspored_populate_coordinates ON public.v3_gps_raspored;
+-- DROP FUNCTION IF EXISTS public.fn_v3_gps_raspored_populate_coordinates();
+-- DROP TABLE IF EXISTS public.v3_gps_raspored;
 
 -- 1) Jednokratni backfill
 with slot_unique as (

@@ -47,6 +47,34 @@ class V3MasterRealtimeManager {
     }
   }
 
+  /// Primenjuje vrednosti iz v3_app_settings na globalne notifiere
+  void _applyAppSettings(Map<String, dynamic> row) {
+    // nav_bar_type
+    final navType = row['nav_bar_type'] as String?;
+    if (navType != null && ['zimski', 'letnji', 'praznici'].contains(navType)) {
+      navBarTypeNotifier.value = navType;
+    }
+
+    // rasporedi polazaka
+    List<String> _toList(dynamic val) {
+      if (val == null) return [];
+      if (val is List) return val.map((e) => e.toString()).toList();
+      return [];
+    }
+
+    final updated = Map<String, List<String>>.from(rasporedNotifier.value);
+    bool changed = false;
+
+    for (final key in ['bc_zimski', 'vs_zimski', 'bc_letnji', 'vs_letnji', 'bc_praznici', 'vs_praznici']) {
+      if (row.containsKey(key)) {
+        updated[key] = _toList(row[key]);
+        changed = true;
+      }
+    }
+
+    if (changed) rasporedNotifier.value = updated;
+  }
+
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
   final StreamController<Set<String>> _tableChangeController = StreamController<Set<String>>.broadcast();
@@ -107,6 +135,9 @@ class V3MasterRealtimeManager {
       _fillCache(kapacitetSlotsCache, results[11] as List);
       _fillCache(appSettingsCache, results[12] as List);
       _rebuildGpsCacheFromOperativna();
+      // Primeni app_settings na notifiere odmah pri inicijalizaciji
+      final globalSettings = appSettingsCache['global'];
+      if (globalSettings != null) _applyAppSettings(globalSettings);
 
       await _setupRealtime();
       _isInitialized = true;
@@ -181,6 +212,9 @@ class V3MasterRealtimeManager {
         if (table == 'v3_operativna_nedelja') {
           _rebuildGpsCacheFromOperativna();
         }
+        if (table == 'v3_app_settings' && id == 'global') {
+          _applyAppSettings(newRecord);
+        }
         _changeController.add(null);
         _tableChangeController.add({table});
       },
@@ -246,9 +280,6 @@ class V3MasterRealtimeManager {
       case 'v3_kapacitet_slots':
         kapacitetSlotsCache[id] = row;
         break;
-      case 'v3_gps_raspored':
-        v3GpsRasporedCache[id] = row;
-        break;
       case 'v3_pin_zahtevi':
         if (row['status'] == 'ceka') {
           pinZahteviCache[id] = row;
@@ -262,13 +293,14 @@ class V3MasterRealtimeManager {
     _tableChangeController.add({table});
   }
 
-  /// Osvži v3_gps_raspored cache nakon izmena
+  /// Osvježi v3GpsRasporedCache - gradi se lokalno iz v3_operativna_nedelja (WHERE vozac_id IS NOT NULL)
   Future<void> refreshV3GpsRaspored() async {
     try {
       _rebuildGpsCacheFromOperativna();
       _changeController.add(null);
-      _tableChangeController.add({'v3_operativna_nedelja', 'v3_gps_raspored'});
-      debugPrint('[V3MasterRealtimeManager] v3_gps_raspored cache refreshed: ${v3GpsRasporedCache.length} records');
+      _tableChangeController.add({'v3_operativna_nedelja'});
+      debugPrint(
+          '[V3MasterRealtimeManager] v3GpsRasporedCache rebuilt: ${v3GpsRasporedCache.length} records from operativna_nedelja');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] Error refreshing v3_gps_raspored: $e');
     }
@@ -310,6 +342,7 @@ class V3MasterRealtimeManager {
       case 'v3_app_settings':
         return appSettingsCache;
       case 'v3_gps_raspored':
+        // v3_gps_raspored tabela ne postoji - cache se gradi lokalno iz v3_operativna_nedelja
         return v3GpsRasporedCache;
       default:
         return {};
