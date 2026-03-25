@@ -55,6 +55,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
 
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+      - name: Create GoogleService-Info.plist
+        run: echo "${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}" > ios/Runner/GoogleService-Info.plist
+
       - name: Prepare secrets
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/gavra-release-key-production.keystore
