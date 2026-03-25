@@ -3,62 +3,17 @@ name: 🍎 iOS Production Release
 on:
   workflow_dispatch:
     inputs:
-      bump_version:
-        description: 'Auto-bump version in pubspec.yaml?'
-        required: false
-        default: true
-        type: boolean
-      version_name:
-        description: 'Force version name (e.g. 6.0.120)'
-        required: false
-        default: ''
-        type: string
-      version_code:
-        description: 'Force version code (e.g. 120)'
-        required: false
-        default: ''
-        type: string
       release_notes:
         description: 'Release notes (optional)'
         required: false
         default: ''
-        type: string
-      support_url:
-        description: 'Support URL (default: GitHub Pages)'
-        required: false
-        default: 'https://lakisa-code.github.io/gavra_android/'
-        type: string
   workflow_call:
     inputs:
-      git_ref:
-        description: 'Git ref/sha to checkout (optional)'
-        required: false
-        type: string
       bump_version:
         description: 'Auto-bump version in pubspec.yaml?'
         required: false
         default: true
         type: boolean
-      version_name:
-        description: 'Force version name (e.g. 6.0.120)'
-        required: false
-        default: ''
-        type: string
-      version_code:
-        description: 'Force version code (e.g. 120)'
-        required: false
-        default: ''
-        type: string
-      release_notes:
-        description: 'Release notes (optional)'
-        required: false
-        default: ''
-        type: string
-      support_url:
-        description: 'Support URL (optional)'
-        required: false
-        default: 'https://lakisa-code.github.io/gavra_android/'
-        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -70,7 +25,6 @@ permissions:
 env:
   FLUTTER_VERSION: '3.35.6'
   BUNDLE_ID: 'com.gavra013.gavra013ios'
-  TEAM_ID: 'F8PUBNR3Q9'
   APP_ID: '6757114361'
 
 jobs:
@@ -87,18 +41,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
-      - name: Deploy policy docs to GitHub Pages branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          publish_branch: gh-pages
-          force_orphan: false
-          commit_message: "docs: sync privacy/delete-account pages [skip ci]"
 
       - name: Auto-Bump Version
         id: version_bump
@@ -106,40 +50,17 @@ jobs:
           CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
           VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
           VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
-          INPUT_VERSION_NAME="${{ inputs.version_name }}"
-          INPUT_VERSION_CODE="${{ inputs.version_code }}"
           SHOULD_BUMP="${{ inputs.bump_version }}"
           if [ -z "$SHOULD_BUMP" ]; then
             SHOULD_BUMP="true"
           fi
 
-          if [ -n "$INPUT_VERSION_NAME" ] && [ -n "$INPUT_VERSION_CODE" ]; then
-            NEW_NAME="$INPUT_VERSION_NAME"
-            NEW_CODE="$INPUT_VERSION_CODE"
-            NEW_VERSION="${NEW_NAME}+${NEW_CODE}"
-            sed -i '' "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-            echo "VERSION_NAME=$NEW_NAME" >> $GITHUB_OUTPUT
-            echo "VERSION_CODE=$NEW_CODE" >> $GITHUB_OUTPUT
-            echo "📌 Forced version: $CURRENT → $NEW_VERSION"
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pubspec.yaml
-            if git diff --staged --quiet; then
-              echo "No changes to commit."
-            else
-              git commit -m "chore: set version to $NEW_VERSION [skip ci]"
-              git push
-            fi
-          elif [ "$SHOULD_BUMP" = "true" ]; then
+          if [ "$SHOULD_BUMP" = "true" ]; then
             NEW_CODE=$((VERSION_CODE + 1))
             MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
             MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
             PATCH=$(echo "$VERSION_NAME" | cut -d'.' -f3)
-
             NEW_PATCH=$((PATCH + 1))
-            # Handle minor carrier overflow (consistent with Android)
-            # if [ $NEW_PATCH -ge 100 ]; then NEW_PATCH=0; MINOR=$((MINOR + 1)); fi
-
             NEW_NAME="${MAJOR}.${MINOR}.${NEW_PATCH}"
             NEW_VERSION="${NEW_NAME}+${NEW_CODE}"
             sed -i '' "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
@@ -167,6 +88,9 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
 
+      - name: Install Codemagic CLI Tools
+        run: pip install codemagic-cli-tools
+
       - name: Create .env file
         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
@@ -176,19 +100,23 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Sync Code-Signing via Fastlane Match
-        env:
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
-          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
-          MATCH_KEYCHAIN_NAME: ${{ secrets.MATCH_KEYCHAIN_NAME }}
-          MATCH_KEYCHAIN_PASSWORD: ${{ secrets.MATCH_KEYCHAIN_PASSWORD }}
-          FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
-          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+      - name: Setup keychain
+        run: keychain initialize
+
+      - name: Fetch signing files
         run: |
-          cd ios
-          bundle install
-          bundle exec fastlane match appstore --readonly
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Setup certificates
+        run: keychain add-certificates
+
+      - name: Setup code signing
+        run: |
+          xcode-project use-profiles
+          echo "--- ExportOptions.plist generated by use-profiles ---"
+          cat $HOME/export_options.plist || echo "(not found at $HOME/export_options.plist)"
 
       - name: Update Info.plist
         run: |
@@ -196,48 +124,124 @@ jobs:
           plutil -replace CFBundleShortVersionString -string "${{ steps.version_bump.outputs.VERSION_NAME }}" ios/Runner/Info.plist
           plutil -replace CFBundleVersion -string "${{ steps.version_bump.outputs.VERSION_CODE }}" ios/Runner/Info.plist
 
-      - name: Generate ExportOptions.plist
-        run: |
-          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>${{ env.TEAM_ID }}</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-            <key>destination</key>
-            <string>export</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>uploadSymbols</key>
-            <true/>
-          </dict>
-          </plist>
-          EOF
-
       - name: Build iOS App
         run: |
           flutter build ipa --release \
-            --export-options-plist="$RUNNER_TEMP/ExportOptions.plist" \
             --build-name=${{ steps.version_bump.outputs.VERSION_NAME }} \
-            --build-number=${{ steps.version_bump.outputs.VERSION_CODE }}
+            --build-number=${{ steps.version_bump.outputs.VERSION_CODE }} \
+            --export-options-plist=$HOME/export_options.plist
 
-      - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@v1
-        with:
-          app-path: build/ios/ipa/*.ipa
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_KEY_P8 }}
+      - name: List build outputs (for debugging)
+        run: |
+          echo "Listing build directory contents"
+          ls -la build || true
+          echo "Listing build/ios contents"
+          ls -la build/ios || true
+          echo "Listing possible ipa folder"
+          ls -la build/ios/ipa || true
+          echo "Searching for any .ipa files"
+          find build -name '*.ipa' -print || true
+
+      - name: Upload to App Store Connect
+        run: |
+          IPA=$(find build -name '*.ipa' | head -n1 || true)
+          if [ -z "$IPA" ]; then
+            echo "❌ No .ipa found in build output. Build may have failed or path differs."
+            exit 1
+          fi
+          echo "Uploading IPA: $IPA"
+          app-store-connect publish --path "$IPA"
+          echo "✅ Build uploaded to App Store Connect!"
+
+      - name: Wait for build processing
+        run: |
+          echo "⏳ Waiting 5 minutes for Apple to process build..."
+          sleep 300
+          echo "✅ Build should be processed now"
+
+      - name: Set What's New automatically
+        run: |
+          VERSION_STRING="${{ steps.version_bump.outputs.VERSION_NAME }}"
+          RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
+          if [ -z "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES="Ispravke grešaka i poboljšanja performansi."
+          fi
+
+          echo "📝 Setting What's New for iOS version $VERSION_STRING"
+
+          VERSIONS_JSON_FILE=$(mktemp)
+          app-store-connect apps app-store-versions "$APP_ID" \
+            --platform IOS \
+            --version-string "$VERSION_STRING" \
+            --json > "$VERSIONS_JSON_FILE"
+
+          VERSION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersions') if isinstance(data,dict) and isinstance(data.get('appStoreVersions'),list) else (data if isinstance(data,list) else []))); print(next((i.get('id') for i in items if isinstance(i,dict) and i.get('id')), ''))" "$VERSIONS_JSON_FILE")
+
+          if [ -z "$VERSION_ID" ]; then
+            echo "❌ Could not find App Store version ID for $VERSION_STRING"
+            cat "$VERSIONS_JSON_FILE" || true
+            exit 1
+          fi
+
+          echo "✅ App Store version ID: $VERSION_ID"
+
+          LOC_JSON_FILE=$(mktemp)
+          app-store-connect app-store-versions localizations "$VERSION_ID" --json > "$LOC_JSON_FILE"
+
+            LOC_RESULT=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersionLocalizations') if isinstance(data,dict) and isinstance(data.get('appStoreVersionLocalizations'),list) else (data if isinstance(data,list) else []))); picked=[(i.get('id'), ((i.get('attributes') or {}).get('locale') if isinstance(i.get('attributes'),dict) else i.get('locale'))) for i in items if isinstance(i,dict) and i.get('id') and (((i.get('attributes') or {}).get('locale') if isinstance(i.get('attributes'),dict) else i.get('locale')) )]; en=next((p for p in picked if p[1]=='en-US'), None); ch=en or (picked[0] if picked else None); print((ch[0]+' '+ch[1]) if ch else '')" "$LOC_JSON_FILE")
+
+          LOCALIZATION_ID=$(echo "$LOC_RESULT" | awk '{print $1}')
+          LOCALIZATION_LOCALE=$(echo "$LOC_RESULT" | awk '{print $2}')
+
+          if [ -n "$LOCALIZATION_ID" ]; then
+            echo "✅ Updating existing localization: $LOCALIZATION_LOCALE ($LOCALIZATION_ID)"
+            app-store-connect app-store-version-localizations modify "$LOCALIZATION_ID" --whats-new "$RELEASE_NOTES"
+          else
+            echo "ℹ️ No localization found; creating en-US localization"
+            app-store-connect app-store-version-localizations create "$VERSION_ID" en-US --whats-new "$RELEASE_NOTES"
+          fi
+
+          echo "✅ What's New updated"
+
+      - name: Auto-submit to App Review
+        run: |
+          echo "🚀 Auto-submit to App Review started..."
+          MAX_RETRIES=12
+          RETRY_DELAY=60
+          ATTEMPT=1
+
+          while [ "$ATTEMPT" -le "$MAX_RETRIES" ]; do
+            echo "[Attempt $ATTEMPT/$MAX_RETRIES] Creating review submission..."
+            OUTPUT=$(app-store-connect review-submissions create "$APP_ID" --platform IOS --json 2>&1)
+            EXIT_CODE=$?
+
+            if [ "$EXIT_CODE" -eq 0 ]; then
+              echo "$OUTPUT"
+              echo "✅ Submitted to App Review successfully"
+              break
+            fi
+
+            echo "$OUTPUT"
+
+            if echo "$OUTPUT" | grep -Eiq "already|in review|waiting for review|submitted"; then
+              echo "ℹ️ Review submission already exists / already submitted — treating as success."
+              break
+            fi
+
+            if [ "$ATTEMPT" -eq "$MAX_RETRIES" ]; then
+              echo "❌ Failed to auto-submit to App Review after $MAX_RETRIES attempts."
+              exit 1
+            fi
+
+            echo "⏳ Build may still be processing. Retrying in ${RETRY_DELAY}s..."
+            sleep "$RETRY_DELAY"
+            ATTEMPT=$((ATTEMPT + 1))
+          done
 
       - name: Summary
+        if: always()
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
-          echo "**Uploaded to:** TestFlight" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** Build uploaded successfully - check App Store Connect for processing status" >> $GITHUB_STEP_SUMMARY
+          echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
+          echo "review: auto-submit enabled" >> $GITHUB_STEP_SUMMARY
 
