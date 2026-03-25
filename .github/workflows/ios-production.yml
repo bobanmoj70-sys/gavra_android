@@ -23,6 +23,11 @@ on:
         required: false
         default: ''
         type: string
+      support_url:
+        description: 'Support URL (default: GitHub Pages)'
+        required: false
+        default: 'https://lakisa-code.github.io/gavra_android/'
+        type: string
   workflow_call:
     inputs:
       git_ref:
@@ -48,6 +53,11 @@ on:
         description: 'Release notes (optional)'
         required: false
         default: ''
+        type: string
+      support_url:
+        description: 'Support URL (optional)'
+        required: false
+        default: 'https://lakisa-code.github.io/gavra_android/'
         type: string
 
 concurrency:
@@ -79,6 +89,15 @@ jobs:
           ref: ${{ inputs.git_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+
+      - name: Deploy policy docs to GitHub Pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
+          force_orphan: false
+          commit_message: "docs: sync privacy/delete-account pages [skip ci]"
 
       - name: Auto-Bump Version
         id: version_bump
@@ -115,7 +134,11 @@ jobs:
             MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
             MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
             PATCH=$(echo "$VERSION_NAME" | cut -d'.' -f3)
+
             NEW_PATCH=$((PATCH + 1))
+            # Handle minor carrier overflow (consistent with Android)
+            # if [ $NEW_PATCH -ge 100 ]; then NEW_PATCH=0; MINOR=$((MINOR + 1)); fi
+
             NEW_NAME="${MAJOR}.${MINOR}.${NEW_PATCH}"
             NEW_VERSION="${NEW_NAME}+${NEW_CODE}"
             sed -i '' "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
@@ -218,17 +241,27 @@ jobs:
         run: |
           VERSION_STRING="${{ steps.version_bump.outputs.VERSION_NAME }}"
           RELEASE_NOTES="${{ inputs.release_notes || github.event.inputs.release_notes }}"
+          SUPPORT_URL="${{ inputs.support_url || 'https://lakisa-code.github.io/gavra_android/' }}"
+          
           if [ -z "$RELEASE_NOTES" ]; then
             RELEASE_NOTES="Ispravke grešaka i poboljšanja performansi."
           fi
 
-          echo "📝 Setting What's New for iOS version $VERSION_STRING"
+          # UTF-8 Guard for Release Notes
+          echo "$RELEASE_NOTES" | iconv -f UTF-8 -t UTF-8 > /dev/null
+          if [ $? -ne 0 ]; then
+            echo "❌ Error: release_notes contains invalid UTF-8 characters!"
+            exit 1
+          fi
+
+          echo "📝 Setting metadata for iOS version $VERSION_STRING (Support URL: $SUPPORT_URL)"
 
           VERSIONS_JSON_FILE=$(mktemp)
           VERSION_ID=""
 
           # 1) Pokušaj da nađeš tačnu verziju (Apple ume da kasni dok je build u obradi)
-          for ATTEMPT in $(seq 1 10); do
+          # Povećano na 15 pokušaja sa dužim čekanjem jer Apple nekada jako dugo procesira
+          for ATTEMPT in $(seq 1 15); do
             app-store-connect apps app-store-versions "$APP_ID" \
               --platform IOS \
               --version-string "$VERSION_STRING" \
@@ -241,99 +274,43 @@ jobs:
               break
             fi
 
-            if [ "$ATTEMPT" -lt 10 ]; then
-              echo "⏳ Version $VERSION_STRING not visible yet (attempt $ATTEMPT/10), waiting 30s..."
-              sleep 30
+            if [ "$ATTEMPT" -lt 15 ]; then
+              echo "⏳ Version $VERSION_STRING not visible yet (attempt $ATTEMPT/15), waiting 45s..."
+              sleep 45
             fi
           done
 
           # 2) Fallback: ako tačna verzija još ne postoji, uzmi editabilnu App Store verziju
           if [ -z "$VERSION_ID" ]; then
-            echo "⚠️ Exact version $VERSION_STRING not found. Falling back to editable App Store version..."
-
-            app-store-connect apps app-store-versions "$APP_ID" \
-              --platform IOS \
-              --json > "$VERSIONS_JSON_FILE"
-
-            FALLBACK_INFO=$(python3 - "$VERSIONS_JSON_FILE" <<'PY'
-import json
-import sys
-
-data = json.load(open(sys.argv[1], encoding='utf-8'))
-items = (
-    data.get('data')
-    if isinstance(data, dict) and isinstance(data.get('data'), list)
-    else (
-        data.get('appStoreVersions')
-        if isinstance(data, dict) and isinstance(data.get('appStoreVersions'), list)
-        else (data if isinstance(data, list) else [])
-    )
-)
-
-parsed = []
-for item in items:
-    if not isinstance(item, dict):
-        continue
-    attrs = item.get('attributes') if isinstance(item.get('attributes'), dict) else {}
-    state = (attrs.get('appStoreState') or item.get('appStoreState') or '').strip()
-    version = (attrs.get('versionString') or item.get('versionString') or '').strip()
-    version_id = (item.get('id') or '').strip()
-    if version_id:
-        parsed.append((version_id, state, version))
-
-preferred_states = (
-    'PREPARE_FOR_SUBMISSION',
-    'READY_FOR_REVIEW',
-    'WAITING_FOR_REVIEW',
-    'IN_REVIEW',
-    'UNRESOLVED_ISSUES',
-)
-
-pick = None
-for state in preferred_states:
-    pick = next((entry for entry in parsed if entry[1] == state), None)
-    if pick is not None:
-        break
-
-if pick is None and parsed:
-    pick = parsed[0]
-
-print(f"{pick[0]} {pick[1]} {pick[2]}" if pick else "")
-PY
-)
-
-            VERSION_ID=$(echo "$FALLBACK_INFO" | awk '{print $1}')
-            FALLBACK_STATE=$(echo "$FALLBACK_INFO" | awk '{print $2}')
-            FALLBACK_VERSION=$(echo "$FALLBACK_INFO" | awk '{print $3}')
-
-            if [ -z "$VERSION_ID" ]; then
-              echo "❌ Could not resolve any App Store version ID (exact or fallback)."
-              cat "$VERSIONS_JSON_FILE" || true
-              exit 1
-            fi
-
-            echo "⚠️ Using fallback App Store version: ${FALLBACK_VERSION:-unknown} (${FALLBACK_STATE:-unknown}) id=$VERSION_ID"
+             echo "⚠️ Version $VERSION_STRING not found, falling back to editable version..."
+             VERSION_ID=$(app-store-connect apps app-store-versions "$APP_ID" --platform IOS --state PREPARE_FOR_SUBMISSION --json | python3 -c "import json,sys; data=json.load(sys.stdin); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersions') if isinstance(data,dict) and isinstance(data.get('appStoreVersions'),list) else (data if isinstance(data,list) else []))); print(next((i['id'] for i in items if i.get('id')), ''))")
           fi
 
-          echo "✅ App Store version ID in use: $VERSION_ID"
+          if [ -z "$VERSION_ID" ]; then
+            echo "❌ Could not find an App Store version to update."
+            exit 1
+          fi
 
-          LOC_JSON_FILE=$(mktemp)
-          app-store-connect app-store-versions localizations "$VERSION_ID" --json > "$LOC_JSON_FILE"
+          # 3) Ažuriraj lokalizaciju i Support URL
+          LOCALIZATION_JSON=$(mktemp)
+          app-store-connect app-store-versions app-store-version-localizations "$VERSION_ID" --json > "$LOCALIZATION_JSON" || true
 
-            LOC_RESULT=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersionLocalizations') if isinstance(data,dict) and isinstance(data.get('appStoreVersionLocalizations'),list) else (data if isinstance(data,list) else []))); picked=[(i.get('id'), ((i.get('attributes') or {}).get('locale') if isinstance(i.get('attributes'),dict) else i.get('locale'))) for i in items if isinstance(i,dict) and i.get('id') and (((i.get('attributes') or {}).get('locale') if isinstance(i.get('attributes'),dict) else i.get('locale')) )]; en=next((p for p in picked if p[1]=='en-US'), None); ch=en or (picked[0] if picked else None); print((ch[0]+' '+ch[1]) if ch else '')" "$LOC_JSON_FILE")
-
-          LOCALIZATION_ID=$(echo "$LOC_RESULT" | awk '{print $1}')
-          LOCALIZATION_LOCALE=$(echo "$LOC_RESULT" | awk '{print $2}')
+          # Uzmi ID postojeće lokalizacije (npr. en-US)
+          LOCALIZATION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersionLocalizations') if isinstance(data,dict) and isinstance(data.get('appStoreVersionLocalizations'),list) else (data if isinstance(data,list) else []))); print(next((i['id'] for i in items if i.get('id')), ''))" "$LOCALIZATION_JSON")
 
           if [ -n "$LOCALIZATION_ID" ]; then
-            echo "✅ Updating existing localization: $LOCALIZATION_LOCALE ($LOCALIZATION_ID)"
-            app-store-connect app-store-version-localizations modify "$LOCALIZATION_ID" --whats-new "$RELEASE_NOTES"
+            echo "✅ Updating existing localization ($LOCALIZATION_ID) with What's New and Support URL"
+            app-store-connect app-store-version-localizations modify "$LOCALIZATION_ID" \
+              --whats-new "$RELEASE_NOTES" \
+              --support-url "$SUPPORT_URL"
           else
             echo "ℹ️ No localization found; creating en-US localization"
-            app-store-connect app-store-version-localizations create "$VERSION_ID" en-US --whats-new "$RELEASE_NOTES"
+            app-store-connect app-store-version-localizations create "$VERSION_ID" en-US \
+              --whats-new "$RELEASE_NOTES" \
+              --support-url "$SUPPORT_URL"
           fi
 
-          echo "✅ What's New updated"
+          echo "✅ Metadata updated successfully"
 
       - name: Clear active App Review submissions
         run: |
@@ -404,4 +381,8 @@ PY
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
           echo "review: auto-submit enabled" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup keychain
+        if: always()
+        run: keychain cleanup
 
