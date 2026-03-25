@@ -1278,6 +1278,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             getKapacitet: getKapacitet,
             showVozacBoja: true,
             getVozacColor: getVozacColor,
+            bcVremena: _bcVremena,
+            vsVremena: _vsVremena,
           );
         } else if (navType == 'praznici') {
           return V3BottomNavBarPraznici(
@@ -1294,6 +1296,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             getKapacitet: getKapacitet,
             showVozacBoja: true,
             getVozacColor: getVozacColor,
+            bcVremena: _bcVremena,
+            vsVremena: _vsVremena,
           );
         } else {
           // Default: letnji
@@ -1311,6 +1315,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             getKapacitet: getKapacitet,
             showVozacBoja: true,
             getVozacColor: getVozacColor,
+            bcVremena: _bcVremena,
+            vsVremena: _vsVremena,
           );
         }
       },

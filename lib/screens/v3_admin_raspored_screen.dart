@@ -679,6 +679,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                   getKapacitet: commonProps.getKapacitet,
                   showVozacBoja: true,
                   getVozacColor: _getVozacBoja,
+                  bcVremena: _bcVremena,
+                  vsVremena: _vsVremena,
                 );
               } else if (navType == 'praznici') {
                 return V3BottomNavBarPraznici(
@@ -690,6 +692,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                   getKapacitet: commonProps.getKapacitet,
                   showVozacBoja: true,
                   getVozacColor: _getVozacBoja,
+                  bcVremena: _bcVremena,
+                  vsVremena: _vsVremena,
                 );
               } else {
                 return V3BottomNavBarLetnji(
@@ -701,6 +705,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                   getKapacitet: commonProps.getKapacitet,
                   showVozacBoja: true,
                   getVozacColor: _getVozacBoja,
+                  bcVremena: _bcVremena,
+                  vsVremena: _vsVremena,
                 );
               }
             },
