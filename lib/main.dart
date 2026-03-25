@@ -1017,69 +1017,21 @@ Future<void> _initAppServices() async {
     debugPrint('⚠️ [main] V3ForegroundGpsService greška: $e');
   }
 
-  // Učitaj nav_bar_type + verziju iz baze
+  // Učitaj nav_bar_type iz baze
   try {
     final settings = await Supabase.instance.client
         .from('v3_app_settings')
-        .select('nav_bar_type, min_version, latest_version, store_url_android, store_url_huawei, store_url_ios')
+        .select('nav_bar_type')
         .eq('id', 'global')
         .maybeSingle();
 
-    // 1. nav_bar_type
     final navType = settings?['nav_bar_type'] as String?;
     if (navType != null && ['zimski', 'letnji', 'praznici'].contains(navType)) {
       navBarTypeNotifier.value = navType;
       debugPrint('[main] nav_bar_type učitan iz baze: $navType');
     }
-
-    // 2. Provjera verzije — obavezno/opciono ažuriranje
-    final minVersion = settings?['min_version'] as String?;
-    final latestVersion = settings?['latest_version'] as String?;
-    if (minVersion != null && latestVersion != null) {
-      final info = await PackageInfo.fromPlatform();
-      final currentVersion = info.version;
-
-      // Uporedi verzije numerički (npr. 6.0.124)
-      final current = _parseVersion(currentVersion);
-      final min = _parseVersion(minVersion);
-      final latest = _parseVersion(latestVersion);
-
-      final isForced = current < min;
-      final hasUpdate = current < latest;
-
-      // Odaberi odgovarajući store URL (Android prioritet)
-      final storeUrl = (settings?['store_url_android'] as String?) ??
-          (settings?['store_url_huawei'] as String?) ??
-          (settings?['store_url_ios'] as String?) ??
-          '';
-
-      if (isForced || hasUpdate) {
-        updateInfoNotifier.value = V2UpdateInfo(
-          latestVersion: latestVersion,
-          storeUrl: storeUrl,
-          isForced: isForced,
-        );
-        debugPrint('[main] Update: current=$currentVersion min=$minVersion latest=$latestVersion forced=$isForced');
-      } else {
-        updateInfoNotifier.value = null;
-        debugPrint('[main] No update needed: current=$currentVersion latest=$latestVersion');
-      }
-    }
   } catch (e) {
     debugPrint('⚠️ [main] Greška pri učitavanju app_settings: $e');
-  }
-}
-
-/// Parsira verziju u broj za poređenje (npr. "6.0.124" → 6000124)
-int _parseVersion(String v) {
-  try {
-    final parts = v.split('.');
-    final major = int.tryParse(parts.elementAtOrNull(0) ?? '0') ?? 0;
-    final minor = int.tryParse(parts.elementAtOrNull(1) ?? '0') ?? 0;
-    final patch = int.tryParse(parts.elementAtOrNull(2) ?? '0') ?? 0;
-    return major * 1000000 + minor * 1000 + patch;
-  } catch (_) {
-    return 0;
   }
 }
 
