@@ -11,7 +11,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_api_availability/google_api_availability.dart';
 import 'package:huawei_push/huawei_push.dart' as hms;
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -200,27 +199,37 @@ Future<void> _initNotificationHandlers() async {
 
     // 2. HMS Handlers (za Huawei uređaje)
     try {
-      // HMS Token listener
-      hms.Push.getTokenStream.listen((String token) {
-        debugPrint('🟠 [HMS] Novi token: $token');
-        _saveHmsTokenToDatabase(token);
-      });
+      // Provjeri da li je GMS dostupan — ako jeste, preskači HMS init
+      final gmsCheck = await GoogleApiAvailability.instance
+          .checkGooglePlayServicesAvailability()
+          .timeout(const Duration(seconds: 2));
+      final isGmsDevice = gmsCheck == GooglePlayServicesAvailability.success;
 
-      // HMS Message listener
-      hms.Push.onMessageReceivedStream.listen((hms.RemoteMessage message) {
-        debugPrint('🟠 [HMS] Poruka primljena: ${message.data}');
-        _handleHmsIncomingMessage(message);
-      });
+      if (isGmsDevice) {
+        debugPrint('⏭️ [HMS] GMS uređaj — HMS init preskočen');
+      } else {
+        // HMS Token listener
+        hms.Push.getTokenStream.listen((String token) {
+          debugPrint('🟠 [HMS] Novi token: $token');
+          _saveHmsTokenToDatabase(token);
+        });
 
-      // Forsirati refresh tokena
-      try {
-        hms.Push.getToken(""); // Trigger token generation (void return)
-        debugPrint('🟠 [HMS] Token generation pokrenut');
-      } catch (e) {
-        debugPrint('⚠️ [HMS] Greška pri pokretanju tokena: $e');
+        // HMS Message listener
+        hms.Push.onMessageReceivedStream.listen((hms.RemoteMessage message) {
+          debugPrint('🟠 [HMS] Poruka primljena: ${message.data}');
+          _handleHmsIncomingMessage(message);
+        });
+
+        // Forsirati refresh tokena
+        try {
+          hms.Push.getToken(""); // Trigger token generation (void return)
+          debugPrint('🟠 [HMS] Token generation pokrenut');
+        } catch (e) {
+          debugPrint('⚠️ [HMS] Greška pri pokretanju tokena: $e');
+        }
+
+        debugPrint('✅ [HMS] Handlers konfigurisani');
       }
-
-      debugPrint('✅ [HMS] Handlers konfigurisani');
     } catch (e) {
       debugPrint('⚠️ [HMS] Handler setup greška: $e');
     }
@@ -1019,11 +1028,8 @@ Future<void> _initAppServices() async {
 
   // Učitaj nav_bar_type iz baze
   try {
-    final settings = await Supabase.instance.client
-        .from('v3_app_settings')
-        .select('nav_bar_type')
-        .eq('id', 'global')
-        .maybeSingle();
+    final settings =
+        await Supabase.instance.client.from('v3_app_settings').select('nav_bar_type').eq('id', 'global').maybeSingle();
 
     final navType = settings?['nav_bar_type'] as String?;
     if (navType != null && ['zimski', 'letnji', 'praznici'].contains(navType)) {
