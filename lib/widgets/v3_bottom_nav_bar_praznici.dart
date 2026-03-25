@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../config/v2_route_config.dart';
+import '../config/v3_route_config.dart';
 import '../services/v2_theme_manager.dart';
 import '../theme.dart';
 
@@ -63,8 +63,8 @@ class _BottomNavBarPrazniciState extends State<V3BottomNavBarPraznici> {
   void _scrollToSelected() {
     const double itemWidth = 60.0;
 
-    final bcVremena = widget.bcVremena ?? V2RouteConfig.bcVremenaPraznici;
-    final vsVremena = widget.vsVremena ?? V2RouteConfig.vsVremenaPraznici;
+    final bcVremena = widget.bcVremena ?? V3RouteConfig.bcVremenaPraznici;
+    final vsVremena = widget.vsVremena ?? V3RouteConfig.vsVremenaPraznici;
 
     if (widget.selectedGrad == 'BC') {
       final index = bcVremena.indexOf(widget.selectedVreme);
@@ -98,8 +98,8 @@ class _BottomNavBarPrazniciState extends State<V3BottomNavBarPraznici> {
 
   @override
   Widget build(BuildContext context) {
-    final bcVremena = widget.bcVremena ?? V2RouteConfig.bcVremenaPraznici;
-    final vsVremena = widget.vsVremena ?? V2RouteConfig.vsVremenaPraznici;
+    final bcVremena = widget.bcVremena ?? V3RouteConfig.bcVremenaPraznici;
+    final vsVremena = widget.vsVremena ?? V3RouteConfig.vsVremenaPraznici;
     final currentThemeId = V2ThemeManager().currentThemeId;
 
     return Container(

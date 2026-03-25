@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../config/v2_route_config.dart';
+import '../config/v3_route_config.dart';
 import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -92,8 +92,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   // Moji putnici iz v3_gps_raspored za trenutni dan/grad/vreme
   List<_PutnikEntry> _mojiPutnici = [];
 
-  List<String> get _bcVremena => V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
-  List<String> get _vsVremena => V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
+  List<String> get _bcVremena => V3RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
+  List<String> get _vsVremena => V3RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),

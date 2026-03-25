@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../config/v2_route_config.dart';
+import '../config/v3_route_config.dart';
 import '../services/v2_theme_manager.dart';
 import '../theme.dart';
 
@@ -60,9 +60,9 @@ class _BottomNavBarLetnjiState extends State<V3BottomNavBarLetnji> {
   void _scrollToSelected() {
     const double itemWidth = 60.0; // width + margin
 
-    // Koristi prosleđena vremena ili fallback na V2RouteConfig
-    final bcVremena = widget.bcVremena ?? V2RouteConfig.bcVremenaLetnji;
-    final vsVremena = widget.vsVremena ?? V2RouteConfig.vsVremenaLetnji;
+    // Koristi prosleđena vremena ili fallback na V3RouteConfig
+    final bcVremena = widget.bcVremena ?? V3RouteConfig.bcVremenaLetnji;
+    final vsVremena = widget.vsVremena ?? V3RouteConfig.vsVremenaLetnji;
 
     if (widget.selectedGrad == 'BC') {
       final index = bcVremena.indexOf(widget.selectedVreme);
@@ -97,9 +97,9 @@ class _BottomNavBarLetnjiState extends State<V3BottomNavBarLetnji> {
   @override
   Widget build(BuildContext context) {
     final currentThemeId = V2ThemeManager().currentThemeId;
-    // Koristi prosleđena vremena ili fallback na V2RouteConfig
-    final bcVremena = widget.bcVremena ?? V2RouteConfig.bcVremenaLetnji;
-    final vsVremena = widget.vsVremena ?? V2RouteConfig.vsVremenaLetnji;
+    // Koristi prosleđena vremena ili fallback na V3RouteConfig
+    final bcVremena = widget.bcVremena ?? V3RouteConfig.bcVremenaLetnji;
+    final vsVremena = widget.vsVremena ?? V3RouteConfig.vsVremenaLetnji;
 
     return Container(
       decoration: BoxDecoration(

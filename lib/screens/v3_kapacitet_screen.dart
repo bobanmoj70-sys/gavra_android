@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../config/v2_route_config.dart';
+import '../config/v3_route_config.dart';
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../theme.dart';
@@ -35,8 +35,8 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
   /// Čita max_mesta iz kapacitetSlotsCache: {grad: {vreme: max_mesta?}}
   Map<String, Map<String, int?>> _getKapacitetSync() {
     final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
-    final bcVremena = V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
-    final vsVremena = V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
+    final bcVremena = V3RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
+    final vsVremena = V3RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
     final datumIso = _selectedDatumIso;
     int? _find(String grad, String vreme) {
       for (final r in cache) {
@@ -181,8 +181,8 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
                     stream: _streamTrigger,
                     builder: (context, snapshot) {
                       final data = _getKapacitetSync();
-                      final bcVremena = V2RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
-                      final vsVremena = V2RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
+                      final bcVremena = V3RouteConfig.getVremenaByNavType('BC', navBarTypeNotifier.value);
+                      final vsVremena = V3RouteConfig.getVremenaByNavType('VS', navBarTypeNotifier.value);
                       return TabBarView(
                         controller: _tabController,
                         children: [

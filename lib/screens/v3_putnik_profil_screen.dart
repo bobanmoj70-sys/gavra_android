@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 
-import '../config/v2_route_config.dart';
+import '../config/v3_route_config.dart';
 import '../globals.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -277,7 +277,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Scenario 5: zaključavanje 15 min pre polaska
     final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(dan);
     final now = DateTime.now();
-    final vremena = V2RouteConfig.getVremenaByNavType(grad, navBarTypeNotifier.value)
+    final vremena = V3RouteConfig.getVremenaByNavType(grad, navBarTypeNotifier.value)
         .where((v) => _normalizeValidTime(v) != null)
         .toList();
     final currentVreme = info?.vreme;

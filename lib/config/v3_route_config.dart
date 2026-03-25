@@ -1,6 +1,6 @@
 /// Konfiguracija ruta i rasporeda polazaka za BC i VS pravce.
-class V2RouteConfig {
-  V2RouteConfig._();
+class V3RouteConfig {
+  V3RouteConfig._();
 
   // 🏙️ BELA CRKVA - Zimski raspored
   static const List<String> _bcVremenaZimski = [
