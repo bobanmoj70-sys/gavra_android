@@ -16,6 +16,7 @@ DECLARE
   v_body   text;
   v_data   jsonb;
   v_grad   text;
+  v_vreme  text;
 BEGIN
   IF OLD.status = NEW.status THEN
     RETURN NEW;
@@ -44,9 +45,19 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  v_vreme := COALESCE(
+    to_char(NEW.dodeljeno_vreme, 'HH24:MI'),
+    CASE
+      WHEN NULLIF(BTRIM(NEW.zeljeno_vreme), '') IS NULL THEN NULL
+      WHEN BTRIM(NEW.zeljeno_vreme) ~ '^\d{1,2}:\d{2}(:\d{2})?$' THEN to_char((BTRIM(NEW.zeljeno_vreme))::time, 'HH24:MI')
+      ELSE BTRIM(NEW.zeljeno_vreme)
+    END,
+    ''
+  );
+
   IF NEW.status = 'odbijeno' THEN
     v_title := '❌ Termin popunjen';
-    v_body  := 'Nažalost, u terminu ' || to_char(NEW.zeljeno_vreme, 'HH24:MI')
+    v_body  := 'Nažalost, u terminu ' || v_vreme
       || ' nema slobodnih mesta (' || v_grad || ').';
     v_data  := jsonb_build_object(
       'type', 'v3_zahtev_odbijen',
@@ -56,7 +67,7 @@ BEGIN
     );
   ELSIF NEW.status = 'otkazano' THEN
     v_title := '🚫 Prevoz otkazan';
-    v_body  := 'Vaš prevoz za ' || to_char(NEW.zeljeno_vreme, 'HH24:MI')
+    v_body  := 'Vaš prevoz za ' || v_vreme
       || ' (' || v_grad || ') je otkazan.';
     v_data  := jsonb_build_object(
       'type', 'v3_otkazano',
