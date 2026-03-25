@@ -70,6 +70,7 @@ permissions:
 env:
   FLUTTER_VERSION: '3.35.6'
   BUNDLE_ID: 'com.gavra013.gavra013ios'
+  TEAM_ID: 'F8PUBNR3Q9'
   APP_ID: '6757114361'
 
 jobs:
@@ -196,9 +197,33 @@ jobs:
           plutil -replace CFBundleShortVersionString -string "${{ steps.version_bump.outputs.VERSION_NAME }}" ios/Runner/Info.plist
           plutil -replace CFBundleVersion -string "${{ steps.version_bump.outputs.VERSION_CODE }}" ios/Runner/Info.plist
 
+      - name: Generate ExportOptions.plist
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>${{ env.TEAM_ID }}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>destination</key>
+            <string>export</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+
       - name: Build iOS App
         run: |
           flutter build ipa --release \
+            --export-options-plist="$RUNNER_TEMP/ExportOptions.plist" \
             --build-name=${{ steps.version_bump.outputs.VERSION_NAME }} \
             --build-number=${{ steps.version_bump.outputs.VERSION_CODE }}
 
