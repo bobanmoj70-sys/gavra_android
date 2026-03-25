@@ -34,7 +34,7 @@ import 'v3_welcome_screen.dart';
 
 /// V3VozacScreen — ekran za vozača (Voja).
 /// V3 Vozač Screen - prikazuje dodjeljene termine i putnike
-/// iz unified v3_gps_raspored tabele.
+/// iz cache-a građenog iz v3_operativna_nedelja (legacy naziv: v3GpsRasporedCache).
 ///
 /// 🎯 KLJUČNE OPTIMIZACIJE SA FIKSNIM ADRESAMA PUTNIKA:
 /// ✅ Primarno bez Geocoding API poziva (Photon fallback samo za adrese bez koordinata)
@@ -85,10 +85,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   /// Efektivni vozač
   dynamic get _efektivniVozac => V3VozacService.currentVozac;
 
-  // Moji termini iz v3_gps_raspored za trenutni dan
+  // Moji termini iz legacy v3GpsRasporedCache (izvor: v3_operativna_nedelja)
   List<Map<String, dynamic>> _mojiTermini = [];
 
-  // Moji putnici iz v3_gps_raspored za trenutni dan/grad/vreme
+  // Moji putnici iz legacy v3GpsRasporedCache (izvor: v3_operativna_nedelja)
   List<_PutnikEntry> _mojiPutnici = [];
 
   List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value);
@@ -236,6 +236,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (mounted) {
       _rebuild();
       V3StateUtils.safeSetState(this, () => _isLoading = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _rebuild();
+      });
     }
   }
 
@@ -270,13 +274,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         (t) => t['grad']?.toString().toUpperCase() == _selectedGrad && _normV(t['vreme']?.toString()) == selectedVNorm);
 
     if (!terminPostoji) {
+      final stariGrad = _selectedGrad;
       final staroVreme = _selectedVreme;
       _selectClosestTermin();
-      if (_selectedVreme != staroVreme && _selectedVreme.isNotEmpty) {
-        // Pronašao bliži termin — ponovi rebuild sa novim vrednostima
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _rebuild();
-        });
+      final terminPromenjen = _selectedGrad != stariGrad || _selectedVreme != staroVreme;
+      if (terminPromenjen && _selectedVreme.isNotEmpty) {
+        // Pronašao bliži termin — odmah ponovi rebuild sa novim vrednostima
+        _rebuild();
         return;
       }
       // Nema termina za ovaj dan — prikaži prazno
