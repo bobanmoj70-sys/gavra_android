@@ -19,6 +19,11 @@ on:
         required: false
         default: ''
         type: string
+      min_version:
+        description: 'Manual MIN version (e.g. 6.0.113). If empty, uses auto-calc (latest-3).'
+        required: false
+        default: ''
+        type: string
   workflow_call:
     inputs:
       git_ref:
@@ -40,6 +45,11 @@ on:
         required: false
         default: ''
         type: string
+      min_version:
+        description: 'Manual MIN version (for Supabase update)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -56,6 +66,7 @@ jobs:
     outputs:
       VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
       VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
+      MIN_VERSION_INPUT: ${{ inputs.min_version }}
 
     steps:
       - name: Checkout
@@ -75,11 +86,11 @@ jobs:
       - name: Validate policy URLs
         run: |
           echo "Checking Privacy Policy URL: $PRIVACY_POLICY_URL"
-          curl -fsSL "$PRIVACY_POLICY_URL" | grep -qi "Politika privatnosti"
+          curl -fsSL "$PRIVACY_POLICY_URL" | grep -qiE "Politika privatnosti|Privacy Policy"
           echo "✅ Privacy Policy URL is reachable"
 
           echo "Checking Account Deletion URL: $ACCOUNT_DELETION_URL"
-          curl -fsSL "$ACCOUNT_DELETION_URL" | grep -qi "Brisanje naloga"
+          curl -fsSL "$ACCOUNT_DELETION_URL" | grep -qiE "Brisanje naloga|Account Deletion"
           echo "✅ Account Deletion URL is reachable"
 
       - name: Auto-Bump Version
@@ -97,12 +108,14 @@ jobs:
           MINOR="${parts[1]}"
           PATCH="${parts[2]}"
 
-          # Increment Patch and Build (Patch + 1, Build + 1)
           NEW_PATCH=$((PATCH + 1))
           NEW_BUILD=$((BUILD_PART + 1))
-
+          
+          # Handle minor carrier overflow (optional, but good practice if you want semi-auto minor)
+          # if [ $NEW_PATCH -ge 100 ]; then NEW_PATCH=0; MINOR=$((MINOR + 1)); fi
+          
           NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH+$NEW_BUILD"
-          echo "[INFO] Bumping version: $VERSION_PART+$BUILD_PART -> $NEW_VERSION"
+          echo "[INFO] Bouncing version: $VERSION_PART+$BUILD_PART -> $NEW_VERSION"
 
           # Update file using sed (inplace)
           sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
@@ -266,9 +279,25 @@ jobs:
           echo "[INFO] Edit ID: $EDIT_ID"
 
           # Ažuriraj sr-RS listing
-          TITLE=$(cat distribution/store_listing/sr-RS/title.txt)
-          SHORT=$(cat distribution/store_listing/sr-RS/short_description.txt)
-          FULL=$(cat distribution/store_listing/sr-RS/full_description.txt)
+          TITLE_FILE="distribution/store_listing/sr-RS/title.txt"
+          SHORT_FILE="distribution/store_listing/sr-RS/short_description.txt"
+          FULL_FILE="distribution/store_listing/sr-RS/full_description.txt"
+
+          # UTF-8 check
+          check_utf8() {
+            file="$1"
+            if ! iconv -f UTF-8 -t UTF-8 "$file" >/dev/null 2>&1; then
+              echo "❌ Error: $file is NOT valid UTF-8!"
+              exit 1
+            fi
+          }
+          check_utf8 "$TITLE_FILE"
+          check_utf8 "$SHORT_FILE"
+          check_utf8 "$FULL_FILE"
+
+          TITLE=$(cat "$TITLE_FILE")
+          SHORT=$(cat "$SHORT_FILE")
+          FULL=$(cat "$FULL_FILE")
 
           curl -s -X PATCH \
             -H "Authorization: Bearer $TOKEN" \
@@ -310,6 +339,7 @@ jobs:
     needs: build-and-upload
     env:
       VERSION: ${{ needs.build-and-upload.outputs.VERSION_NAME }}
+      MANUAL_MIN: ${{ needs.build-and-upload.outputs.MIN_VERSION_INPUT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -326,15 +356,21 @@ jobs:
             exit 1
           fi
 
-          # min_version = latest - 3 (npr. latest=6.0.116 → min=6.0.113)
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f2)
-          PATCH=$(echo "$VERSION" | cut -d. -f3)
-          MIN_PATCH=$((PATCH - 3))
-          if [ "$MIN_PATCH" -lt 0 ]; then MIN_PATCH=0; fi
-          MIN_VERSION="$MAJOR.$MINOR.$MIN_PATCH"
+          if [ -n "$MANUAL_MIN" ]; then
+            MIN_VERSION="$MANUAL_MIN"
+            echo "[INFO] Using MANUAL min_version=$MIN_VERSION"
+          else
+            # min_version = latest - 3 (npr. latest=6.0.116 → min=6.0.113)
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f2)
+            PATCH=$(echo "$VERSION" | cut -d. -f3)
+            MIN_PATCH=$((PATCH - 3))
+            if [ "$MIN_PATCH" -lt 0 ]; then MIN_PATCH=0; fi
+            MIN_VERSION="$MAJOR.$MINOR.$MIN_PATCH"
+            echo "[INFO] Using AUTO min_version=$MIN_VERSION"
+          fi
 
-          echo "[INFO] latest_version=$VERSION  min_version=$MIN_VERSION"
+          echo "[INFO] Final update: latest_version=$VERSION  min_version=$MIN_VERSION"
 
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X PATCH \
@@ -356,5 +392,10 @@ jobs:
         run: |
           echo "## ✅ Supabase ažuriran!" >> $GITHUB_STEP_SUMMARY
           echo "**latest_version:** $VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "**min_version:** prethodna latest_version (putnici imaju 1 verziju fore)" >> $GITHUB_STEP_SUMMARY
+          echo "**min_version:** $MIN_VERSION" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$MANUAL_MIN" ]; then
+            echo "**Tip:** Ručno podešeno" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Tip:** Automatski proračunato (latest-3)" >> $GITHUB_STEP_SUMMARY
+          fi
 

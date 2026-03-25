@@ -107,7 +107,7 @@ class _BottomNavBarPrazniciState extends State<V3BottomNavBarPraznici> {
         color: Colors.transparent,
         border: Border.all(
           color: Theme.of(context).glassBorder,
-          width: 1.0,
+          width: 0.8,
         ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
@@ -236,29 +236,29 @@ class _PolazakRow extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: selected
                             ? (currentThemeId == 'dark_steel_grey'
-                                ? const Color(0xFF4A4A4A).withOpacity(0.3)
+                                ? const Color(0xFF4A4A4A).withOpacity(0.22)
                                 : currentThemeId == 'passionate_rose'
-                                    ? const Color(0xFFDC143C).withOpacity(0.3)
+                                    ? const Color(0xFFDC143C).withOpacity(0.22)
                                     : currentThemeId == 'dark_pink'
-                                        ? const Color(0xFFE91E8C).withOpacity(0.3)
-                                        : Colors.blueAccent.withOpacity(0.3))
+                                        ? const Color(0xFFE91E8C).withOpacity(0.22)
+                                        : Colors.blueAccent.withOpacity(0.22))
                             : hasVozac
-                                ? vozacBorderColor.withOpacity(0.25)
+                                ? vozacBorderColor.withOpacity(0.16)
                                 : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: hasVozac
-                              ? vozacBorderColor
+                              ? vozacBorderColor.withOpacity(0.75)
                               : selected
                                   ? (currentThemeId == 'dark_steel_grey'
-                                      ? const Color(0xFF4A4A4A)
+                                      ? const Color(0xFF4A4A4A).withOpacity(0.8)
                                       : currentThemeId == 'passionate_rose'
-                                          ? const Color(0xFFDC143C)
+                                          ? const Color(0xFFDC143C).withOpacity(0.8)
                                           : currentThemeId == 'dark_pink'
-                                              ? const Color(0xFFE91E8C)
-                                              : Colors.blue)
+                                              ? const Color(0xFFE91E8C).withOpacity(0.8)
+                                              : Colors.blue.withOpacity(0.8))
                                   : Colors.grey[300]!,
-                          width: hasVozac ? 1.8 : (selected ? 1.4 : 0.7),
+                          width: hasVozac ? 1.5 : (selected ? 1.2 : 0.6),
                         ),
                       ),
                       child: Column(
