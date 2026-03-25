@@ -35,9 +35,22 @@ jobs:
           SUFFIX="${{ inputs.version_suffix || 'internal' }}"
           TIMESTAMP=$(date +%m%d_%H%M)
           
-          # Internal verzija: 6.0.171-internal-0325_1430
+          # Internal verzija: 6.0.172-internal-0325_1430
           INTERNAL_NAME="${BASE_NAME}-${SUFFIX}-${TIMESTAMP}"
-          INTERNAL_CODE="$((BASE_CODE + 1000))" # Dodaj 1000 da se razlikuje
+          INTERNAL_CODE="$((BASE_CODE + 1))"
+          
+          # Bumpa pubspec.yaml da sljedeci run ima novi base code
+          sed -i "s/^version: .*/version: ${BASE_NAME}+${INTERNAL_CODE}/" pubspec.yaml
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          if git diff --staged --quiet; then
+            echo "[INFO] pubspec vec na ciljanoj verziji."
+          else
+            git commit -m "chore: bump version code to ${INTERNAL_CODE} for internal testing [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
           
           echo "VERSION_NAME=$INTERNAL_NAME" >> $GITHUB_OUTPUT
           echo "VERSION_CODE=$INTERNAL_CODE" >> $GITHUB_OUTPUT
