@@ -178,9 +178,9 @@ jobs:
           VERSION_ID=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1], encoding='utf-8')); items=(data.get('data') if isinstance(data,dict) and isinstance(data.get('data'),list) else (data.get('appStoreVersions') if isinstance(data,dict) and isinstance(data.get('appStoreVersions'),list) else (data if isinstance(data,list) else []))); print(next((i.get('id') for i in items if isinstance(i,dict) and i.get('id')), ''))" "$VERSIONS_JSON_FILE")
 
           if [ -z "$VERSION_ID" ]; then
-            echo "❌ Could not find App Store version ID for $VERSION_STRING"
+            echo "⚠️ Could not find App Store version ID for $VERSION_STRING (likely still processing). Skipping What's New update."
             cat "$VERSIONS_JSON_FILE" || true
-            exit 1
+            exit 0
           fi
 
           echo "✅ App Store version ID: $VERSION_ID"
