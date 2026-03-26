@@ -74,6 +74,60 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         ..._vsVremena.map((v) => '$v VS'),
       ];
 
+  String _normalizeVreme(String? v) {
+    if (v == null || v.isEmpty) return '';
+    final parts = v.split(':');
+    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+    return v;
+  }
+
+  int _timeToMinutes(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return -1;
+    final hour = int.tryParse(parts[0]) ?? -1;
+    final minute = int.tryParse(parts[1]) ?? -1;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1;
+    return hour * 60 + minute;
+  }
+
+  void _syncSelectedSlotForDatum(String datumIso) {
+    final entries = V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso);
+    final validEntries = entries.where((e) {
+      if (!e.aktivno) return false;
+      if (e.statusFinal == 'odbijeno') return false;
+      if (e.statusFinal == 'obrada') return false;
+      final grad = (e.grad ?? '').trim();
+      final vreme = _normalizeVreme(e.dodeljivoVreme);
+      return grad.isNotEmpty && vreme.isNotEmpty;
+    }).toList();
+
+    if (validEntries.isEmpty) return;
+
+    final currentVremeNorm = _normalizeVreme(_selectedVreme);
+    final hasCurrentSelection = validEntries.any(
+      (e) => (e.grad ?? '') == _selectedGrad && _normalizeVreme(e.dodeljivoVreme) == currentVremeNorm,
+    );
+    if (hasCurrentSelection) return;
+
+    final now = DateTime.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+    validEntries.sort((a, b) {
+      final aMinutes = _timeToMinutes(_normalizeVreme(a.dodeljivoVreme));
+      final bMinutes = _timeToMinutes(_normalizeVreme(b.dodeljivoVreme));
+      final aDiff = aMinutes < 0 ? 99999 : (aMinutes - currentMinutes).abs();
+      final bDiff = bMinutes < 0 ? 99999 : (bMinutes - currentMinutes).abs();
+      if (aDiff != bDiff) return aDiff.compareTo(bDiff);
+      final ga = (a.grad ?? '').toUpperCase();
+      final gb = (b.grad ?? '').toUpperCase();
+      if (ga != gb) return ga.compareTo(gb);
+      return _normalizeVreme(a.dodeljivoVreme).compareTo(_normalizeVreme(b.dodeljivoVreme));
+    });
+
+    final first = validEntries.first;
+    _selectedGrad = first.grad ?? _selectedGrad;
+    _selectedVreme = _normalizeVreme(first.dodeljivoVreme);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,6 +148,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
     if (mounted) {
       _selectClosestDeparture();
+      _syncSelectedSlotForDatum(_selectedDatumIso);
       V3StateUtils.safeSetState(this, () => _isLoading = false);
     }
   }
@@ -1057,6 +1112,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       onChanged: (val) {
                                         V3StateUtils.safeSetState(this, () {
                                           _selectedDay = val!;
+                                          _syncSelectedSlotForDatum(_selectedDatumIso);
                                           _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
                                         });
                                       },

@@ -41,30 +41,114 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         ..._vsVremena.map((v) => '$v VS'),
       ];
 
+  int _timeToMinutes(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return -1;
+    final hour = int.tryParse(parts[0]) ?? -1;
+    final minute = int.tryParse(parts[1]) ?? -1;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1;
+    return hour * 60 + minute;
+  }
+
+  String _normVreme(String? v) {
+    if (v == null || v.isEmpty) return '';
+    final p = v.split(':');
+    if (p.length >= 2) {
+      final h = int.tryParse(p[0]) ?? 0;
+      final m = int.tryParse(p[1]) ?? 0;
+      return V3DanHelper.formatVreme(h, m);
+    }
+    return v;
+  }
+
   @override
   void initState() {
     super.initState();
     _selectedDay = V3DanHelper.defaultDay();
-    _autoSelectNajblizeVreme();
+    _syncSelectedSlotForDay();
   }
 
   void _autoSelectNajblizeVreme() {
     final now = DateTime.now();
     final nowMin = now.hour * 60 + now.minute;
-    final bcList = _bcVremena;
-    String? najblize;
-    for (final v in bcList) {
-      final parts = v.split(':');
+    final svi = _sviPolasci;
+    if (svi.isEmpty) {
+      _selectedVreme = '';
+      return;
+    }
+
+    String? bestGrad;
+    String? bestVreme;
+    int minDiff = 99999;
+    for (final polazak in svi) {
+      final parts = polazak.split(' ');
       if (parts.length < 2) continue;
-      final vMin = (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
-      if (vMin >= nowMin) {
-        najblize = v;
-        break;
+      final vreme = _normVreme(parts[0]);
+      final grad = parts.sublist(1).join(' ').toUpperCase();
+      final mins = _timeToMinutes(vreme);
+      if (mins < 0) continue;
+      final diff = (mins - nowMin).abs();
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestGrad = grad;
+        bestVreme = vreme;
       }
     }
-    najblize ??= bcList.isNotEmpty ? bcList.last : '';
-    _selectedGrad = 'BC';
-    _selectedVreme = najblize;
+
+    if (bestGrad != null && bestVreme != null) {
+      _selectedGrad = bestGrad;
+      _selectedVreme = bestVreme;
+    }
+  }
+
+  void _syncSelectedSlotForDay() {
+    final rm = V3MasterRealtimeManager.instance;
+    final datum = _selectedDatumIso;
+    final currentNorm = V2GradAdresaValidator.normalizeTime(_selectedVreme);
+
+    final uniqueSlots = <String, Map<String, String>>{};
+    for (final row in rm.operativnaNedeljaCache.values) {
+      final putnikId = row['putnik_id']?.toString() ?? '';
+      if (row['aktivno'] != true) continue;
+      if (!_isPutnikAktivan(putnikId)) continue;
+      if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
+      final statusFinal = (row['status_final'] as String?) ?? '';
+      if (statusFinal == 'odbijeno' || statusFinal == 'otkazano' || statusFinal == 'obrada') continue;
+
+      final grad = (row['grad']?.toString() ?? '').toUpperCase();
+      final vreme = V2GradAdresaValidator.normalizeTime(_effectiveTime(row));
+      if (grad.isEmpty || vreme.isEmpty) continue;
+
+      final key = '$grad|$vreme';
+      uniqueSlots.putIfAbsent(key, () => {'grad': grad, 'vreme': vreme});
+    }
+
+    if (uniqueSlots.isEmpty) {
+      _autoSelectNajblizeVreme();
+      return;
+    }
+
+    final currentExists =
+        uniqueSlots.values.any((slot) => slot['grad'] == _selectedGrad && slot['vreme'] == currentNorm);
+    if (currentExists) return;
+
+    final now = DateTime.now();
+    final nowMin = now.hour * 60 + now.minute;
+    final slots = uniqueSlots.values.toList();
+    slots.sort((a, b) {
+      final aVreme = _normVreme(a['vreme']);
+      final bVreme = _normVreme(b['vreme']);
+      final aDiff = _timeToMinutes(aVreme) < 0 ? 99999 : (_timeToMinutes(aVreme) - nowMin).abs();
+      final bDiff = _timeToMinutes(bVreme) < 0 ? 99999 : (_timeToMinutes(bVreme) - nowMin).abs();
+      if (aDiff != bDiff) return aDiff.compareTo(bDiff);
+      final byGrad = (a['grad'] ?? '').compareTo(b['grad'] ?? '');
+      if (byGrad != 0) return byGrad;
+      return aVreme.compareTo(bVreme);
+    });
+
+    final selected = slots.first;
+    _selectedGrad = selected['grad'] ?? _selectedGrad;
+    _selectedVreme = _normVreme(selected['vreme']);
   }
 
   // ─── Cache helpers ────────────────────────────────────────────────────────
@@ -559,7 +643,10 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(
-                            onTap: () => setState(() => _selectedDay = day),
+                            onTap: () => setState(() {
+                              _selectedDay = day;
+                              _syncSelectedSlotForDay();
+                            }),
                             borderRadius: BorderRadius.circular(12),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),

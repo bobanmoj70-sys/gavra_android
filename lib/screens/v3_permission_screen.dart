@@ -8,7 +8,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_state_utils.dart';
 
 /// Prikazuje se samo jednom — pri prvom pokretanju aplikacije.
 /// U ovom koraku traži samo Notifikacije.
@@ -66,7 +65,9 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
       );
       return;
     }
-    V3StateUtils.safeSetState(this, () => _loading = true);
+    if (mounted) {
+      setState(() => _loading = true);
+    }
 
     try {
       // Notifikacije (vozači + putnici)
@@ -83,7 +84,9 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
     } catch (e) {
       debugPrint('Greška pri proveri: $e');
     } finally {
-      V3StateUtils.safeSetState(this, () => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
 
     // Tek nakon što su svi dijalozi prošli, pišemo da je prikazano i gasimo screen
@@ -216,10 +219,9 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                           onChanged: _loading
                               ? null
                               : (value) {
-                                  V3StateUtils.safeSetState(
-                                    this,
-                                    () => _locationDisclosureAccepted = value ?? false,
-                                  );
+                                  if (mounted) {
+                                    setState(() => _locationDisclosureAccepted = value ?? false);
+                                  }
                                 },
                           title: Text(
                             'Razumem obaveštenje o korišćenju lokacije i saglasan/saglasna sam sa ovom namenom.',

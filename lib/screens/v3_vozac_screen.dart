@@ -113,6 +113,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return v;
   }
 
+  int _timeToMinutes(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return -1;
+    final hour = int.tryParse(parts[0]) ?? -1;
+    final minute = int.tryParse(parts[1]) ?? -1;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1;
+    return hour * 60 + minute;
+  }
+
   bool _isGpsRowEligible(Map<String, dynamic> row) {
     final status = ((row['status_final'] as String?) ?? (row['status'] as String?) ?? '').toLowerCase();
     return row['aktivno'] != false && status != 'odbijeno';
@@ -476,42 +485,54 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final rm = V3MasterRealtimeManager.instance;
     final inheritedVozacByTermin = _buildInheritedVozacByTermin();
 
-    String normV(String? v) {
-      if (v == null || v.isEmpty) return '';
-      final p = v.split(':');
-      if (p.length >= 2) {
-        final hour = int.tryParse(p[0]) ?? 0;
-        final minute = int.tryParse(p[1]) ?? 0;
-        return V3DanHelper.formatVreme(hour, minute);
-      }
-      return v;
-    }
-
     final dayTerms = rm.v3GpsRasporedCache.values
         .where((row) =>
             _effectiveVozacIdForRow(row, inheritedVozacByTermin) == vozac.id &&
             V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == dayIso &&
             _isGpsRowEligible(row))
-        .toList()
-      ..sort((a, b) {
+        .toList();
+
+    final currentVremeNorm = _normV(_selectedVreme);
+    final hasCurrentSelection = dayTerms.any(
+      (row) =>
+          (row['grad']?.toString().toUpperCase() ?? '') == _selectedGrad &&
+          _normV(row['vreme']?.toString()) == currentVremeNorm,
+    );
+
+    Map<String, dynamic>? bestTerm;
+    if (dayTerms.isNotEmpty && !hasCurrentSelection) {
+      final now = DateTime.now();
+      final nowMinutes = now.hour * 60 + now.minute;
+      dayTerms.sort((a, b) {
+        final aTime = _normV(a['vreme']?.toString());
+        final bTime = _normV(b['vreme']?.toString());
+        final aDiff = _timeToMinutes(aTime) < 0 ? 99999 : (_timeToMinutes(aTime) - nowMinutes).abs();
+        final bDiff = _timeToMinutes(bTime) < 0 ? 99999 : (_timeToMinutes(bTime) - nowMinutes).abs();
+        if (aDiff != bDiff) return aDiff.compareTo(bDiff);
         final ga = a['grad']?.toString().toUpperCase() ?? '';
         final gb = b['grad']?.toString().toUpperCase() ?? '';
         final byGrad = ga.compareTo(gb);
         if (byGrad != 0) return byGrad;
-        final va = normV(a['vreme']?.toString());
-        final vb = normV(b['vreme']?.toString());
-        return va.compareTo(vb);
+        return aTime.compareTo(bTime);
       });
+      bestTerm = dayTerms.first;
+    }
 
     if (!mounted) return;
     setState(() {
       _selectedDate = selectedDayDate;
 
-      if (dayTerms.isNotEmpty) {
-        _selectedGrad = dayTerms.first['grad']?.toString().toUpperCase() ?? _selectedGrad;
-        _selectedVreme = normV(dayTerms.first['vreme']?.toString());
-      } else {
+      if (bestTerm != null) {
+        _selectedGrad = bestTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
+        _selectedVreme = _normV(bestTerm['vreme']?.toString());
+      } else if (dayTerms.isEmpty) {
         _selectedVreme = '';
+      }
+
+      if (dayTerms.isNotEmpty && _selectedVreme.isEmpty) {
+        final fallback = dayTerms.first;
+        _selectedGrad = fallback['grad']?.toString().toUpperCase() ?? _selectedGrad;
+        _selectedVreme = _normV(fallback['vreme']?.toString());
       }
     });
 
