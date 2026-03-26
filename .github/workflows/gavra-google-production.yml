@@ -231,6 +231,7 @@ jobs:
           status: completed
           releaseName: "v${{ steps.version.outputs.VERSION_NAME }}"
           whatsNewDirectory: distribution/whatsnew
+          changesNotSentForReview: true
 
       - name: Update Store Listing
         run: |
