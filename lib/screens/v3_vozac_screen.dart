@@ -82,6 +82,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   static const String _routeOptimizationTimerKey = 'vozac_screen_route_optimization';
   static const String _routeOptimizationDebounceKey = 'vozac_screen_route_optimization_change';
+  static const String _realtimeUiRebuildDebounceKey = 'vozac_screen_realtime_ui_rebuild';
   int? _lastRealtimeTick;
 
   /// Efektivni vozač
@@ -216,6 +217,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     V3StreamUtils.cancelSubscription('vozac_screen_gps');
     V3StreamUtils.cancelTimer(_routeOptimizationTimerKey);
     V3StreamUtils.cancelTimer(_routeOptimizationDebounceKey);
+    V3StreamUtils.cancelTimer(_realtimeUiRebuildDebounceKey);
     super.dispose();
   }
 
@@ -1013,11 +1015,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         final tick = snapshot.data;
         if (tick != null && tick != _lastRealtimeTick) {
           _lastRealtimeTick = tick;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _rebuild();
-            _scheduleReoptimizationIfNeeded(reason: 'realtime_stream_tick');
-          });
+          V3StreamUtils.createDebounceTimer(
+            key: _realtimeUiRebuildDebounceKey,
+            duration: const Duration(milliseconds: 220),
+            callback: () {
+              if (!mounted) return;
+              _rebuild();
+              _scheduleReoptimizationIfNeeded(reason: 'realtime_stream_tick');
+            },
+          );
         }
 
         return AnnotatedRegion<SystemUiOverlayStyle>(

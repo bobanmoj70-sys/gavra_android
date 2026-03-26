@@ -47,6 +47,18 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
 
+  late final Stream<List<V3OperativnaNedeljaEntry>> _operativnaStream =
+      V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
+    tables: const [
+      'v3_operativna_nedelja',
+      'v3_putnici',
+      'v3_vozaci',
+      'v3_adrese',
+      'v3_kapacitet_slots',
+    ],
+    build: () => V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(_selectedDatumIso),
+  );
+
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici.
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
 
@@ -815,16 +827,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: StreamBuilder<List<V3OperativnaNedeljaEntry>>(
-        stream: V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
-          tables: const [
-            'v3_operativna_nedelja',
-            'v3_putnici',
-            'v3_vozaci',
-            'v3_adrese',
-            'v3_kapacitet_slots',
-          ],
-          build: () => V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(_selectedDatumIso),
-        ),
+        stream: _operativnaStream,
         builder: (context, snapshot) {
           final sviZapisi = snapshot.data ?? [];
 
@@ -1048,7 +1051,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                               ))
                                           .toList(),
                                       onChanged: (val) {
-                                        V3StateUtils.safeSetState(this, () => setState(() => _selectedDay = val!));
+                                        V3StateUtils.safeSetState(this, () => _selectedDay = val!);
                                       },
                                     ),
                                   ),
