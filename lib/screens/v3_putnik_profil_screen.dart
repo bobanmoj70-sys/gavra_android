@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
@@ -9,6 +11,7 @@ import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -41,6 +44,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // Dugovanje
   double _ukupnoDugovanje = 0.0;
   int _brojNeplacenih = 0;
+  Map<String, V3WeatherSnapshot> _weatherByGrad = const {};
+  Timer? _weatherTimer;
 
   static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
 
@@ -81,6 +86,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
     _checkNotifPermission();
     _refresh();
+    _refreshWeather(forceRefresh: true);
+    _weatherTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+      if (mounted) _refreshWeather();
+    });
     // Pratimo promjene cache-a
     V3StreamUtils.subscribe<void>(
       key: 'putnik_profil_cache',
@@ -98,6 +107,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
+    _weatherTimer?.cancel();
     super.dispose();
   }
 
@@ -105,7 +115,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkNotifPermission();
+      _refreshWeather();
     }
+  }
+
+  Future<void> _refreshWeather({bool forceRefresh = false}) async {
+    final snapshots = await V3WeatherService.fetchBcVs(forceRefresh: forceRefresh);
+    if (!mounted || snapshots.isEmpty) return;
+    V3StateUtils.safeSetState(this, () => _weatherByGrad = snapshots);
   }
 
   Future<void> _checkNotifPermission() async {
@@ -714,16 +731,32 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       border: Border.all(color: V3StyleHelper.whiteAlpha13),
       child: Column(
         children: [
-          V3LiveClockText(
-            style: TextStyle(
-              color: V3StyleHelper.whiteAlpha75,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-            ),
-            textAlign: TextAlign.center,
+          Row(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _WeatherMiniCell(snapshot: _weatherByGrad['BC']),
+                ),
+              ),
+              V3LiveClockText(
+                style: TextStyle(
+                  color: V3StyleHelper.whiteAlpha75,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _WeatherMiniCell(snapshot: _weatherByGrad['VS']),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           Row(
             children: [
               IconButton(
@@ -757,17 +790,37 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             ],
           ),
           const SizedBox(height: 10),
-          // Tip badge + Telefon badge
+          // Tip badge
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 8,
             runSpacing: 6,
             children: [
               if (tip.toLowerCase() != 'radnik') _Badge(label: tipLabel, color: avatarColors[0]),
-              if (telefon.isNotEmpty) _Badge(label: '📞 $telefon', color: Colors.white24),
-              if (telefon2.isNotEmpty) _Badge(label: '📞 $telefon2', color: Colors.white24),
             ],
           ),
+          if (telefon.isNotEmpty || telefon2.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.phone, color: Colors.white54, size: 13),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    [if (telefon.isNotEmpty) telefon, if (telefon2.isNotEmpty) telefon2].join('  •  '),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: V3StyleHelper.whiteAlpha9,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
           // Adrese
           if (adresaBcNaziv != null || adresaVsNaziv != null) ...[
             const SizedBox(height: 12),
@@ -1114,6 +1167,38 @@ class _Badge extends StatelessWidget {
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),
+      ),
+    );
+  }
+}
+
+class _WeatherMiniCell extends StatelessWidget {
+  final V3WeatherSnapshot? snapshot;
+
+  const _WeatherMiniCell({required this.snapshot});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = snapshot;
+    if (data == null) {
+      return Text(
+        '—',
+        style: TextStyle(
+          color: V3StyleHelper.whiteAlpha5,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    return Text(
+      data.compactLabel,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
