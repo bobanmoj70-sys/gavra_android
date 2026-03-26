@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/v3_finansije.dart';
+import '../models/v3_putnik_arhiva.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
+import '../services/v3/v3_putnici_arhiva_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -205,6 +207,9 @@ class V3PlacanjeDialogHelper {
     try {
       final vozac = V3VozacService.currentVozac;
       if (vozac == null) throw 'Vozač nije ulogovan u V3';
+      final putnik = V3PutnikService.getPutnikById(putnikId);
+      final tipPutnika = putnik?.tipPutnika ?? '';
+      final isMesecnaUplata = tipPutnika == 'radnik' || tipPutnika == 'ucenik';
 
       final unos = V3FinansijskiUnos(
         id: '', // Baza će generisati UUID
@@ -212,7 +217,7 @@ class V3PlacanjeDialogHelper {
         kategorija: 'voznja',
         opis: 'Uplata: $imePrezime (${rezultat.mesec}/${rezultat.godina})',
         iznos: rezultat.iznos,
-        datum: DateTime.now(),
+        datum: DateTime(rezultat.godina, rezultat.mesec, 1),
         vozacId: vozac.id,
         putnikId: putnikId,
         createdAt: DateTime.now(),
@@ -220,9 +225,24 @@ class V3PlacanjeDialogHelper {
 
       await V3FinansijeService.addUnos(unos);
 
-      // Za radnika i učenika ažuriramo arhivski zapis plaćenog meseca/godine
-      final putnik = V3PutnikService.getPutnikById(putnikId);
-      if (putnik != null && (putnik.tipPutnika == 'radnik' || putnik.tipPutnika == 'ucenik')) {
+      await V3PutniciArhivaService.addZapis(
+        V3PutnikArhiva(
+          id: '',
+          putnikId: putnikId,
+          putnikImePrezime: imePrezime,
+          iznos: rezultat.iznos,
+          tipAkcije: isMesecnaUplata ? 'uplata_mesecna' : 'uplata_voznja',
+          zaMesec: rezultat.mesec,
+          zaGodinu: rezultat.godina,
+          vozacId: vozac.id,
+          vozacImePrezime: vozac.imePrezime,
+          createdBy: 'vozac:${vozac.id}',
+          updatedBy: 'vozac:${vozac.id}',
+        ),
+      );
+
+      // Za radnika i učenika upisujemo i status plaćenog perioda na kartonu putnika.
+      if (putnik != null && isMesecnaUplata) {
         final azuriran = putnik.copyWith(
           placeniMesec: rezultat.mesec,
           placenaGodina: rezultat.godina,

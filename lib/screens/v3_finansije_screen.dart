@@ -19,7 +19,7 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// FINANSIJE — V3
-/// Prihodi: dnevneOperacijeCache (naplata_status='placeno', iznos_naplacen)
+/// Prihodi: v3_putnici_arhiva (tip_akcije = uplata_mesecna/uplata_voznja)
 /// Troškovi: v3_troskovi cache (mesec/godina)
 /// Potraživanja: V3DugService.getDugovi()
 class V3FinansijeScreen extends StatefulWidget {
@@ -66,7 +66,7 @@ class _V3IzvestajData {
 _V3IzvestajData _buildIzvestaj() {
   final now = DateTime.now();
   final rm = V3MasterRealtimeManager.instance;
-  final ops = rm.operativnaNedeljaCache.values;
+  final arhiva = rm.getCache('v3_putnici_arhiva').values;
 
   // Direktno radimo sa danasnjim datumom - bez sedmicne logike
   final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
@@ -82,13 +82,16 @@ _V3IzvestajData _buildIzvestaj() {
   double prihodDan = 0, prihodMes = 0, prihodGod = 0;
   int voznjiDan = 0, voznjiMes = 0, voznjiGod = 0;
 
-  for (final row in ops) {
-    if ((row['naplata_status'] as String?) != 'placeno') continue;
-    final updStr = row['updated_at'] as String?;
-    if (updStr == null) continue;
-    final dt = DateTime.tryParse(updStr)?.toLocal();
+  for (final row in arhiva) {
+    if (row['aktivno'] == false) continue;
+    final tipAkcije = row['tip_akcije'] as String?;
+    if (tipAkcije != 'uplata_mesecna' && tipAkcije != 'uplata_voznja') continue;
+
+    final createdStr = row['created_at'] as String?;
+    if (createdStr == null) continue;
+    final dt = DateTime.tryParse(createdStr)?.toLocal();
     if (dt == null) continue;
-    final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
+    final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
 
     // Dnevni period (danas)
     if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
@@ -172,7 +175,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   Widget build(BuildContext context) {
     return StreamBuilder<void>(
       stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_operativna_nedelja', 'v3_troskovi', 'v3_putnici'],
+        tables: const ['v3_operativna_nedelja', 'v3_troskovi', 'v3_putnici', 'v3_putnici_arhiva'],
         build: () {},
       ),
       builder: (context, _) {
@@ -463,15 +466,18 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   }
 
   void _showCustomReportDialog(DateTime from, DateTime to) {
-    final ops = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    final rm = V3MasterRealtimeManager.instance;
+    final ops = rm.getCache('v3_putnici_arhiva').values;
     double prihod = 0;
     int voznje = 0;
     for (final row in ops) {
-      if ((row['naplata_status'] as String?) != 'placeno') continue;
-      final dt = DateTime.tryParse(row['updated_at'] as String? ?? '')?.toLocal();
+      if (row['aktivno'] == false) continue;
+      final tipAkcije = row['tip_akcije'] as String?;
+      if (tipAkcije != 'uplata_mesecna' && tipAkcije != 'uplata_voznja') continue;
+      final dt = DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal();
       if (dt == null) continue;
       if (dt.isBefore(from) || dt.isAfter(to.add(const Duration(days: 1)))) continue;
-      prihod += (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
+      prihod += (row['iznos'] as num?)?.toDouble() ?? 0.0;
       voznje++;
     }
     double troskovi = 0;

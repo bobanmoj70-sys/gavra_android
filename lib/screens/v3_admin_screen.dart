@@ -136,46 +136,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   }
 
   Map<String, int> _getUceniciBcVsSummary() {
-    final rm = V3MasterRealtimeManager.instance;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final uceniciIds = rm.putniciCache.values
-        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
-        .map((p) => p['id'] as String)
-        .toSet();
+    final grouped = _getUceniciSaDodeljenimVremenomDanasPoGradu();
+    final bc = grouped['BC'] ?? const <String>[];
+    final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
+    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList();
 
-    int bc = 0;
-    int vs = 0;
-
-    for (final r in rm.operativnaNedeljaCache.values) {
-      if (!uceniciIds.contains(r['putnik_id'])) continue;
-      if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
-      if (r['aktivno'] != true) continue;
-
-      final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
-      if (dodeljenoVreme.isEmpty) continue;
-
-      final datumRaw = r['datum']?.toString();
-      if (datumRaw == null || datumRaw.isEmpty) continue;
-      final datum = DateTime.tryParse(datumRaw);
-      if (datum == null) continue;
-      final datumOnly = DateTime(datum.year, datum.month, datum.day);
-      if (datumOnly != today) continue;
-
-      final grad = (r['grad']?.toString() ?? '').toUpperCase();
-      final brojMesta = (r['broj_mesta'] as num?)?.toInt() ?? 1;
-      if (grad == 'BC') {
-        bc += brojMesta;
-      } else if (grad == 'VS') {
-        vs += brojMesta;
-      }
-    }
-
-    final ostalo = bc - vs;
     return {
-      'bcTotal': bc,
-      'vsTotal': vs,
-      'preostalo': ostalo < 0 ? 0 : ostalo,
+      'bcTotal': bc.length,
+      'vsTotal': vsSet.length,
+      'preostalo': bezVs.length,
     };
   }
 
@@ -195,11 +164,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['putnik_id']?.toString();
       if (putnikId == null || !uceniciIds.contains(putnikId)) continue;
-      if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
       if (r['aktivno'] != true) continue;
-
-      final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
-      if (dodeljenoVreme.isEmpty) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
@@ -212,10 +177,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       if (ime.isEmpty) continue;
 
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
-      if (grad == 'BC') {
-        bcNames.add(ime);
-      } else if (grad == 'VS') {
+      if (grad == 'VS') {
         vsNames.add(ime);
+        continue;
+      }
+
+      if (grad == 'BC') {
+        if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
+        final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
+        if (dodeljenoVreme.isEmpty) continue;
+        bcNames.add(ime);
       }
     }
 
@@ -231,7 +202,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   void _showUceniciDanasPopup(BuildContext context) {
     final grouped = _getUceniciSaDodeljenimVremenomDanasPoGradu();
     final bc = grouped['BC'] ?? const <String>[];
-    final vs = grouped['VS'] ?? const <String>[];
+    final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
+    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList()..sort();
 
     showDialog<void>(
       context: context,
@@ -243,7 +215,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         return AlertDialog(
           backgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surface,
           title: Text(
-            'Učenici danas (dodeljeno vreme)',
+            'Učenici bez VS termina',
             style: theme.textTheme.titleMedium?.copyWith(
               color: onSurface,
               fontWeight: FontWeight.bold,
@@ -257,27 +229,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'BC (${bc.length})',
+                    'Bez VS (${bezVs.length})',
                     style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    bc.isEmpty ? '— nema učenika —' : bc.join('\n'),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: onSurface.withValues(alpha: 0.82),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Divider(color: onSurface.withValues(alpha: 0.22)),
-                  const SizedBox(height: 12),
-                  Text(
-                    'VS (${vs.length})',
-                    style: const TextStyle(color: Colors.lightBlueAccent, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    vs.isEmpty ? '— nema učenika —' : vs.join('\n'),
+                    bezVs.isEmpty ? '— svi imaju VS termin —' : bezVs.join('\n'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: onSurface.withValues(alpha: 0.82),
                       fontSize: 13,
@@ -375,10 +332,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }).length;
   }
 
-  /// Učenici brojač u pasulj formatu: ukupno/preostalo (npr. 50/49)
+  /// Učenici brojač: broj učenika bez VS termina danas.
   Widget _buildSaVsWidget(BuildContext context) {
     final stats = _getUceniciBcVsSummary();
-    final ukupno = stats['bcTotal'] ?? 0;
     final preostalo = stats['preostalo'] ?? 0;
 
     return GestureDetector(
@@ -395,16 +351,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '$ukupno/$preostalo',
+              '$preostalo',
               style: const TextStyle(
                 color: Colors.orange,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
-            ),
-            const Text(
-              'uk/preost',
-              style: TextStyle(color: Colors.white70, fontSize: 9),
             ),
           ],
         ),
@@ -451,114 +403,112 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // 💰 Kapacitet
+                    // 💺 Kapacitet termina
                     Expanded(
                       child: _NavBtn(
                         color: Colors.green,
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          const V3VozaciAdminScreen(),
+                          const V3KapacitetScreen(),
                         ),
-                        child: const Text('💰', style: TextStyle(fontSize: 20)),
+                        child: const Text('💺', style: TextStyle(fontSize: 20)),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // 📊 Statistike (popup)
+                    // 💹 Finasnije
                     Expanded(
                       child: _NavBtn(
-                        color: Colors.purple,
-                        onTap: () => _showStatistikeMenu(context),
-                        child: const Text('📊', style: TextStyle(fontSize: 20)),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // ⛽ Gorivo
-                    Expanded(
-                      child: _NavBtn(
-                        color: Colors.orange,
+                        color: Colors.indigo,
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          const V3GorivoScreen(),
+                          const V3FinansijeScreen(),
                         ),
-                        child: const Text('⛽', style: TextStyle(fontSize: 20)),
+                        child: const Text('💹', style: TextStyle(fontSize: 20)),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // 🔧 Raspored + Vozaci admin popup
-                    ValueListenableBuilder<String>(
-                      valueListenable: navBarTypeNotifier,
-                      builder: (context, navType, _) {
-                        const labels = {'zimski': '❄️', 'letnji': '☀️', 'praznici': '🎉'};
-                        return _NavBtn(
-                          color: Colors.blueGrey,
-                          onTap: () async {
-                            final RenderBox button = context.findRenderObject()! as RenderBox;
-                            final RenderBox overlay =
-                                Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
-                            final RelativeRect position = RelativeRect.fromRect(
-                              Rect.fromPoints(
-                                button.localToGlobal(Offset.zero, ancestor: overlay),
-                                button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
-                              ),
-                              Offset.zero & overlay.size,
-                            );
-                            final val = await showMenu<String>(
-                              context: context,
-                              position: position,
-                              color: Theme.of(context).colorScheme.primary,
-                              items: [
-                                PopupMenuItem(
-                                  enabled: false,
-                                  height: V3ContainerUtils.responsiveHeight(context, 28),
-                                  child: Text('Tip rasporeda', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    // 🔧 Kolska knjga
+                    Expanded(
+                      child: _NavBtn(
+                        color: Colors.brown,
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
+                          context,
+                          const V3OdrzavanjeScreen(),
+                        ),
+                        child: const Text('🔧', style: TextStyle(fontSize: 20)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // 🔧 Raspored + dodatne opcije
+                    Expanded(
+                      child: ValueListenableBuilder<String>(
+                        valueListenable: navBarTypeNotifier,
+                        builder: (context, navType, _) {
+                          const labels = {'zimski': '⚙️', 'letnji': '☀️', 'praznici': '🎉'};
+                          return _NavBtn(
+                            color: Colors.blueGrey,
+                            onTap: () async {
+                              final RenderBox button = context.findRenderObject()! as RenderBox;
+                              final RenderBox overlay =
+                                  Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+                              final RelativeRect position = RelativeRect.fromRect(
+                                Rect.fromPoints(
+                                  button.localToGlobal(Offset.zero, ancestor: overlay),
+                                  button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
                                 ),
-                                const PopupMenuItem(
-                                    value: 'zimski', child: Text('❄️  Zimski', style: TextStyle(color: Colors.white))),
-                                const PopupMenuItem(
-                                    value: 'letnji', child: Text('☀️  Ljetnji', style: TextStyle(color: Colors.white))),
-                                const PopupMenuItem(
-                                    value: 'praznici',
-                                    child: Text('🎉  Praznici', style: TextStyle(color: Colors.white))),
-                                const PopupMenuDivider(),
-                                const PopupMenuItem(
-                                    value: '__kapacitet__',
-                                    child: Text('📅  Kapacitet termina', style: TextStyle(color: Colors.white))),
-                                const PopupMenuItem(
-                                    value: '__vozaci__',
-                                    child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
-                              ],
-                            );
-                            if (val == null) return;
-                            if (val == '__kapacitet__') {
-                              if (context.mounted) {
-                                V3NavigationUtils.pushScreen<void>(context, const V3KapacitetScreen());
+                                Offset.zero & overlay.size,
+                              );
+                              final val = await showMenu<String>(
+                                context: context,
+                                position: position,
+                                color: Theme.of(context).colorScheme.primary,
+                                items: [
+                                  PopupMenuItem(
+                                    enabled: false,
+                                    height: V3ContainerUtils.responsiveHeight(context, 28),
+                                    child: Text('Tip rasporeda', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                  ),
+                                  const PopupMenuItem(
+                                      value: 'zimski',
+                                      child: Text('⚙️  Zimski', style: TextStyle(color: Colors.white))),
+                                  const PopupMenuItem(
+                                      value: 'letnji',
+                                      child: Text('☀️  Ljetnji', style: TextStyle(color: Colors.white))),
+                                  const PopupMenuItem(
+                                      value: 'praznici',
+                                      child: Text('🎉  Praznici', style: TextStyle(color: Colors.white))),
+                                  const PopupMenuDivider(),
+                                  const PopupMenuItem(
+                                      value: '__vozaci__',
+                                      child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
+                                ],
+                              );
+                              if (val == null) return;
+                              if (val == '__vozaci__') {
+                                if (context.mounted) {
+                                  V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
+                                }
+                                return;
                               }
-                              return;
-                            }
-                            if (val == '__vozaci__') {
-                              if (context.mounted) {
-                                V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
+                              navBarTypeNotifier.value = val;
+                              try {
+                                await supabase.from('v3_app_settings').update({'nav_bar_type': val}).eq('id', 'global');
+                                debugPrint('[AdminScreen] nav_bar_type sačuvan u bazi: $val');
+                              } catch (e) {
+                                debugPrint('[AdminScreen] Greška pri čuvanju nav_bar_type: $e');
                               }
-                              return;
-                            }
-                            navBarTypeNotifier.value = val;
-                            try {
-                              await supabase.from('v3_app_settings').update({'nav_bar_type': val}).eq('id', 'global');
-                              debugPrint('[AdminScreen] nav_bar_type sačuvan u bazi: $val');
-                            } catch (e) {
-                              debugPrint('[AdminScreen] Greška pri čuvanju nav_bar_type: $e');
-                            }
-                          },
-                          child: Text(labels[navType] ?? '⚙️', style: const TextStyle(fontSize: 20)),
-                        );
-                      },
+                            },
+                            child: Text(labels[navType] ?? '⚙️', style: const TextStyle(fontSize: 20)),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 6),
 
-              // ─── RED 2: Kalendar, Dnevnik, Putnici, pasulj ───
+              // ─── RED 2: Kalendar, Dnevnik, Putnici, Gorivo, pasulj ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
@@ -638,8 +588,33 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
+                    // ⛽ Gorivo
+                    Expanded(
+                      flex: 1,
+                      child: _NavBtn(
+                        color: Colors.orange,
+                        height: V3ContainerUtils.responsiveHeight(context, 50),
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
+                          context,
+                          const V3GorivoScreen(),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '⛽',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.white,
+                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     // saVS/ukBC statistika (skroz desno)
-                    Expanded(flex: 2, child: _buildSaVsWidget(context)),
+                    Expanded(flex: 1, child: _buildSaVsWidget(context)),
                   ],
                 ),
               ),

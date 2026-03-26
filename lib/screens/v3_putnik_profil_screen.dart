@@ -743,7 +743,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 style: TextStyle(
                   color: V3StyleHelper.whiteAlpha75,
                   fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w900,
                   letterSpacing: 0.3,
                 ),
                 textAlign: TextAlign.center,
@@ -1191,15 +1191,31 @@ class _WeatherMiniCell extends StatelessWidget {
       );
     }
 
-    return Text(
-      data.compactLabel,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-      ),
+    final temp = '${data.temperatureC.round()}°';
+    final rain = data.precipitationProbability != null ? ' · ${data.precipitationProbability}%' : '';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          data.icon,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 3),
+        Text(
+          '$temp$rain',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
