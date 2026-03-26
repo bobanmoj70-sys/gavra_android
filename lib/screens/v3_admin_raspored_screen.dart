@@ -18,7 +18,7 @@ import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
 
 /// V3 ekran za upravljanje rasporedom vozača.
-/// Admin dodeljuje vozača kroz v3_gps_raspored unified tabelu.
+/// Admin dodeljuje vozača kroz operativnu tabelu (cache layer ima legacy naziv v3GpsRasporedCache).
 class V3AdminRasporedScreen extends StatefulWidget {
   const V3AdminRasporedScreen({super.key});
 

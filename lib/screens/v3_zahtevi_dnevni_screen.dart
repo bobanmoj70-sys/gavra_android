@@ -54,9 +54,19 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       return true;
     }).toList()
       ..sort((a, b) {
-        final danOrd = a.datum.compareTo(b.datum);
+        final aCreated = a.createdAt;
+        final bCreated = b.createdAt;
+
+        if (aCreated != null || bCreated != null) {
+          if (aCreated == null) return 1;
+          if (bCreated == null) return -1;
+          final createdOrd = bCreated.compareTo(aCreated);
+          if (createdOrd != 0) return createdOrd;
+        }
+
+        final danOrd = b.datum.compareTo(a.datum);
         if (danOrd != 0) return danOrd;
-        return a.zeljenoVreme.compareTo(b.zeljenoVreme);
+        return b.zeljenoVreme.compareTo(a.zeljenoVreme);
       });
   }
 
@@ -413,6 +423,53 @@ class _ZahtevCard extends StatelessWidget {
     required this.onOdbij,
   });
 
+  Widget _buildTimelapse(V3Zahtev z) {
+    final created = z.createdAt;
+    final updated = z.updatedAt;
+    if (created == null) return const SizedBox.shrink();
+
+    String fmt(DateTime dt) {
+      return V3DanHelper.formatVreme(dt.hour, dt.minute);
+    }
+
+    String odgovorInfo;
+    if (updated != null && updated.isAfter(created.add(const Duration(seconds: 5)))) {
+      final diff = updated.difference(created);
+      final mins = diff.inMinutes;
+      final secs = diff.inSeconds % 60;
+      final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
+
+      String odgovorLabel;
+      if ((z.status == 'alternativa' || z.status == 'ponuda') && (z.altVremePre != null || z.altVremePosle != null)) {
+        final alts = [
+          if (z.altVremePre != null) V3StringUtils.formatAlternativeTime(z.altVremePre),
+          if (z.altVremePosle != null) V3StringUtils.formatAlternativeTime(z.altVremePosle),
+        ].join(' / ');
+        odgovorLabel = '⚠️ alt: $alts';
+      } else {
+        odgovorLabel = switch (z.status) {
+          'odobreno' => '✅',
+          'alternativa' || 'ponuda' => '⚠️',
+          'odbijeno' => '❌',
+          'otkazano' => '⛔',
+          _ => '🕒',
+        };
+      }
+
+      odgovorInfo = '${fmt(created)} → ${fmt(updated)} ($diffStr) $odgovorLabel';
+    } else {
+      odgovorInfo = '${fmt(created)} · čeka odgovor...';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        '⏱ $odgovorInfo',
+        style: const TextStyle(color: Colors.white24, fontSize: 11),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tip = putnik?.tipPutnika ?? '';
@@ -521,6 +578,7 @@ class _ZahtevCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
+                  _buildTimelapse(zahtev),
                 ],
               ),
             ),

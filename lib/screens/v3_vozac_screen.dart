@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -671,6 +672,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (vozac == null) return;
 
     if (!_isTracking) {
+      final canContinue = await _ensureDriverLocationDisclosure();
+      if (!canContinue) return;
+
       // 1. START FOREGROUND GPS TRACKING SA PERSISTENT NOTIFICATION
       V3StateUtils.safeSetState(this, () => _isTracking = true);
 
@@ -743,6 +747,42 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         V3AppSnackBar.warning(context, '⚠️ GPS tracking zaustavljen - notification uklonjena');
       }
     }
+  }
+
+  Future<bool> _ensureDriverLocationDisclosure() async {
+    final locationAlways = await Permission.locationAlways.status;
+    final locationWhenInUse = await Permission.location.status;
+
+    if (locationAlways.isGranted || locationWhenInUse.isGranted) {
+      return true;
+    }
+
+    if (!mounted) return false;
+
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Obaveštenje o lokaciji (vozač)'),
+        content: const Text(
+          'Lokacija se koristi samo za vozače kako bi putnici dobijali tačan ETA i status vožnje. '
+          'GPS koordinate vozača se šalju u bazu tokom aktivnog rada trackinga. '
+          'Putnici ne dele svoju lokaciju.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Otkaži'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Nastavi'),
+          ),
+        ],
+      ),
+    );
+
+    return shouldProceed == true;
   }
 
   Future<void> _optimizujRutu({bool silent = false, String reason = 'manual'}) async {

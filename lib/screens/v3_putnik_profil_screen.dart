@@ -233,8 +233,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       } else if (trenutniInfo != null && (trenutniInfo.status == 'obrada' || trenutniInfo.status == 'odobreno')) {
         // Ažuriraj vreme i adresu na postojećem zahtevu (vraća u obrada)
         await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, validNovoVreme,
-            koristiSekundarnu: koristiSekundarnu);
-        if (mounted) V3AppSnackBar.success(context, '✅ Zahtev ažuriran: $validNovoVreme');
+            koristiSekundarnu: koristiSekundarnu, updatedBy: 'putnik:$putnikId');
+        if (mounted) {
+          V3AppSnackBar.success(context,
+              '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.');
+        }
       } else {
         // Kreiraj novi zahtev
         final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];

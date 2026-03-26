@@ -11,7 +11,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// Prikazuje se samo jednom — pri prvom pokretanju aplikacije.
-/// Traži GPS, Pozive i Notifikacije.
+/// Traži Pozive i Notifikacije.
 class V3PermissionScreen extends StatefulWidget {
   final VoidCallback onDone;
 
@@ -59,15 +59,11 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
     V3StateUtils.safeSetState(this, () => _loading = true);
 
     try {
-      // 1. GPS (Request and wait)
-      final locStatus = await Permission.location.request();
-      debugPrint('Location permission: $locStatus');
-
-      // 2. Pozivi (Request and wait)
+      // 1. Pozivi (Request and wait)
       final phoneStatus = await Permission.phone.request();
       debugPrint('Phone permission: $phoneStatus');
 
-      // 3. Notifikacije
+      // 2. Notifikacije
       if (Platform.isAndroid) {
         final notifStatus = await Permission.notification.request();
         debugPrint('Notification permission: $notifStatus');
@@ -150,7 +146,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                     const SizedBox(height: 10),
 
                     Text(
-                      'Za potpunu funkcionalnost\naplikacije potrebne su sledeće dozvole:',
+                      'Za osnovnu funkcionalnost\naplikacije potrebne su sledeće dozvole:',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 14,
@@ -162,13 +158,6 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                     const SizedBox(height: 24),
 
                     // Permission stavke
-                    _PermissionItem(
-                      icon: Icons.location_on_rounded,
-                      color: const Color(0xFF34C759),
-                      title: 'GPS lokacija',
-                      subtitle: 'za navigaciju do putnika',
-                    ),
-                    const SizedBox(height: 12),
                     _PermissionItem(
                       icon: Icons.phone_rounded,
                       color: const Color(0xFF007AFF),

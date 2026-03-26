@@ -38,6 +38,7 @@ class V3WelcomeScreen extends StatefulWidget {
 class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
+  bool _isResumeRefreshing = false;
 
   late final AnimationController _fadeController;
   late final AnimationController _slideController;
@@ -297,7 +298,30 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         unawaited(_stopAudio());
         break;
       case AppLifecycleState.resumed:
+        unawaited(_refreshOnResume());
         break;
+    }
+  }
+
+  Future<void> _refreshOnResume() async {
+    if (_isResumeRefreshing || !mounted) return;
+    _isResumeRefreshing = true;
+    try {
+      final rm = V3MasterRealtimeManager.instance;
+      await rm.initV3();
+
+      if (!mounted) return;
+
+      final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno && v.imePrezime.isNotEmpty).toList()
+        ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+
+      V3StateUtils.safeSetState(this, () {
+        _vozaci = vozaci;
+      });
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] refreshOnResume error: $e');
+    } finally {
+      _isResumeRefreshing = false;
     }
   }
 

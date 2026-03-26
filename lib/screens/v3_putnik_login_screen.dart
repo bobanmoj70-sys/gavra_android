@@ -31,9 +31,10 @@ class V3PutnikLoginScreen extends StatefulWidget {
   State<V3PutnikLoginScreen> createState() => _V3PutnikLoginScreenState();
 }
 
-class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
+class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsBindingObserver {
   _LoginStep _currentStep = _LoginStep.telefon;
   bool _isLoading = false;
+  bool _isResumeRefreshing = false;
   String? _errorMessage;
   String? _infoMessage;
 
@@ -49,7 +50,28 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkBiometric();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshOnResume());
+    }
+  }
+
+  Future<void> _refreshOnResume() async {
+    if (_isResumeRefreshing || !mounted) return;
+    _isResumeRefreshing = true;
+    try {
+      await V3MasterRealtimeManager.instance.initV3();
+    } catch (e) {
+      debugPrint('[V3PutnikLoginScreen] refreshOnResume error: $e');
+    } finally {
+      _isResumeRefreshing = false;
+    }
   }
 
   Future<void> _checkBiometric() async {
@@ -72,6 +94,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     V3StreamUtils.cancelSubscription('putnik_login_pin');
     V3TextUtils.disposeController('telefon');
     V3TextUtils.disposeController('email');

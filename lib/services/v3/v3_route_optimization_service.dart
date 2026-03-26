@@ -65,7 +65,7 @@ class V3RouteOptimizationService {
     required String vreme,
   }) {
     try {
-      // Dobija podatke iz v3_gps_raspored cache-a
+      // Dobija podatke iz legacy v3GpsRasporedCache (izvor: v3_operativna_nedelja)
       final cache = V3MasterRealtimeManager.instance.v3GpsRasporedCache;
       final datumStr = V3DanHelper.toIsoDate(datum);
 

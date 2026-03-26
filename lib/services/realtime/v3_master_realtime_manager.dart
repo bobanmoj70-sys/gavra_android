@@ -29,7 +29,12 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
   final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
+  // Legacy naziv: istorijski se zove "v3GpsRasporedCache", ali izvor podataka je
+  // isključivo v3_operativna_nedelja (nema DB tabele v3_gps_raspored).
   final Map<String, Map<String, dynamic>> v3GpsRasporedCache = {};
+
+  // Preferirani alias za novi kod (isti objekat kao legacy naziv).
+  Map<String, Map<String, dynamic>> get operativnaAssignedCache => v3GpsRasporedCache;
 
   void _rebuildGpsCacheFromOperativna() {
     v3GpsRasporedCache.clear();
@@ -302,7 +307,7 @@ class V3MasterRealtimeManager {
       debugPrint(
           '[V3MasterRealtimeManager] v3GpsRasporedCache rebuilt: ${v3GpsRasporedCache.length} records from operativna_nedelja');
     } catch (e) {
-      debugPrint('[V3MasterRealtimeManager] Error refreshing v3_gps_raspored: $e');
+      debugPrint('[V3MasterRealtimeManager] Error refreshing assigned operativna cache: $e');
     }
   }
 
@@ -342,7 +347,7 @@ class V3MasterRealtimeManager {
       case 'v3_app_settings':
         return appSettingsCache;
       case 'v3_gps_raspored':
-        // v3_gps_raspored tabela ne postoji - cache se gradi lokalno iz v3_operativna_nedelja
+        // Backward compatibility key: nema DB tabele, cache se gradi iz v3_operativna_nedelja.
         return v3GpsRasporedCache;
       default:
         return {};
