@@ -155,7 +155,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             status: z.status,
             zahtevId: z.id,
             pokupljen: isPokupljen,
-            operativnaId: opId));
+            operativnaId: opId,
+            koristiSekundarnu: z.koristiSekundarnu));
       }
       for (final z in vsList) {
         // FILTER: Skip samo odbijene zahteve; otkazano ostaje vidljivo kao crvena ćelija
@@ -177,7 +178,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             status: z.status,
             zahtevId: z.id,
             pokupljen: isPokupljen,
-            operativnaId: opId2));
+            operativnaId: opId2,
+            koristiSekundarnu: z.koristiSekundarnu));
       }
       final bestByGrad = <String, _ZahtevInfo>{};
       for (final info in infos) {
@@ -300,7 +302,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       secondaryId = putnikCache?['adresa_vs_id_2'] as String?;
     }
     final secondaryNaziv = V3AdresaService.getAdresaById(secondaryId)?.naziv ?? 'Druga adresa';
-    bool koristiSekundarnu = false;
+    bool koristiSekundarnu = info?.koristiSekundarnu ?? false;
     await showDialog<void>(
       context: ctx,
       builder: (dialogCtx) => StatefulBuilder(
@@ -333,7 +335,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 ),
                 const Divider(color: Colors.white12, height: 1),
                 // Address Selector (Prikazuje se samo ako postoji druga adresa)
-                if (hasSecondary && !hasActive)
+                if (hasSecondary)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                     child: InkWell(
@@ -470,6 +472,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                           zahtevId: info.zahtevId,
                                           pokupljen: info.pokupljen,
                                           operativnaId: info.operativnaId,
+                                          koristiSekundarnu: info.koristiSekundarnu,
                                         );
                                       }
                                       await _updatePolazak(dan, grad, vreme,
@@ -1034,6 +1037,7 @@ class _ZahtevInfo {
   final String zahtevId;
   final bool pokupljen;
   final String? operativnaId;
+  final bool koristiSekundarnu;
   const _ZahtevInfo({
     required this.grad,
     required this.vreme,
@@ -1041,6 +1045,7 @@ class _ZahtevInfo {
     required this.zahtevId,
     this.pokupljen = false,
     this.operativnaId,
+    this.koristiSekundarnu = false,
   });
 }
 
