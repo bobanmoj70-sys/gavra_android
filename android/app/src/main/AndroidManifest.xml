@@ -41,7 +41,6 @@
   <!-- 🛰️ GPS PERMISSIONS - FOREGROUND_SERVICE_LOCATION odobren od Google Play (video verifikacija poslana) -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-  <uses-permission android:name="android.permission.WAKE_LOCK" />
 
   <!-- 🔊 VOICE NAVIGATION PERMISSIONS -->
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
