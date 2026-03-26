@@ -96,7 +96,9 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       final status = row['naplata_status'] as String? ?? '';
       if (status != 'placeno') continue;
 
-      final vozacId = row['vozac_id']?.toString() ?? '';
+      // Primarno filtriramo po vozaču koji je naplatio,
+      // uz fallback na vozac_id za starije zapise bez naplatio_vozac_id.
+      final vozacId = (row['naplatio_vozac_id'] ?? row['vozac_id'])?.toString() ?? '';
       if (vozacId != _selectedVozacId) continue;
 
       // Datum: koristimo polje 'datum' iz operativne nedelje
@@ -105,8 +107,9 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
       if (datumRaw != dateStr) continue;
 
-      final updatedAt = row['updated_at'] as String? ?? '';
-      final dt = DateTime.tryParse(updatedAt)?.toLocal() ?? DateTime.now();
+      final vremePlaceno = row['vreme_placen'] as String? ?? '';
+      final sortTs = vremePlaceno.isNotEmpty ? vremePlaceno : (row['updated_at'] as String? ?? '');
+      final dt = DateTime.tryParse(sortTs)?.toLocal() ?? DateTime.now();
 
       final ime = row['ime_prezime'] as String? ?? row['putnik_ime'] as String? ?? '?';
       final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
@@ -116,7 +119,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
         ime: ime,
         iznos: iznos,
         vremeNaplate: vreme,
-        sortTs: updatedAt,
+        sortTs: sortTs,
       ));
     }
 
