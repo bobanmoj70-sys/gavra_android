@@ -104,6 +104,7 @@ jobs:
           track: internal
           status: completed
           releaseName: "Internal Testing - ${{ steps.version.outputs.VERSION_NAME }}"
+          changesNotSentForReview: true
 
       - name: Generate Tester Instructions
         run: |
