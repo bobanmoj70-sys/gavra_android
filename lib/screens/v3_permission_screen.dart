@@ -11,7 +11,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// Prikazuje se samo jednom — pri prvom pokretanju aplikacije.
-/// Traži Pozive i Notifikacije.
+/// U ovom koraku traži samo Notifikacije.
 class V3PermissionScreen extends StatefulWidget {
   final VoidCallback onDone;
 
@@ -59,11 +59,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
     V3StateUtils.safeSetState(this, () => _loading = true);
 
     try {
-      // 1. Pozivi (Request and wait)
-      final phoneStatus = await Permission.phone.request();
-      debugPrint('Phone permission: $phoneStatus');
-
-      // 2. Notifikacije
+      // Notifikacije (vozači + putnici)
       if (Platform.isAndroid) {
         final notifStatus = await Permission.notification.request();
         debugPrint('Notification permission: $notifStatus');
@@ -146,7 +142,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                     const SizedBox(height: 10),
 
                     Text(
-                      'Za osnovnu funkcionalnost\naplikacije potrebne su sledeće dozvole:',
+                      'U ovom koraku uključujemo samo notifikacije\nza obaveštenja o vožnjama i promenama statusa.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 14,
@@ -159,24 +155,35 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
 
                     // Permission stavke
                     _PermissionItem(
-                      icon: Icons.phone_rounded,
-                      color: const Color(0xFF007AFF),
-                      title: 'Pozivi',
-                      subtitle: 'za kontaktiranje putnika',
-                    ),
-                    const SizedBox(height: 12),
-                    _PermissionItem(
                       icon: Icons.notifications_rounded,
                       color: const Color(0xFFAF52DE),
                       title: 'Notifikacije',
-                      subtitle: 'za nova putovanja',
+                      subtitle: 'za vozače i putnike (nova putovanja, statusi, izmene)',
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+
+                    V3ContainerUtils.styledContainer(
+                      padding: const EdgeInsets.all(12),
+                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                      child: Text(
+                        'GPS lokacija i telefon nisu deo ovog ekrana. Traže se samo u vozačkom toku i samo kada vozač pokrene GPS praćenje ili poziv.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          fontSize: 12.5,
+                          height: 1.45,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
 
                     // Napomena
                     Text(
-                      'Dozvole se zahtevaju samo jednom. Možete ih\nkasnije promeniti u podešavanjima telefona.',
+                      'Dozvole možete kasnije promeniti u podešavanjima telefona.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.35),
                         fontSize: 12,
