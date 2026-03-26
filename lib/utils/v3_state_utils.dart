@@ -12,8 +12,7 @@ class V3StateUtils {
   /// **Primjer:** V3StateUtils.safeSetState(this, () => _isLoading = true);
   static void safeSetState(State state, VoidCallback fn) {
     if (state.mounted) {
-      // Jednostavno pozovi callback funkciju - setState će pozvati widget direktno
-      fn();
+      (state as dynamic).setState(fn);
     }
   }
 
@@ -23,7 +22,7 @@ class V3StateUtils {
   /// **Primjer:** V3StateUtils.setLoading(this, true, () => _isLoading = value);
   static void setLoading(State state, bool value, VoidCallback setter) {
     if (state.mounted) {
-      setter();
+      (state as dynamic).setState(setter);
     }
   }
 
@@ -51,7 +50,7 @@ class V3StateUtils {
   /// **Primjer:** V3StateUtils.clearError(this, () => _errorMessage = null);
   static void clearError(State state, VoidCallback clearCallback) {
     if (state.mounted) {
-      clearCallback();
+      (state as dynamic).setState(clearCallback);
     }
   }
 
@@ -61,7 +60,7 @@ class V3StateUtils {
   /// **Primjer:** V3StateUtils.setError(this, () => _errorMessage = 'Error');
   static void setError(State state, VoidCallback setErrorCallback) {
     if (state.mounted) {
-      setErrorCallback();
+      (state as dynamic).setState(setErrorCallback);
     }
   }
 
@@ -71,7 +70,7 @@ class V3StateUtils {
   /// **Primjer:** V3StateUtils.batchUpdate(this, () { _loading = false; _error = null; });
   static void batchUpdate(State state, VoidCallback updates) {
     if (state.mounted) {
-      updates();
+      (state as dynamic).setState(updates);
     }
   }
 
@@ -81,7 +80,7 @@ class V3StateUtils {
   /// **Primjer:** V3StateUtils.updateIf(this, shouldUpdate, () => _value = newValue);
   static void updateIf(State state, bool condition, VoidCallback update) {
     if (condition && state.mounted) {
-      update();
+      (state as dynamic).setState(update);
     }
   }
 }

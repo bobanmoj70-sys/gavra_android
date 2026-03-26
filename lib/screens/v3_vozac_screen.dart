@@ -1120,7 +1120,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 onSelected: (val) async {
                                   if (val == 'tema') {
                                     await V2ThemeManager().nextTheme();
-                                    V3StateUtils.safeSetState(this, () => setState(() {}));
+                                    V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, '🎨 Tema promenjena');
                                   } else if (val == 'sifra') {

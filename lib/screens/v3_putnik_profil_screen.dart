@@ -764,7 +764,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 tooltip: 'Tema',
                 onPressed: () async {
                   await V2ThemeManager().nextTheme();
-                  V3StateUtils.safeSetState(this, () => setState(() {}));
+                  V3StateUtils.safeSetState(this, () {});
                   if (!mounted) return;
                   V3AppSnackBar.info(context, '🎨 Tema promenjena');
                 },
