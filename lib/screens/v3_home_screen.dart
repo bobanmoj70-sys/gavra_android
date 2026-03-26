@@ -47,20 +47,23 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
 
-  late final Stream<List<V3OperativnaNedeljaEntry>> _operativnaStream =
-      V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
-    tables: const [
-      'v3_operativna_nedelja',
-      'v3_putnici',
-      'v3_vozaci',
-      'v3_adrese',
-      'v3_kapacitet_slots',
-    ],
-    build: () => V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(_selectedDatumIso),
-  );
+  late Stream<List<V3OperativnaNedeljaEntry>> _operativnaStream;
 
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici.
   String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
+
+  Stream<List<V3OperativnaNedeljaEntry>> _buildOperativnaStream(String datumIso) {
+    return V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
+      tables: const [
+        'v3_operativna_nedelja',
+        'v3_putnici',
+        'v3_vozaci',
+        'v3_adrese',
+        'v3_kapacitet_slots',
+      ],
+      build: () => V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso),
+    );
+  }
 
   // Dinamična vremena prema tipu nav bara (iz baze)
   List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value);
@@ -75,6 +78,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _selectedDay = V3DanHelper.defaultDay();
+    _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
     _initData();
   }
 
@@ -1051,7 +1055,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                               ))
                                           .toList(),
                                       onChanged: (val) {
-                                        V3StateUtils.safeSetState(this, () => _selectedDay = val!);
+                                        V3StateUtils.safeSetState(this, () {
+                                          _selectedDay = val!;
+                                          _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
+                                        });
                                       },
                                     ),
                                   ),
