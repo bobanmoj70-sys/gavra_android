@@ -44,7 +44,10 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.onChange,
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_zahtevi', 'v3_putnici'],
+        build: () {},
+      ),
       builder: (context, _) {
         final zahtevi = _getZahtevi();
 

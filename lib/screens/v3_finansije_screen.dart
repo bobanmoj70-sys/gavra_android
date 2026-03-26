@@ -171,7 +171,10 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.onChange,
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_operativna_nedelja', 'v3_troskovi', 'v3_putnici'],
+        build: () {},
+      ),
       builder: (context, _) {
         final iz = _buildIzvestaj();
         return Scaffold(

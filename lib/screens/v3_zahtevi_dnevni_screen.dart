@@ -185,7 +185,10 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: StreamBuilder<void>(
-          stream: V3MasterRealtimeManager.instance.onChange,
+          stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+            tables: const ['v3_zahtevi', 'v3_putnici'],
+            build: () {},
+          ),
           builder: (context, __) {
             final obrada = _getZahtevi('obrada');
             final odobreno = _getZahtevi('odobreno');

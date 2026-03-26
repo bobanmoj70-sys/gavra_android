@@ -121,6 +121,7 @@ class V3MasterRealtimeManager {
         supabase.from('v3_vozac_lokacije').select(),
         supabase.from('v3_troskovi').select().eq('aktivno', true),
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
+        supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka'),
         supabase.from('v3_operativna_nedelja').select(),
         supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
         supabase.from('v3_app_settings').select(),
@@ -136,9 +137,10 @@ class V3MasterRealtimeManager {
       _fillCache(vozacLokacijeCache, results[7] as List);
       _fillCache(troskoviCache, results[8] as List);
       _fillCache(finansijeStanjeCache, results[9] as List);
-      _fillCache(operativnaNedeljaCache, results[10] as List);
-      _fillCache(kapacitetSlotsCache, results[11] as List);
-      _fillCache(appSettingsCache, results[12] as List);
+      _fillCache(pinZahteviCache, results[10] as List);
+      _fillCache(operativnaNedeljaCache, results[11] as List);
+      _fillCache(kapacitetSlotsCache, results[12] as List);
+      _fillCache(appSettingsCache, results[13] as List);
       _rebuildGpsCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
       final globalSettings = appSettingsCache['global'];

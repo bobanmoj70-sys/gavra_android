@@ -101,7 +101,10 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(appBarHeight),
         child: StreamBuilder<void>(
-          stream: V3MasterRealtimeManager.instance.onChange,
+          stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+            tables: const ['v3_putnici'],
+            build: () {},
+          ),
           builder: (context, _) {
             return V3ContainerUtils.iconContainer(
               backgroundColor: Theme.of(context).glassContainer,
@@ -176,7 +179,10 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
               // ── List ────────────────────────────────────────────────────
               Expanded(
                 child: StreamBuilder<void>(
-                  stream: V3MasterRealtimeManager.instance.onChange,
+                  stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+                    tables: const ['v3_putnici'],
+                    build: () {},
+                  ),
                   builder: (context, _) {
                     return ValueListenableBuilder<TextEditingValue>(
                       valueListenable: V3TextUtils.searchController,

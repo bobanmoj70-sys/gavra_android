@@ -415,7 +415,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.onChange,
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_operativna_nedelja', 'v3_putnici', 'v3_zahtevi', 'v3_pin_zahtevi', 'v3_vozaci'],
+        build: () {},
+      ),
       builder: (context, _) => _buildScaffold(context),
     );
   }
