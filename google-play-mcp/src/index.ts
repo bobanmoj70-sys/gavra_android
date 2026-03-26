@@ -94,7 +94,9 @@ async function getAndroidPublisher() {
         scopes: ["https://www.googleapis.com/auth/androidpublisher"],
     });
 
-    return google.androidpublisher({ version: "v3", auth });
+    const androidPublisher = google.androidpublisher({ version: "v3", auth });
+
+    return androidPublisher;
 }
 
 async function getPlayDeveloperReporting() {
