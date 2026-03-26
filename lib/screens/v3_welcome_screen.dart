@@ -598,7 +598,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                       child: Text(
-                        'App Review hint: Za test vozača kliknite "Vozači" (donje desno dugme).\nPassenger login je posebno dugme ispod.',
+                        '🍎 Apple Review hint: Za test vozača kliknite "🍎 Vozači" (donje desno dugme).\nPutnički login je odvojeno dugme "Putnici • Prijavi se".',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
@@ -715,7 +715,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                                   Icon(Icons.local_taxi, color: Colors.white.withValues(alpha: 0.9), size: 28),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Vozači',
+                                    '🍎 Vozači',
                                     style: TextStyle(
                                       color: Colors.white.withValues(alpha: 0.9),
                                       fontSize: 14,
