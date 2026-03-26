@@ -22,7 +22,6 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
-import '../utils/v3_state_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -149,7 +148,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     if (mounted) {
       _selectClosestDeparture();
       _syncSelectedSlotForDatum(_selectedDatumIso);
-      V3StateUtils.safeSetState(this, () => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -1110,7 +1109,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                               ))
                                           .toList(),
                                       onChanged: (val) {
-                                        V3StateUtils.safeSetState(this, () {
+                                        setState(() {
                                           _selectedDay = val!;
                                           _syncSelectedSlotForDatum(_selectedDatumIso);
                                           _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
