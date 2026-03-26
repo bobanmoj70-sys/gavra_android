@@ -36,6 +36,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
   late final Animation<Offset> _slideAnim;
 
   bool _loading = false;
+  bool _locationDisclosureAccepted = false;
 
   @override
   void initState() {
@@ -56,6 +57,15 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
 
   Future<void> _onOdobri() async {
     if (_loading) return;
+    if (!_locationDisclosureAccepted) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Potvrdite obaveštenje o korišćenju lokacije da biste nastavili.'),
+        ),
+      );
+      return;
+    }
     V3StateUtils.safeSetState(this, () => _loading = true);
 
     try {
@@ -142,7 +152,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                     const SizedBox(height: 10),
 
                     Text(
-                      'U ovom koraku uključujemo samo notifikacije\nza obaveštenja o vožnjama i promenama statusa.',
+                      'Pre nastavka pročitajte obaveštenje o korišćenju podataka.\nU ovom koraku odobravate notifikacije.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 14,
@@ -164,18 +174,57 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                     const SizedBox(height: 16),
 
                     V3ContainerUtils.styledContainer(
-                      padding: const EdgeInsets.all(12),
-                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      padding: const EdgeInsets.all(14),
+                      backgroundColor: const Color(0xFFFFA726).withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                      child: Text(
-                        'GPS lokacija i telefon nisu deo ovog ekrana. Traže se samo u vozačkom toku i samo kada vozač pokrene GPS praćenje ili poziv.',
+                      border: Border.all(color: const Color(0xFFFFA726).withValues(alpha: 0.7), width: 1.4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'UOČLJIVO OBAVEŠTENJE O LOKACIJI',
+                            style: TextStyle(
+                              color: Color(0xFFFFCC80),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Aplikacija prikuplja lokaciju isključivo za vozače tokom aktivne vožnje radi praćenja rute, ETA i operativne koordinacije. Lokacija se ne koristi za oglase i ne prikuplja se za putnike van vozačkog toka.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              fontSize: 12.8,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      activeColor: const Color(0xFF34C759),
+                      value: _locationDisclosureAccepted,
+                      onChanged: _loading
+                          ? null
+                          : (value) {
+                              V3StateUtils.safeSetState(
+                                this,
+                                () => _locationDisclosureAccepted = value ?? false,
+                              );
+                            },
+                      title: Text(
+                        'Razumem obaveštenje o korišćenju lokacije i saglasan/saglasna sam sa ovom namenom.',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          fontSize: 12.5,
-                          height: 1.45,
+                          color: Colors.white.withValues(alpha: 0.88),
+                          fontSize: 12.6,
+                          height: 1.35,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
 
