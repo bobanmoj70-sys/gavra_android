@@ -83,10 +83,46 @@ class V3MasterRealtimeManager {
   final StreamController<void> _changeController = StreamController<void>.broadcast();
   Stream<void> get onChange => _changeController.stream;
   final StreamController<Set<String>> _tableChangeController = StreamController<Set<String>>.broadcast();
+  static const Duration _emitDebounceWindow = Duration(milliseconds: 90);
+  final Set<String> _pendingTableChanges = <String>{};
+  Timer? _emitDebounceTimer;
 
   RealtimeChannel? _v3Channel;
   Future<void>? _initInFlight;
   bool _isInitialized = false;
+
+  void _scheduleEmit({Set<String>? tables, bool immediate = false}) {
+    if (tables != null && tables.isNotEmpty) {
+      if (tables.contains('*')) {
+        _pendingTableChanges
+          ..clear()
+          ..add('*');
+      } else if (!_pendingTableChanges.contains('*')) {
+        _pendingTableChanges.addAll(tables);
+      }
+    }
+
+    if (immediate) {
+      _emitDebounceTimer?.cancel();
+      _emitDebounceTimer = null;
+      _flushEmit();
+      return;
+    }
+
+    if (_emitDebounceTimer != null && _emitDebounceTimer!.isActive) return;
+    _emitDebounceTimer = Timer(_emitDebounceWindow, _flushEmit);
+  }
+
+  void _flushEmit() {
+    _emitDebounceTimer = null;
+
+    if (_pendingTableChanges.isEmpty) return;
+    final changed = _pendingTableChanges.contains('*') ? <String>{'*'} : Set<String>.from(_pendingTableChanges);
+    _pendingTableChanges.clear();
+
+    _changeController.add(null);
+    _tableChangeController.add(changed);
+  }
 
   Future<void> initV3() async {
     if (_isInitialized) return;
@@ -148,8 +184,7 @@ class V3MasterRealtimeManager {
 
       await _setupRealtime();
       _isInitialized = true;
-      _changeController.add(null);
-      _tableChangeController.add({'*'});
+      _scheduleEmit(tables: {'*'}, immediate: true);
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] Initialization error: $e');
@@ -222,8 +257,7 @@ class V3MasterRealtimeManager {
         if (table == 'v3_app_settings' && id == 'global') {
           _applyAppSettings(newRecord);
         }
-        _changeController.add(null);
-        _tableChangeController.add({table});
+        _scheduleEmit(tables: {table});
       },
     );
   }
@@ -296,16 +330,14 @@ class V3MasterRealtimeManager {
         break;
     }
 
-    _changeController.add(null);
-    _tableChangeController.add({table});
+    _scheduleEmit(tables: {table});
   }
 
   /// Osvježi v3GpsRasporedCache - gradi se lokalno iz v3_operativna_nedelja (WHERE vozac_id IS NOT NULL)
   Future<void> refreshV3GpsRaspored() async {
     try {
       _rebuildGpsCacheFromOperativna();
-      _changeController.add(null);
-      _tableChangeController.add({'v3_operativna_nedelja'});
+      _scheduleEmit(tables: {'v3_operativna_nedelja'});
       debugPrint(
           '[V3MasterRealtimeManager] v3GpsRasporedCache rebuilt: ${v3GpsRasporedCache.length} records from operativna_nedelja');
     } catch (e) {
