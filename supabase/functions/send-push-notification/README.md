@@ -10,6 +10,22 @@ Supabase Edge funkcija koju `public.notify_push` poziva na:
 - šalje push preko FCM HTTP v1 (OAuth sa `firebase_admin_sdk` service account)
 - šalje push preko HMS API (OAuth client credentials)
 - vraća agregirani rezultat (`accepted`, `sent`, `failed`, `by_provider`, `errors`)
+- opciono radi deduplikaciju događaja preko `public.push_events` (`event_key` unique)
+
+## Event contract (preporučeno)
+
+Za stabilan dedup šaljite:
+
+- `event_id` (UUID, jedinstven po eventu)
+- `type` (npr. `v3_novi_dnevni_zahtev`)
+- `entity_id` (npr. `zahtev_id`)
+- `recipient_id` (ID korisnika koji prima)
+
+Ako `event_id` nije prosleđen, funkcija koristi fallback ključ:
+
+`type|entity_id|recipient_id`
+
+Dedup je podrazumevano uključen (`dedup=true`). Možete ga ugasiti payload poljem `dedup=false`.
 
 ## Secreti
 
@@ -44,6 +60,10 @@ Primer body:
     { "token": "abc_fcm", "provider": "fcm" },
     { "token": "abc_hms", "provider": "hms" }
   ],
+  "event_id": "5d72f3e6-1b2d-4c7c-9d9f-4f3a2c1e8d55",
+  "type": "v3_novi_dnevni_zahtev",
+  "entity_id": "zahtev_123",
+  "recipient_id": "vozac_001",
   "title": "Test",
   "body": "Poruka",
   "data": { "type": "diagnostic_test" },

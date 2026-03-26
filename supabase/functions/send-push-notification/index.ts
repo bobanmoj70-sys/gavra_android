@@ -5,6 +5,11 @@ type PushPayload = {
   tokens?: Array<{ token?: string; provider?: string }>;
   title?: string;
   body?: string;
+  event_id?: string;
+  type?: string;
+  entity_id?: string;
+  recipient_id?: string;
+  dedup?: boolean;
   data?: Record<string, unknown>;
   data_only?: boolean;
   _secrets?: Record<string, string>;
@@ -66,6 +71,75 @@ function toStringData(input: Record<string, unknown> | undefined): Record<string
     output[key] = typeof value === 'string' ? value : JSON.stringify(value);
   }
   return output;
+}
+
+function pickString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function buildDedupKey(payload: PushPayload): string | null {
+  const eventId = pickString(payload.event_id);
+  if (eventId) return `event:${eventId}`;
+
+  const type = pickString(payload.type) || pickString(payload.data?.type);
+  const entityId = pickString(payload.entity_id) || pickString(payload.data?.entity_id) || pickString(payload.data?.zahtev_id);
+  const recipientId = pickString(payload.recipient_id) || pickString(payload.data?.recipient_id);
+
+  if (!type || !entityId || !recipientId) return null;
+  return `triple:${type}|${entityId}|${recipientId}`;
+}
+
+async function reserveDedupEvent(payload: PushPayload): Promise<{ skip: boolean; reason?: string; dedupKey?: string }> {
+  const dedupEnabled = payload.dedup !== false;
+  if (!dedupEnabled) return { skip: false };
+
+  const dedupKey = buildDedupKey(payload);
+  if (!dedupKey) return { skip: false };
+
+  const supabaseUrl = envOrPayload('SUPABASE_URL', payload);
+  const serviceRoleKey = envOrPayload('SUPABASE_SERVICE_ROLE_KEY', payload);
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.log(JSON.stringify({ event: 'push_dedup_skipped_no_service_key', dedup_key: dedupKey }));
+    return { skip: false, dedupKey };
+  }
+
+  const type = pickString(payload.type) || pickString(payload.data?.type) || null;
+  const entityId = pickString(payload.entity_id) || pickString(payload.data?.entity_id) || pickString(payload.data?.zahtev_id) || null;
+  const recipientId = pickString(payload.recipient_id) || pickString(payload.data?.recipient_id) || null;
+  const eventId = pickString(payload.event_id) || null;
+
+  const insertBody = {
+    event_key: dedupKey,
+    event_id: eventId,
+    type,
+    entity_id: entityId,
+    recipient_id: recipientId,
+    payload: payload.data ?? {},
+  };
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/push_events?on_conflict=event_key`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      Prefer: 'resolution=ignore-duplicates,return=representation',
+    },
+    body: JSON.stringify(insertBody),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`dedup reserve failed: ${response.status} ${text.slice(0, 300)}`);
+  }
+
+  const rows = await response.json();
+  if (Array.isArray(rows) && rows.length === 0) {
+    return { skip: true, reason: 'duplicate', dedupKey };
+  }
+
+  return { skip: false, dedupKey };
 }
 
 async function getFcmAccessToken(payload: PushPayload): Promise<string> {
@@ -320,6 +394,22 @@ Deno.serve(async (req) => {
 
   try {
     const payload = (await req.json()) as PushPayload;
+    const dedup = await reserveDedupEvent(payload);
+    if (dedup.skip) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          accepted: 0,
+          sent: 0,
+          failed: 0,
+          skipped: true,
+          reason: dedup.reason ?? 'duplicate',
+          dedup_key: dedup.dedupKey,
+        }),
+        { status: 200, headers: jsonHeaders },
+      );
+    }
+
     const normalizedTokens = normalizeTokens(payload.tokens);
     const title = String(payload.title ?? '').trim();
     const body = String(payload.body ?? '').trim();

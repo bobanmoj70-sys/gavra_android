@@ -267,7 +267,10 @@ Future<void> _firebaseMessagingBackgroundHandler(fcm.RemoteMessage message) asyn
   debugPrint("🔔 [FCM] Title: ${message.notification?.title}");
   debugPrint("🔔 [FCM] Body: ${message.notification?.body}");
   debugPrint("🔔 [FCM] Data: ${message.data}");
-  await _showAlternativaNotification(message);
+  final type = (message.data['type'] as String?)?.trim() ?? '';
+  if (type.startsWith('v3_')) {
+    debugPrint('⏭️ [Push] Edge-only: background lokalni fallback isključen za type=$type');
+  }
 }
 
 /// Foreground handler za FCM
@@ -283,16 +286,10 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
     await _handleGpsTrackingStart(message.data);
   } else if (type == 'gps_tracking_complete') {
     await _handleGpsTrackingComplete(message.data);
-  } else if (type == 'v3_putnik_eta_start') {
-    await _handlePutnikEtaStart(message.data);
-  } else if (type == 'v3_zahtev_odobren') {
-    await _handleZahtevOdobren(message);
-  } else if (type == 'v3_novi_dnevni_zahtev') {
-    await _handleNoviDnevniZahtev(message);
-  } else if (type == 'v3_novi_pin_zahtev') {
-    await _handleNoviPinZahtev(message);
+  } else if ((type ?? '').startsWith('v3_')) {
+    debugPrint('⏭️ [Push] Edge-only: foreground lokalni fallback isključen za type=$type');
   } else {
-    await _showAlternativaNotification(message);
+    debugPrint('⏭️ [Push] Edge-only: nepoznat tip bez lokalnog fallback-a: $type');
   }
 }
 
@@ -339,122 +336,6 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
   debugPrint('📍 [GPS] Auto start notification prikazana za vozača $vozacId');
 }
 
-/// Putnik: vozač je krenuo, ETA/live tracking aktivan
-Future<void> _handlePutnikEtaStart(Map<String, dynamic> data) async {
-  final title = data['title'] as String? ?? '🚗 Vozač je krenuo';
-  final body = data['body'] as String? ?? 'ETA tracking je aktivan. Kliknite za praćenje uživo.';
-
-  final androidDetails = AndroidNotificationDetails(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    importance: Importance.max,
-    priority: Priority.high,
-    styleInformation: BigTextStyleInformation(body),
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
-    title,
-    body,
-    NotificationDetails(android: androidDetails),
-    payload: 'putnik_eta_start:${data['putnik_id'] ?? ''}',
-  );
-}
-
-Future<void> _handleZahtevOdobren(fcm.RemoteMessage message) async {
-  final data = message.data;
-  final dataTitle = (data['title'] as String?)?.trim();
-  final dataBody = (data['body'] as String?)?.trim();
-  final notificationTitle = message.notification?.title?.trim();
-  final notificationBody = message.notification?.body?.trim();
-
-  final title = (dataTitle != null && dataTitle.isNotEmpty) ? dataTitle : notificationTitle;
-  final body = (dataBody != null && dataBody.isNotEmpty) ? dataBody : notificationBody;
-
-  if (title == null || title.isEmpty || body == null || body.isEmpty) {
-    debugPrint('⚠️ [Push] v3_zahtev_odobren nema title/body. messageId=${message.messageId}, data=$data');
-    return;
-  }
-
-  final androidDetails = AndroidNotificationDetails(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    importance: Importance.max,
-    priority: Priority.high,
-    styleInformation: BigTextStyleInformation(body),
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
-    title,
-    body,
-    NotificationDetails(android: androidDetails),
-    payload: 'zahtev_odobren:${data['zahtev_id'] ?? ''}',
-  );
-}
-
-Future<void> _handleNoviDnevniZahtev(fcm.RemoteMessage message) async {
-  final data = message.data;
-  final dataTitle = (data['title'] as String?)?.trim();
-  final dataBody = (data['body'] as String?)?.trim();
-  final notificationTitle = message.notification?.title?.trim();
-  final notificationBody = message.notification?.body?.trim();
-
-  final title = (dataTitle != null && dataTitle.isNotEmpty) ? dataTitle : notificationTitle;
-  final body = (dataBody != null && dataBody.isNotEmpty) ? dataBody : notificationBody;
-
-  if (title == null || title.isEmpty || body == null || body.isEmpty) {
-    debugPrint('⚠️ [Push] v3_novi_dnevni_zahtev nema title/body. messageId=${message.messageId}, data=$data');
-    return;
-  }
-
-  const androidDetails = AndroidNotificationDetails(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    importance: Importance.max,
-    priority: Priority.high,
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
-    title,
-    body,
-    const NotificationDetails(android: androidDetails),
-    payload: 'novi_dnevni_zahtev:${data['zahtev_id'] ?? ''}',
-  );
-}
-
-Future<void> _handleNoviPinZahtev(fcm.RemoteMessage message) async {
-  final data = message.data;
-  final dataTitle = (data['title'] as String?)?.trim();
-  final dataBody = (data['body'] as String?)?.trim();
-  final notificationTitle = message.notification?.title?.trim();
-  final notificationBody = message.notification?.body?.trim();
-
-  final title = (dataTitle != null && dataTitle.isNotEmpty) ? dataTitle : notificationTitle;
-  final body = (dataBody != null && dataBody.isNotEmpty) ? dataBody : notificationBody;
-
-  if (title == null || title.isEmpty || body == null || body.isEmpty) {
-    debugPrint('⚠️ [Push] v3_novi_pin_zahtev nema title/body. messageId=${message.messageId}, data=$data');
-    return;
-  }
-
-  const androidDetails = AndroidNotificationDetails(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    importance: Importance.max,
-    priority: Priority.high,
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
-    title,
-    body,
-    const NotificationDetails(android: androidDetails),
-    payload: 'novi_pin_zahtev:${data['pin_zahtev_id'] ?? ''}',
-  );
-}
-
 /// Vozač: svi pokupljeni → ugasi foreground GPS tracking
 Future<void> _handleGpsTrackingComplete(Map<String, dynamic> data) async {
   final shouldStop = '${data['action_stop_foreground'] ?? ''}'.toLowerCase() == 'true';
@@ -483,124 +364,34 @@ Future<void> _handleHmsIncomingMessage(hms.RemoteMessage message) async {
   debugPrint("📱 [HMS] Foreground poruka primljena");
   debugPrint("📱 [HMS] Data: ${message.data}");
 
-  // Direktno pozovi notification funkciju sa HMS data podacima
-  await _showHmsNotification(message);
-}
-
-/// ✨ NOVO: HMS Notification handler
-Future<void> _showHmsNotification(hms.RemoteMessage message) async {
-  await _ensureLocalNotificationsInitialized();
-
-  // Izvuci data iz HMS poruke
-  final String? rawData = message.data;
-  if (rawData == null || rawData.isEmpty) {
-    debugPrint("⚠️ [HMS] Nema data u poruci");
-    return;
-  }
-
-  // Parsiraj JSON data (HMS šalje kao string)
-  Map<String, dynamic> data;
   try {
-    // Pokušaj da parsiraj kao JSON string
+    final rawData = message.data;
+    if (rawData == null || rawData.isEmpty) return;
+
+    Map<String, dynamic> data;
     if (rawData.startsWith('{')) {
       data = Map<String, dynamic>.from(jsonDecode(rawData) as Map<String, dynamic>);
     } else {
-      // Fallback: tretiraj kao običan string podatak
-      data = {'message': rawData};
+      data = <String, dynamic>{'message': rawData};
+    }
+
+    final type = (data['type'] as String?)?.trim() ?? '';
+    if (type == 'gps_tracking_start') {
+      await _handleGpsTrackingStart(data);
+      return;
+    }
+    if (type == 'gps_tracking_complete') {
+      await _handleGpsTrackingComplete(data);
+      return;
+    }
+
+    if (type.startsWith('v3_')) {
+      debugPrint('⏭️ [HMS] Edge-only: lokalni fallback isključen za type=$type');
+      return;
     }
   } catch (e) {
-    debugPrint("⚠️ [HMS] Greška u parsiranju data: $e");
-    return;
+    debugPrint('⚠️ [HMS] _handleHmsIncomingMessage parse greška: $e');
   }
-
-  if (data['type'] != 'v3_alternativa') return;
-
-  final id = data['id'] as String? ?? '';
-  final altPre = (data['alt_pre'] as String?)?.trim();
-  final altPosle = (data['alt_posle'] as String?)?.trim();
-  final title = data['title'] as String? ?? '⚠️ Termin pun';
-  final body = data['body'] as String? ?? 'Izaberi alternativni termin';
-
-  final actions = <AndroidNotificationAction>[
-    if (altPre != null && altPre.isNotEmpty)
-      AndroidNotificationAction('accept_pre', '✅ $altPre', showsUserInterface: true),
-    if (altPosle != null && altPosle.isNotEmpty)
-      AndroidNotificationAction('accept_posle', '✅ $altPosle', showsUserInterface: true),
-    AndroidNotificationAction('reject', '❌ Odbij', showsUserInterface: true),
-  ];
-
-  final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    channelDescription: 'Obaveštenja o statusu zahteva',
-    importance: Importance.max,
-    priority: Priority.high,
-    actions: actions,
-    styleInformation: BigTextStyleInformation(body),
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    id.hashCode,
-    title,
-    body,
-    NotificationDetails(android: androidDetails),
-    payload: '$id|${altPre ?? ''}|${altPosle ?? ''}',
-  );
-
-  debugPrint('🟠 [HMS] Notification prikazana za ID: $id');
-}
-
-/// Prikazuje lokalnu notifikaciju sa akcijskim dugmadima za v3_alternativa
-Future<void> _showAlternativaNotification(fcm.RemoteMessage message) async {
-  final data = message.data;
-  if (data['type'] != 'v3_alternativa') return;
-
-  await _ensureLocalNotificationsInitialized();
-
-  final id = data['id'] as String? ?? '';
-  final altPre = (data['alt_pre'] as String?)?.trim();
-  final altPosle = (data['alt_posle'] as String?)?.trim();
-  final title = data['title'] as String? ?? '⚠️ Termin pun';
-  final body = data['body'] as String? ?? 'Izaberi alternativni termin';
-
-  final actions = <AndroidNotificationAction>[
-    if (altPre != null && altPre.isNotEmpty)
-      AndroidNotificationAction(
-        'accept_pre',
-        '✅ $altPre',
-        showsUserInterface: true,
-      ),
-    if (altPosle != null && altPosle.isNotEmpty)
-      AndroidNotificationAction(
-        'accept_posle',
-        '✅ $altPosle',
-        showsUserInterface: true,
-      ),
-    AndroidNotificationAction(
-      'reject',
-      '❌ Odbij',
-      showsUserInterface: true,
-    ),
-  ];
-
-  final androidDetails = AndroidNotificationDetails(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    importance: Importance.max,
-    priority: Priority.high,
-    actions: actions,
-    styleInformation: BigTextStyleInformation(body),
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    id.hashCode,
-    title,
-    body,
-    NotificationDetails(android: androidDetails),
-    payload: '$id|${altPre ?? ''}|${altPosle ?? ''}',
-  );
-
-  debugPrint('📣 [FCM] Lokalna alternativa notifikacija prikazana: id=$id, altPre=$altPre, altPosle=$altPosle');
 }
 
 // Hendler za klik na interaktivne gumbe (actions)
