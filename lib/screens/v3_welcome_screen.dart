@@ -589,6 +589,28 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
                   SizedBox(height: screenHeight * 0.05),
 
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: V3ContainerUtils.styledContainer(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      backgroundColor: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      child: Text(
+                        'App Review hint: Za test vozača kliknite "Vozači" (donje desno dugme).\nPassenger login je posebno dugme ispod.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
                   // PRIJAVI SE dugme (amber) — za putnike
                   FadeTransition(
                     opacity: _fadeAnimation,
@@ -621,7 +643,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                             Icon(Icons.login, color: Colors.white, size: 22),
                             SizedBox(width: 10),
                             Text(
-                              'Prijavi se',
+                              'Putnici • Prijavi se',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,

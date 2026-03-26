@@ -501,6 +501,30 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
                 _stepTitle(),
                 const SizedBox(height: 8),
                 _stepSubtitle(),
+                const SizedBox(height: 12),
+                V3ContainerUtils.styledContainer(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  backgroundColor: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.amber, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Za App Review vozača: vratite se nazad i izaberite "Vozači" na početnom ekranu.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 28),
                 _stepIndicator(),
                 const SizedBox(height: 24),
