@@ -72,8 +72,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   String _formatNedeljaOpsegLabel() {
-    final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon');
-    final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet');
+    final anchor = V3DanHelper.schedulingWeekAnchor();
+    final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon', anchor: anchor);
+    final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet', anchor: anchor);
     final od = '${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')}.';
     final doDatuma = '${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}.';
     return '$od - $doDatuma';
@@ -144,9 +145,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     if (cached != null) _putnikData = Map<String, dynamic>.from(cached);
     // Raspored po danima iz v3_zahtevi — direktno po datumu bez nepotrebnog filtriranja
     final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
+    final anchor = V3DanHelper.schedulingWeekAnchor();
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
-      final datumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dan);
+      final datumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dan, anchor: anchor);
       final bcList =
           V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'BC').where((z) => z.putnikId == putnikId).toList();
       final vsList =
@@ -265,7 +267,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         final zahtev = V3Zahtev(
           id: const Uuid().v4(),
           putnikId: putnikId,
-          datum: V3DanHelper.datumZaDanAbbrUTekucojSedmici(dan),
+          datum: V3DanHelper.datumZaDanAbbrUTekucojSedmici(dan, anchor: V3DanHelper.schedulingWeekAnchor()),
           grad: grad,
           zeljenoVreme: validNovoVreme,
           brojMesta: brojMesta,
@@ -296,7 +298,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
     // Scenario 5: zaključavanje 15 min pre polaska
-    final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(dan);
+    final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
+      dan,
+      anchor: V3DanHelper.schedulingWeekAnchor(),
+    );
     final now = DateTime.now();
     final vremena = getRasporedVremena(grad.toLowerCase(), navBarTypeNotifier.value)
         .where((v) => _normalizeValidTime(v) != null)
@@ -557,7 +562,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   /// Helper za konverziju kratice dana u puni naziv koristeći V3DanHelper.
   String _getDanLabel(String danAbbr) {
     try {
-      final datum = V3DanHelper.datumZaDanAbbrUTekucojSedmici(danAbbr);
+      final datum = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
+        danAbbr,
+        anchor: V3DanHelper.schedulingWeekAnchor(),
+      );
       return V3DanHelper.fullName(datum);
     } catch (e) {
       // Fallback ako kratica nije validna

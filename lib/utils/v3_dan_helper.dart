@@ -37,6 +37,30 @@ class V3DanHelper {
     return _names[w - 1];
   }
 
+  // ─── Aktivna sedmica za zakazivanje ────────────────────────────
+
+  /// Anchor datum za aktivnu sedmicu zakazivanja.
+  ///
+  /// Pravilo:
+  /// - Ponedeljak–petak: aktivna je tekuća sedmica.
+  /// - Subota–nedelja: aktivna je sledeća sedmica.
+  static DateTime schedulingWeekAnchor({DateTime? now}) {
+    final base = dateOnly(now ?? DateTime.now());
+    if (base.weekday >= DateTime.saturday) {
+      return base.add(const Duration(days: 7));
+    }
+    return base;
+  }
+
+  /// Da li je datum unutar aktivne sedmice zakazivanja.
+  static bool isInSchedulingWeek(DateTime datum, {DateTime? now}) {
+    final target = dateOnly(datum);
+    final anchor = schedulingWeekAnchor(now: now);
+    final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
+    return !target.isBefore(monday) && !target.isAfter(sunday);
+  }
+
   // ─── naziv/kratica → ISO datum (RAČUNANJE PO SEDMICI) ────────
 
   /// ISO datum (yyyy-MM-dd) za izabrani dan.

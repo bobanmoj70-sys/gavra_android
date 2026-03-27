@@ -1021,7 +1021,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.7).toDouble();
     final appBarHeight = 104 + (headerScaleExtra * 18);
     final appBarButtonHeight = 30 + (headerScaleExtra * 6);
-    final aktivnaSedmicaAnchor = V3DanHelper.dateOnly(DateTime.now());
+    final aktivnaSedmicaAnchor = V3DanHelper.schedulingWeekAnchor();
     final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon', anchor: aktivnaSedmicaAnchor);
     final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet', anchor: aktivnaSedmicaAnchor);
     final aktivnaSedmica =

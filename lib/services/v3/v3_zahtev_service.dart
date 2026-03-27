@@ -10,14 +10,8 @@ class V3ZahtevService {
   V3ZahtevService._();
 
   static void _assertDatumUTekucojNedelji(DateTime datum) {
-    final trazeniDatum = DateTime(datum.year, datum.month, datum.day);
-    final danas = DateTime.now();
-    final danasOnly = DateTime(danas.year, danas.month, danas.day);
-    final ponedeljak = danasOnly.subtract(Duration(days: danasOnly.weekday - 1));
-    final nedelja = ponedeljak.add(const Duration(days: 6));
-
-    if (trazeniDatum.isBefore(ponedeljak) || trazeniDatum.isAfter(nedelja)) {
-      throw Exception('Zakazivanje je dozvoljeno samo u tekućoj nedelji.');
+    if (!V3DanHelper.isInSchedulingWeek(datum)) {
+      throw Exception('Zakazivanje je dozvoljeno samo u aktivnoj sedmici.');
     }
   }
 
