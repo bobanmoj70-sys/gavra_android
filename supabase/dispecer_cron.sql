@@ -3,9 +3,11 @@
 -- =====================================================
 -- Ovo je usklađeno sa stvarnim stanjem baze.
 -- U bazi već postoje:
---   - fn_v3_dispatcher()
 --   - set_zahtev_scheduled_at()
 --   - process_pending_zahtevi_slots()
+--   - triggeri na public.v3_zahtevi:
+--       * zahtev_scheduled_at_trigger
+--       * zahtev_to_operativna_trigger
 --
 -- Wake-only režim: obrada se pokreće isključivo na event
 -- (INSERT/UPDATE status/aktivno na v3_zahtevi).
@@ -57,7 +59,8 @@ END;
 $$;
 
 -- 2a) U wake-only varijanti oslanjamo se na postojeći
--- `tr_v3_dispatcher` / `fn_v3_dispatcher` tok (scheduled_at + dispatcher_wake).
+-- `zahtev_scheduled_at_trigger` + `set_zahtev_scheduled_at()` tok,
+-- i `zahtev_to_operativna_trigger` za transfer u operativnu tabelu.
 
 -- 3) Pregled zahteva koji čekaju obradu
 CREATE OR REPLACE FUNCTION public.get_pending_zahtevi_status()
@@ -108,3 +111,10 @@ COMMIT;
 -- Provera:
 -- SELECT * FROM public.get_pending_zahtevi_status();
 -- SELECT * FROM public.manual_process_zahtevi();
+-- SELECT tgname FROM pg_trigger t
+-- JOIN pg_class c ON c.oid = t.tgrelid
+-- JOIN pg_namespace n ON n.oid = c.relnamespace
+-- WHERE NOT t.tgisinternal
+--   AND n.nspname = 'public'
+--   AND c.relname = 'v3_zahtevi'
+-- ORDER BY tgname;
