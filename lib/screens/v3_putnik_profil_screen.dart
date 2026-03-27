@@ -468,13 +468,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                               onPressed: isLocked
                                   ? () async {
                                       Navigator.of(dialogCtx).pop();
-                                      final subota =
-                                          datumPolaska.add(Duration(days: DateTime.saturday - datumPolaska.weekday));
-                                      final subotaStr = '${subota.day}.${subota.month}.${subota.year}.';
+                                        final unlockAt = V3DanHelper.nextSchedulingUnlock(now: now);
+                                        final unlockStr =
+                                          '${unlockAt.day}.${unlockAt.month}.${unlockAt.year}. ${unlockAt.hour.toString().padLeft(2, '0')}:${unlockAt.minute.toString().padLeft(2, '0')}';
                                       await Future<void>.delayed(const Duration(milliseconds: 120));
                                       if (!mounted) return;
                                       V3AppSnackBar.info(ctx,
-                                          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu ($subotaStr).');
+                                          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u petak od 01:00 ($unlockStr).');
                                     }
                                   : () async {
                                       Navigator.of(dialogCtx).pop();
