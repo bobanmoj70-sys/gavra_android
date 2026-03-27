@@ -20,6 +20,7 @@ import 'screens/v3_putnik_profil_screen.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v2_theme_manager.dart';
+import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
@@ -830,6 +831,9 @@ Future<void> _initAppServices() async {
   } catch (e) {
     debugPrint('⚠️ [main] Greška pri učitavanju app_settings: $e');
   }
+
+  // Provera da li je dostupna nova verzija aplikacije
+  unawaited(V3AppUpdateService.refreshUpdateInfo());
 }
 
 class MyApp extends StatefulWidget {

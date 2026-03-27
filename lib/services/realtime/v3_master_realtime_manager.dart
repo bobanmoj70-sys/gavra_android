@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../v3/v3_app_update_service.dart';
 
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
 class V3MasterRealtimeManager {
@@ -79,6 +80,8 @@ class V3MasterRealtimeManager {
     }
 
     if (changed) rasporedNotifier.value = updated;
+
+    unawaited(V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row));
   }
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();

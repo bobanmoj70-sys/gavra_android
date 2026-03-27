@@ -33,6 +33,7 @@ class V3AdminScreen extends StatefulWidget {
 
 class _V3AdminScreenState extends State<V3AdminScreen> {
   late final V2ThemeManager _themeManager;
+  static final RegExp _versionPattern = RegExp(r'^\d+(\.\d+){1,3}4');
 
   @override
   void initState() {
@@ -40,6 +41,371 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     _themeManager = V2ThemeManager();
   }
 
+  bool _isValidVersion(String value) {
+    return _versionPattern.hasMatch(value.trim());
+  }
+
+  bool _isValidUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    return uri != null && uri.hasScheme && uri.host.isNotEmpty;
+  }
+
+  Future<Map<String, dynamic>> _loadUpdateSettings() async {
+    try {
+      final row = await supabase
+          .from('v3_app_settings')
+          .select(
+            'latest_version_android, min_supported_version_android, force_update_android, store_url_android, '
+            'latest_version_huawei, min_supported_version_huawei, force_update_huawei, store_url_huawei, '
+            'latest_version_ios, min_supported_version_ios, force_update_ios, store_url_ios',
+          )
+          .eq('id', 'global')
+          .maybeSingle();
+      return row ?? <String, dynamic>{};
+    } catch (e) {
+      debugPrint('[AdminScreen] Greška pri učitavanju update settings: $e');
+      return <String, dynamic>{};
+    }
+  }
+
+  Future<void> _openUpdateVersionsEditor() async {
+    final row = await _loadUpdateSettings();
+    if (!mounted) return;
+
+    final latestAndroidCtrl = TextEditingController(text: (row['latest_version_android'] ?? '').toString());
+    final minAndroidCtrl = TextEditingController(text: (row['min_supported_version_android'] ?? '').toString());
+    final urlAndroidCtrl = TextEditingController(text: (row['store_url_android'] ?? '').toString());
+
+    final latestHuaweiCtrl = TextEditingController(text: (row['latest_version_huawei'] ?? '').toString());
+    final minHuaweiCtrl = TextEditingController(text: (row['min_supported_version_huawei'] ?? '').toString());
+    final urlHuaweiCtrl = TextEditingController(text: (row['store_url_huawei'] ?? '').toString());
+
+    final latestIosCtrl = TextEditingController(text: (row['latest_version_ios'] ?? '').toString());
+    final minIosCtrl = TextEditingController(text: (row['min_supported_version_ios'] ?? '').toString());
+    final urlIosCtrl = TextEditingController(text: (row['store_url_ios'] ?? '').toString());
+
+    var forceAndroid = row['force_update_android'] == true;
+    var forceHuawei = row['force_update_huawei'] == true;
+    var forceIos = row['force_update_ios'] == true;
+    var isSaving = false;
+    final quickVersionCtrl = TextEditingController();
+
+    Future<void> save(StateSetter setModalState, BuildContext modalContext) async {
+      final latestAndroid = latestAndroidCtrl.text.trim();
+      final minAndroidRaw = minAndroidCtrl.text.trim();
+      final storeAndroid = urlAndroidCtrl.text.trim();
+
+      final latestHuawei = latestHuaweiCtrl.text.trim();
+      final minHuaweiRaw = minHuaweiCtrl.text.trim();
+      final storeHuawei = urlHuaweiCtrl.text.trim();
+
+      final latestIos = latestIosCtrl.text.trim();
+      final minIosRaw = minIosCtrl.text.trim();
+      final storeIos = urlIosCtrl.text.trim();
+
+      final minAndroid = minAndroidRaw.isEmpty ? latestAndroid : minAndroidRaw;
+      final minHuawei = minHuaweiRaw.isEmpty ? latestHuawei : minHuaweiRaw;
+      final minIos = minIosRaw.isEmpty ? latestIos : minIosRaw;
+
+      String? error;
+
+      if (!_isValidVersion(latestAndroid) || !_isValidVersion(minAndroid)) {
+        error = 'Android verzija mora biti u formatu npr. 6.0.192';
+      } else if (!_isValidVersion(latestHuawei) || !_isValidVersion(minHuawei)) {
+        error = 'Huawei verzija mora biti u formatu npr. 6.0.192';
+      } else if (!_isValidVersion(latestIos) || !_isValidVersion(minIos)) {
+        error = 'iOS verzija mora biti u formatu npr. 6.0.192';
+      } else if (storeAndroid.isNotEmpty && !_isValidUrl(storeAndroid)) {
+        error = 'Android Store URL nije validan';
+      } else if (storeHuawei.isNotEmpty && !_isValidUrl(storeHuawei)) {
+        error = 'Huawei Store URL nije validan';
+      } else if (storeIos.isNotEmpty && !_isValidUrl(storeIos)) {
+        error = 'iOS Store URL nije validan';
+      }
+
+      if (error != null) {
+        ScaffoldMessenger.of(modalContext).showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+
+      setModalState(() => isSaving = true);
+      try {
+        await supabase.from('v3_app_settings').upsert({
+          'id': 'global',
+          'latest_version_android': latestAndroid,
+          'min_supported_version_android': minAndroid,
+          'force_update_android': forceAndroid,
+          'store_url_android': storeAndroid,
+          'latest_version_huawei': latestHuawei,
+          'min_supported_version_huawei': minHuawei,
+          'force_update_huawei': forceHuawei,
+          'store_url_huawei': storeHuawei,
+          'latest_version_ios': latestIos,
+          'min_supported_version_ios': minIos,
+          'force_update_ios': forceIos,
+          'store_url_ios': storeIos,
+        });
+
+        if (!mounted) return;
+        Navigator.of(modalContext).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Update verzije sačuvane')),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(modalContext).showSnackBar(
+          SnackBar(content: Text('Greška pri čuvanju: $e')),
+        );
+      } finally {
+        if (mounted) {
+          setModalState(() => isSaving = false);
+        }
+      }
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      builder: (modalContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            void applyQuickReleaseVersion() {
+              final value = quickVersionCtrl.text.trim();
+              if (!_isValidVersion(value)) {
+                ScaffoldMessenger.of(modalContext).showSnackBar(
+                  const SnackBar(content: Text('Unesi validnu verziju, npr. 6.0.192')),
+                );
+                return;
+              }
+              setModalState(() {
+                latestAndroidCtrl.text = value;
+                latestHuaweiCtrl.text = value;
+                latestIosCtrl.text = value;
+                minAndroidCtrl.text = value;
+                minHuaweiCtrl.text = value;
+                minIosCtrl.text = value;
+                forceAndroid = false;
+                forceHuawei = false;
+                forceIos = false;
+              });
+            }
+
+            void copyMinFromLatestAll() {
+              setModalState(() {
+                minAndroidCtrl.text = latestAndroidCtrl.text.trim();
+                minHuaweiCtrl.text = latestHuaweiCtrl.text.trim();
+                minIosCtrl.text = latestIosCtrl.text.trim();
+              });
+            }
+
+            void forceOnAll() {
+              setModalState(() {
+                forceAndroid = true;
+                forceHuawei = true;
+                forceIos = true;
+              });
+            }
+
+            void forceOffAll() {
+              setModalState(() {
+                forceAndroid = false;
+                forceHuawei = false;
+                forceIos = false;
+              });
+            }
+
+            Widget section({
+              required String title,
+              required TextEditingController latest,
+              required TextEditingController min,
+              required TextEditingController store,
+              required bool force,
+              required ValueChanged<bool> onForceChanged,
+            }) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: latest,
+                      decoration: const InputDecoration(labelText: 'Latest version (npr. 6.0.192)'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: min,
+                      decoration: const InputDecoration(labelText: 'Min supported version (prazno = latest)'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: store,
+                      decoration: const InputDecoration(labelText: 'Store URL'),
+                    ),
+                    const SizedBox(height: 4),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text('Force update'),
+                      value: force,
+                      onChanged: onForceChanged,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 12,
+                  right: 12,
+                  top: 12,
+                  bottom: MediaQuery.of(modalContext).viewInsets.bottom + 12,
+                ),
+                child: SizedBox(
+                  height: MediaQuery.of(modalContext).size.height * 0.88,
+                  child: Column(
+                    children: [
+                      const Text(
+                        '🔄 Update verzije aplikacije',
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: quickVersionCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Brza verzija za sve (npr. 6.0.192)',
+                          helperText: 'Release svima: latest=min i force=off',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isSaving ? null : applyQuickReleaseVersion,
+                              child: const Text('Release svima'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isSaving ? null : copyMinFromLatestAll,
+                              child: const Text('Min = Latest (sve)'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isSaving ? null : forceOnAll,
+                              child: const Text('Force ON (sve)'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isSaving ? null : forceOffAll,
+                              child: const Text('Force OFF (sve)'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              section(
+                                title: 'Android (Play Store)',
+                                latest: latestAndroidCtrl,
+                                min: minAndroidCtrl,
+                                store: urlAndroidCtrl,
+                                force: forceAndroid,
+                                onForceChanged: (v) => setModalState(() => forceAndroid = v),
+                              ),
+                              section(
+                                title: 'Huawei (AppGallery)',
+                                latest: latestHuaweiCtrl,
+                                min: minHuaweiCtrl,
+                                store: urlHuaweiCtrl,
+                                force: forceHuawei,
+                                onForceChanged: (v) => setModalState(() => forceHuawei = v),
+                              ),
+                              section(
+                                title: 'iOS (App Store)',
+                                latest: latestIosCtrl,
+                                min: minIosCtrl,
+                                store: urlIosCtrl,
+                                force: forceIos,
+                                onForceChanged: (v) => setModalState(() => forceIos = v),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isSaving ? null : () => Navigator.of(modalContext).pop(),
+                              child: const Text('Otkaži'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: isSaving ? null : () => save(setModalState, modalContext),
+                              child: isSaving
+                                  ? const SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Text('Sačuvaj'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    latestAndroidCtrl.dispose();
+    minAndroidCtrl.dispose();
+    urlAndroidCtrl.dispose();
+    latestHuaweiCtrl.dispose();
+    minHuaweiCtrl.dispose();
+    urlHuaweiCtrl.dispose();
+    latestIosCtrl.dispose();
+    minIosCtrl.dispose();
+    urlIosCtrl.dispose();
+    quickVersionCtrl.dispose();
+  }
+
+  // ignore: unused_element
   void _showStatistikeMenu(BuildContext context) {
     V3NavigationUtils.showBottomSheet<void>(
       context,
@@ -481,6 +847,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   const PopupMenuItem(
                                       value: '__vozaci__',
                                       child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
+                                  const PopupMenuItem(
+                                      value: '__updates__',
+                                      child: Text('🔄  Update verzije', style: TextStyle(color: Colors.white))),
                                 ],
                               );
                               if (val == null) return;
@@ -488,6 +857,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                 if (context.mounted) {
                                   V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
                                 }
+                                return;
+                              }
+                              if (val == '__updates__') {
+                                await _openUpdateVersionsEditor();
                                 return;
                               }
                               navBarTypeNotifier.value = val;
