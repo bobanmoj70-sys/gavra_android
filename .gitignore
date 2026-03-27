@@ -108,3 +108,12 @@ mcp.json
 # Backup folders
 AI BACKUP/
 .env.backup
+
+# Workspace temp/debug artifacts
+temp_index.ts
+google-play-mcp/temp_key.pem
+debug_ios.txt
+debug_output.txt
+tail_debug.txt
+tail_debug_vozac.txt
+temp_screenshots/
