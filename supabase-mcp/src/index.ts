@@ -9,9 +9,14 @@ import 'dotenv/config.js';
 import postgres from "postgres";
 
 // Supabase credentials from environment
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://gjtabtwudbrmfeyjiicu.supabase.co";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdGFidHd1ZGJybWZleWppaWN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzQzNjI5MiwiZXhwIjoyMDYzMDEyMjkyfQ.BrwnYQ6TWGB1BrmwaE0YnhMC5wMlBRdZUs1xv2dY5r4";
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres.gjtabtwudbrmfeyjiicu:FlqfvHczUpSytgrV@aws-0-eu-central-1.pooler.supabase.com:6543/postgres";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!SUPABASE_URL) {
+    console.error("❌ SUPABASE_URL is required!");
+    process.exit(1);
+}
 
 if (!SUPABASE_SERVICE_KEY) {
     console.error("❌ SUPABASE_SERVICE_ROLE_KEY is required!");
