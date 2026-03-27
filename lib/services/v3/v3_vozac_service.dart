@@ -82,8 +82,7 @@ class V3VozacService {
   /// Vraća boju vozača raspoređenog za dati dan/grad/vreme.
   /// [danPuni] — puni naziv dana (npr. 'Ponedeljak'), konvertuje se u ISO datum aktivne sedmice.
   static Color? getVozacColorForTermin(String danPuni, String grad, String vreme) {
-    final datumIso =
-        V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(danPuni, anchor: V3DanHelper.schedulingWeekAnchor());
+    final datumIso = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(danPuni, anchor: V3DanHelper.schedulingWeekAnchor());
     if (datumIso.isEmpty) return null;
 
     String normV(String? v) {

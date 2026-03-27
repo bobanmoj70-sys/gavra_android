@@ -478,7 +478,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (vozac == null) return;
 
     final dayAbbr = _normalizeSelectedDayToAbbr(day);
-    final dayIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dayAbbr, anchor: _selectedDate);
+    final dayIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(
+      dayAbbr,
+      anchor: V3DanHelper.schedulingWeekAnchor(),
+    );
     final parsedDayDate = DateTime.tryParse(dayIso);
     if (parsedDayDate == null) return;
     final selectedDayDate = V3DanHelper.dateOnly(parsedDayDate);

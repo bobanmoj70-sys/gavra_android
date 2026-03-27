@@ -47,7 +47,7 @@ class V3DanHelper {
   static DateTime schedulingWeekAnchor({DateTime? now}) {
     final base = dateOnly(now ?? DateTime.now());
     if (base.weekday >= DateTime.saturday) {
-      return base.add(const Duration(days: 7));
+      return dateOnly(base.add(const Duration(days: 7)));
     }
     return base;
   }
@@ -55,7 +55,7 @@ class V3DanHelper {
   /// Da li je datum unutar aktivne sedmice zakazivanja.
   static bool isInSchedulingWeek(DateTime datum, {DateTime? now}) {
     final target = dateOnly(datum);
-    final anchor = schedulingWeekAnchor(now: now);
+    final anchor = dateOnly(schedulingWeekAnchor(now: now));
     final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
     final sunday = monday.add(const Duration(days: 6));
     return !target.isBefore(monday) && !target.isAfter(sunday);
