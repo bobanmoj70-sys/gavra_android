@@ -474,7 +474,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                       await Future<void>.delayed(const Duration(milliseconds: 120));
                                       if (!mounted) return;
                                       V3AppSnackBar.info(ctx,
-                                          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu od 01:00 ($unlockStr).');
+                                          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu od 03:00 ($unlockStr).');
                                     }
                                   : () async {
                                       Navigator.of(dialogCtx).pop();

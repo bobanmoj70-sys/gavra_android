@@ -1,0 +1,347 @@
+-- Split weekly pipeline:
+-- 01:00 субота -> arhiva operativne nedelje
+-- 02:00 субота -> čišćenje + priprema nove nedelje (operativna + kapacitet slotovi)
+-- 10:00 субота -> push da počinje zakazivanje (postojeća funkcija)
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS public.v3_weekly_pipeline_steps (
+  id bigint generated always as identity primary key,
+  run_key date not null,
+  step text not null,
+  ran_at timestamptz not null default now(),
+  details jsonb not null default '{}'::jsonb,
+  unique (run_key, step)
+);
+
+CREATE OR REPLACE FUNCTION public.fn_v3_weekly_archive_sat_0100(
+  p_force boolean default false
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  v_local_now timestamp;
+  v_local_date date;
+  v_local_time time;
+  v_isodow integer;
+
+  v_source_week_start date;
+  v_source_week_end date;
+  v_target_week_start date;
+  v_archive_cutoff date;
+
+  v_archived_rows integer := 0;
+BEGIN
+  v_local_now := timezone('Europe/Belgrade', now());
+  v_local_date := v_local_now::date;
+  v_local_time := v_local_now::time;
+  v_isodow := extract(isodow from v_local_now);
+
+  IF NOT p_force THEN
+    IF v_isodow <> 6 THEN
+      RETURN jsonb_build_object('ok', true, 'skipped', true, 'reason', 'not_saturday', 'local_now', v_local_now);
+    END IF;
+
+    IF v_local_time < time '01:00' OR v_local_time >= time '02:00' THEN
+      RETURN jsonb_build_object('ok', true, 'skipped', true, 'reason', 'outside_0100_window', 'local_now', v_local_now);
+    END IF;
+  END IF;
+
+  v_source_week_start := date_trunc('week', v_local_date::timestamp)::date;
+  v_source_week_end := v_source_week_start + 6;
+  v_target_week_start := v_source_week_start + 7;
+  v_archive_cutoff := v_local_date - 1;
+
+  INSERT INTO public.v3_operativna_nedelja_arhiva (
+    id,
+    original_op_id,
+    putnik_id,
+    datum,
+    grad,
+    vreme,
+    status_final,
+    pokupljen,
+    broj_mesta,
+    zeljeno_vreme,
+    dodeljeno_vreme,
+    pokupljen_vozac_id,
+    naplatio_vozac_id,
+    otkazao_vozac_id,
+    otkazao_putnik_id,
+    koristi_sekundarnu,
+    adresa_id_override,
+    naplata_status,
+    iznos_naplacen,
+    aktivno,
+    arhiviran_datum,
+    nedelja_start,
+    nedelja_end,
+    razlog_arhiviranja,
+    original_created_at,
+    original_updated_at,
+    created_at,
+    updated_at
+  )
+  SELECT
+    gen_random_uuid(),
+    o.id,
+    o.putnik_id,
+    o.datum,
+    o.grad,
+    coalesce(o.dodeljeno_vreme, o.zeljeno_vreme),
+    o.status_final,
+    o.pokupljen,
+    o.broj_mesta,
+    o.zeljeno_vreme,
+    o.dodeljeno_vreme,
+    o.pokupljen_vozac_id,
+    o.naplatio_vozac_id,
+    o.otkazao_vozac_id,
+    o.otkazao_putnik_id,
+    o.koristi_sekundarnu,
+    o.adresa_id_override,
+    o.naplata_status,
+    o.iznos_naplacen,
+    o.aktivno,
+    v_local_date,
+    v_source_week_start,
+    v_source_week_end,
+    'weekly_archive_sat_0100',
+    o.created_at,
+    o.updated_at,
+    now(),
+    now()
+  FROM public.v3_operativna_nedelja o
+  WHERE o.datum <= v_archive_cutoff
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.v3_operativna_nedelja_arhiva a
+      WHERE a.original_op_id = o.id
+        AND a.nedelja_start = v_source_week_start
+    );
+
+  GET DIAGNOSTICS v_archived_rows = ROW_COUNT;
+
+  INSERT INTO public.v3_weekly_pipeline_steps (run_key, step, details)
+  VALUES (
+    v_target_week_start,
+    'archive_0100',
+    jsonb_build_object(
+      'local_now', v_local_now,
+      'source_week_start', v_source_week_start,
+      'archive_cutoff', v_archive_cutoff,
+      'archived_rows', v_archived_rows
+    )
+  )
+  ON CONFLICT (run_key, step)
+  DO UPDATE SET
+    ran_at = now(),
+    details = EXCLUDED.details;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'step', 'archive_0100',
+    'local_now', v_local_now,
+    'source_week_start', v_source_week_start,
+    'target_week_start', v_target_week_start,
+    'archive_cutoff', v_archive_cutoff,
+    'archived_rows', v_archived_rows
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.fn_v3_weekly_cleanup_sat_0200(
+  p_force boolean default false
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  v_local_now timestamp;
+  v_local_date date;
+  v_local_time time;
+  v_isodow integer;
+
+  v_source_week_start date;
+  v_source_week_end date;
+  v_target_week_start date;
+  v_target_week_end date;
+  v_archive_cutoff date;
+
+  v_has_archive_step boolean := false;
+  v_deleted_old_rows integer := 0;
+  v_cleared_target_rows integer := 0;
+  v_copied_slots integer := 0;
+BEGIN
+  v_local_now := timezone('Europe/Belgrade', now());
+  v_local_date := v_local_now::date;
+  v_local_time := v_local_now::time;
+  v_isodow := extract(isodow from v_local_now);
+
+  IF NOT p_force THEN
+    IF v_isodow <> 6 THEN
+      RETURN jsonb_build_object('ok', true, 'skipped', true, 'reason', 'not_saturday', 'local_now', v_local_now);
+    END IF;
+
+    IF v_local_time < time '02:00' OR v_local_time >= time '03:00' THEN
+      RETURN jsonb_build_object('ok', true, 'skipped', true, 'reason', 'outside_0200_window', 'local_now', v_local_now);
+    END IF;
+  END IF;
+
+  v_source_week_start := date_trunc('week', v_local_date::timestamp)::date;
+  v_source_week_end := v_source_week_start + 6;
+  v_target_week_start := v_source_week_start + 7;
+  v_target_week_end := v_target_week_start + 6;
+  v_archive_cutoff := v_local_date - 1;
+
+  IF NOT p_force THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.v3_weekly_pipeline_steps s
+      WHERE s.run_key = v_target_week_start
+        AND s.step = 'archive_0100'
+    ) INTO v_has_archive_step;
+
+    IF NOT v_has_archive_step THEN
+      RETURN jsonb_build_object(
+        'ok', true,
+        'skipped', true,
+        'reason', 'archive_step_not_done',
+        'target_week_start', v_target_week_start
+      );
+    END IF;
+  END IF;
+
+  DELETE FROM public.v3_operativna_nedelja o
+  WHERE o.datum <= v_archive_cutoff;
+
+  GET DIAGNOSTICS v_deleted_old_rows = ROW_COUNT;
+
+  DELETE FROM public.v3_operativna_nedelja o
+  WHERE o.datum BETWEEN v_target_week_start AND v_target_week_end;
+
+  GET DIAGNOSTICS v_cleared_target_rows = ROW_COUNT;
+
+  DELETE FROM public.v3_kapacitet_slots ks
+  WHERE ks.datum BETWEEN v_target_week_start AND v_target_week_end;
+
+  INSERT INTO public.v3_kapacitet_slots (
+    id,
+    grad,
+    vreme,
+    datum,
+    max_mesta,
+    aktivno,
+    created_at,
+    updated_at
+  )
+  SELECT
+    gen_random_uuid(),
+    ks.grad,
+    ks.vreme,
+    ks.datum + 7,
+    ks.max_mesta,
+    true,
+    now(),
+    now()
+  FROM public.v3_kapacitet_slots ks
+  WHERE ks.datum BETWEEN v_source_week_start AND v_source_week_end
+    AND ks.aktivno = true
+  ON CONFLICT (grad, vreme, datum)
+  DO UPDATE SET
+    max_mesta = EXCLUDED.max_mesta,
+    aktivno = true,
+    updated_at = now();
+
+  GET DIAGNOSTICS v_copied_slots = ROW_COUNT;
+
+  INSERT INTO public.v3_weekly_pipeline_steps (run_key, step, details)
+  VALUES (
+    v_target_week_start,
+    'cleanup_0200',
+    jsonb_build_object(
+      'local_now', v_local_now,
+      'source_week_start', v_source_week_start,
+      'target_week_start', v_target_week_start,
+      'archive_cutoff', v_archive_cutoff,
+      'deleted_old_rows', v_deleted_old_rows,
+      'cleared_target_rows', v_cleared_target_rows,
+      'copied_slots', v_copied_slots
+    )
+  )
+  ON CONFLICT (run_key, step)
+  DO UPDATE SET
+    ran_at = now(),
+    details = EXCLUDED.details;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'step', 'cleanup_0200',
+    'local_now', v_local_now,
+    'source_week_start', v_source_week_start,
+    'target_week_start', v_target_week_start,
+    'archive_cutoff', v_archive_cutoff,
+    'deleted_old_rows', v_deleted_old_rows,
+    'cleared_target_rows', v_cleared_target_rows,
+    'copied_slots', v_copied_slots
+  );
+END;
+$function$;
+
+DO $$
+DECLARE
+  v_job integer;
+BEGIN
+  SELECT jobid INTO v_job FROM cron.job WHERE jobname = 'weekly-rollover-sat-0100-belgrade' LIMIT 1;
+  IF v_job IS NOT NULL THEN
+    PERFORM cron.unschedule(v_job);
+  END IF;
+
+  SELECT jobid INTO v_job FROM cron.job WHERE jobname = 'weekly-archive-sat-0100-belgrade' LIMIT 1;
+  IF v_job IS NOT NULL THEN
+    PERFORM cron.unschedule(v_job);
+  END IF;
+
+  SELECT jobid INTO v_job FROM cron.job WHERE jobname = 'weekly-cleanup-sat-0200-belgrade' LIMIT 1;
+  IF v_job IS NOT NULL THEN
+    PERFORM cron.unschedule(v_job);
+  END IF;
+
+  PERFORM cron.schedule(
+    'weekly-archive-sat-0100-belgrade',
+    '0 1 * * 6',
+    'SELECT public.fn_v3_weekly_archive_sat_0100();'
+  );
+
+  PERFORM cron.schedule(
+    'weekly-cleanup-sat-0200-belgrade',
+    '0 2 * * 6',
+    'SELECT public.fn_v3_weekly_cleanup_sat_0200();'
+  );
+
+  SELECT jobid INTO v_job FROM cron.job WHERE jobname = 'weekly-reservation-reminder-sat-1000' LIMIT 1;
+  IF v_job IS NOT NULL THEN
+    PERFORM cron.unschedule(v_job);
+  END IF;
+
+  PERFORM cron.schedule(
+    'weekly-reservation-reminder-sat-1000',
+    '0 10 * * 6',
+    'SELECT * FROM public.send_daily_reservation_reminder_all_tokens();'
+  );
+EXCEPTION
+  WHEN undefined_table OR undefined_function THEN
+    RAISE NOTICE 'pg_cron nije dostupan; scheduling preskočen.';
+END
+$$;
+
+COMMIT;
+
+-- Provere:
+-- SELECT public.fn_v3_weekly_archive_sat_0100(false);
+-- SELECT public.fn_v3_weekly_cleanup_sat_0200(false);
+-- SELECT jobname, schedule, command FROM cron.job
+-- WHERE jobname in ('weekly-archive-sat-0100-belgrade','weekly-cleanup-sat-0200-belgrade','weekly-reservation-reminder-sat-1000');

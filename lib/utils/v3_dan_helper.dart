@@ -43,12 +43,12 @@ class V3DanHelper {
   ///
   /// Pravilo:
   /// - Ponedeljak–petak: aktivna je tekuća sedmica.
-  /// - Subota od 01:00: aktivna je sledeća sedmica.
+  /// - Subota od 03:00: aktivna je sledeća sedmica.
   /// - Nedelja: aktivna je sledeća sedmica.
   static DateTime schedulingWeekAnchor({DateTime? now}) {
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
-    final saturdayUnlock = DateTime(base.year, base.month, base.day, 1, 0);
+    final saturdayUnlock = DateTime(base.year, base.month, base.day, 3, 0);
     final saturdayAfterUnlock = base.weekday == DateTime.saturday && !current.isBefore(saturdayUnlock);
 
     if (base.weekday == DateTime.sunday || saturdayAfterUnlock) {
@@ -57,15 +57,15 @@ class V3DanHelper {
     return base;
   }
 
-  /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 01:00).
+  /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 03:00).
   static DateTime nextSchedulingUnlock({DateTime? now}) {
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
     final saturday = base.add(Duration(days: DateTime.saturday - base.weekday));
-    final unlockThisWeek = DateTime(saturday.year, saturday.month, saturday.day, 1, 0);
+    final unlockThisWeek = DateTime(saturday.year, saturday.month, saturday.day, 3, 0);
     if (current.isBefore(unlockThisWeek)) return unlockThisWeek;
     final nextSaturday = saturday.add(const Duration(days: 7));
-    return DateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 1, 0);
+    return DateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 3, 0);
   }
 
   /// Da li je datum unutar aktivne sedmice zakazivanja.
