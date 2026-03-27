@@ -42,30 +42,30 @@ class V3DanHelper {
   /// Anchor datum za aktivnu sedmicu zakazivanja.
   ///
   /// Pravilo:
-  /// - Ponedeljak–četvrtak: aktivna je tekuća sedmica.
-  /// - Petak od 01:00: aktivna je sledeća sedmica.
-  /// - Subota–nedelja: aktivna je sledeća sedmica.
+  /// - Ponedeljak–petak: aktivna je tekuća sedmica.
+  /// - Subota od 01:00: aktivna je sledeća sedmica.
+  /// - Nedelja: aktivna je sledeća sedmica.
   static DateTime schedulingWeekAnchor({DateTime? now}) {
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
-    final fridayUnlock = DateTime(base.year, base.month, base.day, 1, 0);
-    final fridayAfterUnlock = base.weekday == DateTime.friday && !current.isBefore(fridayUnlock);
+    final saturdayUnlock = DateTime(base.year, base.month, base.day, 1, 0);
+    final saturdayAfterUnlock = base.weekday == DateTime.saturday && !current.isBefore(saturdayUnlock);
 
-    if (base.weekday >= DateTime.saturday || fridayAfterUnlock) {
+    if (base.weekday == DateTime.sunday || saturdayAfterUnlock) {
       return dateOnly(base.add(const Duration(days: 7)));
     }
     return base;
   }
 
-  /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (petak 01:00).
+  /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 01:00).
   static DateTime nextSchedulingUnlock({DateTime? now}) {
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
-    final friday = base.add(Duration(days: DateTime.friday - base.weekday));
-    final unlockThisWeek = DateTime(friday.year, friday.month, friday.day, 1, 0);
+    final saturday = base.add(Duration(days: DateTime.saturday - base.weekday));
+    final unlockThisWeek = DateTime(saturday.year, saturday.month, saturday.day, 1, 0);
     if (current.isBefore(unlockThisWeek)) return unlockThisWeek;
-    final nextFriday = friday.add(const Duration(days: 7));
-    return DateTime(nextFriday.year, nextFriday.month, nextFriday.day, 1, 0);
+    final nextSaturday = saturday.add(const Duration(days: 7));
+    return DateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 1, 0);
   }
 
   /// Da li je datum unutar aktivne sedmice zakazivanja.
