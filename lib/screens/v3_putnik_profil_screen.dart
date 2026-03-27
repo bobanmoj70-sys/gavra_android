@@ -468,8 +468,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                               onPressed: isLocked
                                   ? () async {
                                       Navigator.of(dialogCtx).pop();
-                                        final unlockAt = V3DanHelper.nextSchedulingUnlock(now: now);
-                                        final unlockStr =
+                                      final unlockAt = V3DanHelper.nextSchedulingUnlock(now: now);
+                                      final unlockStr =
                                           '${unlockAt.day}.${unlockAt.month}.${unlockAt.year}. ${unlockAt.hour.toString().padLeft(2, '0')}:${unlockAt.minute.toString().padLeft(2, '0')}';
                                       await Future<void>.delayed(const Duration(milliseconds: 120));
                                       if (!mounted) return;
