@@ -31,8 +31,9 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   String _selectedVreme = '';
   String _selectedDay = 'Ponedeljak';
 
-  /// ISO datum za izabrani dan u tekućoj nedelji.
-  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
+  /// ISO datum za izabrani dan u aktivnoj nedelji.
+  String get _selectedDatumIso =>
+      V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
 
   List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value);
   List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value);

@@ -63,21 +63,6 @@ class V3DanHelper {
 
   // ─── naziv/kratica → ISO datum (RAČUNANJE PO SEDMICI) ────────
 
-  /// ISO datum (yyyy-MM-dd) za izabrani dan.
-  /// Ako je isti dan kao danas, vraća današnji datum.
-  /// Ako je dan prošao u ovoj sedmici, vraća taj dan u sledećoj sedmici.
-  static String datumIsoZaDanPuni(String danPuni) {
-    final today = DateTime.now();
-    final todayWeekday = today.weekday; // 1=pon, 7=ned
-    final targetIndex = _names.indexOf(danPuni);
-    if (targetIndex == -1) return todayIso(); // fallback
-    final targetWeekday = targetIndex + 1; // 1=pon, 7=ned
-    int diff = targetWeekday - todayWeekday;
-    if (diff < 0) diff += 7; // Ako je dan prošao, idi na sledeću sedmicu
-    final targetDate = today.add(Duration(days: diff));
-    return toIsoDate(targetDate);
-  }
-
   /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.
   /// Ne gura automatski u sledeću sedmicu ako je dan već prošao.
   static String datumIsoZaDanPuniUTekucojSedmici(String danPuni, {DateTime? anchor}) {
@@ -86,19 +71,6 @@ class V3DanHelper {
     if (targetIndex == -1) return toIsoDate(base);
     final monday = base.subtract(Duration(days: base.weekday - 1));
     final targetDate = monday.add(Duration(days: targetIndex));
-    return toIsoDate(targetDate);
-  }
-
-  /// ISO datum (yyyy-MM-dd) za izabrani dan u trenutnoj sedmici.
-  /// Računa pravi datum: pon → datum ponedeljka u sedmici, itd.
-  static String datumIsoZaDanAbbr(String danAbbr) {
-    final today = DateTime.now();
-    final todayWeekday = today.weekday; // 1=pon, 7=ned
-    final targetIndex = _abbrs.indexOf(danAbbr);
-    if (targetIndex == -1) return todayIso(); // fallback
-    final targetWeekday = targetIndex + 1; // 1=pon, 7=ned
-    final diff = targetWeekday - todayWeekday;
-    final targetDate = today.add(Duration(days: diff));
     return toIsoDate(targetDate);
   }
 
@@ -116,29 +88,6 @@ class V3DanHelper {
   static String datumIsoZaDanAbbrUTekucojSedmici(String danAbbr, {DateTime? anchor}) {
     return toIsoDate(datumZaDanAbbrUTekucojSedmici(danAbbr, anchor: anchor));
   }
-
-  /// DateTime za izabrani dan.
-  /// Ako je isti dan kao danas, vraća današnji datum.
-  /// Ako je dan prošao u ovoj sedmici, vraća taj dan u sledećoj sedmici.
-  static DateTime datumZaDanAbbr(String danAbbr) {
-    final today = DateTime.now();
-    final todayWeekday = today.weekday; // 1=pon, 7=ned
-    final targetIndex = _abbrs.indexOf(danAbbr);
-    if (targetIndex == -1) return today; // fallback
-    final targetWeekday = targetIndex + 1; // 1=pon, 7=ned
-    int diff = targetWeekday - todayWeekday;
-    if (diff < 0) diff += 7; // Ako je dan prošao, idi na sledeću sedmicu
-    return today.add(Duration(days: diff));
-  }
-
-  /// ISO datum string (yyyy-MM-dd) za izabrani dan.
-  /// Koristi istu logiku kao datumZaDanAbbr ali vraća ISO string.
-  static String datumIsoZaDanAbbrNapred(String danAbbr) {
-    return toIsoDate(datumZaDanAbbr(danAbbr));
-  }
-
-  /// ISO datum string (yyyy-MM-dd) za izabrani dan u trenutnoj sedmici.
-  static String isoStringZaDan(String danAbbr) => datumIsoZaDanAbbr(danAbbr);
 
   // ─── parsiranje/formatiranje ───────────────────────────────────
 

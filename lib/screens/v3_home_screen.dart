@@ -48,8 +48,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   late Stream<List<V3OperativnaNedeljaEntry>> _operativnaStream;
 
-  /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u tekućoj sedmici.
-  String get _selectedDatumIso => V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
+  /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u aktivnoj sedmici.
+  String get _selectedDatumIso =>
+      V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
 
   Stream<List<V3OperativnaNedeljaEntry>> _buildOperativnaStream(String datumIso) {
     return V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
@@ -429,7 +430,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     }
                                     setS(() => isLoading = true);
                                     try {
-                                      final isoDate = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay);
+                                      final isoDate = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(
+                                        _selectedDay,
+                                        anchor: V3DanHelper.schedulingWeekAnchor(),
+                                      );
                                       final vozacId = V3VozacService.currentVozac?.id ?? 'nepoznat';
 
                                       // Odredi koristiSekundarnu i adresaIdOverride
