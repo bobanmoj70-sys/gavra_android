@@ -61,6 +61,7 @@ class V3PlacanjeDialogHelper {
     required String putnikId,
     required String imePrezime,
     required double defaultCena,
+    bool zakljucajIznos = false,
   }) async {
     final TextEditingController _iznosController = TextEditingController(text: defaultCena.toStringAsFixed(0));
 
@@ -113,8 +114,9 @@ class V3PlacanjeDialogHelper {
                 ),
               TextField(
                 controller: _iznosController,
-                decoration: const InputDecoration(
-                  labelText: 'Iznos (RSD)',
+                readOnly: zakljucajIznos,
+                decoration: InputDecoration(
+                  labelText: zakljucajIznos ? 'Iznos (zaključano)' : 'Iznos (RSD)',
                   suffixText: 'RSD',
                 ),
                 keyboardType: TextInputType.number,
@@ -161,7 +163,7 @@ class V3PlacanjeDialogHelper {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               onPressed: () {
-                final iznos = double.tryParse(_iznosController.text) ?? 0;
+                final iznos = zakljucajIznos ? defaultCena : (double.tryParse(_iznosController.text) ?? 0);
                 Navigator.pop(
                   context,
                   V3PlacanjeRezultat(

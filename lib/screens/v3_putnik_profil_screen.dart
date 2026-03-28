@@ -660,6 +660,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   @override
   Widget build(BuildContext context) {
     final tip = _putnikData['tip_putnika'] as String? ?? 'radnik';
+    final cenaPoDanu = (_putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+    final cenaPoPokupljenju = (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+    final koristiCenuPoPokupljenju = tip == 'dnevni' || tip == 'posiljka';
+    final efektivnaCena = koristiCenuPoPokupljenju ? cenaPoPokupljenju : cenaPoDanu;
+    final cenaInfo = efektivnaCena > 0
+        ? '${koristiCenuPoPokupljenju ? 'Cena po pokupljenju' : 'Cena po danu'}: ${efektivnaCena.toStringAsFixed(0)} RSD'
+        : null;
     final imePrezime = _putnikData['ime_prezime'] as String? ?? '';
     final telefon = _putnikData['telefon_1'] as String? ?? '';
     final telefon2 = _putnikData['telefon_2'] as String? ?? '';
@@ -696,6 +703,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   // ── HEADER CARD ──────────────────────────────────────
                   _buildHeaderCard(
                     tip: tip,
+                    cenaInfo: cenaInfo,
                     imePrezime: imePrezime,
                     telefon: telefon,
                     telefon2: telefon2,
@@ -722,6 +730,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // ─────────────────────────────────────────────────────────────────
   Widget _buildHeaderCard({
     required String tip,
+    String? cenaInfo,
     required String imePrezime,
     required String telefon,
     String telefon2 = '',
@@ -807,6 +816,28 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               if (tip.toLowerCase() != 'radnik') _Badge(label: tipLabel, color: avatarColors[0]),
             ],
           ),
+          if (cenaInfo != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.payments_outlined, color: Colors.white60, size: 14),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    cenaInfo,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: V3StyleHelper.whiteAlpha9,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (telefon.isNotEmpty || telefon2.isNotEmpty) ...[
             const SizedBox(height: 10),
             Row(
