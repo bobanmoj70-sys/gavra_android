@@ -283,12 +283,17 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
 
   // Provjeri tip notifikacije
   final type = message.data['type'] as String?;
+  final title = (message.notification?.title ?? message.data['title']?.toString() ?? '').trim();
+  final body = (message.notification?.body ?? message.data['body']?.toString() ?? '').trim();
   if (type == 'gps_tracking_start') {
     await _handleGpsTrackingStart(message.data);
   } else if (type == 'gps_tracking_complete') {
     await _handleGpsTrackingComplete(message.data);
   } else if ((type ?? '').startsWith('v3_')) {
-    debugPrint('⏭️ [Push] Edge-only: foreground lokalni fallback isključen za type=$type');
+    final safeTitle = title.isNotEmpty ? title : '🔔 Gavra obaveštenje';
+    final safeBody = body.isNotEmpty ? body : 'Imate novo obaveštenje.';
+    await _showActionFeedback(safeTitle, safeBody);
+    debugPrint('✅ [Push] Foreground lokalni fallback prikazan za type=$type');
   } else {
     debugPrint('⏭️ [Push] Edge-only: nepoznat tip bez lokalnog fallback-a: $type');
   }
