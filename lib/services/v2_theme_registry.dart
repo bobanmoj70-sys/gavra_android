@@ -44,6 +44,15 @@ class V2ThemeRegistry {
       styles: DarkPinkStyles,
       gradient: darkPinkGradient,
     ),
+    'odrzavanje': V2ThemeDefinition(
+      id: 'odrzavanje',
+      name: '📖 Odrzavanje',
+      description: 'Gradient sa odrzavanje ekrana (primary/secondary/black87)',
+      colorScheme: tripleBlueFashionColorScheme,
+      themeData: tripleBlueFashionTheme,
+      styles: OdrzavanjeStyles,
+      gradient: odrzavanjeGradient,
+    ),
   };
 
   // Keširane vrijednosti — izracunavaju se jednom

@@ -214,44 +214,45 @@ extension CustomColors on ColorScheme {
   Color get dangerPrimary => const Color(0xFFEF5350);
 }
 
-// Triple Blue Fashion Gradient - 5 boja!
+// Triple Blue Fashion Gradient - DEEP DARK VERSION (kao Dark Pink - tamnije na kraju)
 const LinearGradient tripleBlueFashionGradient = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
   colors: [
-    Color(0xFF0575E6), // Electric Blue Shine - završetak
-    Color(0xFF1E3A78), // Blue Ice Metallic - početak
-    Color(0xFF4F7CAC), // Blue Ice Metallic - sredina
-    Color(0xFFA8D8E8), // Blue Ice Metallic - završetak
-    Color(0xFF12D8FA), // Neon Blue Glow - sredina
+    Color(0xFF0A5FFF), // Electric Blue - početak svetla
+    Color(0xFF001A7F), // Dark Navy - DUBOK SKOK
+    Color(0xFF1E3A78), // Blue Ice Metallic - sredina
+    Color(0xFF4FA3D1), // Light Ice Blue - svetlija
+    Color(0xFF0047B2), // Deep Blue Neon - TAMNIJI NEON
   ],
   stops: [0.0, 0.25, 0.5, 0.75, 1.0],
 );
 
-// Dark Steel Grey Gradient - SAMO GRADIJENT!
+// Dark Steel Grey Gradient - DEEP DARK VERSION (kao Dark Pink - tamnije na kraju)
 const LinearGradient darkSteelGreyGradient = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
   colors: [
-    Color(0xFF4A4A4A), // Srednja siva - početak svetliji
-    Color(0xFF1A1A1A), // Tamna siva
-    Color(0xFF3A3A3A), // Srednja siva
-    Color(0xFF6A6A6A), // Svetlija siva
-    Color(0xFF9A9A9A), // Najsvetlija siva - neon efekat
+    Color(0xFF888888), // Light Grey - početak
+    Color(0xFF000000), // Pure Black - DUBOK SKOK
+    Color(0xFF333333), // Dark Grey - sredina
+    Color(0xFF999999), // Medium Light Grey - svetlija
+    Color(0xFF424242), // Dark Steel Grey Neon - TAMNIJI NEON
   ],
   stops: [0.0, 0.25, 0.5, 0.75, 1.0],
 );
 
 // PASSIONATE ROSE GRADIENT - Electric Red + Ruby + Crimson + Pink Ice + Neon Rose!
+// Passionate Rose Gradient - DEEP CONTRAST VERSION
 const LinearGradient passionateRoseGradient = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
   colors: [
-    Color(0xFFDC143C), // Crimson - početak svetliji
-    Color(0xFF8B0000), // Dark Red
-    Color(0xFFB22222), // Ruby Metallic
-    Color(0xFFFF69B4), // Pink Ice Glow
-    Color(0xFFFFC0CB), // Neon Rose Shine
+    Color(0xFFFF2060), // Bright Hot Pink - početak
+    Color(0xFF550022), // Dark Maroon - DUBOK SKOK
+    Color(0xFF8B1A47), // Deep Crimson - sredina
+    Color(0xFFFF6BA6), // Light Pink - svetlija
+    Color(0xFFFF0080), // Hot Pink Neon - NEON AKCENT
   ],
   stops: [0.0, 0.25, 0.5, 0.75, 1.0],
 );
@@ -268,6 +269,17 @@ const LinearGradient darkPinkGradient = LinearGradient(
     Color(0xFFE91E8C), // Neon pink akcent
   ],
   stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+);
+
+// ODRZAVANJE GRADIENT - 1:1 kao na v3_odrzavanje_screen.dart
+final LinearGradient odrzavanjeGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [
+    tripleBlueFashionColorScheme.primary.withValues(alpha: 0.85),
+    tripleBlueFashionColorScheme.secondary.withValues(alpha: 0.75),
+    Colors.black87,
+  ],
 );
 
 // PASSIONATE ROSE COLOR SCHEME
@@ -571,6 +583,80 @@ class DarkPinkStyles {
     boxShadow: [
       BoxShadow(
         color: const Color(0xFFE91E8C).withOpacity(0.3), // Pink glow
+        blurRadius: 32,
+        offset: const Offset(0, 12),
+        spreadRadius: 4,
+      ),
+    ],
+  );
+}
+
+// ODRZAVANJE Styles - DarkPink stil sa plavom održavanje paletom
+class OdrzavanjeStyles {
+  static BoxDecoration cardDecoration = BoxDecoration(
+    color: const Color(0xFF1A2340),
+    borderRadius: V3StyleHelper.radius20,
+    border: Border.all(
+      width: 2,
+      color: const Color(0xFF4FA3D1).withOpacity(0.5),
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: const Color(0xFF4FA3D1).withOpacity(0.28),
+        blurRadius: 24,
+        offset: const Offset(0, 8),
+        spreadRadius: 2,
+      ),
+    ],
+  );
+
+  static BoxDecoration gradientBackground = BoxDecoration(
+    gradient: odrzavanjeGradient,
+  );
+
+  static BoxDecoration gradientButton = BoxDecoration(
+    gradient: odrzavanjeGradient,
+    borderRadius: V3StyleHelper.radius16,
+    border: Border.all(
+      width: 1.5,
+      color: const Color(0xFF4FA3D1).withOpacity(0.6),
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: const Color(0xFF4FA3D1).withOpacity(0.35),
+        blurRadius: 20,
+        offset: const Offset(0, 8),
+        spreadRadius: 2,
+      ),
+    ],
+  );
+
+  static BoxDecoration dropdownDecoration = BoxDecoration(
+    color: const Color(0xFF1A2340),
+    borderRadius: V3StyleHelper.radius16,
+    border: Border.all(
+      color: const Color(0xFF4FA3D1).withOpacity(0.4),
+      width: 1.5,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: const Color(0xFF4FA3D1).withOpacity(0.2),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  );
+
+  static BoxDecoration popupDecoration = BoxDecoration(
+    color: const Color(0xFF0F1730),
+    borderRadius: V3StyleHelper.radius24,
+    border: Border.all(
+      color: const Color(0xFF4FA3D1).withOpacity(0.5),
+      width: 2,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: const Color(0xFF4FA3D1).withOpacity(0.28),
         blurRadius: 32,
         offset: const Offset(0, 12),
         spreadRadius: 4,
