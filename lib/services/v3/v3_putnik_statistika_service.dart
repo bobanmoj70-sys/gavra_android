@@ -78,6 +78,24 @@ class V3PutnikStatistikaService {
     );
   }
 
+  static double getUkupanDugZaSveMesece(
+    String putnikId, {
+    DateTime? now,
+  }) {
+    if (putnikId.isEmpty) return 0;
+
+    final ref = now ?? DateTime.now();
+    final meseci = _getMeseciSaPodacima(putnikId)..add((ref.year, ref.month));
+
+    double ukupno = 0;
+    for (final (godina, mesec) in meseci) {
+      final stat = getZaMesec(putnikId: putnikId, godina: godina, mesec: mesec);
+      ukupno += stat.dugIznos;
+    }
+
+    return ukupno;
+  }
+
   static V3PutnikMesecnaStatistika getZaMesec({
     required String putnikId,
     required int godina,
@@ -107,6 +125,7 @@ class V3PutnikStatistikaService {
     final isPoDanu = tip == 'radnik' || tip == 'ucenik';
     if (isPoDanu) {
       return _computePoDanu(
+        putnikId: putnikId,
         rows: rows,
         godina: godina,
         mesec: mesec,
@@ -125,6 +144,7 @@ class V3PutnikStatistikaService {
   }
 
   static V3PutnikMesecnaStatistika _computePoDanu({
+    required String putnikId,
     required List<Map<String, dynamic>> rows,
     required int godina,
     required int mesec,
@@ -147,29 +167,30 @@ class V3PutnikStatistikaService {
 
     int pokupljeno = 0;
     int voznji = 0;
-    int placeno = 0;
-    int neplaceno = 0;
-    double naplacenoIznos = 0;
+    final ukupnoUplaceno = _sumUplateZaMesec(putnikId: putnikId, godina: godina, mesec: mesec);
 
     for (final dayRows in byDate.values) {
       final hasPokupljen = dayRows.any(_isPokupljen);
-      final paidRows = dayRows.where(_isPlaceno).toList();
-      final hasPlaceno = paidRows.isNotEmpty;
 
       if (hasPokupljen) {
         voznji++;
         pokupljeno++;
-        if (hasPlaceno) {
-          placeno++;
-          final dayPaid = paidRows
-              .map((r) => _placeniIznosIliFallback(r, cenaPoDanu))
-              .fold<double>(0, (maxSoFar, amount) => amount > maxSoFar ? amount : maxSoFar);
-          naplacenoIznos += dayPaid;
-        } else {
-          neplaceno++;
-        }
       }
     }
+
+    final ukupnaObaveza = voznji * cenaPoDanu;
+    final kredit = ukupnoUplaceno - ukupnaObaveza;
+    final naplacenoIznos = kredit > 0 ? kredit : 0.0;
+    final dugIznos = kredit < 0 ? -kredit : 0.0;
+
+    int placeno = 0;
+    if (cenaPoDanu > 0) {
+      placeno = (ukupnoUplaceno / cenaPoDanu).floor();
+      if (placeno > voznji) placeno = voznji;
+    } else {
+      placeno = voznji;
+    }
+    final neplaceno = (voznji - placeno).clamp(0, voznji);
 
     return V3PutnikMesecnaStatistika(
       godina: godina,
@@ -181,7 +202,7 @@ class V3PutnikStatistikaService {
       otkazano: otkazanoDatumi.length,
       neplaceno: neplaceno,
       naplacenoIznos: naplacenoIznos,
-      dugIznos: neplaceno * cenaPoDanu,
+      dugIznos: dugIznos,
     );
   }
 
@@ -253,5 +274,37 @@ class V3PutnikStatistikaService {
       'Decembar',
     ];
     return (m >= 1 && m <= 12) ? names[m] : 'Mesec';
+  }
+
+  static Set<(int, int)> _getMeseciSaPodacima(String putnikId) {
+    final meseci = <(int, int)>{};
+    final rows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+
+    for (final row in rows) {
+      if (row['aktivno'] == false) continue;
+      if (row['putnik_id']?.toString() != putnikId) continue;
+      final datum = _extractDatum(row);
+      if (datum == null) continue;
+      meseci.add((datum.year, datum.month));
+    }
+
+    return meseci;
+  }
+
+  static double _sumUplateZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final arhiva = V3MasterRealtimeManager.instance.getCache('v3_putnici_arhiva').values;
+
+    return arhiva.where((row) {
+      if (row['aktivno'] == false) return false;
+      if (row['putnik_id']?.toString() != putnikId) return false;
+      if ((row['za_godinu'] as int?) != godina) return false;
+      if ((row['za_mesec'] as int?) != mesec) return false;
+      final tip = (row['tip_akcije']?.toString() ?? '').toLowerCase();
+      return tip == 'uplata_mesecna' || tip == 'uplata_voznja' || tip == 'uplata';
+    }).fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
   }
 }

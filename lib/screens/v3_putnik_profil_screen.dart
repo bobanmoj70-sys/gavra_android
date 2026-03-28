@@ -667,6 +667,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaBcNaziv2 = V3AdresaService.getNazivAdreseById(adresaBcId2);
     final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
     final stats = V3PutnikStatistikaService.getTekuciMesec(putnikId ?? '');
+    final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId ?? '');
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
     final nedeljaInfo = 'Aktivna nedelja: $nedeljaOpseg';
     return ValueListenableBuilder<ThemeData>(
@@ -701,7 +702,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     adresaVsNaziv2: adresaVsNaziv2,
                   ),
                   const SizedBox(height: 16),
-                  _buildStatistikaCard(tip: tip, stats: stats, cenaInfo: cenaInfo),
+                  _buildStatistikaCard(tip: tip, stats: stats, cenaInfo: cenaInfo, ukupanDug: ukupanDug),
                   const SizedBox(height: 10),
                   _buildDetaljneStatistikeSection(
                     putnikId: putnikId,
@@ -927,7 +928,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
   }
 
-  Widget _buildStatistikaCard({required String tip, required V3PutnikMesecnaStatistika stats, String? cenaInfo}) {
+  Widget _buildStatistikaCard({
+    required String tip,
+    required V3PutnikMesecnaStatistika stats,
+    String? cenaInfo,
+    required double ukupanDug,
+  }) {
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(16),
       backgroundColor: V3StyleHelper.whiteAlpha06,
@@ -1004,7 +1010,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             children: [
               Text('Ukupan dug', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
-                '${stats.dugIznos.toStringAsFixed(0)} RSD',
+                '${ukupanDug.toStringAsFixed(0)} RSD',
                 style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ],
