@@ -1,5 +1,5 @@
 // @ts-nocheck
-type TokenInput = { token: string; provider: 'fcm' | 'hms' };
+type TokenInput = { token: string; provider: 'fcm' };
 
 type PushPayload = {
   tokens?: Array<{ token?: string; provider?: string }>;
@@ -18,7 +18,6 @@ type PushPayload = {
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
 
 let cachedFcmToken: { token: string; exp: number; projectId: string } | null = null;
-let cachedHmsToken: { token: string; exp: number } | null = null;
 
 function envOrPayload(name: string, payload?: PushPayload): string | null {
   const fromEnv = Deno.env.get(name);
@@ -56,8 +55,7 @@ function normalizeTokens(tokens: PushPayload['tokens']): TokenInput[] {
     .filter((item) => typeof item === 'object' && item !== null)
     .map((item) => {
       const token = String(item?.token ?? '').trim();
-      const providerRaw = String(item?.provider ?? 'fcm').trim().toLowerCase();
-      const provider = providerRaw === 'hms' ? 'hms' : 'fcm';
+      const provider = 'fcm';
       return { token, provider };
     })
     .filter((item) => item.token.length > 0);
@@ -221,104 +219,6 @@ async function sendFcm(
   }
 }
 
-async function getHmsAccessToken(payload: PushPayload): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  if (cachedHmsToken && cachedHmsToken.exp > now + 30) {
-    return cachedHmsToken.token;
-  }
-
-  const clientId = envOrPayload('huawei_oauth_client_id', payload) || envOrPayload('huawei_hms_client_id', payload);
-  const clientSecret =
-    envOrPayload('huawei_oauth_client_secret', payload) || envOrPayload('huawei_hms_client_secret', payload);
-
-  if (!clientId || !clientSecret) {
-    throw new Error('Missing Huawei client_id/client_secret');
-  }
-
-  const oauthRes = await fetch('https://oauth-login.cloud.huawei.com/oauth2/v3/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  const oauthJson = await oauthRes.json();
-  if (!oauthRes.ok || !oauthJson?.access_token) {
-    throw new Error(`HMS OAuth failed: ${oauthRes.status} ${JSON.stringify(oauthJson)}`);
-  }
-
-  const expiresIn = Number(oauthJson.expires_in ?? 3600);
-  cachedHmsToken = {
-    token: String(oauthJson.access_token),
-    exp: now + Math.max(60, expiresIn - 30),
-  };
-  return cachedHmsToken.token;
-}
-
-async function sendHms(
-  token: string,
-  title: string,
-  body: string,
-  dataOnly: boolean,
-  data: Record<string, string>,
-  payload: PushPayload,
-): Promise<{ ok: boolean; provider: 'hms'; token: string; status?: number; error?: string }> {
-  try {
-    const accessToken = await getHmsAccessToken(payload);
-    const appId =
-      envOrPayload('huawei_app_id', payload) ||
-      envOrPayload('huawei_oauth_client_id', payload) ||
-      envOrPayload('huawei_hms_client_id', payload);
-    if (!appId) throw new Error('Missing Huawei app id');
-
-    const hmsPayload: Record<string, unknown> = {
-      validate_only: false,
-      message: {
-        token: [token],
-        data: JSON.stringify(data),
-      },
-    };
-
-    if (!dataOnly) {
-      hmsPayload.message = {
-        ...(hmsPayload.message as Record<string, unknown>),
-        android: {
-          notification: {
-            title,
-            body,
-            click_action: { type: 3 },
-          },
-        },
-      };
-    }
-
-    const res = await fetch(`https://push-api.cloud.huawei.com/v1/${appId}/messages:send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(hmsPayload),
-    });
-
-    const bodyText = await res.text();
-    if (res.ok) {
-      return { ok: true, provider: 'hms', token, status: res.status };
-    }
-    return { ok: false, provider: 'hms', token, status: res.status, error: bodyText.slice(0, 400) };
-  } catch (error) {
-    return {
-      ok: false,
-      provider: 'hms',
-      token,
-      error: error instanceof Error ? error.message : 'Unknown HMS error',
-    };
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), {
@@ -345,11 +245,7 @@ Deno.serve(async (req) => {
     const results: Array<{ ok: boolean; provider: string; token: string; status?: number; error?: string }> = [];
 
     for (const tokenItem of normalizedTokens) {
-      if (tokenItem.provider === 'hms') {
-        results.push(await sendHms(tokenItem.token, title, body, dataOnly, data, payload));
-      } else {
-        results.push(await sendFcm(tokenItem.token, title, body, dataOnly, data, payload));
-      }
+      results.push(await sendFcm(tokenItem.token, title, body, dataOnly, data, payload));
     }
 
     const sent = results.filter((entry) => entry.ok).length;
@@ -358,10 +254,6 @@ Deno.serve(async (req) => {
       fcm: {
         sent: results.filter((entry) => entry.provider === 'fcm' && entry.ok).length,
         failed: results.filter((entry) => entry.provider === 'fcm' && !entry.ok).length,
-      },
-      hms: {
-        sent: results.filter((entry) => entry.provider === 'hms' && entry.ok).length,
-        failed: results.filter((entry) => entry.provider === 'hms' && !entry.ok).length,
       },
     };
 

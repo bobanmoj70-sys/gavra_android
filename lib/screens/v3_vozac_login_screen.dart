@@ -372,53 +372,29 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     );
   }
 
-  /// 🎯 Hibridni push token sistem - čuva FCM i HMS tokene
+  /// Čuva FCM push token
   Future<void> _saveHybridPushTokens(String vozacId) async {
     if (vozacId.isEmpty) return;
 
     String? fcmToken;
-    String? hmsToken;
-    String pushType = 'none';
 
-    // 1. Pokušaj FCM token (Google/Samsung/Xiaomi)
+    // 1. Pokušaj FCM token
     try {
       fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
-        pushType = 'fcm';
         debugPrint('[VozacLogin] FCM token: ${fcmToken.substring(0, 20)}...');
       }
     } catch (e) {
       debugPrint('[VozacLogin] FCM token greška: $e');
     }
 
-    // 2. Pokušaj HMS token (Huawei)
-    try {
-      // Huawei Push Kit - za sada placeholder zbog API promene
-      // hmsToken = await HuaweiPush.getToken("");
-      debugPrint('[VozacLogin] HMS token - potrebna API ažuriranje');
-    } catch (e) {
-      debugPrint('[VozacLogin] HMS token greška: $e');
-    }
-
-    // 3. Sačuvaj u bazu (update samo non-null vrednosti)
+    // 2. Sačuvaj u bazu (update samo non-null vrednosti)
     try {
       final updateData = <String, dynamic>{};
 
       if (fcmToken != null) {
         updateData['push_token'] = fcmToken;
-        updateData['push_type'] = 'fcm';
       }
-
-      // HMS token placeholder - trenutno nije implementiran
-      // if (hmsToken != null) {
-      //   updateData['hms_token'] = hmsToken;
-      //   updateData['push_type'] = 'hms';
-      // }
-
-      // Hybrid mode - kada imamo oba tokena
-      // if (fcmToken != null && hmsToken != null) {
-      //   updateData['push_type'] = 'hybrid';
-      // }
 
       if (updateData.isNotEmpty) {
         await supabase.from('v3_vozaci').update(updateData).eq('id', vozacId);

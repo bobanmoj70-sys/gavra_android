@@ -4,7 +4,7 @@ import '../../globals.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
 /// Service za optimizaciju rute pokupljanja putnika
-/// Poziva SQL funkcije fn_v3_optimize_pickup_route i fn_v3_optimize_all_routes_for_date
+/// Poziva SQL funkciju fn_v3_optimize_pickup_route
 class V3RouteOptimizationService {
   V3RouteOptimizationService._();
 
@@ -25,27 +25,6 @@ class V3RouteOptimizationService {
 
       if (response != null && response['success'] == true) {
         debugPrint('[RouteOpt] Optimizovano za vozača $vozacId: ${response['putnik_count']} putnika');
-        return response as Map<String, dynamic>;
-      } else {
-        debugPrint('[RouteOpt] Greška: ${response?['error'] ?? 'Unknown error'}');
-        return null;
-      }
-    } catch (e) {
-      debugPrint('[RouteOpt] Exception: $e');
-      return null;
-    }
-  }
-
-  /// Optimizuje rute za sve vozače na određeni datum
-  static Future<Map<String, dynamic>?> optimizeAllRoutesForDate(DateTime datum) async {
-    try {
-      final response = await supabase.rpc('fn_v3_optimize_all_routes_for_date', params: {
-        'p_datum': V3DanHelper.toIsoDate(datum), // YYYY-MM-DD format
-      });
-
-      if (response != null && response['success'] == true) {
-        debugPrint(
-            '[RouteOpt] Optimizovano ${response['total_routes_optimized']} ruta za ${datum.toString().split(' ')[0]}');
         return response as Map<String, dynamic>;
       } else {
         debugPrint('[RouteOpt] Greška: ${response?['error'] ?? 'Unknown error'}');

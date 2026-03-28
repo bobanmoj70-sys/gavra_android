@@ -24,8 +24,8 @@ import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../widgets/v3_live_clock_text.dart';
-import '../widgets/v3_putnik_tracking_widget.dart';
 import '../widgets/v3_update_banner.dart';
+import '../widgets/v3_vozac_eta_widget.dart';
 import 'v3_welcome_screen.dart';
 
 class V3PutnikProfilScreen extends StatefulWidget {
@@ -600,7 +600,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   // _showAlternativaDialog obrisan jer alternativa ide samo preko push notifikacije.
   // ─── TRACKING WIDGETS ────────────────────────────────────────────
-  Widget _buildAktivneVoznjeWidget() {
+  Widget _buildVozacEtaWidgets() {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return const SizedBox.shrink();
     // Pronađi aktivne vožnje za tekuću sedmicu
@@ -640,7 +640,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         final datum = DateTime.tryParse(gpsDodjela['datum'] as String? ?? '') ??
             DateTime.tryParse(zahtev['datum'] as String? ?? '');
         if (datum == null) continue;
-        aktivneVoznje.add(V3PutnikTrackingWidget(
+        aktivneVoznje.add(V3VozacEtaWidget(
           putnikId: putnikId,
           vozacId: vozacId,
           vreme: vreme,
@@ -688,7 +688,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   // Update banner (opcioni/obavezni)
                   const V3UpdateBanner(),
                   // ── TRACKING WIDGET ──────────────────────────────────
-                  _buildAktivneVoznjeWidget(),
+                  _buildVozacEtaWidgets(),
                   // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
                   if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
                     _NotifBanner(onEnable: _requestNotifPermission),

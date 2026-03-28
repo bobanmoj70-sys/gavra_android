@@ -17,14 +17,14 @@ import '../utils/v3_stream_utils.dart';
 ///
 /// AKTIVACIJA: 15 min pre planiranog polaska do završetka vožnje
 /// TEHNOLOGIJA: Koristi postojeći GPS stream, Haversine ETA kalkulacija
-class V3PutnikTrackingWidget extends StatefulWidget {
+class V3VozacEtaWidget extends StatefulWidget {
   final String putnikId;
   final String vozacId;
   final String vreme;
   final String grad;
   final DateTime datum;
 
-  const V3PutnikTrackingWidget({
+  const V3VozacEtaWidget({
     super.key,
     required this.putnikId,
     required this.vozacId,
@@ -34,10 +34,10 @@ class V3PutnikTrackingWidget extends StatefulWidget {
   });
 
   @override
-  State<V3PutnikTrackingWidget> createState() => _V3PutnikTrackingWidgetState();
+  State<V3VozacEtaWidget> createState() => _V3VozacEtaWidgetState();
 }
 
-class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
+class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
   // ETA подaci
   int? _etaMinutes;
   String _status = 'Priprema se...';
@@ -60,7 +60,7 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
 
   @override
   void dispose() {
-    V3StreamUtils.cancelSubscription('putnik_tracking_location');
+    V3StreamUtils.cancelSubscription('vozac_eta_location_for_putnik');
     super.dispose();
   }
 
@@ -126,7 +126,7 @@ class _V3PutnikTrackingWidgetState extends State<V3PutnikTrackingWidget> {
   void _startTracking() {
     // Real-time subscription na vozačevu lokaciju
     V3StreamUtils.subscribe<void>(
-        key: 'putnik_tracking_location',
+        key: 'vozac_eta_location_for_putnik',
         stream: V3MasterRealtimeManager.instance.onChange,
         onData: (_) {
           _checkVisibility();

@@ -95,13 +95,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final minAndroidRaw = minAndroidCtrl.text.trim();
       final storeAndroid = urlAndroidCtrl.text.trim();
 
-      final latestHuawei = latestHuaweiCtrl.text.trim();
+      final latestHuaweiRaw = latestHuaweiCtrl.text.trim();
       final minHuaweiRaw = minHuaweiCtrl.text.trim();
       final storeHuawei = urlHuaweiCtrl.text.trim();
 
-      final latestIos = latestIosCtrl.text.trim();
+      final latestIosRaw = latestIosCtrl.text.trim();
       final minIosRaw = minIosCtrl.text.trim();
       final storeIos = urlIosCtrl.text.trim();
+
+      final latestHuawei = latestHuaweiRaw.isEmpty ? latestAndroid : latestHuaweiRaw;
+      final latestIos = latestIosRaw.isEmpty ? latestAndroid : latestIosRaw;
 
       final minAndroid = minAndroidRaw.isEmpty ? latestAndroid : minAndroidRaw;
       final minHuawei = minHuaweiRaw.isEmpty ? latestHuawei : minHuaweiRaw;
