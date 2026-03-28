@@ -24,7 +24,7 @@ import '../utils/v3_text_utils.dart';
 
 /// DNEVNIK NAPLATE — V3
 /// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
-/// Podaci iz v3_dnevne_operacije cache (naplata_status = 'placeno')
+/// Podaci iz v3_operativna_nedelja cache (naplata_status = 'placeno')
 class V3DnevnikNaplateScreen extends StatefulWidget {
   const V3DnevnikNaplateScreen({super.key});
 
@@ -90,6 +90,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
     final dateStr = _toDateStr(_selectedDate);
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
+    final putniciCache = V3MasterRealtimeManager.instance.putniciCache;
 
     final rows = <_NaplataRow>[];
     for (final row in cache.values) {
@@ -105,13 +106,19 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       final datumRaw = row['datum'] as String? ?? '';
       if (datumRaw.isEmpty) continue;
 
-      if (datumRaw != dateStr) continue;
+      final datumOnly = V3DanHelper.parseIsoDatePart(datumRaw);
+      if (datumOnly != dateStr) continue;
 
       final vremePlaceno = row['vreme_placen'] as String? ?? '';
       final sortTs = vremePlaceno.isNotEmpty ? vremePlaceno : (row['updated_at'] as String? ?? '');
       final dt = DateTime.tryParse(sortTs)?.toLocal() ?? DateTime.now();
 
-      final ime = row['ime_prezime'] as String? ?? row['putnik_ime'] as String? ?? '?';
+      final putnikId = row['putnik_id']?.toString() ?? '';
+      final putnikData = putniciCache[putnikId];
+      final ime = (putnikData?['ime_prezime'] as String?) ??
+          row['ime_prezime'] as String? ??
+          row['putnik_ime'] as String? ??
+          '?';
       final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
       final vreme = V3DanHelper.formatVreme(dt.hour, dt.minute);
       rows.add(_NaplataRow(
@@ -119,11 +126,11 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
         ime: ime,
         iznos: iznos,
         vremeNaplate: vreme,
-        sortTs: sortTs,
+        sortAt: dt,
       ));
     }
 
-    rows.sort((a, b) => a.sortTs.compareTo(b.sortTs));
+    rows.sort((a, b) => a.sortAt.compareTo(b.sortAt));
 
     setState(() {
       _naplate = rows;
@@ -455,13 +462,13 @@ class _NaplataRow {
   final String ime;
   final double iznos;
   final String vremeNaplate;
-  final String sortTs;
+  final DateTime sortAt;
   const _NaplataRow({
     required this.id,
     required this.ime,
     required this.iznos,
     required this.vremeNaplate,
-    required this.sortTs,
+    required this.sortAt,
   });
 }
 

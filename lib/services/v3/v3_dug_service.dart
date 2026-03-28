@@ -10,7 +10,7 @@ class V3DugService {
   V3DugService._();
 
   /// Vraca sve nenaplacene operacije kao listu dugova.
-  /// Samo za dnevne putnike i posiljke — oni placaju po pokupljenju.
+  /// Samo za dnevne putnike i posiljke koji su pokupljeni — oni placaju po pokupljenju.
   /// Radnik/ucenik imaju mjesecni sistem (placeni_mesec/godina).
   static List<V3Dug> getDugovi() {
     final rm = V3MasterRealtimeManager.instance;
@@ -19,6 +19,8 @@ class V3DugService {
     for (final row in cache.values) {
       final naplataSt = row['naplata_status'] as String? ?? 'nije_placeno';
       if (naplataSt != 'nije_placeno') continue;
+      final isPokupljen = row['pokupljen'] == true;
+      if (!isPokupljen) continue;
       final putnikId = row['putnik_id'] as String? ?? '';
       final putnikData = rm.putniciCache[putnikId];
       if (putnikData == null) continue;

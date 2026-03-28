@@ -11,7 +11,6 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -33,6 +32,9 @@ class V3FinansijeScreen extends StatefulWidget {
 
 class _V3IzvestajData {
   final double potrazivanjaIznos;
+  final double prihodDanas;
+  final double trosakDanas;
+  final int voznjiDanas;
   final double prihodNedelja;
   final double trosakNedelja;
   final int voznjiNedelja;
@@ -43,11 +45,15 @@ class _V3IzvestajData {
   final double trosakGodina;
   final int voznjiGodina;
   final Map<String, double> troskoviPoKategoriji;
+  final String danasPeriod;
   final String nedeljaPeriod;
   final int godinaBroj;
 
   const _V3IzvestajData({
     required this.potrazivanjaIznos,
+    required this.prihodDanas,
+    required this.trosakDanas,
+    required this.voznjiDanas,
     required this.prihodNedelja,
     required this.trosakNedelja,
     required this.voznjiNedelja,
@@ -58,6 +64,7 @@ class _V3IzvestajData {
     required this.trosakGodina,
     required this.voznjiGodina,
     required this.troskoviPoKategoriji,
+    required this.danasPeriod,
     required this.nedeljaPeriod,
     required this.godinaBroj,
   });
@@ -67,25 +74,32 @@ _V3IzvestajData _buildIzvestaj() {
   final now = DateTime.now();
   final rm = V3MasterRealtimeManager.instance;
   final arhiva = rm.getCache('v3_putnici_arhiva').values;
+  final troskoviCache = rm.getCache('v3_troskovi').values;
 
-  // Direktno radimo sa danasnjim datumom - bez sedmicne logike
+  // Dan
   final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
   final sutra = danas.add(const Duration(days: 1));
+
+  // Nedelja (ponedeljak-nedelja)
+  final nedeljaStart = danas.subtract(Duration(days: danas.weekday - 1));
+  final nedeljaEnd = nedeljaStart.add(const Duration(days: 6));
+  final nedeljaEndExclusive = nedeljaEnd.add(const Duration(days: 1));
 
   // Mesec
   final mesStart = V3DanHelper.dateOnlyFrom(now.year, now.month, 1);
   final mesEnd = V3DanHelper.dateOnlyFrom(now.year, now.month + 1, 1);
 
-  // Prošla godina
-  final proslaGod = now.year - 1;
+  // Ova godina
+  final godStart = V3DanHelper.dateOnlyFrom(now.year, 1, 1);
+  final godEnd = V3DanHelper.dateOnlyFrom(now.year + 1, 1, 1);
 
-  double prihodDan = 0, prihodMes = 0, prihodGod = 0;
-  int voznjiDan = 0, voznjiMes = 0, voznjiGod = 0;
+  double prihodDan = 0, prihodNed = 0, prihodMes = 0, prihodGod = 0;
+  int voznjiDan = 0, voznjiNed = 0, voznjiMes = 0, voznjiGod = 0;
 
   for (final row in arhiva) {
     if (row['aktivno'] == false) continue;
     final tipAkcije = row['tip_akcije'] as String?;
-    if (tipAkcije != 'uplata_mesecna' && tipAkcije != 'uplata_voznja') continue;
+    if (tipAkcije != 'uplata_mesecna' && tipAkcije != 'uplata_voznja' && tipAkcije != 'uplata') continue;
 
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;
@@ -98,22 +112,43 @@ _V3IzvestajData _buildIzvestaj() {
       prihodDan += iznos;
       voznjiDan++;
     }
+    // Nedeljni period
+    if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
+      prihodNed += iznos;
+      voznjiNed++;
+    }
     // Mesecni period
     if (!dt.isBefore(mesStart) && dt.isBefore(mesEnd)) {
       prihodMes += iznos;
       voznjiMes++;
     }
-    // Godišnji period (prošla godina)
-    if (dt.year == proslaGod) {
+    // Godišnji period (ova godina)
+    if (!dt.isBefore(godStart) && dt.isBefore(godEnd)) {
       prihodGod += iznos;
       voznjiGod++;
     }
   }
 
   // Troškovi iz cache
-  double trosakDan = 0, trosakMes = 0, trosakGod = 0;
+  double trosakDan = 0, trosakNed = 0, trosakMes = 0, trosakGod = 0;
   final troskoviMes = V3FinansijeService.getTroskoviMesec(mesec: now.month, godina: now.year);
-  final troskoviGod = V3FinansijeService.getTroskoviMesec(mesec: null, godina: proslaGod);
+  final troskoviGod = V3FinansijeService.getTroskoviMesec(mesec: null, godina: now.year);
+
+  for (final row in troskoviCache) {
+    if (row['aktivno'] == false) continue;
+    final createdStr = row['created_at'] as String?;
+    if (createdStr == null) continue;
+    final dt = DateTime.tryParse(createdStr)?.toLocal();
+    if (dt == null) continue;
+    final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
+
+    if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
+      trosakDan += iznos;
+    }
+    if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
+      trosakNed += iznos;
+    }
+  }
 
   final Map<String, double> poKat = {};
   for (final t in troskoviMes) {
@@ -124,20 +159,23 @@ _V3IzvestajData _buildIzvestaj() {
   for (final t in troskoviGod) {
     trosakGod += t.iznos;
   }
-  trosakDan = 0; // troškovi su mesečni, nemamo dnevne
 
   // Potraživanja
   final dugovi = V3DugService.getDugovi();
   final potr = dugovi.fold(0.0, (s, d) => s + d.iznos);
 
-  // Period string za dan
+  // Period stringovi
   final danPeriod = V3DanHelper.formatDanMesec(danas);
+  final nedeljaPeriod = '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}';
 
   return _V3IzvestajData(
     potrazivanjaIznos: potr,
-    prihodNedelja: prihodDan, // koristi dnevne podatke
-    trosakNedelja: trosakDan,
-    voznjiNedelja: voznjiDan,
+    prihodDanas: prihodDan,
+    trosakDanas: trosakDan,
+    voznjiDanas: voznjiDan,
+    prihodNedelja: prihodNed,
+    trosakNedelja: trosakNed,
+    voznjiNedelja: voznjiNed,
     prihodMesec: prihodMes,
     trosakMesec: trosakMes,
     voznjiMesec: voznjiMes,
@@ -145,8 +183,9 @@ _V3IzvestajData _buildIzvestaj() {
     trosakGodina: trosakGod,
     voznjiGodina: voznjiGod,
     troskoviPoKategoriji: poKat,
-    nedeljaPeriod: danPeriod, // koristi dnevni period
-    godinaBroj: proslaGod,
+    danasPeriod: danPeriod,
+    nedeljaPeriod: nedeljaPeriod,
+    godinaBroj: now.year,
   );
 }
 
@@ -185,19 +224,9 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: const Text('💰 Finansije', style: TextStyle(fontWeight: FontWeight.bold)),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.calendar_month, color: Colors.white),
-                tooltip: 'Izveštaj za period',
-                onPressed: _selectCustomRange,
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-                tooltip: 'Dodaj troškove',
-                onPressed: () => _showTroskoviDialog(iz.troskoviPoKategoriji),
-              ),
-            ],
+            automaticallyImplyLeading: false,
+            centerTitle: true,
+            title: const Text('Finansije', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           body: V3ContainerUtils.backgroundContainer(
             gradient: Theme.of(context).backgroundGradient,
@@ -212,11 +241,21 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '📅',
                       naslov: 'Danas',
-                      podnaslov: iz.nedeljaPeriod, // sada je dnevni period
-                      prihod: iz.prihodNedelja, // sada su dnevni podaci
+                      podnaslov: iz.danasPeriod,
+                      prihod: iz.prihodDanas,
+                      troskovi: iz.trosakDanas,
+                      voznjiLabel: '${iz.voznjiDanas} vožnji',
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPeriodCard(
+                      icon: '📆',
+                      naslov: 'Ova nedelja',
+                      podnaslov: iz.nedeljaPeriod,
+                      prihod: iz.prihodNedelja,
                       troskovi: iz.trosakNedelja,
                       voznjiLabel: '${iz.voznjiNedelja} vožnji',
-                      color: Colors.blue,
+                      color: Colors.indigo,
                     ),
                     const SizedBox(height: 16),
                     _buildPeriodCard(
@@ -231,7 +270,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     const SizedBox(height: 16),
                     _buildPeriodCard(
                       icon: '📊',
-                      naslov: 'Prošla godina (${iz.godinaBroj})',
+                      naslov: 'Ova godina (${iz.godinaBroj})',
                       podnaslov: 'Ceo godišnji bilans',
                       prihod: iz.prihodGodina,
                       troskovi: iz.trosakGodina,
@@ -442,84 +481,6 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
       child: _TroskoviBottomSheet(poKat: poKat),
     );
   }
-
-  Future<void> _selectCustomRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2023),
-      lastDate: DateTime.now(),
-      saveText: 'PRIKAŽI',
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: Colors.blue.shade700,
-            onPrimary: Colors.white,
-            onSurface: Colors.black87,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null && mounted) {
-      _showCustomReportDialog(picked.start, picked.end);
-    }
-  }
-
-  void _showCustomReportDialog(DateTime from, DateTime to) {
-    final rm = V3MasterRealtimeManager.instance;
-    final ops = rm.getCache('v3_putnici_arhiva').values;
-    double prihod = 0;
-    int voznje = 0;
-    for (final row in ops) {
-      if (row['aktivno'] == false) continue;
-      final tipAkcije = row['tip_akcije'] as String?;
-      if (tipAkcije != 'uplata_mesecna' && tipAkcije != 'uplata_voznja') continue;
-      final dt = DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal();
-      if (dt == null) continue;
-      if (dt.isBefore(from) || dt.isAfter(to.add(const Duration(days: 1)))) continue;
-      prihod += (row['iznos'] as num?)?.toDouble() ?? 0.0;
-      voznje++;
-    }
-    double troskovi = 0;
-    final cache = V3MasterRealtimeManager.instance.troskoviCache;
-    for (final row in cache.values) {
-      if (row['aktivno'] == false) continue;
-      final mesec = row['mesec'] as int? ?? 0;
-      final godina = row['godina'] as int? ?? 0;
-      final tDt = DateTime(godina, mesec);
-      if (!tDt.isBefore(V3DanHelper.dateOnlyFrom(from.year, from.month, 1)) &&
-          !tDt.isAfter(V3DanHelper.dateOnlyFrom(to.year, to.month, 1))) {
-        troskovi += (row['iznos'] as num?)?.toDouble() ?? 0.0;
-      }
-    }
-    final neto = prihod - troskovi;
-    // Koristimo V3DanHelper umesto DateFormat
-
-    V3DialogHelper.showCustomDialog<void>(
-      context: context,
-      borderRadius: 20,
-      title: '📊 Izveštaj za period',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('${V3DanHelper.formatDatumPuni(from)} — ${V3DanHelper.formatDatumPuni(to)}',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.grey)),
-          const SizedBox(height: 16),
-          _FinRow('Prihod', prihod, Colors.green),
-          const SizedBox(height: 8),
-          _FinRow('Troškovi', troskovi, Colors.red),
-          const Divider(),
-          _FinRow('NETO', neto, neto >= 0 ? Colors.green : Colors.red, isBold: true),
-          const SizedBox(height: 16),
-          Text('$voznje vožnji u ovom periodu',
-              style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black54)),
-        ],
-      ),
-      actions: [
-        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'ZATVORI'),
-      ],
-    );
-  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -553,7 +514,6 @@ class _FinRow extends StatelessWidget {
     this.iznos,
     this.color, {
     this.prefix,
-    this.isBold = false,
     this.fontSize = 15,
     this.labelColor = Colors.white60,
   });
@@ -562,7 +522,6 @@ class _FinRow extends StatelessWidget {
   final double iznos;
   final Color color;
   final String? prefix;
-  final bool isBold;
   final double fontSize;
   final Color labelColor;
 
@@ -573,12 +532,10 @@ class _FinRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: fontSize, color: labelColor, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(label, style: TextStyle(fontSize: fontSize, color: labelColor, fontWeight: FontWeight.normal)),
           Text(
             '${prefix ?? ''}${_fmtIznos(iznos.abs())}',
-            style: TextStyle(fontSize: isBold ? fontSize + 3 : fontSize, fontWeight: FontWeight.w700, color: color),
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w700, color: color),
           ),
         ],
       ),
