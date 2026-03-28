@@ -10,7 +10,7 @@ class V3ZahtevService {
   V3ZahtevService._();
 
   static void _assertDatumUTekucojNedelji(DateTime datum) {
-    if (!V3DanHelper.isInSchedulingWeek(datum)) {
+    if (!V3DanHelper.isInSchedulingWorkweek(datum)) {
       throw Exception('Zakazivanje je dozvoljeno samo u aktivnoj sedmici.');
     }
   }

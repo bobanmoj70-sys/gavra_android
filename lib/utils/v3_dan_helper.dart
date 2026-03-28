@@ -7,6 +7,37 @@ class V3DanHelper {
   static const _labels = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
   static const _upper = ['PONEDELJAK', 'UTORAK', 'SREDA', 'CETVRTAK', 'PETAK', 'SUBOTA', 'NEDELJA'];
 
+  static String _normalizeDayToken(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('č', 'c')
+        .replaceAll('ć', 'c')
+        .replaceAll('š', 's')
+        .replaceAll('ž', 'z')
+        .replaceAll('đ', 'dj');
+  }
+
+  static int _indexForFullDayName(String danPuni) {
+    final normalized = _normalizeDayToken(danPuni);
+    for (var i = 0; i < _names.length; i++) {
+      if (_normalizeDayToken(_names[i]) == normalized) return i;
+    }
+    return -1;
+  }
+
+  static int _indexForDayAbbr(String danAbbr) {
+    final normalized = _normalizeDayToken(danAbbr);
+    if (normalized.startsWith('pon')) return 0;
+    if (normalized.startsWith('uto')) return 1;
+    if (normalized.startsWith('sre')) return 2;
+    if (normalized.startsWith('cet')) return 3;
+    if (normalized.startsWith('pet')) return 4;
+    if (normalized.startsWith('sub')) return 5;
+    if (normalized.startsWith('ned')) return 6;
+    return -1;
+  }
+
   // ─── DateTime → naziv ───────────────────────────────────────────
 
   /// Puni naziv dana (npr. 'Ponedeljak').
@@ -77,14 +108,21 @@ class V3DanHelper {
     return !target.isBefore(monday) && !target.isAfter(sunday);
   }
 
+  /// Da li je datum unutar aktivne RADNE sedmice zakazivanja (ponedeljak–petak).
+  static bool isInSchedulingWorkweek(DateTime datum, {DateTime? now}) {
+    if (!isInSchedulingWeek(datum, now: now)) return false;
+    final target = dateOnly(datum);
+    return target.weekday >= DateTime.monday && target.weekday <= DateTime.friday;
+  }
+
   // ─── naziv/kratica → ISO datum (RAČUNANJE PO SEDMICI) ────────
 
   /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.
   /// Ne gura automatski u sledeću sedmicu ako je dan već prošao.
   static String datumIsoZaDanPuniUTekucojSedmici(String danPuni, {DateTime? anchor}) {
     final base = dateOnly(anchor ?? DateTime.now());
-    final targetIndex = _names.indexOf(danPuni);
-    if (targetIndex == -1) return toIsoDate(base);
+    final targetIndex = _indexForFullDayName(danPuni);
+    if (targetIndex == -1) return '';
     final monday = base.subtract(Duration(days: base.weekday - 1));
     final targetDate = monday.add(Duration(days: targetIndex));
     return toIsoDate(targetDate);
@@ -94,7 +132,7 @@ class V3DanHelper {
   /// Sedmica se računa od [anchor] datuma (ili danas ako nije prosleđen).
   static DateTime datumZaDanAbbrUTekucojSedmici(String danAbbr, {DateTime? anchor}) {
     final base = dateOnly(anchor ?? DateTime.now());
-    final targetIndex = _abbrs.indexOf(danAbbr);
+    final targetIndex = _indexForDayAbbr(danAbbr);
     if (targetIndex == -1) return base;
     final monday = base.subtract(Duration(days: base.weekday - 1));
     return monday.add(Duration(days: targetIndex));
