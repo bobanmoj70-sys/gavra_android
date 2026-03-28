@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -9,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_api_availability/google_api_availability.dart';
-import 'package:huawei_push/huawei_push.dart' as hms;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -112,7 +110,7 @@ Future<void> _doStartupTasks() async {
   unawaited(_initAppServices());
 }
 
-/// ✨ NOVA: Hibridna push inicijalizacija (FCM + HMS) u main() funkciji
+/// FCM push inicijalizacija u main() funkciji
 Future<void> _initFirebaseSync() async {
   try {
     // 1. Provjeri Google Play Services (FCM)
@@ -132,32 +130,17 @@ Future<void> _initFirebaseSync() async {
       debugPrint('⚠️ [FCM] Google Play Services nedostupan: $gmsAvailability');
     }
 
-    // 2. Provjeri HMS (Huawei Push Kit)
-    bool hmsInitialized = false;
-    try {
-      hms.Push.localNotification;
-      debugPrint('✅ [HMS] Huawei Push Kit dostupan');
-      hmsInitialized = true;
-    } catch (e) {
-      debugPrint('⚠️ [HMS] Huawei Push Kit nedostupan: $e');
-    }
-
-    // 3. Loguj rezultat hibridne inicijalizacije
-    if (fcmInitialized && hmsInitialized) {
-      debugPrint('🎯 [HYBRID] Oba push sistema dostupna (FCM + HMS)');
-    } else if (fcmInitialized) {
-      debugPrint('🟢 [HYBRID] Samo FCM dostupan (Google/Samsung/Xiaomi uređaj)');
-    } else if (hmsInitialized) {
-      debugPrint('🟠 [HYBRID] Samo HMS dostupan (Huawei uređaj)');
+    if (fcmInitialized) {
+      debugPrint('🟢 [Push] FCM dostupan');
     } else {
-      debugPrint('🔴 [HYBRID] Nijedan push sistem nije dostupan!');
+      debugPrint('🔴 [Push] FCM nije dostupan!');
     }
   } catch (e) {
-    debugPrint('⚠️ [HYBRID] Greška u hibridnoj inicijalizaciji: $e');
+    debugPrint('⚠️ [Push] Greška u FCM inicijalizaciji: $e');
   }
 }
 
-/// Inicijalizacija Notification handlers (Hibridni FCM + HMS)
+/// Inicijalizacija Notification handlers (FCM)
 Future<void> _initNotificationHandlers() async {
   try {
     // 🔔 Zahtevaj notifikacijske dozvole na Android 13+
@@ -198,44 +181,7 @@ Future<void> _initNotificationHandlers() async {
       debugPrint('⚠️ [FCM] Handler setup greška: $e');
     }
 
-    // 2. HMS Handlers (za Huawei uređaje)
-    try {
-      // Provjeri da li je GMS dostupan — ako jeste, preskači HMS init
-      final gmsCheck = await GoogleApiAvailability.instance
-          .checkGooglePlayServicesAvailability()
-          .timeout(const Duration(seconds: 2));
-      final isGmsDevice = gmsCheck == GooglePlayServicesAvailability.success;
-
-      if (isGmsDevice) {
-        debugPrint('⏭️ [HMS] GMS uređaj — HMS init preskočen');
-      } else {
-        // HMS Token listener
-        hms.Push.getTokenStream.listen((String token) {
-          debugPrint('🟠 [HMS] Novi token: $token');
-          _saveHmsTokenToDatabase(token);
-        });
-
-        // HMS Message listener
-        hms.Push.onMessageReceivedStream.listen((hms.RemoteMessage message) {
-          debugPrint('🟠 [HMS] Poruka primljena: ${message.data}');
-          _handleHmsIncomingMessage(message);
-        });
-
-        // Forsirati refresh tokena
-        try {
-          hms.Push.getToken(""); // Trigger token generation (void return)
-          debugPrint('🟠 [HMS] Token generation pokrenut');
-        } catch (e) {
-          debugPrint('⚠️ [HMS] Greška pri pokretanju tokena: $e');
-        }
-
-        debugPrint('✅ [HMS] Handlers konfigurisani');
-      }
-    } catch (e) {
-      debugPrint('⚠️ [HMS] Handler setup greška: $e');
-    }
-
-    // 3. Inicijalizuj Local Notifications (za interaktivne gumbe)
+    // 2. Inicijalizuj Local Notifications (za interaktivne gumbe)
     try {
       await _ensureLocalNotificationsInitialized();
 
@@ -269,6 +215,22 @@ Future<void> _firebaseMessagingBackgroundHandler(fcm.RemoteMessage message) asyn
   debugPrint("🔔 [FCM] Body: ${message.notification?.body}");
   debugPrint("🔔 [FCM] Data: ${message.data}");
   final type = (message.data['type'] as String?)?.trim() ?? '';
+  if (type == 'v3_alternativa') {
+    try {
+      await _ensureLocalNotificationsInitialized();
+      final title = (message.notification?.title ?? message.data['title']?.toString() ?? '').trim();
+      final body = (message.notification?.body ?? message.data['body']?.toString() ?? '').trim();
+      await _showAlternativaActionsNotification(
+        message.data,
+        title: title,
+        body: body,
+      );
+      debugPrint('✅ [Push] Background alternativa akcije prikazane');
+    } catch (e) {
+      debugPrint('⚠️ [Push] Background alternativa fallback greška: $e');
+    }
+    return;
+  }
   if (type.startsWith('v3_')) {
     debugPrint('⏭️ [Push] Edge-only: background lokalni fallback isključen za type=$type');
   }
@@ -289,6 +251,13 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
     await _handleGpsTrackingStart(message.data);
   } else if (type == 'gps_tracking_complete') {
     await _handleGpsTrackingComplete(message.data);
+  } else if (type == 'v3_alternativa') {
+    await _showAlternativaActionsNotification(
+      message.data,
+      title: title,
+      body: body,
+    );
+    debugPrint('✅ [Push] Foreground alternativa akcije prikazane');
   } else if ((type ?? '').startsWith('v3_')) {
     final safeTitle = title.isNotEmpty ? title : '🔔 Gavra obaveštenje';
     final safeBody = body.isNotEmpty ? body : 'Imate novo obaveštenje.';
@@ -311,12 +280,18 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
   }
 
   // Prikaži notification sa Auto Start dugmetom
+  final gpsStartBody = 'Kreće za 15 min ($putniciBroj putnika) - Pokreni GPS tracking?';
   final androidDetails = AndroidNotificationDetails(
     'gavra_gps_auto',
     'GPS Auto Start',
     channelDescription: 'Automatsko pokretanje GPS trackinga',
     importance: Importance.max,
     priority: Priority.high,
+    styleInformation: BigTextStyleInformation(
+      gpsStartBody,
+      contentTitle: '🚗 GPS Tracking',
+      summaryText: 'Gavra GPS',
+    ),
     actions: [
       AndroidNotificationAction(
         'auto_start_gps',
@@ -334,7 +309,7 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
   await flutterLocalNotificationsPlugin.show(
     999, // Fixed ID za GPS tracking
     '🚗 GPS Tracking',
-    'Kreće za 15 min ($putniciBroj putnika) - Pokreni GPS tracking?',
+    gpsStartBody,
     NotificationDetails(android: androidDetails),
     payload: 'gps_auto_start|$vozacId|$polazakVreme',
   );
@@ -350,54 +325,25 @@ Future<void> _handleGpsTrackingComplete(Map<String, dynamic> data) async {
 
   await V3ForegroundGpsService.stopTracking();
 
-  const androidDetails = AndroidNotificationDetails(
+  const gpsCompleteBody = 'Svi putnici su pokupljeni. Tracking je automatski zaustavljen.';
+  final androidDetails = AndroidNotificationDetails(
     'gavra_gps_success',
     'GPS Success',
     importance: Importance.high,
     priority: Priority.high,
+    styleInformation: BigTextStyleInformation(
+      gpsCompleteBody,
+      contentTitle: '✅ GPS tracking završen',
+      summaryText: 'Gavra GPS',
+    ),
   );
 
   await flutterLocalNotificationsPlugin.show(
     890,
     '✅ GPS tracking završen',
-    'Svi putnici su pokupljeni. Tracking je automatski zaustavljen.',
-    const NotificationDetails(android: androidDetails),
+    gpsCompleteBody,
+    NotificationDetails(android: androidDetails),
   );
-}
-
-/// ✨ NOVO: HMS Message handler
-Future<void> _handleHmsIncomingMessage(hms.RemoteMessage message) async {
-  debugPrint("📱 [HMS] Foreground poruka primljena");
-  debugPrint("📱 [HMS] Data: ${message.data}");
-
-  try {
-    final rawData = message.data;
-    if (rawData == null || rawData.isEmpty) return;
-
-    Map<String, dynamic> data;
-    if (rawData.startsWith('{')) {
-      data = Map<String, dynamic>.from(jsonDecode(rawData) as Map<String, dynamic>);
-    } else {
-      data = <String, dynamic>{'message': rawData};
-    }
-
-    final type = (data['type'] as String?)?.trim() ?? '';
-    if (type == 'gps_tracking_start') {
-      await _handleGpsTrackingStart(data);
-      return;
-    }
-    if (type == 'gps_tracking_complete') {
-      await _handleGpsTrackingComplete(data);
-      return;
-    }
-
-    if (type.startsWith('v3_')) {
-      debugPrint('⏭️ [HMS] Edge-only: lokalni fallback isključen za type=$type');
-      return;
-    }
-  } catch (e) {
-    debugPrint('⚠️ [HMS] _handleHmsIncomingMessage parse greška: $e');
-  }
 }
 
 // Hendler za klik na interaktivne gumbe (actions)
@@ -419,7 +365,7 @@ void onNotificationTap(NotificationResponse response) async {
   if (actionId == null) {
     final parts = payload.split('|');
     if (parts.length == 3 && parts[0].trim().isNotEmpty) {
-      await _showActionFeedback('ℹ️ Alternativa', 'Klikni na dugme ✅ ili ❌ u notifikaciji.');
+      await _showActionFeedback('ℹ️ Alternativa', 'Izaberi: Vreme pre, Vreme posle ili Odbij.');
     }
     return;
   }
@@ -531,6 +477,86 @@ String _normalizeTimeHHmm(String value) {
   return '$h:$m';
 }
 
+String? _extractNormalizedTime(String? rawValue) {
+  if (rawValue == null) return null;
+  final value = rawValue.trim();
+  if (value.isEmpty) return null;
+  final token = _extractTimeToken(value);
+  if (token == null || token.isEmpty) return null;
+  return _normalizeTimeHHmm(token);
+}
+
+Future<void> _showAlternativaActionsNotification(
+  Map<String, dynamic> data, {
+  required String title,
+  required String body,
+}) async {
+  final rawZahtevId = data['zahtev_id']?.toString() ?? data['id']?.toString() ?? '';
+  final zahtevId = rawZahtevId.trim();
+  final altPre = _extractNormalizedTime(data['alt_pre']?.toString() ?? data['alt_vreme_pre']?.toString());
+  final altPosle = _extractNormalizedTime(data['alt_posle']?.toString() ?? data['alt_vreme_posle']?.toString());
+
+  if (zahtevId.isEmpty) {
+    final safeTitle = title.isNotEmpty ? title : 'Informacija o dostupnosti termina';
+    final safeBody = body.isNotEmpty ? body : 'Imate novo obaveštenje.';
+    await _showActionFeedback(safeTitle, safeBody);
+    return;
+  }
+
+  final actions = <AndroidNotificationAction>[];
+  if (altPre != null) {
+    actions.add(
+      AndroidNotificationAction(
+        'accept_pre',
+        'Vreme pre $altPre',
+        showsUserInterface: false,
+      ),
+    );
+  }
+  if (altPosle != null) {
+    actions.add(
+      AndroidNotificationAction(
+        'accept_posle',
+        'Vreme posle $altPosle',
+        showsUserInterface: false,
+      ),
+    );
+  }
+  actions.add(
+    const AndroidNotificationAction(
+      'reject',
+      'Odbij',
+      showsUserInterface: false,
+    ),
+  );
+
+  final safeTitle = title.isNotEmpty ? title : 'Informacija o dostupnosti termina';
+  final safeBody = body.isNotEmpty
+      ? body
+      : 'Trenutno nema slobodnih mesta u željenom terminu. Pripremili smo najbliže dostupne alternative za Vas.';
+
+  final androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    importance: Importance.max,
+    priority: Priority.high,
+    styleInformation: BigTextStyleInformation(
+      safeBody,
+      contentTitle: safeTitle,
+      summaryText: 'Gavra',
+    ),
+    actions: actions,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    safeTitle,
+    safeBody,
+    NotificationDetails(android: androidDetails),
+    payload: '$zahtevId|${altPre ?? ''}|${altPosle ?? ''}',
+  );
+}
+
 String? _extractGradToken(String value) {
   final up = value.toUpperCase();
   if (up.contains('BC')) return 'BC';
@@ -549,18 +575,23 @@ DateTime? _combineDatumVreme(dynamic datum, String? vremeHHmm) {
 }
 
 Future<void> _showActionFeedback(String title, String body) async {
-  const androidDetails = AndroidNotificationDetails(
+  final androidDetails = AndroidNotificationDetails(
     'gavra_push_v2',
     'Gavra obaveštenja',
     importance: Importance.high,
     priority: Priority.high,
+    styleInformation: BigTextStyleInformation(
+      body,
+      contentTitle: title,
+      summaryText: 'Gavra',
+    ),
   );
 
   await flutterLocalNotificationsPlugin.show(
     DateTime.now().millisecondsSinceEpoch.remainder(100000),
     title,
     body,
-    const NotificationDetails(android: androidDetails),
+    NotificationDetails(android: androidDetails),
   );
 }
 
@@ -644,16 +675,23 @@ Future<void> _triggerAutoGpsStart(String vozacId, String polazakVreme) async {
       debugPrint('✅ [GPS AutoStart] ${result['message']}');
 
       // Prikaži success notification
+      final gpsAutoStartedBody =
+          '${result['vozac_ime']} - ${result['grad']} ${result['vreme']} (${result['putnici_count']} putnika)';
       await flutterLocalNotificationsPlugin.show(
         888,
         '✅ GPS Automatski Pokrenut',
-        '${result['vozac_ime']} - ${result['grad']} ${result['vreme']} (${result['putnici_count']} putnika)',
-        const NotificationDetails(
+        gpsAutoStartedBody,
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'gavra_gps_success',
             'GPS Success',
             importance: Importance.max,
             priority: Priority.high,
+            styleInformation: BigTextStyleInformation(
+              gpsAutoStartedBody,
+              contentTitle: '✅ GPS Automatski Pokrenut',
+              summaryText: 'Gavra GPS',
+            ),
           ),
         ),
       );
@@ -793,16 +831,23 @@ Future<void> _triggerAutoGpsStartFallback(String vozacId, String polazakVreme) a
       datumIso: selectedDate,
     );
 
+    final gpsFallbackBody =
+        '${vozacData['ime_prezime'] ?? 'Vozač'} - $selectedGrad $selectedTime ($putniciCount putnika)';
     await flutterLocalNotificationsPlugin.show(
       888,
       '✅ GPS Automatski Pokrenut (fallback)',
-      '${vozacData['ime_prezime'] ?? 'Vozač'} - $selectedGrad $selectedTime ($putniciCount putnika)',
-      const NotificationDetails(
+      gpsFallbackBody,
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'gavra_gps_success',
           'GPS Success',
           importance: Importance.max,
           priority: Priority.high,
+          styleInformation: BigTextStyleInformation(
+            gpsFallbackBody,
+            contentTitle: '✅ GPS Automatski Pokrenut (fallback)',
+            summaryText: 'Gavra GPS',
+          ),
         ),
       ),
     );
@@ -894,38 +939,5 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         );
       },
     );
-  }
-}
-
-/// ✨ Čuva HMS token u bazu za hibridni push sistem
-Future<void> _saveHmsTokenToDatabase(String hmsToken) async {
-  try {
-    debugPrint('💾 [HMS] Čuvam token u bazu...');
-
-    // Pronađi trenutnog korisnika (Bojan) - možemo proširiti za sve korisnike
-    final response = await supabase
-        .from('v3_vozaci')
-        .select('id, ime_prezime')
-        .ilike('ime_prezime', '%bojan%')
-        .limit(1)
-        .maybeSingle();
-
-    if (response == null) {
-      debugPrint('⚠️ [HMS] Korisnik nije pronađen u bazi');
-      return;
-    }
-
-    final vozacId = response['id'];
-
-    // Ažuriraj HMS token i push_type
-    await supabase.from('v3_vozaci').update({
-      'hms_token': hmsToken,
-      'push_type': 'hms',
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', vozacId);
-
-    debugPrint('✅ [HMS] Token sačuvan u bazu za ${response['ime_prezime']}');
-  } catch (e) {
-    debugPrint('❌ [HMS] Greška pri čuvanju tokena: $e');
   }
 }
