@@ -19,11 +19,6 @@ on:
         required: false
         default: ''
         type: string
-      min_version:
-        description: 'Manual MIN version (e.g. 6.0.113). If empty, uses auto-calc (latest-3).'
-        required: false
-        default: ''
-        type: string
   workflow_call:
     inputs:
       git_ref:
@@ -45,11 +40,6 @@ on:
         required: false
         default: ''
         type: string
-      min_version:
-        description: 'Manual MIN version (for Supabase update)'
-        required: false
-        default: ''
-        type: string
 
 permissions:
   contents: write
@@ -66,7 +56,6 @@ jobs:
     outputs:
       VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
       VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
-      MIN_VERSION_INPUT: ${{ inputs.min_version }}
 
     steps:
       - name: Checkout
@@ -332,70 +321,4 @@ jobs:
           echo "**Privacy Policy:** $PRIVACY_POLICY_URL" >> $GITHUB_STEP_SUMMARY
           echo "**Account Deletion:** $ACCOUNT_DELETION_URL" >> $GITHUB_STEP_SUMMARY
 
-  update-supabase:
-    name: 📦 Update Supabase versions (Disabled)
-    if: false
-    runs-on: ubuntu-latest
-    needs: build-and-upload
-    env:
-      VERSION: ${{ needs.build-and-upload.outputs.VERSION_NAME }}
-      MANUAL_MIN: ${{ needs.build-and-upload.outputs.MIN_VERSION_INPUT }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.git_ref || github.ref }}
-
-      - name: Update Supabase
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: |
-          if [ -z "$VERSION" ]; then
-            echo "❌ Missing VERSION from build job output"
-            exit 1
-          fi
-
-          if [ -n "$MANUAL_MIN" ]; then
-            MIN_VERSION="$MANUAL_MIN"
-            echo "[INFO] Using MANUAL min_version=$MIN_VERSION"
-          else
-            # min_version = latest - 3 (npr. latest=6.0.116 → min=6.0.113)
-            MAJOR=$(echo "$VERSION" | cut -d. -f1)
-            MINOR=$(echo "$VERSION" | cut -d. -f2)
-            PATCH=$(echo "$VERSION" | cut -d. -f3)
-            MIN_PATCH=$((PATCH - 3))
-            if [ "$MIN_PATCH" -lt 0 ]; then MIN_PATCH=0; fi
-            MIN_VERSION="$MAJOR.$MINOR.$MIN_PATCH"
-            echo "[INFO] Using AUTO min_version=$MIN_VERSION"
-          fi
-
-          echo "[INFO] Final update: latest_version=$VERSION  min_version=$MIN_VERSION"
-
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X PATCH \
-            "$SUPABASE_URL/rest/v1/v3_app_settings?id=eq.global" \
-            -H "apikey: $SUPABASE_SERVICE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
-            -H "Content-Type: application/json" \
-            -H "Prefer: return=minimal" \
-            -d "{\"latest_version\": \"$VERSION\", \"min_version\": \"$MIN_VERSION\", \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}")
-
-          if [ "$RESPONSE" = "204" ]; then
-            echo "✅ Supabase updated: latest_version=$VERSION  min_version=$MIN_VERSION"
-          else
-            echo "❌ Supabase update failed (HTTP $RESPONSE)"
-            exit 1
-          fi
-
-      - name: Summary
-        run: |
-          echo "## ✅ Supabase ažuriran!" >> $GITHUB_STEP_SUMMARY
-          echo "**latest_version:** $VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "**min_version:** $MIN_VERSION" >> $GITHUB_STEP_SUMMARY
-          if [ -n "$MANUAL_MIN" ]; then
-            echo "**Tip:** Ručno podešeno" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "**Tip:** Automatski proračunato (latest-3)" >> $GITHUB_STEP_SUMMARY
-          fi
 

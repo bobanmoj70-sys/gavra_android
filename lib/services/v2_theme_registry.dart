@@ -44,14 +44,14 @@ class V2ThemeRegistry {
       styles: DarkPinkStyles,
       gradient: darkPinkGradient,
     ),
-    'odrzavanje': V2ThemeDefinition(
-      id: 'odrzavanje',
-      name: '📖 Odrzavanje',
-      description: 'Gradient sa odrzavanje ekrana (primary/secondary/black87)',
-      colorScheme: tripleBlueFashionColorScheme,
-      themeData: tripleBlueFashionTheme,
-      styles: OdrzavanjeStyles,
-      gradient: odrzavanjeGradient,
+    'night_blue': V2ThemeDefinition(
+      id: 'night_blue',
+      name: '🌙 Night Blue',
+      description: 'Tema iz nijansi Pošiljke gradient screenshot-a',
+      colorScheme: nightBlueColorScheme,
+      themeData: nightBlueTheme,
+      styles: NightBlueStyles,
+      gradient: nightBlueGradient,
     ),
   };
 
