@@ -659,6 +659,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final putnikId = _putnikData['id']?.toString();
     final tip = _putnikData['tip_putnika'] as String? ?? 'radnik';
     final cenaPoDanu = (_putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
     final cenaPoPokupljenju = (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
@@ -678,6 +679,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
     final adresaBcNaziv2 = V3AdresaService.getNazivAdreseById(adresaBcId2);
     final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
+    final kpi = _izracunajKpi(putnikId);
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
     final nedeljaInfo = 'Aktivna nedelja: $nedeljaOpseg';
     return ValueListenableBuilder<ThemeData>(
@@ -703,7 +705,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   // ── HEADER CARD ──────────────────────────────────────
                   _buildHeaderCard(
                     tip: tip,
-                    cenaInfo: cenaInfo,
                     imePrezime: imePrezime,
                     telefon: telefon,
                     telefon2: telefon2,
@@ -712,6 +713,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     adresaBcNaziv2: adresaBcNaziv2,
                     adresaVsNaziv2: adresaVsNaziv2,
                   ),
+                  const SizedBox(height: 16),
+                  _buildStatistikaCard(tip: tip, kpi: kpi, cenaInfo: cenaInfo),
                   const SizedBox(height: 16),
                   // ── RASPORED ZAHTEVA ─────────────────────────────────
                   _buildRasporedCard(nedeljaInfo: nedeljaInfo),
@@ -725,12 +728,51 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
   }
 
+  _PutnikKpi _izracunajKpi(String? putnikId) {
+    if (putnikId == null || putnikId.isEmpty) {
+      return const _PutnikKpi();
+    }
+
+    int ukupno = 0;
+    int pokupljeno = 0;
+    int placeno = 0;
+    int otkazano = 0;
+    double naplacenoIznos = 0;
+
+    final rows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    for (final row in rows) {
+      if (row['putnik_id']?.toString() != putnikId) continue;
+      if (row['aktivno'] == false) continue;
+      ukupno++;
+
+      final isPokupljen = row['pokupljen'] == true;
+      final naplataStatus = row['naplata_status']?.toString() ?? 'nije_placeno';
+      final statusFinal = (row['status_final']?.toString() ?? row['status']?.toString() ?? '').toLowerCase();
+
+      if (isPokupljen) pokupljeno++;
+      if (naplataStatus == 'placeno') {
+        placeno++;
+        naplacenoIznos += (row['iznos_naplacen'] as num?)?.toDouble() ?? 0;
+      }
+      if (statusFinal == 'otkazano') otkazano++;
+    }
+
+    return _PutnikKpi(
+      ukupnoVoznji: ukupno,
+      pokupljeno: pokupljeno,
+      placeno: placeno,
+      otkazano: otkazano,
+      neplaceno: _brojNeplacenih,
+      naplacenoIznos: naplacenoIznos,
+      dugIznos: _ukupnoDugovanje,
+    );
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // WIDGETS
   // ─────────────────────────────────────────────────────────────────
   Widget _buildHeaderCard({
     required String tip,
-    String? cenaInfo,
     required String imePrezime,
     required String telefon,
     String telefon2 = '',
@@ -816,28 +858,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               if (tip.toLowerCase() != 'radnik') _Badge(label: tipLabel, color: avatarColors[0]),
             ],
           ),
-          if (cenaInfo != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.payments_outlined, color: Colors.white60, size: 14),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    cenaInfo,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: V3StyleHelper.whiteAlpha9,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
           if (telefon.isNotEmpty || telefon2.isNotEmpty) ...[
             const SizedBox(height: 10),
             Row(
@@ -952,6 +972,115 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         ],
       ),
     );
+  }
+
+  Widget _buildStatistikaCard({required String tip, required _PutnikKpi kpi, String? cenaInfo}) {
+    return V3ContainerUtils.styledContainer(
+      padding: const EdgeInsets.all(16),
+      backgroundColor: V3StyleHelper.whiteAlpha06,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: V3StyleHelper.whiteAlpha13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Center(
+            child: Text(
+              'Stanje vožnji i naplate',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          if (cenaInfo != null) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                cenaInfo,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+          const SizedBox(height: 4),
+          Text(
+            _modelNaplataLabel(tip),
+            style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _kpiTile('Pokupljen', '${kpi.pokupljeno}', Colors.lightBlueAccent),
+              _kpiTile('Vožnji', '${kpi.ukupnoVoznji}', Colors.greenAccent),
+              _kpiTile('Otkazano', '${kpi.otkazano}', Colors.redAccent),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(color: V3StyleHelper.whiteAlpha15),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Plaćeno', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                '${kpi.naplacenoIznos.toStringAsFixed(0)} RSD',
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Dug (${kpi.neplaceno})', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                '${kpi.dugIznos.toStringAsFixed(0)} RSD',
+                style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Ukupan dug', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                '${kpi.dugIznos.toStringAsFixed(0)} RSD',
+                style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kpiTile(String label, String value, Color color) {
+    return V3ContainerUtils.styledContainer(
+      width: 76,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _modelNaplataLabel(String tip) {
+    final normalized = tip.toLowerCase();
+    if (normalized == 'radnik' || normalized == 'ucenik') {
+      return 'Model: cena po danu (jedna cena za jedno ili više pokupljenja u danu).';
+    }
+    return 'Model: cena po pokupljenju (svako pokupljenje se naplaćuje).';
   }
 
   Widget _buildRasporedCard({required String nedeljaInfo}) {
@@ -1138,6 +1267,26 @@ class _ZahtevInfo {
     this.pokupljen = false,
     this.operativnaId,
     this.koristiSekundarnu = false,
+  });
+}
+
+class _PutnikKpi {
+  final int ukupnoVoznji;
+  final int pokupljeno;
+  final int placeno;
+  final int otkazano;
+  final int neplaceno;
+  final double naplacenoIznos;
+  final double dugIznos;
+
+  const _PutnikKpi({
+    this.ukupnoVoznji = 0,
+    this.pokupljeno = 0,
+    this.placeno = 0,
+    this.otkazano = 0,
+    this.neplaceno = 0,
+    this.naplacenoIznos = 0,
+    this.dugIznos = 0,
   });
 }
 
