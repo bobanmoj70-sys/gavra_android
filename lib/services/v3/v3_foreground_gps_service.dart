@@ -390,7 +390,6 @@ class V3ForegroundGpsService {
               vozacId: _currentVozacId!,
               lat: position.latitude,
               lng: position.longitude,
-              bearing: position.heading,
               brzina: position.speed * 3.6, // m/s -> km/h
               aktivno: true,
             ),
@@ -439,7 +438,6 @@ class V3ForegroundGpsService {
           vozacId: _currentVozacId!,
           lat: position.latitude,
           lng: position.longitude,
-          bearing: position.heading,
           brzina: position.speed * 3.6,
           aktivno: true,
         ),
@@ -464,7 +462,6 @@ class V3ForegroundGpsService {
           vozacId: _currentVozacId!,
           lat: position.latitude,
           lng: position.longitude,
-          bearing: position.heading,
           brzina: position.speed * 3.6,
           aktivno: true,
         ),

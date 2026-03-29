@@ -55,7 +55,6 @@ class V3GPSTestHelper {
     required String vozacId,
     required double lat,
     required double lng,
-    double? bearing,
     double? brzina,
     required String grad,
     required String vreme,
@@ -63,7 +62,7 @@ class V3GPSTestHelper {
     print('📡 [V3GPS] Šaljem poziciju u v3_vozac_lokacije:');
     print('   vozacId: $vozacId');
     print('   lat: $lat, lng: $lng');
-    print('   bearing: $bearing°, brzina: ${brzina?.toStringAsFixed(1)} km/h');
+    print('   brzina: ${brzina?.toStringAsFixed(1)} km/h');
     print('   grad: $grad, vreme: $vreme');
     print('   timestamp: ${DateTime.now().toIso8601String()}');
   }

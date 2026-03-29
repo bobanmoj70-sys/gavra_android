@@ -8,7 +8,6 @@ class V3VozacLokacijaUpdate {
   final String vozacId;
   final double lat;
   final double lng;
-  final double? bearing;
   final double? brzina;
   final bool aktivno;
 
@@ -16,7 +15,6 @@ class V3VozacLokacijaUpdate {
     required this.vozacId,
     required this.lat,
     required this.lng,
-    this.bearing,
     this.brzina,
     this.aktivno = true,
   });
@@ -26,7 +24,6 @@ class V3VozacLokacijaUpdate {
       'vozac_id': vozacId,
       'lat': lat,
       'lng': lng,
-      'bearing': bearing ?? 0,
       'brzina': brzina ?? 0,
       'aktivno': aktivno,
     };
