@@ -9,6 +9,7 @@ class V3InputUtils {
 
   /// Стандардни TextField са unified стилизовањем
   static Widget textField({
+    Key? fieldKey,
     required TextEditingController controller,
     required String label,
     IconData? icon,
@@ -39,6 +40,7 @@ class V3InputUtils {
         final iconColor = isDark ? Colors.amber : cs.primary;
 
         return TextField(
+          key: fieldKey,
           controller: controller,
           style: TextStyle(color: textColor),
           cursorColor: cs.primary,

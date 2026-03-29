@@ -787,7 +787,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   /// Učenici brojač: broj učenika bez VS termina danas.
   Widget _buildSaVsWidget(BuildContext context) {
     final stats = _getUceniciBcVsSummary();
-    final preostalo = stats['preostalo'] ?? 0;
+    final bcTotal = stats['bcTotal'] ?? 0;
+    final vsTotal = stats['vsTotal'] ?? 0;
 
     return GestureDetector(
       onTap: () => _showUceniciDanasPopup(context),
@@ -803,7 +804,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '$preostalo',
+              '$bcTotal/$vsTotal',
               style: const TextStyle(
                 color: Colors.orange,
                 fontSize: 15,

@@ -595,6 +595,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
     switch (_currentStep) {
       case _LoginStep.telefon:
         return V3InputUtils.textField(
+          fieldKey: const ValueKey('putnik_telefon_field'),
           controller: V3TextUtils.telefonController,
           label: 'Broj telefona',
           hint: '06x xxx xxxx',
@@ -604,6 +605,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
         );
       case _LoginStep.email:
         return V3InputUtils.textField(
+          fieldKey: const ValueKey('putnik_email_field'),
           controller: V3TextUtils.emailController,
           label: 'Email adresa',
           hint: 'vašemail@example.com',

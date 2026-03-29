@@ -49,12 +49,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   int _statusPriorityForCell(String status) {
     switch (status) {
+      case 'odobreno':
+        return 4;
       case 'obrada':
         return 3;
       case 'alternativa':
       case 'ponuda':
         return 2;
-      case 'odobreno':
+      case 'otkazano':
         return 1;
       default:
         return 0;
@@ -141,63 +143,58 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Osvježi putnik iz cache-a
     final cached = V3MasterRealtimeManager.instance.putniciCache[putnikId];
     if (cached != null) _putnikData = Map<String, dynamic>.from(cached);
-    // Raspored po danima iz v3_zahtevi — direktno po datumu bez nepotrebnog filtriranja
+    // Raspored po danima iz v3_operativna_nedelja kao jedinog izvora istine za READ
     final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
     final anchor = V3DanHelper.schedulingWeekAnchor();
+    final rm = V3MasterRealtimeManager.instance;
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
       final datumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dan, anchor: anchor);
-      final bcList =
-          V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'BC').where((z) => z.putnikId == putnikId).toList();
-      final vsList =
-          V3ZahtevService.getZahteviByDatumAndGrad(datumIso, 'VS').where((z) => z.putnikId == putnikId).toList();
       final infos = <_ZahtevInfo>[];
-      for (final z in bcList) {
-        // FILTER: Skip samo odbijene zahteve; otkazano ostaje vidljivo kao crvena ćelija
-        if (z.status == 'odbijeno') continue;
-        final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
-        final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
-          (e) =>
-              e['putnik_id'] == z.putnikId &&
+
+      for (final grad in const ['BC', 'VS']) {
+        final opRows = rm.operativnaNedeljaCache.values.where((e) {
+          return (e['putnik_id']?.toString() ?? '') == putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
-              e['grad'] == 'BC' &&
-              e['aktivno'] == true,
-          orElse: () => <String, dynamic>{},
-        );
-        final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
-        final opId = opEntry['id'] as String?;
+              (e['grad']?.toString().toUpperCase() ?? '') == grad &&
+              e['aktivno'] == true;
+        }).toList();
+
+        if (opRows.isEmpty) continue;
+
+        Map<String, dynamic>? selected;
+        int selectedRank = -1;
+        for (final row in opRows) {
+          final status = ((row['status_final'] as String? ?? 'obrada').trim().toLowerCase());
+          if (status == 'odbijeno') continue;
+          final rank = _statusPriorityForCell(status) + ((row['pokupljen'] as bool? ?? false) ? 10 : 0);
+          if (rank > selectedRank) {
+            selected = row;
+            selectedRank = rank;
+          }
+        }
+
+        if (selected == null) continue;
+
+        final status = ((selected['status_final'] as String? ?? 'obrada').trim().toLowerCase());
+        final opDodeljeno = _normalizeValidTime(selected['dodeljeno_vreme']?.toString());
+        final opZeljeno = _normalizeValidTime(selected['zeljeno_vreme']?.toString());
+        final displayVreme =
+            status == 'odobreno' ? (opDodeljeno ?? opZeljeno ?? '—') : (opZeljeno ?? opDodeljeno ?? '—');
+        final zahtevId = selected['zahtev_id']?.toString() ?? '';
+
         infos.add(_ZahtevInfo(
-            grad: 'BC',
-            vreme: displayVreme,
-            status: z.status,
-            zahtevId: z.id,
-            pokupljen: isPokupljen,
-            operativnaId: opId,
-            koristiSekundarnu: z.koristiSekundarnu));
+          grad: grad,
+          vreme: displayVreme,
+          status: status,
+          zahtevId: zahtevId,
+          pokupljen: selected['pokupljen'] as bool? ?? false,
+          operativnaId: selected['id']?.toString(),
+          koristiSekundarnu: selected['koristi_sekundarnu'] as bool? ?? false,
+          readOnly: zahtevId.isEmpty,
+        ));
       }
-      for (final z in vsList) {
-        // FILTER: Skip samo odbijene zahteve; otkazano ostaje vidljivo kao crvena ćelija
-        if (z.status == 'odbijeno') continue;
-        final displayVreme = z.status == 'odobreno' && z.dodeljenoVreme != null ? z.dodeljenoVreme! : z.zeljenoVreme;
-        final opEntry = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
-          (e) =>
-              e['putnik_id'] == z.putnikId &&
-              (e['datum'] as String? ?? '').startsWith(datumIso) &&
-              e['grad'] == 'VS' &&
-              e['aktivno'] == true,
-          orElse: () => <String, dynamic>{},
-        );
-        final isPokupljen = opEntry['pokupljen'] as bool? ?? false;
-        final opId2 = opEntry['id'] as String?;
-        infos.add(_ZahtevInfo(
-            grad: 'VS',
-            vreme: displayVreme,
-            status: z.status,
-            zahtevId: z.id,
-            pokupljen: isPokupljen,
-            operativnaId: opId2,
-            koristiSekundarnu: z.koristiSekundarnu));
-      }
+
       final bestByGrad = <String, _ZahtevInfo>{};
       for (final info in infos) {
         final current = bestByGrad[info.grad];
@@ -274,6 +271,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
+    if (info?.readOnly == true) {
+      if (mounted) {
+        V3AppSnackBar.info(
+          ctx,
+          'Termin je iz operativnog plana bez vezanog zahteva i trenutno je read-only iz putničkog profila.',
+        );
+      }
+      return;
+    }
     // Scenario 2: zahtev u obradi — blokirati sve akcije
     if (info?.status == 'obrada') {
       if (mounted) V3AppSnackBar.info(ctx, 'Vaš zahtev je u obradi kod dispečera.');
@@ -593,48 +599,31 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Pronađi aktivne vožnje za tekuću sedmicu
     final aktivneVoznje = <Widget>[];
     final rm = V3MasterRealtimeManager.instance;
-    // Proveri zahteve putnika
-    final zahtevi = rm.zahteviCache.values
-        .where((z) => z['putnik_id'] == putnikId)
-        .where((z) => z['status'] == 'odobreno')
+    final operativniTermini = rm.operativnaNedeljaCache.values
+        .where((r) => (r['putnik_id']?.toString() ?? '') == putnikId)
+        .where((r) => r['aktivno'] != false)
+        .where((r) => (r['vozac_id'] as String?) != null)
+        .where((r) => ((r['status_final']?.toString() ?? '').trim().toLowerCase()) == 'odobreno')
         .toList();
-    for (final zahtev in zahtevi) {
-      final zahtevGrad = (zahtev['grad'] as String? ?? '').toUpperCase();
-      final zahtevDatumIso = V3DanHelper.parseIsoDatePart(zahtev['datum'] as String? ?? '');
-      final zahtevVreme = V3StringUtils.safeSubstringTime(
-        (zahtev['dodeljeno_vreme'] as String?) ?? (zahtev['zeljeno_vreme'] as String? ?? ''),
+
+    for (final row in operativniTermini) {
+      final vozacId = row['vozac_id']?.toString();
+      if (vozacId == null || vozacId.isEmpty) continue;
+      final grad = row['grad'] as String? ?? '';
+      final vreme = V3StringUtils.safeSubstringTime(
+        ((row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?)) ?? '',
       );
+      if (vreme.isEmpty) continue;
+      final datum = DateTime.tryParse(row['datum'] as String? ?? '');
+      if (datum == null) continue;
 
-      // Pronađi GPS dodelu (aktivira widget čim vozač postoji za termin)
-      final gpsDodjela = rm.operativnaNedeljaCache.values
-          .where((r) => r['putnik_id'] == putnikId)
-          .where((r) => r['aktivno'] != false)
-          .where((r) => (r['vozac_id'] as String?) != null)
-          .where((r) => ((r['grad'] as String? ?? '').toUpperCase()) == zahtevGrad)
-          .where((r) => V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == zahtevDatumIso)
-          .where((r) =>
-              V3StringUtils.safeSubstringTime(
-                  ((r['dodeljeno_vreme'] as String?) ?? (r['zeljeno_vreme'] as String?)) ?? '') ==
-              zahtevVreme)
-          .firstOrNull;
-
-      if (gpsDodjela != null) {
-        final vozacId = gpsDodjela['vozac_id'] as String;
-        final grad = gpsDodjela['grad'] as String? ?? (zahtev['grad'] as String? ?? '');
-        final vreme = V3StringUtils.safeSubstringTime(
-            ((gpsDodjela['dodeljeno_vreme'] as String?) ?? (gpsDodjela['zeljeno_vreme'] as String?)) ??
-                ((zahtev['dodeljeno_vreme'] as String?) ?? (zahtev['zeljeno_vreme'] as String? ?? '')));
-        final datum = DateTime.tryParse(gpsDodjela['datum'] as String? ?? '') ??
-            DateTime.tryParse(zahtev['datum'] as String? ?? '');
-        if (datum == null) continue;
-        aktivneVoznje.add(V3VozacEtaWidget(
-          putnikId: putnikId,
-          vozacId: vozacId,
-          vreme: vreme,
-          grad: grad,
-          datum: datum,
-        ));
-      }
+      aktivneVoznje.add(V3VozacEtaWidget(
+        putnikId: putnikId,
+        vozacId: vozacId,
+        vreme: vreme,
+        grad: grad,
+        datum: datum,
+      ));
     }
     // Ako nema aktivnih vožnji, ne prikazuj ništa
     if (aktivneVoznje.isEmpty) return const SizedBox.shrink();
@@ -1276,6 +1265,7 @@ class _ZahtevInfo {
   final bool pokupljen;
   final String? operativnaId;
   final bool koristiSekundarnu;
+  final bool readOnly;
   const _ZahtevInfo({
     required this.grad,
     required this.vreme,
@@ -1284,6 +1274,7 @@ class _ZahtevInfo {
     this.pokupljen = false,
     this.operativnaId,
     this.koristiSekundarnu = false,
+    this.readOnly = false,
   });
 }
 
