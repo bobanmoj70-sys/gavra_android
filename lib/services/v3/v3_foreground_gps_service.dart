@@ -183,6 +183,9 @@ class V3ForegroundGpsService {
       _autoStopInProgress = false;
       _isRunning = true;
 
+      // 3b. Inicijalni GPS upis da v3_vozac_lokacije odmah dobije red
+      await _seedInitialLocation();
+
       // 4. Pokreni persistent notification
       await _showPersistentNotification(
         vozacIme: vozacIme,
@@ -389,8 +392,6 @@ class V3ForegroundGpsService {
               lng: position.longitude,
               bearing: position.heading,
               brzina: position.speed * 3.6, // m/s -> km/h
-              grad: _currentGrad ?? '',
-              vremePolaska: _currentPolazakTime ?? (_currentPolazakVreme ?? ''),
               aktivno: true,
             ),
           );
@@ -440,13 +441,36 @@ class V3ForegroundGpsService {
           lng: position.longitude,
           bearing: position.heading,
           brzina: position.speed * 3.6,
-          grad: _currentGrad ?? '',
-          vremePolaska: _currentPolazakTime ?? (_currentPolazakVreme ?? ''),
           aktivno: true,
         ),
       );
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] Heartbeat GPS update greška: $e');
+    }
+  }
+
+  static Future<void> _seedInitialLocation() async {
+    if (!_isRunning || _currentVozacId == null) return;
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      ).timeout(const Duration(seconds: 12));
+
+      _lastHeartbeatSentAt = DateTime.now();
+
+      await V3VozacLokacijaService.updateLokacija(
+        V3VozacLokacijaUpdate(
+          vozacId: _currentVozacId!,
+          lat: position.latitude,
+          lng: position.longitude,
+          bearing: position.heading,
+          brzina: position.speed * 3.6,
+          aktivno: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[V3ForegroundGpsService] Initial location seed failed: $e');
     }
   }
 

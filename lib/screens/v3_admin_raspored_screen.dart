@@ -296,23 +296,12 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         final putnikId = putnikEntry['putnik_id'] as String?;
         if (operativnaId == null || putnikId == null) continue;
 
-        // Dobij putnik podatke sa adresom
-        final putnikData = rm.putniciCache[putnikId];
-        final adresaId =
-            (grad == 'BC') ? (putnikData?['adresa_bc_id'] as String?) : (putnikData?['adresa_vs_id'] as String?);
-        final adresaData = adresaId != null ? rm.adreseCache[adresaId] : null;
-
         await supabase.from('v3_operativna_nedelja').update({
           'vozac_id': vozac.id,
           'nav_bar_type': navBarTypeNotifier.value,
           'gps_status': 'pending',
           'notification_sent': false,
-          'adresa_id': adresaId,
-          'pickup_naziv': adresaData?['naziv'],
-          'pickup_lat': adresaData?['gps_lat'],
-          'pickup_lng': adresaData?['gps_lng'],
           'polazak_vreme': polazak?.toIso8601String(),
-          'activation_time': polazak?.subtract(const Duration(minutes: 15)).toIso8601String(),
           'updated_by': 'admin_termin_bulk',
         }).eq('id', operativnaId);
       }
@@ -335,7 +324,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           .update({
             'vozac_id': null,
             'route_order': null,
-            'estimated_pickup_time': null,
             'gps_status': 'pending',
             'notification_sent': false,
             'updated_by': 'admin_termin_remove',
@@ -375,7 +363,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         'gps_status': 'pending',
         'notification_sent': false,
         'polazak_vreme': polazak?.toIso8601String(),
-        'activation_time': polazak?.subtract(const Duration(minutes: 15)).toIso8601String(),
         'updated_by': 'admin_individual',
       };
       print('🔍 DODELI PUTNIKA DEBUG: $data');
@@ -394,7 +381,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           .update({
             'vozac_id': null,
             'route_order': null,
-            'estimated_pickup_time': null,
             'gps_status': 'pending',
             'notification_sent': false,
             'updated_by': 'admin_individual_remove',

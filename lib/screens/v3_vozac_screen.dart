@@ -743,7 +743,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Future<void> _optimizujRutu({
     bool silent = false,
     String reason = 'manual',
-    Map<String, double>? currentPosition,
   }) async {
     final putniciZaOptimizaciju = _optimizacijaPutnici();
     if (putniciZaOptimizaciju.isEmpty) return;
@@ -758,39 +757,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     try {
       final data = putniciZaOptimizaciju.map((p) => {'putnik': p.putnik, 'entry': p.entry}).toList();
 
-      double? driverLat = currentPosition?['lat'];
-      double? driverLng = currentPosition?['lng'];
+      final gpsPosition = await _getCurrentDriverPosition(vozac.id);
+      final driverLat = gpsPosition?['lat'] as double?;
+      final driverLng = gpsPosition?['lng'] as double?;
 
       if (driverLat == null || driverLng == null) {
-        try {
-          final gpsPosition = await _getCurrentDriverPosition(vozac.id);
-          if (gpsPosition != null) {
-            driverLat = gpsPosition['lat'] as double?;
-            driverLng = gpsPosition['lng'] as double?;
-            currentPosition = {
-              'lat': driverLat ?? 0,
-              'lng': driverLng ?? 0,
-            };
-            debugPrint('[V3VozacScreen] Fallback koristi real-time GPS: lat=$driverLat, lng=$driverLng');
-          }
-        } catch (e) {
-          debugPrint('[V3VozacScreen] Fallback real-time GPS greška: $e');
+        if (!silent && mounted) {
+          V3AppSnackBar.warning(context, 'OSRM optimizacija zahteva aktivan GPS vozača.');
         }
+        return;
       }
-
-      // Fallback na centar grada ako nema GPS pozicije
-      driverLat ??= _selectedGrad.toUpperCase() == 'BC' ? 44.8972 : 45.1167;
-      driverLng ??= _selectedGrad.toUpperCase() == 'BC' ? 21.4247 : 21.3036;
 
       final res = await V3SmartNavigationService.optimizeV3Route(
         data: data,
         fromCity: _selectedGrad,
         driverLat: driverLat,
         driverLng: driverLng,
-        osrmOnly: true,
       );
 
       if (res.success && res.optimizedData != null) {
+        await _persistRouteOrderToOperativna(res.optimizedData!);
+
         final Map<String, int?> orderByPutnikId = {};
         for (final d in res.optimizedData!) {
           final putnik = d['putnik'] as V3Putnik;
@@ -809,7 +796,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             return _PutnikEntry(
               putnik: entry.putnik,
               entry: entry.entry,
-              routeOrder: orderByPutnikId[entry.putnik.id] ?? entry.routeOrder,
+              routeOrder: orderByPutnikId[entry.putnik.id],
             );
           }).toList();
           _mojiPutnici = _sortPutniciForDisplay(merged);
@@ -823,7 +810,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           optimizedCount: orderByPutnikId.values.whereType<int>().length,
           eligibleCount: putniciZaOptimizaciju.length,
           skippedCount: skippedCount,
-          currentPosition: currentPosition,
+          currentPosition: {'lat': driverLat, 'lng': driverLng},
         );
 
         if (!silent && mounted) {
@@ -834,6 +821,37 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       }
     } finally {
       _isOptimizingRoute = false;
+    }
+  }
+
+  Future<void> _persistRouteOrderToOperativna(List<Map<String, dynamic>> optimizedData) async {
+    try {
+      final updates = <Future<void>>[];
+
+      for (final item in optimizedData) {
+        final entry = item['entry'] as V3OperativnaNedeljaEntry?;
+        final entryId = entry?.id;
+        if (entryId == null || entryId.isEmpty) continue;
+
+        final rawOrder = item['route_order'];
+        final routeOrder = rawOrder is int
+            ? rawOrder
+            : (rawOrder is num ? rawOrder.toInt() : int.tryParse(rawOrder?.toString() ?? ''));
+
+        updates.add(
+          supabase
+              .from('v3_operativna_nedelja')
+              .update({'route_order': routeOrder})
+              .eq('id', entryId)
+              .then((_) => null),
+        );
+      }
+
+      if (updates.isNotEmpty) {
+        await Future.wait(updates);
+      }
+    } catch (e) {
+      debugPrint('[V3VozacScreen] _persistRouteOrderToOperativna error: $e');
     }
   }
 
@@ -849,10 +867,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           .limit(1)
           .maybeSingle();
 
-      if (response != null && response['lat'] != null && response['lng'] != null) {
+      final lat = (response?['lat'] as num?)?.toDouble() ?? double.tryParse(response?['lat']?.toString() ?? '');
+      final lng = (response?['lng'] as num?)?.toDouble() ?? double.tryParse(response?['lng']?.toString() ?? '');
+
+      if (response != null && lat != null && lng != null) {
         return {
-          'lat': response['lat'] as double,
-          'lng': response['lng'] as double,
+          'lat': lat,
+          'lng': lng,
           'updated_at': response['updated_at'],
         };
       }

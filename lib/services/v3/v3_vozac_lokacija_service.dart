@@ -10,10 +10,6 @@ class V3VozacLokacijaUpdate {
   final double lng;
   final double? bearing;
   final double? brzina;
-  final String? grad;
-  final String? vremePolaska;
-  final String? smer;
-  final List<Map<String, dynamic>>? putniciEta;
   final bool aktivno;
 
   V3VozacLokacijaUpdate({
@@ -22,10 +18,6 @@ class V3VozacLokacijaUpdate {
     required this.lng,
     this.bearing,
     this.brzina,
-    this.grad,
-    this.vremePolaska,
-    this.smer,
-    this.putniciEta,
     this.aktivno = true,
   });
 
@@ -36,10 +28,6 @@ class V3VozacLokacijaUpdate {
       'lng': lng,
       'bearing': bearing ?? 0,
       'brzina': brzina ?? 0,
-      'grad': grad,
-      'vreme_polaska': vremePolaska,
-      'smer': smer,
-      'putnici_eta': putniciEta ?? [],
       'aktivno': aktivno,
     };
   }
