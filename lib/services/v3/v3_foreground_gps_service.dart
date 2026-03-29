@@ -371,7 +371,6 @@ class V3ForegroundGpsService {
       const locationSettings = LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 10, // Update svakih 10 metara
-        timeLimit: Duration(seconds: 15),
       );
 
       V3StreamUtils.subscribeToGPS<Position>(
@@ -399,6 +398,7 @@ class V3ForegroundGpsService {
           await _updateNotificationWithSpeed(position.speed * 3.6);
         },
         onError: (error) {
+          if (error is TimeoutException) return;
           debugPrint('[V3ForegroundGpsService] GPS stream greška: $error');
         },
       );

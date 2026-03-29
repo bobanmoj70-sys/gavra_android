@@ -16,6 +16,11 @@ class V3NavigationResult {
 class V3SmartNavigationService {
   V3SmartNavigationService._();
 
+  static const Map<String, ({double lat, double lng})> _cityEndpoints = {
+    'BC': (lat: 44.8973, lng: 21.4177),
+    'VS': (lat: 45.1190, lng: 21.3030),
+  };
+
   static String? _resolveAdresaIdForTargetCity({
     required V3Putnik putnik,
     required dynamic entry,
@@ -104,6 +109,8 @@ class V3SmartNavigationService {
                   lng: candidate.lng,
                 ))
             .toList(),
+        destinationLat: _cityEndpoints[targetCity]?.lat,
+        destinationLng: _cityEndpoints[targetCity]?.lng,
       );
 
       if (osrmOrder == null || osrmOrder.length != candidates.length) {

@@ -31,66 +31,58 @@ class V3OsrmService {
     required double originLat,
     required double originLng,
     required List<V3OsrmStop> stops,
+    double? destinationLat,
+    double? destinationLng,
   }) async {
     if (stops.isEmpty) return const <String>[];
 
     try {
+      final hasDestination = destinationLat != null && destinationLng != null;
       final allCoords = <String>[
         '$originLng,$originLat',
         ...stops.map((s) => '${s.lng},${s.lat}'),
+        if (hasDestination) '$destinationLng,$destinationLat',
       ];
 
-      final uri = Uri.parse(
-        '$_baseUrl/table/v1/driving/${allCoords.join(';')}?annotations=duration',
+      final tripUri = Uri.parse(
+        '$_baseUrl/trip/v1/driving/${allCoords.join(';')}?source=first${hasDestination ? '&destination=last' : ''}&roundtrip=false&overview=false&steps=false',
       );
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 8));
-      if (response.statusCode != 200) {
-        debugPrint('[V3OsrmService] table status=${response.statusCode} body=${response.body}');
+      final tripResponse = await http.get(tripUri).timeout(const Duration(seconds: 8));
+      if (tripResponse.statusCode != 200) {
+        debugPrint('[V3OsrmService] trip status=${tripResponse.statusCode} body=${tripResponse.body}');
         return null;
       }
 
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      if (decoded['code'] != 'Ok') {
-        debugPrint('[V3OsrmService] table code=${decoded['code']}');
+      final tripDecoded = jsonDecode(tripResponse.body) as Map<String, dynamic>;
+      if (tripDecoded['code'] != 'Ok') {
+        debugPrint('[V3OsrmService] trip code=${tripDecoded['code']}');
         return null;
       }
 
-      final durationsRaw = decoded['durations'];
-      if (durationsRaw is! List || durationsRaw.isEmpty) return null;
-
-      final matrix = durationsRaw
-          .whereType<List>()
-          .map((row) => row.map<double?>((value) => (value as num?)?.toDouble()).toList())
-          .toList();
-
-      if (matrix.length < 2) return null;
-
-      final unvisited = <int>{for (int i = 1; i <= stops.length; i++) i};
-      final orderedStopIds = <String>[];
-      var currentIndex = 0;
-
-      while (unvisited.isNotEmpty) {
-        int? bestIndex;
-        double? bestCost;
-
-        for (final candidate in unvisited) {
-          final row = currentIndex < matrix.length ? matrix[currentIndex] : const <double?>[];
-          final cost = candidate < row.length ? row[candidate] : null;
-          if (cost == null || cost.isNaN || cost.isInfinite) continue;
-          if (bestCost == null || cost < bestCost) {
-            bestCost = cost;
-            bestIndex = candidate;
-          }
-        }
-
-        bestIndex ??= unvisited.first;
-        orderedStopIds.add(stops[bestIndex - 1].id);
-        unvisited.remove(bestIndex);
-        currentIndex = bestIndex;
+      final waypointsRaw = tripDecoded['waypoints'];
+      if (waypointsRaw is! List || waypointsRaw.length != allCoords.length) {
+        debugPrint('[V3OsrmService] trip waypoints invalid');
+        return null;
       }
 
-      return orderedStopIds;
+      final ordered = <({int waypointIndex, String stopId})>[];
+
+      for (var inputIndex = 1; inputIndex <= stops.length; inputIndex++) {
+        final wp = waypointsRaw[inputIndex];
+        if (wp is! Map<String, dynamic>) continue;
+        final wpIndex = (wp['waypoint_index'] as num?)?.toInt();
+        if (wpIndex == null) continue;
+        ordered.add((waypointIndex: wpIndex, stopId: stops[inputIndex - 1].id));
+      }
+
+      if (ordered.length != stops.length) {
+        debugPrint('[V3OsrmService] trip ordered stops incomplete');
+        return null;
+      }
+
+      ordered.sort((a, b) => a.waypointIndex.compareTo(b.waypointIndex));
+      return ordered.map((e) => e.stopId).toList();
     } catch (e) {
       debugPrint('[V3OsrmService] optimizeStopOrderByDuration error: $e');
       return null;
