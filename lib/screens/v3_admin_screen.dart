@@ -624,6 +624,126 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     );
   }
 
+  Map<String, int> _getDnevniBcVsSummary() {
+    final grouped = _getDnevniSaDodeljenimVremenomDanasPoGradu();
+    final bc = grouped['BC'] ?? const <String>[];
+    final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
+    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList();
+
+    return {
+      'bcTotal': bc.length,
+      'vsTotal': vsSet.length,
+      'preostalo': bezVs.length,
+    };
+  }
+
+  Map<String, List<String>> _getDnevniSaDodeljenimVremenomDanasPoGradu() {
+    final rm = V3MasterRealtimeManager.instance;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final dnevniIds = rm.putniciCache.values
+        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'dnevni')
+        .map((p) => p['id'] as String)
+        .toSet();
+
+    final bcNames = <String>{};
+    final vsNames = <String>{};
+
+    for (final r in rm.operativnaNedeljaCache.values) {
+      final putnikId = r['putnik_id']?.toString();
+      if (putnikId == null || !dnevniIds.contains(putnikId)) continue;
+      if (r['aktivno'] != true) continue;
+
+      final datumRaw = r['datum']?.toString();
+      if (datumRaw == null || datumRaw.isEmpty) continue;
+      final datum = DateTime.tryParse(datumRaw);
+      if (datum == null) continue;
+      final datumOnly = DateTime(datum.year, datum.month, datum.day);
+      if (datumOnly != today) continue;
+
+      final ime = (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
+      if (ime.isEmpty) continue;
+
+      final grad = (r['grad']?.toString() ?? '').toUpperCase();
+      if (grad == 'VS') {
+        vsNames.add(ime);
+        continue;
+      }
+
+      if (grad == 'BC') {
+        if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
+        final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
+        if (dodeljenoVreme.isEmpty) continue;
+        bcNames.add(ime);
+      }
+    }
+
+    final bc = bcNames.toList()..sort();
+    final vs = vsNames.toList()..sort();
+
+    return {
+      'BC': bc,
+      'VS': vs,
+    };
+  }
+
+  void _showDnevniDanasPopup(BuildContext context) {
+    final grouped = _getDnevniSaDodeljenimVremenomDanasPoGradu();
+    final bc = grouped['BC'] ?? const <String>[];
+    final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
+    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList()..sort();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final colorScheme = theme.colorScheme;
+        final onSurface = colorScheme.onSurface;
+
+        return AlertDialog(
+          backgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surface,
+          title: Text(
+            'Dnevni bez VS termina',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: onSurface,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Bez VS (${bezVs.length})',
+                    style: const TextStyle(color: Colors.deepOrangeAccent, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    bezVs.isEmpty ? '— svi imaju VS termin —' : bezVs.join('\n'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: onSurface.withValues(alpha: 0.82),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Zatvori'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Broj zahteva učenika na čekanju koje su učenici sami poslali
   int _getUceniciZahteviCount() {
     final rm = V3MasterRealtimeManager.instance;
@@ -723,6 +843,38 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               '$preostalo',
               style: const TextStyle(
                 color: Colors.orange,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Dnevni brojač: broj dnevnih putnika bez VS termina danas.
+  Widget _buildDnevniSaVsWidget(BuildContext context) {
+    final stats = _getDnevniBcVsSummary();
+    final preostalo = stats['preostalo'] ?? 0;
+
+    return GestureDetector(
+      onTap: () => _showDnevniDanasPopup(context),
+      child: Container(
+        height: V3ContainerUtils.responsiveHeight(context, 50),
+        decoration: BoxDecoration(
+          color: Colors.deepOrange.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.deepOrange.withValues(alpha: 0.7), width: 1.5),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$preostalo',
+              style: const TextStyle(
+                color: Colors.deepOrangeAccent,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
@@ -884,7 +1036,19 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               ),
               const SizedBox(height: 6),
 
-              // ─── RED 2: Kalendar, Dnevnik, Putnici, Gorivo, pasulj ───
+              // ─── RED 2: Brojači (Učenici / Dnevni bez VS) ───
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                child: Row(
+                  children: [
+                    Expanded(flex: 1, child: _buildSaVsWidget(context)),
+                    const SizedBox(width: 6),
+                    Expanded(flex: 1, child: _buildDnevniSaVsWidget(context)),
+                  ],
+                ),
+              ),
+
+              // ─── RED 3: Kalendar, Dnevnik, Putnici, Gorivo ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
@@ -989,8 +1153,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // saVS/ukBC statistika (skroz desno)
-                    Expanded(flex: 1, child: _buildSaVsWidget(context)),
+                    const Spacer(flex: 1),
                   ],
                 ),
               ),

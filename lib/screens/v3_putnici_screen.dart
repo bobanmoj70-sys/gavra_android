@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,6 +33,22 @@ class V3PutniciScreen extends StatefulWidget {
 
 class _V3PutniciScreenState extends State<V3PutniciScreen> {
   String _selectedFilter = 'svi';
+  StreamSubscription<void>? _putniciSub;
+  Map<String, int> _dbCounts = const {
+    'radnik': 0,
+    'ucenik': 0,
+    'dnevni': 0,
+    'posiljka': 0,
+    'svi': 0,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshDbCounts();
+    _putniciSub = V3MasterRealtimeManager.instance
+        .v3StreamFromCache<void>(tables: const ['v3_putnici'], build: () {}).listen((_) => _refreshDbCounts());
+  }
 
   String _normalizeTip(dynamic tip) => (tip?.toString() ?? '').trim().toLowerCase();
 
@@ -53,16 +71,41 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
     return _normalizeTip(tipValue) == _normalizeTip(selectedTip);
   }
 
+  Future<void> _refreshDbCounts() async {
+    try {
+      final rows = await supabase.from('v3_putnici').select('tip_putnika,aktivno');
+      final counts = {
+        'radnik': 0,
+        'ucenik': 0,
+        'dnevni': 0,
+        'posiljka': 0,
+        'svi': 0,
+      };
+
+      for (final row in rows) {
+        if (!_isAktivan(row['aktivno'])) continue;
+        counts['svi'] = (counts['svi'] ?? 0) + 1;
+        final tip = _normalizeTip(row['tip_putnika']);
+        if (counts.containsKey(tip)) {
+          counts[tip] = (counts[tip] ?? 0) + 1;
+        }
+      }
+
+      if (!mounted) return;
+      V3StateUtils.safeSetState(this, () => _dbCounts = counts);
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
+    _putniciSub?.cancel();
     V3TextUtils.disposeController('search');
     super.dispose();
   }
 
   // ─── Badge counts ─────────────────────────────────────────────────────────
   int _count(String tip) {
-    final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    return cache.where((r) => _isAktivan(r['aktivno']) && _matchesFilterTip(r['tip_putnika'], tip)).length;
+    return _dbCounts[tip] ?? 0;
   }
 
   // ─── Filtered list ────────────────────────────────────────────────────────
@@ -116,23 +159,27 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      // ── Filter icons with badges ──────────────────────
-                      _filterBtn('svi', Icons.people, Colors.white, Colors.blueGrey),
-                      _filterBtn('radnik', Icons.engineering, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8)),
-                      _filterBtn('ucenik', Icons.school, const Color(0xFF4ECDC4), const Color(0xFF44A08D)),
-                      _filterBtn('dnevni', Icons.today, const Color(0xFFFF6B6B), const Color(0xFFFF8E53)),
-                      _filterBtn('posiljka', Icons.local_shipping, const Color(0xFFFF8C00), const Color(0xFFE65C00)),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.person_add,
-                            color: Colors.white,
-                            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                        tooltip: 'Dodaj putnika',
-                        onPressed: _showAddDialog,
+                      Expanded(
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ── Filter icons with badges ──────────────────────
+                              _filterBtn('radnik', Icons.engineering, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8)),
+                              _filterBtn('ucenik', Icons.school, const Color(0xFF4ECDC4), const Color(0xFF44A08D)),
+                              _filterBtn('dnevni', Icons.today, const Color(0xFFFF6B6B), const Color(0xFFFF8E53)),
+                              _filterBtn(
+                                  'posiljka', Icons.local_shipping, const Color(0xFFFF8C00), const Color(0xFFE65C00)),
+                              IconButton(
+                                icon: const Icon(Icons.person_add,
+                                    color: Colors.white,
+                                    shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                                tooltip: 'Dodaj putnika',
+                                onPressed: _showAddDialog,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
