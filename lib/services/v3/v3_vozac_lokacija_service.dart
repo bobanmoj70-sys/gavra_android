@@ -54,7 +54,6 @@ class V3VozacLokacijaService {
   /// Poziva se često iz GPS stream-a i koristi se za ETA/status prikaz.
   static Future<void> updateLokacija(V3VozacLokacijaUpdate update) async {
     try {
-      // V3 Arhitektura: Fire and Forget upsert lokacije vozača.
       await supabase.from('v3_vozac_lokacije').upsert(
             update.toJson(),
             onConflict: 'vozac_id',

@@ -15,6 +15,7 @@ import 'v3_vozac_lokacija_service.dart';
 
 /// V3 Foreground GPS Service sa Persistent Notification
 /// Drži GPS tracking aktivan u pozadini na Android i iOS platformama
+@pragma('vm:entry-point')
 class V3ForegroundGpsService {
   V3ForegroundGpsService._();
 
@@ -259,11 +260,10 @@ class V3ForegroundGpsService {
 
   /// Provjeri permissions za GPS i notifikacije
   static Future<bool> _checkPermissions() async {
-    final locationStatus = await Permission.locationAlways.status;
-    final locationWhenInUse = await Permission.location.status;
+    final locationStatus = await Permission.location.status;
     final notificationStatus = await Permission.notification.status;
 
-    if (!locationStatus.isGranted && !locationWhenInUse.isGranted) return false;
+    if (!locationStatus.isGranted) return false;
 
     if (Platform.isAndroid && !notificationStatus.isGranted) return false;
 
@@ -295,6 +295,7 @@ class V3ForegroundGpsService {
   }
 
   /// Background service callback
+  @pragma('vm:entry-point')
   static void _onServiceStart(ServiceInstance service) {
     debugPrint('[V3ForegroundGpsService] Background service pokrenut');
 
@@ -305,6 +306,7 @@ class V3ForegroundGpsService {
   }
 
   /// iOS background callback
+  @pragma('vm:entry-point')
   static Future<bool> _onServiceBackground(ServiceInstance service) async {
     debugPrint('[V3ForegroundGpsService] iOS background mode');
     return true;

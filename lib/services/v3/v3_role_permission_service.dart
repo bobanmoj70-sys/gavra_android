@@ -52,11 +52,6 @@ class V3RolePermissionService {
       if (!locationWhenInUse.isGranted) {
         await Permission.location.request();
       }
-
-      final locationAlways = await Permission.locationAlways.status;
-      if (!locationAlways.isGranted) {
-        await Permission.locationAlways.request();
-      }
     } catch (_) {
       // Ignoriši i upiši prompted flag da ne ponavljamo dijalog
     } finally {
