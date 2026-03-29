@@ -331,13 +331,6 @@ class V3ForegroundGpsService {
       autoCancel: false,
       showWhen: false,
       icon: '@mipmap/ic_launcher',
-      actions: [
-        AndroidNotificationAction(
-          'stop_tracking',
-          'Zaustavi Tracking',
-          icon: DrawableResourceAndroidBitmap('@drawable/ic_stop'),
-        ),
-      ],
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -482,13 +475,6 @@ class V3ForegroundGpsService {
       autoCancel: false,
       showWhen: false,
       icon: '@mipmap/ic_launcher',
-      actions: [
-        AndroidNotificationAction(
-          'stop_tracking',
-          'Zaustavi Tracking',
-          icon: DrawableResourceAndroidBitmap('@drawable/ic_stop'),
-        ),
-      ],
     );
 
     await _notifications?.show(
