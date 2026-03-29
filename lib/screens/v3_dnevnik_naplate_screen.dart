@@ -88,7 +88,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
   void _prikaziNaplate() {
     if (_selectedVozacId == null) return;
 
-    final dateStr = _toDateStr(_selectedDate);
+    final target = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
     final putniciCache = V3MasterRealtimeManager.instance.putniciCache;
 
@@ -97,21 +97,17 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       final status = row['naplata_status'] as String? ?? '';
       if (status != 'placeno') continue;
 
-      // Primarno filtriramo po vozaču koji je naplatio,
-      // uz fallback na vozac_id za starije zapise bez naplatio_vozac_id.
+      // Primarno vozac koji je naplatio, fallback na vozac_id za starije zapise.
       final vozacId = (row['naplatio_vozac_id'] ?? row['vozac_id'])?.toString() ?? '';
       if (vozacId != _selectedVozacId) continue;
 
-      // Datum: koristimo polje 'datum' iz operativne nedelje
-      final datumRaw = row['datum'] as String? ?? '';
-      if (datumRaw.isEmpty) continue;
-
-      final datumOnly = V3DanHelper.parseIsoDatePart(datumRaw);
-      if (datumOnly != dateStr) continue;
-
       final vremePlaceno = row['vreme_placen'] as String? ?? '';
       final sortTs = vremePlaceno.isNotEmpty ? vremePlaceno : (row['updated_at'] as String? ?? '');
-      final dt = DateTime.tryParse(sortTs)?.toLocal() ?? DateTime.now();
+      final dt = DateTime.tryParse(sortTs)?.toLocal();
+      if (dt == null) continue;
+
+      final payDay = DateTime(dt.year, dt.month, dt.day);
+      if (payDay != target) continue;
 
       final putnikId = row['putnik_id']?.toString() ?? '';
       final putnikData = putniciCache[putnikId];
@@ -400,23 +396,28 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
               // ─── Sadržaj ──────────────────────────────────────────
               Expanded(
-                child: _naplate.isEmpty
-                    ? Center(
+                child: _selectedVozacId == null
+                    ? const Center(
                         child: Text(
-                          _selectedVozacId == null
-                              ? 'Izaberi vozača i datum'
-                              : 'Nema naplata za ${_formatDatum(_selectedDate)}',
-                          style: const TextStyle(color: Colors.white54, fontSize: 16),
+                          'Izaberi vozača i datum',
+                          style: TextStyle(color: Colors.white54, fontSize: 16),
                         ),
                       )
                     : Column(
                         children: [
                           Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              itemCount: _naplate.length,
-                              itemBuilder: (_, i) => _NaplataCard(n: _naplate[i], index: i),
-                            ),
+                            child: _naplate.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'Nema naplata za ${_formatDatum(_selectedDate)}',
+                                      style: const TextStyle(color: Colors.white54, fontSize: 16),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    itemCount: _naplate.length,
+                                    itemBuilder: (_, i) => _NaplataCard(n: _naplate[i], index: i),
+                                  ),
                           ),
                           // Footer: Ukupno + Predao
                           _PredajaFooter(
@@ -441,7 +442,6 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-String _toDateStr(DateTime d) => V3DanHelper.toIsoDate(d);
 String _formatDatum(DateTime d) => V3DanHelper.formatDatumPuni(d);
 
 pw.Widget _pdfCell(String text, {required pw.TextStyle style}) => pw.Padding(

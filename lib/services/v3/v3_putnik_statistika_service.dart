@@ -167,7 +167,12 @@ class V3PutnikStatistikaService {
 
     int pokupljeno = 0;
     int voznji = 0;
-    final ukupnoUplaceno = _sumUplateZaMesec(putnikId: putnikId, godina: godina, mesec: mesec);
+    final ukupnoUplaceno = _sumUplateZaMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+      isPoDanu: true,
+    );
 
     for (final dayRows in byDate.values) {
       final hasPokupljen = dayRows.any(_isPokupljen);
@@ -295,6 +300,7 @@ class V3PutnikStatistikaService {
     required String putnikId,
     required int godina,
     required int mesec,
+    required bool isPoDanu,
   }) {
     final arhiva = V3MasterRealtimeManager.instance.getCache('v3_putnici_arhiva').values;
 
@@ -304,7 +310,10 @@ class V3PutnikStatistikaService {
       if ((row['za_godinu'] as int?) != godina) return false;
       if ((row['za_mesec'] as int?) != mesec) return false;
       final tip = (row['tip_akcije']?.toString() ?? '').toLowerCase();
-      return tip == 'uplata_mesecna' || tip == 'uplata_voznja' || tip == 'uplata';
+      if (isPoDanu) {
+        return tip == 'uplata_mesecna' || tip == 'uplata';
+      }
+      return tip == 'uplata_voznja' || tip == 'uplata';
     }).fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
   }
 }
