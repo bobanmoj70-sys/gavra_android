@@ -8,8 +8,9 @@ class V3NavigationResult {
   final bool success;
   final String message;
   final List<Map<String, dynamic>>? optimizedData;
+  final Map<String, dynamic>? metadata;
 
-  V3NavigationResult({required this.success, required this.message, this.optimizedData});
+  V3NavigationResult({required this.success, required this.message, this.optimizedData, this.metadata});
 
   factory V3NavigationResult.error(String msg) => V3NavigationResult(success: false, message: msg);
 }
@@ -189,15 +190,23 @@ class V3SmartNavigationService {
         });
       }
 
-        final skippedText = skippedData.isNotEmpty ? ' • preskočeno bez koordinata: ${skippedData.length}' : '';
+      final skippedText = skippedData.isNotEmpty ? ' • preskočeno bez koordinata: ${skippedData.length}' : '';
       final modeText =
           usedOsrm ? 'OSRM optimizovana' : (driverLat != null && driverLng != null ? 'GPS sortirana' : 'Sortirana');
-        final message = '$modeText: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity$skippedText';
+      final message = '$modeText: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity$skippedText';
 
       return V3NavigationResult(
         success: true,
         message: message,
         optimizedData: finalData,
+        metadata: {
+          'engine': usedOsrm ? 'osrm' : (driverLat != null && driverLng != null ? 'haversine' : 'name_sort'),
+          'from_city': fromCity,
+          'target_city': targetCity,
+          'optimized_count': orderedCandidates.length,
+          'skipped_count': skippedData.length,
+          'input_count': data.length,
+        },
       );
     } catch (e) {
       return V3NavigationResult.error('Greška pri optimizaciji: $e');

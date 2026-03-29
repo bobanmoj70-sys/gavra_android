@@ -69,8 +69,8 @@ class V3RouteOptimizationService {
           .where((row) =>
               row['vozac_id'] == vozacId &&
               V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') == datumStr &&
-          (row['grad']?.toString().toUpperCase() ?? '') == gradNorm &&
-          _normalizeTime(row['vreme']?.toString()) == vremeNorm &&
+              (row['grad']?.toString().toUpperCase() ?? '') == gradNorm &&
+              _normalizeTime(row['vreme']?.toString()) == vremeNorm &&
               row['aktivno'] == true &&
               row['pickup_lat'] != null &&
               row['pickup_lng'] != null)

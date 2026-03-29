@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -78,7 +80,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isOptimizingRoute = false;
 
   Map<String, double>? _lastOptimizationPosition; // Poslednja pozicija za optimizaciju
+  DateTime? _lastOptimizationAt;
   String _lastOptimizationSignature = '';
+  Map<String, dynamic> _lastOptimizationMeta = const {};
+
+  static const double _reoptimizeMoveThresholdKm = 0.35;
+  static const Duration _realtimeReoptimizeMinInterval = Duration(seconds: 45);
 
   static const String _routeOptimizationTimerKey = 'vozac_screen_route_optimization';
   static const String _routeOptimizationDebounceKey = 'vozac_screen_route_optimization_change';
@@ -120,6 +127,98 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final minute = int.tryParse(parts[1]) ?? -1;
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1;
     return hour * 60 + minute;
+  }
+
+  double _toRadians(double degrees) => degrees * 3.1415926535897932 / 180;
+
+  double _haversineKm({
+    required double lat1,
+    required double lng1,
+    required double lat2,
+    required double lng2,
+  }) {
+    const earthRadiusKm = 6371.0;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLng = _toRadians(lng2 - lng1);
+    final a = (math.sin(dLat / 2) * math.sin(dLat / 2)) +
+        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) * (math.sin(dLng / 2) * math.sin(dLng / 2));
+    return earthRadiusKm * 2 * math.asin(math.sqrt(a));
+  }
+
+  bool _isRealtimeReason(String reason) {
+    return reason == 'periodic' || reason == 'realtime_stream_tick';
+  }
+
+  bool _isSelectionReason(String reason) {
+    return reason == 'polazak_changed' || reason == 'day_changed';
+  }
+
+  double? _movementSinceLastOptimizationKm(Map<String, double>? currentPosition) {
+    final last = _lastOptimizationPosition;
+    if (last == null || currentPosition == null) return null;
+
+    return _haversineKm(
+      lat1: last['lat'] ?? 0,
+      lng1: last['lng'] ?? 0,
+      lat2: currentPosition['lat'] ?? 0,
+      lng2: currentPosition['lng'] ?? 0,
+    );
+  }
+
+  bool _shouldRunReoptimization({
+    required String reason,
+    required bool force,
+    required String signature,
+    required Map<String, double>? currentPosition,
+  }) {
+    if (force) return true;
+
+    if (_isSelectionReason(reason) || reason == 'tracking_start' || reason == 'manual') {
+      return true;
+    }
+
+    final signatureChanged = signature != _lastOptimizationSignature;
+    if (signatureChanged) return true;
+
+    if (!_isRealtimeReason(reason)) {
+      return false;
+    }
+
+    final now = DateTime.now();
+    if (_lastOptimizationAt != null && now.difference(_lastOptimizationAt!) < _realtimeReoptimizeMinInterval) {
+      return false;
+    }
+
+    final movementKm = _movementSinceLastOptimizationKm(currentPosition);
+    if (movementKm == null) {
+      return false;
+    }
+
+    return movementKm >= _reoptimizeMoveThresholdKm;
+  }
+
+  void _updateLastOptimizationMeta({
+    required String reason,
+    required String engine,
+    required int optimizedCount,
+    required int eligibleCount,
+    required Map<String, double>? currentPosition,
+    int skippedCount = 0,
+  }) {
+    _lastOptimizationAt = DateTime.now();
+    _lastOptimizationSignature = _buildOptimizationSignature();
+    _lastOptimizationPosition = currentPosition;
+    _lastOptimizationMeta = {
+      'reason': reason,
+      'engine': engine,
+      'optimized_count': optimizedCount,
+      'eligible_count': eligibleCount,
+      'skipped_count': skippedCount,
+      'at': _lastOptimizationAt!.toIso8601String(),
+      'signature': _lastOptimizationSignature,
+      if (currentPosition != null) 'position': currentPosition,
+    };
+    debugPrint('[V3VozacScreen] Route meta: $_lastOptimizationMeta');
   }
 
   bool _isGpsRowEligible(Map<String, dynamic> row) {
@@ -584,7 +683,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (!_isTracking || !mounted) return;
 
     final signature = _buildOptimizationSignature();
-    if (!force && signature == _lastOptimizationSignature) {
+    if (!force && signature == _lastOptimizationSignature && !_isRealtimeReason(reason)) {
       return;
     }
 
@@ -593,7 +692,32 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       duration: debounce,
       callback: () async {
         if (!mounted || !_isTracking) return;
-        await _optimizujRutu(silent: true, reason: reason);
+        final vozac = V3VozacService.currentVozac;
+        if (vozac == null) return;
+
+        final gpsPosition = await _getCurrentDriverPosition(vozac.id);
+        final currentPosition = (gpsPosition != null)
+            ? {
+                'lat': (gpsPosition['lat'] as double?) ?? 0,
+                'lng': (gpsPosition['lng'] as double?) ?? 0,
+              }
+            : null;
+
+        final shouldRun = _shouldRunReoptimization(
+          reason: reason,
+          force: force,
+          signature: signature,
+          currentPosition: currentPosition,
+        );
+        if (!shouldRun) {
+          return;
+        }
+
+        await _optimizujRutu(
+          silent: true,
+          reason: reason,
+          currentPosition: currentPosition,
+        );
       },
     );
   }
@@ -767,7 +891,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       V3StreamUtils.cancelTimer(_routeOptimizationTimerKey);
       V3StreamUtils.cancelTimer(_routeOptimizationDebounceKey);
       _lastOptimizationPosition = null;
+      _lastOptimizationAt = null;
       _lastOptimizationSignature = '';
+      _lastOptimizationMeta = const {};
 
       if (mounted) {
         V3AppSnackBar.warning(context, '⚠️ GPS tracking zaustavljen - notification uklonjena');
@@ -811,7 +937,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return shouldProceed == true;
   }
 
-  Future<void> _optimizujRutu({bool silent = false, String reason = 'manual'}) async {
+  Future<void> _optimizujRutu({
+    bool silent = false,
+    String reason = 'manual',
+    Map<String, double>? currentPosition,
+  }) async {
     final putniciZaOptimizaciju = _optimizacijaPutnici();
     if (putniciZaOptimizaciju.isEmpty) return;
 
@@ -869,7 +999,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           _mojiPutnici = _sortPutniciForDisplay(merged);
         });
 
-        _lastOptimizationSignature = _buildOptimizationSignature();
+        _updateLastOptimizationMeta(
+          reason: reason,
+          engine: 'sql',
+          optimizedCount: optimizovaniPutnici.length,
+          eligibleCount: putniciZaOptimizaciju.length,
+          currentPosition: currentPosition,
+        );
 
         if (!silent && mounted) {
           V3AppSnackBar.success(context, '🗺️ Ruta optimizovana: ${optimizovaniPutnici.length} putnika');
@@ -881,18 +1017,24 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       // Fallback na stari algoritam
       final data = putniciZaOptimizaciju.map((p) => {'putnik': p.putnik, 'entry': p.entry}).toList();
 
-      double? driverLat;
-      double? driverLng;
+      double? driverLat = currentPosition?['lat'];
+      double? driverLng = currentPosition?['lng'];
 
-      try {
-        final gpsPosition = await _getCurrentDriverPosition(vozac.id);
-        if (gpsPosition != null) {
-          driverLat = gpsPosition['lat'] as double?;
-          driverLng = gpsPosition['lng'] as double?;
-          debugPrint('[V3VozacScreen] Fallback koristi real-time GPS: lat=$driverLat, lng=$driverLng');
+      if (driverLat == null || driverLng == null) {
+        try {
+          final gpsPosition = await _getCurrentDriverPosition(vozac.id);
+          if (gpsPosition != null) {
+            driverLat = gpsPosition['lat'] as double?;
+            driverLng = gpsPosition['lng'] as double?;
+            currentPosition = {
+              'lat': driverLat ?? 0,
+              'lng': driverLng ?? 0,
+            };
+            debugPrint('[V3VozacScreen] Fallback koristi real-time GPS: lat=$driverLat, lng=$driverLng');
+          }
+        } catch (e) {
+          debugPrint('[V3VozacScreen] Fallback real-time GPS greška: $e');
         }
-      } catch (e) {
-        debugPrint('[V3VozacScreen] Fallback real-time GPS greška: $e');
       }
 
       // Fallback na centar grada ako nema GPS pozicije
@@ -931,7 +1073,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           _mojiPutnici = _sortPutniciForDisplay(merged);
         });
 
-        _lastOptimizationSignature = _buildOptimizationSignature();
+        final skippedCount = res.optimizedData!.where((d) => d['route_order'] == null).length;
+
+        _updateLastOptimizationMeta(
+          reason: reason,
+          engine: 'fallback',
+          optimizedCount: orderByPutnikId.values.whereType<int>().length,
+          eligibleCount: putniciZaOptimizaciju.length,
+          skippedCount: skippedCount,
+          currentPosition: currentPosition,
+        );
 
         if (!silent && mounted) {
           V3AppSnackBar.success(context, res.message);
