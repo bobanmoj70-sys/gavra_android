@@ -61,6 +61,7 @@ class V3SmartNavigationService {
     required String fromCity, // BC ili VS
     double? driverLat,
     double? driverLng,
+    bool osrmOnly = false,
   }) async {
     try {
       if (data.isEmpty) {
@@ -121,6 +122,10 @@ class V3SmartNavigationService {
       var usedOsrm = false;
       List<_V3RouteCandidate> orderedCandidates = List<_V3RouteCandidate>.from(candidates);
 
+      if (osrmOnly && (driverLat == null || driverLng == null)) {
+        return V3NavigationResult.error('OSRM optimizacija zahteva dostupnu GPS poziciju vozača');
+      }
+
       if (driverLat != null && driverLng != null) {
         final osrmOrder = await V3OsrmService.optimizeStopOrderByDuration(
           originLat: driverLat,
@@ -149,6 +154,9 @@ class V3SmartNavigationService {
         }
 
         if (!usedOsrm) {
+          if (osrmOnly) {
+            return V3NavigationResult.error('OSRM servis trenutno nije vratio validan redosled');
+          }
           orderedCandidates.sort((a, b) {
             final distanceA = _haversineKm(
               lat1: driverLat,
@@ -166,6 +174,9 @@ class V3SmartNavigationService {
           });
         }
       } else {
+        if (osrmOnly) {
+          return V3NavigationResult.error('OSRM optimizacija zahteva aktivan GPS vozača');
+        }
         // Fallback: sortiranje po imenu putnika ako nema GPS koordinata
         orderedCandidates.sort((a, b) {
           return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
@@ -191,8 +202,9 @@ class V3SmartNavigationService {
       }
 
       final skippedText = skippedData.isNotEmpty ? ' • preskočeno bez koordinata: ${skippedData.length}' : '';
-      final modeText =
-          usedOsrm ? 'OSRM optimizovana' : (driverLat != null && driverLng != null ? 'GPS sortirana' : 'Sortirana');
+      final modeText = osrmOnly
+          ? 'OSRM optimizovana'
+          : (usedOsrm ? 'OSRM optimizovana' : (driverLat != null && driverLng != null ? 'GPS sortirana' : 'Sortirana'));
       final message = '$modeText: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity$skippedText';
 
       return V3NavigationResult(

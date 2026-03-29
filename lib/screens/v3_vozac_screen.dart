@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -14,7 +12,6 @@ import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
-import '../services/v3/v3_route_optimization_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -43,8 +40,7 @@ import 'v3_welcome_screen.dart';
 /// ✅ Primarno bez Geocoding API poziva (Photon fallback samo za adrese bez koordinata)
 /// ✅ ETA kalkulacija je trenutna (Haversine formula direktno)
 /// ✅ Pametni GPS filtering na osnovu blizine putnika
-/// ✅ SQL triggeri filtriraju 80% nepotrebnih GPS poziva
-/// ✅ Automatska optimizacija rute bez external API poziva
+/// ✅ OSRM optimizacija rute na ručni zahtev vozača
 /// ✅ Bolji UX - brže odzivi, manja potrošnja baterije
 class V3VozacScreen extends StatefulWidget {
   const V3VozacScreen({super.key});
@@ -58,7 +54,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   //
   // 1. GPS OPTIMIZACIJA:
   //    • GPS stream umesto Timer-a (real-time pozicije)
-  //    • SQL triggeri filtriraju 80% nepotrebnih poziva
+  //    • Vozač ručno pokreće optimizaciju kada želi
   //    • Dinamički distance filter na osnovu putnika
   //
   // 2. FIKSNE ADRESE = BRZINA I ŠTEDNJA:
@@ -79,16 +75,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isTracking = false;
   bool _isOptimizingRoute = false;
 
-  Map<String, double>? _lastOptimizationPosition; // Poslednja pozicija za optimizaciju
-  DateTime? _lastOptimizationAt;
-  String _lastOptimizationSignature = '';
   Map<String, dynamic> _lastOptimizationMeta = const {};
 
-  static const double _reoptimizeMoveThresholdKm = 0.35;
-  static const Duration _realtimeReoptimizeMinInterval = Duration(seconds: 45);
-
-  static const String _routeOptimizationTimerKey = 'vozac_screen_route_optimization';
-  static const String _routeOptimizationDebounceKey = 'vozac_screen_route_optimization_change';
   static const String _realtimeUiRebuildDebounceKey = 'vozac_screen_realtime_ui_rebuild';
   int? _lastRealtimeTick;
 
@@ -129,93 +117,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return hour * 60 + minute;
   }
 
-  double _toRadians(double degrees) => degrees * 3.1415926535897932 / 180;
-
-  double _haversineKm({
-    required double lat1,
-    required double lng1,
-    required double lat2,
-    required double lng2,
-  }) {
-    const earthRadiusKm = 6371.0;
-    final dLat = _toRadians(lat2 - lat1);
-    final dLng = _toRadians(lng2 - lng1);
-    final a = (math.sin(dLat / 2) * math.sin(dLat / 2)) +
-        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) * (math.sin(dLng / 2) * math.sin(dLng / 2));
-    return earthRadiusKm * 2 * math.asin(math.sqrt(a));
-  }
-
-  bool _isRealtimeReason(String reason) {
-    return reason == 'periodic' || reason == 'realtime_stream_tick';
-  }
-
-  bool _isSelectionReason(String reason) {
-    return reason == 'polazak_changed' || reason == 'day_changed';
-  }
-
-  double? _movementSinceLastOptimizationKm(Map<String, double>? currentPosition) {
-    final last = _lastOptimizationPosition;
-    if (last == null || currentPosition == null) return null;
-
-    return _haversineKm(
-      lat1: last['lat'] ?? 0,
-      lng1: last['lng'] ?? 0,
-      lat2: currentPosition['lat'] ?? 0,
-      lng2: currentPosition['lng'] ?? 0,
-    );
-  }
-
-  bool _shouldRunReoptimization({
-    required String reason,
-    required bool force,
-    required String signature,
-    required Map<String, double>? currentPosition,
-  }) {
-    if (force) return true;
-
-    if (_isSelectionReason(reason) || reason == 'tracking_start' || reason == 'manual') {
-      return true;
-    }
-
-    final signatureChanged = signature != _lastOptimizationSignature;
-    if (signatureChanged) return true;
-
-    if (!_isRealtimeReason(reason)) {
-      return false;
-    }
-
-    final now = DateTime.now();
-    if (_lastOptimizationAt != null && now.difference(_lastOptimizationAt!) < _realtimeReoptimizeMinInterval) {
-      return false;
-    }
-
-    final movementKm = _movementSinceLastOptimizationKm(currentPosition);
-    if (movementKm == null) {
-      return false;
-    }
-
-    return movementKm >= _reoptimizeMoveThresholdKm;
-  }
-
   void _updateLastOptimizationMeta({
     required String reason,
     required String engine,
     required int optimizedCount,
     required int eligibleCount,
-    required Map<String, double>? currentPosition,
+    Map<String, double>? currentPosition,
     int skippedCount = 0,
   }) {
-    _lastOptimizationAt = DateTime.now();
-    _lastOptimizationSignature = _buildOptimizationSignature();
-    _lastOptimizationPosition = currentPosition;
+    final now = DateTime.now();
     _lastOptimizationMeta = {
       'reason': reason,
       'engine': engine,
       'optimized_count': optimizedCount,
       'eligible_count': eligibleCount,
       'skipped_count': skippedCount,
-      'at': _lastOptimizationAt!.toIso8601String(),
-      'signature': _lastOptimizationSignature,
+      'at': now.toIso8601String(),
       if (currentPosition != null) 'position': currentPosition,
     };
     debugPrint('[V3VozacScreen] Route meta: $_lastOptimizationMeta');
@@ -323,8 +240,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   void dispose() {
     V3StreamUtils.cancelSubscription('vozac_screen_realtime');
     V3StreamUtils.cancelSubscription('vozac_screen_gps');
-    V3StreamUtils.cancelTimer(_routeOptimizationTimerKey);
-    V3StreamUtils.cancelTimer(_routeOptimizationDebounceKey);
     V3StreamUtils.cancelTimer(_realtimeUiRebuildDebounceKey);
     super.dispose();
   }
@@ -569,7 +484,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       _selectedVreme = vreme;
     });
     _rebuild();
-    _scheduleReoptimizationIfNeeded(reason: 'polazak_changed');
   }
 
   void _onDaySelected(String day) {
@@ -639,87 +553,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     });
 
     _rebuild();
-    _scheduleReoptimizationIfNeeded(reason: 'day_changed');
-  }
-
-  String _buildOptimizationSignature() {
-    final eligible = _optimizacijaPutnici();
-    final tokens = eligible.map((entry) {
-      final status = (entry.entry?.statusFinal ?? '').trim().toLowerCase();
-      final pokupljen = entry.entry?.pokupljen == true;
-      final override = entry.entry?.adresaIdOverride ?? '';
-      final sekundarna = entry.entry?.koristiSekundarnu == true;
-      return '${entry.putnik.id}|$status|$pokupljen|$override|$sekundarna';
-    }).toList()
-      ..sort();
-
-    return [
-      _selectedDatumIso,
-      _selectedGrad,
-      _selectedVreme,
-      tokens.join(','),
-    ].join('::');
-  }
-
-  void _startReoptimizationTimer() {
-    V3StreamUtils.createPeriodicTimer(
-      key: _routeOptimizationTimerKey,
-      period: const Duration(minutes: 2),
-      callback: (_) {
-        _scheduleReoptimizationIfNeeded(
-          reason: 'periodic',
-          force: true,
-          debounce: const Duration(seconds: 1),
-        );
-      },
-    );
-  }
-
-  void _scheduleReoptimizationIfNeeded({
-    required String reason,
-    bool force = false,
-    Duration debounce = const Duration(seconds: 4),
-  }) {
-    if (!_isTracking || !mounted) return;
-
-    final signature = _buildOptimizationSignature();
-    if (!force && signature == _lastOptimizationSignature && !_isRealtimeReason(reason)) {
-      return;
-    }
-
-    V3StreamUtils.createDebounceTimer(
-      key: _routeOptimizationDebounceKey,
-      duration: debounce,
-      callback: () async {
-        if (!mounted || !_isTracking) return;
-        final vozac = V3VozacService.currentVozac;
-        if (vozac == null) return;
-
-        final gpsPosition = await _getCurrentDriverPosition(vozac.id);
-        final currentPosition = (gpsPosition != null)
-            ? {
-                'lat': (gpsPosition['lat'] as double?) ?? 0,
-                'lng': (gpsPosition['lng'] as double?) ?? 0,
-              }
-            : null;
-
-        final shouldRun = _shouldRunReoptimization(
-          reason: reason,
-          force: force,
-          signature: signature,
-          currentPosition: currentPosition,
-        );
-        if (!shouldRun) {
-          return;
-        }
-
-        await _optimizujRutu(
-          silent: true,
-          reason: reason,
-          currentPosition: currentPosition,
-        );
-      },
-    );
   }
 
   Future<void> _openMapa() async {
@@ -848,18 +681,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             datumIso: _selectedDatumIso,
           );
 
+          if (_mojiPutnici.isNotEmpty) {
+            await _optimizujRutu(reason: 'tracking_start');
+          }
+
           if (mounted) {
             V3AppSnackBar.success(
                 context, '📍 GPS tracking pokrenut sa persistent notification! Putnici dobijaju realtime lokaciju.');
           }
-
-          // AUTOMATSKA OPTIMIZACIJA RUTI PREMA GPS-u I PUTNICIMA
-          if (_mojiPutnici.isNotEmpty) {
-            await _optimizujRutu(reason: 'tracking_start');
-            // Optimizacija rute će biti automatski triggerovana database trigger-ima
-          }
-
-          _startReoptimizationTimer();
         } else {
           V3StateUtils.safeSetState(this, () => _isTracking = false);
           if (mounted) {
@@ -887,12 +716,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         datumIso: _selectedDatumIso,
       );
 
-      // Route optimization se automatski zaustavlja database trigger-ima
-      V3StreamUtils.cancelTimer(_routeOptimizationTimerKey);
-      V3StreamUtils.cancelTimer(_routeOptimizationDebounceKey);
-      _lastOptimizationPosition = null;
-      _lastOptimizationAt = null;
-      _lastOptimizationSignature = '';
       _lastOptimizationMeta = const {};
 
       if (mounted) {
@@ -953,68 +776,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     _isOptimizingRoute = true;
 
     try {
-      // 1. PRVO: Optimizuj v3_gps_raspored tabelu pomoću SQL funkcije
-      final result = await V3RouteOptimizationService.optimizePickupRoute(
-        vozacId: vozac.id,
-        datum: DateTime.parse(_selectedDatumIso),
-        grad: _selectedGrad,
-        vreme: _selectedVreme,
-      );
-
-      if (result != null && result['success'] == true) {
-        debugPrint('[V3VozacScreen] Route optimization uspešna ($reason): ${result['putnik_count']} putnika');
-      }
-
-      // 2. ZATIM: Dobij optimizovane putnice iz v3_gps_raspored tabele
-      final optimizovaniPutnici = V3RouteOptimizationService.getOptimizedPutnici(
-        vozacId: vozac.id,
-        datum: DateTime.parse(_selectedDatumIso),
-        grad: _selectedGrad,
-        vreme: _selectedVreme,
-      );
-
-      if (optimizovaniPutnici.isNotEmpty) {
-        final Map<String, int?> orderByPutnikId = {};
-
-        for (final optPutnik in optimizovaniPutnici) {
-          final putnikId = optPutnik['putnik_id'] as String;
-          final routeOrderValue = optPutnik['route_order'];
-          final routeOrder = routeOrderValue is int
-              ? routeOrderValue
-              : (routeOrderValue is num ? routeOrderValue.toInt() : int.tryParse(routeOrderValue?.toString() ?? ''));
-          orderByPutnikId[putnikId] = routeOrder;
-        }
-
-        setState(() {
-          final merged = _mojiPutnici.map((entry) {
-            if (_isExcludedFromOptimization(entry)) {
-              return _PutnikEntry(putnik: entry.putnik, entry: entry.entry, routeOrder: null);
-            }
-            return _PutnikEntry(
-              putnik: entry.putnik,
-              entry: entry.entry,
-              routeOrder: orderByPutnikId[entry.putnik.id] ?? entry.routeOrder,
-            );
-          }).toList();
-          _mojiPutnici = _sortPutniciForDisplay(merged);
-        });
-
-        _updateLastOptimizationMeta(
-          reason: reason,
-          engine: 'sql',
-          optimizedCount: optimizovaniPutnici.length,
-          eligibleCount: putniciZaOptimizaciju.length,
-          currentPosition: currentPosition,
-        );
-
-        if (!silent && mounted) {
-          V3AppSnackBar.success(context, '🗺️ Ruta optimizovana: ${optimizovaniPutnici.length} putnika');
-        }
-      }
-    } catch (e) {
-      debugPrint('[V3VozacScreen] Route optimization greška ($reason): $e');
-
-      // Fallback na stari algoritam
       final data = putniciZaOptimizaciju.map((p) => {'putnik': p.putnik, 'entry': p.entry}).toList();
 
       double? driverLat = currentPosition?['lat'];
@@ -1046,6 +807,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         fromCity: _selectedGrad,
         driverLat: driverLat,
         driverLng: driverLng,
+        osrmOnly: true,
       );
 
       if (res.success && res.optimizedData != null) {
@@ -1077,7 +839,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
         _updateLastOptimizationMeta(
           reason: reason,
-          engine: 'fallback',
+          engine: (res.metadata?['engine']?.toString() ?? 'osrm'),
           optimizedCount: orderByPutnikId.values.whereType<int>().length,
           eligibleCount: putniciZaOptimizaciju.length,
           skippedCount: skippedCount,
@@ -1087,6 +849,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         if (!silent && mounted) {
           V3AppSnackBar.success(context, res.message);
         }
+      } else if (!silent && mounted) {
+        V3AppSnackBar.warning(context, res.message);
       }
     } finally {
       _isOptimizingRoute = false;
@@ -1196,7 +960,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             callback: () {
               if (!mounted) return;
               _rebuild();
-              _scheduleReoptimizationIfNeeded(reason: 'realtime_stream_tick');
             },
           );
         }
@@ -1277,6 +1040,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, '🎨 Tema promenjena');
+                                  } else if (val == 'optimize') {
+                                    await _optimizujRutu(reason: 'manual');
                                   } else if (val == 'sifra') {
                                     if (!mounted || vozac == null) return;
                                     V3NavigationUtils.pushScreen<void>(
@@ -1294,6 +1059,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                       Icon(Icons.palette, color: Colors.purpleAccent),
                                       SizedBox(width: 8),
                                       Text('Promeni temu'),
+                                    ]),
+                                  ),
+                                  PopupMenuDivider(),
+                                  PopupMenuItem(
+                                    value: 'optimize',
+                                    child: Row(children: [
+                                      Icon(Icons.route, color: Colors.lightBlueAccent),
+                                      SizedBox(width: 8),
+                                      Text('Optimizuj rutu'),
                                     ]),
                                   ),
                                   PopupMenuDivider(),
