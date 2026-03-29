@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' as fcm;
@@ -9,7 +8,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_api_availability/google_api_availability.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -144,16 +142,6 @@ Future<void> _initFirebaseSync() async {
 /// Inicijalizacija Notification handlers (FCM)
 Future<void> _initNotificationHandlers() async {
   try {
-    // 🔔 Zahtevaj notifikacijske dozvole na Android 13+
-    if (Platform.isAndroid) {
-      try {
-        final status = await Permission.notification.request();
-        debugPrint('📱 Notification permission: $status');
-      } catch (e) {
-        debugPrint('⚠️ Notification permission request error: $e');
-      }
-    }
-
     // 1. FCM Handlers (ako je Firebase inicijalizovan)
     try {
       // Provjeri da li je Firebase dostupan

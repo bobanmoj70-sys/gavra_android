@@ -50,9 +50,7 @@
 	<key>NSContactsUsageDescription</key>
 	<string>Aplikacija pristupa kontaktima kako biste mogli izabrati broj telefona putnika iz imenika.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Aplikacija koristi vašu lokaciju za prikaz vremenske prognoze i lokalno relevantnih informacija.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Aplikacija koristi vašu lokaciju za prikaz vremenske prognoze i lokalno relevantnih informacija.</string>
+	<string>Aplikacija koristi lokaciju vozača tokom aktivne vožnje radi praćenja i prikaza putnicima.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Koristite Face ID za brzu prijavu u aplikaciju umesto unosa PIN-a.</string>
 	
@@ -61,8 +59,6 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Aplikacija koristi vašu lokaciju za prikaz vremenske prognoze i lokalno relevantnih informacija.</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.gavra013.gavra_android.gps_sync</string>

@@ -725,10 +725,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<bool> _ensureDriverLocationDisclosure() async {
-    final locationAlways = await Permission.locationAlways.status;
     final locationWhenInUse = await Permission.location.status;
 
-    if (locationAlways.isGranted || locationWhenInUse.isGranted) {
+    if (locationWhenInUse.isGranted) {
       return true;
     }
 
