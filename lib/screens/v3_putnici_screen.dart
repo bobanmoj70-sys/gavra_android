@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,21 +31,10 @@ class V3PutniciScreen extends StatefulWidget {
 
 class _V3PutniciScreenState extends State<V3PutniciScreen> {
   String _selectedFilter = 'svi';
-  StreamSubscription<void>? _putniciSub;
-  Map<String, int> _dbCounts = const {
-    'radnik': 0,
-    'ucenik': 0,
-    'dnevni': 0,
-    'posiljka': 0,
-    'svi': 0,
-  };
 
   @override
   void initState() {
     super.initState();
-    _refreshDbCounts();
-    _putniciSub = V3MasterRealtimeManager.instance
-        .v3StreamFromCache<void>(tables: const ['v3_putnici'], build: () {}).listen((_) => _refreshDbCounts());
   }
 
   String _normalizeTip(dynamic tip) => (tip?.toString() ?? '').trim().toLowerCase();
@@ -71,41 +58,17 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
     return _normalizeTip(tipValue) == _normalizeTip(selectedTip);
   }
 
-  Future<void> _refreshDbCounts() async {
-    try {
-      final rows = await supabase.from('v3_putnici').select('tip_putnika,aktivno');
-      final counts = {
-        'radnik': 0,
-        'ucenik': 0,
-        'dnevni': 0,
-        'posiljka': 0,
-        'svi': 0,
-      };
-
-      for (final row in rows) {
-        if (!_isAktivan(row['aktivno'])) continue;
-        counts['svi'] = (counts['svi'] ?? 0) + 1;
-        final tip = _normalizeTip(row['tip_putnika']);
-        if (counts.containsKey(tip)) {
-          counts[tip] = (counts[tip] ?? 0) + 1;
-        }
-      }
-
-      if (!mounted) return;
-      V3StateUtils.safeSetState(this, () => _dbCounts = counts);
-    } catch (_) {}
-  }
-
   @override
   void dispose() {
-    _putniciSub?.cancel();
     V3TextUtils.disposeController('search');
     super.dispose();
   }
 
   // ─── Badge counts ─────────────────────────────────────────────────────────
   int _count(String tip) {
-    return _dbCounts[tip] ?? 0;
+    return V3MasterRealtimeManager.instance.putniciCache.values
+        .where((r) => _isAktivan(r['aktivno']) && _matchesFilterTip(r['tip_putnika'], tip))
+        .length;
   }
 
   // ─── Filtered list ────────────────────────────────────────────────────────
@@ -125,9 +88,6 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
     }
 
     lista.sort((a, b) => V3StringUtils.compareForSort(a.imePrezime, b.imePrezime));
-
-    const limit = 50;
-    if (lista.length > limit) return lista.sublist(0, limit);
     return lista;
   }
 
@@ -235,11 +195,6 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                       valueListenable: V3TextUtils.searchController,
                       builder: (context, _, __) {
                         final lista = _filtriraj();
-                        final total = V3MasterRealtimeManager.instance.putniciCache.values
-                            .where(
-                                (r) => _isAktivan(r['aktivno']) && _matchesFilterTip(r['tip_putnika'], _selectedFilter))
-                            .length;
-                        final isTruncated = total > 50;
 
                         if (lista.isEmpty) {
                           return Center(
@@ -267,18 +222,6 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
 
                         return Column(
                           children: [
-                            if (isTruncated)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.info_outline, size: 14, color: Colors.white38),
-                                    const SizedBox(width: 6),
-                                    Text('Prikazano 50 od $total — preciziraj pretragu',
-                                        style: const TextStyle(fontSize: 12, color: Colors.white54)),
-                                  ],
-                                ),
-                              ),
                             Expanded(
                               child: ListView.builder(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -337,14 +280,20 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
             right: 2,
             top: 2,
             child: V3ContainerUtils.gradientContainer(
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
               gradient: LinearGradient(colors: [c1, c2]),
               borderRadius: BorderRadius.circular(9), // Circle effect
               boxShadow: [BoxShadow(color: c2.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2))],
-              width: 18,
+              width: count >= 1000
+                  ? 34
+                  : count >= 100
+                      ? 30
+                      : count >= 10
+                          ? 24
+                          : 18,
               height: V3ContainerUtils.responsiveHeight(context, 18),
               child: Text(
-                count > 99 ? '99+' : '$count',
+                '$count',
                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
