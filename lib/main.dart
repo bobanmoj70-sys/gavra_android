@@ -21,6 +21,7 @@ import 'services/v2_theme_manager.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_putnik_service.dart';
+import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 
 // Globalna instanca za lokalne notifikacije
@@ -279,6 +280,12 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
     return;
   }
 
+  final isDriverDevice = await _isCurrentDeviceDriverForGps(vozacId);
+  if (!isDriverDevice) {
+    debugPrint('⏭️ [GPS] Preskačem reminder: uređaj nije vozačev (vozacId=$vozacId)');
+    return;
+  }
+
   // Prikaži informativnu notifikaciju (auto-start je ugašen)
   final gpsStartBody = 'Kreće za 15 min ($putniciBroj putnika). Pokreni START ručno u vozač ekranu.';
   final androidDetails = AndroidNotificationDetails(
@@ -302,6 +309,34 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
   );
 
   debugPrint('📍 [GPS] Podsetnik prikazan za vozača $vozacId');
+}
+
+Future<bool> _isCurrentDeviceDriverForGps(String vozacId) async {
+  final targetVozacId = vozacId.trim();
+  if (targetVozacId.isEmpty) return false;
+
+  final currentVozacId = V3VozacService.currentVozac?.id;
+  if (currentVozacId != null && currentVozacId == targetVozacId) {
+    return true;
+  }
+
+  try {
+    final token = await fcm.FirebaseMessaging.instance.getToken();
+    if (token == null || token.isEmpty) return false;
+
+    final row = await supabase
+        .from('v3_vozaci')
+        .select('id')
+        .eq('id', targetVozacId)
+        .eq('push_token', token)
+        .eq('aktivno', true)
+        .maybeSingle();
+
+    return row != null;
+  } catch (e) {
+    debugPrint('⚠️ [GPS] Driver-device check greška: $e');
+    return false;
+  }
 }
 
 /// Vozač: svi pokupljeni → ugasi foreground GPS tracking

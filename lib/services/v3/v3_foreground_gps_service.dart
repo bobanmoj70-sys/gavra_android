@@ -260,17 +260,12 @@ class V3ForegroundGpsService {
   /// Provjeri permissions za GPS i notifikacije
   static Future<bool> _checkPermissions() async {
     final locationStatus = await Permission.locationAlways.status;
+    final locationWhenInUse = await Permission.location.status;
     final notificationStatus = await Permission.notification.status;
 
-    if (!locationStatus.isGranted) {
-      final locationRequest = await Permission.locationAlways.request();
-      if (!locationRequest.isGranted) return false;
-    }
+    if (!locationStatus.isGranted && !locationWhenInUse.isGranted) return false;
 
-    if (Platform.isAndroid && !notificationStatus.isGranted) {
-      final notificationRequest = await Permission.notification.request();
-      if (!notificationRequest.isGranted) return false;
-    }
+    if (Platform.isAndroid && !notificationStatus.isGranted) return false;
 
     return true;
   }

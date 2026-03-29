@@ -732,32 +732,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return true;
     }
 
-    if (!mounted) return false;
-
-    final shouldProceed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Obaveštenje o lokaciji (vozač)'),
-        content: const Text(
-          'Lokacija se koristi samo za vozače kako bi putnici dobijali tačan ETA i status vožnje. '
-          'GPS koordinate vozača se šalju u bazu tokom aktivnog rada trackinga. '
-          'Putnici ne dele svoju lokaciju.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Otkaži'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Nastavi'),
-          ),
-        ],
-      ),
-    );
-
-    return shouldProceed == true;
+    if (mounted) {
+      V3AppSnackBar.warning(
+        context,
+        '⚠️ GPS dozvola nije odobrena. Ulogujte se ponovo kao vozač ili uključite dozvolu u Settings.',
+      );
+    }
+    return false;
   }
 
   Future<void> _optimizujRutu({

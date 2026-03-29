@@ -8,6 +8,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_pin_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -443,6 +444,8 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       } catch (e) {
         debugPrint('[PutnikLogin] push_token greška: $e');
       }
+
+      await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
 
       // Ponudi biometrijsku prijavu ili Remember Me
       if (!skipBiometricSetup) {

@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
 import '../models/v3_vozac.dart';
+import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
@@ -177,6 +178,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
       // 🎯 PUSH TOKEN SISTEM (FCM)
       await _savePushToken(vozac.id);
+      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
 
       // Zapamti zadnjeg prijavljenog vozača za auto-login pri sljedećem startu
       await _secureStorage.write(key: 'last_v3_vozac_ime', value: vozac.imePrezime);

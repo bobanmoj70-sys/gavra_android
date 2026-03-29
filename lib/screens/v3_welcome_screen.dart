@@ -9,6 +9,7 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../utils/v3_animation_utils.dart';
@@ -19,7 +20,6 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_validation_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
-import 'v3_permission_screen.dart';
 import 'v3_putnik_login_screen.dart';
 import 'v3_putnik_profil_screen.dart';
 import 'v3_vozac_login_screen.dart';
@@ -131,8 +131,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
 
     // Dozvole — prikaži onboarding screen ako nije prikazan, pa tek onda auto-login
-    await _maybeShowPermissionScreen();
-
     // Auto-login: provjeri in-memory sesiju ili biometriju za zadnjeg vozača
     await _checkAutoLogin();
   }
@@ -145,6 +143,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       _autoLoginDone = true;
       if (!mounted) return;
       await _stopAudio();
+      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       final vozac = V3VozacService.currentVozac!;
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
       V3NavigationUtils.pushReplacement(
@@ -158,6 +157,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       _autoLoginDone = true;
       if (!mounted) return;
       await _stopAudio();
+      await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
       V3NavigationUtils.pushReplacement(
         context,
         V3PutnikProfilScreen(putnikData: V3PutnikService.currentPutnik!),
@@ -219,6 +219,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
       V3VozacService.currentVozac = vozac;
       await _secureStorage.write(key: _lastVozacKey, value: vozac.imePrezime);
+      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
 
       if (!mounted) return;
       await _stopAudio();
@@ -257,6 +258,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
     _autoLoginDone = true;
     V3PutnikService.currentPutnik = found;
+    await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
 
     if (!mounted) return;
     await _stopAudio();
@@ -323,22 +325,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         V3StateUtils.safeSetState(this, () => _isAudioPlaying = false);
       }
     } catch (_) {}
-  }
-
-  Future<void> _maybeShowPermissionScreen() async {
-    final should = await V3PermissionScreen.shouldShow();
-    if (!should || !mounted) return;
-    await Navigator.of(context).push<void>(
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.transparent,
-        pageBuilder: (_, __, ___) => V3PermissionScreen(
-          onDone: () => Navigator.of(context).pop(),
-        ),
-        transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
   }
 
   Future<void> _loginAsVozac(V3Vozac vozac) async {
