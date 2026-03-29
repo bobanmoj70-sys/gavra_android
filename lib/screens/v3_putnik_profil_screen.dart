@@ -358,17 +358,16 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       borderRadius: BorderRadius.circular(8),
                       child: V3ContainerUtils.styledContainer(
                         padding: const EdgeInsets.all(10),
-                        backgroundColor:
-                            koristiSekundarnu ? Colors.orange.withValues(alpha: 0.15) : V3StyleHelper.whiteAlpha05,
+                        backgroundColor: V3StyleHelper.whiteAlpha05,
                         border: Border.all(
-                          color: koristiSekundarnu ? Colors.orange : Colors.white12,
+                          color: Colors.white12,
                         ),
                         borderRadius: BorderRadius.circular(8),
                         child: Row(
                           children: [
                             Icon(
                               koristiSekundarnu ? Icons.location_on : Icons.location_on_outlined,
-                              color: koristiSekundarnu ? Colors.orange : Colors.white54,
+                              color: Colors.white54,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
@@ -379,7 +378,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                   Text(
                                     koristiSekundarnu ? 'Druga adresa' : 'Primarna adresa',
                                     style: TextStyle(
-                                      color: koristiSekundarnu ? Colors.orange : Colors.white70,
+                                      color: Colors.white70,
                                       fontSize: 11,
                                     ),
                                   ),
@@ -393,8 +392,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                             : (V3AdresaService.getAdresaById(putnikCache?['adresa_vs_id'] as String?)
                                                     ?.naziv ??
                                                 'Glavna adresa')),
-                                    style:
-                                        const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                                    style: TextStyle(
+                                      color: koristiSekundarnu ? Colors.greenAccent : Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -612,9 +614,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final vozacId = row['vozac_id']?.toString();
       if (vozacId == null || vozacId.isEmpty) continue;
 
-      final vreme = V3StringUtils.safeSubstringTime(
-        ((row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?)) ?? '',
-      );
+      final vreme = V3StringUtils.safeSubstringTime((row['dodeljeno_vreme'] as String?) ?? '');
       if (vreme.isEmpty) continue;
 
       final datum = DateTime.tryParse(row['datum'] as String? ?? '');
@@ -627,6 +627,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       if (hour == null || minute == null) continue;
 
       final polazak = DateTime(datum.year, datum.month, datum.day, hour, minute);
+      final krajPrikaza = polazak.add(const Duration(hours: 1));
+
+      if (now.isAfter(krajPrikaza)) continue;
 
       kandidati.add({
         'row': row,
@@ -653,16 +656,30 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final selected = kandidati.first;
 
     final row = selected['row'] as Map<String, dynamic>;
-    return Column(
-      children: [
-        V3VozacStatusWidget(
-          putnikId: putnikId,
-          vozacId: selected['vozacId'] as String,
-          vreme: selected['vreme'] as String,
-          grad: row['grad'] as String? ?? '',
-          datum: selected['datum'] as DateTime,
-        ),
-      ],
+    final grad = (row['grad'] as String? ?? '').toUpperCase();
+    final koristiSekundarnu = row['koristi_sekundarnu'] as bool? ?? false;
+    final adresaOverride = row['adresa_id_override'] as String?;
+    String? adresaId;
+
+    if (adresaOverride != null && adresaOverride.isNotEmpty) {
+      adresaId = adresaOverride;
+    } else if (grad == 'BC') {
+      final adresaBc1 = _putnikData['adresa_bc_id'] as String?;
+      final adresaBc2 = _putnikData['adresa_bc_id_2'] as String?;
+      adresaId = koristiSekundarnu ? (adresaBc2 ?? adresaBc1) : (adresaBc1 ?? adresaBc2);
+    } else if (grad == 'VS') {
+      final adresaVs1 = _putnikData['adresa_vs_id'] as String?;
+      final adresaVs2 = _putnikData['adresa_vs_id_2'] as String?;
+      adresaId = koristiSekundarnu ? (adresaVs2 ?? adresaVs1) : (adresaVs1 ?? adresaVs2);
+    }
+
+    return V3VozacStatusWidget(
+      putnikId: putnikId,
+      vozacId: selected['vozacId'] as String,
+      vreme: selected['vreme'] as String,
+      grad: row['grad'] as String? ?? '',
+      datum: selected['datum'] as DateTime,
+      adresaId: adresaId,
     );
   }
 
