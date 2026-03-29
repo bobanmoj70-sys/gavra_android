@@ -88,4 +88,47 @@ class V3OsrmService {
       return null;
     }
   }
+
+  static Future<int?> getRouteDurationMinutes({
+    required double originLat,
+    required double originLng,
+    required double destinationLat,
+    required double destinationLng,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '$_baseUrl/route/v1/driving/$originLng,$originLat;$destinationLng,$destinationLat?overview=false&steps=false',
+      );
+
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) {
+        debugPrint('[V3OsrmService] route status=${response.statusCode} body=${response.body}');
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      if (decoded['code'] != 'Ok') {
+        debugPrint('[V3OsrmService] route code=${decoded['code']}');
+        return null;
+      }
+
+      final routes = decoded['routes'];
+      if (routes is! List || routes.isEmpty) {
+        debugPrint('[V3OsrmService] route routes empty');
+        return null;
+      }
+
+      final firstRoute = routes.first;
+      if (firstRoute is! Map<String, dynamic>) return null;
+
+      final durationSeconds = (firstRoute['duration'] as num?)?.toDouble();
+      if (durationSeconds == null || !durationSeconds.isFinite || durationSeconds <= 0) return null;
+
+      final minutes = (durationSeconds / 60.0).ceil();
+      return minutes < 1 ? 1 : minutes;
+    } catch (e) {
+      debugPrint('[V3OsrmService] getRouteDurationMinutes error: $e');
+      return null;
+    }
+  }
 }
