@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_api_availability/google_api_availability.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../globals.dart';
@@ -21,7 +20,6 @@ class V3AppUpdateService {
               .from('v3_app_settings')
               .select(
                 'latest_version_android, min_supported_version_android, force_update_android, store_url_android, '
-                'latest_version_huawei, min_supported_version_huawei, force_update_huawei, store_url_huawei, '
                 'latest_version_ios, min_supported_version_ios, force_update_ios, store_url_ios',
               )
               .eq('id', 'global')
@@ -35,7 +33,7 @@ class V3AppUpdateService {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version.trim();
 
-      final key = await _resolvePlatformKey();
+      final key = Platform.isIOS ? 'ios' : 'android';
       final selected = _resolvePlatformConfig(row, key);
 
       final latest = (selected['latest'] ?? '').toString().trim();
@@ -68,20 +66,6 @@ class V3AppUpdateService {
     }
   }
 
-  static Future<String> _resolvePlatformKey() async {
-    if (Platform.isIOS) return 'ios';
-    if (!Platform.isAndroid) return 'android';
-
-    try {
-      final availability = await GoogleApiAvailability.instance
-          .checkGooglePlayServicesAvailability()
-          .timeout(const Duration(seconds: 2));
-      return availability == GooglePlayServicesAvailability.success ? 'android' : 'huawei';
-    } catch (_) {
-      return 'android';
-    }
-  }
-
   static Map<String, dynamic> _resolvePlatformConfig(Map<String, dynamic> row, String key) {
     if (key == 'ios') {
       return {
@@ -89,17 +73,6 @@ class V3AppUpdateService {
         'min': row['min_supported_version_ios'],
         'force': row['force_update_ios'],
         'storeUrl': row['store_url_ios'],
-      };
-    }
-
-    if (key == 'huawei') {
-      final huaweiStore = row['store_url_huawei'];
-      return {
-        'latest': row['latest_version_huawei'] ?? row['latest_version_android'],
-        'min': row['min_supported_version_huawei'] ?? row['min_supported_version_android'],
-        'force': row['force_update_huawei'] ?? row['force_update_android'],
-        'storeUrl':
-            (huaweiStore == null || huaweiStore.toString().trim().isEmpty) ? row['store_url_android'] : huaweiStore,
       };
     }
 

@@ -56,7 +56,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           .from('v3_app_settings')
           .select(
             'latest_version_android, min_supported_version_android, force_update_android, store_url_android, '
-            'latest_version_huawei, min_supported_version_huawei, force_update_huawei, store_url_huawei, '
             'latest_version_ios, min_supported_version_ios, force_update_ios, store_url_ios',
           )
           .eq('id', 'global')
@@ -76,16 +75,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final minAndroidCtrl = TextEditingController(text: (row['min_supported_version_android'] ?? '').toString());
     final urlAndroidCtrl = TextEditingController(text: (row['store_url_android'] ?? '').toString());
 
-    final latestHuaweiCtrl = TextEditingController(text: (row['latest_version_huawei'] ?? '').toString());
-    final minHuaweiCtrl = TextEditingController(text: (row['min_supported_version_huawei'] ?? '').toString());
-    final urlHuaweiCtrl = TextEditingController(text: (row['store_url_huawei'] ?? '').toString());
-
     final latestIosCtrl = TextEditingController(text: (row['latest_version_ios'] ?? '').toString());
     final minIosCtrl = TextEditingController(text: (row['min_supported_version_ios'] ?? '').toString());
     final urlIosCtrl = TextEditingController(text: (row['store_url_ios'] ?? '').toString());
 
     var forceAndroid = row['force_update_android'] == true;
-    var forceHuawei = row['force_update_huawei'] == true;
     var forceIos = row['force_update_ios'] == true;
     var isSaving = false;
     final quickVersionCtrl = TextEditingController();
@@ -95,33 +89,23 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final minAndroidRaw = minAndroidCtrl.text.trim();
       final storeAndroid = urlAndroidCtrl.text.trim();
 
-      final latestHuaweiRaw = latestHuaweiCtrl.text.trim();
-      final minHuaweiRaw = minHuaweiCtrl.text.trim();
-      final storeHuawei = urlHuaweiCtrl.text.trim();
-
       final latestIosRaw = latestIosCtrl.text.trim();
       final minIosRaw = minIosCtrl.text.trim();
       final storeIos = urlIosCtrl.text.trim();
 
-      final latestHuawei = latestHuaweiRaw.isEmpty ? latestAndroid : latestHuaweiRaw;
       final latestIos = latestIosRaw.isEmpty ? latestAndroid : latestIosRaw;
 
       final minAndroid = minAndroidRaw.isEmpty ? latestAndroid : minAndroidRaw;
-      final minHuawei = minHuaweiRaw.isEmpty ? latestHuawei : minHuaweiRaw;
       final minIos = minIosRaw.isEmpty ? latestIos : minIosRaw;
 
       String? error;
 
       if (!_isValidVersion(latestAndroid) || !_isValidVersion(minAndroid)) {
         error = 'Android verzija mora biti u formatu npr. 6.0.192';
-      } else if (!_isValidVersion(latestHuawei) || !_isValidVersion(minHuawei)) {
-        error = 'Huawei verzija mora biti u formatu npr. 6.0.192';
       } else if (!_isValidVersion(latestIos) || !_isValidVersion(minIos)) {
         error = 'iOS verzija mora biti u formatu npr. 6.0.192';
       } else if (storeAndroid.isNotEmpty && !_isValidUrl(storeAndroid)) {
         error = 'Android Store URL nije validan';
-      } else if (storeHuawei.isNotEmpty && !_isValidUrl(storeHuawei)) {
-        error = 'Huawei Store URL nije validan';
       } else if (storeIos.isNotEmpty && !_isValidUrl(storeIos)) {
         error = 'iOS Store URL nije validan';
       }
@@ -139,10 +123,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           'min_supported_version_android': minAndroid,
           'force_update_android': forceAndroid,
           'store_url_android': storeAndroid,
-          'latest_version_huawei': latestHuawei,
-          'min_supported_version_huawei': minHuawei,
-          'force_update_huawei': forceHuawei,
-          'store_url_huawei': storeHuawei,
           'latest_version_ios': latestIos,
           'min_supported_version_ios': minIos,
           'force_update_ios': forceIos,
@@ -183,13 +163,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               }
               setModalState(() {
                 latestAndroidCtrl.text = value;
-                latestHuaweiCtrl.text = value;
                 latestIosCtrl.text = value;
                 minAndroidCtrl.text = value;
-                minHuaweiCtrl.text = value;
                 minIosCtrl.text = value;
                 forceAndroid = false;
-                forceHuawei = false;
                 forceIos = false;
               });
             }
@@ -197,7 +174,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             void copyMinFromLatestAll() {
               setModalState(() {
                 minAndroidCtrl.text = latestAndroidCtrl.text.trim();
-                minHuaweiCtrl.text = latestHuaweiCtrl.text.trim();
                 minIosCtrl.text = latestIosCtrl.text.trim();
               });
             }
@@ -205,7 +181,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             void forceOnAll() {
               setModalState(() {
                 forceAndroid = true;
-                forceHuawei = true;
                 forceIos = true;
               });
             }
@@ -213,7 +188,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             void forceOffAll() {
               setModalState(() {
                 forceAndroid = false;
-                forceHuawei = false;
                 forceIos = false;
               });
             }
@@ -343,14 +317,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                 onForceChanged: (v) => setModalState(() => forceAndroid = v),
                               ),
                               section(
-                                title: 'Huawei (AppGallery)',
-                                latest: latestHuaweiCtrl,
-                                min: minHuaweiCtrl,
-                                store: urlHuaweiCtrl,
-                                force: forceHuawei,
-                                onForceChanged: (v) => setModalState(() => forceHuawei = v),
-                              ),
-                              section(
                                 title: 'iOS (App Store)',
                                 latest: latestIosCtrl,
                                 min: minIosCtrl,
@@ -399,9 +365,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     latestAndroidCtrl.dispose();
     minAndroidCtrl.dispose();
     urlAndroidCtrl.dispose();
-    latestHuaweiCtrl.dispose();
-    minHuaweiCtrl.dispose();
-    urlHuaweiCtrl.dispose();
     latestIosCtrl.dispose();
     minIosCtrl.dispose();
     urlIosCtrl.dispose();
@@ -1002,9 +965,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   const PopupMenuItem(
                                       value: '__vozaci__',
                                       child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
-                                  const PopupMenuItem(
-                                      value: '__updates__',
-                                      child: Text('🔄  Update verzije', style: TextStyle(color: Colors.white))),
                                 ],
                               );
                               if (val == null) return;
@@ -1012,10 +972,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                 if (context.mounted) {
                                   V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
                                 }
-                                return;
-                              }
-                              if (val == '__updates__') {
-                                await _openUpdateVersionsEditor();
                                 return;
                               }
                               navBarTypeNotifier.value = val;
@@ -1153,7 +1109,26 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Spacer(flex: 1),
+                    Expanded(
+                      flex: 1,
+                      child: _NavBtn(
+                        color: Colors.purple,
+                        height: V3ContainerUtils.responsiveHeight(context, 50),
+                        onTap: _openUpdateVersionsEditor,
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '🔄',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.white,
+                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

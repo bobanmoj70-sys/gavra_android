@@ -100,7 +100,6 @@ flutter:
     - assets/kasno_je.mp3 # 🎵 GAVRA 013 pesma "Beogradski sindikat - Kasno je"
     - assets/bruda.mp3 # 🎵 Brudina specijalna pesma
     - assets/bilevski.mp3 # 🎵 Bilevskijeva specijalna pesma
-    - assets/agconnect-services.json # 🗺️ Huawei Map Kit API config
     - assets/logo_gavra.jpg # 🎨 Logo firme Gavra 013
     - assets/logo_transparent.png # 🎨 Logo sa transparentnom pozadinom
     - assets/weather/ # 🌤️ Vremenske ikone

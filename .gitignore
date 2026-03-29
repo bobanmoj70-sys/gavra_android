@@ -96,7 +96,6 @@ github-mcp/refresh-secrets.cjs
 github-mcp/setup-secrets.cjs
 github-mcp/setup-secrets.js
 google-play-mcp/play-store-key.json
-huawei-appgallery-mcp/**/.env
 appstore-mcp/**/.env
 
 # Build/generated

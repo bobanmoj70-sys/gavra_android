@@ -175,8 +175,8 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       // ✅ LOGIN USPJEŠAN
       V3VozacService.currentVozac = vozac;
 
-      // 🎯 HIBRIDNI PUSH TOKEN SISTEM (FCM + HMS)
-      await _saveHybridPushTokens(vozac.id);
+      // 🎯 PUSH TOKEN SISTEM (FCM)
+      await _savePushToken(vozac.id);
 
       // Zapamti zadnjeg prijavljenog vozača za auto-login pri sljedećem startu
       await _secureStorage.write(key: 'last_v3_vozac_ime', value: vozac.imePrezime);
@@ -373,7 +373,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
   }
 
   /// Čuva FCM push token
-  Future<void> _saveHybridPushTokens(String vozacId) async {
+  Future<void> _savePushToken(String vozacId) async {
     if (vozacId.isEmpty) return;
 
     String? fcmToken;
