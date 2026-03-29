@@ -8,6 +8,21 @@ import '../realtime/v3_master_realtime_manager.dart';
 class V3RouteOptimizationService {
   V3RouteOptimizationService._();
 
+  static String _normalizeTime(String? value) {
+    if (value == null || value.trim().isEmpty) return '';
+    final parts = value.trim().split(':');
+    if (parts.length < 2) return value.trim();
+    final hour = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
+    final minute = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  static int? _parseRouteOrder(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+
   /// Optimizuje rutu za specifičnog vozača na određeni datum/vreme/grad
   static Future<Map<String, dynamic>?> optimizePickupRoute({
     required String vozacId,
@@ -47,13 +62,15 @@ class V3RouteOptimizationService {
       // Dobija podatke iz legacy v3GpsRasporedCache (izvor: v3_operativna_nedelja)
       final cache = V3MasterRealtimeManager.instance.v3GpsRasporedCache;
       final datumStr = V3DanHelper.toIsoDate(datum);
+      final gradNorm = grad.toUpperCase();
+      final vremeNorm = _normalizeTime(vreme);
 
       final putnici = cache.values
           .where((row) =>
               row['vozac_id'] == vozacId &&
               V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') == datumStr &&
-              row['grad'] == grad &&
-              row['vreme'] == vreme &&
+          (row['grad']?.toString().toUpperCase() ?? '') == gradNorm &&
+          _normalizeTime(row['vreme']?.toString()) == vremeNorm &&
               row['aktivno'] == true &&
               row['pickup_lat'] != null &&
               row['pickup_lng'] != null)
@@ -61,8 +78,8 @@ class V3RouteOptimizationService {
 
       // Sortira po route_order ako postoji, inače po pickup_naziv
       putnici.sort((a, b) {
-        final orderA = a['route_order'] as int?;
-        final orderB = b['route_order'] as int?;
+        final orderA = _parseRouteOrder(a['route_order']);
+        final orderB = _parseRouteOrder(b['route_order']);
 
         if (orderA != null && orderB != null) {
           return orderA.compareTo(orderB);

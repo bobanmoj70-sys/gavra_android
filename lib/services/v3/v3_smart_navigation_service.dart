@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import '../../models/v3_putnik.dart';
 import 'v3_adresa_service.dart';
 import 'v3_osrm_service.dart';
-import 'v3_photon_geocoding_service.dart';
 
 class V3NavigationResult {
   final bool success;
@@ -70,10 +69,9 @@ class V3SmartNavigationService {
       // 1. Odredimo ciljni grad (suprotan od polaznog)
       final targetCity = fromCity.toUpperCase() == 'BC' ? 'VS' : 'BC';
 
-      // 2. Filtriraj putnike sa validnim adresama i probaj Photon geocoding kada fale koordinate
+      // 2. Filtriraj putnike sa validnim adresama i postojećim koordinatama
       final candidates = <_V3RouteCandidate>[];
       final skippedData = <Map<String, dynamic>>[];
-      var geocodedCount = 0;
 
       for (final item in data) {
         final putnik = item['putnik'] as V3Putnik?;
@@ -97,32 +95,8 @@ class V3SmartNavigationService {
           continue;
         }
 
-        double? lat = adresa.gpsLat;
-        double? lng = adresa.gpsLng;
-
-        if (lat == null || lng == null) {
-          final geo = await V3PhotonGeocodingService.geocodeAddress(
-            address: adresa.naziv,
-            city: adresa.grad ?? targetCity,
-          );
-
-          if (geo != null) {
-            lat = geo.lat;
-            lng = geo.lng;
-            geocodedCount++;
-
-            try {
-              await V3AdresaService.updateAdresaCoordinates(
-                id: adresa.id,
-                lat: geo.lat,
-                lng: geo.lng,
-              );
-            } catch (_) {
-              // Ne prekidaj optimizaciju ako update koordinata ne uspe.
-            }
-          }
-        }
-
+        final lat = adresa.gpsLat;
+        final lng = adresa.gpsLng;
         if (lat == null || lng == null) {
           skippedData.add(item);
           continue;
@@ -139,7 +113,7 @@ class V3SmartNavigationService {
       }
 
       if (candidates.isEmpty) {
-        return V3NavigationResult.error('Nema putnika sa validnim adresama za optimizaciju');
+        return V3NavigationResult.error('Nema putnika sa validnim GPS koordinatama za optimizaciju');
       }
 
       // 3. GPS-bazirana optimizacija ako su prosleđene koordinate vozača
@@ -215,10 +189,10 @@ class V3SmartNavigationService {
         });
       }
 
-      final usedGeoText = geocodedCount > 0 ? ' • Photon: +$geocodedCount adresa' : '';
+        final skippedText = skippedData.isNotEmpty ? ' • preskočeno bez koordinata: ${skippedData.length}' : '';
       final modeText =
           usedOsrm ? 'OSRM optimizovana' : (driverLat != null && driverLng != null ? 'GPS sortirana' : 'Sortirana');
-      final message = '$modeText: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity$usedGeoText';
+        final message = '$modeText: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity$skippedText';
 
       return V3NavigationResult(
         success: true,
