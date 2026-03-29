@@ -25,7 +25,7 @@ import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_update_banner.dart';
-import '../widgets/v3_vozac_eta_widget.dart';
+import '../widgets/v3_vozac_status_widget.dart';
 import 'v3_putnik_statistika_screen.dart';
 import 'v3_welcome_screen.dart';
 
@@ -592,42 +592,78 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   // _showAlternativaDialog obrisan jer alternativa ide samo preko push notifikacije.
-  // ─── TRACKING WIDGETS ────────────────────────────────────────────
+  // ─── STATUS WIDGET ───────────────────────────────────────────────
   Widget _buildVozacEtaWidgets() {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return const SizedBox.shrink();
-    // Pronađi aktivne vožnje za tekuću sedmicu
-    final aktivneVoznje = <Widget>[];
     final rm = V3MasterRealtimeManager.instance;
     final operativniTermini = rm.operativnaNedeljaCache.values
         .where((r) => (r['putnik_id']?.toString() ?? '') == putnikId)
         .where((r) => r['aktivno'] != false)
         .where((r) => (r['vozac_id'] as String?) != null)
+        .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
         .where((r) => ((r['status_final']?.toString() ?? '').trim().toLowerCase()) == 'odobreno')
         .toList();
+
+    final now = DateTime.now();
+    final kandidati = <Map<String, dynamic>>[];
 
     for (final row in operativniTermini) {
       final vozacId = row['vozac_id']?.toString();
       if (vozacId == null || vozacId.isEmpty) continue;
-      final grad = row['grad'] as String? ?? '';
+
       final vreme = V3StringUtils.safeSubstringTime(
         ((row['dodeljeno_vreme'] as String?) ?? (row['zeljeno_vreme'] as String?)) ?? '',
       );
       if (vreme.isEmpty) continue;
+
       final datum = DateTime.tryParse(row['datum'] as String? ?? '');
       if (datum == null) continue;
 
-      aktivneVoznje.add(V3VozacEtaWidget(
-        putnikId: putnikId,
-        vozacId: vozacId,
-        vreme: vreme,
-        grad: grad,
-        datum: datum,
-      ));
+      final parts = vreme.split(':');
+      if (parts.length < 2) continue;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) continue;
+
+      final polazak = DateTime(datum.year, datum.month, datum.day, hour, minute);
+
+      kandidati.add({
+        'row': row,
+        'vozacId': vozacId,
+        'vreme': vreme,
+        'datum': datum,
+        'polazak': polazak,
+      });
     }
-    // Ako nema aktivnih vožnji, ne prikazuj ništa
-    if (aktivneVoznje.isEmpty) return const SizedBox.shrink();
-    return Column(children: aktivneVoznje);
+
+    if (kandidati.isEmpty) return const SizedBox.shrink();
+
+    kandidati.sort((a, b) {
+      final pa = a['polazak'] as DateTime;
+      final pb = b['polazak'] as DateTime;
+      final aPast = pa.isBefore(now);
+      final bPast = pb.isBefore(now);
+      if (aPast != bPast) return aPast ? 1 : -1;
+      final da = pa.difference(now).abs().inMinutes;
+      final db = pb.difference(now).abs().inMinutes;
+      return da.compareTo(db);
+    });
+
+    final selected = kandidati.first;
+
+    final row = selected['row'] as Map<String, dynamic>;
+    return Column(
+      children: [
+        V3VozacStatusWidget(
+          putnikId: putnikId,
+          vozacId: selected['vozacId'] as String,
+          vreme: selected['vreme'] as String,
+          grad: row['grad'] as String? ?? '',
+          datum: selected['datum'] as DateTime,
+        ),
+      ],
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -673,8 +709,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 children: [
                   // Update banner (opcioni/obavezni)
                   const V3UpdateBanner(),
-                  // ── TRACKING WIDGET ──────────────────────────────────
-                  _buildVozacEtaWidgets(),
                   // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
                   if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
                     _NotifBanner(onEnable: _requestNotifPermission),
@@ -691,6 +725,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     adresaVsNaziv2: adresaVsNaziv2,
                   ),
                   const SizedBox(height: 16),
+                  // ── STATUS WIDGET ────────────────────────────────────
+                  _buildVozacEtaWidgets(),
+                  const SizedBox(height: 10),
                   _buildStatistikaCard(tip: tip, stats: stats, cenaInfo: cenaInfo, ukupanDug: ukupanDug),
                   const SizedBox(height: 10),
                   _buildDetaljneStatistikeSection(

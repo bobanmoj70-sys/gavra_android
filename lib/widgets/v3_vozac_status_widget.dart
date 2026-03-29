@@ -17,14 +17,14 @@ import '../utils/v3_stream_utils.dart';
 ///
 /// AKTIVACIJA: 15 min pre planiranog polaska do završetka vožnje
 /// TEHNOLOGIJA: Koristi postojeći GPS stream, Haversine ETA kalkulacija
-class V3VozacEtaWidget extends StatefulWidget {
+class V3VozacStatusWidget extends StatefulWidget {
   final String putnikId;
   final String vozacId;
   final String vreme;
   final String grad;
   final DateTime datum;
 
-  const V3VozacEtaWidget({
+  const V3VozacStatusWidget({
     super.key,
     required this.putnikId,
     required this.vozacId,
@@ -34,13 +34,14 @@ class V3VozacEtaWidget extends StatefulWidget {
   });
 
   @override
-  State<V3VozacEtaWidget> createState() => _V3VozacEtaWidgetState();
+  State<V3VozacStatusWidget> createState() => _V3VozacStatusWidgetState();
 }
 
-class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
+class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
+  static const String _waitingEtaText = 'Polazak je uskoro, molimo budite spremni';
+
   // ETA подaci
   int? _etaMinutes;
-  String _status = 'Priprema se...';
   bool _isVisible = false;
   double _effectiveSpeedKmh = 40.0;
 
@@ -55,12 +56,12 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
     super.initState();
     _initializeData();
     _checkVisibility();
-    _startTracking();
+    _startStatusStream();
   }
 
   @override
   void dispose() {
-    V3StreamUtils.cancelSubscription('vozac_eta_location_for_putnik');
+    V3StreamUtils.cancelSubscription('vozac_status_location_for_putnik');
     super.dispose();
   }
 
@@ -96,11 +97,10 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
       return;
     }
 
-    // Vidljiv 15 min pre polaska do 2 sata nakon polaska
-    final showFrom = polazakVreme.subtract(const Duration(minutes: 15));
-    final showUntil = polazakVreme.add(const Duration(hours: 2));
+    // Vidljiv odmah nakon START događaja do 1 sat nakon polaska
+    final showUntil = polazakVreme.add(const Duration(hours: 1));
 
-    _isVisible = now.isAfter(showFrom) && now.isBefore(showUntil);
+    _isVisible = now.isBefore(showUntil);
   }
 
   DateTime? _parsePolazakVreme() {
@@ -123,10 +123,10 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
     }
   }
 
-  void _startTracking() {
+  void _startStatusStream() {
     // Real-time subscription na vozačevu lokaciju
     V3StreamUtils.subscribe<void>(
-        key: 'vozac_eta_location_for_putnik',
+        key: 'vozac_status_location_for_putnik',
         stream: V3MasterRealtimeManager.instance.onChange,
         onData: (_) {
           _checkVisibility();
@@ -160,7 +160,6 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
 
   void _updateETA() {
     if (_vozacLokacija == null || _putnikAdresa == null || !_putnikAdresa!.hasValidCoordinates) {
-      _status = 'GPS nedostupan';
       _etaMinutes = null;
       return;
     }
@@ -169,7 +168,6 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
     final vozacLng = (_vozacLokacija!['lng'] as num?)?.toDouble();
 
     if (vozacLat == null || vozacLng == null) {
-      _status = 'Lokacija nedostupna';
       _etaMinutes = null;
       return;
     }
@@ -184,7 +182,6 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
 
     if (distance < 0.1) {
       _etaMinutes = 0;
-      _status = 'Vozač je stigao!';
       return;
     }
 
@@ -193,16 +190,6 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
     final etaHours = distance / averageSpeedKmh;
     final etaRawMinutes = (etaHours * 60).round();
     _etaMinutes = etaRawMinutes < 0 ? 0 : (etaRawMinutes > (24 * 60) ? 24 * 60 : etaRawMinutes);
-
-    // Status na osnovu udaljenosti
-    if (distance < 0.5) {
-      // < 500m
-      _status = 'Vozač je blizu';
-    } else if (_etaMinutes! <= 2) {
-      _status = 'Vozač stiže uskoro';
-    } else {
-      _status = 'Vozač je na putu';
-    }
   }
 
   double _resolveEtaSpeedKmh() {
@@ -241,7 +228,7 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
   double _toRadians(double degrees) => degrees * math.pi / 180;
 
   String _formatETA() {
-    if (_etaMinutes == null) return '';
+    if (_etaMinutes == null) return _waitingEtaText;
 
     if (_etaMinutes! < 1) {
       return 'stiže sada';
@@ -333,7 +320,7 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
 
           const SizedBox(height: 16),
 
-          // Status i ETA
+          // ETA
           Row(
             children: [
               Expanded(
@@ -341,23 +328,13 @@ class _V3VozacEtaWidgetState extends State<V3VozacEtaWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _status,
+                      _formatETA(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (_etaMinutes != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatETA(),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
