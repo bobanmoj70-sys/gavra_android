@@ -35,7 +35,6 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
   late final Animation<Offset> _slideAnim;
 
   bool _loading = false;
-  bool _locationDisclosureAccepted = false;
 
   @override
   void initState() {
@@ -56,15 +55,6 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
 
   Future<void> _onOdobri() async {
     if (_loading) return;
-    if (!_locationDisclosureAccepted) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Potvrdite obaveštenje o korišćenju lokacije da biste nastavili.'),
-        ),
-      );
-      return;
-    }
     if (mounted) {
       setState(() => _loading = true);
     }
@@ -158,7 +148,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                         const SizedBox(height: 10),
 
                         Text(
-                          'Pre nastavka pročitajte obaveštenje o korišćenju podataka.\nU ovom koraku odobravate notifikacije.',
+                          'Pre nastavka pročitajte obaveštenje o korišćenju podataka.\nU ovom koraku odobravate samo notifikacije.',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 14,
@@ -188,7 +178,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'UOČLJIVO OBAVEŠTENJE O LOKACIJI',
+                                'NAPOMENA ZA GPS',
                                 style: TextStyle(
                                   color: Color(0xFFFFCC80),
                                   fontSize: 13,
@@ -198,7 +188,7 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Aplikacija prikuplja lokaciju isključivo za vozače tokom aktivne vožnje radi praćenja rute, ETA i operativne koordinacije. Lokacija se ne koristi za oglase i ne prikuplja se za putnike van vozačkog toka.',
+                                'GPS dozvola se traži samo vozačima kada pokrenu START tracking. Putnici ne daju GPS dozvolu kroz ovaj onboarding.',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.92),
                                   fontSize: 12.8,
@@ -206,30 +196,6 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          activeColor: const Color(0xFF34C759),
-                          value: _locationDisclosureAccepted,
-                          onChanged: _loading
-                              ? null
-                              : (value) {
-                                  if (mounted) {
-                                    setState(() => _locationDisclosureAccepted = value ?? false);
-                                  }
-                                },
-                          title: Text(
-                            'Razumem obaveštenje o korišćenju lokacije i saglasan/saglasna sam sa ovom namenom.',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.88),
-                              fontSize: 12.6,
-                              height: 1.35,
-                            ),
                           ),
                         ),
 

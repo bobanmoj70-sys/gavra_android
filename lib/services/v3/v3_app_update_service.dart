@@ -32,13 +32,17 @@ class V3AppUpdateService {
 
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version.trim();
+      final playStoreUrl = 'https://play.google.com/store/apps/details?id=${packageInfo.packageName}';
 
       final key = Platform.isIOS ? 'ios' : 'android';
       final selected = _resolvePlatformConfig(row, key);
 
       final latest = (selected['latest'] ?? '').toString().trim();
       final minSupported = (selected['min'] ?? '').toString().trim();
-      final storeUrl = (selected['storeUrl'] ?? '').toString().trim();
+      var storeUrl = (selected['storeUrl'] ?? '').toString().trim();
+      if (Platform.isAndroid && (storeUrl.isEmpty || _isLegacyHuaweiStoreUrl(storeUrl))) {
+        storeUrl = playStoreUrl;
+      }
       final forceFlag = selected['force'] == true;
 
       if (latest.isEmpty || storeUrl.isEmpty) {
@@ -96,6 +100,14 @@ class V3AppUpdateService {
       if (c > t) return 1;
     }
     return 0;
+  }
+
+  static bool _isLegacyHuaweiStoreUrl(String url) {
+    final value = url.toLowerCase();
+    return value.contains('appgallery') ||
+        value.contains('appmarket://') ||
+        value.contains('huawei') ||
+        value.contains('hiapp');
   }
 
   static List<int> _versionToParts(String version) {

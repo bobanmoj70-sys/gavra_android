@@ -279,12 +279,12 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
     return;
   }
 
-  // Prikaži notification sa Auto Start dugmetom
-  final gpsStartBody = 'Kreće za 15 min ($putniciBroj putnika) - Pokreni GPS tracking?';
+  // Prikaži informativnu notifikaciju (auto-start je ugašen)
+  final gpsStartBody = 'Kreće za 15 min ($putniciBroj putnika). Pokreni START ručno u vozač ekranu.';
   final androidDetails = AndroidNotificationDetails(
     'gavra_gps_auto',
-    'GPS Auto Start',
-    channelDescription: 'Automatsko pokretanje GPS trackinga',
+    'GPS Podsetnik',
+    channelDescription: 'Podsetnik vozaču za ručno pokretanje GPS trackinga',
     importance: Importance.max,
     priority: Priority.high,
     styleInformation: BigTextStyleInformation(
@@ -292,18 +292,6 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
       contentTitle: '🚗 GPS Tracking',
       summaryText: 'Gavra GPS',
     ),
-    actions: [
-      AndroidNotificationAction(
-        'auto_start_gps',
-        '🚗 Pokreni GPS',
-        showsUserInterface: false,
-      ),
-      AndroidNotificationAction(
-        'dismiss_gps',
-        '❌ Odbaci',
-        showsUserInterface: false,
-      ),
-    ],
   );
 
   await flutterLocalNotificationsPlugin.show(
@@ -311,10 +299,9 @@ Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
     '🚗 GPS Tracking',
     gpsStartBody,
     NotificationDetails(android: androidDetails),
-    payload: 'gps_auto_start|$vozacId|$polazakVreme',
   );
 
-  debugPrint('📍 [GPS] Auto start notification prikazana za vozača $vozacId');
+  debugPrint('📍 [GPS] Podsetnik prikazan za vozača $vozacId');
 }
 
 /// Vozač: svi pokupljeni → ugasi foreground GPS tracking
@@ -388,18 +375,6 @@ void onNotificationTap(NotificationResponse response) async {
   }
 
   try {
-    // GPS Auto Start handling
-    if ((payload.startsWith('gps_auto_start|') || payload.startsWith('gps_auto_start:')) &&
-        actionId == 'auto_start_gps') {
-      final parsed = _parseGpsAutoStartPayload(payload);
-      if (parsed != null) {
-        await _triggerAutoGpsStart(parsed['vozacId']!, parsed['polazakVreme']!);
-      } else {
-        await _showActionFeedback('⚠️ Greška', 'Neispravan GPS auto-start payload.');
-      }
-      return;
-    }
-
     // V3 alternativa handling
     // payload format (strict): "id|altPre|altPosle"
     final parts = payload.split('|');
@@ -428,40 +403,6 @@ void onNotificationTap(NotificationResponse response) async {
     debugPrint('[onNotificationTap] Greška pri obradi akcije: $e');
     await _showActionFeedback('⚠️ Greška', 'Akcija nije uspela: $e');
   }
-}
-
-Map<String, String>? _parseGpsAutoStartPayload(String payload) {
-  if (payload.startsWith('gps_auto_start|')) {
-    final parts = payload.split('|');
-    if (parts.length >= 3) {
-      final vozacId = parts[1].trim();
-      final polazakVreme = parts.sublist(2).join('|').trim();
-      if (vozacId.isNotEmpty && polazakVreme.isNotEmpty) {
-        return {
-          'vozacId': vozacId,
-          'polazakVreme': polazakVreme,
-        };
-      }
-    }
-    return null;
-  }
-
-  if (payload.startsWith('gps_auto_start:')) {
-    final rest = payload.substring('gps_auto_start:'.length);
-    final firstColon = rest.indexOf(':');
-    if (firstColon > 0) {
-      final vozacId = rest.substring(0, firstColon).trim();
-      final polazakVreme = rest.substring(firstColon + 1).trim();
-      if (vozacId.isNotEmpty && polazakVreme.isNotEmpty) {
-        return {
-          'vozacId': vozacId,
-          'polazakVreme': polazakVreme,
-        };
-      }
-    }
-  }
-
-  return null;
 }
 
 String? _extractTimeToken(String value) {
@@ -557,23 +498,6 @@ Future<void> _showAlternativaActionsNotification(
   );
 }
 
-String? _extractGradToken(String value) {
-  final up = value.toUpperCase();
-  if (up.contains('BC')) return 'BC';
-  if (up.contains('VS')) return 'VS';
-  return null;
-}
-
-DateTime? _combineDatumVreme(dynamic datum, String? vremeHHmm) {
-  if (datum == null || vremeHHmm == null || vremeHHmm.isEmpty) return null;
-  try {
-    final datePart = datum.toString().split('T').first;
-    return DateTime.parse('${datePart}T$vremeHHmm:00');
-  } catch (_) {
-    return null;
-  }
-}
-
 Future<void> _showActionFeedback(String title, String body) async {
   final androidDetails = AndroidNotificationDetails(
     'gavra_push_v2',
@@ -659,202 +583,6 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
     );
   } catch (e) {
     debugPrint('❌ [Push] Greška pri otvaranju putnik profila: $e');
-  }
-}
-
-/// Pokreće GPS tracking iz background notification
-Future<void> _triggerAutoGpsStart(String vozacId, String polazakVreme) async {
-  try {
-    // NOVO: Pozovi SQL funkciju za auto GPS start
-    final result = await Supabase.instance.client.rpc('fn_v3_trigger_auto_gps_start', params: {
-      'p_vozac_id': vozacId,
-      'p_polazak_vreme': polazakVreme,
-    });
-
-    if (result != null && result['success'] == true) {
-      debugPrint('✅ [GPS AutoStart] ${result['message']}');
-
-      // Prikaži success notification
-      final gpsAutoStartedBody =
-          '${result['vozac_ime']} - ${result['grad']} ${result['vreme']} (${result['putnici_count']} putnika)';
-      await flutterLocalNotificationsPlugin.show(
-        888,
-        '✅ GPS Automatski Pokrenut',
-        gpsAutoStartedBody,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'gavra_gps_success',
-            'GPS Success',
-            importance: Importance.max,
-            priority: Priority.high,
-            styleInformation: BigTextStyleInformation(
-              gpsAutoStartedBody,
-              contentTitle: '✅ GPS Automatski Pokrenut',
-              summaryText: 'Gavra GPS',
-            ),
-          ),
-        ),
-      );
-
-      // Pozovi V3ForegroundGpsService za stvarni GPS tracking
-      final success = await V3ForegroundGpsService.startTracking(
-        vozacId: vozacId,
-        vozacIme: result['vozac_ime'] ?? 'Vozač',
-        polazakVreme: '${result['vreme'] ?? polazakVreme}',
-        putnici: [], // Simplified - dodati parsing ako potrebno
-        grad: result['grad'] ?? 'BC',
-      );
-
-      if (!success) {
-        debugPrint('❌ [GPS AutoStart] Failed to start foreground GPS service');
-        await _triggerAutoGpsStartFallback(vozacId, polazakVreme);
-      }
-    } else {
-      debugPrint('❌ [GPS AutoStart] SQL function failed: ${result?['message']}');
-      await _triggerAutoGpsStartFallback(vozacId, polazakVreme);
-    }
-  } catch (e) {
-    debugPrint('❌ [GPS AutoStart] Error: $e');
-
-    // Fallback na stari sistem ako nova funkcija ne radi
-    await _triggerAutoGpsStartFallback(vozacId, polazakVreme);
-  }
-}
-
-/// Fallback - stari sistem za auto GPS start
-Future<void> _triggerAutoGpsStartFallback(String vozacId, String polazakVreme) async {
-  try {
-    // Učitaj vozača
-    final vozacData =
-        await Supabase.instance.client.from('v3_vozaci').select('id, ime_prezime').eq('id', vozacId).maybeSingle();
-
-    if (vozacData == null) {
-      debugPrint('⚠️ [GPS AutoStart Fallback] Vozač not found: $vozacId');
-      return;
-    }
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final todayIso = today.toIso8601String().split('T').first;
-    final tomorrowIso = tomorrow.toIso8601String().split('T').first;
-
-    final rowsRaw = await Supabase.instance.client
-        .from('v3_operativna_nedelja')
-        .select('datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, aktivno, putnik_id')
-        .eq('vozac_id', vozacId)
-        .eq('aktivno', true)
-        .gte('datum', todayIso)
-        .lte('datum', tomorrowIso);
-
-    final rows = (rowsRaw as List).cast<Map<String, dynamic>>().where((row) {
-      final status = (row['status_final']?.toString() ?? '').toLowerCase();
-      if (status == 'otkazano' || status == 'odbijeno') return false;
-      return row['putnik_id'] != null;
-    }).toList();
-
-    if (rows.isEmpty) {
-      debugPrint('⚠️ [GPS AutoStart Fallback] Nema aktivnih termina/putnika za vozača $vozacId');
-      return;
-    }
-
-    final targetGrad = _extractGradToken(polazakVreme);
-    final targetTimeRaw = _extractTimeToken(polazakVreme);
-    final targetTime = targetTimeRaw != null ? _normalizeTimeHHmm(targetTimeRaw) : null;
-
-    String rowGrad(Map<String, dynamic> row) => (row['grad']?.toString() ?? '').toUpperCase();
-
-    String? rowTime(Map<String, dynamic> row) {
-      final raw = row['dodeljeno_vreme']?.toString() ?? row['zeljeno_vreme']?.toString() ?? '';
-      final token = _extractTimeToken(raw);
-      if (token == null) return null;
-      return _normalizeTimeHHmm(token);
-    }
-
-    DateTime? rowDateTime(Map<String, dynamic> row) => _combineDatumVreme(row['datum'], rowTime(row));
-
-    List<Map<String, dynamic>> scoped = rows;
-    if (targetTime != null) {
-      final byTime = scoped.where((r) => rowTime(r) == targetTime).toList();
-      if (byTime.isNotEmpty) scoped = byTime;
-    }
-    if (targetGrad != null) {
-      final byGrad = scoped.where((r) => rowGrad(r) == targetGrad).toList();
-      if (byGrad.isNotEmpty) scoped = byGrad;
-    }
-
-    scoped.sort((a, b) {
-      final aDt = rowDateTime(a);
-      final bDt = rowDateTime(b);
-      if (aDt == null && bDt == null) return 0;
-      if (aDt == null) return 1;
-      if (bDt == null) return -1;
-
-      final aDiff = aDt.difference(now).inMinutes;
-      final bDiff = bDt.difference(now).inMinutes;
-
-      final aScore = aDiff >= 0 ? aDiff : (10000 + aDiff.abs());
-      final bScore = bDiff >= 0 ? bDiff : (10000 + bDiff.abs());
-      return aScore.compareTo(bScore);
-    });
-
-    final selected = scoped.first;
-    final selectedGrad = rowGrad(selected).isNotEmpty ? rowGrad(selected) : (targetGrad ?? 'BC');
-    final selectedTime = rowTime(selected) ?? targetTime ?? '';
-    final selectedDate = selected['datum']?.toString().split('T').first ?? todayIso;
-
-    final putniciCount = scoped.where((r) {
-      final sameGrad = rowGrad(r) == selectedGrad;
-      final sameTime = rowTime(r) == selectedTime;
-      final sameDate = (r['datum']?.toString().split('T').first ?? '') == selectedDate;
-      return sameGrad && sameTime && sameDate;
-    }).length;
-
-    final success = await V3ForegroundGpsService.startTracking(
-      vozacId: vozacId,
-      vozacIme: vozacData['ime_prezime']?.toString() ?? 'Vozač',
-      polazakVreme: selectedTime,
-      putnici: const [],
-      grad: selectedGrad,
-    );
-
-    if (!success) {
-      debugPrint('❌ [GPS AutoStart Fallback] Foreground tracking start failed');
-      return;
-    }
-
-    await V3ForegroundGpsService.syncTrackingStatus(
-      vozacId: vozacId,
-      grad: selectedGrad,
-      polazakVreme: selectedTime,
-      gpsStatus: 'tracking',
-      datumIso: selectedDate,
-    );
-
-    final gpsFallbackBody =
-        '${vozacData['ime_prezime'] ?? 'Vozač'} - $selectedGrad $selectedTime ($putniciCount putnika)';
-    await flutterLocalNotificationsPlugin.show(
-      888,
-      '✅ GPS Automatski Pokrenut (fallback)',
-      gpsFallbackBody,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'gavra_gps_success',
-          'GPS Success',
-          importance: Importance.max,
-          priority: Priority.high,
-          styleInformation: BigTextStyleInformation(
-            gpsFallbackBody,
-            contentTitle: '✅ GPS Automatski Pokrenut (fallback)',
-            summaryText: 'Gavra GPS',
-          ),
-        ),
-      ),
-    );
-
-    debugPrint('[GPS AutoStart Fallback] Pokrenut: vozac=$vozacId grad=$selectedGrad vreme=$selectedTime');
-  } catch (e) {
-    debugPrint('❌ [GPS AutoStart Fallback] Error: $e');
   }
 }
 

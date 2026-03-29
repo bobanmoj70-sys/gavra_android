@@ -50,6 +50,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     return uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 
+  bool _isLegacyHuaweiStoreUrl(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized.contains('appgallery') ||
+        normalized.contains('appmarket://') ||
+        normalized.contains('huawei') ||
+        normalized.contains('hiapp');
+  }
+
   Future<Map<String, dynamic>> _loadUpdateSettings() async {
     try {
       final row = await supabase
@@ -106,6 +114,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         error = 'iOS verzija mora biti u formatu npr. 6.0.192';
       } else if (storeAndroid.isNotEmpty && !_isValidUrl(storeAndroid)) {
         error = 'Android Store URL nije validan';
+      } else if (_isLegacyHuaweiStoreUrl(storeAndroid)) {
+        error = 'Huawei/AppGallery URL više nije podržan. Koristi Play Store URL.';
       } else if (storeIos.isNotEmpty && !_isValidUrl(storeIos)) {
         error = 'iOS Store URL nije validan';
       }
@@ -116,6 +126,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       setModalState(() => isSaving = true);
+      var keepModalOpen = true;
       try {
         await supabase.from('v3_app_settings').upsert({
           'id': 'global',
@@ -130,6 +141,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         });
 
         if (!mounted) return;
+        keepModalOpen = false;
         Navigator.of(modalContext).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Update verzije sačuvane')),
@@ -140,7 +152,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           SnackBar(content: Text('Greška pri čuvanju: $e')),
         );
       } finally {
-        if (mounted) {
+        if (mounted && keepModalOpen) {
           setModalState(() => isSaving = false);
         }
       }
@@ -361,14 +373,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         );
       },
     );
-
-    latestAndroidCtrl.dispose();
-    minAndroidCtrl.dispose();
-    urlAndroidCtrl.dispose();
-    latestIosCtrl.dispose();
-    minIosCtrl.dispose();
-    urlIosCtrl.dispose();
-    quickVersionCtrl.dispose();
   }
 
   // ignore: unused_element
