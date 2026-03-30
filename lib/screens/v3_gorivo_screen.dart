@@ -34,10 +34,11 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     return StreamBuilder<_GorivoData>(
       stream: V3MasterRealtimeManager.instance.v3StreamFromCache<_GorivoData>(
-        tables: ['v3_pumpa_stanje', 'v3_pumpa_rezervoar'],
+        tables: ['v3_pumpa_stanje', 'v3_pumpa_rezervoar', 'v3_pumpa_javna_tocenja', 'v3_vozaci'],
         build: () => _GorivoData(
           stanje: V3GorivoService.getStanjeSync(),
           rezervoar: V3GorivoService.getRezervoarSync(),
+          javnaTocenja: V3GorivoService.getJavnaTocenjaSync(),
         ),
       ),
       builder: (context, snapshot) {
@@ -45,6 +46,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
             _GorivoData(
               stanje: V3GorivoService.getStanjeSync(),
               rezervoar: V3GorivoService.getRezervoarSync(),
+              javnaTocenja: V3GorivoService.getJavnaTocenjaSync(),
             );
         return _buildScaffold(context, data);
       },
@@ -56,6 +58,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
@@ -66,26 +69,14 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
             ),
           ),
         ),
-        title: Row(
-          children: [
-            V3ContainerUtils.iconContainer(
-              padding: const EdgeInsets.all(7),
-              backgroundColor: _accent.withValues(alpha: 0.25),
-              borderRadiusGeometry: BorderRadius.circular(10),
-              border: Border.all(color: _accent.withValues(alpha: 0.5)),
-              child: const Icon(Icons.local_gas_station, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Gorivo',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-              ),
-            ),
-          ],
+        title: const Text(
+          'Gorivo',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+          ),
         ),
         bottom: TabBar(
           controller: _tabController,
@@ -94,8 +85,8 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white54,
           tabs: const [
-            Tab(text: '⛽ Pumpa'),
-            Tab(text: '🛢️ Rezervoar'),
+            Tab(text: '🛢️ Kućna'),
+            Tab(text: '⛽ Javna'),
           ],
         ),
       ),
@@ -104,17 +95,27 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
         child: TabBarView(
           controller: _tabController,
           children: [
-            _buildPumpaTab(data.stanje),
-            _buildRezervoarTab(data.rezervoar),
+            _buildRezervoarTab(data.rezervoar, data.stanje),
+            _buildPumpaTab(data.stanje, data.javnaTocenja),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPumpaTab(V3PumpaStanje? stanje) {
+  String _formatDatumVreme(DateTime dt) {
+    final d = dt.toLocal();
+    final day = d.day.toString().padLeft(2, '0');
+    final month = d.month.toString().padLeft(2, '0');
+    final year = d.year.toString();
+    final hour = d.hour.toString().padLeft(2, '0');
+    final min = d.minute.toString().padLeft(2, '0');
+    return '$day.$month.$year $hour:$min';
+  }
+
+  Widget _buildPumpaTab(V3PumpaStanje? stanje, List<V3JavnaPumpaTocenje> tocenja) {
     final topPad = MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16;
-    if (stanje == null) {
+    if (stanje == null && tocenja.isEmpty) {
       return Center(
         child: Padding(
           padding: EdgeInsets.only(top: topPad),
@@ -122,38 +123,61 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
         ),
       );
     }
-    final procenat = stanje.kapacitetLitri > 0 ? (stanje.trenutnoStanje / stanje.kapacitetLitri).clamp(0.0, 1.0) : 0.0;
-    final ispodAlarma = stanje.kapacitetLitri > 0 && stanje.trenutnoStanje < stanje.kapacitetLitri * 0.1;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(16, topPad, 16, 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _V3BrojcanikCard(
-            label: '⛽ Pumpa — trenutno stanje',
-            trenutno: stanje.trenutnoStanje,
-            kapacitet: stanje.kapacitetLitri,
-            procenat: procenat,
-            ispodAlarma: ispodAlarma,
-          ),
-          const SizedBox(height: 16),
           _V3DetaljiCard(
             children: [
-              _gorivoDetaljiRow('🔫 Stanje brojača pištolja',
-                  '${V3FormatUtils.formatGorivo(stanje.stanjeBrojacPistolj)} L', Colors.white70),
-              _gorivoDetaljiRow(
-                  '📦 Kapacitet', '${V3FormatUtils.formatGorivo(stanje.kapacitetLitri)} L', Colors.white70),
-              _gorivoDetaljiRow('🔖 Naziv', stanje.naziv, Colors.white70),
-              _gorivoDetaljiRow(
-                  '✅ Aktivno', stanje.aktivno ? 'Da' : 'Ne', stanje.aktivno ? Colors.greenAccent : Colors.redAccent),
+              _gorivoDetaljiRow('🔖 Naziv', stanje?.naziv ?? '-', Colors.white70),
+              _gorivoDetaljiRow('✅ Aktivno', (stanje?.aktivno ?? false) ? 'Da' : 'Ne',
+                  (stanje?.aktivno ?? false) ? Colors.greenAccent : Colors.redAccent),
             ],
           ),
+          const SizedBox(height: 12),
+          if (tocenja.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: Text('Nema unosa za javnu pumpu',
+                  style: TextStyle(color: Colors.white70), textAlign: TextAlign.center),
+            )
+          else
+            ...tocenja.take(30).map((t) {
+              final vozac = (t.vozacId == null || t.vozacId!.isEmpty)
+                  ? null
+                  : V3MasterRealtimeManager.instance.getVozac(t.vozacId!);
+              final vozacIme =
+                  (vozac?['ime_prezime'] ?? vozac?['ime'] ?? vozac?['naziv'] ?? t.vozacId ?? '-').toString();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: V3ContainerUtils.styledContainer(
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        _gorivoDetaljiRow('🗓️ Datum/Vreme', _formatDatumVreme(t.datumVreme), Colors.white70),
+                        _gorivoDetaljiRow('⛽ Količina', '${V3FormatUtils.formatGorivo(t.kolicinaL)} L', Colors.white70),
+                        _gorivoDetaljiRow('💰 Iznos', '${t.iznosRsd.toStringAsFixed(0)} RSD', Colors.white70),
+                        _gorivoDetaljiRow('👤 Vozač', vozacIme, Colors.white70),
+                        _gorivoDetaljiRow('💳 Plaćanje', t.placeno ? 'Plaćeno' : 'Nije plaćeno',
+                            t.placeno ? Colors.greenAccent : Colors.orangeAccent),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildRezervoarTab(V3PumpaRezervoar? r) {
+  Widget _buildRezervoarTab(V3PumpaRezervoar? r, V3PumpaStanje? stanje) {
     final topPad = MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16;
     if (r == null) {
       return Center(
@@ -170,7 +194,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
       child: Column(
         children: [
           _V3BrojcanikCard(
-            label: '🛢️ Rezervoar — trenutni nivo',
+            label: '🛢️ Kućni rezervoar — trenutni nivo',
             trenutno: r.trenutnoLitara,
             kapacitet: r.kapacitetMax,
             procenat: procenat,
@@ -180,11 +204,17 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
           _V3DetaljiCard(
             children: [
               _gorivoDetaljiRow(
-                '🔔 Alarm nivo',
+                '🔫 Stanje brojača pištolja',
+                stanje == null ? '-' : stanje.stanjeBrojacPistolj.toStringAsFixed(0),
+                Colors.white70,
+              ),
+              _gorivoDetaljiRow(
+                '🔔 Alarm nivo rezervoara',
                 '${V3FormatUtils.formatGorivo(r.alarmNivo)} L',
                 r.ispodAlarma ? Colors.redAccent : Colors.white54,
               ),
-              _gorivoDetaljiRow('📦 Kapacitet', '${V3FormatUtils.formatGorivo(r.kapacitetMax)} L', Colors.white70),
+              _gorivoDetaljiRow(
+                  '📦 Kapacitet rezervoara', '${V3FormatUtils.formatGorivo(r.kapacitetMax)} L', Colors.white70),
             ],
           ),
         ],
@@ -340,5 +370,6 @@ class _V3DetaljiCard extends StatelessWidget {
 class _GorivoData {
   final V3PumpaStanje? stanje;
   final V3PumpaRezervoar? rezervoar;
-  _GorivoData({required this.stanje, required this.rezervoar});
+  final List<V3JavnaPumpaTocenje> javnaTocenja;
+  _GorivoData({required this.stanje, required this.rezervoar, required this.javnaTocenja});
 }
