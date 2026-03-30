@@ -67,6 +67,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
             },
             {
+                name: "execute_sql_safe",
+                description: "Execute a parameterized SQL query on Supabase PostgreSQL database. Use for SELECT with WHERE conditions to prevent SQL injection.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        query: {
+                            type: "string",
+                            description: "The SQL query to execute with $1, $2, etc. for parameters",
+                        },
+                        params: {
+                            type: "array",
+                            description: "Array of parameter values to safely substitute",
+                        },
+                    },
+                    required: ["query"],
+                },
+            },
+            {
                 name: "list_tables",
                 description: "List all tables in the public schema",
                 inputSchema: {
@@ -134,6 +152,38 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                         },
                     },
                     required: ["table_name", "updates"],
+                },
+            },
+            {
+                name: "get_row_count",
+                description: "Get the number of rows in a table",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        table_name: {
+                            type: "string",
+                            description: "Name of the table",
+                        },
+                        where_clause: {
+                            type: "string",
+                            description: "Optional WHERE clause condition (e.g., 'id > 10')",
+                        },
+                    },
+                    required: ["table_name"],
+                },
+            },
+            {
+                name: "get_table_stats",
+                description: "Get detailed statistics about a table (row count, size, columns, etc.)",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        table_name: {
+                            type: "string",
+                            description: "Name of the table",
+                        },
+                    },
+                    required: ["table_name"],
                 },
             },
         ],
@@ -204,6 +254,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         },
                     ],
                 };
+            }
+
+            case "execute_sql_safe": {
+                const { query, params = [] } = args as { query: string; params?: (string | number | boolean | null)[] };
+
+                if (!sql) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error: DATABASE_URL not configured. Parameterized queries require direct database connection.`,
+                            },
+                        ],
+                    };
+                }
+
+                try {
+                    const result = await sql.unsafe(query, params as any);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify(result, null, 2),
+                            },
+                        ],
+                    };
+                } catch (err) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `SQL Error: ${err instanceof Error ? err.message : String(err)}`,
+                            },
+                        ],
+                    };
+                }
             }
 
             case "list_tables": {
@@ -281,6 +367,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             case "describe_table": {
                 const tableName = (args as { table_name: string }).table_name;
 
+                // Validate table name to prevent SQL injection
+                if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error: Invalid table name. Only alphanumeric characters and underscores allowed.`,
+                            },
+                        ],
+                    };
+                }
+
                 // Method 1: Use direct postgres connection (BEST)
                 if (sql) {
                     try {
@@ -291,9 +389,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                                 is_nullable,
                                 column_default
                             FROM information_schema.columns 
-                            WHERE table_name = '${tableName}'
+                            WHERE table_name = $1
                             ORDER BY ordinal_position;
-                        `);
+                        `, [tableName]);
                         return {
                             content: [
                                 {
@@ -350,27 +448,61 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                     column_type: string;
                 };
 
-                // Use the postgres connection through supabase-js
-                // Since we can't do ALTER TABLE directly, we need to use a workaround
-                // Try to insert a row with the new column to see if it exists
-                const { data: existing } = await supabase
-                    .from(table_name)
-                    .select(column_name)
-                    .limit(1);
-
-                if (existing !== null) {
+                // Validate input to prevent SQL injection
+                if (!/^[a-zA-Z0-9_]+$/.test(table_name) || !/^[a-zA-Z0-9_]+$/.test(column_name)) {
                     return {
                         content: [
                             {
                                 type: "text",
-                                text: `Column ${column_name} already exists in ${table_name}`,
+                                text: `Error: Invalid table or column name. Only alphanumeric characters and underscores allowed.`,
                             },
                         ],
                     };
                 }
 
-                // Column doesn't exist - need to add via SQL Editor in Supabase Dashboard
-                // or via database connection string
+                if (sql) {
+                    try {
+                        // Check if column exists
+                        const existing = await sql.unsafe(
+                            `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
+                            [table_name, column_name]
+                        );
+
+                        if (existing.length > 0) {
+                            return {
+                                content: [
+                                    {
+                                        type: "text",
+                                        text: `Column ${column_name} already exists in ${table_name}`,
+                                    },
+                                ],
+                            };
+                        }
+
+                        // Add the column
+                        await sql.unsafe(`ALTER TABLE ${table_name} ADD COLUMN ${column_name} ${column_type}`);
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `✅ Column "${column_name}" (${column_type}) added to "${table_name}"`,
+                                },
+                            ],
+                        };
+                    } catch (err) {
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Error adding column: ${err instanceof Error ? err.message : String(err)}`,
+                                },
+                            ],
+                        };
+                    }
+                }
+
+                // Fallback when no direct connection
                 return {
                     content: [
                         {
@@ -413,6 +545,150 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         {
                             type: "text",
                             text: `Updated ${data?.length || 0} rows in ${table_name}:\n${JSON.stringify(data, null, 2)}`,
+                        },
+                    ],
+                };
+            }
+
+            case "get_row_count": {
+                const { table_name, where_clause } = args as {
+                    table_name: string;
+                    where_clause?: string;
+                };
+
+                // Validate table name
+                if (!/^[a-zA-Z0-9_]+$/.test(table_name)) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error: Invalid table name. Only alphanumeric characters and underscores allowed.`,
+                            },
+                        ],
+                    };
+                }
+
+                if (sql) {
+                    try {
+                        let query = `SELECT COUNT(*) as count FROM ${table_name}`;
+                        if (where_clause) {
+                            query += ` WHERE ${where_clause}`;
+                        }
+                        query += `;`;
+
+                        const result = await sql.unsafe(query);
+                        const count = result[0]?.count || 0;
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Table "${table_name}" has ${count} rows${where_clause ? ` matching "${where_clause}"` : ""}`,
+                                },
+                            ],
+                        };
+                    } catch (err) {
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Error counting rows: ${err instanceof Error ? err.message : String(err)}`,
+                                },
+                            ],
+                        };
+                    }
+                }
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Error: DATABASE_URL not configured. Cannot count rows without direct database connection.`,
+                        },
+                    ],
+                };
+            }
+
+            case "get_table_stats": {
+                const { table_name } = args as { table_name: string };
+
+                // Validate table name
+                if (!/^[a-zA-Z0-9_]+$/.test(table_name)) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error: Invalid table name. Only alphanumeric characters and underscores allowed.`,
+                            },
+                        ],
+                    };
+                }
+
+                if (sql) {
+                    try {
+                        // Get row count
+                        const countResult = await sql.unsafe(`SELECT COUNT(*) as count FROM ${table_name}`);
+                        const rowCount = countResult[0]?.count || 0;
+
+                        // Get column info
+                        const columnsResult = await sql.unsafe(`
+                            SELECT 
+                                column_name, 
+                                data_type, 
+                                is_nullable,
+                                column_default
+                            FROM information_schema.columns 
+                            WHERE table_name = $1
+                            ORDER BY ordinal_position;
+                        `, [table_name]);
+
+                        // Get table size
+                        const sizeResult = await sql.unsafe(`
+                            SELECT 
+                                pg_size_pretty(pg_total_relation_size($1)) as size,
+                                pg_size_pretty(pg_relation_size($1)) as table_size
+                            FROM (SELECT NULL::text) t;
+                        `, [table_name]);
+
+                        const stats = {
+                            table_name,
+                            row_count: rowCount,
+                            column_count: columnsResult.length,
+                            columns: columnsResult.map((col: any) => ({
+                                name: col.column_name,
+                                type: col.data_type,
+                                nullable: col.is_nullable === 'YES',
+                                default: col.column_default,
+                            })),
+                            size: sizeResult[0]?.size || 'N/A',
+                            table_size: sizeResult[0]?.table_size || 'N/A',
+                        };
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: JSON.stringify(stats, null, 2),
+                                },
+                            ],
+                        };
+                    } catch (err) {
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Error getting table stats: ${err instanceof Error ? err.message : String(err)}`,
+                                },
+                            ],
+                        };
+                    }
+                }
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Error: DATABASE_URL not configured. Cannot get table stats without direct database connection.`,
                         },
                     ],
                 };
