@@ -19,7 +19,7 @@
     "author": "Bojan",
     "license": "MIT",
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^0.7.0",
+        "@modelcontextprotocol/sdk": "^1.0.0",
         "@octokit/rest": "^21.0.0",
         "dotenv": "^16.4.5",
         "libsodium-wrappers": "^0.7.13"
