@@ -776,8 +776,23 @@ class _PutnikDialogState extends State<_PutnikDialog> {
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blueGrey.withValues(alpha: 0.35)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
+        ),
         isDense: true,
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.7),
+        prefixIcon: Icon(
+          grad == 'BC' ? Icons.location_city_outlined : Icons.location_on_outlined,
+          size: 18,
+          color: grad == 'BC' ? Colors.blueAccent : Colors.orangeAccent,
+        ),
         suffixIcon: value != null
             ? IconButton(
                 icon: const Icon(Icons.clear, size: 18),
@@ -810,23 +825,55 @@ class _PutnikDialogState extends State<_PutnikDialog> {
     if (_adresaVs2 != null) _adresaVs2 = adreseVS.firstWhere((a) => a.id == _adresaVs2!.id, orElse: () => _adresaVs2!);
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: const Color(0xFFF7F9FC),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Header ──
             V3ContainerUtils.gradientContainer(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               gradient: LinearGradient(
                 colors: [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Text(
-                isEdit ? '✏️ Uredi putnika' : '➕ Novi putnik',
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(
+                      isEdit ? Icons.edit_note_rounded : Icons.person_add_alt_1_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEdit ? 'Uredi putnika' : 'Novi putnik',
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          isEdit ? 'Ažuriraj podatke i sačuvaj izmene' : 'Unesi podatke i dodaj putnika',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             // ── Sadržaj ──
@@ -836,11 +883,35 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.18)),
+                      ),
+                      child: const Text(
+                        'Osnovni podaci',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF3E4A6B)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     // Tip
                     DropdownButtonFormField<String>(
                       value: _tip,
-                      decoration:
-                          const InputDecoration(labelText: 'Tip putnika', border: OutlineInputBorder(), isDense: true),
+                      decoration: InputDecoration(
+                        labelText: 'Tip putnika',
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blueGrey.withValues(alpha: 0.35)),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.78),
+                        prefixIcon: const Icon(Icons.category_outlined),
+                      ),
                       items: const [
                         DropdownMenuItem(value: 'radnik', child: Text('👷 Radnik')),
                         DropdownMenuItem(value: 'ucenik', child: Text('🎒 Učenik')),
@@ -910,16 +981,25 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                     ],
                     const SizedBox(height: 14),
                     // ── Adrese BC ──
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, size: 16, color: Colors.blueAccent),
-                        const SizedBox(width: 4),
-                        Text('Adrese — Bela Crkva',
-                            style:
-                                TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
-                      ],
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on, size: 16, color: Colors.blueAccent),
+                          const SizedBox(width: 4),
+                          Text('Adrese — Bela Crkva',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     _adresaDropdown(
                       label: 'BC — Adresa 1',
                       grad: 'BC',
@@ -935,16 +1015,25 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                     ),
                     const SizedBox(height: 14),
                     // ── Adrese VS ──
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, size: 16, color: Colors.orangeAccent),
-                        const SizedBox(width: 4),
-                        Text('Adrese — Vršac',
-                            style:
-                                TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
-                      ],
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.orangeAccent.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.28)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on, size: 16, color: Colors.orangeAccent),
+                          const SizedBox(width: 4),
+                          Text('Adrese — Vršac',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     _adresaDropdown(
                       label: 'VS — Adresa 1',
                       grad: 'VS',
@@ -966,6 +1055,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
             // ── Actions ──
             V3ContainerUtils.styledContainer(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              border: Border(top: BorderSide(color: Colors.blueGrey.withValues(alpha: 0.2))),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -977,7 +1067,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                   V3ButtonUtils.primaryButton(
                     onPressed: _saving ? null : _sacuvaj,
                     text: isEdit ? 'Sačuvaj' : 'Dodaj',
-                    icon: Icons.save,
+                    icon: isEdit ? Icons.save_as_rounded : Icons.person_add_alt_1_rounded,
                     isLoading: _saving,
                   ),
                 ],
