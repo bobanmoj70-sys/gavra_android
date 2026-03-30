@@ -190,7 +190,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite email adresu');
       return;
     }
-    final emailRegex = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}\$');
+    final emailRegex = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(email)) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite validnu email adresu');
       return;
@@ -252,8 +252,6 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
     if (result == true) {
       _sendPinRequest();
-    } else {
-      Navigator.pop(context);
     }
   }
 

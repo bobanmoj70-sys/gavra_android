@@ -2,10 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:uuid/uuid.dart';
 
 import '../globals.dart';
-import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
@@ -181,17 +179,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         final opZeljeno = _normalizeValidTime(selected['zeljeno_vreme']?.toString());
         final displayVreme =
             status == 'odobreno' ? (opDodeljeno ?? opZeljeno ?? '—') : (opZeljeno ?? opDodeljeno ?? '—');
-        final zahtevId = selected['zahtev_id']?.toString() ?? '';
 
         infos.add(_ZahtevInfo(
           grad: grad,
           vreme: displayVreme,
           status: status,
-          zahtevId: zahtevId,
           pokupljen: selected['pokupljen'] as bool? ?? false,
-          operativnaId: selected['id']?.toString(),
           koristiSekundarnu: selected['koristi_sekundarnu'] as bool? ?? false,
-          readOnly: zahtevId.isEmpty,
         ));
       }
 
@@ -222,6 +216,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
     final validNovoVreme = _normalizeValidTime(novoVreme);
+    final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
+      dan,
+      anchor: V3DanHelper.schedulingWeekAnchor(),
+    );
 
     if (novoVreme != null && validNovoVreme == null) {
       if (mounted) V3AppSnackBar.warning(context, '⚠️ Neispravno vreme termina. Pokušajte ponovo.');
@@ -232,34 +230,27 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       if (validNovoVreme == null) {
         // Otkaži postojeći zahtev
         if (trenutniInfo == null) return;
-        await V3ZahtevService.otkaziZahtev(trenutniInfo.zahtevId,
-            otkazaoPutnikId: putnikId, operativnaId: trenutniInfo.operativnaId);
+        await V3ZahtevService.otkaziPolazakPutnikaPoKontekstu(
+          putnikId: putnikId,
+          datum: datumPolaska,
+          grad: grad,
+          otkazaoPutnikId: putnikId,
+        );
         if (mounted) V3AppSnackBar.success(context, '✅ Polazak otkazan: $dan $grad');
-      } else if (trenutniInfo != null && (trenutniInfo.status == 'obrada' || trenutniInfo.status == 'odobreno')) {
-        // Ažuriraj vreme i adresu na postojećem zahtevu (vraća u obrada)
-        await V3ZahtevService.updateZeljenoVreme(trenutniInfo.zahtevId, validNovoVreme,
-            koristiSekundarnu: koristiSekundarnu, updatedBy: 'putnik:$putnikId');
-        if (mounted) {
-          V3AppSnackBar.success(context,
-              '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.');
-        }
       } else {
-        // Kreiraj novi zahtev
+        // Sačuvaj izmenu po kontekstu (putnik + dan + grad)
         final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
         final tipPutnika = putnikCache?['tip_putnika'] as String? ?? 'dnevni';
         final brojMesta = tipPutnika == 'posiljka' ? 0 : 1; // posiljka ne zauzima putničko mesto
-        final zahtev = V3Zahtev(
-          id: const Uuid().v4(),
+        await V3ZahtevService.sacuvajPolazakPutnikaPoKontekstu(
           putnikId: putnikId,
-          datum: V3DanHelper.datumZaDanAbbrUTekucojSedmici(dan, anchor: V3DanHelper.schedulingWeekAnchor()),
+          datum: datumPolaska,
           grad: grad,
-          zeljenoVreme: validNovoVreme,
+          novoVreme: validNovoVreme,
           brojMesta: brojMesta,
-          status: 'obrada',
           koristiSekundarnu: koristiSekundarnu,
-          aktivno: true,
+          updatedBy: 'putnik:$putnikId',
         );
-        await V3ZahtevService.createZahtev(zahtev, createdBy: 'putnik:$putnikId');
         if (mounted) {
           V3AppSnackBar.success(context,
               '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.');
@@ -271,15 +262,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
-    if (info?.readOnly == true) {
-      if (mounted) {
-        V3AppSnackBar.info(
-          ctx,
-          'Termin je iz operativnog plana bez vezanog zahteva i trenutno je read-only iz putničkog profila.',
-        );
-      }
-      return;
-    }
     // Scenario 2: zahtev u obradi — blokirati sve akcije
     if (info?.status == 'obrada') {
       if (mounted) V3AppSnackBar.info(ctx, 'Vaš zahtev je u obradi kod dispečera.');
@@ -473,27 +455,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                     }
                                   : () async {
                                       Navigator.of(dialogCtx).pop();
-                                      // Scenario: "Ignore alternative and retry"
-                                      // Ako putnik klikne na bilo koje vreme dok je u statusu "alternativa"
-                                      // ili "ponuda", resetujemo status na "obrada" i prosleđujemo ažurirani
-                                      // info kako bi _updatePolazak koristio updateZeljenoVreme
-                                      // (a ne createZahtev koji bi kreirao duplikat).
-                                      _ZahtevInfo? effectiveInfo = info;
-                                      if (info?.status == 'alternativa' || info?.status == 'ponuda') {
-                                        await V3ZahtevService.updateStatus(info!.zahtevId, 'obrada',
-                                            updatedBy: 'putnik:reset_alternative');
-                                        effectiveInfo = _ZahtevInfo(
-                                          grad: info.grad,
-                                          vreme: info.vreme,
-                                          status: 'obrada',
-                                          zahtevId: info.zahtevId,
-                                          pokupljen: info.pokupljen,
-                                          operativnaId: info.operativnaId,
-                                          koristiSekundarnu: info.koristiSekundarnu,
-                                        );
-                                      }
                                       await _updatePolazak(dan, grad, vreme,
-                                          trenutniInfo: effectiveInfo, koristiSekundarnu: koristiSekundarnu);
+                                          trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
                                     },
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: isLocked
@@ -1315,20 +1278,14 @@ class _ZahtevInfo {
   final String grad;
   final String vreme;
   final String status;
-  final String zahtevId;
   final bool pokupljen;
-  final String? operativnaId;
   final bool koristiSekundarnu;
-  final bool readOnly;
   const _ZahtevInfo({
     required this.grad,
     required this.vreme,
     required this.status,
-    required this.zahtevId,
     this.pokupljen = false,
-    this.operativnaId,
     this.koristiSekundarnu = false,
-    this.readOnly = false,
   });
 }
 

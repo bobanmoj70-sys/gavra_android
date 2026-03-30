@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
@@ -8,6 +9,45 @@ import 'v3_vozac_service.dart';
 /// Service for V3 passenger travel requests (`v3_zahtevi`).
 class V3ZahtevService {
   V3ZahtevService._();
+
+  static String _datumKey(DateTime datum) => V3DanHelper.parseIsoDatePart(datum.toIso8601String());
+
+  static DateTime _parseTs(String? value) {
+    if (value == null || value.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
+    return DateTime.tryParse(value) ?? DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static List<Map<String, dynamic>> _aktivniRedoviPoKontekstu({
+    required String putnikId,
+    required DateTime datum,
+    required String grad,
+  }) {
+    final datumIso = _datumKey(datum);
+    final targetGrad = grad.trim().toUpperCase();
+    final rows = V3MasterRealtimeManager.instance.zahteviCache.values.where((row) {
+      final rowDatum = V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
+      final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+      final rowStatus = (row['status']?.toString() ?? '').trim().toLowerCase();
+      return (row['putnik_id']?.toString() ?? '') == putnikId &&
+          rowDatum == datumIso &&
+          rowGrad == targetGrad &&
+          row['aktivno'] == true &&
+          rowStatus != 'otkazano' &&
+          rowStatus != 'odbijeno';
+    }).toList();
+
+    rows.sort((a, b) {
+      final bTs = _parseTs(b['updated_at']?.toString()).isAfter(_parseTs(b['created_at']?.toString()))
+          ? _parseTs(b['updated_at']?.toString())
+          : _parseTs(b['created_at']?.toString());
+      final aTs = _parseTs(a['updated_at']?.toString()).isAfter(_parseTs(a['created_at']?.toString()))
+          ? _parseTs(a['updated_at']?.toString())
+          : _parseTs(a['created_at']?.toString());
+      return bTs.compareTo(aTs);
+    });
+
+    return rows;
+  }
 
   static void _assertDatumUTekucojNedelji(DateTime datum) {
     if (!V3DanHelper.isInSchedulingWorkweek(datum)) {
@@ -67,6 +107,90 @@ class V3ZahtevService {
     } catch (e) {
       debugPrint('[V3ZahtevService] Error: $e');
       rethrow;
+    }
+  }
+
+  static Future<void> sacuvajPolazakPutnikaPoKontekstu({
+    required String putnikId,
+    required DateTime datum,
+    required String grad,
+    required String novoVreme,
+    required int brojMesta,
+    bool koristiSekundarnu = false,
+    String? updatedBy,
+  }) async {
+    final aktivni = _aktivniRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
+    if (aktivni.isNotEmpty) {
+      final row = aktivni.first;
+      final rowKey = (row['id']?.toString() ?? '').trim();
+      if (rowKey.isNotEmpty) {
+        final status = (row['status']?.toString() ?? '').trim().toLowerCase();
+        if (status == 'alternativa' || status == 'ponuda') {
+          await updateStatus(rowKey, 'obrada', updatedBy: updatedBy ?? 'putnik:reset_alternative');
+        }
+        await updateZeljenoVreme(
+          rowKey,
+          novoVreme,
+          koristiSekundarnu: koristiSekundarnu,
+          updatedBy: updatedBy ?? 'putnik:sistem',
+        );
+        return;
+      }
+    }
+
+    final zahtev = V3Zahtev(
+      id: const Uuid().v4(),
+      putnikId: putnikId,
+      datum: datum,
+      grad: grad,
+      zeljenoVreme: novoVreme,
+      brojMesta: brojMesta,
+      status: 'obrada',
+      koristiSekundarnu: koristiSekundarnu,
+      aktivno: true,
+    );
+    await createZahtev(zahtev, createdBy: updatedBy ?? 'putnik:sistem');
+  }
+
+  static Future<void> otkaziPolazakPutnikaPoKontekstu({
+    required String putnikId,
+    required DateTime datum,
+    required String grad,
+    String? otkazaoPutnikId,
+  }) async {
+    final aktivni = _aktivniRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
+    if (aktivni.isNotEmpty) {
+      final row = aktivni.first;
+      final rowKey = (row['id']?.toString() ?? '').trim();
+      if (rowKey.isNotEmpty) {
+        final updBy = otkazaoPutnikId != null ? 'putnik:$otkazaoPutnikId' : 'putnik:sistem';
+        final updated = await supabase
+            .from('v3_zahtevi')
+            .update({'status': 'otkazano', 'updated_by': updBy})
+            .eq('id', rowKey)
+            .select()
+            .maybeSingle();
+        if (updated != null) {
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', updated);
+        }
+      }
+    }
+
+    final datumIso = _datumKey(datum);
+    final updatedOperativni = await supabase
+        .from('v3_operativna_nedelja')
+        .update({
+          'status_final': 'otkazano',
+          if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
+        })
+        .eq('putnik_id', putnikId)
+        .eq('datum', datumIso)
+        .eq('grad', grad)
+        .eq('aktivno', true)
+        .select();
+
+    for (final row in updatedOperativni) {
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
     }
   }
 

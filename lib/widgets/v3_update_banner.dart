@@ -8,9 +8,66 @@ import '../utils/v3_style_helper.dart';
 
 /// Banner koji se prikazuje kada postoji update (opcioni ili obavezni).
 /// Koristi se na V3HomeScreen, V3PutnikProfilScreen i V3VozacScreen.
-/// Ako je obavezni update (isForced), prikazuje fullscreen blokadu.
-class V3UpdateBanner extends StatelessWidget {
+/// Ako je obavezni update (isForced), prikazuje fullscreen blokadu preko cele aplikacije.
+class V3UpdateBanner extends StatefulWidget {
   const V3UpdateBanner({super.key});
+
+  @override
+  State<V3UpdateBanner> createState() => _V3UpdateBannerState();
+}
+
+class _V3UpdateBannerState extends State<V3UpdateBanner> {
+  static bool _forceDialogOpen = false;
+  static String? _forceDialogVersion;
+
+  @override
+  void initState() {
+    super.initState();
+    updateInfoNotifier.addListener(_handleUpdateInfoChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _handleUpdateInfoChange();
+    });
+  }
+
+  @override
+  void dispose() {
+    updateInfoNotifier.removeListener(_handleUpdateInfoChange);
+    super.dispose();
+  }
+
+  void _handleUpdateInfoChange() {
+    final info = updateInfoNotifier.value;
+    if (info == null || !info.isForced || !mounted) return;
+
+    if (_forceDialogOpen && _forceDialogVersion == info.latestVersion) return;
+    if (_forceDialogOpen) return;
+
+    _forceDialogOpen = true;
+    _forceDialogVersion = info.latestVersion;
+
+    showGeneralDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: false,
+      barrierLabel: 'force_update',
+      barrierColor: Colors.black.withValues(alpha: 0.72),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dialogContext, _, __) => _ForceUpdateDialog(info: info),
+      transitionBuilder: (_, animation, __, child) {
+        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    ).whenComplete(() {
+      _forceDialogOpen = false;
+      _forceDialogVersion = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,23 +75,23 @@ class V3UpdateBanner extends StatelessWidget {
       valueListenable: updateInfoNotifier,
       builder: (context, info, _) {
         if (info == null) return const SizedBox.shrink();
-        if (info.isForced) return _ForceUpdateOverlay(info: info);
+        if (info.isForced) return const SizedBox.shrink();
         return _UpdateBannerContent(info: info);
       },
     );
   }
 }
 
-/// Fullscreen overlay koji blokira cijelu aplikaciju pri obaveznom updatu.
-class _ForceUpdateOverlay extends StatefulWidget {
+/// Fullscreen modal koji blokira celu aplikaciju pri obaveznom updatu.
+class _ForceUpdateDialog extends StatefulWidget {
   final V2UpdateInfo info;
-  const _ForceUpdateOverlay({required this.info});
+  const _ForceUpdateDialog({required this.info});
 
   @override
-  State<_ForceUpdateOverlay> createState() => _ForceUpdateOverlayState();
+  State<_ForceUpdateDialog> createState() => _ForceUpdateDialogState();
 }
 
-class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTickerProviderStateMixin {
+class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
 
@@ -47,7 +104,7 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
     )..repeat(reverse: true);
     _pulseAnim = V3AnimationUtils.createTween(
       controller: _pulseCtrl,
-      begin: 0.85,
+      begin: 0.9,
       end: 1.1,
       curve: Curves.easeInOut,
     );
@@ -55,7 +112,7 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
 
   @override
   void dispose() {
-    V3AnimationUtils.disposeController('pulse');
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
@@ -70,129 +127,134 @@ class _ForceUpdateOverlayState extends State<_ForceUpdateOverlay> with SingleTic
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      child: Stack(
-        children: [
-          // Zamračuje cijeli ekran — gradijent odozgo prema dolje
-          Positioned.fill(
-            child: AbsorbPointer(
-              absorbing: true,
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xEE0D0D0D), Color(0xEE1A0000)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: AbsorbPointer(
+                absorbing: true,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xF20D0D0D), Color(0xF2260B12)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          // Kartica u centru
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: V3ContainerUtils.styledContainer(
-                backgroundColor: V3StyleHelper.whiteAlpha15,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: V3StyleHelper.whiteAlpha3, width: 1.2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.withValues(alpha: 0.25),
-                    blurRadius: 32,
-                    spreadRadius: 2,
-                  ),
-                ],
-                padding: const EdgeInsets.fromLTRB(28, 36, 28, 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Pulsirajuća ikonica u krugu
-                    ScaleTransition(
-                      scale: _pulseAnim,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const RadialGradient(
-                            colors: [Color(0xFFFF4444), Color(0xFF8B0000)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.redAccent.withValues(alpha: 0.5),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.system_update_rounded, color: Colors.white, size: 38),
-                      ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: V3ContainerUtils.styledContainer(
+                  backgroundColor: const Color(0xFF171C2C),
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.32), width: 1.4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.42),
+                      blurRadius: 30,
+                      offset: const Offset(0, 12),
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Obavezno ažuriranje',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 10),
-                    V3ContainerUtils.styledContainer(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                      backgroundColor: Colors.redAccent.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
-                      child: Text(
-                        'verzija ${widget.info.latestVersion}',
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Ova verzija aplikacije više nije podržana. Molimo ažurirajte kako biste nastavili s korišćenjem.',
-                      style: TextStyle(
-                        color: V3StyleHelper.whiteAlpha75,
-                        fontSize: 13,
-                        height: 1.6,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _openStore,
-                        icon: const Icon(Icons.download_rounded, size: 20),
-                        label: const Text(
-                          'Ažuriraj aplikaciju',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.3),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          elevation: 6,
-                          shadowColor: Colors.redAccent.withValues(alpha: 0.5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
+                    BoxShadow(
+                      color: Colors.redAccent.withValues(alpha: 0.18),
+                      blurRadius: 38,
+                      spreadRadius: 2,
                     ),
                   ],
+                  padding: const EdgeInsets.fromLTRB(26, 32, 26, 26),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ScaleTransition(
+                        scale: _pulseAnim,
+                        child: Container(
+                          width: 84,
+                          height: 84,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const RadialGradient(
+                              colors: [Color(0xFFFF5A6A), Color(0xFFB1002D)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.redAccent.withValues(alpha: 0.45),
+                                blurRadius: 20,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.system_update_rounded, color: Colors.white, size: 40),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      const Text(
+                        'Potrebno ažuriranje',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      V3ContainerUtils.styledContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        backgroundColor: Colors.redAccent.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.38)),
+                        child: Text(
+                          'verzija ${widget.info.latestVersion}',
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Ova verzija aplikacije više nije podržana. Ažurirajte aplikaciju da biste nastavili rad.',
+                        style: TextStyle(
+                          color: V3StyleHelper.whiteAlpha75,
+                          fontSize: 13,
+                          height: 1.55,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _openStore,
+                          icon: const Icon(Icons.download_rounded, size: 20),
+                          label: const Text(
+                            'Ažuriraj aplikaciju',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            elevation: 8,
+                            shadowColor: Colors.redAccent.withValues(alpha: 0.45),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

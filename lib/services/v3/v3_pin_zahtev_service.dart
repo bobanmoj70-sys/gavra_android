@@ -64,6 +64,20 @@ class V3PinZahtevService {
     required String gcmId,
   }) async {
     try {
+      final rm = V3MasterRealtimeManager.instance;
+      final vecCekaUCachu =
+          rm.pinZahteviCache.values.any((z) => z['putnik_id']?.toString() == putnikId && z['status'] == 'ceka');
+      if (vecCekaUCachu) return true;
+
+      final vecCekaUDB = await supabase
+          .from('v3_pin_zahtevi')
+          .select('id')
+          .eq('putnik_id', putnikId)
+          .eq('status', 'ceka')
+          .limit(1)
+          .maybeSingle();
+      if (vecCekaUDB != null) return true;
+
       final row = {
         'putnik_id': putnikId,
         'telefon': telefon,
