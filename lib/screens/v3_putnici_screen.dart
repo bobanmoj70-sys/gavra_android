@@ -21,6 +21,7 @@ import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
+import 'v3_putnik_statistika_screen.dart';
 
 class V3PutniciScreen extends StatefulWidget {
   const V3PutniciScreen({super.key});
@@ -243,6 +244,17 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                                       onEdit: () => _showEditDialog(lista[i]),
                                       onDelete: () => _obrisi(lista[i]),
                                       onToggle: () => _toggleAktivno(lista[i]),
+                                      onDetaljneStatistike: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) => V3PutnikStatistikaScreen(
+                                              putnikId: lista[i].id,
+                                              imePrezime: lista[i].imePrezime,
+                                              tipPutnika: lista[i].tipPutnika,
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                   );
                                 },
@@ -356,6 +368,7 @@ class _PutnikCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggle,
+    required this.onDetaljneStatistike,
   });
 
   final V3Putnik putnik;
@@ -363,6 +376,7 @@ class _PutnikCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggle;
+  final VoidCallback onDetaljneStatistike;
 
   Color get _tipColor => switch (putnik.tipPutnika) {
         'radnik' => const Color(0xFF3B7DD8),
@@ -517,6 +531,19 @@ class _PutnikCard extends StatelessWidget {
                     label: 'Obriši',
                     color: Colors.red,
                     onPressed: onDelete,
+                  )),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                      child: _actionBtn(
+                    context: context,
+                    icon: Icons.analytics_outlined,
+                    label: 'Detaljne statistike',
+                    color: Colors.purpleAccent,
+                    onPressed: onDetaljneStatistike,
                   )),
                 ],
               ),
