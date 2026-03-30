@@ -20,14 +20,6 @@ class V3GorivoService {
     return V3PumpaRezervoar.fromJson(cache.values.first);
   }
 
-  static List<V3JavnaPumpaTocenje> getJavnaTocenjaSync() {
-    final cache = V3MasterRealtimeManager.instance.pumpaJavnaTocenjaCache;
-    if (cache.isEmpty) return const [];
-    final list = cache.values.map(V3JavnaPumpaTocenje.fromJson).where((t) => t.aktivno).toList();
-    list.sort((a, b) => b.datumVreme.compareTo(a.datumVreme));
-    return list;
-  }
-
   /// Stream koji emituje svaki put kad se gorivo promijeni
   static Stream<V3PumpaStanje?> streamStanje() {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(

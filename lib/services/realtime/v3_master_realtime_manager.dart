@@ -22,7 +22,6 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> postavkeKapacitetaCache = {};
   final Map<String, Map<String, dynamic>> pumpaStanjeCache = {};
   final Map<String, Map<String, dynamic>> pumpaRezervoarCache = {};
-  final Map<String, Map<String, dynamic>> pumpaJavnaTocenjaCache = {};
   final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> finansijeStanjeCache = {};
@@ -160,7 +159,6 @@ class V3MasterRealtimeManager {
             .eq('aktivno', true),
         supabase.from('v3_pumpa_stanje').select().eq('aktivno', true),
         supabase.from('v3_pumpa_rezervoar').select(),
-        supabase.from('v3_pumpa_javna_tocenja').select().eq('aktivno', true),
         supabase.from('v3_vozac_lokacije').select(),
         supabase.from('v3_troskovi').select().eq('aktivno', true),
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
@@ -178,14 +176,13 @@ class V3MasterRealtimeManager {
       _fillCache(zahteviCache, results[5] as List);
       _fillCache(pumpaStanjeCache, results[6] as List);
       _fillCache(pumpaRezervoarCache, results[7] as List);
-      _fillCache(pumpaJavnaTocenjaCache, results[8] as List);
-      _fillCache(vozacLokacijeCache, results[9] as List);
-      _fillCache(troskoviCache, results[10] as List);
-      _fillCache(finansijeStanjeCache, results[11] as List);
-      _fillCache(pinZahteviCache, results[12] as List);
-      _fillCache(operativnaNedeljaCache, results[13] as List);
-      _fillCache(kapacitetSlotsCache, results[14] as List);
-      _fillCache(appSettingsCache, results[15] as List);
+      _fillCache(vozacLokacijeCache, results[8] as List);
+      _fillCache(troskoviCache, results[9] as List);
+      _fillCache(finansijeStanjeCache, results[10] as List);
+      _fillCache(pinZahteviCache, results[11] as List);
+      _fillCache(operativnaNedeljaCache, results[12] as List);
+      _fillCache(kapacitetSlotsCache, results[13] as List);
+      _fillCache(appSettingsCache, results[14] as List);
       _rebuildGpsCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
       final globalSettings = appSettingsCache['global'];
@@ -227,7 +224,6 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_zahtevi', zahteviCache);
     _setupTableRealtime('v3_pumpa_stanje', pumpaStanjeCache);
     _setupTableRealtime('v3_pumpa_rezervoar', pumpaRezervoarCache, hasActiveKey: false);
-    _setupTableRealtime('v3_pumpa_javna_tocenja', pumpaJavnaTocenjaCache);
     _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
     _setupTableRealtime('v3_troskovi', troskoviCache);
     _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
@@ -319,9 +315,6 @@ class V3MasterRealtimeManager {
       case 'v3_pumpa_rezervoar':
         pumpaRezervoarCache[id] = row;
         break;
-      case 'v3_pumpa_javna_tocenja':
-        pumpaJavnaTocenjaCache[id] = row;
-        break;
       case 'v3_vozac_lokacije':
         vozacLokacijeCache[id] = row;
         break;
@@ -385,8 +378,6 @@ class V3MasterRealtimeManager {
         return pumpaStanjeCache;
       case 'v3_pumpa_rezervoar':
         return pumpaRezervoarCache;
-      case 'v3_pumpa_javna_tocenja':
-        return pumpaJavnaTocenjaCache;
       case 'v3_vozac_lokacije':
         return vozacLokacijeCache;
       case 'v3_troskovi':
