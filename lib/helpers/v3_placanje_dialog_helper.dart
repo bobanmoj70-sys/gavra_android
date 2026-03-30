@@ -76,13 +76,30 @@ class V3PlacanjeDialogHelper {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1D2438),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
           contentPadding: const EdgeInsets.fromLTRB(22, 6, 22, 8),
           actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          title: Text(
-            'Naplata: $imePrezime',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+          title: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.greenAccent.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.payments_outlined, color: Colors.greenAccent, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Naplata: $imePrezime',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+            ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -94,21 +111,27 @@ class V3PlacanjeDialogHelper {
                   margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blueGrey.withValues(alpha: 0.08),
+                    color: Colors.white.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.2)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'Zadnja naplata',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                       const SizedBox(height: 6),
-                      Text('Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen.toLocal())}'),
-                      Text('Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD'),
-                      Text('Naplatio: $naplatioIme'),
+                      Text(
+                        'Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen.toLocal())}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        'Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text('Naplatio: $naplatioIme', style: const TextStyle(color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -118,14 +141,21 @@ class V3PlacanjeDialogHelper {
                 decoration: InputDecoration(
                   labelText: zakljucajIznos ? 'Iznos (zaključano)' : 'Iznos (RSD)',
                   suffixText: 'RSD',
+                  prefixIcon: const Icon(Icons.payments_outlined),
                 ),
+                style: const TextStyle(color: Colors.white),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
-                    child: DropdownButton<int>(
+                    child: DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(
+                        labelText: 'Mesec',
+                        prefixIcon: Icon(Icons.calendar_month_outlined),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
                       value: _selectedMonth,
                       isExpanded: true,
                       items: List.generate(12, (i) => i + 1).map((m) {
@@ -139,7 +169,12 @@ class V3PlacanjeDialogHelper {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: DropdownButton<int>(
+                    child: DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(
+                        labelText: 'Godina',
+                        prefixIcon: Icon(Icons.event_outlined),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
                       value: _selectedYear,
                       isExpanded: true,
                       items: [2024, 2025, 2026].map((y) {
@@ -155,10 +190,12 @@ class V3PlacanjeDialogHelper {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('ODUSTANI'),
+              child: const Text('ODUSTANI', style: TextStyle(color: Colors.white70)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),

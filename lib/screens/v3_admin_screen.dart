@@ -206,6 +206,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
             Widget section({
               required String title,
+              required IconData icon,
+              required Color accent,
               required TextEditingController latest,
               required TextEditingController min,
               required TextEditingController store,
@@ -214,39 +216,59 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             }) {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                  gradient: LinearGradient(
+                    colors: [accent.withValues(alpha: 0.12), Colors.white.withValues(alpha: 0.04)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: accent.withValues(alpha: 0.35)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    Row(
+                      children: [
+                        Icon(icon, size: 17, color: accent),
+                        const SizedBox(width: 6),
+                        Text(
+                          title,
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: accent),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: latest,
-                      decoration: const InputDecoration(labelText: 'Latest version (npr. 6.0.192)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Latest version (npr. 6.0.192)',
+                        prefixIcon: Icon(Icons.new_releases_outlined),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: min,
-                      decoration: const InputDecoration(labelText: 'Min supported version (prazno = latest)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Min supported version (prazno = latest)',
+                        prefixIcon: Icon(Icons.security_update_good_outlined),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: store,
-                      decoration: const InputDecoration(labelText: 'Store URL'),
+                      decoration: const InputDecoration(
+                        labelText: 'Store URL',
+                        prefixIcon: Icon(Icons.storefront_outlined),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       dense: true,
-                      title: const Text('Force update'),
+                      activeColor: accent,
+                      title: const Text('Force update', style: TextStyle(fontWeight: FontWeight.w700)),
                       value: force,
                       onChanged: onForceChanged,
                     ),
@@ -263,110 +285,143 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   top: 12,
                   bottom: MediaQuery.of(modalContext).viewInsets.bottom + 12,
                 ),
-                child: SizedBox(
-                  height: MediaQuery.of(modalContext).size.height * 0.88,
-                  child: Column(
-                    children: [
-                      const Text(
-                        '🔄 Update verzije aplikacije',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: quickVersionCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Brza verzija za sve (npr. 6.0.192)',
-                          helperText: 'Release svima: latest=min i force=off',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
+                child: V3ContainerUtils.styledContainer(
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                    child: SizedBox(
+                      height: MediaQuery.of(modalContext).size.height * 0.88,
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isSaving ? null : applyQuickReleaseVersion,
-                              child: const Text('Release svima'),
+                          V3ContainerUtils.styledContainer(
+                            width: 42,
+                            height: 4,
+                            backgroundColor: Colors.white.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(999),
+                            child: const SizedBox(),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            '🔄 Update verzije aplikacije',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Upravljanje release i force update pravilima',
+                            style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.65)),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: quickVersionCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Brza verzija za sve (npr. 6.0.192)',
+                              helperText: 'Release svima: latest=min i force=off',
+                              prefixIcon: Icon(Icons.bolt_outlined),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isSaving ? null : copyMinFromLatestAll,
-                              child: const Text('Min = Latest (sve)'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isSaving ? null : forceOnAll,
-                              child: const Text('Force ON (sve)'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isSaving ? null : forceOffAll,
-                              child: const Text('Force OFF (sve)'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
+                          const SizedBox(height: 8),
+                          Row(
                             children: [
-                              section(
-                                title: 'Android (Play Store)',
-                                latest: latestAndroidCtrl,
-                                min: minAndroidCtrl,
-                                store: urlAndroidCtrl,
-                                force: forceAndroid,
-                                onForceChanged: (v) => setModalState(() => forceAndroid = v),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: isSaving ? null : applyQuickReleaseVersion,
+                                  icon: const Icon(Icons.rocket_launch_outlined, size: 16),
+                                  label: const Text('Release svima'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
                               ),
-                              section(
-                                title: 'iOS (App Store)',
-                                latest: latestIosCtrl,
-                                min: minIosCtrl,
-                                store: urlIosCtrl,
-                                force: forceIos,
-                                onForceChanged: (v) => setModalState(() => forceIos = v),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: isSaving ? null : copyMinFromLatestAll,
+                                  child: const Text('Min = Latest (sve)'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: isSaving ? null : forceOnAll,
+                                  child: const Text('Force ON (sve)'),
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: isSaving ? null : forceOffAll,
+                                  child: const Text('Force OFF (sve)'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
                           Expanded(
-                            child: OutlinedButton(
-                              onPressed: isSaving ? null : () => Navigator.of(modalContext).pop(),
-                              child: const Text('Otkaži'),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  section(
+                                    title: 'Android (Play Store)',
+                                    icon: Icons.android,
+                                    accent: Colors.lightGreenAccent,
+                                    latest: latestAndroidCtrl,
+                                    min: minAndroidCtrl,
+                                    store: urlAndroidCtrl,
+                                    force: forceAndroid,
+                                    onForceChanged: (v) => setModalState(() => forceAndroid = v),
+                                  ),
+                                  section(
+                                    title: 'iOS (App Store)',
+                                    icon: Icons.apple,
+                                    accent: Colors.lightBlueAccent,
+                                    latest: latestIosCtrl,
+                                    min: minIosCtrl,
+                                    store: urlIosCtrl,
+                                    force: forceIos,
+                                    onForceChanged: (v) => setModalState(() => forceIos = v),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: isSaving ? null : () => save(setModalState, modalContext),
-                              child: isSaving
-                                  ? const SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Text('Sačuvaj'),
-                            ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: isSaving ? null : () => Navigator.of(modalContext).pop(),
+                                  child: const Text('Otkaži'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: isSaving ? null : () => save(setModalState, modalContext),
+                                  icon: isSaving
+                                      ? const SizedBox(
+                                          height: 16,
+                                          width: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        )
+                                      : const Icon(Icons.save_outlined, size: 18),
+                                  label: Text(isSaving ? 'Čuvam...' : 'Sačuvaj'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.purple,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    )),
               ),
             );
           },
