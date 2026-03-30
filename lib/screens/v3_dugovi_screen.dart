@@ -217,6 +217,9 @@ class _DugCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
     final datumStr = DateFormat('dd.MM.yyyy  HH:mm').format(dug.datum);
+    final pickupStr =
+        dug.vremePokupljen != null ? DateFormat('dd.MM.yyyy  HH:mm').format(dug.vremePokupljen!) : 'Nepoznato';
+    final vozacStr = dug.vozacIme.isNotEmpty ? dug.vozacIme : 'Nepoznato';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -256,6 +259,10 @@ class _DugCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 1),
                   Text(datumStr, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                  const SizedBox(height: 1),
+                  Text('Vozač: $vozacStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  const SizedBox(height: 1),
+                  Text('Pokupljen: $pickupStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                 ],
               ),
             ),
