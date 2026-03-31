@@ -432,7 +432,10 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
       V3PutnikService.currentPutnik = _putnikData;
 
-      // Snimi FCM push token
+      // Najpre tražimo dozvolu (važno za iOS - token nije dostupan bez odobrenja)
+      await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
+
+      // Snimi FCM push token (nakon što je dozvola odobrena)
       try {
         final token = await FirebaseMessaging.instance.getToken();
         if (token != null) {
@@ -442,8 +445,6 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       } catch (e) {
         debugPrint('[PutnikLogin] push_token greška: $e');
       }
-
-      await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
 
       // Ponudi biometrijsku prijavu ili Remember Me
       if (!skipBiometricSetup) {

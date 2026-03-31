@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -28,16 +29,17 @@ class V3RolePermissionService {
 
     try {
       if (Platform.isIOS) {
-        await FirebaseMessaging.instance.requestPermission(
+        final settings = await FirebaseMessaging.instance.requestPermission(
           alert: true,
           badge: true,
           sound: true,
         );
+        debugPrint('[Permissions] iOS push status: ${settings.authorizationStatus}');
       } else {
         await Permission.notification.request();
       }
-    } catch (_) {
-      // Ignoriši i upiši prompted flag da ne ponavljamo dijalog
+    } catch (e) {
+      debugPrint('[Permissions] Push dozvola greška: $e');
     } finally {
       await _storage.write(key: key, value: 'true');
     }
