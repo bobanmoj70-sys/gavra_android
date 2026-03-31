@@ -1,8 +1,9 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
+import { config } from 'dotenv';
+config({ quiet: true });
 import { createClient } from "@supabase/supabase-js";
-import 'dotenv/config.js';
 import postgres from "postgres";
 // Supabase credentials from environment
 const SUPABASE_URL = process.env.SUPABASE_URL;

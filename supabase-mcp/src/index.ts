@@ -5,8 +5,9 @@ import {
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import 'dotenv/config.js';
+import { config } from 'dotenv';
 import postgres from "postgres";
+config({ quiet: true });
 
 // Supabase credentials from environment
 const SUPABASE_URL = process.env.SUPABASE_URL;
