@@ -75,145 +75,152 @@ class V3PlacanjeDialogHelper {
     return showDialog<V3PlacanjeRezultat>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: const Color(0xFF1D2438),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-          contentPadding: const EdgeInsets.fromLTRB(22, 6, 22, 8),
-          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          title: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.greenAccent.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.payments_outlined, color: Colors.greenAccent, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Naplata: $imePrezime',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (zadnjaNaplata != null)
+        builder: (context, setState) {
+          final cs = Theme.of(context).colorScheme;
+          return AlertDialog(
+            backgroundColor: cs.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: cs.outline.withValues(alpha: 0.25), width: 1),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+            contentPadding: const EdgeInsets.fromLTRB(22, 6, 22, 8),
+            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            title: Row(
+              children: [
                 Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 14),
-                  padding: const EdgeInsets.all(12),
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                    color: cs.primary.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Zadnja naplata',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen.toLocal())}',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      Text(
-                        'Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      Text('Naplatio: $naplatioIme', style: const TextStyle(color: Colors.white70)),
-                    ],
+                  child: Icon(Icons.payments_outlined, color: cs.primary, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Naplata: $imePrezime',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.onSurface),
                   ),
                 ),
-              TextField(
-                controller: _iznosController,
-                readOnly: zakljucajIznos,
-                decoration: InputDecoration(
-                  labelText: zakljucajIznos ? 'Iznos (zaključano)' : 'Iznos (RSD)',
-                  suffixText: 'RSD',
-                  prefixIcon: const Icon(Icons.payments_outlined),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (zadnjaNaplata != null)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: cs.outline.withValues(alpha: 0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Zadnja naplata',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen.toLocal())}',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
+                        Text(
+                          'Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
+                        Text('Naplatio: $naplatioIme', style: TextStyle(color: cs.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                TextField(
+                  controller: _iznosController,
+                  readOnly: zakljucajIznos,
+                  decoration: InputDecoration(
+                    labelText: zakljucajIznos ? 'Iznos (zaključano)' : 'Iznos (RSD)',
+                    suffixText: 'RSD',
+                    prefixIcon: const Icon(Icons.payments_outlined),
+                  ),
+                  style: TextStyle(color: cs.onSurface),
+                  keyboardType: TextInputType.number,
                 ),
-                style: const TextStyle(color: Colors.white),
-                keyboardType: TextInputType.number,
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        decoration: const InputDecoration(
+                          labelText: 'Mesec',
+                          prefixIcon: Icon(Icons.calendar_month_outlined),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                        value: _selectedMonth,
+                        isExpanded: true,
+                        items: List.generate(12, (i) => i + 1).map((m) {
+                          return DropdownMenuItem(
+                            value: m,
+                            child: Text(_getMonthName(m)),
+                          );
+                        }).toList(),
+                        onChanged: (v) => setState(() => _selectedMonth = v!),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        decoration: const InputDecoration(
+                          labelText: 'Godina',
+                          prefixIcon: Icon(Icons.event_outlined),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                        value: _selectedYear,
+                        isExpanded: true,
+                        items: [2024, 2025, 2026].map((y) {
+                          return DropdownMenuItem(value: y, child: Text('$y.'));
+                        }).toList(),
+                        onChanged: (v) => setState(() => _selectedYear = v!),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(foregroundColor: cs.error),
+                child: const Text('ODUSTANI'),
               ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(
-                        labelText: 'Mesec',
-                        prefixIcon: Icon(Icons.calendar_month_outlined),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      ),
-                      value: _selectedMonth,
-                      isExpanded: true,
-                      items: List.generate(12, (i) => i + 1).map((m) {
-                        return DropdownMenuItem(
-                          value: m,
-                          child: Text(_getMonthName(m)),
-                        );
-                      }).toList(),
-                      onChanged: (v) => setState(() => _selectedMonth = v!),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
+                onPressed: () {
+                  final iznos = zakljucajIznos ? defaultCena : (double.tryParse(_iznosController.text) ?? 0);
+                  Navigator.pop(
+                    context,
+                    V3PlacanjeRezultat(
+                      iznos: iznos,
+                      mesec: _selectedMonth,
+                      godina: _selectedYear,
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(
-                        labelText: 'Godina',
-                        prefixIcon: Icon(Icons.event_outlined),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      ),
-                      value: _selectedYear,
-                      isExpanded: true,
-                      items: [2024, 2025, 2026].map((y) {
-                        return DropdownMenuItem(value: y, child: Text('$y.'));
-                      }).toList(),
-                      onChanged: (v) => setState(() => _selectedYear = v!),
-                    ),
-                  ),
-                ],
+                  );
+                },
+                child: const Text('POTVRDI'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('ODUSTANI', style: TextStyle(color: Colors.white70)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              ),
-              onPressed: () {
-                final iznos = zakljucajIznos ? defaultCena : (double.tryParse(_iznosController.text) ?? 0);
-                Navigator.pop(
-                  context,
-                  V3PlacanjeRezultat(
-                    iznos: iznos,
-                    mesec: _selectedMonth,
-                    godina: _selectedYear,
-                  ),
-                );
-              },
-              child: const Text('POTVRDI'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

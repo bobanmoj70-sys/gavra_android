@@ -161,7 +161,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (modalContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -219,7 +219,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [accent.withValues(alpha: 0.12), Colors.white.withValues(alpha: 0.04)],
+                    colors: [
+                      accent.withValues(alpha: 0.12),
+                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.04)
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -286,9 +289,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   bottom: MediaQuery.of(modalContext).viewInsets.bottom + 12,
                 ),
                 child: V3ContainerUtils.styledContainer(
-                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                     child: SizedBox(
                       height: MediaQuery.of(modalContext).size.height * 0.88,
@@ -297,7 +300,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           V3ContainerUtils.styledContainer(
                             width: 42,
                             height: 4,
-                            backgroundColor: Colors.white.withValues(alpha: 0.35),
+                            backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(999),
                             child: const SizedBox(),
                           ),
@@ -309,7 +312,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           const SizedBox(height: 2),
                           Text(
                             'Upravljanje release i force update pravilima',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.65)),
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
                           const SizedBox(height: 10),
                           TextField(
@@ -329,8 +332,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   icon: const Icon(Icons.rocket_launch_outlined, size: 16),
                                   label: const Text('Release svima'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                                   ),
                                 ),
                               ),
@@ -412,8 +415,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                       : const Icon(Icons.save_outlined, size: 18),
                                   label: Text(isSaving ? 'Čuvam...' : 'Sačuvaj'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.purple,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                                   ),
                                 ),
                               ),

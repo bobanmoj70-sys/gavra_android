@@ -779,7 +779,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blueGrey.withValues(alpha: 0.35)),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.35)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -787,7 +787,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         ),
         isDense: true,
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.7),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
         prefixIcon: Icon(
           grad == 'BC' ? Icons.location_city_outlined : Icons.location_on_outlined,
           size: 18,
@@ -825,7 +825,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
     if (_adresaVs2 != null) _adresaVs2 = adreseVS.firstWhere((a) => a.id == _adresaVs2!.id, orElse: () => _adresaVs2!);
 
     return Dialog(
-      backgroundColor: const Color(0xFFF7F9FC),
+      backgroundColor: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ClipRRect(
@@ -887,13 +887,13 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.18)),
+                        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.25)),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Osnovni podaci',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF3E4A6B)),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -906,10 +906,10 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.blueGrey.withValues(alpha: 0.35)),
+                          borderSide: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.4)),
                         ),
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.78),
+                        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
                         prefixIcon: const Icon(Icons.category_outlined),
                       ),
                       items: const [
@@ -985,13 +985,13 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.blueAccent.withValues(alpha: 0.07),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.25)),
+                        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.location_on, size: 16, color: Colors.blueAccent),
+                          Icon(Icons.location_on, size: 16, color: theme.colorScheme.primary),
                           const SizedBox(width: 4),
                           Text('Adrese — Bela Crkva',
                               style: TextStyle(
@@ -1055,7 +1055,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
             // ── Actions ──
             V3ContainerUtils.styledContainer(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              border: Border(top: BorderSide(color: Colors.blueGrey.withValues(alpha: 0.2))),
+              border: Border(top: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.2))),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
