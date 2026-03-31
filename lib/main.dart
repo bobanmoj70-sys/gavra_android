@@ -577,12 +577,16 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
           await supabase.from('v3_putnici').select().eq('id', payloadPutnikId).eq('aktivno', true).maybeSingle();
     }
 
-    // 2) FCM token fallback: nađi putnika po push_token
+    // 2) FCM token fallback: nađi putnika po push_token ili push_token_2
     if (putnikData == null) {
       final token = await fcm.FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) {
-        putnikData =
-            await supabase.from('v3_putnici').select().eq('push_token', token).eq('aktivno', true).maybeSingle();
+        putnikData = await supabase
+            .from('v3_putnici')
+            .select()
+            .or('push_token.eq.$token,push_token_2.eq.$token')
+            .eq('aktivno', true)
+            .maybeSingle();
       }
     }
 
@@ -591,9 +595,10 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
       await V3MasterRealtimeManager.instance.initV3();
       final token = await fcm.FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) {
-        putnikData = V3MasterRealtimeManager.instance.putniciCache.values
-            .cast<Map<String, dynamic>?>()
-            .firstWhere((p) => p != null && p['aktivno'] == true && p['push_token'] == token, orElse: () => null);
+        putnikData = V3MasterRealtimeManager.instance.putniciCache.values.cast<Map<String, dynamic>?>().firstWhere(
+              (p) => p != null && p['aktivno'] == true && (p['push_token'] == token || p['push_token_2'] == token),
+              orElse: () => null,
+            );
       }
     }
 

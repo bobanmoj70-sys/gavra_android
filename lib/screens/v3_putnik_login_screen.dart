@@ -436,11 +436,28 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
 
       // Snimi FCM push token (nakon što je dozvola odobrena)
+      // Logika: push_token = prvi uređaj, push_token_2 = drugi uređaj
       try {
         final token = await FirebaseMessaging.instance.getToken();
         if (token != null) {
-          await supabase.from('v3_putnici').update({'push_token': token}).eq('id', _putnikData!['id']);
-          _putnikData!['push_token'] = token;
+          final existingToken1 = _putnikData!['push_token'] as String?;
+          final existingToken2 = _putnikData!['push_token_2'] as String?;
+
+          if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
+            // Isti ili novi prvi uređaj
+            await supabase.from('v3_putnici').update({'push_token': token}).eq('id', _putnikData!['id']);
+            _putnikData!['push_token'] = token;
+          } else if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
+            // Drugi uređaj
+            await supabase.from('v3_putnici').update({'push_token_2': token}).eq('id', _putnikData!['id']);
+            _putnikData!['push_token_2'] = token;
+            debugPrint('[PutnikLogin] Push token snimljen kao push_token_2 (drugi uređaj)');
+          } else {
+            // Oba slota zauzeta - prepiši push_token_2 (najnoviji uređaj pobeđuje)
+            await supabase.from('v3_putnici').update({'push_token_2': token}).eq('id', _putnikData!['id']);
+            _putnikData!['push_token_2'] = token;
+            debugPrint('[PutnikLogin] push_token_2 ažuriran (novi treći uređaj prepisao drugi slot)');
+          }
         }
       } catch (e) {
         debugPrint('[PutnikLogin] push_token greška: $e');

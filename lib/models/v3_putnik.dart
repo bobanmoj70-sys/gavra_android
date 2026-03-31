@@ -24,6 +24,8 @@ class V3Putnik {
   final int? placeniMesec;
   final int? placenaGodina;
 
+  final String? pushToken;
+  final String? pushToken2;
   final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -47,6 +49,8 @@ class V3Putnik {
     this.cenaPoPokupljenju = 0.0,
     this.placeniMesec,
     this.placenaGodina,
+    this.pushToken,
+    this.pushToken2,
     this.aktivno = true,
     this.createdAt,
     this.updatedAt,
@@ -72,6 +76,8 @@ class V3Putnik {
       cenaPoPokupljenju: (json['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0,
       placeniMesec: json['placeni_mesec'] as int?,
       placenaGodina: json['placena_godina'] as int?,
+      pushToken: json['push_token'] as String?,
+      pushToken2: json['push_token_2'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
@@ -99,6 +105,8 @@ class V3Putnik {
       'placeni_mesec': placeniMesec,
       'placena_godina': placenaGodina,
       'aktivno': aktivno,
+      if (pushToken != null) 'push_token': pushToken,
+      if (pushToken2 != null) 'push_token_2': pushToken2,
       if (createdBy != null) 'created_by': createdBy,
     };
   }
@@ -121,6 +129,8 @@ class V3Putnik {
     double? cenaPoPokupljenju,
     int? placeniMesec,
     int? placenaGodina,
+    String? pushToken,
+    String? pushToken2,
     bool? aktivno,
   }) {
     return V3Putnik(
@@ -141,6 +151,8 @@ class V3Putnik {
       cenaPoPokupljenju: cenaPoPokupljenju ?? this.cenaPoPokupljenju,
       placeniMesec: placeniMesec ?? this.placeniMesec,
       placenaGodina: placenaGodina ?? this.placenaGodina,
+      pushToken: pushToken ?? this.pushToken,
+      pushToken2: pushToken2 ?? this.pushToken2,
       aktivno: aktivno ?? this.aktivno,
     );
   }
