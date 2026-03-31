@@ -21,17 +21,18 @@ class V3SmartNavigationService {
     'VS': (lat: 45.1190, lng: 21.3030),
   };
 
-  static String? _resolveAdresaIdForTargetCity({
+  // Vraća adresaId za pickup — uvek u gradu polaska (fromCity), ne odredišta.
+  static String? _resolveAdresaIdForPickup({
     required V3Putnik putnik,
     required dynamic entry,
-    required String targetCity,
+    required String fromCity,
   }) {
     final String? override = entry?.adresaIdOverride as String?;
     if (override != null && override.trim().isNotEmpty) {
       return override;
     }
 
-    if (targetCity.toUpperCase() == 'BC') {
+    if (fromCity.toUpperCase() == 'BC') {
       return putnik.adresaBcId;
     }
 
@@ -64,14 +65,14 @@ class V3SmartNavigationService {
         if (putnik == null) continue;
         final entry = item['entry'];
 
-        final adresaId = _resolveAdresaIdForTargetCity(
+        final adresaId = _resolveAdresaIdForPickup(
           putnik: putnik,
           entry: entry,
-          targetCity: targetCity,
+          fromCity: fromCity,
         );
 
         if (adresaId == null || adresaId.isEmpty) {
-          return V3NavigationResult.error('Putnik ${putnik.imePrezime} nema fiksnu adresu za grad $targetCity');
+          return V3NavigationResult.error('Putnik ${putnik.imePrezime} nema fiksnu adresu za grad $fromCity');
         }
 
         final adresa = V3AdresaService.getAdresaById(adresaId);

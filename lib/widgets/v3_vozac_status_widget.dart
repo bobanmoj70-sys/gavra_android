@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_osrm_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../utils/v3_container_utils.dart';
@@ -10,21 +9,16 @@ import '../utils/v3_dan_helper.dart';
 import '../utils/v3_style_helper.dart';
 
 class V3VozacStatusWidget extends StatefulWidget {
-  final String putnikId;
   final String vozacId;
-  final String vreme;
-  final String grad;
-  final DateTime datum;
-  final String? adresaId;
+
+  /// Koordinate svih putnika pre ovog putnika na ruti, u redosledu route_order.
+  /// Poslednja tačka u nizu je adresa ovog putnika.
+  final List<({double lat, double lng})> putnikWaypoints;
 
   const V3VozacStatusWidget({
     super.key,
-    required this.putnikId,
     required this.vozacId,
-    required this.vreme,
-    required this.grad,
-    required this.datum,
-    this.adresaId,
+    required this.putnikWaypoints,
   });
 
   @override
@@ -47,7 +41,7 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   @override
   void didUpdateWidget(covariant V3VozacStatusWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.vozacId != widget.vozacId || oldWidget.adresaId != widget.adresaId) {
+    if (oldWidget.vozacId != widget.vozacId || oldWidget.putnikWaypoints != widget.putnikWaypoints) {
       _refreshEta();
     }
   }
@@ -64,10 +58,13 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   }
 
   Future<void> _refreshEta() async {
-    final adresa = V3AdresaService.getAdresaById(widget.adresaId);
-    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(widget.vozacId);
+    if (widget.putnikWaypoints.isEmpty) {
+      if (mounted) setState(() => _etaVreme = null);
+      return;
+    }
 
-    if (adresa == null || !adresa.hasValidCoordinates || lokacijaVozaca == null) {
+    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(widget.vozacId);
+    if (lokacijaVozaca == null) {
       if (mounted) setState(() => _etaVreme = null);
       return;
     }
@@ -79,12 +76,12 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
       return;
     }
 
-    final durationMin = await V3OsrmService.getRouteDurationMinutes(
-      originLat: vozacLat,
-      originLng: vozacLng,
-      destinationLat: adresa.gpsLat!,
-      destinationLng: adresa.gpsLng!,
-    );
+    final allWaypoints = [
+      (lat: vozacLat, lng: vozacLng),
+      ...widget.putnikWaypoints,
+    ];
+
+    final durationMin = await V3OsrmService.getEtaMinutes(waypoints: allWaypoints);
 
     if (durationMin == null) {
       if (mounted) setState(() => _etaVreme = null);

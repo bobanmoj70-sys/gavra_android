@@ -203,7 +203,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     sorted.sort((a, b) {
       int sortRank(_PutnikEntry entry) {
         final status = (entry.entry?.statusFinal ?? '').trim().toLowerCase();
-        if (status == 'otkazano') return 3;
+        if (status == 'otkazano' || status == 'odbijeno') return 3;
         if (entry.entry?.pokupljen == true) return 2;
         return 1;
       }
@@ -778,14 +778,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (res.success && res.optimizedData != null) {
         await _persistRouteOrderToOperativna(res.optimizedData!);
 
-        final Map<String, int?> orderByPutnikId = {};
+        // Mapiramo po entryId (ne putnikId) da ispravno handlamo slučaj
+        // kada isti putnik ima više entry-ja (dupli polasci).
+        final Map<String, int?> orderByEntryId = {};
         for (final d in res.optimizedData!) {
-          final putnik = d['putnik'] as V3Putnik;
+          final entry = d['entry'] as V3OperativnaNedeljaEntry?;
+          if (entry == null || entry.id.isEmpty) continue;
           final routeOrderValue = d['route_order'];
           final routeOrder = routeOrderValue is int
               ? routeOrderValue
               : (routeOrderValue is num ? routeOrderValue.toInt() : int.tryParse(routeOrderValue?.toString() ?? ''));
-          orderByPutnikId[putnik.id] = routeOrder;
+          orderByEntryId[entry.id] = routeOrder;
         }
 
         setState(() {
@@ -793,10 +796,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             if (_isExcludedFromOptimization(entry)) {
               return _PutnikEntry(putnik: entry.putnik, entry: entry.entry, routeOrder: null);
             }
+            final entryId = entry.entry?.id ?? '';
             return _PutnikEntry(
               putnik: entry.putnik,
               entry: entry.entry,
-              routeOrder: orderByPutnikId[entry.putnik.id],
+              routeOrder: entryId.isNotEmpty ? orderByEntryId[entryId] : null,
             );
           }).toList();
           _mojiPutnici = _sortPutniciForDisplay(merged);
@@ -807,7 +811,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         _updateLastOptimizationMeta(
           reason: reason,
           engine: (res.metadata?['engine']?.toString() ?? 'osrm'),
-          optimizedCount: orderByPutnikId.values.whereType<int>().length,
+          optimizedCount: orderByEntryId.values.whereType<int>().length,
           eligibleCount: putniciZaOptimizaciju.length,
           skippedCount: skippedCount,
           currentPosition: {'lat': driverLat, 'lng': driverLng},
@@ -1041,8 +1045,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, '🎨 Tema promenjena');
-                                  } else if (val == 'optimize') {
-                                    await _optimizujRutu(reason: 'manual');
                                   } else if (val == 'sifra') {
                                     if (!mounted || vozac == null) return;
                                     V3NavigationUtils.pushScreen<void>(
@@ -1060,15 +1062,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                       Icon(Icons.palette, color: Colors.purpleAccent),
                                       SizedBox(width: 8),
                                       Text('Promeni temu'),
-                                    ]),
-                                  ),
-                                  PopupMenuDivider(),
-                                  PopupMenuItem(
-                                    value: 'optimize',
-                                    child: Row(children: [
-                                      Icon(Icons.route, color: Colors.lightBlueAccent),
-                                      SizedBox(width: 8),
-                                      Text('Optimizuj rutu'),
                                     ]),
                                   ),
                                   PopupMenuDivider(),

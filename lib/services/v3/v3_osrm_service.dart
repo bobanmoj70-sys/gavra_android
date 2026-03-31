@@ -89,34 +89,33 @@ class V3OsrmService {
     }
   }
 
-  static Future<int?> getRouteDurationMinutes({
-    required double originLat,
-    required double originLng,
-    required double destinationLat,
-    required double destinationLng,
+  /// Računa trajanje rute kroz niz waypointa (min. 2).
+  /// Waypoints su u redosledu: [vozač, putnik1, putnik2, ..., ovaj_putnik].
+  /// Vraća ukupne minute od prve do poslednje tačke.
+  static Future<int?> getEtaMinutes({
+    required List<({double lat, double lng})> waypoints,
   }) async {
+    if (waypoints.length < 2) return null;
     try {
+      final coords = waypoints.map((w) => '${w.lng},${w.lat}').join(';');
       final uri = Uri.parse(
-        '$_baseUrl/route/v1/driving/$originLng,$originLat;$destinationLng,$destinationLat?overview=false&steps=false',
+        '$_baseUrl/route/v1/driving/$coords?overview=false&steps=false',
       );
 
       final response = await http.get(uri).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) {
-        debugPrint('[V3OsrmService] route status=${response.statusCode} body=${response.body}');
+        debugPrint('[V3OsrmService] eta status=${response.statusCode}');
         return null;
       }
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       if (decoded['code'] != 'Ok') {
-        debugPrint('[V3OsrmService] route code=${decoded['code']}');
+        debugPrint('[V3OsrmService] eta code=${decoded['code']}');
         return null;
       }
 
       final routes = decoded['routes'];
-      if (routes is! List || routes.isEmpty) {
-        debugPrint('[V3OsrmService] route routes empty');
-        return null;
-      }
+      if (routes is! List || routes.isEmpty) return null;
 
       final firstRoute = routes.first;
       if (firstRoute is! Map<String, dynamic>) return null;
@@ -127,7 +126,7 @@ class V3OsrmService {
       final minutes = (durationSeconds / 60.0).ceil();
       return minutes < 1 ? 1 : minutes;
     } catch (e) {
-      debugPrint('[V3OsrmService] getRouteDurationMinutes error: $e');
+      debugPrint('[V3OsrmService] getEtaMinutes error: $e');
       return null;
     }
   }

@@ -620,29 +620,82 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
     final row = selected['row'] as Map<String, dynamic>;
     final grad = (row['grad'] as String? ?? '').toUpperCase();
+    final vozacId = selected['vozacId'] as String;
     final koristiSekundarnu = row['koristi_sekundarnu'] as bool? ?? false;
     final adresaOverride = row['adresa_id_override'] as String?;
-    String? adresaId;
+    final mojRouteOrder = (row['route_order'] as num?)?.toInt();
 
+    // Resolvi adresu ovog putnika
+    String? mojAdresaId;
     if (adresaOverride != null && adresaOverride.isNotEmpty) {
-      adresaId = adresaOverride;
+      mojAdresaId = adresaOverride;
     } else if (grad == 'BC') {
       final adresaBc1 = _putnikData['adresa_bc_id'] as String?;
       final adresaBc2 = _putnikData['adresa_bc_id_2'] as String?;
-      adresaId = koristiSekundarnu ? (adresaBc2 ?? adresaBc1) : (adresaBc1 ?? adresaBc2);
+      mojAdresaId = koristiSekundarnu ? (adresaBc2 ?? adresaBc1) : (adresaBc1 ?? adresaBc2);
     } else if (grad == 'VS') {
       final adresaVs1 = _putnikData['adresa_vs_id'] as String?;
       final adresaVs2 = _putnikData['adresa_vs_id_2'] as String?;
-      adresaId = koristiSekundarnu ? (adresaVs2 ?? adresaVs1) : (adresaVs1 ?? adresaVs2);
+      mojAdresaId = koristiSekundarnu ? (adresaVs2 ?? adresaVs1) : (adresaVs1 ?? adresaVs2);
     }
 
+    final mojaAdresa = V3AdresaService.getAdresaById(mojAdresaId);
+    if (mojaAdresa == null) return const SizedBox.shrink();
+
+    // Pronađi putnike koji su pre ovog na ruti (manji route_order) i resolvi njihove adrese
+    final putnikWaypoints = <({double lat, double lng})>[];
+
+    if (mojRouteOrder != null && mojRouteOrder > 1) {
+      final prethodnici = rm.operativnaNedeljaCache.values.where((r) {
+        if (r['vozac_id']?.toString() != vozacId) return false;
+        if (r['datum']?.toString() != row['datum']?.toString()) return false;
+        if ((r['grad'] as String? ?? '').toUpperCase() != grad) return false;
+        final order = (r['route_order'] as num?)?.toInt();
+        return order != null && order < mojRouteOrder;
+      }).toList()
+        ..sort((a, b) {
+          final oa = (a['route_order'] as num).toInt();
+          final ob = (b['route_order'] as num).toInt();
+          return oa.compareTo(ob);
+        });
+
+      for (final r in prethodnici) {
+        final pPutnikId = r['putnik_id']?.toString();
+        final pOverride = r['adresa_id_override'] as String?;
+        final pGrad = (r['grad'] as String? ?? '').toUpperCase();
+        final pKoristiSek = r['koristi_sekundarnu'] as bool? ?? false;
+
+        String? pAdresaId;
+        if (pOverride != null && pOverride.isNotEmpty) {
+          pAdresaId = pOverride;
+        } else if (pPutnikId != null) {
+          final pData = rm.putniciCache[pPutnikId];
+          if (pData != null) {
+            if (pGrad == 'BC') {
+              final a1 = pData['adresa_bc_id'] as String?;
+              final a2 = pData['adresa_bc_id_2'] as String?;
+              pAdresaId = pKoristiSek ? (a2 ?? a1) : (a1 ?? a2);
+            } else if (pGrad == 'VS') {
+              final a1 = pData['adresa_vs_id'] as String?;
+              final a2 = pData['adresa_vs_id_2'] as String?;
+              pAdresaId = pKoristiSek ? (a2 ?? a1) : (a1 ?? a2);
+            }
+          }
+        }
+
+        final pAdresa = V3AdresaService.getAdresaById(pAdresaId);
+        if (pAdresa != null) {
+          putnikWaypoints.add((lat: pAdresa.gpsLat!, lng: pAdresa.gpsLng!));
+        }
+      }
+    }
+
+    // Dodaj adresu ovog putnika kao poslednju tačku
+    putnikWaypoints.add((lat: mojaAdresa.gpsLat!, lng: mojaAdresa.gpsLng!));
+
     return V3VozacStatusWidget(
-      putnikId: putnikId,
-      vozacId: selected['vozacId'] as String,
-      vreme: selected['vreme'] as String,
-      grad: row['grad'] as String? ?? '',
-      datum: selected['datum'] as DateTime,
-      adresaId: adresaId,
+      vozacId: vozacId,
+      putnikWaypoints: putnikWaypoints,
     );
   }
 
