@@ -6,24 +6,26 @@ import 'package:flutter/material.dart';
 /// KORISTI: Eliminiše dupliciranje if(mounted) setState() poziva i loading state pattern-a
 /// SIGURNOST: Automatski checked mounted status prije setState poziva
 class V3StateUtils {
+  static void _invokeSetState(State state, VoidCallback fn) {
+    (state as dynamic).setState(fn);
+  }
+
   /// Safely execute setState with mounted check - PROSTO PROSLIJEDI CALLBACK
   ///
   /// **Koristi umjesto:** if (mounted) setState(() => ...);
   /// **Primjer:** V3StateUtils.safeSetState(this, () => _isLoading = true);
   static void safeSetState(State state, VoidCallback fn) {
     if (state.mounted) {
-      (state as dynamic).setState(fn);
+      _invokeSetState(state, fn);
     }
   }
 
   /// Set loading state safely
   ///
   /// **Koristi umjesto:** if (mounted) setState(() => _isLoading = loading);
-  /// **Primjer:** V3StateUtils.setLoading(this, true, () => _isLoading = value);
-  static void setLoading(State state, bool value, VoidCallback setter) {
-    if (state.mounted) {
-      (state as dynamic).setState(setter);
-    }
+  /// **Primjer:** V3StateUtils.setLoading(this, true, () => _isLoading = true);
+  static void setLoading(State state, bool _loading, VoidCallback setter) {
+    safeSetState(state, setter);
   }
 
   /// Execute async operation with automatic loading state
@@ -49,9 +51,7 @@ class V3StateUtils {
   /// **Koristi umjesto:** if (mounted) setState(() => _errorMessage = null);
   /// **Primjer:** V3StateUtils.clearError(this, () => _errorMessage = null);
   static void clearError(State state, VoidCallback clearCallback) {
-    if (state.mounted) {
-      (state as dynamic).setState(clearCallback);
-    }
+    safeSetState(state, clearCallback);
   }
 
   /// Set error message safely
@@ -59,9 +59,7 @@ class V3StateUtils {
   /// **Koristi umjesto:** if (mounted) setState(() => _errorMessage = message);
   /// **Primjer:** V3StateUtils.setError(this, () => _errorMessage = 'Error');
   static void setError(State state, VoidCallback setErrorCallback) {
-    if (state.mounted) {
-      (state as dynamic).setState(setErrorCallback);
-    }
+    safeSetState(state, setErrorCallback);
   }
 
   /// Batch multiple state updates with mounted check
@@ -69,9 +67,7 @@ class V3StateUtils {
   /// **Koristi umjesto:** više if(mounted) setState poziva
   /// **Primjer:** V3StateUtils.batchUpdate(this, () { _loading = false; _error = null; });
   static void batchUpdate(State state, VoidCallback updates) {
-    if (state.mounted) {
-      (state as dynamic).setState(updates);
-    }
+    safeSetState(state, updates);
   }
 
   /// Conditional state update
@@ -80,7 +76,7 @@ class V3StateUtils {
   /// **Primjer:** V3StateUtils.updateIf(this, shouldUpdate, () => _value = newValue);
   static void updateIf(State state, bool condition, VoidCallback update) {
     if (condition && state.mounted) {
-      (state as dynamic).setState(update);
+      _invokeSetState(state, update);
     }
   }
 }
