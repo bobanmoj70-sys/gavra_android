@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:gavra_android/utils/v3_phone_utils.dart';
 
 /// V3InputUtils - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ INPUT FIELD-ОВИМА
 /// Елиминише све TextField/TextFormField дупликате!
 class V3InputUtils {
   V3InputUtils._();
+
+  static final RegExp _emailRegex = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,}$');
 
   // ─── СТАНДАРДНИ INPUT FIELD-ОВИ ─────────────────────────────────────────
 
@@ -190,15 +193,7 @@ class V3InputUtils {
       icon: Icons.email,
       hint: hint,
       keyboardType: TextInputType.emailAddress,
-      validator: (v) {
-        if (isRequired && (v == null || v.trim().isEmpty)) {
-          return 'Унесите email';
-        }
-        if (v != null && v.isNotEmpty && (!v.contains('@') || !v.contains('.'))) {
-          return 'Неисправан email формат';
-        }
-        return null;
-      },
+      validator: (v) => emailValidator(v, isRequired: isRequired),
     );
   }
 
@@ -215,12 +210,7 @@ class V3InputUtils {
       icon: Icons.phone,
       hint: hint ?? '06x xxx xxxx',
       keyboardType: TextInputType.phone,
-      validator: (v) {
-        if (isRequired && (v == null || v.trim().isEmpty)) {
-          return 'Унесите број телефона';
-        }
-        return null;
-      },
+      validator: (v) => phoneValidator(v, isRequired: isRequired),
     );
   }
 
@@ -361,21 +351,31 @@ class V3InputUtils {
 
   /// Email валидатор
   static String? emailValidator(String? value, {bool isRequired = true}) {
-    if (isRequired && (value == null || value.trim().isEmpty)) {
+    final normalized = value?.trim() ?? '';
+    if (isRequired && normalized.isEmpty) {
       return 'Унесите email адресу';
     }
-    if (value != null && value.isNotEmpty) {
-      if (!value.contains('@') || !value.contains('.')) {
-        return 'Неисправан email формат';
-      }
+    if (normalized.isNotEmpty && !_emailRegex.hasMatch(normalized)) {
+      return 'Неисправан email формат';
     }
     return null;
   }
 
   /// Телефон валидатор
   static String? phoneValidator(String? value, {bool isRequired = true}) {
-    if (isRequired && (value == null || value.trim().isEmpty)) {
+    final normalized = value?.trim() ?? '';
+    if (isRequired && normalized.isEmpty) {
       return 'Унесите број телефона';
+    }
+    if (normalized.isNotEmpty) {
+      final digitsOnly = normalized.replaceAll(RegExp(r'\D'), '');
+      if (digitsOnly.length < 8 || digitsOnly.length > 15) {
+        return 'Неисправан број телефона';
+      }
+      if ((normalized.startsWith('+') || normalized.startsWith('0') || normalized.startsWith('381')) &&
+          !V3PhoneUtils.isValid(normalized)) {
+        return 'Неисправан број телефона';
+      }
     }
     return null;
   }
@@ -397,7 +397,7 @@ class V3InputUtils {
       return 'Потврдите шифру';
     }
     if (value != originalPassword) {
-      return 'Шифре се не покпапају';
+      return 'Шифре се не поклапају';
     }
     return null;
   }
