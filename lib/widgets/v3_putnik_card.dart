@@ -102,11 +102,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       V2HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac == null) throw 'Niste logovani u V3 sistem';
-      final isAlreadyPokupljen = widget.entry?.pokupljen ?? false;
       await V3ZahtevService.oznaciPokupljen(pokupljenVozacId: currentVozac.id, operativnaId: widget.entry?.id);
       await V2HapticService.putnikPokupljen();
       if (mounted) {
-        V3AppSnackBar.success(context, isAlreadyPokupljen ? 'Vraćeno u obradu' : 'Putnik pokupljen');
+        V3AppSnackBar.success(context, 'Putnik pokupljen');
         widget.onChanged?.call();
       }
     } catch (e) {
@@ -117,8 +116,18 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     }
   }
 
+  String? _firstValidTelefon() {
+    final telefon1 = (widget.putnik.telefon1 ?? '').trim();
+    if (telefon1.isNotEmpty) return telefon1;
+
+    final telefon2 = (widget.putnik.telefon2 ?? '').trim();
+    if (telefon2.isNotEmpty) return telefon2;
+
+    return null;
+  }
+
   Future<void> _handleCall() async {
-    final tel = widget.putnik.telefon1 ?? widget.putnik.telefon2;
+    final tel = _firstValidTelefon();
     if (tel == null || tel.isEmpty) return;
 
     // Za widgets koristimo direktnu implementaciju sa basic error handling
@@ -135,21 +144,25 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Future<void> _handlePayment() async {
     if (widget.entry == null && widget.zahtev == null) return;
     if (_globalProcessingLock || _isProcessing) return;
+
+    _globalProcessingLock = true;
+    V3StateUtils.safeSetState(this, () => _isProcessing = true);
+
     final tip = widget.putnik.tipPutnika;
     final defaultCena =
         (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
     final zakljucajIznos = defaultCena > 0;
-    final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
-      context: context,
-      putnikId: widget.putnik.id,
-      imePrezime: widget.putnik.imePrezime,
-      defaultCena: defaultCena,
-      zakljucajIznos: zakljucajIznos,
-    );
-    if (rezultat == null) return;
-    _globalProcessingLock = true;
-    V3StateUtils.safeSetState(this, () => _isProcessing = true);
+
     try {
+      final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
+        context: context,
+        putnikId: widget.putnik.id,
+        imePrezime: widget.putnik.imePrezime,
+        defaultCena: defaultCena,
+        zakljucajIznos: zakljucajIznos,
+      );
+      if (rezultat == null) return;
+
       final ok = await V3PlacanjeDialogHelper.sacuvajPlacanje(
         context: context,
         putnikId: widget.putnik.id,
@@ -216,26 +229,34 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Future<void> _handleOtkazivanje() async {
     final operativnaId = widget.entry?.id;
     if (operativnaId == null || operativnaId.isEmpty) return;
-    final confirm = await V3NavigationUtils.showConfirmDialog(
-      context,
-      title: 'Otkazivanje putnika',
-      message: 'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
-      confirmText: 'Da',
-      cancelText: 'Ne',
-      isDangerous: true,
-    );
 
-    if (confirm == true) {
-      try {
+    if (_globalProcessingLock || _isProcessing) return;
+    _globalProcessingLock = true;
+    V3StateUtils.safeSetState(this, () => _isProcessing = true);
+
+    try {
+      final confirm = await V3NavigationUtils.showConfirmDialog(
+        context,
+        title: 'Otkazivanje putnika',
+        message: 'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
+        confirmText: 'Da',
+        cancelText: 'Ne',
+        isDangerous: true,
+      );
+
+      if (confirm == true) {
         await V3ZahtevService.otkaziZahtev('',
             otkazaoVozacId: V3VozacService.currentVozac?.id, operativnaId: operativnaId);
         if (mounted) {
           V3AppSnackBar.warning(context, 'Otkazano: ${widget.putnik.imePrezime}');
           widget.onChanged?.call();
         }
-      } catch (e) {
-        V3ErrorUtils.safeError(this, context, 'Greška: $e');
       }
+    } catch (e) {
+      V3ErrorUtils.safeError(this, context, 'Greška: $e');
+    } finally {
+      _globalProcessingLock = false;
+      V3StateUtils.safeSetState(this, () => _isProcessing = false);
     }
   }
 
@@ -351,8 +372,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool isPokupljen = widget.entry?.pokupljen ?? false;
     final bool isOtkazan = status == 'otkazano';
     final bool isPlacen = widget.entry?.naplataStatus == 'placeno';
-    final bool isExcludedFromOptimization = widget.isExcludedFromOptimization;
-    final bool hasTel = widget.putnik.telefon1 != null || widget.putnik.telefon2 != null;
+    final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
     final Color textColor = _getTextColor();
@@ -620,10 +640,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                         if (isOtkazan) ...[
                           Text(
                             () {
-                              final vp = widget.entry?.vremePokupljen;
-                              final dtStr = _fmt(vp);
                               final koOtkaz = otkazaoPutnikId != null ? 'Putnik otkazao' : 'Vozač otkazao';
-                              return dtStr.isNotEmpty ? '$koOtkaz: $dtStr' : koOtkaz;
+                              return koOtkaz;
                             }(),
                             style: TextStyle(fontSize: 13, color: bojaOtkaz, fontWeight: FontWeight.w600),
                           ),
