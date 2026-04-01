@@ -52,7 +52,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
   @override
   Widget build(BuildContext context) {
     return V3ContainerUtils.gradientContainer(
-      gradient: V2ThemeManager().currentGradient,
+      gradient: V3ThemeManager().currentGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(

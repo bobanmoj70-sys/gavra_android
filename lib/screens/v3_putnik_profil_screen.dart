@@ -307,7 +307,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: V3ContainerUtils.gradientContainer(
             width: 320,
-            gradient: V2ThemeManager().currentGradient,
+            gradient: V3ThemeManager().currentGradient,
             borderRadius: BorderRadius.circular(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -728,9 +728,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
     final nedeljaInfo = 'Aktivna nedelja: $nedeljaOpseg';
     return ValueListenableBuilder<ThemeData>(
-      valueListenable: V2ThemeManager().themeNotifier,
+      valueListenable: V3ThemeManager().themeNotifier,
       builder: (context, _, __) => V3ContainerUtils.backgroundContainer(
-        gradient: V2ThemeManager().currentGradient,
+        gradient: V3ThemeManager().currentGradient,
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
@@ -834,7 +834,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 icon: const Text('🎨', style: TextStyle(fontSize: 18)),
                 tooltip: 'Tema',
                 onPressed: () async {
-                  await V2ThemeManager().nextTheme();
+                  await V3ThemeManager().nextTheme();
                   V3StateUtils.safeSetState(this, () {});
                   if (!mounted) return;
                   V3AppSnackBar.info(context, '🎨 Tema promenjena');

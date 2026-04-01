@@ -98,7 +98,7 @@ class _BottomNavBarZimskiState extends State<V3BottomNavBarZimski> {
     // Koristi prosleđena vremena ili fallback na Zimski raspored
     final bcVremena = widget.bcVremena ?? [];
     final vsVremena = widget.vsVremena ?? [];
-    final currentThemeId = V2ThemeManager().currentThemeId;
+    final currentThemeId = V3ThemeManager().currentThemeId;
 
     return Container(
       decoration: BoxDecoration(

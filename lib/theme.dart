@@ -388,7 +388,7 @@ const ColorScheme nightBlueColorScheme = ColorScheme(
 
 // TEMA EKSTENZIJA - dodaje gradijent pozadinu
 extension ThemeGradients on ThemeData {
-  LinearGradient get backgroundGradient => V2ThemeManager().currentGradient;
+  LinearGradient get backgroundGradient => V3ThemeManager().currentGradient;
 
   // Glassmorphism kontejner boje
   Color get glassContainer => Colors.transparent;

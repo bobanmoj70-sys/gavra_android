@@ -485,7 +485,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
       body: V3ContainerUtils.backgroundContainer(
-        gradient: V2ThemeManager().currentGradient,
+        gradient: V3ThemeManager().currentGradient,
         child: SafeArea(
           child: SingleChildScrollView(
             child: Padding(
@@ -556,7 +556,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     opacity: _fadeAnimation,
                     child: GestureDetector(
                       onTap: () async {
-                        await V2ThemeManager().nextTheme();
+                        await V3ThemeManager().nextTheme();
                         V3StateUtils.safeSetState(this, () {});
                       },
                       child: ShaderMask(

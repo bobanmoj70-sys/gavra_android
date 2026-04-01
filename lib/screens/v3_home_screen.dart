@@ -880,7 +880,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: V3ContainerUtils.gradientContainer(
-            gradient: V2ThemeManager().currentGradient,
+            gradient: V3ThemeManager().currentGradient,
             child: const Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
         ),
@@ -986,7 +986,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               'Aktivna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
           return V3ContainerUtils.gradientContainer(
-            gradient: V2ThemeManager().currentGradient,
+            gradient: V3ThemeManager().currentGradient,
             child: Scaffold(
               backgroundColor: Colors.transparent,
               appBar: PreferredSize(

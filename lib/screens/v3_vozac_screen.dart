@@ -855,7 +855,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: V3ContainerUtils.backgroundContainer(
-            gradient: V2ThemeManager().currentGradient,
+            gradient: V3ThemeManager().currentGradient,
             child: const Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
         ),
@@ -926,7 +926,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light,
           child: V3ContainerUtils.backgroundContainer(
-            gradient: V2ThemeManager().currentGradient,
+            gradient: V3ThemeManager().currentGradient,
             child: Scaffold(
               backgroundColor: Colors.transparent,
               appBar: PreferredSize(
@@ -995,7 +995,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                               PopupMenuButton<String>(
                                 onSelected: (val) async {
                                   if (val == 'tema') {
-                                    await V2ThemeManager().nextTheme();
+                                    await V3ThemeManager().nextTheme();
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, '🎨 Tema promenjena');

@@ -95,7 +95,7 @@ class _BottomNavBarLetnjiState extends State<V3BottomNavBarLetnji> {
 
   @override
   Widget build(BuildContext context) {
-    final currentThemeId = V2ThemeManager().currentThemeId;
+    final currentThemeId = V3ThemeManager().currentThemeId;
     // Koristi prosleđena vremena ili fallback na V3RouteConfig
     final bcVremena = widget.bcVremena ?? [];
     final vsVremena = widget.vsVremena ?? [];

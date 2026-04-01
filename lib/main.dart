@@ -754,7 +754,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeData>(
-      valueListenable: V2ThemeManager().themeNotifier,
+      valueListenable: V3ThemeManager().themeNotifier,
       builder: (context, themeData, _) {
         return MaterialApp(
           navigatorKey: navigatorKey,

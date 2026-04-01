@@ -32,13 +32,13 @@ class V3AdminScreen extends StatefulWidget {
 }
 
 class _V3AdminScreenState extends State<V3AdminScreen> {
-  late final V2ThemeManager _themeManager;
+  late final V3ThemeManager _themeManager;
   static final RegExp _versionPattern = RegExp(r'^\d+(\.\d+){1,3}$');
 
   @override
   void initState() {
     super.initState();
-    _themeManager = V2ThemeManager();
+    _themeManager = V3ThemeManager();
   }
 
   bool _isValidVersion(String value) {
