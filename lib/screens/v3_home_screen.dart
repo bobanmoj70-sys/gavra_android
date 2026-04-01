@@ -15,7 +15,6 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
-import '../utils/v2_grad_adresa_validator.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
@@ -24,6 +23,7 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_text_utils.dart';
+import '../utils/v3_validation_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
@@ -200,12 +200,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
     final rm = V3MasterRealtimeManager.instance;
-    final normV = V2GradAdresaValidator.normalizeTime(vreme);
+    final normV = V3ValidationUtils.normalizeVreme(vreme);
     for (final row in rm.v3GpsRasporedCache.values) {
       if (row['putnik_id'] == putnikId &&
           row['grad'] == grad &&
           row['aktivno'] == true &&
-          V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') == normV &&
+          V3ValidationUtils.normalizeVreme(row['vreme'] as String? ?? '') == normV &&
           V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum) {
         final vozacId = row['vozac_id'] as String?;
         if (vozacId != null && vozacId.isNotEmpty) {
@@ -958,13 +958,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           }
 
           Color? getVozacColorForTermin(String grad, String vreme) {
-            final vremeNorm = V2GradAdresaValidator.normalizeTime(vreme);
+            final vremeNorm = V3ValidationUtils.normalizeVreme(vreme);
             final rm = V3MasterRealtimeManager.instance;
             for (final row in rm.v3GpsRasporedCache.values) {
               if (row['grad'] != grad) continue;
               if (row['aktivno'] != true) continue;
               if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != _selectedDatumIso) continue;
-              if (V2GradAdresaValidator.normalizeTime(row['vreme'] as String? ?? '') != vremeNorm) continue;
+              if (V3ValidationUtils.normalizeVreme(row['vreme'] as String? ?? '') != vremeNorm) continue;
               final vozacId = row['vozac_id'] as String?;
               if (vozacId == null || vozacId.isEmpty) continue;
               final vozac = V3VozacService.getVozacById(vozacId);
