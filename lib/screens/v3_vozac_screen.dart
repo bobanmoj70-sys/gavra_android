@@ -3,13 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_theme_manager.dart';
-import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
@@ -560,53 +558,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<void> _openMapa() async {
-    final putniciZaRutu = _optimizacijaPutnici();
-    if (putniciZaRutu.isEmpty) {
-      await V3TelefonHelper.otvoriMaps(this, context, 'https://wego.here.com/');
-      return;
-    }
-
-    // Napravi multi-stop URL za Here WeGo od liste putnika
-    final waypointsBuffer = StringBuffer('https://wego.here.com/directions/drive/');
-    bool first = true;
-    int idx = 0;
-    for (final pz in putniciZaRutu) {
-      // Adresa zavisno od smjera (grad iz selektovanog termina) — poštuje override iz entry-ja
-      final String adresa;
-      final override = pz.entry?.adresaIdOverride;
-      if (override != null) {
-        adresa = V3AdresaService.getAdresaById(override)?.naziv ?? '';
-      } else {
-        final koristiSekundarnu = pz.entry?.koristiSekundarnu ?? false;
-        if (_selectedGrad.toUpperCase() == 'BC') {
-          adresa = koristiSekundarnu
-              ? (V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ??
-                  '')
-              : (V3AdresaService.getAdresaById(pz.putnik.adresaBcId)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaBcId2)?.naziv ??
-                  '');
-        } else {
-          adresa = koristiSekundarnu
-              ? (V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ??
-                  '')
-              : (V3AdresaService.getAdresaById(pz.putnik.adresaVsId)?.naziv ??
-                  V3AdresaService.getAdresaById(pz.putnik.adresaVsId2)?.naziv ??
-                  '');
-        }
-      }
-      if (adresa.isEmpty) continue;
-      final encoded = Uri.encodeComponent('$adresa, Serbia');
-      waypointsBuffer.write('${first ? '?' : '&'}waypoint$idx=$encoded');
-      first = false;
-      idx++;
-    }
-
-    final uri = Uri.parse(waypointsBuffer.toString());
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    await V3TelefonHelper.otvoriHereWeGoAppOnly(this, context);
   }
 
   Future<void> _logout() async {

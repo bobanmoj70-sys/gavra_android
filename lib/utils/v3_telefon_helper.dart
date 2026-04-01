@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'v3_app_snack_bar.dart';
 import 'v3_error_utils.dart';
 import 'v3_phone_utils.dart';
-import 'v3_state_utils.dart';
 
 /// 📞 V3TelefonHelper - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ ПОЗИВА/SMS/EMAIL
 /// Елиминише све duplikate launchUrl(Uri(scheme: 'tel'...)) позива!
@@ -45,7 +44,7 @@ class V3TelefonHelper {
       }
     }
 
-    final uri = Uri(scheme: 'tel', path: normalizedBroj.replaceFirst('+', ''));
+    final uri = Uri(scheme: 'tel', path: normalizedBroj);
 
     try {
       if (!state.mounted) return;
@@ -70,7 +69,7 @@ class V3TelefonHelper {
     }
 
     final normalizedBroj = V3PhoneUtils.normalize(broj);
-    final uri = Uri(scheme: 'tel', path: normalizedBroj.replaceFirst('+', ''));
+    final uri = Uri(scheme: 'tel', path: normalizedBroj);
 
     try {
       if (!state.mounted) return;
@@ -99,7 +98,7 @@ class V3TelefonHelper {
     final normalizedBroj = V3PhoneUtils.normalize(broj);
     final smsUri = Uri(
       scheme: 'sms',
-      path: normalizedBroj.replaceFirst('+', ''),
+      path: normalizedBroj,
       queryParameters: {'body': poruka},
     );
 
@@ -108,9 +107,8 @@ class V3TelefonHelper {
       if (await canLaunchUrl(smsUri)) {
         await launchUrl(smsUri, mode: LaunchMode.externalApplication);
       } else {
-        V3StateUtils.safeSetState(state, () {
-          V3AppSnackBar.warning(context, 'Ne mogu da otvorim SMS aplikaciju');
-        });
+        if (!state.mounted) return;
+        V3AppSnackBar.warning(context, 'Ne mogu da otvorim SMS aplikaciju');
       }
     } catch (e) {
       V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju SMS: $e');
@@ -122,7 +120,9 @@ class V3TelefonHelper {
   /// **Koristi umjesto:** _pinPosaljiSms duplikata
   /// **Primjer:** V3TelefonHelper.posaljiPin(this, context, '064123456', '1234', 'Marko Marković');
   static Future<void> posaljiPin(State state, BuildContext context, String broj, String pin, String ime) async {
-    final poruka = 'Vaš PIN za aplikaciju Gavra 013 je: $pin\n\n'
+    final imeText = ime.trim().isEmpty ? '' : '$ime,\n';
+    final poruka = '$imeText'
+        'Vaš PIN za aplikaciju Gavra 013 je: $pin\n\n'
         'Koristite ovaj PIN zajedno sa brojem telefona za pristup.\n'
         '- Gavra 013';
 
@@ -148,9 +148,8 @@ class V3TelefonHelper {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        V3StateUtils.safeSetState(state, () {
-          V3AppSnackBar.error(context, 'Ne mogu da otvorim email aplikaciju');
-        });
+        if (!state.mounted) return;
+        V3AppSnackBar.error(context, 'Ne mogu da otvorim email aplikaciju');
       }
     } catch (e) {
       V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju emaila: $e');
@@ -158,6 +157,28 @@ class V3TelefonHelper {
   }
 
   // ─── MAPS I NAVIGACIJA ──────────────────────────────────────────────────
+
+  /// Otvara isključivo HERE WeGo aplikaciju (bez web/Google fallback-a)
+  ///
+  /// Ako aplikacija nije instalirana, prikazuje poruku da je potrebno instalirati HERE WeGo.
+  static Future<void> otvoriHereWeGoAppOnly(State state, BuildContext context) async {
+    final hereAppUri = Uri.parse('here-route://mylocation');
+
+    try {
+      if (!state.mounted) return;
+      if (await canLaunchUrl(hereAppUri)) {
+        await launchUrl(hereAppUri, mode: LaunchMode.externalApplication);
+      } else {
+        if (!state.mounted) return;
+        V3AppSnackBar.warning(
+          context,
+          'Instalirajte HERE WeGo aplikaciju ako želite da koristite navigaciju.',
+        );
+      }
+    } catch (e) {
+      V3ErrorUtils.safeError(state, context, '❌ HERE WeGo nije dostupan: $e');
+    }
+  }
 
   /// Otvori HERE WeGo navigaciju do specifične lokacije
   ///
@@ -198,9 +219,8 @@ class V3TelefonHelper {
       if (await canLaunchUrl(googleUrl)) {
         await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
       } else {
-        V3StateUtils.safeSetState(state, () {
-          V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
-        });
+        if (!state.mounted) return;
+        V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
       }
     } catch (e) {
       V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju mapa: $e');
@@ -212,20 +232,24 @@ class V3TelefonHelper {
   /// **Koristi umjesto:** Uri.parse(url) launch duplikata
   /// **Primjer:** V3TelefonHelper.otvoriMaps(this, context, 'https://share.here.com/r/44.8983,21.4152');
   static Future<void> otvoriMaps(State state, BuildContext context, String urlOrAddress) async {
-    final uri = Uri.tryParse(urlOrAddress);
-    if (uri == null) {
+    final input = urlOrAddress.trim();
+    if (input.isEmpty) {
       V3ErrorUtils.validationError(state, context, 'Neispravna maps adresa');
       return;
     }
+
+    final parsed = Uri.tryParse(input);
+    final uri = (parsed != null && parsed.hasScheme)
+        ? parsed
+        : Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': input});
 
     try {
       if (!state.mounted) return;
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        V3StateUtils.safeSetState(state, () {
-          V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
-        });
+        if (!state.mounted) return;
+        V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
       }
     } catch (e) {
       V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju mapa: $e');
