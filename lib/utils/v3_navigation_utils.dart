@@ -52,9 +52,13 @@ class V3NavigationUtils {
   }
 
   /// Pop sa rezultatom
-  static void pop<T extends Object?>(BuildContext context, [T? result]) {
+  static void pop<T extends Object?>(
+    BuildContext context, [
+    T? result,
+    bool useRootNavigator = false,
+  ]) {
     if (!context.mounted) return;
-    Navigator.pop<T>(context, result);
+    Navigator.of(context, rootNavigator: useRootNavigator).pop<T>(result);
   }
 
   // ─── DIALOG UTILITIES ──────────────────────────────────────────────────
@@ -67,20 +71,22 @@ class V3NavigationUtils {
     String confirmText = 'Da',
     String cancelText = 'Ne',
     bool isDangerous = false,
+    bool useRootNavigator = true,
   }) async {
     if (!context.mounted) return null;
     return showDialog<bool>(
       context: context,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         title: Text(title),
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(false),
             child: Text(cancelText),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(true),
             style: isDangerous ? TextButton.styleFrom(foregroundColor: Colors.red) : null,
             child: Text(confirmText),
           ),
@@ -95,16 +101,18 @@ class V3NavigationUtils {
     required String title,
     required String message,
     String okText = 'OK',
+    bool useRootNavigator = true,
   }) async {
     if (!context.mounted) return;
     return showDialog<void>(
       context: context,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         title: Text(title),
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(),
             child: Text(okText),
           ),
         ],
@@ -118,10 +126,12 @@ class V3NavigationUtils {
     required String title,
     required String message,
     String okText = 'OK',
+    bool useRootNavigator = true,
   }) async {
     if (!context.mounted) return;
     return showDialog<void>(
       context: context,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         title: Text(
           title,
@@ -130,7 +140,7 @@ class V3NavigationUtils {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text(okText),
           ),
@@ -144,11 +154,13 @@ class V3NavigationUtils {
     BuildContext context, {
     String message = 'Učitavanje...',
     bool barrierDismissible = false,
+    bool useRootNavigator = true,
   }) async {
     if (!context.mounted) return;
     return showDialog<void>(
       context: context,
       barrierDismissible: barrierDismissible,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         content: Row(
           children: [
@@ -167,12 +179,14 @@ class V3NavigationUtils {
     required Widget child,
     bool barrierDismissible = true,
     Color? barrierColor,
+    bool useRootNavigator = true,
   }) async {
     if (!context.mounted) return null;
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
       barrierColor: barrierColor,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => child,
     );
   }
@@ -186,6 +200,7 @@ class V3NavigationUtils {
     bool isScrollControlled = true,
     bool isDismissible = true,
     bool enableDrag = true,
+    bool useRootNavigator = false,
   }) async {
     if (!context.mounted) return null;
     return showModalBottomSheet<T>(
@@ -193,6 +208,7 @@ class V3NavigationUtils {
       isScrollControlled: isScrollControlled,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => child,
     );
   }
@@ -250,11 +266,15 @@ class V3NavigationUtils {
   /// Pop and push (restart navigation stack)
   static Future<T?> popAndPush<T extends Object?>(
     BuildContext context,
-    Widget screen,
-  ) async {
+    Widget screen, {
+    bool useRootNavigator = false,
+  }) async {
     if (!context.mounted) return null;
-    Navigator.pop(context);
-    return pushScreen<T>(context, screen);
+    final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+    return navigator.push<T>(MaterialPageRoute<T>(builder: (_) => screen));
   }
 
   // ─── VALIDATION HELPERS ────────────────────────────────────────────────
