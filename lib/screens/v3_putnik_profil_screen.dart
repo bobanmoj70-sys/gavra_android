@@ -640,7 +640,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     }
 
     final mojaAdresa = V3AdresaService.getAdresaById(mojAdresaId);
-    if (mojaAdresa == null) return const SizedBox.shrink();
+    if (mojaAdresa == null || !mojaAdresa.hasValidCoordinates) return const SizedBox.shrink();
 
     // Pronađi putnike koji su pre ovog na ruti (manji route_order) i resolvi njihove adrese
     final putnikWaypoints = <({double lat, double lng})>[];
@@ -684,7 +684,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         }
 
         final pAdresa = V3AdresaService.getAdresaById(pAdresaId);
-        if (pAdresa != null) {
+        if (pAdresa != null && pAdresa.hasValidCoordinates) {
           putnikWaypoints.add((lat: pAdresa.gpsLat!, lng: pAdresa.gpsLng!));
         }
       }
@@ -740,7 +740,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Update banner (opcioni/obavezni)
+                  // Forced update gate
                   const V3UpdateBanner(),
                   // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
                   if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)

@@ -75,12 +75,12 @@ bool get isPraznicniMod => praznicniModNotifier.value;
 /// Koristi se u celoj aplikaciji za pristup kredencijalima
 final V2ConfigService configService = V2ConfigService();
 
-/// UPDATE INFO - informacije o dostupnom update-u
-/// null = nema update-a, ili još nije provereno
+/// UPDATE INFO - informacije o obaveznom update-u
+/// null = nema obaveznog update-a, ili još nije provereno
 class V2UpdateInfo {
   final String latestVersion;
   final String storeUrl;
-  final bool isForced; // true = korisnik mora da ažurira, false = opciono
+  final bool isForced; // true = korisnik mora da ažurira (u forced-only toku očekivano true)
 
   const V2UpdateInfo({
     required this.latestVersion,
@@ -89,5 +89,5 @@ class V2UpdateInfo {
   });
 }
 
-/// Notifier koji se puni u AppSettingsService nakon provere verzije
+/// Notifier koji se puni nakon provere verzije samo kada postoji obavezni update
 final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateInfo?>(null);

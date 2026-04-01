@@ -55,7 +55,7 @@ class V3AnimationUtils {
 
   // ─── СПЕЦИЈАЛИЗОВАНЕ АНИМАЦИЈЕ ───────────────────────────────────
 
-  /// Pulse анимација за update banner
+  /// Pulse анимација за forced update dialog
   static AnimationController createPulseController({
     required TickerProvider vsync,
     Duration duration = const Duration(seconds: 2),

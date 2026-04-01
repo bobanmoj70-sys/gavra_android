@@ -6,9 +6,9 @@ import '../utils/v3_animation_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
 
-/// Banner koji se prikazuje kada postoji update (opcioni ili obavezni).
+/// Forced-update gate za aplikaciju.
 /// Koristi se na V3HomeScreen, V3PutnikProfilScreen i V3VozacScreen.
-/// Ako je obavezni update (isForced), prikazuje fullscreen blokadu preko cele aplikacije.
+/// Kada je update obavezan (`isForced=true`), prikazuje fullscreen blokadu preko cele aplikacije.
 class V3UpdateBanner extends StatefulWidget {
   const V3UpdateBanner({super.key});
 
@@ -71,14 +71,7 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<V2UpdateInfo?>(
-      valueListenable: updateInfoNotifier,
-      builder: (context, info, _) {
-        if (info == null) return const SizedBox.shrink();
-        if (info.isForced) return const SizedBox.shrink();
-        return _UpdateBannerContent(info: info);
-      },
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -254,151 +247,6 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _UpdateBannerContent extends StatefulWidget {
-  final V2UpdateInfo info;
-  const _UpdateBannerContent({required this.info});
-
-  @override
-  State<_UpdateBannerContent> createState() => _UpdateBannerContentState();
-}
-
-class _UpdateBannerContentState extends State<_UpdateBannerContent> with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = V3AnimationUtils.getController(
-      key: 'pulse_forced',
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
-    _scale = V3AnimationUtils.createTween(
-      controller: _pulse,
-      begin: 1.0,
-      end: 1.18,
-      curve: Curves.easeInOut,
-    );
-  }
-
-  @override
-  void dispose() {
-    V3AnimationUtils.disposeController('pulse_forced');
-    super.dispose();
-  }
-
-  Future<void> _openStore() async {
-    final url = Uri.tryParse(widget.info.storeUrl);
-    if (url != null && await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Opcioni update — tamnoplavi/ljubičasti gradijent
-    const gradientColors = [Color(0xFF1565C0), Color(0xFF6A1B9A)];
-
-    return GestureDetector(
-      onTap: _openStore,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: gradientColors,
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: V3StyleHelper.whiteAlpha15, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1565C0).withValues(alpha: 0.5),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              // Pulsirajuća ikonica
-              ScaleTransition(
-                scale: _scale,
-                child: V3ContainerUtils.styledContainer(
-                  width: 42,
-                  height: 42,
-                  backgroundColor: V3StyleHelper.whiteAlpha15,
-                  borderRadius: BorderRadius.circular(21),
-                  border: Border.all(color: V3StyleHelper.whiteAlpha3, width: 1.2),
-                  child: const Center(
-                    child: Text(
-                      '!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        height: 1.0,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 13),
-              // Tekst
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '🚀 Nova verzija dostupna',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'v${widget.info.latestVersion} — tapni za preuzimanje',
-                      style: TextStyle(
-                        color: V3StyleHelper.whiteAlpha75,
-                        fontSize: 11,
-                        letterSpacing: 0.1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Dugme
-              V3ContainerUtils.styledContainer(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                backgroundColor: V3StyleHelper.whiteAlpha22,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: V3StyleHelper.whiteAlpha45, width: 1),
-                child: const Text(
-                  'Ažuriraj',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -59,6 +59,11 @@ class V3AppUpdateService {
       final isBelowMin = minSupported.isNotEmpty && _compareVersions(currentVersion, minSupported) < 0;
       final isForced = isBelowMin || forceFlag;
 
+      if (!isForced) {
+        updateInfoNotifier.value = null;
+        return;
+      }
+
       updateInfoNotifier.value = V2UpdateInfo(
         latestVersion: latest,
         storeUrl: storeUrl,

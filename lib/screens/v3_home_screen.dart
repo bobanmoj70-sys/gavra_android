@@ -1134,7 +1134,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               ),
               body: Column(
                 children: [
-                  // Update banner (opcioni/obavezni)
+                  // Forced update gate
                   const V3UpdateBanner(),
                   // Action buttons
                   Padding(

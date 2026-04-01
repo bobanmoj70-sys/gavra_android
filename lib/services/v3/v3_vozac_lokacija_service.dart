@@ -70,13 +70,13 @@ class V3VozacLokacijaService {
   }
 
   /// Gets specific driver's location from the synchronized cache.
-  static Map<String, dynamic>? getVozacLokacijaSync(String vozacId) {
+  static Map<String, dynamic>? getVozacLokacijaSync(String vozacId, {bool onlyActive = false}) {
     final cache = V3MasterRealtimeManager.instance.vozacLokacijeCache;
     // Note: cache key is UID of the record in v3_vozac_lokacije, not vozac_id.
     // We search the values for the matching vozac_id.
     try {
       return cache.values.firstWhere(
-        (l) => l['vozac_id']?.toString() == vozacId,
+        (l) => l['vozac_id']?.toString() == vozacId && (!onlyActive || l['aktivno'] == true),
       );
     } catch (_) {
       return null;

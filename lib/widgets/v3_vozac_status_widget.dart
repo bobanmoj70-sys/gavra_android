@@ -28,6 +28,7 @@ class V3VozacStatusWidget extends StatefulWidget {
 class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   Timer? _refreshTimer;
   String? _etaVreme;
+  int _etaRequestId = 0;
 
   @override
   void initState() {
@@ -41,7 +42,7 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   @override
   void didUpdateWidget(covariant V3VozacStatusWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.vozacId != widget.vozacId || oldWidget.putnikWaypoints != widget.putnikWaypoints) {
+    if (oldWidget.vozacId != widget.vozacId || !_sameWaypoints(oldWidget.putnikWaypoints, widget.putnikWaypoints)) {
       _refreshEta();
     }
   }
@@ -57,22 +58,36 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
     return double.tryParse(value?.toString() ?? '');
   }
 
+  bool _sameWaypoints(
+    List<({double lat, double lng})> a,
+    List<({double lat, double lng})> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].lat != b[i].lat || a[i].lng != b[i].lng) return false;
+    }
+    return true;
+  }
+
   Future<void> _refreshEta() async {
+    final requestId = ++_etaRequestId;
+
     if (widget.putnikWaypoints.isEmpty) {
-      if (mounted) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 
-    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(widget.vozacId);
+    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(widget.vozacId, onlyActive: true);
     if (lokacijaVozaca == null) {
-      if (mounted) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 
     final vozacLat = _toDouble(lokacijaVozaca['lat']);
     final vozacLng = _toDouble(lokacijaVozaca['lng']);
     if (vozacLat == null || vozacLng == null) {
-      if (mounted) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 
@@ -83,8 +98,10 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
 
     final durationMin = await V3OsrmService.getEtaMinutes(waypoints: allWaypoints);
 
+    if (requestId != _etaRequestId) return;
+
     if (durationMin == null) {
-      if (mounted) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 

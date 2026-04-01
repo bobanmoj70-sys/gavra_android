@@ -711,7 +711,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
       // Zaustavi foreground service i notification
       await V3ForegroundGpsService.stopTracking();
-      await V3VozacLokacijaService.postaviAktivnost(vozac.id, false);
       await V3ForegroundGpsService.syncTrackingStatus(
         vozacId: vozac.id,
         grad: _selectedGrad,
@@ -1162,7 +1161,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     return Column(
       children: [
-        // Update banner (opcioni/obavezni)
+        // Forced update gate
         const V3UpdateBanner(),
         // Lista putnika
         Expanded(

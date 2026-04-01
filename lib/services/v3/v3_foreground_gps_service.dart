@@ -255,6 +255,10 @@ class V3ForegroundGpsService {
       );
     }
 
+    if (vozacId != null && vozacId.trim().isNotEmpty) {
+      await V3VozacLokacijaService.postaviAktivnost(vozacId, false);
+    }
+
     debugPrint('[V3ForegroundGpsService] Tracking zaustavljen');
   }
 
