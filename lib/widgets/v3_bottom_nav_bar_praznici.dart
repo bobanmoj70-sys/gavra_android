@@ -197,6 +197,20 @@ class _PolazakRow extends StatelessWidget {
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
 
+  Color _selectedFillColor() {
+    if (currentThemeId == 'dark_steel_grey') return const Color(0xFF4A4A4A).withOpacity(0.22);
+    if (currentThemeId == 'passionate_rose') return const Color(0xFFDC143C).withOpacity(0.22);
+    if (currentThemeId == 'dark_pink') return const Color(0xFFE91E8C).withOpacity(0.22);
+    return Colors.blueAccent.withOpacity(0.22);
+  }
+
+  Color _selectedStrokeAndTextColor() {
+    if (currentThemeId == 'dark_steel_grey') return const Color(0xFF4A4A4A);
+    if (currentThemeId == 'passionate_rose') return const Color(0xFFDC143C);
+    if (currentThemeId == 'dark_pink') return const Color(0xFFE91E8C);
+    return Colors.blue;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -220,6 +234,8 @@ class _PolazakRow extends StatelessWidget {
               child: Row(
                 children: vremena.map((vreme) {
                   final bool selected = selectedGrad == grad && selectedVreme == vreme;
+                  final selectedFillColor = _selectedFillColor();
+                  final selectedPrimaryColor = _selectedStrokeAndTextColor();
                   // Boja vozaca za termin (iz raspored cache-a)
                   final vozacBorderColor = showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
                   final hasVozac = vozacBorderColor != null;
@@ -234,13 +250,7 @@ class _PolazakRow extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: selected
-                            ? (currentThemeId == 'dark_steel_grey'
-                                ? const Color(0xFF4A4A4A).withOpacity(0.22)
-                                : currentThemeId == 'passionate_rose'
-                                    ? const Color(0xFFDC143C).withOpacity(0.22)
-                                    : currentThemeId == 'dark_pink'
-                                        ? const Color(0xFFE91E8C).withOpacity(0.22)
-                                        : Colors.blueAccent.withOpacity(0.22))
+                            ? selectedFillColor
                             : hasVozac
                                 ? vozacBorderColor.withOpacity(0.16)
                                 : Colors.transparent,
@@ -249,13 +259,7 @@ class _PolazakRow extends StatelessWidget {
                           color: hasVozac
                               ? vozacBorderColor.withOpacity(0.75)
                               : selected
-                                  ? (currentThemeId == 'dark_steel_grey'
-                                      ? const Color(0xFF4A4A4A).withOpacity(0.8)
-                                      : currentThemeId == 'passionate_rose'
-                                          ? const Color(0xFFDC143C).withOpacity(0.8)
-                                          : currentThemeId == 'dark_pink'
-                                              ? const Color(0xFFE91E8C).withOpacity(0.8)
-                                              : Colors.blue.withOpacity(0.8))
+                                  ? selectedPrimaryColor.withOpacity(0.8)
                                   : Colors.grey[300]!,
                           width: hasVozac ? 1.5 : (selected ? 1.2 : 0.6),
                         ),
@@ -266,15 +270,7 @@ class _PolazakRow extends StatelessWidget {
                             vreme,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: selected
-                                  ? (currentThemeId == 'dark_steel_grey'
-                                      ? const Color(0xFF4A4A4A)
-                                      : currentThemeId == 'passionate_rose'
-                                          ? const Color(0xFFDC143C)
-                                          : currentThemeId == 'dark_pink'
-                                              ? const Color(0xFFE91E8C)
-                                              : Colors.blue)
-                                  : Colors.white,
+                              color: selected ? selectedPrimaryColor : Colors.white,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -293,13 +289,7 @@ class _PolazakRow extends StatelessWidget {
                               final displayText = kapacitet != null ? '$count ($kapacitet)' : '$count';
                               final slobodna = kapacitet != null ? (kapacitet - count).clamp(0, kapacitet) : null;
                               final textColor = selected
-                                  ? (currentThemeId == 'dark_steel_grey'
-                                      ? const Color(0xFF4A4A4A)
-                                      : currentThemeId == 'passionate_rose'
-                                          ? const Color(0xFFDC143C)
-                                          : currentThemeId == 'dark_pink'
-                                              ? const Color(0xFFE91E8C)
-                                              : Colors.blue)
+                                  ? selectedPrimaryColor
                                   : slobodna == null
                                       ? Colors.white70
                                       : slobodna == 0
