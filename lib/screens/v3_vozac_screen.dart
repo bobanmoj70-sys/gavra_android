@@ -963,9 +963,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         final tick = snapshot.data;
         if (tick != null && tick != _lastRealtimeTick) {
           _lastRealtimeTick = tick;
-          if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
             _rebuild();
-          }
+          });
         }
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
