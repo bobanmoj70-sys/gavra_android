@@ -40,7 +40,7 @@ class V3AppUpdateService {
       final latest = (selected['latest'] ?? '').toString().trim();
       final minSupported = (selected['min'] ?? '').toString().trim();
       var storeUrl = (selected['storeUrl'] ?? '').toString().trim();
-      if (Platform.isAndroid && (storeUrl.isEmpty || _isLegacyHuaweiStoreUrl(storeUrl))) {
+      if (Platform.isAndroid && storeUrl.isEmpty) {
         storeUrl = playStoreUrl;
       }
       final forceFlag = selected['force'] == true;
@@ -100,14 +100,6 @@ class V3AppUpdateService {
       if (c > t) return 1;
     }
     return 0;
-  }
-
-  static bool _isLegacyHuaweiStoreUrl(String url) {
-    final value = url.toLowerCase();
-    return value.contains('appgallery') ||
-        value.contains('appmarket://') ||
-        value.contains('huawei') ||
-        value.contains('hiapp');
   }
 
   static List<int> _versionToParts(String version) {

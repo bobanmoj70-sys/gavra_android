@@ -148,14 +148,10 @@ jobs:
           # 3. Restore Google Play JSON
           echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > android/google-service-account.json
 
-          # 4. Restore AgConnect (Huawei) - Required for build even if not releasing to Huawei
-          mkdir -p android/app
-          echo "${{ secrets.AGC_BASE64 }}" | base64 -d > android/app/agconnect-services.json
-
-          # 5. Restore .env file
+          # 4. Restore .env file
           echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-          # 6. Restore google-services.json
+          # 5. Restore google-services.json
           echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
 
       - name: 🛡️ Verify Keystore (Fail Fast)

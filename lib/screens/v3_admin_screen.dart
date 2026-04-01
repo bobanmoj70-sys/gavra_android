@@ -50,14 +50,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     return uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 
-  bool _isLegacyHuaweiStoreUrl(String value) {
-    final normalized = value.trim().toLowerCase();
-    return normalized.contains('appgallery') ||
-        normalized.contains('appmarket://') ||
-        normalized.contains('huawei') ||
-        normalized.contains('hiapp');
-  }
-
   Future<Map<String, dynamic>> _loadUpdateSettings() async {
     try {
       final row = await supabase
@@ -114,8 +106,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         error = 'iOS verzija mora biti u formatu npr. 6.0.192';
       } else if (storeAndroid.isNotEmpty && !_isValidUrl(storeAndroid)) {
         error = 'Android Store URL nije validan';
-      } else if (_isLegacyHuaweiStoreUrl(storeAndroid)) {
-        error = 'Huawei/AppGallery URL više nije podržan. Koristi Play Store URL.';
       } else if (storeIos.isNotEmpty && !_isValidUrl(storeIos)) {
         error = 'iOS Store URL nije validan';
       }

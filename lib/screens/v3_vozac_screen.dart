@@ -1153,6 +1153,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Widget _buildBody() {
+    final redniBrojevi = <int>[];
+    var tekuciRedniBroj = 1;
+    for (final putnikEntry in _mojiPutnici) {
+      redniBrojevi.add(tekuciRedniBroj);
+      tekuciRedniBroj += putnikEntry.entry?.brojMesta ?? 1;
+    }
+
     return Column(
       children: [
         // Update banner (opcioni/obavezni)
@@ -1186,12 +1193,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   itemCount: _mojiPutnici.length,
                   itemBuilder: (context, index) {
                     final pz = _mojiPutnici[index];
-                    final redniBroj =
-                        _mojiPutnici.sublist(0, index).fold(1, (sum, e) => sum + (e.entry?.brojMesta ?? 1));
                     return V3PutnikCard(
                       putnik: pz.putnik,
                       entry: pz.entry,
-                      redniBroj: redniBroj,
+                      redniBroj: redniBrojevi[index],
                       onChanged: _rebuild,
                       isExcludedFromOptimization: _isExcludedFromOptimization(pz),
                     );
