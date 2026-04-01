@@ -493,6 +493,15 @@ class _PutnikCard extends StatelessWidget {
                   Expanded(
                       child: _actionBtn(
                     context: context,
+                    icon: Icons.analytics_outlined,
+                    label: 'Detaljne statistike',
+                    color: Colors.purpleAccent,
+                    onPressed: onDetaljneStatistike,
+                  )),
+                  const SizedBox(width: 6),
+                  Expanded(
+                      child: _actionBtn(
+                    context: context,
                     icon: Icons.lock_outline,
                     label: 'PIN',
                     color: Colors.amber,
@@ -535,18 +544,6 @@ class _PutnikCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
-                      child: _actionBtn(
-                    context: context,
-                    icon: Icons.analytics_outlined,
-                    label: 'Detaljne statistike',
-                    color: Colors.purpleAccent,
-                    onPressed: onDetaljneStatistike,
-                  )),
-                ],
-              ),
             ],
           ),
         ),
