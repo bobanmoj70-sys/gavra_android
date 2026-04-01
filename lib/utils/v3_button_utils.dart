@@ -334,36 +334,4 @@ class V3ButtonUtils {
       ),
     );
   }
-
-  // ─── DIALOG BUTTONS ───────────────────────────────────────────────────────
-
-  /// Стандардни dialog action buttons
-  static List<Widget> dialogActions({
-    String cancelText = 'Otkaži',
-    VoidCallback? onCancel,
-    required String confirmText,
-    required VoidCallback onConfirm,
-    bool isDestructive = false,
-    bool isLoading = false,
-  }) {
-    return [
-      textButton(
-        onPressed: onCancel ?? () => Navigator.pop(NavigationService.navigatorKey.currentContext!),
-        text: cancelText,
-        foregroundColor: Colors.grey,
-      ),
-      elevatedButton(
-        onPressed: onConfirm,
-        text: confirmText,
-        backgroundColor: isDestructive ? Colors.red : Colors.green,
-        foregroundColor: Colors.white,
-        isLoading: isLoading,
-      ),
-    ];
-  }
-}
-
-// Навигациони сервис за dialog actions
-class NavigationService {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 }
