@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 /// V3ContainerUtils - Centralized container management
 /// Eliminira sve Container duplikate sa konzistentnim stilizovanjem
 class V3ContainerUtils {
+  V3ContainerUtils._();
+
   /// Responsive visina zasnovana na text scale faktoru
   static double responsiveHeight(
     BuildContext context,
@@ -77,7 +79,7 @@ class V3ContainerUtils {
         border: border,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: elevation * 2,
             spreadRadius: elevation / 2,
             offset: Offset(0, elevation),
@@ -192,8 +194,7 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.blue,
         borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ??
-            (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
+        border: border ?? (borderColor != null ? Border.all(color: borderColor, width: borderWidth ?? 1.0) : null),
       ),
       child: child,
     );
@@ -228,8 +229,7 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ??
-            (borderColor != null && borderWidth != null ? Border.all(color: borderColor, width: borderWidth) : null),
+        border: border ?? (borderColor != null ? Border.all(color: borderColor, width: borderWidth ?? 1.0) : null),
         boxShadow: boxShadow,
       ),
       child: child ?? icon,
@@ -306,7 +306,7 @@ class V3ContainerUtils {
         child,
         if (isLoading)
           Container(
-            color: (loadingColor ?? Colors.black).withOpacity(0.3),
+            color: (loadingColor ?? Colors.black).withValues(alpha: 0.3),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
