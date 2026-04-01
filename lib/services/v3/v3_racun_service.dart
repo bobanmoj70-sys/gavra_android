@@ -23,10 +23,15 @@ class V3RacunService {
   static const String _firmaPIB = '102853497';
   static const String _firmaMB = '55572178';
   static const String _firmaTekuciRacun = '340-11436537-92';
+  static const String _firmaVlasnik = 'Bojan Gavrilović';
+  static const String _firmaTel = '064/116-2560';
+  static const String _firmaEmail = 'gavriconi19@gmail.com';
 
   static const String _napomenaPDV = 'Poreski obveznik nije u sistemu PDV-a';
   static const String _napomenaValidnost =
       'Račun je punovažan bez pečata i potpisa u skladu sa Zakonom o privrednim društvima';
+
+  static final PdfColor _navyBlue = PdfColors.black;
 
   static pw.Font get _regular => pw.Font.helvetica();
   static pw.Font get _bold => pw.Font.helveticaBold();
@@ -168,125 +173,142 @@ class V3RacunService {
     );
     final ukupno = cena * kolicina;
     final fmt = NumberFormat('#,##0.00', 'sr_Latn_RS');
-    final datumStr = V3DanHelper.formatDatumPuni(datumPrometa);
-    final danasDatumStr = V3DanHelper.formatDatumPuni(DateTime.now());
+    // Datum prometa fiksiran na 31.03.tekuće godine
+    final datumPrometaFiksni = DateTime(DateTime.now().year, 3, 31);
+    final datumStr = DateFormat('dd.MM.yyyy.').format(datumPrometaFiksni);
+    final danasDatumStr = DateFormat('dd.MM.yyyy.').format(DateTime.now());
+    const kolicinaMart = 22.0; // Fiksno za mart 2026.
+    final ukupnoMart = cena * kolicinaMart;
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
+        margin: const pw.EdgeInsets.all(32),
         theme: theme,
         build: (pw.Context ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // IZDAVALAC box
-              pw.Container(
-                padding: const pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('IZDAVALAC:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 4),
-                    pw.Text(_firmaIme, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(_firmaAdresa, style: const pw.TextStyle(fontSize: 10)),
-                    pw.Text('PIB: $_firmaPIB   MB: $_firmaMB', style: const pw.TextStyle(fontSize: 10)),
-                    pw.Text('Tekući račun: $_firmaTekuciRacun', style: const pw.TextStyle(fontSize: 10)),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 16),
-
-              // Naslov
-              pw.Center(
-                child: pw.Text(
-                  'RAČUN br. $brojRacuna',
-                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-                ),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Center(
-                child: pw.Text('Datum: $danasDatumStr   Datum prometa: $datumStr',
-                    style: const pw.TextStyle(fontSize: 10)),
-              ),
-              pw.SizedBox(height: 16),
-
-              // KUPAC box
-              pw.Container(
-                padding: const pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('KUPAC:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 4),
-                    pw.Text(imePrezimeKupca, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(adresaKupca, style: const pw.TextStyle(fontSize: 10)),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 24),
-
-              // Tabela
+              // 1. TOP HEADER (Naziv firme i Racun br)
+              // ... existing code ...
+              // 3. TABLE
               pw.Table(
-                border: pw.TableBorder.all(width: 0.5),
                 columnWidths: const {
-                  0: pw.FixedColumnWidth(30),
+                  0: pw.FixedColumnWidth(25),
                   1: pw.FlexColumnWidth(),
-                  2: pw.FixedColumnWidth(50),
-                  3: pw.FixedColumnWidth(50),
+                  2: pw.FixedColumnWidth(40),
+                  3: pw.FixedColumnWidth(40),
                   4: pw.FixedColumnWidth(70),
-                  5: pw.FixedColumnWidth(70),
+                  5: pw.FixedColumnWidth(80),
                 },
                 children: [
-                  // Zaglavlje tabele
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                    decoration: const pw.BoxDecoration(
+                      border: pw.Border(bottom: pw.BorderSide(width: 1.5)),
+                    ),
                     children: [
-                      _tCell('R.br', bold: true),
-                      _tCell('Naziv usluge', bold: true),
-                      _tCell('Jed', bold: true),
-                      _tCell('Kol', bold: true),
-                      _tCell('Cena', bold: true),
-                      _tCell('Iznos', bold: true),
+                      _tCell('#', color: PdfColors.black, bold: true),
+                      _tCell('Opis usluge', color: PdfColors.black, bold: true),
+                      _tCell('Jed. mera', color: PdfColors.black, bold: true, align: pw.TextAlign.center),
+                      _tCell('Kol.', color: PdfColors.black, bold: true, align: pw.TextAlign.center),
+                      _tCell('Cena/jed.', color: PdfColors.black, bold: true, align: pw.TextAlign.right),
+                      _tCell('Ukupno', color: PdfColors.black, bold: true, align: pw.TextAlign.right),
                     ],
                   ),
-                  // Stavka
-                  pw.TableRow(children: [
-                    _tCell('1'),
-                    _tCell(opisUsluge),
-                    _tCell(jedinicaMere),
-                    _tCell(fmt.format(kolicina)),
-                    _tCell('${fmt.format(cena)} RSD'),
-                    _tCell('${fmt.format(ukupno)} RSD'),
-                  ]),
+                  pw.TableRow(
+                    decoration: const pw.BoxDecoration(
+                      border: pw.Border(bottom: pw.BorderSide(width: 0.5, color: PdfColors.grey300)),
+                    ),
+                    children: [
+                      _tCell('1.', align: pw.TextAlign.center),
+                      _tCell('Prevoz putnika - mart 2026.'),
+                      _tCell(jedinicaMere, align: pw.TextAlign.center),
+                      _tCell(fmt.format(kolicinaMart), align: pw.TextAlign.center),
+                      _tCell('${fmt.format(cena)} RSD', align: pw.TextAlign.right),
+                      _tCell('${fmt.format(ukupnoMart)} RSD', align: pw.TextAlign.right),
+                    ],
+                  ),
                 ],
               ),
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 10),
 
-              // Ukupno
-              pw.Align(
-                alignment: pw.Alignment.centerRight,
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.all(8),
-                  decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
-                  child: pw.Text(
-                    'UKUPNO: ${fmt.format(ukupno)} RSD',
-                    style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+              // 4. TOTALS
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  _totalRow('Ukupno bez PDV-a:', '${fmt.format(ukupnoMart)} RSD'),
+                  _totalRow('PDV (nije u sistemu PDV-a):', '0,00 RSD'),
+                ],
+              ),
+              pw.SizedBox(height: 15),
+
+              // 5. ZA UPLATU BAR
+              pw.Container(
+                decoration: const pw.BoxDecoration(
+                  border: pw.Border(
+                    top: pw.BorderSide(width: 1.5),
+                    bottom: pw.BorderSide(width: 1.5),
                   ),
                 ),
+                padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('ZA UPLATU:',
+                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text(fmt.format(ukupnoMart),
+                            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                        pw.Text('RSD', style: pw.TextStyle(fontSize: 10, color: PdfColors.black)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              pw.SizedBox(height: 24),
+              pw.SizedBox(height: 30),
 
-              // Napomene
-              pw.Text(_napomenaPDV, style: const pw.TextStyle(fontSize: 9)),
-              pw.SizedBox(height: 4),
-              pw.Text(_napomenaValidnost, style: const pw.TextStyle(fontSize: 9)),
+              // 6. NAPOMENE BOX
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey200),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Napomene:',
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _navyBlue)),
+                    pw.SizedBox(height: 4),
+                    _napomenaItem(_napomenaPDV),
+                    _napomenaItem(_napomenaValidnost),
+                    _napomenaItem('Način plaćanja: Gotovina ili uplata na tekući račun'),
+                    _napomenaItem('Uplata na žiro račun: $_firmaTekuciRacun, poziv na broj: $brojRacuna'),
+                  ],
+                ),
+              ),
               pw.Spacer(),
 
-              // Potpisi
-              _potpisRow(),
+              // 7. FOOTER SIGNATURE
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Column(
+                  children: [
+                    pw.Container(
+                      width: 180,
+                      decoration: const pw.BoxDecoration(
+                        border: pw.Border(bottom: pw.BorderSide(width: 0.5)),
+                      ),
+                      child: pw.SizedBox(height: 30),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text('$_firmaVlasnik, vlasnik', style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -442,15 +464,46 @@ class V3RacunService {
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────
-  static pw.Widget _tCell(String text, {bool bold = false}) {
+  static pw.Widget _tCell(String text, {bool bold = false, PdfColor? color, pw.TextAlign align = pw.TextAlign.left}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.all(4),
+      padding: const pw.EdgeInsets.all(6),
       child: pw.Text(
         text,
+        textAlign: align,
         style: pw.TextStyle(
-          fontSize: 10,
+          fontSize: 9,
+          color: color,
           fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
         ),
+      ),
+    );
+  }
+
+  static pw.Widget _totalRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text(label, style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+          pw.SizedBox(width: 10),
+          pw.Text(value, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _napomenaItem(String text) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('• ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          pw.Expanded(
+            child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)),
+          ),
+        ],
       ),
     );
   }

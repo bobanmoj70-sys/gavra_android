@@ -15,7 +15,7 @@ class V3PinZahtevService {
 
   static Stream<List<Map<String, dynamic>>> streamZahteviKojiCekaju() {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_pin_zahtevi'],
+      tables: ['v3_pin_zahtevi', 'v3_putnici'],
       build: _buildEnrichedList,
     );
   }

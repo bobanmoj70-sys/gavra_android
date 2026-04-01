@@ -79,26 +79,29 @@
     "gavra_android/.vscode/mcp.json: supabase": {
       "allowedModels": [
         "copilot/auto",
-        "copilot/claude-opus-4.5",
-        "copilot/gemini-3-flash-preview",
-        "copilot/gpt-5-mini",
-        "copilot/grok-code-fast-1",
-        "copilot/oswe-vscode-prime",
         "copilot/claude-haiku-4.5",
+        "copilot/claude-opus-4.5",
         "copilot/claude-sonnet-4",
         "copilot/claude-sonnet-4.5",
+        "copilot/claude-sonnet-4.6",
         "copilot/gemini-2.5-pro",
-        "copilot/gemini-3-pro-preview",
+        "copilot/gemini-3-flash-preview",
+        "copilot/gemini-3.1-pro-preview",
         "copilot/gpt-4.1",
         "copilot/gpt-4o",
-        "copilot/gpt-5",
-        "copilot/gpt-5-codex",
+        "copilot/gpt-5-mini",
         "copilot/gpt-5.1",
         "copilot/gpt-5.1-codex",
         "copilot/gpt-5.1-codex-max",
         "copilot/gpt-5.1-codex-mini",
         "copilot/gpt-5.2",
-        "copilot/gpt-5.2-codex"
+        "copilot/gpt-5.2-codex",
+        "copilot/gpt-5.3-codex",
+        "copilot/gpt-5.4",
+        "copilot/gpt-5.4-mini",
+        "copilot/grok-code-fast-1",
+        "copilot/oswe-vscode-prime",
+        "copilot/claude-opus-4.6"
       ]
     },
     "gavra_android/.vscode/mcp.json: google-play": {
@@ -110,12 +113,9 @@
         "copilot/claude-sonnet-4.5",
         "copilot/gemini-2.5-pro",
         "copilot/gemini-3-flash-preview",
-        "copilot/gemini-3-pro-preview",
         "copilot/gpt-4.1",
         "copilot/gpt-4o",
-        "copilot/gpt-5",
         "copilot/gpt-5-mini",
-        "copilot/gpt-5-codex",
         "copilot/gpt-5.1",
         "copilot/gpt-5.1-codex",
         "copilot/gpt-5.1-codex-max",
@@ -123,7 +123,13 @@
         "copilot/gpt-5.2",
         "copilot/gpt-5.2-codex",
         "copilot/grok-code-fast-1",
-        "copilot/oswe-vscode-prime"
+        "copilot/oswe-vscode-prime",
+        "copilot/claude-opus-4.6",
+        "copilot/claude-sonnet-4.6",
+        "copilot/gemini-3.1-pro-preview",
+        "copilot/gpt-5.3-codex",
+        "copilot/gpt-5.4",
+        "copilot/gpt-5.4-mini"
       ]
     },
     "gavra_android/.vscode/mcp.json: github": {
@@ -134,12 +140,30 @@
     },
     "gavra_android/.vscode/mcp.json: app-store-connect": {
       "allowedModels": [
-        "copilot/claude-opus-4.5",
-        "copilot/gpt-5-mini",
         "copilot/auto",
+        "copilot/claude-opus-4.5",
         "copilot/gemini-3-flash-preview",
+        "copilot/gpt-5-mini",
         "copilot/grok-code-fast-1",
-        "copilot/oswe-vscode-prime"
+        "copilot/oswe-vscode-prime",
+        "copilot/claude-haiku-4.5",
+        "copilot/claude-opus-4.6",
+        "copilot/claude-sonnet-4",
+        "copilot/claude-sonnet-4.5",
+        "copilot/claude-sonnet-4.6",
+        "copilot/gemini-2.5-pro",
+        "copilot/gemini-3.1-pro-preview",
+        "copilot/gpt-4.1",
+        "copilot/gpt-4o",
+        "copilot/gpt-5.1",
+        "copilot/gpt-5.1-codex",
+        "copilot/gpt-5.1-codex-max",
+        "copilot/gpt-5.1-codex-mini",
+        "copilot/gpt-5.2",
+        "copilot/gpt-5.2-codex",
+        "copilot/gpt-5.3-codex",
+        "copilot/gpt-5.4",
+        "copilot/gpt-5.4-mini"
       ]
     },
     "gavra_android/.vscode/mcp.json: com.supabase/mcp": {

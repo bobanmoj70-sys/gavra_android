@@ -6,8 +6,13 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { config } from 'dotenv';
+import { dirname, join } from "path";
 import postgres from "postgres";
-config({ quiet: true });
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+config({ path: join(__dirname, "..", ".env"), quiet: true });
 
 // Supabase credentials from environment
 const SUPABASE_URL = process.env.SUPABASE_URL;

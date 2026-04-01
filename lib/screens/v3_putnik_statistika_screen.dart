@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
@@ -19,58 +20,67 @@ class V3PutnikStatistikaScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final godina = DateTime.now().year;
-    final meseci = V3PutnikStatistikaService.getZaGodinu(putnikId, godina: godina);
-
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        title: const Text('Detaljne statistike', style: TextStyle(fontWeight: FontWeight.bold)),
+    return StreamBuilder<void>(
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_operativna_nedelja', 'v3_putnici'],
+        build: () {},
       ),
-      body: V3ContainerUtils.backgroundContainer(
-        gradient: Theme.of(context).backgroundGradient,
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                V3ContainerUtils.styledContainer(
-                  padding: const EdgeInsets.all(14),
-                  backgroundColor: V3StyleHelper.whiteAlpha06,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: V3StyleHelper.whiteAlpha13),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        imePrezime,
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+      builder: (context, _) {
+        final godina = DateTime.now().year;
+        final meseci = V3PutnikStatistikaService.getZaGodinu(putnikId, godina: godina);
+
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            centerTitle: true,
+            title: const Text('Detaljne statistike', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          body: V3ContainerUtils.backgroundContainer(
+            gradient: Theme.of(context).backgroundGradient,
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    V3ContainerUtils.styledContainer(
+                      padding: const EdgeInsets.all(14),
+                      backgroundColor: V3StyleHelper.whiteAlpha06,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: V3StyleHelper.whiteAlpha13),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            imePrezime,
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _tipLabel(tipPutnika),
+                            style:
+                                TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Prikaz po mesecima (januar-decembar $godina)',
+                            style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _tipLabel(tipPutnika),
-                        style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Prikaz po mesecima (januar-decembar $godina)',
-                        style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...meseci.map((m) => _MesecCard(stats: m)),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                ...meseci.map((m) => _MesecCard(stats: m)),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

@@ -21,6 +21,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_status_filters.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_telefon_helper.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
@@ -77,7 +78,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   Map<String, dynamic> _lastOptimizationMeta = const {};
 
-  static const String _realtimeUiRebuildDebounceKey = 'vozac_screen_realtime_ui_rebuild';
   int? _lastRealtimeTick;
 
   /// Efektivni vozač
@@ -144,8 +144,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isGpsRowActiveForCount(Map<String, dynamic> row) {
-    final status = ((row['status_final'] as String?) ?? (row['status'] as String?) ?? '').toLowerCase();
-    return _isGpsRowEligible(row) && status != 'otkazano';
+    final status = (row['status_final'] as String?) ?? (row['status'] as String?);
+    final pokupljen = row['pokupljen'] == true;
+    return V3StatusFilters.isActiveForDisplay(
+      aktivno: _isGpsRowEligible(row),
+      status: status,
+      pokupljen: pokupljen,
+    );
   }
 
   String _terminKeyFromGpsRow(Map<String, dynamic> row) {
@@ -240,7 +245,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   void dispose() {
     V3StreamUtils.cancelSubscription('vozac_screen_realtime');
     V3StreamUtils.cancelSubscription('vozac_screen_gps');
-    V3StreamUtils.cancelTimer(_realtimeUiRebuildDebounceKey);
     super.dispose();
   }
 
@@ -959,14 +963,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         final tick = snapshot.data;
         if (tick != null && tick != _lastRealtimeTick) {
           _lastRealtimeTick = tick;
-          V3StreamUtils.createDebounceTimer(
-            key: _realtimeUiRebuildDebounceKey,
-            duration: const Duration(milliseconds: 220),
-            callback: () {
-              if (!mounted) return;
-              _rebuild();
-            },
-          );
+          if (mounted) {
+            _rebuild();
+          }
         }
 
         return AnnotatedRegion<SystemUiOverlayStyle>(

@@ -11,8 +11,14 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { config as loadEnv } from "dotenv";
+import { dirname, join } from "path";
 import postgres from "postgres";
-import "dotenv/config.js";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+loadEnv({ path: join(__dirname, ".env") });
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -51,12 +57,12 @@ if (DATABASE_URL) {
     console.log("🔗 Testing Direct PostgreSQL Connection...");
     try {
         const sql = postgres(DATABASE_URL, { ssl: "require" });
-        
+
         const result = await sql`SELECT 1 as connected`;
         if (result.length > 0) {
             console.log("✓ PostgreSQL Direct Connection: Connected\n");
         }
-        
+
         await sql.end();
     } catch (err) {
         console.error(`✗ PostgreSQL Direct Connection Failed: ${err instanceof Error ? err.message : String(err)}\n`);

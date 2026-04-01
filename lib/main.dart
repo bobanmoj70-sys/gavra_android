@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' as fcm;
@@ -120,21 +121,32 @@ Future<void> _doStartupTasks() async {
 /// FCM push inicijalizacija u main() funkciji
 Future<void> _initFirebaseSync() async {
   try {
-    // 1. Provjeri Google Play Services (FCM)
-    final gmsAvailability =
-        await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability().timeout(const Duration(seconds: 2));
-
     bool fcmInitialized = false;
-    if (gmsAvailability == GooglePlayServicesAvailability.success) {
+
+    if (Platform.isIOS) {
       try {
         await Firebase.initializeApp().timeout(const Duration(seconds: 5));
-        debugPrint('✅ [FCM] Firebase inicijalizovan - GMS dostupan');
+        debugPrint('✅ [FCM] Firebase inicijalizovan - iOS');
         fcmInitialized = true;
       } catch (e) {
-        debugPrint('⚠️ [FCM] Init greška: $e');
+        debugPrint('⚠️ [FCM] iOS init greška: $e');
       }
     } else {
-      debugPrint('⚠️ [FCM] Google Play Services nedostupan: $gmsAvailability');
+      final gmsAvailability = await GoogleApiAvailability.instance
+          .checkGooglePlayServicesAvailability()
+          .timeout(const Duration(seconds: 2));
+
+      if (gmsAvailability == GooglePlayServicesAvailability.success) {
+        try {
+          await Firebase.initializeApp().timeout(const Duration(seconds: 5));
+          debugPrint('✅ [FCM] Firebase inicijalizovan - GMS dostupan');
+          fcmInitialized = true;
+        } catch (e) {
+          debugPrint('⚠️ [FCM] Init greška: $e');
+        }
+      } else {
+        debugPrint('⚠️ [FCM] Google Play Services nedostupan: $gmsAvailability');
+      }
     }
 
     if (fcmInitialized) {
@@ -152,9 +164,23 @@ Future<void> _initNotificationHandlers() async {
   try {
     // 1. FCM Handlers (ako je Firebase inicijalizovan)
     try {
-      // Provjeri da li je Firebase dostupan
-      final gmsAvailability = await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability();
-      if (gmsAvailability == GooglePlayServicesAvailability.success) {
+      final bool shouldConfigureFcmHandlers;
+      if (Platform.isIOS) {
+        shouldConfigureFcmHandlers = true;
+      } else {
+        final gmsAvailability = await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability();
+        shouldConfigureFcmHandlers = gmsAvailability == GooglePlayServicesAvailability.success;
+      }
+
+      if (shouldConfigureFcmHandlers) {
+        if (Platform.isIOS) {
+          await fcm.FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+        }
+
         // Postavi FCM background handler
         fcm.FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -166,10 +192,21 @@ Future<void> _initNotificationHandlers() async {
           await _handleNotificationOpenedFromData(message.data);
         });
 
+        // FCM token refresh → sync u bazu
+        fcm.FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+          await _syncPushTokenToCurrentUser(token);
+        });
+
         // FCM tap na sistemsku notifikaciju (cold start)
         final initialMessage = await fcm.FirebaseMessaging.instance.getInitialMessage();
         if (initialMessage != null) {
           await _handleNotificationOpenedFromData(initialMessage.data);
+        }
+
+        // Initial token sync nakon starta
+        final initialToken = await fcm.FirebaseMessaging.instance.getToken();
+        if (initialToken != null && initialToken.isNotEmpty) {
+          await _syncPushTokenToCurrentUser(initialToken);
         }
 
         debugPrint('✅ [FCM] Handlers konfigurisani');
@@ -188,6 +225,42 @@ Future<void> _initNotificationHandlers() async {
     }
   } catch (e) {
     debugPrint('⚠️ [Push] Opšta greška: $e');
+  }
+}
+
+Future<void> _syncPushTokenToCurrentUser(String token) async {
+  final safeToken = token.trim();
+  if (safeToken.isEmpty) return;
+
+  try {
+    final currentVozac = V3VozacService.currentVozac;
+    if (currentVozac != null) {
+      await supabase.from('v3_vozaci').update({'push_token': safeToken}).eq('id', currentVozac.id);
+      debugPrint('✅ [Push] Token sync: v3_vozaci');
+      return;
+    }
+
+    final currentPutnik = V3PutnikService.currentPutnik;
+    final putnikId = currentPutnik?['id']?.toString();
+    if (putnikId != null && putnikId.isNotEmpty) {
+      final token1 = currentPutnik?['push_token']?.toString();
+      final token2 = currentPutnik?['push_token_2']?.toString();
+
+      if (token1 == null || token1.isEmpty || token1 == safeToken) {
+        await supabase.from('v3_putnici').update({'push_token': safeToken}).eq('id', putnikId);
+        currentPutnik?['push_token'] = safeToken;
+      } else if (token2 == null || token2.isEmpty || token2 == safeToken) {
+        await supabase.from('v3_putnici').update({'push_token_2': safeToken}).eq('id', putnikId);
+        currentPutnik?['push_token_2'] = safeToken;
+      } else {
+        await supabase.from('v3_putnici').update({'push_token_2': safeToken}).eq('id', putnikId);
+        currentPutnik?['push_token_2'] = safeToken;
+      }
+
+      debugPrint('✅ [Push] Token sync: v3_putnici');
+    }
+  } catch (e) {
+    debugPrint('⚠️ [Push] Token sync greška: $e');
   }
 }
 

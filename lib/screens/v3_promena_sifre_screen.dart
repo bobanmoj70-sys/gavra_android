@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_stream_utils.dart';
 import '../utils/v3_text_utils.dart';
 
 /// PROMENA ŠIFRE SCREEN (v3)
@@ -33,11 +36,35 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
   @override
   void initState() {
     super.initState();
+    _subscribeRealtime();
     _loadTrenutnaSifra();
+  }
+
+  void _subscribeRealtime() {
+    V3StreamUtils.subscribe<void>(
+      key: 'promena_sifre_realtime',
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_vozaci'],
+        build: () {},
+      ),
+      onData: (_) {
+        if (!mounted) return;
+        _loadTrenutnaSifraFromCache();
+      },
+    );
+  }
+
+  void _loadTrenutnaSifraFromCache() {
+    final vozac = V3VozacService.getVozacByName(widget.vozacIme);
+    if (vozac == null) return;
+    V3StateUtils.safeSetState(this, () {
+      _trenutnaSifra = vozac.sifra ?? '';
+    });
   }
 
   @override
   void dispose() {
+    V3StreamUtils.cancelSubscription('promena_sifre_realtime');
     V3TextUtils.disposeController('stara_sifra');
     V3TextUtils.disposeController('nova_sifra');
     V3TextUtils.disposeController('potvrda_sifra');
@@ -45,6 +72,7 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
   }
 
   Future<void> _loadTrenutnaSifra() async {
+    _loadTrenutnaSifraFromCache();
     try {
       final row = await supabase.from('v3_vozaci').select('sifra').eq('ime_prezime', widget.vozacIme).maybeSingle();
       if (row != null && mounted) {

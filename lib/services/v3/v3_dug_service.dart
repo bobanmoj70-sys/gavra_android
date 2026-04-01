@@ -40,8 +40,10 @@ class V3DugService {
     return dugovi;
   }
 
-  static Stream<List<V3Dug>> streamDugovi() =>
-      V3MasterRealtimeManager.instance.v3StreamFromCache(tables: ['v3_operativna_nedelja'], build: () => getDugovi());
+  static Stream<List<V3Dug>> streamDugovi() => V3MasterRealtimeManager.instance.v3StreamFromCache(
+        tables: ['v3_operativna_nedelja', 'v3_putnici', 'v3_vozaci'],
+        build: () => getDugovi(),
+      );
 
   static Future<void> markAsPaid(String operacijaId, {double iznos = 0}) async {
     try {

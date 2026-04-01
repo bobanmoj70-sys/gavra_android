@@ -17,6 +17,7 @@ import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_stream_utils.dart';
 import '../utils/v3_validation_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
@@ -54,9 +55,31 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _subscribeToVozaciRealtime();
     _setupAnimations();
     _loadAppVersion();
     Future.delayed(const Duration(milliseconds: 300), _init);
+  }
+
+  List<V3Vozac> _sortedActiveVozaci() {
+    return V3VozacService.getAllVozaci().where((v) => v.aktivno && v.imePrezime.isNotEmpty).toList()
+      ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+  }
+
+  void _subscribeToVozaciRealtime() {
+    V3StreamUtils.subscribe<void>(
+      key: 'welcome_vozaci_realtime',
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_vozaci'],
+        build: () {},
+      ),
+      onData: (_) {
+        if (!mounted) return;
+        V3StateUtils.safeSetState(this, () {
+          _vozaci = _sortedActiveVozaci();
+        });
+      },
+    );
   }
 
   void _setupAnimations() {
@@ -118,8 +141,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       debugPrint('[V3WelcomeScreen] TIMEOUT! vozaciCache is still empty after ${retries} retries');
     }
 
-    final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno && v.imePrezime.isNotEmpty).toList()
-      ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+    final vozaci = _sortedActiveVozaci();
 
     debugPrint('[V3WelcomeScreen] Loaded ${vozaci.length} active vozaci');
 
@@ -272,6 +294,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    V3StreamUtils.cancelSubscription('welcome_vozaci_realtime');
     V3AnimationUtils.disposeController('fade');
     V3AnimationUtils.disposeController('slide');
     V3AnimationUtils.disposeController('welcome_pulse');
@@ -305,8 +328,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
       if (!mounted) return;
 
-      final vozaci = V3VozacService.getAllVozaci().where((v) => v.aktivno && v.imePrezime.isNotEmpty).toList()
-        ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+      final vozaci = _sortedActiveVozaci();
 
       V3StateUtils.safeSetState(this, () {
         _vozaci = vozaci;

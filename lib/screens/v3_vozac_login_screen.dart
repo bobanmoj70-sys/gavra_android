@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
 import '../models/v3_vozac.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
@@ -177,8 +178,8 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       V3VozacService.currentVozac = vozac;
 
       // 🎯 PUSH TOKEN SISTEM (FCM)
-      await _savePushToken(vozac.id);
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
+      await _savePushToken(vozac.id);
 
       // Zapamti zadnjeg prijavljenog vozača za auto-login pri sljedećem startu
       await _secureStorage.write(key: 'last_v3_vozac_ime', value: vozac.imePrezime);
@@ -210,114 +211,108 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return V3ContainerUtils.backgroundContainer(
-      gradient: Theme.of(context).backgroundGradient,
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: const Text(
-            '🔐 Prijava',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          iconTheme: const IconThemeData(color: Colors.white),
-        ),
-        body: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            MediaQuery.of(context).padding.top + kToolbarHeight + 24,
-            24,
-            24,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── Avatar / header ──────────────────────────────
-                _buildHeader(),
-                const SizedBox(height: 32),
-
-                // ── Email ────────────────────────────────────
-                V3InputUtils.emailField(
-                  controller: V3TextUtils.emailController,
-                  label: 'Email adresa',
-                ),
-                const SizedBox(height: 16),
-
-                // ── Telefon ────────────────────────────────────
-                V3InputUtils.phoneField(
-                  controller: V3TextUtils.telefonController,
-                  label: 'Broj telefona',
-                ),
-                const SizedBox(height: 16),
-
-                // ── Šifra ────────────────────────────────────
-                V3InputUtils.passwordField(
-                  controller: V3TextUtils.sifraController,
-                  isVisible: _sifraVisible,
-                  onToggleVisibility: () => V3StateUtils.safeSetState(this, () => _sifraVisible = !_sifraVisible),
-                  label: 'Šifra',
-                ),
-                const SizedBox(height: 32),
-
-                // ── Prijavi se dugme ─────────────────────────────
-                V3ButtonUtils.elevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  text: 'Prijavi se',
-                  backgroundColor: Colors.amber,
-                  foregroundColor: Colors.black,
-                  isLoading: _isLoading,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-
-                // ── Biometrija ───────────────────────────────────
-                if (_biometricAvailable && _hasSavedCredentials) ...[
-                  const SizedBox(height: 16),
-                  V3ButtonUtils.outlinedButton(
-                    onPressed: _isLoading ? null : _loginWithBiometric,
-                    text: 'Prijava biometrijom',
-                    icon: _biometricIcon,
-                    borderColor: Colors.amber,
-                    foregroundColor: Colors.white,
-                    isLoading: _isLoading,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ],
-
-                const SizedBox(height: 16),
-
-                // ── Info box ─────────────────────────────────────
-                V3ContainerUtils.styledContainer(
-                  padding: const EdgeInsets.all(12),
-                  backgroundColor: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.5), size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Unesi podatke koje je admin postavio za tebe.',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.65),
-                            fontSize: 12,
-                          ),
-                        ),
+    return StreamBuilder<void>(
+      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
+        tables: const ['v3_vozaci'],
+        build: () {},
+      ),
+      builder: (context, _) {
+        return V3ContainerUtils.backgroundContainer(
+          gradient: Theme.of(context).backgroundGradient,
+          child: Scaffold(
+            extendBodyBehindAppBar: true,
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: const Text(
+                '🔐 Prijava',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              iconTheme: const IconThemeData(color: Colors.white),
+            ),
+            body: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                MediaQuery.of(context).padding.top + kToolbarHeight + 24,
+                24,
+                24,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 32),
+                    V3InputUtils.emailField(
+                      controller: V3TextUtils.emailController,
+                      label: 'Email adresa',
+                    ),
+                    const SizedBox(height: 16),
+                    V3InputUtils.phoneField(
+                      controller: V3TextUtils.telefonController,
+                      label: 'Broj telefona',
+                    ),
+                    const SizedBox(height: 16),
+                    V3InputUtils.passwordField(
+                      controller: V3TextUtils.sifraController,
+                      isVisible: _sifraVisible,
+                      onToggleVisibility: () => V3StateUtils.safeSetState(this, () => _sifraVisible = !_sifraVisible),
+                      label: 'Šifra',
+                    ),
+                    const SizedBox(height: 32),
+                    V3ButtonUtils.elevatedButton(
+                      onPressed: _isLoading ? null : _login,
+                      text: 'Prijavi se',
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                      isLoading: _isLoading,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    if (_biometricAvailable && _hasSavedCredentials) ...[
+                      const SizedBox(height: 16),
+                      V3ButtonUtils.outlinedButton(
+                        onPressed: _isLoading ? null : _loginWithBiometric,
+                        text: 'Prijava biometrijom',
+                        icon: _biometricIcon,
+                        borderColor: Colors.amber,
+                        foregroundColor: Colors.white,
+                        isLoading: _isLoading,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 16),
+                    V3ContainerUtils.styledContainer(
+                      padding: const EdgeInsets.all(12),
+                      backgroundColor: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white24),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.5), size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Unesi podatke koje je admin postavio za tebe.',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.65),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
