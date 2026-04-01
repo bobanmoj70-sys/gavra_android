@@ -21,6 +21,7 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_status_presentation.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_validation_utils.dart';
@@ -275,24 +276,15 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     );
   }
 
-  Color _getTextColor() {
-    final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-    if (status == 'otkazano') return const Color(0xFFB71C1C);
-    if (widget.entry?.pokupljen ?? false) {
-      final isPlacen = widget.entry?.naplataStatus == 'placeno';
-      return isPlacen ? const Color(0xFF1B5E20) : const Color(0xFF0D47A1);
-    }
-    return Colors.black87;
-  }
-
-  Color _getSecondaryTextColor() {
-    final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-    if (status == 'otkazano') return const Color(0xFFC62828);
-    if (widget.entry?.pokupljen ?? false) {
-      final isPlacen = widget.entry?.naplataStatus == 'placeno';
-      return isPlacen ? const Color(0xFF2E7D32) : const Color(0xFF1565C0);
-    }
-    return Colors.grey.shade700;
+  V3StatusTextStyle _getStatusTextStyle() {
+    final status = widget.entry?.statusFinal ?? widget.zahtev?.status;
+    final pokupljen = widget.entry?.pokupljen ?? false;
+    final placen = widget.entry?.naplataStatus == 'placeno';
+    return V3StatusPresentation.forCardText(
+      status: status,
+      pokupljen: pokupljen,
+      placen: placen,
+    );
   }
 
   // ─── Tip badge ─────────────────────────────────────────────────
@@ -375,8 +367,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
-    final Color textColor = _getTextColor();
-    final Color secondaryTextColor = _getSecondaryTextColor();
+    final textStyle = _getStatusTextStyle();
+    final Color textColor = textStyle.primary;
+    final Color secondaryTextColor = textStyle.secondary;
     final int brojMesta = widget.entry?.brojMesta ?? widget.zahtev?.brojMesta ?? 1;
 
     return GestureDetector(

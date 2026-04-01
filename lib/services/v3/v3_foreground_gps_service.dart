@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../globals.dart';
 import '../../models/v3_putnik.dart';
+import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_stream_utils.dart';
 import 'v3_vozac_lokacija_service.dart';
 
@@ -57,11 +58,6 @@ class V3ForegroundGpsService {
     return '$h:$m';
   }
 
-  static bool _isCanceledOrRejected(String status) {
-    final s = status.trim().toLowerCase();
-    return s == 'otkazano' || s == 'odbijeno';
-  }
-
   static Future<void> syncTrackingStatus({
     required String vozacId,
     required String grad,
@@ -98,7 +94,7 @@ class V3ForegroundGpsService {
           .where((row) {
             if (row['putnik_id'] == null) return false;
             final status = row['status_final']?.toString() ?? '';
-            if (_isCanceledOrRejected(status)) return false;
+            if (V3StatusFilters.isCanceledOrRejected(status)) return false;
             final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
             if (rowGrad != gradUp) return false;
             final rt = rowTime(row);
@@ -552,7 +548,7 @@ class V3ForegroundGpsService {
       final relevantRows = rows.where((row) {
         if (row['putnik_id'] == null) return false;
         final status = row['status_final']?.toString() ?? '';
-        if (_isCanceledOrRejected(status)) return false;
+        if (V3StatusFilters.isCanceledOrRejected(status)) return false;
         final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
         if (rowGrad != grad) return false;
         final rt = rowTime(row);

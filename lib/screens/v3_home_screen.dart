@@ -22,6 +22,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
+import '../utils/v3_status_filters.dart';
 import '../utils/v3_text_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -94,8 +95,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final entries = V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso);
     final validEntries = entries.where((e) {
       if (!e.aktivno) return false;
-      if (e.statusFinal == 'odbijeno') return false;
-      if (e.statusFinal == 'obrada') return false;
+      if (V3StatusFilters.isRejected(e.statusFinal)) return false;
+      if (V3StatusFilters.normalizeStatus(e.statusFinal) == 'obrada') return false;
       final grad = (e.grad ?? '').trim();
       final vreme = _normalizeVreme(e.dodeljivoVreme);
       return grad.isNotEmpty && vreme.isNotEmpty;
@@ -911,13 +912,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             if (!z.aktivno) return false;
             if (z.grad != _selectedGrad) return false;
             if (normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
-            if (z.statusFinal == 'odbijeno') return false;
-            if (z.statusFinal == 'obrada') return false;
+            if (V3StatusFilters.isRejected(z.statusFinal)) return false;
+            if (V3StatusFilters.normalizeStatus(z.statusFinal) == 'obrada') return false;
             return true;
           }).toList()
             ..sort((a, b) {
               int sortRank(V3OperativnaNedeljaEntry e) {
-                if (e.statusFinal == 'otkazano') return 3;
+                if (V3StatusFilters.normalizeStatus(e.statusFinal) == 'otkazano') return 3;
                 if (e.pokupljen) return 2;
                 // Provjeri da li je putnik dodijeljen logovanom vozaču
                 if (currentVozacId != null) {
@@ -944,8 +945,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               if (!z.aktivno) return false;
               if (z.grad != grad) return false;
               if (normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
-              if (z.statusFinal == 'otkazano' || z.statusFinal == 'odbijeno') return false;
-              if (z.statusFinal == 'obrada') return false;
+              if (V3StatusFilters.isCanceledOrRejected(z.statusFinal)) return false;
+              if (V3StatusFilters.normalizeStatus(z.statusFinal) == 'obrada') return false;
               return true;
             }).fold(0, (sum, z) => sum + z.brojMesta);
           }

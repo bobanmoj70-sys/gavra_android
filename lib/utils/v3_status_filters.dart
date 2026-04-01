@@ -1,14 +1,53 @@
 class V3StatusFilters {
   V3StatusFilters._();
 
+  static String normalizeStatus(String? status) {
+    return (status ?? '').trim().toLowerCase();
+  }
+
+  static bool isCanceledOrRejected(String? status) {
+    final normalized = normalizeStatus(status);
+    return normalized == 'otkazano' || normalized == 'odbijeno';
+  }
+
+  static bool isRejected(String? status) {
+    return normalizeStatus(status) == 'odbijeno';
+  }
+
+  static bool isApproved(String? status) {
+    return normalizeStatus(status) == 'odobreno';
+  }
+
+  static bool isPending(String? status) {
+    return normalizeStatus(status) == 'obrada';
+  }
+
+  static bool isOfferLike(String? status) {
+    final normalized = normalizeStatus(status);
+    return normalized == 'alternativa' || normalized == 'ponuda';
+  }
+
+  static bool isActionLocked({
+    String? status,
+    bool pokupljen = false,
+  }) {
+    return pokupljen || isPending(status);
+  }
+
+  static bool isExcludedFromOptimization({
+    String? status,
+    bool pokupljen = false,
+  }) {
+    return pokupljen || isCanceledOrRejected(status);
+  }
+
   static bool isActiveForDisplay({
     required bool aktivno,
     String? status,
     bool pokupljen = false,
   }) {
     if (!aktivno) return false;
-    final normalized = (status ?? '').trim().toLowerCase();
-    if (normalized == 'otkazano' || normalized == 'odbijeno') return false;
+    if (isCanceledOrRejected(status)) return false;
     return true;
   }
 }

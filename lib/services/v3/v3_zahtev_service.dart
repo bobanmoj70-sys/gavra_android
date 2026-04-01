@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
+import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_vozac_service.dart';
 
@@ -27,13 +28,13 @@ class V3ZahtevService {
     final rows = V3MasterRealtimeManager.instance.zahteviCache.values.where((row) {
       final rowDatum = V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
-      final rowStatus = (row['status']?.toString() ?? '').trim().toLowerCase();
       return (row['putnik_id']?.toString() ?? '') == putnikId &&
           rowDatum == datumIso &&
           rowGrad == targetGrad &&
-          row['aktivno'] == true &&
-          rowStatus != 'otkazano' &&
-          rowStatus != 'odbijeno';
+          V3StatusFilters.isActiveForDisplay(
+            aktivno: row['aktivno'] == true,
+            status: row['status']?.toString(),
+          );
     }).toList();
 
     rows.sort((a, b) {

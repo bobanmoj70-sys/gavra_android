@@ -137,8 +137,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isGpsRowEligible(Map<String, dynamic> row) {
-    final status = ((row['status_final'] as String?) ?? (row['status'] as String?) ?? '').toLowerCase();
-    return row['aktivno'] != false && status != 'odbijeno';
+    final status = (row['status_final'] as String?) ?? (row['status'] as String?);
+    return row['aktivno'] != false && !V3StatusFilters.isRejected(status);
   }
 
   bool _isGpsRowActiveForCount(Map<String, dynamic> row) {
@@ -196,17 +196,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isExcludedFromOptimization(_PutnikEntry entry) {
-    final status = (entry.entry?.statusFinal ?? '').trim().toLowerCase();
+    final status = entry.entry?.statusFinal;
     final isPokupljen = entry.entry?.pokupljen ?? false;
-    return isPokupljen || status == 'otkazano' || status == 'odbijeno';
+    return V3StatusFilters.isExcludedFromOptimization(
+      status: status,
+      pokupljen: isPokupljen,
+    );
   }
 
   List<_PutnikEntry> _sortPutniciForDisplay(List<_PutnikEntry> putnici) {
     final sorted = List<_PutnikEntry>.from(putnici);
     sorted.sort((a, b) {
       int sortRank(_PutnikEntry entry) {
-        final status = (entry.entry?.statusFinal ?? '').trim().toLowerCase();
-        if (status == 'otkazano' || status == 'odbijeno') return 3;
+        final status = entry.entry?.statusFinal;
+        if (V3StatusFilters.isCanceledOrRejected(status)) return 3;
         if (entry.entry?.pokupljen == true) return 2;
         return 1;
       }

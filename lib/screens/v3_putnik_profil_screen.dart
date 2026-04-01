@@ -18,6 +18,8 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
+import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_presentation.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
@@ -163,8 +165,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         Map<String, dynamic>? selected;
         int selectedRank = -1;
         for (final row in opRows) {
-          final status = ((row['status_final'] as String? ?? 'obrada').trim().toLowerCase());
-          if (status == 'odbijeno') continue;
+          final status = V3StatusFilters.normalizeStatus(row['status_final']?.toString() ?? 'obrada');
+          if (V3StatusFilters.isRejected(status)) continue;
           final rank = _statusPriorityForCell(status) + ((row['pokupljen'] as bool? ?? false) ? 10 : 0);
           if (rank > selectedRank) {
             selected = row;
@@ -174,11 +176,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
         if (selected == null) continue;
 
-        final status = ((selected['status_final'] as String? ?? 'obrada').trim().toLowerCase());
+        final status = V3StatusFilters.normalizeStatus(selected['status_final']?.toString() ?? 'obrada');
         final opDodeljeno = _normalizeValidTime(selected['dodeljeno_vreme']?.toString());
         final opZeljeno = _normalizeValidTime(selected['zeljeno_vreme']?.toString());
         final displayVreme =
-            status == 'odobreno' ? (opDodeljeno ?? opZeljeno ?? '—') : (opZeljeno ?? opDodeljeno ?? '—');
+            V3StatusFilters.isApproved(status) ? (opDodeljeno ?? opZeljeno ?? '—') : (opZeljeno ?? opDodeljeno ?? '—');
 
         infos.add(_ZahtevInfo(
           grad: grad,
@@ -263,12 +265,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
     // Scenario 2: zahtev u obradi — blokirati sve akcije
-    if (info?.status == 'obrada') {
+    if (V3StatusFilters.isPending(info?.status)) {
       if (mounted) V3AppSnackBar.info(ctx, 'Vaš zahtev je u obradi kod dispečera.');
       return;
     }
     // Scenario 6: putnik je već pokupljen — ne može da otkazuje
-    if (info?.pokupljen == true) {
+    if (V3StatusFilters.isActionLocked(status: info?.status, pokupljen: info?.pokupljen ?? false)) {
       if (mounted) V3AppSnackBar.info(ctx, '🚗 Već ste pokupljeni — nije moguće otkazati.');
       return;
     }
@@ -282,11 +284,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         .where((v) => _normalizeValidTime(v) != null)
         .toList();
     final currentVreme = info?.vreme;
-    final hasActive = info != null &&
-        info.status != 'otkazano' &&
-        info.status != 'odbijeno' &&
-        info.status != 'alternativa' &&
-        info.status != 'ponuda';
+    final hasActive =
+        info != null && !V3StatusFilters.isCanceledOrRejected(info.status) && !V3StatusFilters.isOfferLike(info.status);
     // Provera da li putnik ima drugu adresu za ovaj grad
     final putnikId = _putnikData['id']?.toString();
     final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
@@ -567,7 +566,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         .where((r) => r['aktivno'] != false)
         .where((r) => (r['vozac_id'] as String?) != null)
         .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
-        .where((r) => ((r['status_final']?.toString() ?? '').trim().toLowerCase()) == 'odobreno')
+        .where((r) => V3StatusFilters.isApproved(r['status_final']?.toString()))
         .toList();
 
     final now = DateTime.now();
@@ -1495,32 +1494,12 @@ class _ZahtevCell extends StatelessWidget {
         ),
       );
     }
-    final Color statusColor;
-    final String statusIcon;
-    if (info!.pokupljen) {
-      statusColor = Colors.lightBlue.shade700;
-      statusIcon = '🚗';
-    } else {
-      switch (info!.status) {
-        case 'odobreno':
-          statusColor = Colors.green.shade600;
-          statusIcon = '✅';
-        case 'obrada':
-          statusColor = Colors.orange.shade700;
-          statusIcon = '⏳';
-        case 'alternativa':
-        case 'ponuda':
-          statusColor = Colors.deepOrangeAccent;
-          statusIcon = '🔄';
-        case 'odbijeno':
-        case 'otkazano':
-          statusColor = Colors.red.shade700;
-          statusIcon = '🚫';
-        default:
-          statusColor = Colors.blueGrey.shade600;
-          statusIcon = '•';
-      }
-    }
+    final badgeStyle = V3StatusPresentation.forCell(
+      status: info!.status,
+      pokupljen: info!.pokupljen,
+    );
+    final statusColor = badgeStyle.color;
+    final statusIcon = badgeStyle.icon;
     final vreme = V3StringUtils.safeSubstringTime(info!.vreme);
     return GestureDetector(
       onTap: onTap,
