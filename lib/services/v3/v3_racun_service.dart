@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_app_snack_bar.dart';
 import '../../utils/v3_dan_helper.dart';
+import '../../utils/v3_format_utils.dart';
 
 /// V3 servis za generisanje PDF računa.
 class V3RacunService {
@@ -172,7 +173,6 @@ class V3RacunService {
       boldItalic: _bold,
     );
     final ukupno = cena * kolicina;
-    final fmt = NumberFormat('#,##0.00', 'sr_Latn_RS');
     // Datum prometa fiksiran na 31.03.tekuće godine
     final datumPrometaFiksni = DateTime(DateTime.now().year, 3, 31);
     final datumStr = DateFormat('dd.MM.yyyy.').format(datumPrometaFiksni);
@@ -223,9 +223,9 @@ class V3RacunService {
                       _tCell('1.', align: pw.TextAlign.center),
                       _tCell('Prevoz putnika - mart 2026.'),
                       _tCell(jedinicaMere, align: pw.TextAlign.center),
-                      _tCell(fmt.format(kolicinaMart), align: pw.TextAlign.center),
-                      _tCell('${fmt.format(cena)} RSD', align: pw.TextAlign.right),
-                      _tCell('${fmt.format(ukupnoMart)} RSD', align: pw.TextAlign.right),
+                      _tCell(V3FormatUtils.formatDecimal2(kolicinaMart), align: pw.TextAlign.center),
+                      _tCell(V3FormatUtils.formatNovacRsd(cena), align: pw.TextAlign.right),
+                      _tCell(V3FormatUtils.formatNovacRsd(ukupnoMart), align: pw.TextAlign.right),
                     ],
                   ),
                 ],
@@ -236,7 +236,7 @@ class V3RacunService {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  _totalRow('Ukupno bez PDV-a:', '${fmt.format(ukupnoMart)} RSD'),
+                  _totalRow('Ukupno bez PDV-a:', V3FormatUtils.formatNovacRsd(ukupnoMart)),
                   _totalRow('PDV (nije u sistemu PDV-a):', '0,00 RSD'),
                 ],
               ),
@@ -259,7 +259,7 @@ class V3RacunService {
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text(fmt.format(ukupnoMart),
+                        pw.Text(V3FormatUtils.formatNovac(ukupnoMart),
                             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
                         pw.Text('RSD', style: pw.TextStyle(fontSize: 10, color: PdfColors.black)),
                       ],
@@ -328,7 +328,6 @@ class V3RacunService {
     required DateTime datumPrometa,
   }) {
     final ukupno = cenaPoVoznji * brojVoznji;
-    final fmt = NumberFormat('#,##0.00', 'sr_Latn_RS');
     final mesecGodina = DateFormat('MMMM yyyy', 'sr_Latn_RS').format(datumPrometa);
     final danasDatumStr = V3DanHelper.formatDatumPuni(DateTime.now());
     final datumStr = V3DanHelper.formatDatumPuni(datumPrometa);
@@ -429,9 +428,9 @@ class V3RacunService {
                   _tCell('1'),
                   _tCell('Prevoz putnika - $mesecGodina'),
                   _tCell('dan'),
-                  _tCell(fmt.format(brojVoznji)),
-                  _tCell('${fmt.format(cenaPoVoznji)} RSD'),
-                  _tCell('${fmt.format(ukupno)} RSD'),
+                  _tCell(V3FormatUtils.formatDecimal2(brojVoznji)),
+                  _tCell(V3FormatUtils.formatNovacRsd(cenaPoVoznji)),
+                  _tCell(V3FormatUtils.formatNovacRsd(ukupno)),
                 ]),
               ],
             ),
@@ -444,7 +443,7 @@ class V3RacunService {
                 padding: const pw.EdgeInsets.all(8),
                 decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
                 child: pw.Text(
-                  'UKUPNO: ${fmt.format(ukupno)} RSD',
+                  'UKUPNO: ${V3FormatUtils.formatNovacRsd(ukupno)}',
                   style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
                 ),
               ),

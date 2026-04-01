@@ -5,19 +5,25 @@ import 'package:intl/intl.dart';
 class V3FormatUtils {
   V3FormatUtils._();
 
+  static const String _localeSr = 'sr';
+  static const String _localeLatnRs = 'sr_Latn_RS';
+
   // ─── STATIC FORMATTERS ──────────────────────────────────────────────
 
   /// Standardni broj formatter za srpski locale - #,###
-  static final _brojFormatter = NumberFormat('#,###', 'sr');
+  static final _brojFormatter = NumberFormat('#,###', _localeSr);
 
   /// Novčani formatter za srpski locale sa decimalnim mestima
-  static final _novacFormatter = NumberFormat('#,##0.00', 'sr_Latn_RS');
+  static final _novacFormatter = NumberFormat('#,##0.00', _localeLatnRs);
 
   /// Kratki novčani formatter bez decimala
-  static final _novacKratkiFormatter = NumberFormat('#,###', 'sr');
+  static final _novacKratkiFormatter = NumberFormat('#,###', _localeSr);
 
   /// Formatter za gorivo sa jednom decimalom
-  static final _gorivoFormatter = NumberFormat('#,##0.0', 'sr');
+  static final _gorivoFormatter = NumberFormat('#,##0.0', _localeSr);
+
+  /// Formatter za procente sa jednom decimalom (locale-aware)
+  static final _procenatFormatter = NumberFormat('0.0', _localeLatnRs);
 
   // ─── PUBLIC METHODS ──────────────────────────────────────────────────
 
@@ -28,7 +34,17 @@ class V3FormatUtils {
 
   /// Formatira novac sa decimalnim mestima (1,234.56)
   static String formatNovac(num iznos) {
-    return _novacFormatter.format(iznos);
+    return formatDecimal2(iznos);
+  }
+
+  /// Formatira decimalni broj sa 2 decimale (locale-aware)
+  static String formatDecimal2(num vrednost) {
+    return _novacFormatter.format(vrednost);
+  }
+
+  /// Formatira novac sa RSD sufiksom
+  static String formatNovacRsd(num iznos) {
+    return '${formatNovac(iznos)} RSD';
   }
 
   /// Formatira novac bez decimala za prikaz u UI (1,234)
@@ -49,7 +65,7 @@ class V3FormatUtils {
 
   /// Formatira procenat
   static String formatProcenat(double procenat) {
-    return '${procenat.toStringAsFixed(1)}%';
+    return '${_procenatFormatter.format(procenat)}%';
   }
 
   /// Formatira gorivo sa jednom decimalom
