@@ -7,7 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v2_theme_manager.dart';
+import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';

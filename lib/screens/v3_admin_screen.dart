@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v2_theme_manager.dart';
+import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_container_utils.dart';

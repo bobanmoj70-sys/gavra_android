@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'v2_theme_registry.dart';
+import 'v3_theme_registry.dart';
 
 /// Menadžer tema — in-memory, bez persistencije.
 /// Koristi V2ThemeRegistry za definicije tema.

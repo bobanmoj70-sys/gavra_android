@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/v2_theme_manager.dart';
+import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 
 /// Bottom navigation bar za praznike/specijalne dane

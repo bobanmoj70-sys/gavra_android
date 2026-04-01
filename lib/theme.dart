@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'services/v2_theme_manager.dart';
+import 'services/v3_theme_manager.dart';
 import 'utils/v3_style_helper.dart';
 
 // GLOBALNO REŠENJE ZA SRPSKU DJAKRITIKU (š, đ, č, ć, ž)
