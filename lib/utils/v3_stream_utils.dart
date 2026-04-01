@@ -4,7 +4,7 @@ import 'dart:async';
 /// Елиминише све StreamSubscription и Timer дупликате!
 class V3StreamUtils {
   // Мапе за чување активних subscription-а и timer-а
-  static final Map<String, StreamSubscription> _subscriptions = {};
+  static final Map<String, StreamSubscription<dynamic>> _subscriptions = {};
   static final Map<String, Timer> _timers = {};
 
   // ─── STREAMSUBSCRIPTION УПРАВЉАЊЕ ──────────────────────────────────
@@ -21,10 +21,16 @@ class V3StreamUtils {
     // Cancel existing subscription if exists
     cancelSubscription(key);
 
-    final subscription = stream.listen(
+    late final StreamSubscription<T> subscription;
+    subscription = stream.listen(
       onData,
       onError: onError,
-      onDone: onDone,
+      onDone: () {
+        if (identical(_subscriptions[key], subscription)) {
+          _subscriptions.remove(key);
+        }
+        onDone?.call();
+      },
       cancelOnError: cancelOnError,
     );
 
@@ -33,22 +39,33 @@ class V3StreamUtils {
   }
 
   /// Добиј постојећи subscription
-  static StreamSubscription? getSubscription(String key) {
+  static StreamSubscription<dynamic>? getSubscription(String key) {
     return _subscriptions[key];
+  }
+
+  /// Async cancel subscription по кључу
+  static Future<void> cancelSubscriptionAsync(String key) async {
+    final subscription = _subscriptions.remove(key);
+    if (subscription != null) {
+      await subscription.cancel();
+    }
   }
 
   /// Cancel subscription по кључу
   static void cancelSubscription(String key) {
-    _subscriptions[key]?.cancel();
-    _subscriptions.remove(key);
+    unawaited(cancelSubscriptionAsync(key));
+  }
+
+  /// Async cancel све subscription-е
+  static Future<void> cancelAllSubscriptionsAsync() async {
+    final subscriptions = _subscriptions.values.toList(growable: false);
+    _subscriptions.clear();
+    await Future.wait(subscriptions.map((sub) => sub.cancel()));
   }
 
   /// Cancel све subscription-е
   static void cancelAllSubscriptions() {
-    for (final sub in _subscriptions.values) {
-      sub.cancel();
-    }
-    _subscriptions.clear();
+    unawaited(cancelAllSubscriptionsAsync());
   }
 
   /// Провери да ли је subscription активан
@@ -81,7 +98,10 @@ class V3StreamUtils {
     // Cancel existing timer if exists
     cancelTimer(key);
 
-    final timer = Timer(duration, callback);
+    final timer = Timer(duration, () {
+      _timers.remove(key);
+      callback();
+    });
     _timers[key] = timer;
     return timer;
   }
@@ -235,9 +255,31 @@ class V3StreamUtils {
     }
   }
 
+  /// Async cancel све по префиксу кључа (за subscription-е)
+  static Future<void> cancelByPrefixAsync(String prefix) async {
+    final subKeys = _subscriptions.keys.where((key) => key.startsWith(prefix)).toList(growable: false);
+    final subscriptions = subKeys
+        .map((key) => _subscriptions.remove(key))
+        .whereType<StreamSubscription<dynamic>>()
+        .toList(growable: false);
+
+    await Future.wait(subscriptions.map((sub) => sub.cancel()));
+
+    final timerKeys = _timers.keys.where((key) => key.startsWith(prefix)).toList(growable: false);
+    for (final key in timerKeys) {
+      _timers.remove(key)?.cancel();
+    }
+  }
+
   /// ТОТАЛНО УНИШТАВАЊЕ свих stream-ова и timer-а
   static void disposeAll() {
     cancelAllSubscriptions();
+    cancelAllTimers();
+  }
+
+  /// Async varijanta totalnog čišćenja
+  static Future<void> disposeAllAsync() async {
+    await cancelAllSubscriptionsAsync();
     cancelAllTimers();
   }
 
