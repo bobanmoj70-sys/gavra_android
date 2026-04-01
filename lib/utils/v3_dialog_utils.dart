@@ -5,9 +5,34 @@ import 'v3_button_utils.dart';
 /// Централизовани утилс за управљање AlertDialog компонентама
 /// Елиминише дупликате и обезбеђује конзистентан styling
 class V3DialogUtils {
+  V3DialogUtils._();
+
   // Темна боја за позадину дијалога
   static const Color _darkBg = Color(0xFF1A1A1A);
-  static const Color _altDarkBg = Color(0xFF1a1a2e);
+  static const double _defaultBorderRadius = 16;
+
+  static ShapeBorder _buildDialogShape({required double borderRadius, Color? borderColor}) {
+    return RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+      side: borderColor != null ? BorderSide(color: borderColor.withValues(alpha: 0.3)) : BorderSide.none,
+    );
+  }
+
+  static Widget _buildDialogTitle({
+    required String title,
+    required IconData titleIcon,
+    Color? titleIconColor,
+  }) {
+    return Row(
+      children: [
+        Icon(titleIcon, color: titleIconColor ?? Colors.amber),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(title, style: const TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+  }
 
   /// Основни AlertDialog са стандардним styling-ом
   static Future<T?> showBasicDialog<T>({
@@ -18,29 +43,22 @@ class V3DialogUtils {
     Color? titleIconColor,
     List<Widget>? actions,
     bool barrierDismissible = true,
+    bool useRootNavigator = true,
     Color? backgroundColor,
-    double borderRadius = 16,
+    double borderRadius = _defaultBorderRadius,
     Color? borderColor,
   }) {
+    if (!context.mounted) return Future.value(null);
+
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         backgroundColor: backgroundColor ?? _darkBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
-          side: borderColor != null ? BorderSide(color: borderColor.withValues(alpha: 0.3)) : BorderSide.none,
-        ),
+        shape: _buildDialogShape(borderRadius: borderRadius, borderColor: borderColor),
         title: titleIcon != null
-            ? Row(
-                children: [
-                  Icon(titleIcon, color: titleIconColor ?? Colors.amber),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(title, style: const TextStyle(color: Colors.white)),
-                  ),
-                ],
-              )
+            ? _buildDialogTitle(title: title, titleIcon: titleIcon, titleIconColor: titleIconColor)
             : Text(title, style: const TextStyle(color: Colors.white)),
         content: Text(
           content,
@@ -62,21 +80,25 @@ class V3DialogUtils {
     String cancelText = 'Ne',
     Color? confirmColor,
     Color? cancelColor,
+    bool useRootNavigator = true,
   }) {
+    if (!context.mounted) return Future.value(null);
+
     return showBasicDialog<bool>(
       context: context,
       title: title,
       content: content,
       titleIcon: titleIcon,
       titleIconColor: titleIconColor,
+      useRootNavigator: useRootNavigator,
       actions: [
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(false),
           text: cancelText,
           foregroundColor: cancelColor ?? Colors.grey,
         ),
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(true),
           text: confirmText,
           foregroundColor: confirmColor ?? Colors.amber,
         ),
@@ -93,16 +115,20 @@ class V3DialogUtils {
     Color? titleIconColor,
     String buttonText = 'U redu',
     Color? buttonColor,
+    bool useRootNavigator = true,
   }) {
+    if (!context.mounted) return Future.value();
+
     return showBasicDialog<void>(
       context: context,
       title: title,
       content: content,
       titleIcon: titleIcon,
       titleIconColor: titleIconColor,
+      useRootNavigator: useRootNavigator,
       actions: [
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(),
           text: buttonText,
           foregroundColor: buttonColor ?? Colors.amber,
         ),
@@ -119,14 +145,17 @@ class V3DialogUtils {
     IconData? titleIcon,
     Color? titleIconColor,
     String? cancelText,
+    bool useRootNavigator = true,
   }) {
+    if (!context.mounted) return Future.value(null);
+
     final actions = <Widget>[];
 
     // Додај cancel дугме ако је задато
     if (cancelText != null) {
       actions.add(
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(),
           text: cancelText,
           foregroundColor: Colors.grey,
         ),
@@ -134,15 +163,15 @@ class V3DialogUtils {
     }
 
     // Додај дугмад за избор
-    choices.forEach((key, displayText) {
+    for (final entry in choices.entries) {
       actions.add(
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context, key),
-          text: displayText,
+          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(entry.key),
+          text: entry.value,
           foregroundColor: Colors.amber,
         ),
       );
-    });
+    }
 
     return showBasicDialog<String>(
       context: context,
@@ -150,6 +179,7 @@ class V3DialogUtils {
       content: content,
       titleIcon: titleIcon,
       titleIconColor: titleIconColor,
+      useRootNavigator: useRootNavigator,
       actions: actions,
     );
   }
@@ -163,29 +193,22 @@ class V3DialogUtils {
     Color? titleIconColor,
     List<Widget>? actions,
     bool barrierDismissible = true,
+    bool useRootNavigator = true,
     Color? backgroundColor,
-    double borderRadius = 16,
+    double borderRadius = _defaultBorderRadius,
     Color? borderColor,
   }) {
+    if (!context.mounted) return Future.value(null);
+
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
+      useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         backgroundColor: backgroundColor ?? _darkBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
-          side: borderColor != null ? BorderSide(color: borderColor.withValues(alpha: 0.3)) : BorderSide.none,
-        ),
+        shape: _buildDialogShape(borderRadius: borderRadius, borderColor: borderColor),
         title: titleIcon != null
-            ? Row(
-                children: [
-                  Icon(titleIcon, color: titleIconColor ?? Colors.amber),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(title, style: const TextStyle(color: Colors.white)),
-                  ),
-                ],
-              )
+            ? _buildDialogTitle(title: title, titleIcon: titleIcon, titleIconColor: titleIconColor)
             : Text(title, style: const TextStyle(color: Colors.white)),
         content: content,
         actions: actions,
