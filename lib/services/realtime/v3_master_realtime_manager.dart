@@ -20,8 +20,8 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> putniciArhivaCache = {};
   final Map<String, Map<String, dynamic>> zahteviCache = {};
   final Map<String, Map<String, dynamic>> postavkeKapacitetaCache = {};
-  final Map<String, Map<String, dynamic>> pumpaStanjeCache = {};
-  final Map<String, Map<String, dynamic>> pumpaRezervoarCache = {};
+  final Map<String, Map<String, dynamic>> gorivoCache = {};
+  final Map<String, Map<String, dynamic>> gorivoPromeneCache = {};
   final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> finansijeStanjeCache = {};
@@ -157,8 +157,8 @@ class V3MasterRealtimeManager {
             .select(
                 'id, putnik_id, datum, grad, zeljeno_vreme, broj_mesta, status, napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, aktivno, created_at, updated_at, created_by, scheduled_at')
             .eq('aktivno', true),
-        supabase.from('v3_pumpa_stanje').select().eq('aktivno', true),
-        supabase.from('v3_pumpa_rezervoar').select(),
+        supabase.from('v3_gorivo').select().eq('aktivno', true),
+        supabase.from('v3_gorivo_promene').select(),
         supabase.from('v3_vozac_lokacije').select(),
         supabase.from('v3_troskovi').select().eq('aktivno', true),
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
@@ -174,8 +174,8 @@ class V3MasterRealtimeManager {
       _fillCache(putniciCache, results[3] as List);
       _fillCache(putniciArhivaCache, results[4] as List);
       _fillCache(zahteviCache, results[5] as List);
-      _fillCache(pumpaStanjeCache, results[6] as List);
-      _fillCache(pumpaRezervoarCache, results[7] as List);
+      _fillCache(gorivoCache, results[6] as List);
+      _fillCache(gorivoPromeneCache, results[7] as List);
       _fillCache(vozacLokacijeCache, results[8] as List);
       _fillCache(troskoviCache, results[9] as List);
       _fillCache(finansijeStanjeCache, results[10] as List);
@@ -222,8 +222,8 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_putnici', putniciCache);
     _setupTableRealtime('v3_putnici_arhiva', putniciArhivaCache);
     _setupTableRealtime('v3_zahtevi', zahteviCache);
-    _setupTableRealtime('v3_pumpa_stanje', pumpaStanjeCache);
-    _setupTableRealtime('v3_pumpa_rezervoar', pumpaRezervoarCache, hasActiveKey: false);
+    _setupTableRealtime('v3_gorivo', gorivoCache);
+    _setupTableRealtime('v3_gorivo_promene', gorivoPromeneCache, hasActiveKey: false);
     _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
     _setupTableRealtime('v3_troskovi', troskoviCache);
     _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
@@ -309,11 +309,11 @@ class V3MasterRealtimeManager {
       case 'v3_zahtevi':
         zahteviCache[id] = row;
         break;
-      case 'v3_pumpa_stanje':
-        pumpaStanjeCache[id] = row;
+      case 'v3_gorivo':
+        gorivoCache[id] = row;
         break;
-      case 'v3_pumpa_rezervoar':
-        pumpaRezervoarCache[id] = row;
+      case 'v3_gorivo_promene':
+        gorivoPromeneCache[id] = row;
         break;
       case 'v3_vozac_lokacije':
         vozacLokacijeCache[id] = row;
@@ -374,10 +374,10 @@ class V3MasterRealtimeManager {
         return putniciArhivaCache;
       case 'v3_zahtevi':
         return zahteviCache;
-      case 'v3_pumpa_stanje':
-        return pumpaStanjeCache;
-      case 'v3_pumpa_rezervoar':
-        return pumpaRezervoarCache;
+      case 'v3_gorivo':
+        return gorivoCache;
+      case 'v3_gorivo_promene':
+        return gorivoPromeneCache;
       case 'v3_vozac_lokacije':
         return vozacLokacijeCache;
       case 'v3_troskovi':

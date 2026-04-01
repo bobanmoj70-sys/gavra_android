@@ -34,7 +34,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     return StreamBuilder<_GorivoData>(
       stream: V3MasterRealtimeManager.instance.v3StreamFromCache<_GorivoData>(
-        tables: ['v3_pumpa_stanje', 'v3_pumpa_rezervoar'],
+        tables: ['v3_gorivo', 'v3_gorivo_promene'],
         build: () => _GorivoData(
           stanje: V3GorivoService.getStanjeSync(),
           rezervoar: V3GorivoService.getRezervoarSync(),

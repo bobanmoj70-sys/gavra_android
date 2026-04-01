@@ -1,4 +1,4 @@
-/// Model za tabelu v3_pumpa_stanje
+/// Model za tabelu v3_gorivo
 library;
 
 import '../utils/v3_date_utils.dart';
@@ -36,8 +36,8 @@ class V3PumpaStanje {
       id: json['id']?.toString() ?? '',
       naziv: json['naziv'] as String? ?? 'Kucna Pumpa',
       kapacitetLitri: (json['kapacitet_litri'] as num?)?.toDouble() ?? 0,
-      trenutnoStanje: (json['trenutno_stanje'] as num?)?.toDouble() ?? 0,
-      stanjeBrojacPistolj: (json['stanje_brojac_pistolj'] as num?)?.toDouble() ?? 0,
+      trenutnoStanje: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? 0,
+      stanjeBrojacPistolj: (json['brojac_pistolj_litri'] as num?)?.toDouble() ?? 0,
       aktivno: json['aktivno'] as bool? ?? true,
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
@@ -48,13 +48,13 @@ class V3PumpaStanje {
         if (id.isNotEmpty) 'id': id,
         'naziv': naziv,
         'kapacitet_litri': kapacitetLitri,
-        'trenutno_stanje': trenutnoStanje,
-        'stanje_brojac_pistolj': stanjeBrojacPistolj,
+        'trenutno_stanje_litri': trenutnoStanje,
+        'brojac_pistolj_litri': stanjeBrojacPistolj,
         'aktivno': aktivno,
       };
 }
 
-/// Model za tabelu v3_pumpa_rezervoar
+/// Model za tabelu v3_gorivo (rezervoar pogled)
 
 class V3PumpaRezervoar {
   final String id;
@@ -81,9 +81,9 @@ class V3PumpaRezervoar {
   factory V3PumpaRezervoar.fromJson(Map<String, dynamic> json) {
     return V3PumpaRezervoar(
       id: json['id']?.toString() ?? '',
-      kapacitetMax: (json['kapacitet_max'] as num?)?.toDouble() ?? 3000,
-      trenutnoLitara: (json['trenutno_litara'] as num?)?.toDouble() ?? 0,
-      alarmNivo: (json['alarm_nivo'] as num?)?.toDouble() ?? 500,
+      kapacitetMax: (json['kapacitet_litri'] as num?)?.toDouble() ?? 3000,
+      trenutnoLitara: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? 0,
+      alarmNivo: (json['alarm_nivo_litri'] as num?)?.toDouble() ?? 500,
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
     );
@@ -91,9 +91,9 @@ class V3PumpaRezervoar {
 
   Map<String, dynamic> toJson() => {
         if (id.isNotEmpty) 'id': id,
-        'kapacitet_max': kapacitetMax,
-        'trenutno_litara': trenutnoLitara,
-        'alarm_nivo': alarmNivo,
+        'kapacitet_litri': kapacitetMax,
+        'trenutno_stanje_litri': trenutnoLitara,
+        'alarm_nivo_litri': alarmNivo,
       };
 
   bool get ispodAlarma => trenutnoLitara <= alarmNivo;
@@ -113,7 +113,7 @@ class V3GorivoStanje {
 
   factory V3GorivoStanje.fromJson(Map<String, dynamic> json) {
     return V3GorivoStanje(
-      kolicina: (json['trenutno_stanje'] as num?)?.toDouble() ?? (json['kolicina'] as num?)?.toDouble() ?? 0,
+      kolicina: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? (json['kolicina'] as num?)?.toDouble() ?? 0,
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?) ?? DateTime.now(),
     );
   }

@@ -6,16 +6,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class V3GorivoService {
   static final _supabase = Supabase.instance.client;
 
-  /// Dohvata stanje pumpe iz cache-a (tabela: v3_pumpa_stanje)
+  /// Dohvata stanje pumpe iz cache-a (tabela: v3_gorivo)
   static V3PumpaStanje? getStanjeSync() {
-    final cache = V3MasterRealtimeManager.instance.pumpaStanjeCache;
+    final cache = V3MasterRealtimeManager.instance.gorivoCache;
     if (cache.isEmpty) return null;
     return V3PumpaStanje.fromJson(cache.values.first);
   }
 
-  /// Dohvata rezervoar iz cache-a (tabela: v3_pumpa_rezervoar)
+  /// Dohvata rezervoar iz cache-a (tabela: v3_gorivo)
   static V3PumpaRezervoar? getRezervoarSync() {
-    final cache = V3MasterRealtimeManager.instance.pumpaRezervoarCache;
+    final cache = V3MasterRealtimeManager.instance.gorivoCache;
     if (cache.isEmpty) return null;
     return V3PumpaRezervoar.fromJson(cache.values.first);
   }
@@ -23,14 +23,14 @@ class V3GorivoService {
   /// Stream koji emituje svaki put kad se gorivo promijeni
   static Stream<V3PumpaStanje?> streamStanje() {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_pumpa_stanje'],
+      tables: ['v3_gorivo'],
       build: getStanjeSync,
     );
   }
 
   static Stream<V3PumpaRezervoar?> streamRezervoar() {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_pumpa_rezervoar'],
+      tables: ['v3_gorivo'],
       build: getRezervoarSync,
     );
   }
@@ -38,9 +38,9 @@ class V3GorivoService {
   /// Ažurira trenutno stanje pumpe u bazi
   static Future<bool> updateStanje(String id, double novoStanje, double noviBrojac) async {
     try {
-      await _supabase.from('v3_pumpa_stanje').update({
-        'trenutno_stanje': novoStanje,
-        'stanje_brojac_pistolj': noviBrojac,
+      await _supabase.from('v3_gorivo').update({
+        'trenutno_stanje_litri': novoStanje,
+        'brojac_pistolj_litri': noviBrojac,
       }).eq('id', id);
 
       return true;
@@ -53,8 +53,8 @@ class V3GorivoService {
   /// Ažurira trenutni nivo rezervoara u bazi
   static Future<bool> updateRezervoar(String id, double novoLitara) async {
     try {
-      await _supabase.from('v3_pumpa_rezervoar').update({
-        'trenutno_litara': novoLitara,
+      await _supabase.from('v3_gorivo').update({
+        'trenutno_stanje_litri': novoLitara,
       }).eq('id', id);
 
       return true;
