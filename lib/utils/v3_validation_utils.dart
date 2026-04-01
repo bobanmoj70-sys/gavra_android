@@ -37,7 +37,8 @@ class V3ValidationUtils {
   /// Vraća normalizovan telefon ili null ako je prazan
   static String? normalizePhoneOrNull(String? phone) {
     if (phone == null || phone.trim().isEmpty) return null;
-    return normalizePhone(phone.trim());
+    final normalized = normalizePhone(phone.trim());
+    return normalized.isEmpty ? null : normalized;
   }
 
   // ─── VREME NORMALIZACIJA ──────────────────────────────────────────────
@@ -51,6 +52,7 @@ class V3ValidationUtils {
     if (withSecondsMatch != null) {
       final h = int.parse(withSecondsMatch.group(1)!);
       final m = int.parse(withSecondsMatch.group(2)!);
+      if (!_isValidHourMinute(h, m)) return trimmed;
       return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
     }
 
@@ -59,6 +61,7 @@ class V3ValidationUtils {
     if (fullMatch != null) {
       final h = int.parse(fullMatch.group(1)!);
       final m = int.parse(fullMatch.group(2)!);
+      if (!_isValidHourMinute(h, m)) return trimmed;
       return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
     }
 
@@ -66,10 +69,15 @@ class V3ValidationUtils {
     final hourOnly = RegExp(r'^(\d{1,2})$').firstMatch(trimmed);
     if (hourOnly != null) {
       final h = int.parse(hourOnly.group(1)!);
+      if (h < 0 || h > 23) return trimmed;
       return '${h.toString().padLeft(2, '0')}:00';
     }
 
     return trimmed;
+  }
+
+  static bool _isValidHourMinute(int hour, int minute) {
+    return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
   }
 
   // ─── NUMBER PARSING ───────────────────────────────────────────────────
@@ -83,7 +91,8 @@ class V3ValidationUtils {
   /// Sigurno parsira double sa default vrednošću
   static double safeParseDouble(String? value, {double defaultValue = 0.0}) {
     if (value == null || value.trim().isEmpty) return defaultValue;
-    return double.tryParse(value.trim()) ?? defaultValue;
+    final normalized = value.trim().replaceAll(',', '.');
+    return double.tryParse(normalized) ?? defaultValue;
   }
 
   // ─── STRING CLEANING ──────────────────────────────────────────────────
@@ -102,7 +111,14 @@ class V3ValidationUtils {
 
   /// Normalizuje string za search (lowercase + bez dijakritika)
   static String normalizeForSearch(String input) {
-    return input.toLowerCase().trim();
+    var normalized = input.toLowerCase().trim();
+    normalized = normalized
+        .replaceAll('č', 'c')
+        .replaceAll('ć', 'c')
+        .replaceAll('š', 's')
+        .replaceAll('ž', 'z')
+        .replaceAll('đ', 'dj');
+    return normalized;
   }
 
   // ─── VALIDATION CHECKS ────────────────────────────────────────────────
