@@ -1,3 +1,5 @@
+import '../utils/v3_date_utils.dart';
+
 class V3PinZahtev {
   static const String statusCeka = 'ceka';
   static const String statusOdobren = 'odobren';
@@ -26,7 +28,7 @@ class V3PinZahtev {
       email: json['email'] as String?,
       telefon: json['telefon'] as String?,
       status: json['status'] as String? ?? statusCeka,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String)?.toLocal() : null,
+      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
     );
   }
 

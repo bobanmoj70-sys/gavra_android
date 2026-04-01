@@ -1,3 +1,5 @@
+import '../utils/v3_date_utils.dart';
+
 class V3Dug {
   final String id;
   final String putnikId;
@@ -33,11 +35,11 @@ class V3Dug {
       tipPutnika: json['tip_putnika'] as String? ?? 'dnevni',
       vozacId: json['vozac_id'] as String? ?? '',
       vozacIme: json['vozac_ime'] as String? ?? '',
-      datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
-      vremePokupljen: json['vreme_pokupljen'] != null ? DateTime.tryParse(json['vreme_pokupljen'] as String) : null,
+      datum: V3DateUtils.parseDatumOr(json['datum'] as String?, DateTime.now()),
+      vremePokupljen: V3DateUtils.parseTs(json['vreme_pokupljen'] as String?),
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
       placeno: json['placeno'] as bool? ?? false,
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
+      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
     );
   }
 
@@ -75,8 +77,8 @@ class V3Dug {
       tipPutnika: tip,
       vozacId: json['vozac_id']?.toString() ?? '',
       vozacIme: json['vozac_ime']?.toString() ?? '',
-      datum: json['datum'] != null ? DateTime.tryParse(json['datum'] as String) ?? DateTime.now() : DateTime.now(),
-      vremePokupljen: json['vreme_pokupljen'] != null ? DateTime.tryParse(json['vreme_pokupljen'] as String) : null,
+      datum: V3DateUtils.parseDatumOr(json['datum'] as String?, DateTime.now()),
+      vremePokupljen: V3DateUtils.parseTs(json['vreme_pokupljen'] as String?),
       iznos: iznos,
       placeno: (json['naplata_status'] as String?) == 'placeno',
       createdAt: null,

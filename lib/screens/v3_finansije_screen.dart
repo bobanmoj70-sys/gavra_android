@@ -11,6 +11,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -103,7 +104,7 @@ _V3IzvestajData _buildIzvestaj() {
 
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;
-    final dt = DateTime.tryParse(createdStr)?.toLocal();
+    final dt = V3DateUtils.parseTs(createdStr);
     if (dt == null) continue;
     final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
 
@@ -138,7 +139,7 @@ _V3IzvestajData _buildIzvestaj() {
     if (row['aktivno'] == false) continue;
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;
-    final dt = DateTime.tryParse(createdStr)?.toLocal();
+    final dt = V3DateUtils.parseTs(createdStr);
     if (dt == null) continue;
     final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
 

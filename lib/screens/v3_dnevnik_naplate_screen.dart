@@ -16,6 +16,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -103,7 +104,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
       final vremePlaceno = row['vreme_placen'] as String? ?? '';
       final sortTs = vremePlaceno.isNotEmpty ? vremePlaceno : (row['updated_at'] as String? ?? '');
-      final dt = DateTime.tryParse(sortTs)?.toLocal();
+      final dt = V3DateUtils.parseTs(sortTs);
       if (dt == null) continue;
 
       final payDay = DateTime(dt.year, dt.month, dt.day);

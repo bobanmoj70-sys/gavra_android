@@ -15,10 +15,20 @@ class V3DateUtils {
     return DateTime.tryParse(s)?.toLocal();
   }
 
+  /// Parsira timestamptz string ili vraća fallback vrijednost.
+  static DateTime parseTsOr(String? s, DateTime fallback) {
+    return parseTs(s) ?? fallback;
+  }
+
   /// Parsira date string iz baze → DateTime (bez timezone konverzije).
   /// Koristiti za: datum kolone ('2026-03-18').
   static DateTime? parseDatum(String? s) {
     if (s == null || s.isEmpty) return null;
     return DateTime.tryParse(s);
+  }
+
+  /// Parsira date string ili vraća fallback vrijednost.
+  static DateTime parseDatumOr(String? s, DateTime fallback) {
+    return parseDatum(s) ?? fallback;
   }
 }
