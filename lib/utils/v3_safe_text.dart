@@ -103,7 +103,7 @@ class V3SafeText extends StatelessWidget {
       status,
       style: style,
       maxLines: 1,
-      overflow: TextOverflow.clip,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -176,6 +176,7 @@ class V3SafeContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasClipSource = decoration != null || foregroundDecoration != null;
     return Container(
       width: width,
       height: height,
@@ -186,7 +187,7 @@ class V3SafeContainer extends StatelessWidget {
       foregroundDecoration: foregroundDecoration,
       transform: transform,
       transformAlignment: transformAlignment,
-      clipBehavior: clipBehavior,
+      clipBehavior: hasClipSource ? clipBehavior : Clip.none,
       child: child,
     );
   }
@@ -202,6 +203,8 @@ class V3SafeRow extends StatelessWidget {
     this.textDirection,
     this.verticalDirection = VerticalDirection.down,
     this.textBaseline,
+    this.scrollable = true,
+    this.useIntrinsic = false,
     required this.children,
   });
 
@@ -211,23 +214,33 @@ class V3SafeRow extends StatelessWidget {
   final TextDirection? textDirection;
   final VerticalDirection verticalDirection;
   final TextBaseline? textBaseline;
+  final bool scrollable;
+  final bool useIntrinsic;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
+    Widget content = Row(
+      mainAxisAlignment: mainAxisAlignment,
+      mainAxisSize: mainAxisSize,
+      crossAxisAlignment: crossAxisAlignment,
+      textDirection: textDirection,
+      verticalDirection: verticalDirection,
+      textBaseline: textBaseline,
+      children: children,
+    );
+
+    if (useIntrinsic) {
+      content = IntrinsicHeight(child: content);
+    }
+
+    if (!scrollable) {
+      return content;
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: IntrinsicHeight(
-        child: Row(
-          mainAxisAlignment: mainAxisAlignment,
-          mainAxisSize: mainAxisSize,
-          crossAxisAlignment: crossAxisAlignment,
-          textDirection: textDirection,
-          verticalDirection: verticalDirection,
-          textBaseline: textBaseline,
-          children: children,
-        ),
-      ),
+      child: content,
     );
   }
 }
@@ -241,6 +254,8 @@ class V3SafeColumn extends StatelessWidget {
     this.textDirection,
     this.verticalDirection = VerticalDirection.down,
     this.textBaseline,
+    this.scrollable = true,
+    this.useIntrinsic = false,
     required this.children,
   });
 
@@ -250,22 +265,32 @@ class V3SafeColumn extends StatelessWidget {
   final TextDirection? textDirection;
   final VerticalDirection verticalDirection;
   final TextBaseline? textBaseline;
+  final bool scrollable;
+  final bool useIntrinsic;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
+    Widget content = Column(
+      mainAxisAlignment: mainAxisAlignment,
+      mainAxisSize: mainAxisSize,
+      crossAxisAlignment: crossAxisAlignment,
+      textDirection: textDirection,
+      verticalDirection: verticalDirection,
+      textBaseline: textBaseline,
+      children: children,
+    );
+
+    if (useIntrinsic) {
+      content = IntrinsicWidth(child: content);
+    }
+
+    if (!scrollable) {
+      return content;
+    }
+
     return SingleChildScrollView(
-      child: IntrinsicWidth(
-        child: Column(
-          mainAxisAlignment: mainAxisAlignment,
-          mainAxisSize: mainAxisSize,
-          crossAxisAlignment: crossAxisAlignment,
-          textDirection: textDirection,
-          verticalDirection: verticalDirection,
-          textBaseline: textBaseline,
-          children: children,
-        ),
-      ),
+      child: content,
     );
   }
 }
