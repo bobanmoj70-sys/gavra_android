@@ -58,8 +58,8 @@ class V3UIUtils {
   // ─── SAFE SETSTATE WRAPPER ─────────────────────────────────────────
 
   /// Sigurno izvršava setState samo ako je widget mounted
-  /// Korisiti kao: V3UIUtils.safeSetState(this, () { _loading = true; });
-  static void safeSetState(State widget, VoidCallback fn) {
+  /// Koristiti kao: V3UIUtils.safeSetState(this, () { _loading = true; });
+  static void safeSetState(State<StatefulWidget> widget, VoidCallback fn) {
     if (widget.mounted) {
       // ignore: invalid_use_of_protected_member
       widget.setState(fn);
