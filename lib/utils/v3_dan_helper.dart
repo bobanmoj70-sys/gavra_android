@@ -2,6 +2,8 @@
 class V3DanHelper {
   V3DanHelper._();
 
+  static const int _isoDateLength = 10;
+
   static const _names = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja'];
   static const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
   static const _labels = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
@@ -147,13 +149,15 @@ class V3DanHelper {
 
   /// Čisti ISO datum deo (yyyy-MM-dd) iz ISO string-a.
   static String parseIsoDatePart(String isoString) {
-    if (isoString.length >= 10) return isoString.substring(0, 10);
-    return isoString;
+    final value = isoString.trim();
+    if (value.isEmpty) return '';
+    if (value.length < _isoDateLength) return value;
+    return value.substring(0, _isoDateLength);
   }
 
   /// ISO datum string iz DateTime.
   static String toIsoDate(DateTime datum) {
-    return datum.toIso8601String().substring(0, 10);
+    return dateOnly(datum).toIso8601String().substring(0, _isoDateLength);
   }
 
   /// Današnji ISO datum (yyyy-MM-dd).
@@ -164,7 +168,7 @@ class V3DanHelper {
     return '${sati.toString().padLeft(2, '0')}:${minuti.toString().padLeft(2, '0')}';
   }
 
-  /// Formatira datum u DD.MM format
+  /// Formatira datum u DD.MM.YY format.
   static String formatDanMesec(DateTime datum) {
     return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year.toString().substring(2)}';
   }
