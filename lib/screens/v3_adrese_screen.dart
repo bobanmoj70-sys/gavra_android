@@ -141,7 +141,7 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
 
   @override
   void dispose() {
-    V3TextUtils.disposeController('search');
+    V3TextUtils.disposeController('adrese_search');
     super.dispose();
   }
 
@@ -181,7 +181,7 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
               const SizedBox(height: 12),
               // SEARCH
               TextField(
-                controller: V3TextUtils.searchController,
+                controller: V3TextUtils.adreseSearchController,
                 decoration: InputDecoration(
                   hintText: 'Pretraži adrese...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
@@ -190,7 +190,7 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.white70),
                           onPressed: () {
-                            V3TextUtils.clearController('search');
+                            V3TextUtils.clearController('adrese_search');
                             setState(() => _searchQuery = '');
                           },
                         )

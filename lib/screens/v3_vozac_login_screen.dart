@@ -58,9 +58,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
   @override
   void dispose() {
-    V3TextUtils.disposeController('email');
-    V3TextUtils.disposeController('telefon');
-    V3TextUtils.disposeController('sifra');
+    V3TextUtils.disposeController('vozac_email');
+    V3TextUtils.disposeController('vozac_telefon');
+    V3TextUtils.disposeController('vozac_sifra');
     super.dispose();
   }
 
@@ -93,9 +93,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
   Future<void> _saveBiometricCredentials() async {
     if (!_biometricAvailable) return;
     final data = jsonEncode({
-      'email': V3TextUtils.getControllerText('email').trim(),
-      'telefon': V3TextUtils.getControllerText('telefon').trim(),
-      'sifra': V3TextUtils.getControllerText('sifra'),
+      'email': V3TextUtils.getControllerText('vozac_email').trim(),
+      'telefon': V3TextUtils.getControllerText('vozac_telefon').trim(),
+      'sifra': V3TextUtils.getControllerText('vozac_sifra'),
     });
     await _secureStorage.write(key: _biometricKey, value: data);
   }
@@ -123,9 +123,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     if (!mounted) return;
 
     final data = jsonDecode(raw) as Map<String, dynamic>;
-    V3TextUtils.setControllerText('email', data['email']?.toString() ?? '');
-    V3TextUtils.setControllerText('telefon', data['telefon']?.toString() ?? '');
-    V3TextUtils.setControllerText('sifra', data['sifra']?.toString() ?? '');
+    V3TextUtils.setControllerText('vozac_email', data['email']?.toString() ?? '');
+    V3TextUtils.setControllerText('vozac_telefon', data['telefon']?.toString() ?? '');
+    V3TextUtils.setControllerText('vozac_sifra', data['sifra']?.toString() ?? '');
 
     await _login(saveBiometric: false);
   }
@@ -148,9 +148,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         return;
       }
 
-      final email = V3TextUtils.getControllerText('email').trim().toLowerCase();
-      final telefon = _normalizePhone(V3TextUtils.getControllerText('telefon').trim());
-      final sifra = V3TextUtils.getControllerText('sifra');
+      final email = V3TextUtils.getControllerText('vozac_email').trim().toLowerCase();
+      final telefon = _normalizePhone(V3TextUtils.getControllerText('vozac_telefon').trim());
+      final sifra = V3TextUtils.getControllerText('vozac_sifra');
 
       // Provjera emaila
       if ((vozac.email ?? '').toLowerCase() != email) {
@@ -246,17 +246,17 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
                     _buildHeader(),
                     const SizedBox(height: 32),
                     V3InputUtils.emailField(
-                      controller: V3TextUtils.emailController,
+                      controller: V3TextUtils.vozacEmailController,
                       label: 'Email adresa',
                     ),
                     const SizedBox(height: 16),
                     V3InputUtils.phoneField(
-                      controller: V3TextUtils.telefonController,
+                      controller: V3TextUtils.vozacTelefonController,
                       label: 'Broj telefona',
                     ),
                     const SizedBox(height: 16),
                     V3InputUtils.passwordField(
-                      controller: V3TextUtils.sifraController,
+                      controller: V3TextUtils.vozacSifraController,
                       isVisible: _sifraVisible,
                       onToggleVisibility: () => V3StateUtils.safeSetState(this, () => _sifraVisible = !_sifraVisible),
                       label: 'Šifra',

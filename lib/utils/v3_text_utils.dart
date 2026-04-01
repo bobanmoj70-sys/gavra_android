@@ -49,6 +49,19 @@ class V3TextUtils {
   /// Контролер за претрагу
   static TextEditingController get searchController => getController('search');
 
+  /// Scoped контролери за претрагу (избегавају сударе између екрана)
+  static TextEditingController get homeSearchController => getController('home_search');
+  static TextEditingController get putniciSearchController => getController('putnici_search');
+  static TextEditingController get adreseSearchController => getController('adrese_search');
+
+  /// Scoped контролери за логин форме (путник/возач)
+  static TextEditingController get putnikEmailController => getController('putnik_email');
+  static TextEditingController get putnikTelefonController => getController('putnik_telefon');
+  static TextEditingController get putnikPinController => getController('putnik_pin');
+  static TextEditingController get vozacEmailController => getController('vozac_email');
+  static TextEditingController get vozacTelefonController => getController('vozac_telefon');
+  static TextEditingController get vozacSifraController => getController('vozac_sifra');
+
   /// Контролери за адресе/локације
   static TextEditingController get imeController => getController('ime');
   static TextEditingController get adresaController => getController('adresa');

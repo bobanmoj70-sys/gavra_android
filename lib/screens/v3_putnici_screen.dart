@@ -61,7 +61,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
 
   @override
   void dispose() {
-    V3TextUtils.disposeController('search');
+    V3TextUtils.disposeController('putnici_search');
     super.dispose();
   }
 
@@ -83,7 +83,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
       lista = lista.where((p) => _matchesFilterTip(p.tipPutnika, _selectedFilter)).toList();
     }
 
-    final search = V3TextUtils.getControllerText('search').trim();
+    final search = V3TextUtils.getControllerText('putnici_search').trim();
     if (search.isNotEmpty) {
       lista = lista.where((p) => V3StringUtils.containsSearch(p.imePrezime, search)).toList();
     }
@@ -164,9 +164,9 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                   BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 3))
                 ],
                 child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: V3TextUtils.searchController,
+                  valueListenable: V3TextUtils.putniciSearchController,
                   builder: (context, val, _) => TextField(
-                    controller: V3TextUtils.searchController,
+                    controller: V3TextUtils.putniciSearchController,
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
                       hintText: 'Pretraži putnike...',
@@ -177,7 +177,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                       suffixIcon: val.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, color: Colors.grey),
-                              onPressed: () => V3TextUtils.clearController('search'),
+                              onPressed: () => V3TextUtils.clearController('putnici_search'),
                             )
                           : null,
                     ),
@@ -193,7 +193,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                   ),
                   builder: (context, _) {
                     return ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: V3TextUtils.searchController,
+                      valueListenable: V3TextUtils.putniciSearchController,
                       builder: (context, _, __) {
                         final lista = _filtriraj();
 
@@ -203,7 +203,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  V3TextUtils.getControllerText('search').isNotEmpty
+                                  V3TextUtils.getControllerText('putnici_search').isNotEmpty
                                       ? Icons.search_off
                                       : Icons.group_off,
                                   size: 64,
@@ -211,7 +211,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  V3TextUtils.getControllerText('search').isNotEmpty
+                                  V3TextUtils.getControllerText('putnici_search').isNotEmpty
                                       ? 'Nema rezultata pretrage'
                                       : 'Nema putnika',
                                   style: const TextStyle(fontSize: 18, color: Colors.white60),

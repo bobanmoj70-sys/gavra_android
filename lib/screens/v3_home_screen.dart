@@ -324,13 +324,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
                             ),
                             dropdownSearchData: DropdownSearchData(
-                              searchController: V3TextUtils.searchController,
+                              searchController: V3TextUtils.homeSearchController,
                               searchInnerWidgetHeight: V3ContainerUtils.responsiveHeight(ctx, 50),
                               searchInnerWidget: V3ContainerUtils.iconContainer(
                                 height: V3ContainerUtils.responsiveHeight(ctx, 50),
                                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                                 child: TextFormField(
-                                  controller: V3TextUtils.searchController,
+                                  controller: V3TextUtils.homeSearchController,
                                   expands: true,
                                   maxLines: null,
                                   decoration: InputDecoration(
@@ -491,7 +491,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           );
         },
       ),
-    ).then((_) => V3TextUtils.disposeController('search'));
+    ).then((_) => V3TextUtils.disposeController('home_search'));
   }
 
   Widget _buildStatRow(String label, String value) {

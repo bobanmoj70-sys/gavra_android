@@ -97,9 +97,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     V3StreamUtils.cancelSubscription('putnik_login_pin');
-    V3TextUtils.disposeController('telefon');
-    V3TextUtils.disposeController('email');
-    V3TextUtils.disposeController('pin');
+    V3TextUtils.disposeController('putnik_telefon');
+    V3TextUtils.disposeController('putnik_email');
+    V3TextUtils.disposeController('putnik_pin');
     super.dispose();
   }
 
@@ -107,7 +107,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
   // Korak 1: Provjeri telefon u v3_putnici
   Future<void> _checkTelefon() async {
-    final telefon = V3TextUtils.getControllerText('telefon').trim();
+    final telefon = V3TextUtils.getControllerText('putnik_telefon').trim();
     if (telefon.isEmpty) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite broj telefona');
       return;
@@ -185,7 +185,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
   }
 
   Future<void> _saveEmail() async {
-    final email = V3TextUtils.getControllerText('email').trim();
+    final email = V3TextUtils.getControllerText('putnik_email').trim();
     if (email.isEmpty) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite email adresu');
       return;
@@ -262,7 +262,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
     });
     try {
       final putnikId = _putnikData!['id'].toString();
-      final telefon = _normalizePhone(V3TextUtils.getControllerText('telefon').trim());
+      final telefon = _normalizePhone(V3TextUtils.getControllerText('putnik_telefon').trim());
       final success = await V3PinZahtevService.posaljiZahtev(
         putnikId: putnikId,
         telefon: telefon,
@@ -400,7 +400,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
   // Korak 2: Login sa PIN-om
   Future<void> _loginWithPin({bool skipBiometricSetup = false}) async {
-    final pin = V3TextUtils.getControllerText('pin').trim();
+    final pin = V3TextUtils.getControllerText('putnik_pin').trim();
     if (pin.isEmpty) {
       V3StateUtils.safeSetState(this, () => _errorMessage = 'Unesite PIN');
       return;
@@ -467,7 +467,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       if (!skipBiometricSetup) {
         if (_biometricAvailable && !_biometricEnabled) {
           await _showBiometricSetupDialog(
-            phone: _normalizePhone(V3TextUtils.getControllerText('telefon').trim()),
+            phone: _normalizePhone(V3TextUtils.getControllerText('putnik_telefon').trim()),
             pin: pin,
           );
         } else if (!_biometricAvailable || !_biometricEnabled) {
@@ -475,7 +475,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
           final isRememberMe = await _biometric.isRememberMeEnabled();
           if (!isRememberMe) {
             await _showRememberMeDialog(
-              phone: _normalizePhone(V3TextUtils.getControllerText('telefon').trim()),
+              phone: _normalizePhone(V3TextUtils.getControllerText('putnik_telefon').trim()),
               pin: pin,
             );
           }
@@ -615,7 +615,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       case _LoginStep.telefon:
         return V3InputUtils.textField(
           fieldKey: const ValueKey('putnik_telefon_field'),
-          controller: V3TextUtils.telefonController,
+          controller: V3TextUtils.putnikTelefonController,
           label: 'Broj telefona',
           hint: '06x xxx xxxx',
           icon: Icons.phone_android,
@@ -625,7 +625,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       case _LoginStep.email:
         return V3InputUtils.textField(
           fieldKey: const ValueKey('putnik_email_field'),
-          controller: V3TextUtils.emailController,
+          controller: V3TextUtils.putnikEmailController,
           label: 'Email adresa',
           hint: 'vašemail@example.com',
           icon: Icons.email,
@@ -636,7 +636,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
         return Column(
           children: [
             V3InputUtils.pinField(
-              controller: V3TextUtils.pinController,
+              controller: V3TextUtils.putnikPinController,
               label: 'PIN kod',
               hint: '• • • •',
               maxLength: 4,
