@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 🎖️💥 V3STYLEHELPER - MASOVNI DUPLIKATE ELIMINATOR! 💥🎖️
-/// Konsoliduje sve BorderRadius, Colors, BoxDecoration duplikate
-/// u jedinstvenu centralizovanu utility klasu
+/// V3StyleHelper - centralizovane style konstante i dekoracije.
 class V3StyleHelper {
   V3StyleHelper._();
 
@@ -19,59 +17,72 @@ class V3StyleHelper {
 
   // ─── COLORS KONSTANTE ──────────────────────────────────────────────────────
 
-  static Color get whiteAlpha05 => Colors.white.withValues(alpha: 0.05);
-  static Color get whiteAlpha06 => Colors.white.withValues(alpha: 0.06);
-  static Color get whiteAlpha07 => Colors.white.withValues(alpha: 0.07);
-  static Color get whiteAlpha1 => Colors.white.withValues(alpha: 0.1);
-  static Color get whiteAlpha13 => Colors.white.withValues(alpha: 0.13);
-  static Color get whiteAlpha15 => Colors.white.withValues(alpha: 0.15);
-  static Color get whiteAlpha2 => Colors.white.withValues(alpha: 0.2);
-  static Color get whiteAlpha22 => Colors.white.withValues(alpha: 0.22);
-  static Color get whiteAlpha25 => Colors.white.withValues(alpha: 0.25);
-  static Color get whiteAlpha3 => Colors.white.withValues(alpha: 0.3);
-  static Color get whiteAlpha4 => Colors.white.withValues(alpha: 0.4);
-  static Color get whiteAlpha45 => Colors.white.withValues(alpha: 0.45);
-  static Color get whiteAlpha5 => Colors.white.withValues(alpha: 0.5);
-  static Color get whiteAlpha6 => Colors.white.withValues(alpha: 0.6);
-  static Color get whiteAlpha65 => Colors.white.withValues(alpha: 0.65);
-  static Color get whiteAlpha7 => Colors.white.withValues(alpha: 0.7);
-  static Color get whiteAlpha75 => Colors.white.withValues(alpha: 0.75);
-  static Color get whiteAlpha8 => Colors.white.withValues(alpha: 0.8);
-  static Color get whiteAlpha9 => Colors.white.withValues(alpha: 0.9);
+  static final Color whiteAlpha05 = Colors.white.withValues(alpha: 0.05);
+  static final Color whiteAlpha06 = Colors.white.withValues(alpha: 0.06);
+  static final Color whiteAlpha07 = Colors.white.withValues(alpha: 0.07);
+  static final Color whiteAlpha1 = Colors.white.withValues(alpha: 0.1);
+  static final Color whiteAlpha13 = Colors.white.withValues(alpha: 0.13);
+  static final Color whiteAlpha15 = Colors.white.withValues(alpha: 0.15);
+  static final Color whiteAlpha2 = Colors.white.withValues(alpha: 0.2);
+  static final Color whiteAlpha22 = Colors.white.withValues(alpha: 0.22);
+  static final Color whiteAlpha25 = Colors.white.withValues(alpha: 0.25);
+  static final Color whiteAlpha3 = Colors.white.withValues(alpha: 0.3);
+  static final Color whiteAlpha4 = Colors.white.withValues(alpha: 0.4);
+  static final Color whiteAlpha45 = Colors.white.withValues(alpha: 0.45);
+  static final Color whiteAlpha5 = Colors.white.withValues(alpha: 0.5);
+  static final Color whiteAlpha6 = Colors.white.withValues(alpha: 0.6);
+  static final Color whiteAlpha65 = Colors.white.withValues(alpha: 0.65);
+  static final Color whiteAlpha7 = Colors.white.withValues(alpha: 0.7);
+  static final Color whiteAlpha75 = Colors.white.withValues(alpha: 0.75);
+  static final Color whiteAlpha8 = Colors.white.withValues(alpha: 0.8);
+  static final Color whiteAlpha9 = Colors.white.withValues(alpha: 0.9);
 
   // ─── COMMON BORDERS ────────────────────────────────────────────────────────
 
-  static Border get whiteAlpha13Border => Border.all(color: whiteAlpha13);
-  static Border get whiteAlpha15Border => Border.all(color: whiteAlpha15, width: 1.2);
-  static Border get whiteAlpha2Border => Border.all(color: whiteAlpha2);
-  static Border get whiteAlpha3Border => Border.all(color: whiteAlpha3, width: 1.2);
-  static Border get whiteAlpha5Border => Border.all(color: whiteAlpha5, width: 1.5);
+  static final Border whiteAlpha13Border = Border.all(color: whiteAlpha13);
+  static final Border whiteAlpha15Border = Border.all(color: whiteAlpha15, width: 1.2);
+  static final Border whiteAlpha2Border = Border.all(color: whiteAlpha2);
+  static final Border whiteAlpha3Border = Border.all(color: whiteAlpha3, width: 1.2);
+  static final Border whiteAlpha5Border = Border.all(color: whiteAlpha5, width: 1.5);
 
   // ─── COMMON BOXSHADOWS ─────────────────────────────────────────────────────
 
-  static List<BoxShadow> get lightGlowShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.07),
-          blurRadius: 3,
-          offset: const Offset(0, 1),
-        ),
-      ];
+  static final List<BoxShadow> lightGlowShadow = List<BoxShadow>.unmodifiable([
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.07),
+      blurRadius: 3,
+      offset: const Offset(0, 1),
+    ),
+  ]);
 
-  static List<BoxShadow> get mediumGlowShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.1),
-          blurRadius: 10,
-          spreadRadius: 1,
-        ),
-      ];
+  static final List<BoxShadow> mediumGlowShadow = List<BoxShadow>.unmodifiable([
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.1),
+      blurRadius: 10,
+      spreadRadius: 1,
+    ),
+  ]);
 
-  static List<BoxShadow> get heavyGlowShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.15),
-          blurRadius: 16,
-          spreadRadius: 1,
-        ),
-      ];
+  static final List<BoxShadow> heavyGlowShadow = List<BoxShadow>.unmodifiable([
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.15),
+      blurRadius: 16,
+      spreadRadius: 1,
+    ),
+  ]);
+
+  static Color _themeSlotColor(String currentThemeId) {
+    switch (currentThemeId) {
+      case 'dark_steel_grey':
+        return const Color(0xFF4A4A4A);
+      case 'passionate_rose':
+        return const Color(0xFFDC143C);
+      case 'dark_pink':
+        return const Color(0xFFE91E8C);
+      default:
+        return Colors.blue;
+    }
+  }
 
   // ─── PREDEFINED BOXDECORATIONS ─────────────────────────────────────────────
 
@@ -251,23 +262,9 @@ class V3StyleHelper {
     Color borderColor;
 
     if (isSelected) {
-      switch (currentThemeId) {
-        case 'dark_steel_grey':
-          backgroundColor = const Color(0xFF4A4A4A);
-          borderColor = const Color(0xFF4A4A4A);
-          break;
-        case 'passionate_rose':
-          backgroundColor = const Color(0xFFDC143C);
-          borderColor = const Color(0xFFDC143C);
-          break;
-        case 'dark_pink':
-          backgroundColor = const Color(0xFFE91E8C);
-          borderColor = const Color(0xFFE91E8C);
-          break;
-        default:
-          backgroundColor = Colors.blue;
-          borderColor = Colors.blue;
-      }
+      final selectedColor = _themeSlotColor(currentThemeId);
+      backgroundColor = selectedColor;
+      borderColor = selectedColor;
     } else {
       backgroundColor = vozacBoja?.withValues(alpha: 0.1) ?? whiteAlpha15;
       borderColor = vozacBoja?.withValues(alpha: 0.3) ?? whiteAlpha3;
