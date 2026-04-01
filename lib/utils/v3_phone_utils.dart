@@ -7,9 +7,16 @@ class V3PhoneUtils {
   /// Prihvata: 0641234567, +381641234567, 381641234567, 064 123 4567, itd.
   /// Vraća: +381641234567
   static String normalize(String phone) {
-    // Ukloni razmake, crtice, zagrade
-    var p = phone.replaceAll(RegExp(r'[\s\-\(\).]'), '').trim();
+    // Zadrži samo cifre i '+' zbog robusnijeg čišćenja ulaza.
+    var p = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
     if (p.isEmpty) return p;
+
+    // '+' je dozvoljen samo na početku.
+    if (p.startsWith('+')) {
+      p = '+${p.substring(1).replaceAll('+', '')}';
+    } else {
+      p = p.replaceAll('+', '');
+    }
 
     if (p.startsWith('+381')) return p; // već +381
     if (p.startsWith('00381')) return '+381${p.substring(5)}'; // 00381...
