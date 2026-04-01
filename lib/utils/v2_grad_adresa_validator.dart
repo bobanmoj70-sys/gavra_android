@@ -2,6 +2,7 @@
 library;
 
 import 'v3_dan_helper.dart';
+import 'v3_validation_utils.dart';
 
 class V2GradAdresaValidator {
   V2GradAdresaValidator._();
@@ -41,9 +42,6 @@ class V2GradAdresaValidator {
 
   /// Normalizuje naziv grada u uppercase kraticu ('BC' ili 'VS')
   static String normalizeGrad(String grad) {
-    final upper = grad.trim().toUpperCase();
-    if (upper == 'BC' || upper == 'BANJA LUKA' || upper == 'BANJALUKA') return 'BC';
-    if (upper == 'VS' || upper == 'ČELINAC' || upper == 'CELINAC') return 'VS';
-    return upper;
+    return V3ValidationUtils.normalizeGrad(grad);
   }
 }
