@@ -10,13 +10,34 @@ import 'v3_app_snack_bar.dart';
 class V3ErrorUtils {
   V3ErrorUtils._();
 
+  static String _normalizeErrorMessage(String message) {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) {
+      return 'Greška';
+    }
+
+    if (trimmed.startsWith('❌')) {
+      final withoutPrefix = trimmed.replaceFirst(RegExp(r'^(❌\s*)+'), '').trimLeft();
+      return '❌ $withoutPrefix';
+    }
+
+    return trimmed;
+  }
+
   /// Safely show error message with mounted check
   ///
   /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, 'message');
   /// **Primjer:** V3ErrorUtils.safeError(this, context, 'Greška: $e');
   static void safeError(State state, BuildContext context, String message) {
     if (state.mounted) {
-      V3AppSnackBar.error(context, message);
+      V3AppSnackBar.error(context, _normalizeErrorMessage(message));
+    }
+  }
+
+  /// Safely show error using BuildContext.mounted (for non-State callers)
+  static void safeErrorContext(BuildContext context, String message) {
+    if (context.mounted) {
+      V3AppSnackBar.error(context, _normalizeErrorMessage(message));
     }
   }
 

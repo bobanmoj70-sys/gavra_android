@@ -115,7 +115,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       if (!_isPutnikAktivan(putnikId)) continue;
       if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
       final statusFinal = row['status_final']?.toString();
-      if (V3StatusFilters.isCanceledOrRejected(statusFinal) || V3StatusFilters.normalizeStatus(statusFinal) == 'obrada') {
+      if (V3StatusFilters.isCanceledOrRejected(statusFinal) ||
+          V3StatusFilters.normalizeStatus(statusFinal) == 'obrada') {
         continue;
       }
 
@@ -280,13 +281,13 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         final putnikId = r['putnik_id']?.toString() ?? '';
         return d == datum &&
             r['grad'] == grad &&
-          V3ValidationUtils.normalizeVreme(rowVreme) == V3ValidationUtils.normalizeVreme(vreme) &&
+            V3ValidationUtils.normalizeVreme(rowVreme) == V3ValidationUtils.normalizeVreme(vreme) &&
             _isPutnikAktivan(putnikId) &&
-        !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString()) &&
+            !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString()) &&
             r['aktivno'] == true;
       }).toList();
 
-        final normVreme = V3ValidationUtils.normalizeVreme(vreme);
+      final normVreme = V3ValidationUtils.normalizeVreme(vreme);
       final polazak = DateTime.tryParse('${datum}T$normVreme:00');
 
       // Upiši dodelu vozača direktno u v3_operativna_nedelja
@@ -583,8 +584,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     z.grad == _selectedGrad &&
                     z.aktivno &&
                     _isPutnikAktivan(z.putnikId) &&
-              V3ValidationUtils.normalizeVreme(slotVreme(z)) ==
-                V3ValidationUtils.normalizeVreme(_selectedVreme) &&
+                    V3ValidationUtils.normalizeVreme(slotVreme(z)) ==
+                        V3ValidationUtils.normalizeVreme(_selectedVreme) &&
                     !V3StatusFilters.isRejected(z.statusFinal))
                 .toList()
               ..sort((a, b) {
@@ -726,10 +727,9 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                       entry: z,
                                       redniBroj: redniBroj,
                                       vozacBoja: vozacBoja,
-                                      onDodeliVozaca:
-                                          V3StatusFilters.normalizeStatus(z.statusFinal) == 'otkazano'
-                                              ? null
-                                              : () => _showPutnikAssignDialog(z),
+                                      onDodeliVozaca: V3StatusFilters.normalizeStatus(z.statusFinal) == 'otkazano'
+                                          ? null
+                                          : () => _showPutnikAssignDialog(z),
                                       onChanged: () => setState(() {}),
                                     ),
                                   );
