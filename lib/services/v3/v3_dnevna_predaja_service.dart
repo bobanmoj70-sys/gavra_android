@@ -58,7 +58,7 @@ class V3DnevnaPredajaService {
         .select('id')
         .eq('tip', _tip)
         .eq('kategorija', _kategorija)
-        .eq('vozac_id', predaja.vozacId)
+        .eq('vozac_id', predaja.vozacId ?? '')
         .gte('created_at', dayStart.toIso8601String())
         .lt('created_at', dayEnd.toIso8601String())
         .order('created_at', ascending: false)
