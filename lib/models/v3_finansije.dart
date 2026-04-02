@@ -1,6 +1,6 @@
 import '../utils/v3_date_utils.dart';
 
-/// Model za tabelu v3_troskovi
+/// Model za tabelu v3_rashodi
 class V3Trosak {
   final String id;
   final String naziv;
@@ -98,7 +98,7 @@ class V3FinansijeStanje {
 
 // --- Backward compat aliases za stari kod ---
 
-/// @deprecated Koristi V3Trosak — mapira se na v3_troskovi
+/// @deprecated Koristi V3Trosak — mapira se na v3_rashodi
 class V3FinansijskiUnos {
   final String id;
   final String tip;

@@ -160,7 +160,7 @@ class V3MasterRealtimeManager {
         supabase.from('v3_gorivo').select().eq('aktivno', true),
         supabase.from('v3_gorivo_promene').select(),
         supabase.from('v3_vozac_lokacije').select(),
-        supabase.from('v3_troskovi').select().eq('aktivno', true),
+        supabase.from('v3_rashodi').select().eq('aktivno', true),
         supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
         supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka'),
         supabase.from('v3_operativna_nedelja').select(),
@@ -225,7 +225,7 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_gorivo', gorivoCache);
     _setupTableRealtime('v3_gorivo_promene', gorivoPromeneCache, hasActiveKey: false);
     _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
-    _setupTableRealtime('v3_troskovi', troskoviCache);
+    _setupTableRealtime('v3_rashodi', troskoviCache);
     _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
     _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
@@ -318,7 +318,7 @@ class V3MasterRealtimeManager {
       case 'v3_vozac_lokacije':
         vozacLokacijeCache[id] = row;
         break;
-      case 'v3_troskovi':
+      case 'v3_rashodi':
         troskoviCache[id] = row;
         break;
       case 'v3_finansije_stanje':
@@ -380,7 +380,7 @@ class V3MasterRealtimeManager {
         return gorivoPromeneCache;
       case 'v3_vozac_lokacije':
         return vozacLokacijeCache;
-      case 'v3_troskovi':
+      case 'v3_rashodi':
         return troskoviCache;
       case 'v3_finansije_stanje':
         return finansijeStanjeCache;

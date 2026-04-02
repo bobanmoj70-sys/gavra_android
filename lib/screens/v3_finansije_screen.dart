@@ -20,7 +20,7 @@ import '../utils/v3_state_utils.dart';
 
 /// FINANSIJE — V3
 /// Prihodi: v3_putnici_arhiva (tip_akcije = uplata_mesecna/uplata_voznja)
-/// Troškovi: v3_troskovi cache (mesec/godina)
+/// Troškovi: v3_rashodi cache (mesec/godina)
 /// Potraživanja: V3DugService.getDugovi()
 class V3FinansijeScreen extends StatefulWidget {
   const V3FinansijeScreen({super.key});
@@ -75,7 +75,7 @@ _V3IzvestajData _buildIzvestaj() {
   final now = DateTime.now();
   final rm = V3MasterRealtimeManager.instance;
   final arhiva = rm.getCache('v3_putnici_arhiva').values;
-  final troskoviCache = rm.getCache('v3_troskovi').values;
+  final troskoviCache = rm.getCache('v3_rashodi').values;
 
   // Dan
   final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
@@ -215,7 +215,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   Widget build(BuildContext context) {
     return StreamBuilder<void>(
       stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_operativna_nedelja', 'v3_troskovi', 'v3_putnici', 'v3_putnici_arhiva'],
+        tables: const ['v3_operativna_nedelja', 'v3_rashodi', 'v3_putnici', 'v3_putnici_arhiva'],
         build: () {},
       ),
       builder: (context, _) {
