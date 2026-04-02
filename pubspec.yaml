@@ -1,7 +1,7 @@
 name: gavra_android
 description: Gavra 013 - Aplikacija zatvorenog tipa za organizaciju polazaka
 
-version: 6.0.207+1642
+version: 6.0.208+1643
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
