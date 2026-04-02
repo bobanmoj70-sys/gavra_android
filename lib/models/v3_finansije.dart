@@ -66,40 +66,6 @@ class V3Trosak {
       };
 }
 
-/// Model za tabelu v3_finansije_stanje (stanje kase/računa)
-class V3FinansijeStanje {
-  final String id;
-  final String naziv;
-  final double iznos;
-  final bool aktivno;
-  final DateTime? updatedAt;
-
-  V3FinansijeStanje({
-    required this.id,
-    required this.naziv,
-    this.iznos = 0,
-    this.aktivno = true,
-    this.updatedAt,
-  });
-
-  factory V3FinansijeStanje.fromJson(Map<String, dynamic> json) {
-    return V3FinansijeStanje(
-      id: json['id']?.toString() ?? '',
-      naziv: json['naziv'] as String? ?? '',
-      iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
-      aktivno: json['aktivno'] as bool? ?? true,
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        if (id.isNotEmpty) 'id': id,
-        'naziv': naziv,
-        'iznos': iznos,
-        'aktivno': aktivno,
-      };
-}
-
 // --- Backward compat aliases za stari kod ---
 
 /// @deprecated Koristi V3Trosak — mapira se na v3_finansije

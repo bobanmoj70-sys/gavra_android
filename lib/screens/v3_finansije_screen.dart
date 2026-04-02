@@ -192,9 +192,9 @@ String _katLabel(String? kat) {
   const map = {
     'gorivo': 'Gorivo',
     'odrzavanje': 'Održavanje',
+    'plate': 'Plate',
     'plata': 'Plate',
     'kredit': 'Kredit',
-    'amortizacija': 'Amortizacija',
     'registracija': 'Registracija',
     'yu_auto': 'YU auto',
     'majstori': 'Majstori',
@@ -554,10 +554,9 @@ class _TroskoviBottomSheet extends StatefulWidget {
 
 class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
   static const _stavke = [
-    ('plata', '💰', 'Plate'),
+    ('plate', '💰', 'Plate'),
     ('kredit', '🏦', 'Kredit'),
     ('gorivo', '⛽', 'Gorivo'),
-    ('amortizacija', '🔧', 'Amortizacija'),
     ('registracija', '📋', 'Registracija'),
     ('yu_auto', '🚗', 'YU auto'),
     ('majstori', '🛠️', 'Majstori'),

@@ -17,14 +17,12 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> vozaciCache = {};
   final Map<String, Map<String, dynamic>> vozilaCache = {};
   final Map<String, Map<String, dynamic>> putniciCache = {};
-  final Map<String, Map<String, dynamic>> putniciArhivaCache = {};
   final Map<String, Map<String, dynamic>> zahteviCache = {};
   final Map<String, Map<String, dynamic>> postavkeKapacitetaCache = {};
   final Map<String, Map<String, dynamic>> gorivoCache = {};
   final Map<String, Map<String, dynamic>> gorivoPromeneCache = {};
   final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
-  final Map<String, Map<String, dynamic>> finansijeStanjeCache = {};
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
@@ -151,7 +149,6 @@ class V3MasterRealtimeManager {
         supabase.from('v3_vozaci').select().eq('aktivno', true),
         supabase.from('v3_vozila').select().eq('aktivno', true),
         supabase.from('v3_putnici').select().eq('aktivno', true),
-        supabase.from('v3_putnici_arhiva').select().eq('aktivno', true),
         supabase
             .from('v3_zahtevi')
             .select(
@@ -161,7 +158,6 @@ class V3MasterRealtimeManager {
         supabase.from('v3_gorivo_promene').select(),
         supabase.from('v3_vozac_lokacije').select(),
         supabase.from('v3_finansije').select().eq('aktivno', true),
-        supabase.from('v3_finansije_stanje').select().eq('aktivno', true),
         supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka'),
         supabase.from('v3_operativna_nedelja').select(),
         supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
@@ -172,17 +168,15 @@ class V3MasterRealtimeManager {
       _fillCache(vozaciCache, results[1] as List);
       _fillCache(vozilaCache, results[2] as List);
       _fillCache(putniciCache, results[3] as List);
-      _fillCache(putniciArhivaCache, results[4] as List);
-      _fillCache(zahteviCache, results[5] as List);
-      _fillCache(gorivoCache, results[6] as List);
-      _fillCache(gorivoPromeneCache, results[7] as List);
-      _fillCache(vozacLokacijeCache, results[8] as List);
-      _fillCache(troskoviCache, results[9] as List);
-      _fillCache(finansijeStanjeCache, results[10] as List);
-      _fillCache(pinZahteviCache, results[11] as List);
-      _fillCache(operativnaNedeljaCache, results[12] as List);
-      _fillCache(kapacitetSlotsCache, results[13] as List);
-      _fillCache(appSettingsCache, results[14] as List);
+      _fillCache(zahteviCache, results[4] as List);
+      _fillCache(gorivoCache, results[5] as List);
+      _fillCache(gorivoPromeneCache, results[6] as List);
+      _fillCache(vozacLokacijeCache, results[7] as List);
+      _fillCache(troskoviCache, results[8] as List);
+      _fillCache(pinZahteviCache, results[9] as List);
+      _fillCache(operativnaNedeljaCache, results[10] as List);
+      _fillCache(kapacitetSlotsCache, results[11] as List);
+      _fillCache(appSettingsCache, results[12] as List);
       _rebuildGpsCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
       final globalSettings = appSettingsCache['global'];
@@ -220,13 +214,11 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_vozaci', vozaciCache);
     _setupTableRealtime('v3_vozila', vozilaCache);
     _setupTableRealtime('v3_putnici', putniciCache);
-    _setupTableRealtime('v3_putnici_arhiva', putniciArhivaCache);
     _setupTableRealtime('v3_zahtevi', zahteviCache);
     _setupTableRealtime('v3_gorivo', gorivoCache);
     _setupTableRealtime('v3_gorivo_promene', gorivoPromeneCache, hasActiveKey: false);
     _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
     _setupTableRealtime('v3_finansije', troskoviCache);
-    _setupTableRealtime('v3_finansije_stanje', finansijeStanjeCache);
     _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
     _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
@@ -303,9 +295,6 @@ class V3MasterRealtimeManager {
       case 'v3_putnici':
         putniciCache[id] = row;
         break;
-      case 'v3_putnici_arhiva':
-        putniciArhivaCache[id] = row;
-        break;
       case 'v3_zahtevi':
         zahteviCache[id] = row;
         break;
@@ -320,9 +309,6 @@ class V3MasterRealtimeManager {
         break;
       case 'v3_finansije':
         troskoviCache[id] = row;
-        break;
-      case 'v3_finansije_stanje':
-        finansijeStanjeCache[id] = row;
         break;
       case 'v3_operativna_nedelja':
         operativnaNedeljaCache[id] = row;
@@ -370,8 +356,6 @@ class V3MasterRealtimeManager {
         return vozilaCache;
       case 'v3_putnici':
         return putniciCache;
-      case 'v3_putnici_arhiva':
-        return putniciArhivaCache;
       case 'v3_zahtevi':
         return zahteviCache;
       case 'v3_gorivo':
@@ -382,8 +366,6 @@ class V3MasterRealtimeManager {
         return vozacLokacijeCache;
       case 'v3_finansije':
         return troskoviCache;
-      case 'v3_finansije_stanje':
-        return finansijeStanjeCache;
       case 'v3_pin_zahtevi':
         return pinZahteviCache;
       case 'v3_operativna_nedelja':

@@ -1,24 +1,48 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../globals.dart';
 import '../../models/v3_dnevna_predaja.dart';
 import '../../utils/v3_dan_helper.dart';
+import '../../utils/v3_date_utils.dart';
 
 class V3DnevnaPredajaService {
   static final _supabase = Supabase.instance.client;
+  static const _kategorija = 'dnevna_predaja';
+  static const _tip = 'prihod';
 
   /// Dobavlja predaju za određenog vozača i datum.
   static Future<V3DnevnaPredaja?> getPredaja({
     required String vozacId,
     required DateTime datum,
   }) async {
-    final dateStr = V3DanHelper.toIsoDate(datum);
+    final dayStart = V3DanHelper.dateOnly(datum);
+    final dayEnd = dayStart.add(const Duration(days: 1));
     try {
-      final res =
-          await _supabase.from('v3_dnevna_predaja').select().eq('vozac_id', vozacId).eq('datum', dateStr).maybeSingle();
+      final res = await _supabase
+          .from('v3_finansije')
+          .select()
+          .eq('tip', _tip)
+          .eq('kategorija', _kategorija)
+          .eq('vozac_id', vozacId)
+          .gte('created_at', dayStart.toIso8601String())
+          .lt('created_at', dayEnd.toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
 
       if (res == null) return null;
-      return V3DnevnaPredaja.fromJson(res);
+      final createdAt = V3DateUtils.parseTs(res['created_at'] as String?);
+      final datumPredaje = createdAt ?? dayStart;
+      final predaoIznos = (res['iznos'] as num?)?.toDouble() ?? 0;
+
+      return V3DnevnaPredaja(
+        id: (res['id'] as String?) ?? '',
+        vozacId: res['vozac_id'] as String?,
+        datum: V3DanHelper.dateOnly(datumPredaje),
+        predaoIznos: predaoIznos,
+        createdAt: createdAt,
+        updatedAt: V3DateUtils.parseTs(res['updated_at'] as String?),
+        aktivno: res['aktivno'] as bool? ?? true,
+      );
     } catch (e) {
       return null;
     }
@@ -26,12 +50,48 @@ class V3DnevnaPredajaService {
 
   /// Snima ili ažurira dnevnu predaju.
   static Future<void> upsertPredaja(V3DnevnaPredaja predaja) async {
-    final data = predaja.toJson();
-    // remove id if empty for new records
-    if (predaja.id.isEmpty) {
-      data.remove('id');
+    final dayStart = V3DanHelper.dateOnly(predaja.datum);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+
+    final existing = await _supabase
+        .from('v3_finansije')
+        .select('id')
+        .eq('tip', _tip)
+        .eq('kategorija', _kategorija)
+        .eq('vozac_id', predaja.vozacId)
+        .gte('created_at', dayStart.toIso8601String())
+        .lt('created_at', dayEnd.toIso8601String())
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    final baseData = {
+      'naziv': 'Dnevna predaja',
+      'kategorija': _kategorija,
+      'iznos': predaja.predaoIznos,
+      'isplata_iz': 'predaja',
+      'ponavljaj_mesecno': false,
+      'mesec': predaja.datum.month,
+      'godina': predaja.datum.year,
+      'vozac_id': predaja.vozacId,
+      'aktivno': true,
+      'tip': _tip,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    if (existing != null && existing['id'] != null) {
+      await _supabase.from('v3_finansije').update(baseData).eq('id', existing['id'] as String);
+      return;
     }
 
-    await _supabase.from('v3_dnevna_predaja').upsert(data);
+    final insertData = {
+      ...baseData,
+      'id': predaja.id.isEmpty ? null : predaja.id,
+      'created_at': dayStart.toIso8601String(),
+      'created_by': null,
+      'updated_by': null,
+    };
+
+    await _supabase.from('v3_finansije').insert(insertData);
   }
 }

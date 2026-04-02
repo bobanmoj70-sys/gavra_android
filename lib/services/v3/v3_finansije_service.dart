@@ -20,16 +20,6 @@ class V3FinansijeService {
       ..sort((a, b) => (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
   }
 
-  /// Vraca finansijsko stanje (v3_finansije_stanje)
-  static List<V3FinansijeStanje> getStanje() {
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije_stanje');
-    return cache.values.where((r) => r['aktivno'] != false).map((r) => V3FinansijeStanje.fromJson(r)).toList();
-  }
-
-  static double getTotalStanje() {
-    return getStanje().fold(0, (sum, s) => sum + s.iznos);
-  }
-
   /// Dodaje novi trošak u bazu (Fire and Forget)
   static Future<void> addTrosak(V3Trosak trosak) async {
     try {
@@ -45,16 +35,6 @@ class V3FinansijeService {
       await supabase.from('v3_finansije').update({'aktivno': false}).eq('id', id);
     } catch (e) {
       debugPrint('[V3FinansijeService] deleteTrosak error: $e');
-      rethrow;
-    }
-  }
-
-  /// Ažurira iznos u finansijskom stanju (kasa/račun) - Fire and Forget
-  static Future<void> updateStanje(String id, double noviIznos) async {
-    try {
-      await supabase.from('v3_finansije_stanje').update({'iznos': noviIznos}).eq('id', id);
-    } catch (e) {
-      debugPrint('[V3FinansijeService] updateStanje error: $e');
       rethrow;
     }
   }

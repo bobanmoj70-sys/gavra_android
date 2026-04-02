@@ -302,13 +302,14 @@ class V3PutnikStatistikaService {
     required int mesec,
     required bool isPoDanu,
   }) {
-    final arhiva = V3MasterRealtimeManager.instance.getCache('v3_putnici_arhiva').values;
+    final arhiva = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
 
     return arhiva.where((row) {
       if (row['aktivno'] == false) return false;
+      if (row['tip'] != 'prihod') return false;
       if (row['putnik_id']?.toString() != putnikId) return false;
-      if ((row['za_godinu'] as int?) != godina) return false;
-      if ((row['za_mesec'] as int?) != mesec) return false;
+      if ((row['godina'] as int?) != godina) return false;
+      if ((row['mesec'] as int?) != mesec) return false;
       final tip = (row['tip_akcije']?.toString() ?? '').toLowerCase();
       if (isPoDanu) {
         return tip == 'uplata_mesecna' || tip == 'uplata';
