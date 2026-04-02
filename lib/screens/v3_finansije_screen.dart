@@ -19,8 +19,7 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 
 /// FINANSIJE — V3
-/// Prihodi: v3_putnici_arhiva (tip_akcije = uplata_mesecna/uplata_voznja)
-/// Troškovi: v3_rashodi cache (mesec/godina)
+/// Prihodi/Rashodi: v3_finansije cache (tip = prihod/rashod)
 /// Potraživanja: V3DugService.getDugovi()
 class V3FinansijeScreen extends StatefulWidget {
   const V3FinansijeScreen({super.key});
@@ -74,8 +73,7 @@ class _V3IzvestajData {
 _V3IzvestajData _buildIzvestaj() {
   final now = DateTime.now();
   final rm = V3MasterRealtimeManager.instance;
-  final arhiva = rm.getCache('v3_putnici_arhiva').values;
-  final troskoviCache = rm.getCache('v3_rashodi').values;
+  final finansijeCache = rm.getCache('v3_finansije').values;
 
   // Dan
   final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
@@ -97,10 +95,9 @@ _V3IzvestajData _buildIzvestaj() {
   double prihodDan = 0, prihodNed = 0, prihodMes = 0, prihodGod = 0;
   int voznjiDan = 0, voznjiNed = 0, voznjiMes = 0, voznjiGod = 0;
 
-  for (final row in arhiva) {
+  for (final row in finansijeCache) {
     if (row['aktivno'] == false) continue;
-    final tipAkcije = row['tip_akcije'] as String?;
-    if (tipAkcije != 'uplata_mesecna' && tipAkcije != 'uplata_voznja' && tipAkcije != 'uplata') continue;
+    if (row['tip'] != 'prihod') continue;
 
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;
@@ -135,8 +132,9 @@ _V3IzvestajData _buildIzvestaj() {
   final troskoviMes = V3FinansijeService.getTroskoviMesec(mesec: now.month, godina: now.year);
   final troskoviGod = V3FinansijeService.getTroskoviMesec(mesec: null, godina: now.year);
 
-  for (final row in troskoviCache) {
+  for (final row in finansijeCache) {
     if (row['aktivno'] == false) continue;
+    if (row['tip'] != 'rashod') continue;
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;
     final dt = V3DateUtils.parseTs(createdStr);
@@ -215,7 +213,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   Widget build(BuildContext context) {
     return StreamBuilder<void>(
       stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_operativna_nedelja', 'v3_rashodi', 'v3_putnici', 'v3_putnici_arhiva'],
+        tables: const ['v3_operativna_nedelja', 'v3_finansije', 'v3_putnici'],
         build: () {},
       ),
       builder: (context, _) {

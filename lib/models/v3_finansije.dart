@@ -1,8 +1,9 @@
 import '../utils/v3_date_utils.dart';
 
-/// Model za tabelu v3_rashodi
+/// Model za tabelu v3_finansije
 class V3Trosak {
   final String id;
+  final String tip; // 'prihod' | 'rashod'
   final String naziv;
   final String? kategorija;
   final double iznos;
@@ -17,6 +18,7 @@ class V3Trosak {
 
   V3Trosak({
     required this.id,
+    this.tip = 'rashod',
     required this.naziv,
     this.kategorija,
     this.iznos = 0,
@@ -34,6 +36,7 @@ class V3Trosak {
     final now = DateTime.now();
     return V3Trosak(
       id: json['id']?.toString() ?? '',
+      tip: json['tip'] as String? ?? 'rashod',
       naziv: json['naziv'] as String? ?? '',
       kategorija: json['kategorija'] as String?,
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
@@ -50,6 +53,7 @@ class V3Trosak {
 
   Map<String, dynamic> toJson() => {
         if (id.isNotEmpty) 'id': id,
+        'tip': tip,
         'naziv': naziv,
         'kategorija': kategorija,
         'iznos': iznos,
@@ -98,7 +102,7 @@ class V3FinansijeStanje {
 
 // --- Backward compat aliases za stari kod ---
 
-/// @deprecated Koristi V3Trosak — mapira se na v3_rashodi
+/// @deprecated Koristi V3Trosak — mapira se na v3_finansije
 class V3FinansijskiUnos {
   final String id;
   final String tip;

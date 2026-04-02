@@ -7,14 +7,14 @@ import '../realtime/v3_master_realtime_manager.dart';
 class V3FinansijeService {
   V3FinansijeService._();
 
-  /// Vraca sve troškove za trenutni mesec iz cache-a (v3_rashodi)
+  /// Vraca sve troškove za trenutni mesec iz cache-a (v3_finansije)
   static List<V3Trosak> getTroskoviMesec({int? mesec, int? godina}) {
     final now = DateTime.now();
     final m = mesec ?? now.month;
     final g = godina ?? now.year;
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_rashodi');
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
     return cache.values
-        .where((r) => r['aktivno'] != false && r['mesec'] == m && r['godina'] == g)
+        .where((r) => r['aktivno'] != false && r['tip'] == 'rashod' && r['mesec'] == m && r['godina'] == g)
         .map((r) => V3Trosak.fromJson(r))
         .toList()
       ..sort((a, b) => (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
@@ -33,7 +33,7 @@ class V3FinansijeService {
   /// Dodaje novi trošak u bazu (Fire and Forget)
   static Future<void> addTrosak(V3Trosak trosak) async {
     try {
-      await supabase.from('v3_rashodi').insert(trosak.toJson());
+      await supabase.from('v3_finansije').insert(trosak.toJson());
     } catch (e) {
       debugPrint('[V3FinansijeService] addTrosak error: $e');
     }
@@ -42,7 +42,7 @@ class V3FinansijeService {
   /// Briše trošak (Fire and Forget)
   static Future<void> deleteTrosak(String id) async {
     try {
-      await supabase.from('v3_rashodi').update({'aktivno': false}).eq('id', id);
+      await supabase.from('v3_finansije').update({'aktivno': false}).eq('id', id);
     } catch (e) {
       debugPrint('[V3FinansijeService] deleteTrosak error: $e');
       rethrow;
@@ -62,7 +62,7 @@ class V3FinansijeService {
   // --- Backward compat (stari kod koji koristi V3FinansijskiIzvestaj) ---
   static Stream<V3FinansijskiIzvestaj> streamIzvestaj() {
     return V3MasterRealtimeManager.instance.v3StreamFromCache(
-        tables: ['v3_rashodi'],
+        tables: ['v3_finansije'],
         build: () {
           final now = DateTime.now();
           final troskovi = getTroskoviMesec(mesec: now.month, godina: now.year);
@@ -84,6 +84,7 @@ class V3FinansijeService {
     final now = DateTime.now();
     final trosak = V3Trosak(
       id: '',
+      tip: unos.tip == 'prihod' ? 'prihod' : 'rashod',
       naziv: unos.opis,
       kategorija: unos.kategorija,
       iznos: unos.iznos,
