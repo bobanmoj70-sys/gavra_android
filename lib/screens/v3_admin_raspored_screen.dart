@@ -66,7 +66,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDay = V3DanHelper.defaultDay();
+    _selectedDay = V3DanHelper.defaultWorkdayFullName();
     _syncSelectedSlotForDay();
   }
 
@@ -624,14 +624,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     child: Row(
-                      children: V3DanHelper.dayNames.map((day) {
+                      children: V3DanHelper.workdayNames.map((day) {
                         final isSelected = _selectedDay == day;
-                        final abbr = V3DanHelper.dayAbbrs[V3DanHelper.dayNames.indexOf(day)];
+                        final abbr = V3DanHelper.normalizeToWorkdayAbbr(V3DanHelper.dayAbbrFromFullName(day));
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(
                             onTap: () => setState(() {
-                              _selectedDay = day;
+                              _selectedDay = V3DanHelper.normalizeToWorkdayFull(day);
                               _syncSelectedSlotForDay();
                             }),
                             borderRadius: BorderRadius.circular(12),

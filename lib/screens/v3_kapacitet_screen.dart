@@ -19,12 +19,14 @@ class V3KapacitetScreen extends StatefulWidget {
 class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   late final Stream<void> _streamTrigger;
-  String _selectedDay = V3DanHelper.defaultDay();
+  String _selectedDay = V3DanHelper.defaultWorkdayFullName();
+
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
   @override
   void initState() {
     super.initState();
+    _selectedDay = V3DanHelper.defaultWorkdayFullName();
     _tabController = TabController(length: 2, vsync: this);
     _streamTrigger = V3MasterRealtimeManager.instance.v3StreamFromCache(
       tables: ['v3_kapacitet_slots'],
@@ -139,13 +141,13 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Row(
-                    children: V3DanHelper.dayNames.map((day) {
+                    children: V3DanHelper.workdayNames.map((day) {
                       final isSelected = _selectedDay == day;
-                      final abbr = V3DanHelper.dayAbbrs[V3DanHelper.dayNames.indexOf(day)];
+                      final abbr = V3DanHelper.normalizeToWorkdayAbbr(V3DanHelper.dayAbbrFromFullName(day));
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: InkWell(
-                          onTap: () => setState(() => _selectedDay = day),
+                          onTap: () => setState(() => _selectedDay = V3DanHelper.normalizeToWorkdayFull(day)),
                           borderRadius: BorderRadius.circular(12),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),

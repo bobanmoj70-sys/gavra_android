@@ -62,12 +62,57 @@ class V3DanHelper {
   /// Sve kratice dana.
   static const List<String> dayAbbrs = _abbrs;
 
+  /// Radni dani (ponedeljak–petak) — puni nazivi.
+  static const List<String> workdayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak'];
+
+  /// Radni dani (ponedeljak–petak) — kratice.
+  static const List<String> workdayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
+
   // ─── Inicijalizacija tekućeg dana ───────────────────────────────
 
   /// Danas kao puni naziv.
   static String defaultDay() {
     final w = DateTime.now().weekday;
     return _names[w - 1];
+  }
+
+  /// Danas kao puni naziv RADNOG dana (vikend -> 'Ponedeljak').
+  static String defaultWorkdayFullName({DateTime? now}) {
+    final current = now ?? DateTime.now();
+    return normalizeToWorkdayFull(fullName(current));
+  }
+
+  /// Podrazumevani datum radnog dana.
+  /// - Ako je danas ponedeljak–petak: vraća današnji datum.
+  /// - Ako je vikend: vraća ponedeljak aktivne sedmice zakazivanja.
+  static DateTime defaultWorkdayDate({DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final base = dateOnly(current);
+    if (base.weekday >= DateTime.monday && base.weekday <= DateTime.friday) {
+      return base;
+    }
+    return datumZaDanAbbrUTekucojSedmici('pon', anchor: schedulingWeekAnchor(now: current));
+  }
+
+  /// Normalizuje puni naziv dana na radni dan (vikend/invalid -> fallback).
+  static String normalizeToWorkdayFull(String dayFullName, {String fallback = 'Ponedeljak'}) {
+    final index = _indexForFullDayName(dayFullName);
+    if (index >= 0 && index <= 4) return _names[index];
+    return fallback;
+  }
+
+  /// Normalizuje kraticu dana na radni dan (vikend/invalid -> fallback).
+  static String normalizeToWorkdayAbbr(String dayAbbr, {String fallback = 'pon'}) {
+    final index = _indexForDayAbbr(dayAbbr);
+    if (index >= 0 && index <= 4) return _abbrs[index];
+    return fallback;
+  }
+
+  /// Kratica dana iz punog naziva (invalid -> fallback).
+  static String dayAbbrFromFullName(String dayFullName, {String fallback = 'pon'}) {
+    final index = _indexForFullDayName(dayFullName);
+    if (index >= 0 && index < _abbrs.length) return _abbrs[index];
+    return fallback;
   }
 
   // ─── Aktivna sedmica za zakazivanje ────────────────────────────

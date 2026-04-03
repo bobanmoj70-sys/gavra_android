@@ -7,13 +7,13 @@ import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -132,7 +132,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _selectedDay = V3DanHelper.defaultDay();
+    _selectedDay = V3DanHelper.defaultWorkdayFullName();
     _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
     _initData();
   }
@@ -1096,7 +1096,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       menuItemStyleData: const MenuItemStyleData(
                                         height: 44,
                                       ),
-                                      items: V3DanHelper.dayNames
+                                      items: V3DanHelper.workdayNames
                                           .map((d) => DropdownMenuItem(
                                                 value: d,
                                                 child: Center(
@@ -1116,7 +1116,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                           .toList(),
                                       onChanged: (val) {
                                         setState(() {
-                                          _selectedDay = val!;
+                                          _selectedDay = V3DanHelper.normalizeToWorkdayFull(val!);
                                           _syncSelectedSlotForDatum(_selectedDatumIso);
                                           _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
                                         });

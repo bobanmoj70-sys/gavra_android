@@ -5,13 +5,13 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
@@ -144,7 +144,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final cached = V3MasterRealtimeManager.instance.putniciCache[putnikId];
     if (cached != null) _putnikData = Map<String, dynamic>.from(cached);
     // Raspored po danima iz v3_operativna_nedelja kao jedinog izvora istine za READ
-    final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
+    final dani = V3DanHelper.workdayAbbrs.toList(); // pon-pet (radni dani)
     final anchor = V3DanHelper.schedulingWeekAnchor();
     final rm = V3MasterRealtimeManager.instance;
     final newMap = <String, List<_ZahtevInfo>>{};
@@ -1159,7 +1159,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Widget _buildRasporedCard({required String nedeljaInfo}) {
-    final dani = V3DanHelper.dayAbbrs.take(5).toList(); // pon-pet (radni dani)
+    final dani = V3DanHelper.workdayAbbrs.toList(); // pon-pet (radni dani)
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(16),
       backgroundColor: V3StyleHelper.whiteAlpha06,

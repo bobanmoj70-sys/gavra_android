@@ -239,6 +239,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedDate = V3DanHelper.defaultWorkdayDate();
     _initData();
   }
 
@@ -471,18 +472,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return V3DanHelper.toIsoDate(_selectedDate);
   }
 
-  String _normalizeSelectedDayToAbbr(String day) {
-    final normalized = day.trim().toLowerCase();
-    if (normalized.startsWith('pon')) return 'pon';
-    if (normalized.startsWith('uto')) return 'uto';
-    if (normalized.startsWith('sre')) return 'sre';
-    if (normalized.startsWith('čet') || normalized.startsWith('cet')) return 'cet';
-    if (normalized.startsWith('pet')) return 'pet';
-    if (normalized.startsWith('sub')) return 'sub';
-    if (normalized.startsWith('ned')) return 'ned';
-    return V3DanHelper.abbr(DateTime.now());
-  }
-
   void _onPolazakChanged(String grad, String vreme) {
     setState(() {
       _selectedGrad = grad;
@@ -495,7 +484,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozac = _efektivniVozac;
     if (vozac == null) return;
 
-    final dayAbbr = _normalizeSelectedDayToAbbr(day);
+    final dayAbbr = V3DanHelper.normalizeToWorkdayAbbr(V3DanHelper.dayAbbrFromFullName(day));
     final dayIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(
       dayAbbr,
       anchor: V3DanHelper.schedulingWeekAnchor(),
@@ -1309,7 +1298,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       context: context,
       builder: (ctx) => SimpleDialog(
         title: const Text('Izaberi dan'),
-        children: V3DanHelper.dayNames.map((dan) {
+        children: V3DanHelper.workdayNames.map((dan) {
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, dan),
             child: Text(dan, style: TextStyle(fontWeight: dan == _selectedDay ? FontWeight.bold : FontWeight.normal)),
