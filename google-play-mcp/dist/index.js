@@ -15,7 +15,7 @@ let SERVICE_ACCOUNT_KEY = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY;
 // Fallback search paths for service account key
 const fallbackPaths = [
     process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-    'C:/Users/Bojan/gavra_android/AI BACKUP/secrets/google/play-store-key.json',
+    'C:/Users/Bojan/Desktop/Lakisa-code/google/play-store-key.json',
     './play-store-key.json',
     '../play-store-key.json'
 ];
@@ -2093,11 +2093,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         requestBody: {
                             track,
                             releases: [{
-                                    versionCodes: activeRelease.versionCodes,
-                                    status: 'halted',
-                                    userFraction: activeRelease.userFraction,
-                                    releaseNotes: activeRelease.releaseNotes,
-                                }],
+                                versionCodes: activeRelease.versionCodes,
+                                status: 'halted',
+                                userFraction: activeRelease.userFraction,
+                                releaseNotes: activeRelease.releaseNotes,
+                            }],
                         },
                     });
                     await androidPublisher.edits.commit({
@@ -2149,11 +2149,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         requestBody: {
                             track,
                             releases: [{
-                                    versionCodes: haltedRelease.versionCodes,
-                                    status: 'inProgress',
-                                    userFraction,
-                                    releaseNotes: haltedRelease.releaseNotes,
-                                }],
+                                versionCodes: haltedRelease.versionCodes,
+                                status: 'inProgress',
+                                userFraction,
+                                releaseNotes: haltedRelease.releaseNotes,
+                            }],
                         },
                     });
                     await androidPublisher.edits.commit({
@@ -2205,10 +2205,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         requestBody: {
                             track,
                             releases: [{
-                                    versionCodes: activeRelease.versionCodes,
-                                    status: 'completed',
-                                    releaseNotes: activeRelease.releaseNotes,
-                                }],
+                                versionCodes: activeRelease.versionCodes,
+                                status: 'completed',
+                                releaseNotes: activeRelease.releaseNotes,
+                            }],
                         },
                     });
                     await androidPublisher.edits.commit({

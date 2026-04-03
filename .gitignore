@@ -107,7 +107,6 @@ windows/
 mcp.json
 
 # Backup folders
-AI BACKUP/
 .env.backup
 
 # Workspace temp/debug artifacts

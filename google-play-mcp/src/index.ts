@@ -24,7 +24,7 @@ let SERVICE_ACCOUNT_KEY = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY;
 // Fallback search paths for service account key
 const fallbackPaths = [
     process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-    'C:/Users/Bojan/gavra_android/AI BACKUP/secrets/google/play-store-key.json',
+    'C:/Users/Bojan/Desktop/Lakisa-code/google/play-store-key.json',
     './play-store-key.json',
     '../play-store-key.json'
 ];
