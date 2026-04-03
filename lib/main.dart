@@ -16,12 +16,12 @@ import 'globals.dart';
 import 'screens/v3_putnik_profil_screen.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
-import 'services/v3_theme_manager.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
+import 'services/v3_theme_manager.dart';
 
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -707,13 +707,21 @@ Future<void> _initAppServices() async {
 
   // Učitaj nav_bar_type iz baze
   try {
-    final settings =
-        await Supabase.instance.client.from('v3_app_settings').select('nav_bar_type').eq('id', 'global').maybeSingle();
+    final settings = await Supabase.instance.client
+        .from('v3_app_settings')
+        .select('nav_bar_type, nav_bar_type_next, nav_bar_type_effective_at')
+        .eq('id', 'global')
+        .maybeSingle();
 
-    final navType = settings?['nav_bar_type'] as String?;
-    if (navType != null && ['zimski', 'letnji', 'praznici'].contains(navType)) {
+    final navType = resolveEffectiveNavBarType(
+      currentType: settings?['nav_bar_type'] as String?,
+      nextType: settings?['nav_bar_type_next'] as String?,
+      effectiveAt: settings?['nav_bar_type_effective_at'],
+    );
+
+    if (navType != null) {
       navBarTypeNotifier.value = navType;
-      debugPrint('[main] nav_bar_type učitan iz baze: $navType');
+      debugPrint('[main] efektivni nav_bar_type učitan iz baze: $navType');
     }
   } catch (e) {
     debugPrint('⚠️ [main] Greška pri učitavanju app_settings: $e');

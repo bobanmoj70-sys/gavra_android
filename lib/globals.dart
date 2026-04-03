@@ -36,10 +36,48 @@ bool get isSupabaseReady {
 /// 'zimski' = zimski raspored
 /// 'letnji' = letnji raspored
 /// 'praznici' = praznični raspored
+/// 'custom' = ručno podešen raspored
 final ValueNotifier<String> navBarTypeNotifier = ValueNotifier<String>('');
 
+const Set<String> _allowedNavBarTypes = {'zimski', 'letnji', 'praznici', 'custom'};
+
+DateTime? _parseSettingsDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is String && value.trim().isNotEmpty) return DateTime.tryParse(value);
+  return null;
+}
+
+/// Računa efektivni nav bar tip iz v3_app_settings.
+///
+/// Pravila:
+/// - Ako postoji validan `nextType` i `effectiveAt` je prošao, vraća `nextType`.
+/// - U suprotnom vraća validan `currentType`.
+/// - Ako nijedan nije validan, vraća null.
+String? resolveEffectiveNavBarType({
+  required String? currentType,
+  String? nextType,
+  dynamic effectiveAt,
+  DateTime? now,
+}) {
+  final current = currentType?.toLowerCase();
+  final next = nextType?.toLowerCase();
+  final effective = _parseSettingsDateTime(effectiveAt);
+  final tsNow = now ?? DateTime.now();
+
+  if (next != null && _allowedNavBarTypes.contains(next) && effective != null && !tsNow.isBefore(effective)) {
+    return next;
+  }
+
+  if (current != null && _allowedNavBarTypes.contains(current)) {
+    return current;
+  }
+
+  return null;
+}
+
 /// RASPORED NOTIFIER - vremena polazaka iz baze (v3_app_settings)
-/// Ključevi: 'bc_zimski', 'vs_zimski', 'bc_letnji', 'vs_letnji', 'bc_praznici', 'vs_praznici'
+/// Ključevi: 'bc_zimski', 'vs_zimski', 'bc_letnji', 'vs_letnji', 'bc_praznici', 'vs_praznici', 'bc_custom', 'vs_custom'
 /// Puni se pri startu i ažurira realtime kad admin promeni rasporede u bazi
 final ValueNotifier<Map<String, List<String>>> rasporedNotifier = ValueNotifier<Map<String, List<String>>>({
   'bc_zimski': ['05:00', '06:00', '07:00', '08:00', '09:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
@@ -48,6 +86,8 @@ final ValueNotifier<Map<String, List<String>>> rasporedNotifier = ValueNotifier<
   'vs_letnji': ['06:00', '07:00', '08:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
   'bc_praznici': ['05:00', '06:00', '12:00', '13:00', '15:00'],
   'vs_praznici': ['06:00', '07:00', '13:00', '14:00', '15:30'],
+  'bc_custom': [],
+  'vs_custom': [],
 });
 
 /// Helper - vraća listu polazaka za grad i sezonu iz rasporedNotifier

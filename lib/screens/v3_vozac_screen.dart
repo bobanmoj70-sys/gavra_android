@@ -7,12 +7,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
@@ -713,58 +713,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     _isOptimizingRoute = true;
 
     try {
-      final data = putniciZaOptimizaciju.map((p) => {'putnik': p.putnik, 'entry': p.entry}).toList();
+      final data = _buildOptimizationData(putniciZaOptimizaciju);
 
-      final gpsPosition = await _getCurrentDriverPosition(vozac.id);
-      final driverLat = gpsPosition?['lat'] as double?;
-      final driverLng = gpsPosition?['lng'] as double?;
+      final driverPosition = await _resolveDriverPositionForOptimization(
+        vozacId: vozac.id,
+        silent: silent,
+      );
+      if (driverPosition == null) return;
 
-      if (driverLat == null || driverLng == null) {
-        if (!silent && mounted) {
-          V3AppSnackBar.warning(context, 'OSRM optimizacija zahteva aktivan GPS vozača.');
-        }
-        return;
-      }
-
-      final res = await V3SmartNavigationService.optimizeV3Route(
+      final res = await _optimizeRouteWithOsrm(
         data: data,
-        fromCity: _selectedGrad,
-        driverLat: driverLat,
-        driverLng: driverLng,
+        driverLat: driverPosition['lat']!,
+        driverLng: driverPosition['lng']!,
       );
 
       if (res.success && res.optimizedData != null) {
         await _persistRouteOrderToOperativna(res.optimizedData!);
 
-        // Mapiramo po entryId (ne putnikId) da ispravno handlamo slučaj
-        // kada isti putnik ima više entry-ja (dupli polasci).
-        final Map<String, int?> orderByEntryId = {};
-        for (final d in res.optimizedData!) {
-          final entry = d['entry'] as V3OperativnaNedeljaEntry?;
-          if (entry == null || entry.id.isEmpty) continue;
-          final routeOrderValue = d['route_order'];
-          final routeOrder = routeOrderValue is int
-              ? routeOrderValue
-              : (routeOrderValue is num ? routeOrderValue.toInt() : int.tryParse(routeOrderValue?.toString() ?? ''));
-          orderByEntryId[entry.id] = routeOrder;
-        }
+        final orderByEntryId = _buildRouteOrderMapByEntryId(res.optimizedData!);
+        _applyOptimizedRouteOrderToState(orderByEntryId);
 
-        setState(() {
-          final merged = _mojiPutnici.map((entry) {
-            if (_isExcludedFromOptimization(entry)) {
-              return _PutnikEntry(putnik: entry.putnik, entry: entry.entry, routeOrder: null);
-            }
-            final entryId = entry.entry?.id ?? '';
-            return _PutnikEntry(
-              putnik: entry.putnik,
-              entry: entry.entry,
-              routeOrder: entryId.isNotEmpty ? orderByEntryId[entryId] : null,
-            );
-          }).toList();
-          _mojiPutnici = _sortPutniciForDisplay(merged);
-        });
-
-        final skippedCount = res.optimizedData!.where((d) => d['route_order'] == null).length;
+        final skippedCount = _countSkippedRouteOrders(res.optimizedData!);
 
         _updateLastOptimizationMeta(
           reason: reason,
@@ -772,7 +741,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           optimizedCount: orderByEntryId.values.whereType<int>().length,
           eligibleCount: putniciZaOptimizaciju.length,
           skippedCount: skippedCount,
-          currentPosition: {'lat': driverLat, 'lng': driverLng},
+          currentPosition: driverPosition,
         );
 
         if (!silent && mounted) {
@@ -786,28 +755,88 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
+  List<Map<String, dynamic>> _buildOptimizationData(List<_PutnikEntry> putnici) {
+    return putnici.map((entry) => {'putnik': entry.putnik, 'entry': entry.entry}).toList();
+  }
+
+  Future<Map<String, double>?> _resolveDriverPositionForOptimization({
+    required String vozacId,
+    required bool silent,
+  }) async {
+    final gpsPosition = await _getCurrentDriverPosition(vozacId);
+    final driverLat = gpsPosition?['lat'] as double?;
+    final driverLng = gpsPosition?['lng'] as double?;
+
+    if (driverLat == null || driverLng == null) {
+      if (!silent && mounted) {
+        V3AppSnackBar.warning(context, 'OSRM optimizacija zahteva aktivan GPS vozača.');
+      }
+      return null;
+    }
+
+    return {
+      'lat': driverLat,
+      'lng': driverLng,
+    };
+  }
+
+  Future<V3NavigationResult> _optimizeRouteWithOsrm({
+    required List<Map<String, dynamic>> data,
+    required double driverLat,
+    required double driverLng,
+  }) {
+    return V3SmartNavigationService.optimizeV3Route(
+      data: data,
+      fromCity: _selectedGrad,
+      driverLat: driverLat,
+      driverLng: driverLng,
+    );
+  }
+
+  Map<String, int?> _buildRouteOrderMapByEntryId(List<Map<String, dynamic>> optimizedData) {
+    final orderByEntryId = <String, int?>{};
+
+    for (final item in optimizedData) {
+      final entry = item['entry'] as V3OperativnaNedeljaEntry?;
+      if (entry == null || entry.id.isEmpty) continue;
+      orderByEntryId[entry.id] = _parseRouteOrder(item['route_order']);
+    }
+
+    return orderByEntryId;
+  }
+
+  void _applyOptimizedRouteOrderToState(Map<String, int?> orderByEntryId) {
+    setState(() {
+      final merged = _mojiPutnici.map((entry) {
+        if (_isExcludedFromOptimization(entry)) {
+          return _PutnikEntry(putnik: entry.putnik, entry: entry.entry, routeOrder: null);
+        }
+
+        final entryId = entry.entry?.id ?? '';
+        return _PutnikEntry(
+          putnik: entry.putnik,
+          entry: entry.entry,
+          routeOrder: entryId.isNotEmpty ? orderByEntryId[entryId] : null,
+        );
+      }).toList();
+
+      _mojiPutnici = _sortPutniciForDisplay(merged);
+    });
+  }
+
+  int _countSkippedRouteOrders(List<Map<String, dynamic>> optimizedData) {
+    return optimizedData.where((item) => _parseRouteOrder(item['route_order']) == null).length;
+  }
+
+  int? _parseRouteOrder(dynamic rawOrder) {
+    if (rawOrder is int) return rawOrder;
+    if (rawOrder is num) return rawOrder.toInt();
+    return int.tryParse(rawOrder?.toString() ?? '');
+  }
+
   Future<void> _persistRouteOrderToOperativna(List<Map<String, dynamic>> optimizedData) async {
     try {
-      final updates = <Future<void>>[];
-
-      for (final item in optimizedData) {
-        final entry = item['entry'] as V3OperativnaNedeljaEntry?;
-        final entryId = entry?.id;
-        if (entryId == null || entryId.isEmpty) continue;
-
-        final rawOrder = item['route_order'];
-        final routeOrder = rawOrder is int
-            ? rawOrder
-            : (rawOrder is num ? rawOrder.toInt() : int.tryParse(rawOrder?.toString() ?? ''));
-
-        updates.add(
-          supabase
-              .from('v3_operativna_nedelja')
-              .update({'route_order': routeOrder})
-              .eq('id', entryId)
-              .then((_) => null),
-        );
-      }
+      final updates = _buildRouteOrderUpdateFutures(optimizedData);
 
       if (updates.isNotEmpty) {
         await Future.wait(updates);
@@ -815,6 +844,24 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     } catch (e) {
       debugPrint('[V3VozacScreen] _persistRouteOrderToOperativna error: $e');
     }
+  }
+
+  List<Future<void>> _buildRouteOrderUpdateFutures(List<Map<String, dynamic>> optimizedData) {
+    final updates = <Future<void>>[];
+
+    for (final item in optimizedData) {
+      final entry = item['entry'] as V3OperativnaNedeljaEntry?;
+      final entryId = entry?.id;
+      if (entryId == null || entryId.isEmpty) continue;
+
+      final routeOrder = _parseRouteOrder(item['route_order']);
+
+      updates.add(
+        supabase.from('v3_operativna_nedelja').update({'route_order': routeOrder}).eq('id', entryId).then((_) => null),
+      );
+    }
+
+    return updates;
   }
 
   /// Dobija trenutnu GPS poziciju vozača iz baze podataka

@@ -54,10 +54,31 @@ class V3MasterRealtimeManager {
 
   /// Primenjuje vrednosti iz v3_app_settings na globalne notifiere
   void _applyAppSettings(Map<String, dynamic> row) {
-    // nav_bar_type
-    final navType = row['nav_bar_type'] as String?;
-    if (navType != null && ['zimski', 'letnji', 'praznici'].contains(navType)) {
+    final now = DateTime.now();
+
+    // nav_bar_type (sa podrškom za zakazani prelaz)
+    final navType = resolveEffectiveNavBarType(
+      currentType: row['nav_bar_type'] as String?,
+      nextType: row['nav_bar_type_next'] as String?,
+      effectiveAt: row['nav_bar_type_effective_at'],
+      now: now,
+    );
+    if (navType != null) {
       navBarTypeNotifier.value = navType;
+    }
+
+    _navTypeSwitchTimer?.cancel();
+    _navTypeSwitchTimer = null;
+
+    final nextType = (row['nav_bar_type_next'] as String?)?.toLowerCase();
+    final effectiveAt = _tryParseDateTime(row['nav_bar_type_effective_at']);
+    if (nextType != null && ['zimski', 'letnji', 'praznici', 'custom'].contains(nextType) && effectiveAt != null) {
+      final delay = effectiveAt.difference(now);
+      if (!delay.isNegative && delay > Duration.zero) {
+        _navTypeSwitchTimer = Timer(delay, () {
+          navBarTypeNotifier.value = nextType;
+        });
+      }
     }
 
     // rasporedi polazaka
@@ -70,7 +91,16 @@ class V3MasterRealtimeManager {
     final updated = Map<String, List<String>>.from(rasporedNotifier.value);
     bool changed = false;
 
-    for (final key in ['bc_zimski', 'vs_zimski', 'bc_letnji', 'vs_letnji', 'bc_praznici', 'vs_praznici']) {
+    for (final key in [
+      'bc_zimski',
+      'vs_zimski',
+      'bc_letnji',
+      'vs_letnji',
+      'bc_praznici',
+      'vs_praznici',
+      'bc_custom',
+      'vs_custom',
+    ]) {
       if (row.containsKey(key)) {
         updated[key] = _toList(row[key]);
         changed = true;
@@ -88,10 +118,18 @@ class V3MasterRealtimeManager {
   static const Duration _emitDebounceWindow = Duration(milliseconds: 90);
   final Set<String> _pendingTableChanges = <String>{};
   Timer? _emitDebounceTimer;
+  Timer? _navTypeSwitchTimer;
 
   RealtimeChannel? _v3Channel;
   Future<void>? _initInFlight;
   bool _isInitialized = false;
+
+  DateTime? _tryParseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String && value.trim().isNotEmpty) return DateTime.tryParse(value);
+    return null;
+  }
 
   void _scheduleEmit({Set<String>? tables, bool immediate = false}) {
     if (tables != null && tables.isNotEmpty) {

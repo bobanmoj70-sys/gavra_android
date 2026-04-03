@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -34,6 +34,7 @@ class V3AdminScreen extends StatefulWidget {
 class _V3AdminScreenState extends State<V3AdminScreen> {
   late final V3ThemeManager _themeManager;
   static final RegExp _versionPattern = RegExp(r'^\d+(\.\d+){1,3}$');
+  static final RegExp _timePattern = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
 
   @override
   void initState() {
@@ -64,6 +65,128 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     } catch (e) {
       debugPrint('[AdminScreen] Greška pri učitavanju update settings: $e');
       return <String, dynamic>{};
+    }
+  }
+
+  List<String> _normalizeTimes(List<String> input) {
+    final unique = <String>{};
+    for (final raw in input) {
+      final t = raw.trim();
+      if (_timePattern.hasMatch(t)) unique.add(t);
+    }
+    final times = unique.toList();
+    times.sort();
+    return times;
+  }
+
+  List<String> _parseTimesCsv(String value) {
+    if (value.trim().isEmpty) return [];
+    return value.split(RegExp(r'[,\n; ]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  }
+
+  Future<void> _openCustomScheduleEditor() async {
+    try {
+      final row =
+          await supabase.from('v3_app_settings').select('bc_custom, vs_custom').eq('id', 'global').maybeSingle();
+      if (!mounted) return;
+
+      final bcCurrent = (row?['bc_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+      final vsCurrent = (row?['vs_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+
+      final bcCtrl = TextEditingController(text: _normalizeTimes(bcCurrent).join(', '));
+      final vsCtrl = TextEditingController(text: _normalizeTimes(vsCurrent).join(', '));
+
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          var isSaving = false;
+          return StatefulBuilder(
+            builder: (context, setModalState) => AlertDialog(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              title: const Text('Custom vremena polazaka', style: TextStyle(color: Colors.white)),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Unos formata HH:mm, razdvojeno zarezom.', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: bcCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'BC custom',
+                        labelStyle: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: vsCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'VS custom',
+                        labelStyle: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Otkaži'),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final bcRaw = _parseTimesCsv(bcCtrl.text);
+                          final vsRaw = _parseTimesCsv(vsCtrl.text);
+                          final bcNorm = _normalizeTimes(bcRaw);
+                          final vsNorm = _normalizeTimes(vsRaw);
+
+                          final bcInvalid = bcRaw.where((t) => !_timePattern.hasMatch(t)).toList();
+                          final vsInvalid = vsRaw.where((t) => !_timePattern.hasMatch(t)).toList();
+                          if (bcInvalid.isNotEmpty || vsInvalid.isNotEmpty) {
+                            final invalid = [...bcInvalid, ...vsInvalid].join(', ');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Neispravno vreme: $invalid')),
+                            );
+                            return;
+                          }
+
+                          setModalState(() => isSaving = true);
+                          try {
+                            await supabase.from('v3_app_settings').update({
+                              'bc_custom': bcNorm,
+                              'vs_custom': vsNorm,
+                            }).eq('id', 'global');
+                            if (!mounted) return;
+                            Navigator.of(dialogContext).pop();
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              const SnackBar(content: Text('✅ Custom vremena sačuvana')),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            setModalState(() => isSaving = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Greška pri čuvanju: $e')),
+                            );
+                          }
+                        },
+                  child: const Text('Sačuvaj'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Greška pri učitavanju custom vremena: $e')),
+      );
     }
   }
 
@@ -982,7 +1105,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       child: ValueListenableBuilder<String>(
                         valueListenable: navBarTypeNotifier,
                         builder: (context, navType, _) {
-                          const labels = {'zimski': '⚙️', 'letnji': '☀️', 'praznici': '🎉'};
+                          const labels = {'zimski': '⚙️', 'letnji': '☀️', 'praznici': '🎉', 'custom': '🛠️'};
                           return _NavBtn(
                             color: Colors.blueGrey,
                             onTap: () async {
@@ -1015,23 +1138,75 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   const PopupMenuItem(
                                       value: 'praznici',
                                       child: Text('🎉  Praznici', style: TextStyle(color: Colors.white))),
+                                  const PopupMenuItem(
+                                      value: 'custom',
+                                      child: Text('🛠️  Custom', style: TextStyle(color: Colors.white))),
                                   const PopupMenuDivider(),
+                                  const PopupMenuItem(
+                                      value: '__custom_times__',
+                                      child: Text('⏱️  Uredi custom vremena', style: TextStyle(color: Colors.white))),
                                   const PopupMenuItem(
                                       value: '__vozaci__',
                                       child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
                                 ],
                               );
                               if (val == null) return;
+                              if (val == '__custom_times__') {
+                                await _openCustomScheduleEditor();
+                                return;
+                              }
                               if (val == '__vozaci__') {
                                 if (context.mounted) {
                                   V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
                                 }
                                 return;
                               }
-                              navBarTypeNotifier.value = val;
+                              final action = await showDialog<String>(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  title: const Text('Primena rasporeda', style: TextStyle(color: Colors.white)),
+                                  content: Text(
+                                    'Kako želiš da primeniš "$val" režim?',
+                                    style: const TextStyle(color: Colors.white70),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(dialogContext).pop(),
+                                      child: const Text('Otkaži'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.of(dialogContext).pop('tomorrow'),
+                                      child: const Text('Od sutra'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.of(dialogContext).pop('now'),
+                                      child: const Text('Primeni odmah'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (action == null) return;
+
                               try {
-                                await supabase.from('v3_app_settings').update({'nav_bar_type': val}).eq('id', 'global');
-                                debugPrint('[AdminScreen] nav_bar_type sačuvan u bazi: $val');
+                                if (action == 'now') {
+                                  navBarTypeNotifier.value = val;
+                                  await supabase.from('v3_app_settings').update({
+                                    'nav_bar_type': val,
+                                    'nav_bar_type_next': null,
+                                    'nav_bar_type_effective_at': null,
+                                  }).eq('id', 'global');
+                                  debugPrint('[AdminScreen] nav_bar_type sačuvan odmah: $val');
+                                } else {
+                                  final now = DateTime.now();
+                                  final sutraPocetak =
+                                      DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+                                  await supabase.from('v3_app_settings').update({
+                                    'nav_bar_type_next': val,
+                                    'nav_bar_type_effective_at': sutraPocetak.toIso8601String(),
+                                  }).eq('id', 'global');
+                                  debugPrint('[AdminScreen] nav_bar_type zakazan od sutra: $val @ $sutraPocetak');
+                                }
                               } catch (e) {
                                 debugPrint('[AdminScreen] Greška pri čuvanju nav_bar_type: $e');
                               }
