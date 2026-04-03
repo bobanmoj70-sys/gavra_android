@@ -24,7 +24,7 @@ class V3StatusFilters {
 
   static bool isOfferLike(String? status) {
     final normalized = normalizeStatus(status);
-    return normalized == 'alternativa' || normalized == 'ponuda';
+    return normalized == 'alternativa';
   }
 
   static bool isActionLocked({

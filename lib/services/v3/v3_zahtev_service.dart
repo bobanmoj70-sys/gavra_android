@@ -5,11 +5,32 @@ import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_kapacitet_slots_repository.dart';
+import 'repositories/v3_operativna_nedelja_repository.dart';
 import 'v3_vozac_service.dart';
+import 'zahtevi/v3_zahtev_domain_service.dart';
+import 'zahtevi/v3_zahtev_repository.dart';
+import 'zahtevi/v3_zahtev_types.dart';
 
 /// Service for V3 passenger travel requests (`v3_zahtevi`).
 class V3ZahtevService {
   V3ZahtevService._();
+
+  static final V3ZahtevRepository _repository = V3ZahtevRepository();
+  static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
+  static final V3KapacitetSlotsRepository _kapacitetRepository = V3KapacitetSlotsRepository();
+  static final V3ZahtevDomainService _domain = V3ZahtevDomainService(_repository);
+  static final RegExp _uuidRegex = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
+
+  static String? _normalizeAuditUuid(String? raw) {
+    final input = (raw ?? '').trim();
+    if (input.isEmpty) return null;
+    final candidate = input.contains(':') ? input.split(':').last.trim() : input;
+    if (_uuidRegex.hasMatch(candidate)) return candidate.toLowerCase();
+    return null;
+  }
 
   static String _datumKey(DateTime datum) => V3DanHelper.parseIsoDatePart(datum.toIso8601String());
 
@@ -100,8 +121,9 @@ class V3ZahtevService {
       _assertDatumUTekucojNedelji(zahtev.datum);
 
       final data = zahtev.toJson();
-      if (createdBy != null) data['created_by'] = createdBy;
-      final row = await supabase.from('v3_zahtevi').insert(data).select().single();
+      final createdByUuid = _normalizeAuditUuid(createdBy);
+      if (createdByUuid != null) data['created_by'] = createdByUuid;
+      final row = await _repository.create(data);
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
       return V3Zahtev.fromJson(row);
@@ -126,14 +148,14 @@ class V3ZahtevService {
       final rowKey = (row['id']?.toString() ?? '').trim();
       if (rowKey.isNotEmpty) {
         final status = (row['status']?.toString() ?? '').trim().toLowerCase();
-        if (status == 'alternativa' || status == 'ponuda') {
-          await updateStatus(rowKey, 'obrada', updatedBy: updatedBy ?? 'putnik:reset_alternative');
+        if (status == 'alternativa') {
+          await updateStatus(rowKey, 'obrada', updatedBy: updatedBy);
         }
         await updateZeljenoVreme(
           rowKey,
           novoVreme,
           koristiSekundarnu: koristiSekundarnu,
-          updatedBy: updatedBy ?? 'putnik:sistem',
+          updatedBy: updatedBy,
         );
         return;
       }
@@ -150,7 +172,7 @@ class V3ZahtevService {
       koristiSekundarnu: koristiSekundarnu,
       aktivno: true,
     );
-    await createZahtev(zahtev, createdBy: updatedBy ?? 'putnik:sistem');
+    await createZahtev(zahtev, createdBy: updatedBy);
   }
 
   static Future<void> otkaziPolazakPutnikaPoKontekstu({
@@ -164,13 +186,14 @@ class V3ZahtevService {
       final row = aktivni.first;
       final rowKey = (row['id']?.toString() ?? '').trim();
       if (rowKey.isNotEmpty) {
-        final updBy = otkazaoPutnikId != null ? 'putnik:$otkazaoPutnikId' : 'putnik:sistem';
-        final updated = await supabase
-            .from('v3_zahtevi')
-            .update({'status': 'otkazano', 'updated_by': updBy})
-            .eq('id', rowKey)
-            .select()
-            .maybeSingle();
+        final updBy = _normalizeAuditUuid(otkazaoPutnikId);
+        final updated = await _repository.updateRawMaybeSingle(
+          rowKey,
+          {
+            'status': 'otkazano',
+            if (updBy != null) 'updated_by': updBy,
+          },
+        );
         if (updated != null) {
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', updated);
         }
@@ -178,17 +201,15 @@ class V3ZahtevService {
     }
 
     final datumIso = _datumKey(datum);
-    final updatedOperativni = await supabase
-        .from('v3_operativna_nedelja')
-        .update({
-          'status_final': 'otkazano',
-          if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
-        })
-        .eq('putnik_id', putnikId)
-        .eq('datum', datumIso)
-        .eq('grad', grad)
-        .eq('aktivno', true)
-        .select();
+    final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivnoReturningList(
+      putnikId: putnikId,
+      datumIso: datumIso,
+      grad: grad,
+      payload: {
+        'status_final': 'otkazano',
+        if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
+      },
+    );
 
     for (final row in updatedOperativni) {
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
@@ -197,15 +218,12 @@ class V3ZahtevService {
 
   static Future<void> updateStatus(String id, String newStatus, {String? updatedBy}) async {
     try {
-      final row = await supabase
-          .from('v3_zahtevi')
-          .update({
-            'status': newStatus,
-            'updated_by': updatedBy ?? 'vozac:${V3VozacService.currentVozac?.id ?? "sistem"}',
-          })
-          .eq('id', id)
-          .select()
-          .single();
+      final updByUuid = _normalizeAuditUuid(updatedBy ?? V3VozacService.currentVozac?.id);
+      final status = V3ZahtevStatus.values.firstWhere(
+        (value) => value.name == newStatus,
+        orElse: () => V3ZahtevStatus.obrada,
+      );
+      final row = await _domain.setStatus(id: id, status: status, updatedBy: updByUuid);
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -217,13 +235,12 @@ class V3ZahtevService {
   /// Prepisuje zeljeno_vreme i dodeljeno_vreme postojećeg zahteva (admin use-case).
   static Future<void> updateVreme(String id, String novoVreme, {String? status}) async {
     try {
-      final payload = <String, dynamic>{
-        'zeljeno_vreme': novoVreme,
-        'dodeljeno_vreme': novoVreme,
-        if (status != null) 'status': status,
-        'updated_by': 'vozac:${V3VozacService.currentVozac?.id ?? "sistem"}',
-      };
-      final row = await supabase.from('v3_zahtevi').update(payload).eq('id', id).select().single();
+      final row = await _domain.assignTime(
+        id: id,
+        vreme: novoVreme,
+        status: status,
+        updatedBy: _normalizeAuditUuid(V3VozacService.currentVozac?.id),
+      );
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
       debugPrint('[V3ZahtevService] updateVreme error: $e');
@@ -305,7 +322,7 @@ class V3ZahtevService {
 
   static Future<void> deleteZahtev(String id) async {
     try {
-      await supabase.from('v3_zahtevi').delete().eq('id', id);
+      await _repository.deleteById(id);
       V3MasterRealtimeManager.instance.zahteviCache.remove(id);
     } catch (e) {
       debugPrint('[V3ZahtevService] Delete error: $e');
@@ -318,32 +335,33 @@ class V3ZahtevService {
     try {
       if (otkazaoVozacId != null) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
-        final query = supabase.from('v3_operativna_nedelja').update({
+        final payload = {
           'status_final': 'otkazano',
           'otkazao_vozac_id': otkazaoVozacId,
-        });
+        };
         if (operativnaId != null && operativnaId.isNotEmpty) {
-          final row = await query.eq('id', operativnaId).select().single();
+          final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
       } else {
         // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovdje
-        final String updBy = otkazaoPutnikId != null ? 'putnik:$otkazaoPutnikId' : 'sistem';
-        final row = await supabase
-            .from('v3_zahtevi')
-            .update({'status': 'otkazano', 'updated_by': updBy})
-            .eq('id', id)
-            .select()
-            .single();
+        final String? updBy = _normalizeAuditUuid(otkazaoPutnikId);
+        final row = await _repository.updateRaw(
+          id,
+          {
+            'status': 'otkazano',
+            if (updBy != null) 'updated_by': updBy,
+          },
+        );
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-        final query2 = supabase.from('v3_operativna_nedelja').update({
+        final payload2 = {
           'status_final': 'otkazano',
           if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
-        });
+        };
         if (operativnaId != null && operativnaId.isNotEmpty) {
-          final row2 = await query2.eq('id', operativnaId).select().single();
+          final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row2);
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
@@ -357,13 +375,13 @@ class V3ZahtevService {
 
   static Future<void> oznaciPokupljen({String? pokupljenVozacId, String? operativnaId}) async {
     try {
-      final query = supabase.from('v3_operativna_nedelja').update({
+      final payload = {
         'vreme_pokupljen': DateTime.now().toIso8601String(),
         'pokupljen': true,
         if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
-      });
+      };
       if (operativnaId != null && operativnaId.isNotEmpty) {
-        final row = await query.eq('id', operativnaId).select().single();
+        final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
       } else {
         throw Exception('operativnaId je obavezan za pokupljanje');
@@ -374,11 +392,13 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> updatedodeljenoVreme(String id, String? vreme) async {
+  static Future<void> updateDodeljenoVreme(String id, String? vreme) async {
     try {
-      await supabase
-          .from('v3_zahtevi')
-          .update({'dodeljeno_vreme': vreme, 'updated_by': 'dispecer:sistem'}).eq('id', id);
+      final row = await _repository.updateRaw(
+        id,
+        {'dodeljeno_vreme': vreme},
+      );
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
       debugPrint('[V3ZahtevService] Vreme update error: $e');
       rethrow;
@@ -393,27 +413,13 @@ class V3ZahtevService {
   }) async {
     try {
       final nowIso = DateTime.now().toIso8601String();
-
-      // Reset na isto stanje kao novi zahtev:
-      // - ide nazad u `obrada`
-      // - resetuje dodeljeno vreme i alternative
-      // - resetuje scheduling metapodatke da dispecer ide od nule
-      final updateData = <String, dynamic>{
-        'zeljeno_vreme': novoVreme,
-        'dodeljeno_vreme': null,
-        'scheduled_at': null,
-        'created_at': nowIso,
-        'status': 'obrada',
-        'alt_vreme_pre': null,
-        'alt_vreme_posle': null,
-        'alt_napomena': null,
-        'aktivno': true,
-        'updated_by': updatedBy ?? 'putnik:sistem',
-      };
-      if (koristiSekundarnu != null) {
-        updateData['koristi_sekundarnu'] = koristiSekundarnu;
-      }
-      await supabase.from('v3_zahtevi').update(updateData).eq('id', id);
+      await _domain.resetToObrada(
+        id: id,
+        novoVreme: novoVreme,
+        koristiSekundarnu: koristiSekundarnu,
+        updatedBy: _normalizeAuditUuid(updatedBy),
+        createdAtIso: nowIso,
+      );
     } catch (e) {
       debugPrint('[V3ZahtevService] ZeljenoVreme update error: $e');
       rethrow;
@@ -427,20 +433,19 @@ class V3ZahtevService {
     String? napomena,
   }) async {
     try {
-      await supabase.from('v3_zahtevi').update({
-        'status': 'alternativa',
-        'alt_vreme_pre': vremePre,
-        'alt_vreme_posle': vremePosle,
-        'alt_napomena': napomena,
-        'updated_by': 'dispecer:sistem',
-      }).eq('id', id);
+      await _domain.offerAlternative(
+        id: id,
+        vremePre: vremePre,
+        vremePosle: vremePosle,
+        napomena: napomena,
+      );
     } catch (e) {
-      debugPrint('[V3ZahtevService] Ponuda error: $e');
+      debugPrint('[V3ZahtevService] Alternativa error: $e');
       rethrow;
     }
   }
 
-  static Future<void> prihvatiPonudu(String id, String izabranoVreme) async {
+  static Future<void> prihvatiAlternativu(String id, String izabranoVreme) async {
     String toHHmm(String value) {
       final normalized = value.trim();
       final parts = normalized.split(':');
@@ -458,11 +463,7 @@ class V3ZahtevService {
     }
     final selectedHHmm = toHHmm(izabranoVremeNormalized);
 
-    final zahtev = await supabase
-        .from('v3_zahtevi')
-        .select('id, status, grad, datum, putnik_id, alt_vreme_pre, alt_vreme_posle')
-        .eq('id', id)
-        .maybeSingle();
+    final zahtev = await _repository.getById(id);
 
     if (zahtev == null) {
       throw Exception('Zahtev nije pronađen.');
@@ -487,27 +488,23 @@ class V3ZahtevService {
     final grad = (zahtev['grad'] as String? ?? '').trim();
     final datum = (zahtev['datum'] as String? ?? '').split('T').first;
 
-    final kapacitetRow = await supabase
-        .from('v3_kapacitet_slots')
-        .select('max_mesta')
-        .eq('grad', grad)
-        .eq('datum', datum)
-        .eq('vreme', izabranoVremeNormalized)
-        .eq('aktivno', true)
-        .maybeSingle();
+    final kapacitetRow = await _kapacitetRepository.getSlotByGradDatumVreme(
+      grad: grad,
+      datum: datum,
+      vreme: izabranoVremeNormalized,
+    );
 
     if (kapacitetRow == null) {
       throw Exception('Slot više ne postoji u kapacitetu.');
     }
 
     final maxMesta = int.tryParse('${kapacitetRow['max_mesta'] ?? 0}') ?? 0;
-    final usedRows = await supabase
-        .from('v3_operativna_nedelja')
-        .select('dodeljeno_vreme, zeljeno_vreme')
-        .eq('grad', grad)
-        .eq('datum', datum)
-        .eq('status_final', 'odobreno')
-        .eq('aktivno', true);
+    final usedRows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((row) {
+      final rowGrad = (row['grad']?.toString() ?? '').trim();
+      final rowDatum = (row['datum']?.toString() ?? '').split('T').first;
+      final rowStatus = (row['status_final']?.toString() ?? '').trim();
+      return rowGrad == grad && rowDatum == datum && rowStatus == 'odobreno' && row['aktivno'] == true;
+    }).toList();
 
     final usedCount = usedRows.where((row) {
       final assigned = (row['dodeljeno_vreme']?.toString() ?? '').trim();
@@ -520,22 +517,28 @@ class V3ZahtevService {
       throw Exception('Termin $izabranoVremeNormalized je trenutno popunjen.');
     }
 
-    await supabase.from('v3_zahtevi').update({
-      'status': 'odobreno',
-      'zeljeno_vreme': izabranoVremeNormalized,
-      'dodeljeno_vreme': izabranoVremeNormalized,
-      'alt_vreme_pre': null,
-      'alt_vreme_posle': null,
-      'updated_by': 'putnik:sistem',
-    }).eq('id', id);
+    final row = await _repository.updateRaw(
+      id,
+      {
+        'status': 'odobreno',
+        'zeljeno_vreme': izabranoVremeNormalized,
+        'dodeljeno_vreme': izabranoVremeNormalized,
+        'alt_vreme_pre': null,
+        'alt_vreme_posle': null,
+      },
+    );
+    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
   }
 
-  static Future<void> odbijPonudu(String id) async {
-    await supabase.from('v3_zahtevi').update({
-      'status': 'odbijeno',
-      'alt_vreme_pre': null,
-      'alt_vreme_posle': null,
-      'updated_by': 'putnik:sistem',
-    }).eq('id', id);
+  static Future<void> odbijAlternativu(String id) async {
+    final row = await _repository.updateRaw(
+      id,
+      {
+        'status': 'odbijeno',
+        'alt_vreme_pre': null,
+        'alt_vreme_posle': null,
+      },
+    );
+    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
   }
 }

@@ -74,10 +74,10 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
   Future<void> _loadTrenutnaSifra() async {
     _loadTrenutnaSifraFromCache();
     try {
-      final row = await supabase.from('v3_vozaci').select('sifra').eq('ime_prezime', widget.vozacIme).maybeSingle();
-      if (row != null && mounted) {
+      final sifra = await V3VozacService.getSifraByIme(widget.vozacIme);
+      if (sifra != null && mounted) {
         setState(() {
-          _trenutnaSifra = row['sifra']?.toString() ?? '';
+          _trenutnaSifra = sifra;
         });
       }
     } catch (e) {
@@ -97,9 +97,10 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
         return;
       }
 
-      await supabase
-          .from('v3_vozaci')
-          .update({'sifra': V3TextUtils.getControllerText('nova_sifra')}).eq('ime_prezime', widget.vozacIme);
+      await V3VozacService.updateSifraByIme(
+        imePrezime: widget.vozacIme,
+        novaSifra: V3TextUtils.getControllerText('nova_sifra'),
+      );
 
       if (!mounted) return;
 

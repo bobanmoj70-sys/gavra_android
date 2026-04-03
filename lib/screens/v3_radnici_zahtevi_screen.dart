@@ -182,7 +182,7 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
       final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
 
       String odgovorLabel;
-      if ((z.status == 'alternativa' || z.status == 'ponuda') && (z.altVremePre != null || z.altVremePosle != null)) {
+      if (z.status == 'alternativa' && (z.altVremePre != null || z.altVremePosle != null)) {
         final alts = [
           if (z.altVremePre != null) V3StringUtils.formatAlternativeTime(z.altVremePre),
           if (z.altVremePosle != null) V3StringUtils.formatAlternativeTime(z.altVremePosle),
@@ -191,7 +191,7 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
       } else {
         odgovorLabel = switch (z.status) {
           'odobreno' => '✅',
-          'alternativa' || 'ponuda' => '⚠️',
+          'alternativa' => '⚠️',
           'odbijeno' => '❌',
           'otkazano' => '⛔',
           _ => '🕒',
@@ -217,7 +217,7 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
     final (borderColor, statusLabel) = switch (zahtev.status) {
       'obrada' => (Colors.amber, '🟡 obrada'),
       'odobreno' => (Colors.greenAccent, '🟢 odobreno'),
-      'alternativa' || 'ponuda' => (Colors.orange, '🕒 alternativa'),
+      'alternativa' => (Colors.orange, '🕒 alternativa'),
       'odbijeno' => (Colors.redAccent, '🔴 odbijeno'),
       'otkazano' => (Colors.orange, '⛔ otkazano'),
       _ => (Colors.white24, zahtev.status),

@@ -6,17 +6,17 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_app_snack_bar.dart';
 import '../../utils/v3_dan_helper.dart';
 import '../../utils/v3_format_utils.dart';
+import 'repositories/v3_racun_repository.dart';
 
 /// V3 servis za generisanje PDF računa.
 class V3RacunService {
   V3RacunService._();
 
-  static final SupabaseClient _db = Supabase.instance.client;
+  static final V3RacunRepository _repository = V3RacunRepository();
 
   // ─── Podaci o firmi ───────────────────────────────────────────────
   static const String _firmaIme = 'PR Limo Servis Gavra 013';
@@ -43,14 +43,9 @@ class V3RacunService {
   static Future<String> getNextBrojRacuna() async {
     final godina = DateTime.now().year;
     try {
-      final rows = await _db
-          .from('v3_racuni')
-          .select('redni_broj')
-          .eq('godina', godina)
-          .order('redni_broj', ascending: false)
-          .limit(1);
+      final rows = await _repository.listRedniBrojByGodinaDescLimit1(godina);
 
-      final maxBroj = (rows as List).isNotEmpty ? ((rows.first['redni_broj'] as int?) ?? 0) : 0;
+      final maxBroj = (rows).isNotEmpty ? ((rows.first['redni_broj'] as int?) ?? 0) : 0;
       return '${maxBroj + 1}/$godina';
     } catch (e) {
       final ts = DateTime.now().millisecondsSinceEpoch;
@@ -105,13 +100,9 @@ class V3RacunService {
     try {
       // Dohvati firma podatke iz Supabase za sve putnik_id-ove
       final ids = racuniPodaci.map((r) => r['putnik_id']).toList();
-      final firme = await _db
-          .from('v3_racuni')
-          .select('putnik_id, firma_naziv, firma_adresa, firma_pib, firma_mb, firma_ziro')
-          .inFilter('putnik_id', ids)
-          .eq('aktivno', true);
+      final firme = await _repository.listAktivneFirmeByPutnikIds(ids);
       final firmaMap = <String, Map<String, dynamic>>{};
-      for (final f in firme as List) {
+      for (final f in firme) {
         firmaMap[f['putnik_id'].toString()] = f as Map<String, dynamic>;
       }
 

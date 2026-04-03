@@ -2,11 +2,15 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import '../../globals.dart';
+import '../../utils/v3_audit_actor.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_pin_zahtev_repository.dart';
+import 'repositories/v3_putnik_repository.dart';
 
 class V3PinZahtevService {
   V3PinZahtevService._();
+  static final V3PinZahtevRepository _pinRepo = V3PinZahtevRepository();
+  static final V3PutnikRepository _putnikRepo = V3PutnikRepository();
 
   static String generatePin() {
     final random = Random();
@@ -24,7 +28,7 @@ class V3PinZahtevService {
     return _buildEnrichedList();
   }
 
-  static Future<bool> imaZahtevKojiCekaAsync(String putnikId) async {
+  static Future<bool> hasPendingZahtev(String putnikId) async {
     try {
       final rm = V3MasterRealtimeManager.instance;
       // Proveri prvo cache
@@ -33,24 +37,18 @@ class V3PinZahtevService {
       if (uCacheu) return true;
 
       // Za svaki slucaj proveri DB (ako RM još nije dovukao sve)
-      final res = await supabase
-          .from('v3_pin_zahtevi')
-          .select('id')
-          .eq('putnik_id', putnikId)
-          .eq('status', 'ceka')
-          .limit(1)
-          .maybeSingle();
+      final res = await _pinRepo.getPendingByPutnikId(putnikId);
 
       return res != null;
     } catch (e) {
-      debugPrint('[V3PinZahtevService] imaZahtevKojiCekaAsync error: $e');
+      debugPrint('[V3PinZahtevService] hasPendingZahtev error: $e');
       return false;
     }
   }
 
   static Future<bool> azurirajEmail(String putnikId, String email) async {
     try {
-      await supabase.from('v3_putnici').update({'email': email}).eq('id', putnikId);
+      await _putnikRepo.updateById(putnikId, {'email': email});
       return true;
     } catch (e) {
       debugPrint('[V3PinZahtevService] azurirajEmail error: $e');
@@ -69,13 +67,7 @@ class V3PinZahtevService {
           rm.pinZahteviCache.values.any((z) => z['putnik_id']?.toString() == putnikId && z['status'] == 'ceka');
       if (vecCekaUCachu) return true;
 
-      final vecCekaUDB = await supabase
-          .from('v3_pin_zahtevi')
-          .select('id')
-          .eq('putnik_id', putnikId)
-          .eq('status', 'ceka')
-          .limit(1)
-          .maybeSingle();
+      final vecCekaUDB = await _pinRepo.getPendingByPutnikId(putnikId);
       if (vecCekaUDB != null) return true;
 
       final row = {
@@ -86,7 +78,7 @@ class V3PinZahtevService {
         'created_at': DateTime.now().toUtc().toIso8601String(),
       };
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
-      await supabase.from('v3_pin_zahtevi').insert(row);
+      await _pinRepo.insert(row);
       return true;
     } catch (e) {
       debugPrint('[V3PinZahtevService] posaljiZahtev error: $e');
@@ -127,15 +119,15 @@ class V3PinZahtevService {
       if (putnikId == null) return false;
 
       // 1. Ažuriraj putnika sa novim PIN-om u v3_putnici
-      await supabase.from('v3_putnici').update({
+      final actor = V3AuditActor.cron('admin_pin');
+      final payload = <String, dynamic>{
         'pin': pin,
-        'updated_by': 'admin:sistem',
-      }).eq('id', putnikId);
+        if (actor != null) 'updated_by': actor,
+      };
+      await _putnikRepo.updateById(putnikId, payload);
 
       // 2. Obeleži zahtev kao odobren (Fire and Forget)
-      await supabase.from('v3_pin_zahtevi').update({
-        'status': 'odobren',
-      }).eq('id', zahtevId);
+      await _pinRepo.updateById(zahtevId, {'status': 'odobren'});
 
       return true;
     } catch (e) {
@@ -147,9 +139,7 @@ class V3PinZahtevService {
   static Future<bool> odbijZahtev(String zahtevId) async {
     try {
       // 2. Obeleži zahtev kao odbijen (Fire and Forget)
-      await supabase.from('v3_pin_zahtevi').update({
-        'status': 'odbijen',
-      }).eq('id', zahtevId);
+      await _pinRepo.updateById(zahtevId, {'status': 'odbijen'});
 
       return true;
     } catch (e) {

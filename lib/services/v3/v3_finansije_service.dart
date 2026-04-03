@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-import '../../globals.dart';
 import '../../models/v3_finansije.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_finansije_repository.dart';
 
 class V3FinansijeService {
   V3FinansijeService._();
+  static final V3FinansijeRepository _repo = V3FinansijeRepository();
 
   /// Vraca sve troškove za trenutni mesec iz cache-a (v3_finansije)
   static List<V3Trosak> getTroskoviMesec({int? mesec, int? godina}) {
@@ -23,7 +24,7 @@ class V3FinansijeService {
   /// Dodaje novi trošak u bazu (Fire and Forget)
   static Future<void> addTrosak(V3Trosak trosak) async {
     try {
-      await supabase.from('v3_finansije').insert(trosak.toJson());
+      await _repo.insert(trosak.toJson());
     } catch (e) {
       debugPrint('[V3FinansijeService] addTrosak error: $e');
     }
@@ -32,7 +33,7 @@ class V3FinansijeService {
   /// Briše trošak (Fire and Forget)
   static Future<void> deleteTrosak(String id) async {
     try {
-      await supabase.from('v3_finansije').update({'aktivno': false}).eq('id', id);
+      await _repo.updateById(id, {'aktivno': false});
     } catch (e) {
       debugPrint('[V3FinansijeService] deleteTrosak error: $e');
       rethrow;

@@ -5,12 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../v3/v3_app_update_service.dart';
+import 'repositories/v3_realtime_bootstrap_repository.dart';
 
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
 class V3MasterRealtimeManager {
   V3MasterRealtimeManager._internal();
   static final V3MasterRealtimeManager _instance = V3MasterRealtimeManager._internal();
   static V3MasterRealtimeManager get instance => _instance;
+  static final V3RealtimeBootstrapRepository _bootstrapRepository = V3RealtimeBootstrapRepository();
 
   // --- IN-MEMORY CACHE ---
   final Map<String, Map<String, dynamic>> adreseCache = {};
@@ -25,6 +27,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
+  final Map<String, Map<String, dynamic>> gpsTripStateCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
   final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
   final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
@@ -36,18 +39,77 @@ class V3MasterRealtimeManager {
   // Preferirani alias za novi kod (isti objekat kao legacy naziv).
   Map<String, Map<String, dynamic>> get operativnaAssignedCache => v3GpsRasporedCache;
 
+  String? _extractTimeToken(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final match = RegExp(r'((?:[01]?\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?)').firstMatch(value);
+    if (match == null) return null;
+    final raw = match.group(1)!;
+    final parts = raw.split(':');
+    if (parts.length < 2) return null;
+    final h = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
+    final m = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  String _gpsTripKey({
+    required String vozacId,
+    required String datumIso,
+    required String grad,
+    required String polazakTime,
+  }) {
+    return '${vozacId.trim()}|${datumIso.trim()}|${grad.trim().toUpperCase()}|${polazakTime.trim()}';
+  }
+
   void _rebuildGpsCacheFromOperativna() {
+    final gpsTripByKey = <String, Map<String, dynamic>>{};
+
+    for (final trip in gpsTripStateCache.values) {
+      final vozacId = (trip['vozac_id']?.toString() ?? '').trim();
+      final datumIso = V3DanHelper.parseIsoDatePart(trip['datum'] as String? ?? '');
+      final grad = (trip['grad']?.toString() ?? '').trim().toUpperCase();
+      final polazakTime = _extractTimeToken(trip['polazak_vreme']?.toString()) ?? '';
+
+      if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || polazakTime.isEmpty) {
+        continue;
+      }
+
+      final key = _gpsTripKey(
+        vozacId: vozacId,
+        datumIso: datumIso,
+        grad: grad,
+        polazakTime: polazakTime,
+      );
+      gpsTripByKey[key] = trip;
+    }
+
     v3GpsRasporedCache.clear();
     for (final entry in operativnaNedeljaCache.values) {
       final id = entry['id']?.toString();
-      final vozacId = entry['vozac_id'];
-      if (id == null || vozacId == null) continue;
+      final vozacId = (entry['vozac_id']?.toString() ?? '').trim();
+      if (id == null || vozacId.isEmpty) continue;
+
+      final datumIso = V3DanHelper.parseIsoDatePart(entry['datum'] as String? ?? '');
+      final grad = (entry['grad']?.toString() ?? '').trim().toUpperCase();
+      final polazakTime = _extractTimeToken(entry['dodeljeno_vreme']?.toString()) ??
+          _extractTimeToken(entry['zeljeno_vreme']?.toString()) ??
+          '';
+
+      final tripKey = polazakTime.isEmpty
+          ? null
+          : _gpsTripKey(
+              vozacId: vozacId,
+              datumIso: datumIso,
+              grad: grad,
+              polazakTime: polazakTime,
+            );
+      final trip = tripKey != null ? gpsTripByKey[tripKey] : null;
 
       final row = Map<String, dynamic>.from(entry);
       row['vreme'] = row['vreme'] ?? row['dodeljeno_vreme'] ?? row['zeljeno_vreme'];
-      row['nav_bar_type'] = row['nav_bar_type'] ?? 'zimski';
-      row['gps_status'] = row['gps_status'] ?? 'pending';
-      row['notification_sent'] = row['notification_sent'] ?? false;
+      row['polazak_vreme'] = trip?['polazak_vreme'];
+      row['nav_bar_type'] = trip?['nav_bar_type'] ?? row['nav_bar_type'] ?? 'zimski';
+      row['gps_status'] = trip?['gps_status'] ?? 'pending';
+      row['notification_sent'] = trip?['notification_sent'] ?? false;
       v3GpsRasporedCache[id] = row;
     }
   }
@@ -216,25 +278,7 @@ class V3MasterRealtimeManager {
   Future<void> _initV3Internal() async {
     debugPrint('[V3MasterRealtimeManager] ⚡ STARTED initV3()');
     try {
-      final results = await Future.wait([
-        supabase.from('v3_adrese').select().eq('aktivno', true),
-        supabase.from('v3_vozaci').select().eq('aktivno', true),
-        supabase.from('v3_vozila').select().eq('aktivno', true),
-        supabase.from('v3_putnici').select().eq('aktivno', true),
-        supabase
-            .from('v3_zahtevi')
-            .select(
-                'id, putnik_id, datum, grad, zeljeno_vreme, broj_mesta, status, napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, aktivno, created_at, updated_at, created_by, scheduled_at')
-            .eq('aktivno', true),
-        supabase.from('v3_gorivo').select().eq('aktivno', true),
-        supabase.from('v3_gorivo_promene').select(),
-        supabase.from('v3_vozac_lokacije').select(),
-        supabase.from('v3_finansije').select().eq('aktivno', true),
-        supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka'),
-        supabase.from('v3_operativna_nedelja').select(),
-        supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
-        supabase.from('v3_app_settings').select(),
-      ]);
+      final results = await _bootstrapRepository.fetchInitialData();
 
       _fillCache(adreseCache, results[0] as List);
       _fillCache(vozaciCache, results[1] as List);
@@ -247,8 +291,9 @@ class V3MasterRealtimeManager {
       _fillCache(troskoviCache, results[8] as List);
       _fillCache(pinZahteviCache, results[9] as List);
       _fillCache(operativnaNedeljaCache, results[10] as List);
-      _fillCache(kapacitetSlotsCache, results[11] as List);
-      _fillCache(appSettingsCache, results[12] as List);
+      _fillCache(gpsTripStateCache, results[11] as List);
+      _fillCache(kapacitetSlotsCache, results[12] as List);
+      _fillCache(appSettingsCache, results[13] as List);
       _rebuildGpsCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
       final globalSettings = appSettingsCache['global'];
@@ -293,6 +338,7 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_finansije', troskoviCache);
     _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
+    _setupTableRealtime('v3_gps_trip_state', gpsTripStateCache, hasActiveKey: false);
     _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
 
@@ -322,13 +368,17 @@ class V3MasterRealtimeManager {
         } else {
           cache[id] = Map<String, dynamic>.from(newRecord);
         }
-        if (table == 'v3_operativna_nedelja') {
+        if (table == 'v3_operativna_nedelja' || table == 'v3_gps_trip_state') {
           _rebuildGpsCacheFromOperativna();
         }
         if (table == 'v3_app_settings' && id == 'global') {
           _applyAppSettings(newRecord);
         }
-        _scheduleEmit(tables: {table});
+        if (table == 'v3_gps_trip_state') {
+          _scheduleEmit(tables: {table, 'v3_operativna_nedelja'});
+        } else {
+          _scheduleEmit(tables: {table});
+        }
       },
     );
   }
@@ -384,6 +434,10 @@ class V3MasterRealtimeManager {
         break;
       case 'v3_operativna_nedelja':
         operativnaNedeljaCache[id] = row;
+        _rebuildGpsCacheFromOperativna();
+        break;
+      case 'v3_gps_trip_state':
+        gpsTripStateCache[id] = row;
         _rebuildGpsCacheFromOperativna();
         break;
       case 'v3_kapacitet_slots':
@@ -444,6 +498,8 @@ class V3MasterRealtimeManager {
         return operativnaNedeljaCache;
       case 'v3_kapacitet_slots':
         return kapacitetSlotsCache;
+      case 'v3_gps_trip_state':
+        return gpsTripStateCache;
       case 'v3_app_settings':
         return appSettingsCache;
       case 'v3_gps_raspored':

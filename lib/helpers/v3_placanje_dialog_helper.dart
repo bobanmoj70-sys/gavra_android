@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../models/v3_finansije.dart';
-import '../models/v3_putnik_arhiva.dart';
+import '../models/v3_uplata_arhiva.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
-import '../services/v3/v3_putnici_arhiva_service.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_uplate_arhiva_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_audit_actor.dart';
 
 class V3PlacanjeRezultat {
   final double iznos;
@@ -271,8 +272,8 @@ class V3PlacanjeDialogHelper {
 
       await V3FinansijeService.addUnos(unos);
 
-      await V3PutniciArhivaService.addZapis(
-        V3PutnikArhiva(
+      await V3UplateArhivaService.addZapis(
+        V3UplataArhiva(
           id: '',
           putnikId: putnikId,
           putnikImePrezime: imePrezime,
@@ -282,8 +283,8 @@ class V3PlacanjeDialogHelper {
           zaGodinu: rezultat.godina,
           vozacId: vozac.id,
           vozacImePrezime: vozac.imePrezime,
-          createdBy: 'vozac:${vozac.id}',
-          updatedBy: 'vozac:${vozac.id}',
+          createdBy: V3AuditActor.vozac(vozac.id),
+          updatedBy: V3AuditActor.vozac(vozac.id),
         ),
       );
 
@@ -293,7 +294,7 @@ class V3PlacanjeDialogHelper {
           placeniMesec: rezultat.mesec,
           placenaGodina: rezultat.godina,
         );
-        await V3PutnikService.addUpdatePutnik(azuriran, updatedBy: 'vozac:${vozac.id}');
+        await V3PutnikService.addUpdatePutnik(azuriran, updatedBy: V3AuditActor.vozac(vozac.id));
       }
 
       if (context.mounted) {

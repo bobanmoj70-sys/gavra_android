@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_app_settings_service.dart';
 import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
@@ -53,15 +54,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   Future<Map<String, dynamic>> _loadUpdateSettings() async {
     try {
-      final row = await supabase
-          .from('v3_app_settings')
-          .select(
+      return await V3AppSettingsService.loadGlobal(
+        selectColumns:
             'latest_version_android, min_supported_version_android, force_update_android, store_url_android, '
             'latest_version_ios, min_supported_version_ios, force_update_ios, store_url_ios',
-          )
-          .eq('id', 'global')
-          .maybeSingle();
-      return row ?? <String, dynamic>{};
+      );
     } catch (e) {
       debugPrint('[AdminScreen] Greška pri učitavanju update settings: $e');
       return <String, dynamic>{};
@@ -115,17 +112,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   Future<void> _openCustomScheduleEditor() async {
     try {
-      final row = await supabase
-          .from('v3_app_settings')
-          .select('bc_custom, vs_custom, bc_custom_by_day, vs_custom_by_day')
-          .eq('id', 'global')
-          .maybeSingle();
+      final row = await V3AppSettingsService.loadGlobal(
+        selectColumns: 'bc_custom, vs_custom, bc_custom_by_day, vs_custom_by_day',
+      );
       if (!mounted) return;
 
-      final bcCurrent = (row?['bc_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
-      final vsCurrent = (row?['vs_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
-      final bcByDayCurrent = _parseByDaySchedule(row?['bc_custom_by_day'], bcCurrent);
-      final vsByDayCurrent = _parseByDaySchedule(row?['vs_custom_by_day'], vsCurrent);
+      final bcCurrent = (row['bc_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+      final vsCurrent = (row['vs_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+      final bcByDayCurrent = _parseByDaySchedule(row['bc_custom_by_day'], bcCurrent);
+      final vsByDayCurrent = _parseByDaySchedule(row['vs_custom_by_day'], vsCurrent);
 
       final bcCtrls = {
         for (final day in V3DanHelper.workdayNames)
@@ -217,12 +212,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
                           setModalState(() => isSaving = true);
                           try {
-                            await supabase.from('v3_app_settings').update({
+                            await V3AppSettingsService.updateGlobal({
                               'bc_custom': bcNorm,
                               'vs_custom': vsNorm,
                               'bc_custom_by_day': bcByDayNorm,
                               'vs_custom_by_day': vsByDayNorm,
-                            }).eq('id', 'global');
+                            });
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
                             ScaffoldMessenger.of(this.context).showSnackBar(
@@ -309,8 +304,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       setModalState(() => isSaving = true);
       var keepModalOpen = true;
       try {
-        await supabase.from('v3_app_settings').upsert({
-          'id': 'global',
+        await V3AppSettingsService.upsertGlobal({
           'latest_version_android': latestAndroid,
           'min_supported_version_android': minAndroid,
           'force_update_android': forceAndroid,
@@ -1259,20 +1253,20 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               try {
                                 if (action == 'now') {
                                   navBarTypeNotifier.value = val;
-                                  await supabase.from('v3_app_settings').update({
+                                  await V3AppSettingsService.updateGlobal({
                                     'nav_bar_type': val,
                                     'nav_bar_type_next': null,
                                     'nav_bar_type_effective_at': null,
-                                  }).eq('id', 'global');
+                                  });
                                   debugPrint('[AdminScreen] nav_bar_type sačuvan odmah: $val');
                                 } else {
                                   final now = DateTime.now();
                                   final sutraPocetak =
                                       DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
-                                  await supabase.from('v3_app_settings').update({
+                                  await V3AppSettingsService.updateGlobal({
                                     'nav_bar_type_next': val,
                                     'nav_bar_type_effective_at': sutraPocetak.toIso8601String(),
-                                  }).eq('id', 'global');
+                                  });
                                   debugPrint('[AdminScreen] nav_bar_type zakazan od sutra: $val @ $sutraPocetak');
                                 }
                               } catch (e) {

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import '../../globals.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_vozac_lokacija_repository.dart';
 
 /// Model for driver location update metadata
 class V3VozacLokacijaUpdate {
@@ -34,15 +34,13 @@ class V3VozacLokacijaUpdate {
 /// Targeted at the `v3_vozac_lokacije` table.
 class V3VozacLokacijaService {
   V3VozacLokacijaService._();
+  static final V3VozacLokacijaRepository _repo = V3VozacLokacijaRepository();
 
   /// Updates driver's location in the database using Fire-and-Forget.
   /// Poziva se često iz GPS stream-a i koristi se za ETA/status prikaz.
   static Future<void> updateLokacija(V3VozacLokacijaUpdate update) async {
     try {
-      await supabase.from('v3_vozac_lokacije').upsert(
-            update.toJson(),
-            onConflict: 'vozac_id',
-          );
+      await _repo.upsert(update.toJson());
     } catch (e) {
       debugPrint('[V3VozacLokacijaService] updateLokacija error: $e');
       // Ne rethrow - GPS pozivi su fire-and-forget
@@ -52,7 +50,7 @@ class V3VozacLokacijaService {
   /// Sets driver's active status. When deactivated, the marker disappears for passengers.
   static Future<void> postaviAktivnost(String vozacId, bool aktivno) async {
     try {
-      await supabase.from('v3_vozac_lokacije').update({'aktivno': aktivno}).eq('vozac_id', vozacId);
+      await _repo.updateByVozacId(vozacId, {'aktivno': aktivno});
     } catch (e) {
       debugPrint('[V3VozacLokacijaService] postaviAktivnost error: $e');
     }

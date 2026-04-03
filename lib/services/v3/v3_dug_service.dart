@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../../globals.dart';
 import '../../models/v3_dug.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_operativna_nedelja_repository.dart';
 
 /// V3DugService - Upravljanje dugovima/naplatama iz v3_operativna_nedelja.
 /// Tabela v3_dugovi ne postoji - dugovi se prate kroz naplata_status u v3_operativna_nedelja.
 class V3DugService {
   V3DugService._();
+  static final V3OperativnaNedeljaRepository _operativnaRepo = V3OperativnaNedeljaRepository();
 
   /// Vraca sve nenaplacene operacije kao listu dugova.
   /// Samo za dnevne putnike i posiljke koji su pokupljeni — oni placaju po pokupljenju.
@@ -48,11 +50,11 @@ class V3DugService {
   static Future<void> markAsPaid(String operacijaId, {double iznos = 0}) async {
     try {
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
-      await supabase.from('v3_operativna_nedelja').update({
+      await _operativnaRepo.updateById(operacijaId, {
         'naplata_status': 'placeno',
         'iznos_naplacen': iznos,
         'vreme_placen': DateTime.now().toIso8601String(),
-      }).eq('id', operacijaId);
+      });
     } catch (e) {
       debugPrint('[V3DugService] markAsPaid error: $e');
       rethrow;

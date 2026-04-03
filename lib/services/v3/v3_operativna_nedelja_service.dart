@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
+import '../../utils/v3_audit_actor.dart';
 import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_string_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_operativna_nedelja_repository.dart';
 
 class V3OperativnaNedeljaEntry {
   final String id;
@@ -133,6 +135,17 @@ class V3OperativnaNedeljaEntry {
 
 class V3OperativnaNedeljaService {
   V3OperativnaNedeljaService._();
+  static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
+
+  static Future<void> _updateById(
+    String id,
+    Map<String, dynamic> payload,
+  ) async {
+    final row = await _repo.updateByIdReturningMaybeSingle(id, payload);
+    if (row != null) {
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
+    }
+  }
 
   static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByFilter({
     required String grad,
@@ -226,9 +239,9 @@ class V3OperativnaNedeljaService {
   }) async {
     try {
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
-      await supabase.from('v3_operativna_nedelja').update({
+      await _repo.updateById(id, {
         'status_final': status,
-      }).eq('id', id);
+      });
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] Update status error: $e');
       rethrow;
@@ -241,17 +254,12 @@ class V3OperativnaNedeljaService {
     String? naplatioVozacId,
   }) async {
     try {
-      final row = await supabase
-          .from('v3_operativna_nedelja')
-          .update({
-            'naplata_status': 'placeno',
-            'iznos_naplacen': iznos,
-            'vreme_placen': DateTime.now().toIso8601String(),
-            if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
-          })
-          .eq('id', id)
-          .select()
-          .single();
+      final row = await _repo.updateByIdReturningSingle(id, {
+        'naplata_status': 'placeno',
+        'iznos_naplacen': iznos,
+        'vreme_placen': DateTime.now().toIso8601String(),
+        if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
+      });
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] updateNaplata error: $e');
@@ -314,7 +322,7 @@ class V3OperativnaNedeljaService {
   }
 
   /// Direktan INSERT u v3_operativna_nedelja — za vozača koji dodaje putnika.
-  /// Upisuje: zeljeno_vreme, dodeljeno_vreme, status_final='odobreno', created_by='vozac:Ime'.
+  /// Upisuje: zeljeno_vreme, dodeljeno_vreme, status_final='odobreno', created_by UUID (ako je dostupan).
   /// Ako već postoji aktivan zapis za isti putnik+datum+grad → UPDATE vreme+status.
   static Future<void> createOrUpdateByVozac({
     required String putnikId,
@@ -323,12 +331,14 @@ class V3OperativnaNedeljaService {
     required String zeljenoVreme, // HH:mm
     required String dodeljivoVreme, // HH:mm
     required int brojMesta,
-    required String createdBy, // 'vozac:Ime'
+    String? createdBy,
     String? napomena,
     bool? koristiSekundarnu,
     String? adresaIdOverride,
   }) async {
     try {
+      final actor = V3AuditActor.normalize(createdBy);
+
       // Provjeri postoji li već aktivan zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
@@ -338,18 +348,18 @@ class V3OperativnaNedeljaService {
 
       if (postojeci.isNotEmpty) {
         // UPDATE: prepiši vreme i status
-        await supabase.from('v3_operativna_nedelja').update({
+        await _repo.updateById(postojeci.first['id'] as String, {
           'zeljeno_vreme': zeljenoVreme,
           'dodeljeno_vreme': dodeljivoVreme,
           'status_final': 'odobreno',
-          'updated_by': createdBy,
+          if (actor != null) 'updated_by': actor,
           if (napomena != null) 'napomena': napomena,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_id_override': adresaIdOverride, // null = briše override
-        }).eq('id', postojeci.first['id'] as String);
+        });
       } else {
         // INSERT direktno u operativna_nedelja
-        await supabase.from('v3_operativna_nedelja').insert({
+        await _repo.insert({
           'putnik_id': putnikId,
           'datum': datum,
           'grad': grad,
@@ -359,7 +369,7 @@ class V3OperativnaNedeljaService {
           'status_final': 'odobreno',
           'aktivno': true,
           'pokupljen': false,
-          'created_by': createdBy,
+          if (actor != null) 'created_by': actor,
           if (napomena != null) 'napomena': napomena,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
@@ -369,5 +379,94 @@ class V3OperativnaNedeljaService {
       debugPrint('[V3OperativnaNedeljaService] createOrUpdateByVozac error: $e');
       rethrow;
     }
+  }
+
+  static Future<void> assignVozacBulkByIds({
+    required List<String> operativnaIds,
+    required String vozacId,
+    required String navBarType,
+    String? updatedBy,
+  }) async {
+    if (operativnaIds.isEmpty) return;
+    final actor = V3AuditActor.normalize(updatedBy);
+
+    for (final id in operativnaIds) {
+      await _updateById(id, {
+        'vozac_id': vozacId,
+        'nav_bar_type': navBarType,
+        if (actor != null) 'updated_by': actor,
+      });
+    }
+  }
+
+  static Future<void> removeVozacByTermin({
+    required String datumIso,
+    required String grad,
+    required String dodeljenoVreme,
+    String? updatedBy,
+  }) async {
+    final actor = V3AuditActor.normalize(updatedBy);
+    final updatedRows = await _repo.updateByTerminReturningList(
+      datumIso: datumIso,
+      grad: grad,
+      dodeljenoVreme: dodeljenoVreme,
+      payload: {
+        'vozac_id': null,
+        'route_order': null,
+        if (actor != null) 'updated_by': actor,
+      },
+    );
+
+    for (final row in updatedRows) {
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
+    }
+  }
+
+  static Future<void> assignVozacByOperativnaId({
+    required String operativnaId,
+    required String vozacId,
+    required String navBarType,
+    String? updatedBy,
+  }) async {
+    final actor = V3AuditActor.normalize(updatedBy);
+    await _updateById(operativnaId, {
+      'vozac_id': vozacId,
+      'nav_bar_type': navBarType,
+      if (actor != null) 'updated_by': actor,
+    });
+  }
+
+  static Future<void> removeVozacByPutnikAndTermin({
+    required String putnikId,
+    required String grad,
+    required String dodeljenoVreme,
+    required String datumIso,
+    String? updatedBy,
+  }) async {
+    final actor = V3AuditActor.normalize(updatedBy);
+    final updatedRows = await _repo.updateByPutnikGradDodeljenoDatumReturningList(
+      putnikId: putnikId,
+      grad: grad,
+      dodeljenoVreme: dodeljenoVreme,
+      datumIso: datumIso,
+      payload: {
+        'vozac_id': null,
+        'route_order': null,
+        if (actor != null) 'updated_by': actor,
+      },
+    );
+
+    for (final row in updatedRows) {
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
+    }
+  }
+
+  static Future<void> updateRouteOrderById({
+    required String operativnaId,
+    int? routeOrder,
+  }) async {
+    await _updateById(operativnaId, {
+      'route_order': routeOrder,
+    });
   }
 }

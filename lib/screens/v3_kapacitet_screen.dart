@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_kapacitet_slots_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -85,22 +86,12 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
   Future<bool> _setKapacitet(String grad, String vreme, int maxMesta) async {
     try {
       final datumIso = _selectedDatumIso;
-      final response = await supabase
-          .from('v3_kapacitet_slots')
-          .upsert(
-            {
-              'grad': grad,
-              'vreme': vreme,
-              'datum': datumIso,
-              'max_mesta': maxMesta,
-              'aktivno': true,
-              'updated_at': DateTime.now().toIso8601String(),
-            },
-            onConflict: 'grad,vreme,datum',
-          )
-          .select()
-          .single();
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet_slots', response);
+      await V3KapacitetSlotsService.upsertSlot(
+        grad: grad,
+        vreme: vreme,
+        datumIso: datumIso,
+        maxMesta: maxMesta,
+      );
       return true;
     } catch (e) {
       debugPrint('[KapacitetScreen] setKapacitet error: $e');
@@ -250,23 +241,13 @@ Widget _kapacitetGradTab(
                     ? () async {
                         final newVal = maxMesta - 1;
                         final slotId = _getSlotId(grad, vreme, datumIso);
-                        final response = await supabase
-                            .from('v3_kapacitet_slots')
-                            .upsert(
-                              {
-                                if (slotId != null) 'id': slotId,
-                                'grad': grad,
-                                'vreme': vreme,
-                                'datum': datumIso,
-                                'max_mesta': newVal,
-                                'aktivno': true,
-                                'updated_at': DateTime.now().toIso8601String(),
-                              },
-                              onConflict: 'grad,vreme,datum',
-                            )
-                            .select()
-                            .single();
-                        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet_slots', response);
+                        await V3KapacitetSlotsService.upsertSlot(
+                          grad: grad,
+                          vreme: vreme,
+                          datumIso: datumIso,
+                          maxMesta: newVal,
+                          id: slotId,
+                        );
                       }
                     : null,
                 icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
@@ -288,23 +269,13 @@ Widget _kapacitetGradTab(
                     ? () async {
                         final newVal = (maxMesta ?? 0) + 1;
                         final slotId = _getSlotId(grad, vreme, datumIso);
-                        final response = await supabase
-                            .from('v3_kapacitet_slots')
-                            .upsert(
-                              {
-                                if (slotId != null) 'id': slotId,
-                                'grad': grad,
-                                'vreme': vreme,
-                                'datum': datumIso,
-                                'max_mesta': newVal,
-                                'aktivno': true,
-                                'updated_at': DateTime.now().toIso8601String(),
-                              },
-                              onConflict: 'grad,vreme,datum',
-                            )
-                            .select()
-                            .single();
-                        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet_slots', response);
+                        await V3KapacitetSlotsService.upsertSlot(
+                          grad: grad,
+                          vreme: vreme,
+                          datumIso: datumIso,
+                          maxMesta: newVal,
+                          id: slotId,
+                        );
                       }
                     : null,
                 icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),

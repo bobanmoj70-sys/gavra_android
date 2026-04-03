@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:gavra_android/models/v3_gorivo.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'repositories/v3_gorivo_repository.dart';
 
 class V3GorivoService {
-  static final _supabase = Supabase.instance.client;
+  static final V3GorivoRepository _repo = V3GorivoRepository();
 
   /// Dohvata stanje pumpe iz cache-a (tabela: v3_gorivo)
   static V3PumpaStanje? getStanjeSync() {
@@ -38,10 +39,10 @@ class V3GorivoService {
   /// Ažurira trenutno stanje pumpe u bazi
   static Future<bool> updateStanje(String id, double novoStanje, double noviBrojac) async {
     try {
-      await _supabase.from('v3_gorivo').update({
+      await _repo.updateById(id, {
         'trenutno_stanje_litri': novoStanje,
         'brojac_pistolj_litri': noviBrojac,
-      }).eq('id', id);
+      });
 
       return true;
     } catch (e) {
@@ -53,9 +54,9 @@ class V3GorivoService {
   /// Ažurira trenutni nivo rezervoara u bazi
   static Future<bool> updateRezervoar(String id, double novoLitara) async {
     try {
-      await _supabase.from('v3_gorivo').update({
+      await _repo.updateById(id, {
         'trenutno_stanje_litri': novoLitara,
-      }).eq('id', id);
+      });
 
       return true;
     } catch (e) {

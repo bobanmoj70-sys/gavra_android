@@ -848,7 +848,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       final routeOrder = _parseRouteOrder(item['route_order']);
 
       updates.add(
-        supabase.from('v3_operativna_nedelja').update({'route_order': routeOrder}).eq('id', entryId).then((_) => null),
+        V3OperativnaNedeljaService.updateRouteOrderById(
+          operativnaId: entryId,
+          routeOrder: routeOrder,
+        ),
       );
     }
 
@@ -858,14 +861,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   /// Dobija trenutnu GPS poziciju vozača iz baze podataka
   Future<Map<String, dynamic>?> _getCurrentDriverPosition(String vozacId) async {
     try {
-      final response = await Supabase.instance.client
-          .from('v3_vozac_lokacije')
-          .select('lat, lng, updated_at')
-          .eq('vozac_id', vozacId)
-          .eq('aktivno', true)
-          .order('updated_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+      final response = V3VozacLokacijaService.getVozacLokacijaSync(vozacId, onlyActive: true);
 
       final lat = (response?['lat'] as num?)?.toDouble() ?? double.tryParse(response?['lat']?.toString() ?? '');
       final lng = (response?['lng'] as num?)?.toDouble() ?? double.tryParse(response?['lng']?.toString() ?? '');

@@ -8,10 +8,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../globals.dart';
 import '../../models/v3_putnik.dart';
+import '../../utils/v3_audit_actor.dart';
 import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_stream_utils.dart';
+import 'repositories/v3_operativna_nedelja_repository.dart';
+import 'v3_gps_trip_state_service.dart';
 import 'v3_vozac_lokacija_service.dart';
 
 /// V3 Foreground GPS Service sa Persistent Notification
@@ -33,6 +35,7 @@ class V3ForegroundGpsService {
   static DateTime? _lastHeartbeatSentAt;
   static DateTime? _lastAutoStopCheckAt;
   static bool _autoStopInProgress = false;
+  static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
 
   static String _normalizePolazakTime(String? value) {
     if (value == null || value.trim().isEmpty) return '';
@@ -66,51 +69,14 @@ class V3ForegroundGpsService {
     String? datumIso,
   }) async {
     try {
-      final gradUp = grad.trim().toUpperCase();
-      final timeNorm = _normalizePolazakTime(polazakVreme);
-      if (gradUp.isEmpty || timeNorm.isEmpty) return;
-
-      final now = DateTime.now();
-      final fromDate = datumIso ?? DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
-      final toDate = datumIso ??
-          DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
-
-      final rowsRaw = await supabase
-          .from('v3_operativna_nedelja')
-          .select('id, datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, aktivno, putnik_id')
-          .eq('vozac_id', vozacId)
-          .eq('aktivno', true)
-          .gte('datum', fromDate)
-          .lte('datum', toDate);
-
-      final rows = (rowsRaw as List).cast<Map<String, dynamic>>();
-
-      String? rowTime(Map<String, dynamic> row) {
-        final raw = row['dodeljeno_vreme']?.toString() ?? row['zeljeno_vreme']?.toString();
-        return _extractTimeToken(raw);
-      }
-
-      final targetIds = rows
-          .where((row) {
-            if (row['putnik_id'] == null) return false;
-            final status = row['status_final']?.toString() ?? '';
-            if (V3StatusFilters.isCanceledOrRejected(status)) return false;
-            final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
-            if (rowGrad != gradUp) return false;
-            final rt = rowTime(row);
-            return rt == timeNorm;
-          })
-          .map((row) => row['id']?.toString())
-          .whereType<String>()
-          .toList();
-
-      if (targetIds.isEmpty) return;
-
-      await supabase.from('v3_operativna_nedelja').update({
-        'gps_status': gpsStatus,
-        'updated_by': 'app:foreground_gps_sync',
-        if (gpsStatus == 'tracking') 'notification_sent': true,
-      }).inFilter('id', targetIds);
+      await V3GpsTripStateService.updateTrackingStatus(
+        vozacId: vozacId,
+        grad: grad,
+        polazakVreme: polazakVreme,
+        gpsStatus: gpsStatus,
+        datumIso: datumIso,
+        updatedBy: V3AuditActor.cron('app_foreground_gps_sync'),
+      );
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] syncTrackingStatus error: $e');
     }
@@ -530,15 +496,13 @@ class V3ForegroundGpsService {
       final toDate =
           DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
 
-      final rowsRaw = await supabase
-          .from('v3_operativna_nedelja')
-          .select('id, datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, aktivno, putnik_id, pokupljen')
-          .eq('vozac_id', vozacId)
-          .eq('aktivno', true)
-          .gte('datum', fromDate)
-          .lte('datum', toDate);
+      final rowsRaw = await _operativnaRepository.listByVozacAndDateRange(
+        vozacId: vozacId,
+        fromDate: fromDate,
+        toDate: toDate,
+      );
 
-      final rows = (rowsRaw as List).cast<Map<String, dynamic>>();
+      final rows = (rowsRaw).cast<Map<String, dynamic>>();
 
       String? rowTime(Map<String, dynamic> row) {
         final raw = row['dodeljeno_vreme']?.toString() ?? row['zeljeno_vreme']?.toString();

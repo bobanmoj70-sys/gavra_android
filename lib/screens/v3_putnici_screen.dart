@@ -9,6 +9,7 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_audit_actor.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -318,7 +319,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
   // ─── Toggle aktivno ───────────────────────────────────────────────────────
   Future<void> _toggleAktivno(V3Putnik p) async {
     try {
-      await supabase.from('v3_putnici').update({'aktivno': !p.aktivno}).eq('id', p.id);
+      await V3PutnikService.setAktivno(id: p.id, aktivno: !p.aktivno);
       if (mounted) {
         V3AppSnackBar.success(context, p.aktivno ? '${p.imePrezime} deaktiviran' : '${p.imePrezime} aktiviran');
       }
@@ -653,9 +654,11 @@ class _PutnikCard extends StatelessWidget {
           onPressed: () async {
             Navigator.pop(context);
             try {
-              await supabase
-                  .from('v3_putnici')
-                  .update({'pin': ctrl.text.isEmpty ? null : ctrl.text}).eq('id', putnik.id);
+              await V3PutnikService.updatePinById(
+                putnikId: putnik.id,
+                pin: ctrl.text,
+                updatedBy: V3AuditActor.cron('admin_pin_edit'),
+              );
               if (context.mounted) V3AppSnackBar.success(context, '✅ PIN sačuvan');
             } catch (e) {
               if (context.mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
@@ -749,7 +752,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         placeniMesec: widget.existing?.placeniMesec,
         placenaGodina: widget.existing?.placenaGodina,
       );
-      await V3PutnikService.addUpdatePutnik(putnik, createdBy: 'admin:sistem');
+      await V3PutnikService.addUpdatePutnik(putnik, createdBy: V3AuditActor.cron('admin'));
       if (mounted) {
         V3AppSnackBar.success(context, widget.existing == null ? '✅ Putnik dodan' : '✅ Putnik sačuvan');
         Navigator.pop(context);

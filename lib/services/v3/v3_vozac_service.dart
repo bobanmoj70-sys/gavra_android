@@ -4,12 +4,26 @@ import '../../globals.dart';
 import '../../models/v3_vozac.dart';
 import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_vozac_repository.dart';
 
 /// Service for V3 drivers (`v3_vozaci`).
 class V3VozacService {
   V3VozacService._();
+  static final V3VozacRepository _repo = V3VozacRepository();
 
   static V3Vozac? currentVozac;
+  static final RegExp _uuidRegex = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
+
+  static String? _normalizeAuditUuid(String? raw) {
+    final input = (raw ?? '').trim();
+    if (input.isEmpty) return null;
+
+    final candidate = input.contains(':') ? input.split(':').last.trim() : input;
+    if (_uuidRegex.hasMatch(candidate)) return candidate.toLowerCase();
+    return null;
+  }
 
   static List<V3Vozac> getAllVozaci() {
     final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
@@ -38,11 +52,23 @@ class V3VozacService {
     }
   }
 
+  static Future<String?> getSifraByIme(String vozacIme) async {
+    final ime = vozacIme.trim();
+    if (ime.isEmpty) return null;
+
+    final fromCache = getVozacByName(ime)?.sifra;
+    if (fromCache != null && fromCache.isNotEmpty) return fromCache;
+
+    final row = await _repo.getSifraByIme(ime);
+    return row == null ? null : row['sifra']?.toString();
+  }
+
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
+      final actorUuid = _normalizeAuditUuid(currentVozac?.id);
       if (vozac.id.isNotEmpty) {
         // Edit — ne diramo push_token
-        await supabase.from('v3_vozaci').update({
+        await _repo.updateById(vozac.id, {
           'ime_prezime': vozac.imePrezime,
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
@@ -50,11 +76,11 @@ class V3VozacService {
           'sifra': vozac.sifra,
           'boja': vozac.boja,
           'aktivno': vozac.aktivno,
-          'updated_by': 'admin:sistem',
-        }).eq('id', vozac.id);
+          if (actorUuid != null) 'updated_by': actorUuid,
+        });
       } else {
         // Add — insert novog vozača (bez push_token, dobija ga pri prvom loginu)
-        await supabase.from('v3_vozaci').insert({
+        await _repo.insert({
           'ime_prezime': vozac.imePrezime,
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
@@ -62,6 +88,8 @@ class V3VozacService {
           'sifra': vozac.sifra,
           'boja': vozac.boja,
           'aktivno': vozac.aktivno,
+          if (actorUuid != null) 'created_by': actorUuid,
+          if (actorUuid != null) 'updated_by': actorUuid,
         });
       }
     } catch (e) {
@@ -71,12 +99,63 @@ class V3VozacService {
   }
 
   static Future<void> deactivateVozac(String id) async {
+    await setAktivno(id: id, aktivno: false);
+  }
+
+  static Future<void> setAktivno({
+    required String id,
+    required bool aktivno,
+    String? updatedBy,
+  }) async {
     try {
-      await supabase.from('v3_vozaci').update({'aktivno': false, 'updated_by': 'admin:sistem'}).eq('id', id);
+      final actorUuid = _normalizeAuditUuid(updatedBy) ?? _normalizeAuditUuid(currentVozac?.id);
+      await _repo.updateById(id, {
+        'aktivno': aktivno,
+        if (actorUuid != null) 'updated_by': actorUuid,
+      });
     } catch (e) {
-      debugPrint('[V3VozacService] Deactivate error: $e');
+      debugPrint('[V3VozacService] setAktivno error: $e');
       rethrow;
     }
+  }
+
+  static Future<void> updatePushToken({
+    required String vozacId,
+    String? pushToken,
+  }) async {
+    try {
+      final payload = <String, dynamic>{};
+      if (pushToken != null && pushToken.isNotEmpty) {
+        payload['push_token'] = pushToken;
+      }
+      if (payload.isEmpty) return;
+
+      await _repo.updateById(vozacId, payload);
+    } catch (e) {
+      debugPrint('[V3VozacService] updatePushToken error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> updateSifraByIme({
+    required String imePrezime,
+    required String novaSifra,
+  }) async {
+    final ime = imePrezime.trim();
+    if (ime.isEmpty) return;
+    await _repo.updateByImePrezime(ime, {'sifra': novaSifra});
+  }
+
+  static Future<bool> hasActiveVozacWithPushToken({
+    required String vozacId,
+    required String pushToken,
+  }) async {
+    final id = vozacId.trim();
+    final token = pushToken.trim();
+    if (id.isEmpty || token.isEmpty) return false;
+
+    final row = await _repo.getActiveByIdAndPushToken(vozacId: id, pushToken: token);
+    return row != null;
   }
 
   /// Vraća boju vozača raspoređenog za dati dan/grad/vreme.

@@ -13,6 +13,7 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_audit_actor.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -54,7 +55,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       case 'obrada':
         return 3;
       case 'alternativa':
-      case 'ponuda':
         return 2;
       case 'otkazano':
         return 1;
@@ -251,7 +251,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           novoVreme: validNovoVreme,
           brojMesta: brojMesta,
           koristiSekundarnu: koristiSekundarnu,
-          updatedBy: 'putnik:$putnikId',
+          updatedBy: V3AuditActor.putnik(putnikId),
         );
         if (mounted) {
           V3AppSnackBar.success(context,
@@ -562,7 +562,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return const SizedBox.shrink();
     final rm = V3MasterRealtimeManager.instance;
-    final operativniTermini = rm.operativnaNedeljaCache.values
+    final operativniTermini = rm.v3GpsRasporedCache.values
         .where((r) => (r['putnik_id']?.toString() ?? '') == putnikId)
         .where((r) => r['aktivno'] != false)
         .where((r) => (r['vozac_id'] as String?) != null)
@@ -646,7 +646,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final putnikWaypoints = <({double lat, double lng})>[];
 
     if (mojRouteOrder != null && mojRouteOrder > 1) {
-      final prethodnici = rm.operativnaNedeljaCache.values.where((r) {
+      final prethodnici = rm.v3GpsRasporedCache.values.where((r) {
         if (r['vozac_id']?.toString() != vozacId) return false;
         if (r['datum']?.toString() != row['datum']?.toString()) return false;
         if ((r['grad'] as String? ?? '').toUpperCase() != grad) return false;

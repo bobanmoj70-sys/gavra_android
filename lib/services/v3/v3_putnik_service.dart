@@ -5,13 +5,27 @@ import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
 import '../../models/v3_zahtev.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_putnik_repository.dart';
 
 /// Service for V3 passengers (unified `v3_putnici` table).
 class V3PutnikService {
   V3PutnikService._();
+  static final V3PutnikRepository _repo = V3PutnikRepository();
 
   static V3Vozac? currentVozac;
   static Map<String, dynamic>? currentPutnik;
+  static final RegExp _uuidRegex = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
+
+  static String? _normalizeAuditUuid(String? raw) {
+    final input = (raw ?? '').trim();
+    if (input.isEmpty) return null;
+
+    final candidate = input.contains(':') ? input.split(':').last.trim() : input;
+    if (_uuidRegex.hasMatch(candidate)) return candidate.toLowerCase();
+    return null;
+  }
 
   static List<V3Putnik> getPutniciByTip(String tip) {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
@@ -27,14 +41,76 @@ class V3PutnikService {
     return data != null ? V3Putnik.fromJson(data) : null;
   }
 
+  static Future<Map<String, dynamic>?> getByPhoneOrCache(String normalizedPhone) async {
+    final needle = normalizedPhone.trim();
+    if (needle.isEmpty) return null;
+
+    final cache = V3MasterRealtimeManager.instance.putniciCache.values;
+    for (final row in cache) {
+      final telefon1 = row['telefon_1']?.toString().trim() ?? '';
+      final telefon2 = row['telefon_2']?.toString().trim() ?? '';
+      if (telefon1 == needle || (telefon2.isNotEmpty && telefon2 == needle)) {
+        return Map<String, dynamic>.from(row);
+      }
+    }
+
+    final rows = await _repo.listByPhone(needle);
+    if (rows.isNotEmpty) {
+      return Map<String, dynamic>.from(rows.first as Map);
+    }
+    return null;
+  }
+
+  static Future<String?> getPinById(String putnikId) async {
+    final id = putnikId.trim();
+    if (id.isEmpty) return null;
+
+    final row = await _repo.getPinById(id);
+    return row == null ? null : row['pin']?.toString();
+  }
+
+  static Future<void> updatePinById({
+    required String putnikId,
+    String? pin,
+    String? updatedBy,
+  }) async {
+    final id = putnikId.trim();
+    if (id.isEmpty) return;
+
+    final actorUuid = _normalizeAuditUuid(updatedBy) ?? _normalizeAuditUuid(currentVozac?.id);
+    await _repo.updateById(id, {
+      'pin': (pin == null || pin.trim().isEmpty) ? null : pin.trim(),
+      if (actorUuid != null) 'updated_by': actorUuid,
+    });
+  }
+
+  static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
+    final id = putnikId.trim();
+    if (id.isEmpty) return null;
+
+    final row = await _repo.getActiveById(id);
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
+  static Future<Map<String, dynamic>?> getActiveByPushToken(String token) async {
+    final safeToken = token.trim();
+    if (safeToken.isEmpty) return null;
+
+    final row = await _repo.getActiveByPushToken(safeToken);
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
   static Future<void> addUpdatePutnik(V3Putnik putnik, {String? createdBy, String? updatedBy}) async {
     try {
       final data = putnik.toJson();
-      if (putnik.id.isEmpty) data.remove('id');
-      if (createdBy != null && putnik.id.isEmpty) data['created_by'] = createdBy;
-      data['updated_by'] = updatedBy ?? createdBy ?? 'admin:sistem';
+      final createdByUuid = _normalizeAuditUuid(createdBy);
+      final updatedByUuid = _normalizeAuditUuid(updatedBy) ?? createdByUuid;
 
-      await supabase.from('v3_putnici').upsert(data);
+      if (putnik.id.isEmpty) data.remove('id');
+      if (putnik.id.isEmpty && createdByUuid != null) data['created_by'] = createdByUuid;
+      if (updatedByUuid != null) data['updated_by'] = updatedByUuid;
+
+      await _repo.upsert(data);
     } catch (e) {
       debugPrint('[V3PutnikService] Error: $e');
       rethrow;
@@ -42,10 +118,49 @@ class V3PutnikService {
   }
 
   static Future<void> deactivatePutnik(String id) async {
+    await setAktivno(id: id, aktivno: false);
+  }
+
+  static Future<void> setAktivno({
+    required String id,
+    required bool aktivno,
+    String? updatedBy,
+  }) async {
     try {
-      await supabase.from('v3_putnici').update({'aktivno': false}).eq('id', id);
+      final actorUuid = _normalizeAuditUuid(updatedBy) ?? _normalizeAuditUuid(currentVozac?.id);
+      await _repo.updateById(id, {
+        'aktivno': aktivno,
+        if (actorUuid != null) 'updated_by': actorUuid,
+      });
     } catch (e) {
-      debugPrint('[V3PutnikService] Deactivate error: $e');
+      debugPrint('[V3PutnikService] setAktivno error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, String>> updatePushTokensOnLogin({
+    required String putnikId,
+    required String token,
+    String? existingToken1,
+    String? existingToken2,
+  }) async {
+    try {
+      if (token.isEmpty) return const {};
+
+      if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
+        await _repo.updateById(putnikId, {'push_token': token});
+        return {'push_token': token};
+      }
+
+      if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
+        await _repo.updateById(putnikId, {'push_token_2': token});
+        return {'push_token_2': token};
+      }
+
+      await _repo.updateById(putnikId, {'push_token_2': token});
+      return {'push_token_2': token};
+    } catch (e) {
+      debugPrint('[V3PutnikService] updatePushTokensOnLogin error: $e');
       rethrow;
     }
   }

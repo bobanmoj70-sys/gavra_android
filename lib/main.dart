@@ -16,6 +16,7 @@ import 'globals.dart';
 import 'screens/v3_putnik_profil_screen.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
+import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_putnik_service.dart';
@@ -235,7 +236,7 @@ Future<void> _syncPushTokenToCurrentUser(String token) async {
   try {
     final currentVozac = V3VozacService.currentVozac;
     if (currentVozac != null) {
-      await supabase.from('v3_vozaci').update({'push_token': safeToken}).eq('id', currentVozac.id);
+      await V3VozacService.updatePushToken(vozacId: currentVozac.id, pushToken: safeToken);
       debugPrint('✅ [Push] Token sync: v3_vozaci');
       return;
     }
@@ -246,16 +247,13 @@ Future<void> _syncPushTokenToCurrentUser(String token) async {
       final token1 = currentPutnik?['push_token']?.toString();
       final token2 = currentPutnik?['push_token_2']?.toString();
 
-      if (token1 == null || token1.isEmpty || token1 == safeToken) {
-        await supabase.from('v3_putnici').update({'push_token': safeToken}).eq('id', putnikId);
-        currentPutnik?['push_token'] = safeToken;
-      } else if (token2 == null || token2.isEmpty || token2 == safeToken) {
-        await supabase.from('v3_putnici').update({'push_token_2': safeToken}).eq('id', putnikId);
-        currentPutnik?['push_token_2'] = safeToken;
-      } else {
-        await supabase.from('v3_putnici').update({'push_token_2': safeToken}).eq('id', putnikId);
-        currentPutnik?['push_token_2'] = safeToken;
-      }
+      final updated = await V3PutnikService.updatePushTokensOnLogin(
+        putnikId: putnikId,
+        token: safeToken,
+        existingToken1: token1,
+        existingToken2: token2,
+      );
+      currentPutnik?.addAll(updated);
 
       debugPrint('✅ [Push] Token sync: v3_putnici');
     }
@@ -392,16 +390,10 @@ Future<bool> _isCurrentDeviceDriverForGps(String vozacId) async {
   try {
     final token = await fcm.FirebaseMessaging.instance.getToken();
     if (token == null || token.isEmpty) return false;
-
-    final row = await supabase
-        .from('v3_vozaci')
-        .select('id')
-        .eq('id', targetVozacId)
-        .eq('push_token', token)
-        .eq('aktivno', true)
-        .maybeSingle();
-
-    return row != null;
+    return await V3VozacService.hasActiveVozacWithPushToken(
+      vozacId: targetVozacId,
+      pushToken: token,
+    );
   } catch (e) {
     debugPrint('⚠️ [GPS] Driver-device check greška: $e');
     return false;
@@ -492,13 +484,13 @@ void onNotificationTap(NotificationResponse response) async {
     final altPosle = parts[2].trim();
 
     if (actionId == 'accept_pre' && altPre.isNotEmpty) {
-      await V3ZahtevService.prihvatiPonudu(zahtevId, altPre);
+      await V3ZahtevService.prihvatiAlternativu(zahtevId, altPre);
       await _showActionFeedback('✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPre');
     } else if (actionId == 'accept_posle' && altPosle.isNotEmpty) {
-      await V3ZahtevService.prihvatiPonudu(zahtevId, altPosle);
+      await V3ZahtevService.prihvatiAlternativu(zahtevId, altPosle);
       await _showActionFeedback('✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPosle');
     } else if (actionId == 'reject') {
-      await V3ZahtevService.odbijPonudu(zahtevId);
+      await V3ZahtevService.odbijAlternativu(zahtevId);
       await _showActionFeedback('❌ Alternativa odbijena', 'Zahtev je postavljen na odbijeno.');
     } else {
       await _showActionFeedback('⚠️ Akcija nije izvršena', 'Alternativni termin nije prosleđen u notifikaciji.');
@@ -646,20 +638,14 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
     final payloadPutnikId = parts.length > 1 ? parts[1] : '';
     if ((putnikData == null) && payloadPutnikId.isNotEmpty) {
       putnikData = V3MasterRealtimeManager.instance.getPutnik(payloadPutnikId);
-      putnikData ??=
-          await supabase.from('v3_putnici').select().eq('id', payloadPutnikId).eq('aktivno', true).maybeSingle();
+      putnikData ??= await V3PutnikService.getActiveById(payloadPutnikId);
     }
 
     // 2) FCM token fallback: nađi putnika po push_token ili push_token_2
     if (putnikData == null) {
       final token = await fcm.FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) {
-        putnikData = await supabase
-            .from('v3_putnici')
-            .select()
-            .or('push_token.eq.$token,push_token_2.eq.$token')
-            .eq('aktivno', true)
-            .maybeSingle();
+        putnikData = await V3PutnikService.getActiveByPushToken(token);
       }
     }
 
@@ -707,16 +693,14 @@ Future<void> _initAppServices() async {
 
   // Učitaj nav_bar_type iz baze
   try {
-    final settings = await Supabase.instance.client
-        .from('v3_app_settings')
-        .select('nav_bar_type, nav_bar_type_next, nav_bar_type_effective_at')
-        .eq('id', 'global')
-        .maybeSingle();
+    final settings = await V3AppSettingsService.loadGlobal(
+      selectColumns: 'nav_bar_type, nav_bar_type_next, nav_bar_type_effective_at',
+    );
 
     final navType = resolveEffectiveNavBarType(
-      currentType: settings?['nav_bar_type'] as String?,
-      nextType: settings?['nav_bar_type_next'] as String?,
-      effectiveAt: settings?['nav_bar_type_effective_at'],
+      currentType: settings['nav_bar_type'] as String?,
+      nextType: settings['nav_bar_type_next'] as String?,
+      effectiveAt: settings['nav_bar_type_effective_at'],
     );
 
     if (navType != null) {

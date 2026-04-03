@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../globals.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -278,7 +277,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
 
   Future<void> _reaktivirajVozaca(V3Vozac vozac) async {
     try {
-      await supabase.from('v3_vozaci').update({'aktivno': true}).eq('id', vozac.id);
+      await V3VozacService.setAktivno(id: vozac.id, aktivno: true);
       if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} reaktiviran');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);

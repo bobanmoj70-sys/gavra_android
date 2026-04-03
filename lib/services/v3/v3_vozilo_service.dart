@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 
-import '../../globals.dart';
 import '../../models/v3_vozilo.dart';
+import '../../utils/v3_audit_actor.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_vozilo_repository.dart';
 
 /// Service for V3 vehicles (`v3_vozila`).
 class V3VoziloService {
   V3VoziloService._();
+  static final V3VoziloRepository _repo = V3VoziloRepository();
 
   static List<V3Vozilo> getAllVozila() {
     final cache = V3MasterRealtimeManager.instance.vozilaCache.values;
@@ -26,9 +28,10 @@ class V3VoziloService {
   static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();
-      data['updated_by'] = 'admin:sistem';
+      final actor = V3AuditActor.cron('admin');
+      if (actor != null) data['updated_by'] = actor;
 
-      await supabase.from('v3_vozila').upsert(data);
+      await _repo.upsert(data);
     } catch (e) {
       debugPrint('[V3VoziloService] Error: $e');
       rethrow;
@@ -37,7 +40,10 @@ class V3VoziloService {
 
   static Future<void> deactivateVozilo(String id) async {
     try {
-      await supabase.from('v3_vozila').update({'aktivno': false, 'updated_by': 'admin:sistem'}).eq('id', id);
+      final actor = V3AuditActor.cron('admin');
+      final payload = <String, dynamic>{'aktivno': false};
+      if (actor != null) payload['updated_by'] = actor;
+      await _repo.updateById(id, payload);
     } catch (e) {
       debugPrint('[V3VoziloService] Deactivate error: $e');
       rethrow;
@@ -47,7 +53,7 @@ class V3VoziloService {
   /// Ažurira kolsku knjigu vozila (samo proslijeđena polja).
   static Future<void> updateKolskaKnjiga(String voziloId, Map<String, dynamic> data) async {
     try {
-      await supabase.from('v3_vozila').update(data).eq('id', voziloId);
+      await _repo.updateById(voziloId, data);
     } catch (e) {
       debugPrint('[V3VoziloService] updateKolskaKnjiga error: $e');
       rethrow;

@@ -4,9 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../globals.dart';
+import 'repositories/v3_app_settings_repository.dart';
 
 class V3AppUpdateService {
   V3AppUpdateService._();
+
+  static final V3AppSettingsRepository _repository = V3AppSettingsRepository();
 
   static Future<void> refreshUpdateInfo({Map<String, dynamic>? appSettingsRow}) async {
     try {
@@ -16,14 +19,10 @@ class V3AppUpdateService {
       }
 
       final row = appSettingsRow ??
-          await supabase
-              .from('v3_app_settings')
-              .select(
-                'latest_version_android, force_update_android, store_url_android, '
+          await _repository.getGlobal(
+            selectColumns: 'latest_version_android, force_update_android, store_url_android, '
                 'latest_version_ios, force_update_ios, store_url_ios',
-              )
-              .eq('id', 'global')
-              .maybeSingle();
+          );
 
       if (row == null) {
         updateInfoNotifier.value = null;

@@ -1,11 +1,10 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../models/v3_dnevna_predaja.dart';
 import '../../utils/v3_dan_helper.dart';
 import '../../utils/v3_date_utils.dart';
+import 'repositories/v3_finansije_repository.dart';
 
 class V3DnevnaPredajaService {
-  static final _supabase = Supabase.instance.client;
+  static final V3FinansijeRepository _repo = V3FinansijeRepository();
   static const _kategorija = 'dnevna_predaja';
   static const _tip = 'prihod';
 
@@ -17,17 +16,13 @@ class V3DnevnaPredajaService {
     final dayStart = V3DanHelper.dateOnly(datum);
     final dayEnd = dayStart.add(const Duration(days: 1));
     try {
-      final res = await _supabase
-          .from('v3_finansije')
-          .select()
-          .eq('tip', _tip)
-          .eq('kategorija', _kategorija)
-          .eq('vozac_id', vozacId)
-          .gte('created_at', dayStart.toIso8601String())
-          .lt('created_at', dayEnd.toIso8601String())
-          .order('created_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+      final res = await _repo.getLatestByCriteria(
+        tip: _tip,
+        kategorija: _kategorija,
+        vozacId: vozacId,
+        dayStartIso: dayStart.toIso8601String(),
+        dayEndIso: dayEnd.toIso8601String(),
+      );
 
       if (res == null) return null;
       final createdAt = V3DateUtils.parseTs(res['created_at'] as String?);
@@ -53,17 +48,14 @@ class V3DnevnaPredajaService {
     final dayStart = V3DanHelper.dateOnly(predaja.datum);
     final dayEnd = dayStart.add(const Duration(days: 1));
 
-    final existing = await _supabase
-        .from('v3_finansije')
-        .select('id')
-        .eq('tip', _tip)
-        .eq('kategorija', _kategorija)
-        .eq('vozac_id', predaja.vozacId ?? '')
-        .gte('created_at', dayStart.toIso8601String())
-        .lt('created_at', dayEnd.toIso8601String())
-        .order('created_at', ascending: false)
-        .limit(1)
-        .maybeSingle();
+    final existing = await _repo.getLatestByCriteria(
+      tip: _tip,
+      kategorija: _kategorija,
+      vozacId: predaja.vozacId ?? '',
+      dayStartIso: dayStart.toIso8601String(),
+      dayEndIso: dayEnd.toIso8601String(),
+      selectColumns: 'id',
+    );
 
     final baseData = {
       'naziv': 'Dnevna predaja',
@@ -80,7 +72,7 @@ class V3DnevnaPredajaService {
     };
 
     if (existing != null && existing['id'] != null) {
-      await _supabase.from('v3_finansije').update(baseData).eq('id', existing['id'] as String);
+      await _repo.updateById(existing['id'] as String, baseData);
       return;
     }
 
@@ -92,6 +84,6 @@ class V3DnevnaPredajaService {
       'updated_by': null,
     };
 
-    await _supabase.from('v3_finansije').insert(insertData);
+    await _repo.insert(insertData);
   }
 }

@@ -16,6 +16,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_audit_actor.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -463,7 +464,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         zeljenoVreme: _selectedVreme,
                                         dodeljivoVreme: _selectedVreme,
                                         brojMesta: brojMesta,
-                                        createdBy: 'vozac:$vozacId',
+                                        createdBy: V3AuditActor.vozac(vozacId),
                                         koristiSekundarnu: koristiSekundarnu,
                                         adresaIdOverride: adresaIdOverride,
                                       );

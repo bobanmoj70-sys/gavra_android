@@ -4,7 +4,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../globals.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_role_permission_service.dart';
@@ -394,7 +393,10 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       }
 
       if (updateData.isNotEmpty) {
-        await supabase.from('v3_vozaci').update(updateData).eq('id', vozacId);
+        await V3VozacService.updatePushToken(
+          vozacId: vozacId,
+          pushToken: updateData['push_token'] as String?,
+        );
         debugPrint('[VozacLogin] Push tokeni sačuvani: ${updateData.keys.join(', ')}');
       } else {
         debugPrint('[VozacLogin] ⚠️ Nijedan push token nije dostupan!');

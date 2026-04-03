@@ -79,7 +79,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
         String label = '✅ Uspeh';
         if (status == 'odobreno')
           label = '✅ Odobreno';
-        else if (status == 'alternativa' || status == 'ponuda')
+        else if (status == 'alternativa')
           label = '🔄 Ponuđena alternativa';
         else if (status == 'otkazano')
           label = '🚫 Otkazano';
@@ -443,7 +443,7 @@ class _ZahtevCard extends StatelessWidget {
       final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
 
       String odgovorLabel;
-      if ((z.status == 'alternativa' || z.status == 'ponuda') && (z.altVremePre != null || z.altVremePosle != null)) {
+      if (z.status == 'alternativa' && (z.altVremePre != null || z.altVremePosle != null)) {
         final alts = [
           if (z.altVremePre != null) V3StringUtils.formatAlternativeTime(z.altVremePre),
           if (z.altVremePosle != null) V3StringUtils.formatAlternativeTime(z.altVremePosle),
@@ -452,7 +452,7 @@ class _ZahtevCard extends StatelessWidget {
       } else {
         odgovorLabel = switch (z.status) {
           'odobreno' => '✅',
-          'alternativa' || 'ponuda' => '⚠️',
+          'alternativa' => '⚠️',
           'odbijeno' => '❌',
           'otkazano' => '⛔',
           _ => '🕒',

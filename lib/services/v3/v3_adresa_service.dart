@@ -1,13 +1,14 @@
 import 'package:flutter/foundation.dart';
 
-import '../../globals.dart';
 import '../../models/v3_adresa.dart';
 import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'repositories/v3_adresa_repository.dart';
 
 /// Service for interacting with universal V3 addresses.
 class V3AdresaService {
   V3AdresaService._();
+  static final V3AdresaRepository _repo = V3AdresaRepository();
 
   static List<V3Adresa> getSortedAdrese() {
     final cache = V3MasterRealtimeManager.instance.adreseCache.values;
@@ -61,7 +62,7 @@ class V3AdresaService {
         'gps_lng': lng,
       };
 
-      await supabase.from('v3_adrese').upsert(data);
+      await _repo.upsert(data);
     } catch (e) {
       debugPrint('[V3AdresaService] Error: $e');
       rethrow;
@@ -70,7 +71,7 @@ class V3AdresaService {
 
   static Future<void> deleteAdresa(String id) async {
     try {
-      await supabase.from('v3_adrese').update({'aktivno': false}).eq('id', id);
+      await _repo.updateById(id, {'aktivno': false});
     } catch (e) {
       debugPrint('[V3AdresaService] Delete error: $e');
       rethrow;
@@ -83,10 +84,10 @@ class V3AdresaService {
     required double lng,
   }) async {
     try {
-      await supabase.from('v3_adrese').update({
+      await _repo.updateById(id, {
         'gps_lat': lat,
         'gps_lng': lng,
-      }).eq('id', id);
+      });
     } catch (e) {
       debugPrint('[V3AdresaService] updateAdresaCoordinates error: $e');
       rethrow;

@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_pin_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
@@ -119,26 +119,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
     try {
       final normalized = _normalizePhone(telefon);
-      // Tražimo u v3_putnici cache-u ili direktno u DB
-      Map<String, dynamic>? found;
-
-      // Prvo cache
-      final cache = V3MasterRealtimeManager.instance.putniciCache;
-      for (final row in cache.values) {
-        final t = _normalizePhone(row['telefon_1']?.toString() ?? '');
-        final t2 = _normalizePhone(row['telefon_2']?.toString() ?? '');
-        if (t == normalized || (t2.isNotEmpty && t2 == normalized)) {
-          found = Map<String, dynamic>.from(row);
-          break;
-        }
-      }
-
-      // Ako nema u cache-u, pitaj DB direktno
-      if (found == null) {
-        final rows =
-            await supabase.from('v3_putnici').select().or('telefon_1.eq.$normalized,telefon_2.eq.$normalized').limit(1);
-        if (rows.isNotEmpty) found = Map<String, dynamic>.from(rows.first);
-      }
+      final found = await V3PutnikService.getByPhoneOrCache(normalized);
 
       if (!mounted) return;
 
@@ -160,7 +141,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
         });
       } else if (pin == null || pin.isEmpty) {
         // Ima email ali nema PIN — proveri zahtev
-        final imaZahtev = await V3PinZahtevService.imaZahtevKojiCekaAsync(found['id'].toString());
+        final imaZahtev = await V3PinZahtevService.hasPendingZahtev(found['id'].toString());
         if (!mounted) return;
         if (imaZahtev) {
           setState(() {
@@ -327,22 +308,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
     // Pronadi putnika
     final normalized = _normalizePhone(creds['phone']!);
-    Map<String, dynamic>? found;
-    final cache = V3MasterRealtimeManager.instance.putniciCache;
-    for (final row in cache.values) {
-      final t = _normalizePhone(row['telefon_1']?.toString() ?? '');
-      final t2 = _normalizePhone(row['telefon_2']?.toString() ?? '');
-      if (t == normalized || (t2.isNotEmpty && t2 == normalized)) {
-        found = Map<String, dynamic>.from(row);
-        break;
-      }
-    }
-    found ??= await supabase
-        .from('v3_putnici')
-        .select()
-        .or('telefon_1.eq.$normalized,telefon_2.eq.$normalized')
-        .limit(1)
-        .maybeSingle();
+    final found = await V3PutnikService.getByPhoneOrCache(normalized);
 
     if (!mounted) return;
     if (found == null) {
@@ -419,9 +385,9 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
       final storedPin = _putnikData!['pin']?.toString() ?? '';
       if (pin != storedPin) {
         // Proveri ponovo iz DB (možda je PIN promenjen)
-        final fresh = await supabase.from('v3_putnici').select('pin').eq('id', _putnikData!['id']).single();
+        final freshPin = await V3PutnikService.getPinById(_putnikData!['id']?.toString() ?? '');
         if (!mounted) return;
-        if (pin != fresh['pin']?.toString()) {
+        if (pin != (freshPin ?? '')) {
           V3StateUtils.safeSetState(this, () => _errorMessage = 'Pogrešan PIN. Pokušajte ponovo.');
           return;
         }
@@ -442,21 +408,22 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
         if (token != null) {
           final existingToken1 = _putnikData!['push_token'] as String?;
           final existingToken2 = _putnikData!['push_token_2'] as String?;
-
-          if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
-            // Isti ili novi prvi uređaj
-            await supabase.from('v3_putnici').update({'push_token': token}).eq('id', _putnikData!['id']);
-            _putnikData!['push_token'] = token;
-          } else if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
-            // Drugi uređaj
-            await supabase.from('v3_putnici').update({'push_token_2': token}).eq('id', _putnikData!['id']);
-            _putnikData!['push_token_2'] = token;
-            debugPrint('[PutnikLogin] Push token snimljen kao push_token_2 (drugi uređaj)');
-          } else {
-            // Oba slota zauzeta - prepiši push_token_2 (najnoviji uređaj pobeđuje)
-            await supabase.from('v3_putnici').update({'push_token_2': token}).eq('id', _putnikData!['id']);
-            _putnikData!['push_token_2'] = token;
-            debugPrint('[PutnikLogin] push_token_2 ažuriran (novi treći uređaj prepisao drugi slot)');
+          final updated = await V3PutnikService.updatePushTokensOnLogin(
+            putnikId: _putnikData!['id'] as String,
+            token: token,
+            existingToken1: existingToken1,
+            existingToken2: existingToken2,
+          );
+          if (updated.containsKey('push_token')) {
+            _putnikData!['push_token'] = updated['push_token'];
+          }
+          if (updated.containsKey('push_token_2')) {
+            _putnikData!['push_token_2'] = updated['push_token_2'];
+            if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
+              debugPrint('[PutnikLogin] Push token snimljen kao push_token_2 (drugi uređaj)');
+            } else {
+              debugPrint('[PutnikLogin] push_token_2 ažuriran (novi treći uređaj prepisao drugi slot)');
+            }
           }
         }
       } catch (e) {
