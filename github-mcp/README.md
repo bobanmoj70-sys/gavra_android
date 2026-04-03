@@ -22,9 +22,24 @@ cp .env.example .env
 
 Uredi `.env` i dodaj:
 ```
-GITHUB_TOKEN=ghp_YOUR_TOKEN_HERE
+GITHUB_TOKEN=YOUR_GITHUB_TOKEN_HERE
 GITHUB_REPO_OWNER=lakisa-code
 GITHUB_REPO_NAME=gavra_android
+```
+
+Ako koristiš `setup-secrets.cjs`, dodaj i Android secret vrednosti
+(direktno ili preko `*_FILE` varijanti):
+
+```
+GOOGLE_PLAY_KEY_B64=
+GOOGLE_PLAY_KEY_B64_FILE=
+ANDROID_KEYSTORE_B64=
+ANDROID_KEYSTORE_B64_FILE=
+ANDROID_KEYSTORE_PASSWORD=
+ANDROID_KEYSTORE_PASSWORD_FILE=
+ANDROID_KEY_PASSWORD=
+ANDROID_KEY_PASSWORD_FILE=
+ANDROID_KEY_ALIAS=
 ```
 
 ### 3. Instalacija zavisnosti
@@ -157,7 +172,7 @@ Dodaj u Copilot konfiguraciju:
       "command": "node",
       "args": ["path/to/github-mcp/dist/index.js"],
       "env": {
-        "GITHUB_TOKEN": "ghp_...",
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
         "GITHUB_REPO_OWNER": "lakisa-code",
         "GITHUB_REPO_NAME": "gavra_android"
       }

@@ -9,6 +9,9 @@ build/
 
 # Environment variables
 .env
+**/.env
+**/.env.local
+**/.env.*.local
 google-play-mcp/.env
 appstore-mcp/.env
 supabase-mcp/.env
@@ -93,10 +96,9 @@ temp_apk*/
 google-play-key.json
 play-store-key.json
 github-mcp/refresh-secrets.cjs
-github-mcp/setup-secrets.cjs
-github-mcp/setup-secrets.js
 google-play-mcp/play-store-key.json
 appstore-mcp/**/.env
+ios/github-secrets.txt
 
 # Build/generated
 linux/
