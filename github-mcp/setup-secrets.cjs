@@ -17,17 +17,46 @@ if (!GITHUB_TOKEN) {
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 
-// Učitavamo Base64 vrednosti
-const playKeyB64 = fs.readFileSync("C:\\temp\\play_key_b64.txt", "utf8");
-const keystoreB64 = fs.readFileSync("C:\\temp\\keystore_b64.txt", "utf8");
+function readValueFromFile(filePath) {
+    if (!filePath) return "";
+    const resolvedPath = path.isAbsolute(filePath)
+        ? filePath
+        : path.join(__dirname, filePath);
+
+    if (!fs.existsSync(resolvedPath)) {
+        throw new Error(`Fajl ne postoji: ${resolvedPath}`);
+    }
+
+    return fs.readFileSync(resolvedPath, "utf8").trim();
+}
+
+function getSecretValue(envKey, fileEnvKey) {
+    const fromEnv = process.env[envKey]?.trim();
+    if (fromEnv) return fromEnv;
+
+    const filePath = process.env[fileEnvKey]?.trim();
+    if (filePath) return readValueFromFile(filePath);
+
+    return "";
+}
 
 const secrets = {
-    GOOGLE_PLAY_KEY_B64: playKeyB64,
-    ANDROID_KEYSTORE_B64: keystoreB64,
-    ANDROID_KEYSTORE_PASSWORD: "GavraRelease2024",
-    ANDROID_KEY_PASSWORD: "GavraRelease2024",
-    ANDROID_KEY_ALIAS: "gavra-release-key",
+    GOOGLE_PLAY_KEY_B64: getSecretValue("GOOGLE_PLAY_KEY_B64", "GOOGLE_PLAY_KEY_B64_FILE"),
+    ANDROID_KEYSTORE_B64: getSecretValue("ANDROID_KEYSTORE_B64", "ANDROID_KEYSTORE_B64_FILE"),
+    ANDROID_KEYSTORE_PASSWORD: getSecretValue("ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEYSTORE_PASSWORD_FILE"),
+    ANDROID_KEY_PASSWORD: getSecretValue("ANDROID_KEY_PASSWORD", "ANDROID_KEY_PASSWORD_FILE"),
+    ANDROID_KEY_ALIAS: process.env.ANDROID_KEY_ALIAS?.trim() || "",
 };
+
+const missingSecrets = Object.entries(secrets)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+if (missingSecrets.length > 0) {
+    console.error(`❌ Nedostaju obavezne vrednosti: ${missingSecrets.join(", ")}`);
+    console.error("➡️ Postavi ih u .env (ili *_FILE varijable za čitanje iz fajla)");
+    process.exit(1);
+}
 
 async function encryptSecret(publicKey, secretValue) {
     await sodium.ready;
