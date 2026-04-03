@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
+import '../../utils/v3_audit_actor.dart';
 import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_kapacitet_slots_repository.dart';
@@ -20,17 +21,6 @@ class V3ZahtevService {
   static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
   static final V3KapacitetSlotsRepository _kapacitetRepository = V3KapacitetSlotsRepository();
   static final V3ZahtevDomainService _domain = V3ZahtevDomainService(_repository);
-  static final RegExp _uuidRegex = RegExp(
-    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-  );
-
-  static String? _normalizeAuditUuid(String? raw) {
-    final input = (raw ?? '').trim();
-    if (input.isEmpty) return null;
-    final candidate = input.contains(':') ? input.split(':').last.trim() : input;
-    if (_uuidRegex.hasMatch(candidate)) return candidate.toLowerCase();
-    return null;
-  }
 
   static String _datumKey(DateTime datum) => V3DanHelper.parseIsoDatePart(datum.toIso8601String());
 
@@ -121,7 +111,7 @@ class V3ZahtevService {
       _assertDatumUTekucojNedelji(zahtev.datum);
 
       final data = zahtev.toJson();
-      final createdByUuid = _normalizeAuditUuid(createdBy);
+      final createdByUuid = V3AuditActor.normalize(createdBy);
       if (createdByUuid != null) data['created_by'] = createdByUuid;
       final row = await _repository.create(data);
 
@@ -186,7 +176,7 @@ class V3ZahtevService {
       final row = aktivni.first;
       final rowKey = (row['id']?.toString() ?? '').trim();
       if (rowKey.isNotEmpty) {
-        final updBy = _normalizeAuditUuid(otkazaoPutnikId);
+        final updBy = V3AuditActor.normalize(otkazaoPutnikId);
         final updated = await _repository.updateRawMaybeSingle(
           rowKey,
           {
@@ -218,7 +208,7 @@ class V3ZahtevService {
 
   static Future<void> updateStatus(String id, String newStatus, {String? updatedBy}) async {
     try {
-      final updByUuid = _normalizeAuditUuid(updatedBy ?? V3VozacService.currentVozac?.id);
+      final updByUuid = V3AuditActor.normalize(updatedBy, fallback: V3VozacService.currentVozac?.id);
       final status = V3ZahtevStatus.values.firstWhere(
         (value) => value.name == newStatus,
         orElse: () => V3ZahtevStatus.obrada,
@@ -239,7 +229,7 @@ class V3ZahtevService {
         id: id,
         vreme: novoVreme,
         status: status,
-        updatedBy: _normalizeAuditUuid(V3VozacService.currentVozac?.id),
+        updatedBy: V3AuditActor.normalize(V3VozacService.currentVozac?.id),
       );
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -347,7 +337,7 @@ class V3ZahtevService {
         }
       } else {
         // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovdje
-        final String? updBy = _normalizeAuditUuid(otkazaoPutnikId);
+        final String? updBy = V3AuditActor.normalize(otkazaoPutnikId);
         final row = await _repository.updateRaw(
           id,
           {
@@ -417,7 +407,7 @@ class V3ZahtevService {
         id: id,
         novoVreme: novoVreme,
         koristiSekundarnu: koristiSekundarnu,
-        updatedBy: _normalizeAuditUuid(updatedBy),
+        updatedBy: V3AuditActor.normalize(updatedBy),
         createdAtIso: nowIso,
       );
     } catch (e) {

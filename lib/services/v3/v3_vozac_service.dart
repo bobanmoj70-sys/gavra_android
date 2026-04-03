@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../globals.dart';
 import '../../models/v3_vozac.dart';
+import '../../utils/v3_audit_actor.dart';
 import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozac_repository.dart';
@@ -12,18 +13,6 @@ class V3VozacService {
   static final V3VozacRepository _repo = V3VozacRepository();
 
   static V3Vozac? currentVozac;
-  static final RegExp _uuidRegex = RegExp(
-    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-  );
-
-  static String? _normalizeAuditUuid(String? raw) {
-    final input = (raw ?? '').trim();
-    if (input.isEmpty) return null;
-
-    final candidate = input.contains(':') ? input.split(':').last.trim() : input;
-    if (_uuidRegex.hasMatch(candidate)) return candidate.toLowerCase();
-    return null;
-  }
 
   static List<V3Vozac> getAllVozaci() {
     final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
@@ -65,7 +54,7 @@ class V3VozacService {
 
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
-      final actorUuid = _normalizeAuditUuid(currentVozac?.id);
+      final actorUuid = V3AuditActor.normalize(currentVozac?.id);
       if (vozac.id.isNotEmpty) {
         // Edit — ne diramo push_token
         await _repo.updateById(vozac.id, {
@@ -108,7 +97,7 @@ class V3VozacService {
     String? updatedBy,
   }) async {
     try {
-      final actorUuid = _normalizeAuditUuid(updatedBy) ?? _normalizeAuditUuid(currentVozac?.id);
+      final actorUuid = V3AuditActor.normalize(updatedBy, fallback: currentVozac?.id);
       await _repo.updateById(id, {
         'aktivno': aktivno,
         if (actorUuid != null) 'updated_by': actorUuid,

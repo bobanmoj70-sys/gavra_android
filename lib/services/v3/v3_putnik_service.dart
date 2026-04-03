@@ -4,6 +4,7 @@ import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
 import '../../models/v3_zahtev.dart';
+import '../../utils/v3_audit_actor.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
 
@@ -14,18 +15,6 @@ class V3PutnikService {
 
   static V3Vozac? currentVozac;
   static Map<String, dynamic>? currentPutnik;
-  static final RegExp _uuidRegex = RegExp(
-    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-  );
-
-  static String? _normalizeAuditUuid(String? raw) {
-    final input = (raw ?? '').trim();
-    if (input.isEmpty) return null;
-
-    final candidate = input.contains(':') ? input.split(':').last.trim() : input;
-    if (_uuidRegex.hasMatch(candidate)) return candidate.toLowerCase();
-    return null;
-  }
 
   static List<V3Putnik> getPutniciByTip(String tip) {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
@@ -77,7 +66,7 @@ class V3PutnikService {
     final id = putnikId.trim();
     if (id.isEmpty) return;
 
-    final actorUuid = _normalizeAuditUuid(updatedBy) ?? _normalizeAuditUuid(currentVozac?.id);
+    final actorUuid = V3AuditActor.normalize(updatedBy, fallback: currentVozac?.id);
     await _repo.updateById(id, {
       'pin': (pin == null || pin.trim().isEmpty) ? null : pin.trim(),
       if (actorUuid != null) 'updated_by': actorUuid,
@@ -103,8 +92,8 @@ class V3PutnikService {
   static Future<void> addUpdatePutnik(V3Putnik putnik, {String? createdBy, String? updatedBy}) async {
     try {
       final data = putnik.toJson();
-      final createdByUuid = _normalizeAuditUuid(createdBy);
-      final updatedByUuid = _normalizeAuditUuid(updatedBy) ?? createdByUuid;
+      final createdByUuid = V3AuditActor.normalize(createdBy);
+      final updatedByUuid = V3AuditActor.normalize(updatedBy, fallback: createdByUuid);
 
       if (putnik.id.isEmpty) data.remove('id');
       if (putnik.id.isEmpty && createdByUuid != null) data['created_by'] = createdByUuid;
@@ -127,7 +116,7 @@ class V3PutnikService {
     String? updatedBy,
   }) async {
     try {
-      final actorUuid = _normalizeAuditUuid(updatedBy) ?? _normalizeAuditUuid(currentVozac?.id);
+      final actorUuid = V3AuditActor.normalize(updatedBy, fallback: currentVozac?.id);
       await _repo.updateById(id, {
         'aktivno': aktivno,
         if (actorUuid != null) 'updated_by': actorUuid,

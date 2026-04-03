@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../utils/v3_audit_actor.dart';
+import '../../utils/v3_time_utils.dart';
 import 'repositories/v3_gps_trip_state_repository.dart';
 
 class V3GpsTripStateService {
@@ -8,15 +9,7 @@ class V3GpsTripStateService {
   static final V3GpsTripStateRepository _repo = V3GpsTripStateRepository();
 
   static String normalizeTime(String? value) {
-    if (value == null || value.trim().isEmpty) return '';
-    final match = RegExp(r'((?:[01]?\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?)').firstMatch(value);
-    if (match == null) return value.trim();
-    final raw = match.group(1)!;
-    final parts = raw.split(':');
-    if (parts.length < 2) return raw;
-    final h = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
-    final m = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
-    return '$h:$m';
+    return V3TimeUtils.normalizeToHHmm(value);
   }
 
   static DateTime? _toPolazakTs({

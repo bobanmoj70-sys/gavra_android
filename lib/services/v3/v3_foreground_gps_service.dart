@@ -12,6 +12,7 @@ import '../../models/v3_putnik.dart';
 import '../../utils/v3_audit_actor.dart';
 import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_stream_utils.dart';
+import '../../utils/v3_time_utils.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
 import 'v3_gps_trip_state_service.dart';
 import 'v3_vozac_lokacija_service.dart';
@@ -38,27 +39,11 @@ class V3ForegroundGpsService {
   static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
 
   static String _normalizePolazakTime(String? value) {
-    if (value == null || value.trim().isEmpty) return '';
-    final match = RegExp(r'((?:[01]?\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?)').firstMatch(value);
-    if (match == null) return value.trim();
-    final raw = match.group(1)!;
-    final parts = raw.split(':');
-    if (parts.length < 2) return raw;
-    final h = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
-    final m = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
-    return '$h:$m';
+    return V3TimeUtils.normalizeToHHmm(value);
   }
 
   static String? _extractTimeToken(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
-    final match = RegExp(r'((?:[01]?\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?)').firstMatch(value);
-    if (match == null) return null;
-    final raw = match.group(1)!;
-    final parts = raw.split(':');
-    if (parts.length < 2) return null;
-    final h = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
-    final m = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
-    return '$h:$m';
+    return V3TimeUtils.extractHHmmToken(value);
   }
 
   static Future<void> syncTrackingStatus({
