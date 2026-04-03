@@ -23,6 +23,7 @@ import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 import 'services/v3_theme_manager.dart';
+import 'utils/v3_time_utils.dart';
 
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -501,26 +502,13 @@ void onNotificationTap(NotificationResponse response) async {
   }
 }
 
-String? _extractTimeToken(String value) {
-  final match = RegExp(r'((?:[01]?\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?)').firstMatch(value);
-  return match?.group(1);
-}
-
-String _normalizeTimeHHmm(String value) {
-  final parts = value.split(':');
-  if (parts.length < 2) return value;
-  final h = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
-  final m = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
-  return '$h:$m';
-}
-
 String? _extractNormalizedTime(String? rawValue) {
   if (rawValue == null) return null;
   final value = rawValue.trim();
   if (value.isEmpty) return null;
-  final token = _extractTimeToken(value);
+  final token = V3TimeUtils.extractHHmmToken(value);
   if (token == null || token.isEmpty) return null;
-  return _normalizeTimeHHmm(token);
+  return V3TimeUtils.normalizeToHHmm(token);
 }
 
 Future<void> _showAlternativaActionsNotification(

@@ -24,6 +24,7 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_text_utils.dart';
+import '../utils/v3_time_utils.dart';
 import '../utils/v3_validation_utils.dart';
 import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
@@ -77,10 +78,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       ];
 
   String _normalizeVreme(String? v) {
-    if (v == null || v.isEmpty) return '';
-    final parts = v.split(':');
-    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
-    return v;
+    return V3TimeUtils.normalizeToHHmm(v);
   }
 
   int _timeToMinutes(String hhmm) {
@@ -895,24 +893,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         builder: (context, snapshot) {
           final sviZapisi = snapshot.data ?? [];
 
-          // Pomoćna funkcija za normalizaciju vremena (HH:mm)
-          String normalizeVreme(String? v) {
-            if (v == null || v.isEmpty) return '';
-            final parts = v.split(':');
-            if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
-            return v;
-          }
-
           String slotVreme(V3OperativnaNedeljaEntry z) => z.dodeljivoVreme ?? '';
 
-          final selectedVremeNorm = normalizeVreme(_selectedVreme);
+          final selectedVremeNorm = _normalizeVreme(_selectedVreme);
 
           // Lista: datum dolazi iz stream-a, filtriraj samo po gradu i vremenu
           final currentVozacId = V3VozacService.currentVozac?.id;
           final prikazaniZapisi = sviZapisi.where((z) {
             if (!z.aktivno) return false;
             if (z.grad != _selectedGrad) return false;
-            if (normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
+            if (_normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
             if (V3StatusFilters.isRejected(z.statusFinal)) return false;
             if (V3StatusFilters.normalizeStatus(z.statusFinal) == 'obrada') return false;
             return true;
@@ -941,11 +931,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
           int getPutnikCount(String grad, String vreme) {
-            final targetVremeNorm = normalizeVreme(vreme);
+            final targetVremeNorm = _normalizeVreme(vreme);
             return sviZapisi.where((z) {
               if (!z.aktivno) return false;
               if (z.grad != grad) return false;
-              if (normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
+              if (_normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
               if (V3StatusFilters.isCanceledOrRejected(z.statusFinal)) return false;
               if (V3StatusFilters.normalizeStatus(z.statusFinal) == 'obrada') return false;
               return true;

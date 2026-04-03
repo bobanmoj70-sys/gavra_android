@@ -5,6 +5,7 @@ import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../../utils/v3_audit_actor.dart';
 import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_time_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_kapacitet_slots_repository.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -437,14 +438,11 @@ class V3ZahtevService {
 
   static Future<void> prihvatiAlternativu(String id, String izabranoVreme) async {
     String toHHmm(String value) {
-      final normalized = value.trim();
-      final parts = normalized.split(':');
-      if (parts.length < 2) {
+      final normalized = V3TimeUtils.normalizeToHHmm(value);
+      if (!RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$').hasMatch(normalized)) {
         throw Exception('Neispravan format vremena: $value');
       }
-      final h = parts[0].padLeft(2, '0');
-      final m = parts[1].padLeft(2, '0');
-      return '$h:$m';
+      return normalized;
     }
 
     final izabranoVremeNormalized = izabranoVreme.trim();
