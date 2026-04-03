@@ -1,3 +1,5 @@
+import 'v3_string_utils.dart';
+
 /// Centralizovane validation i parsing utility funkcije.
 /// Eliminiše duplikate string/number validacije kroz aplikaciju.
 class V3ValidationUtils {
@@ -111,14 +113,7 @@ class V3ValidationUtils {
 
   /// Normalizuje string za search (lowercase + bez dijakritika)
   static String normalizeForSearch(String input) {
-    var normalized = input.toLowerCase().trim();
-    normalized = normalized
-        .replaceAll('č', 'c')
-        .replaceAll('ć', 'c')
-        .replaceAll('š', 's')
-        .replaceAll('ž', 'z')
-        .replaceAll('đ', 'dj');
-    return normalized;
+    return V3StringUtils.forSearch(input.trim());
   }
 
   // ─── VALIDATION CHECKS ────────────────────────────────────────────────

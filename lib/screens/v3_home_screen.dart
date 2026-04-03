@@ -23,6 +23,7 @@ import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_filters.dart';
+import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_validation_utils.dart';
@@ -343,7 +344,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 ),
                               ),
                               searchMatchFn: (item, val) =>
-                                  (item.value?.imePrezime ?? '').toLowerCase().contains(val.toLowerCase()),
+                                  V3StringUtils.containsSearch(item.value?.imePrezime ?? '', val),
                             ),
                             items: aktivniPutnici
                                 .map((p) => DropdownMenuItem(
