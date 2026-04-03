@@ -67,8 +67,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   }
 
   // Dinamična vremena prema tipu nav bara (iz baze)
-  List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value);
-  List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value);
+  List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+  List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),

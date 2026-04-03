@@ -84,17 +84,57 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     return value.split(RegExp(r'[,\n; ]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
   }
 
+  Map<String, List<String>> _parseByDaySchedule(dynamic raw, List<String> fallback) {
+    final fallbackNorm = _normalizeTimes(fallback);
+    final result = {
+      for (final day in V3DanHelper.workdayNames) day: List<String>.from(fallbackNorm),
+    };
+
+    if (raw is! Map) return result;
+
+    for (final entry in raw.entries) {
+      final normalizedDay = V3DanHelper.normalizeToWorkdayFull(entry.key.toString(), fallback: '');
+      if (normalizedDay.isEmpty) continue;
+      if (entry.value is List) {
+        result[normalizedDay] = _normalizeTimes((entry.value as List).map((e) => e.toString()).toList());
+      }
+    }
+
+    return result;
+  }
+
+  List<String> _flattenByDaySchedule(Map<String, List<String>> byDay) {
+    final merged = <String>{};
+    for (final day in V3DanHelper.workdayNames) {
+      merged.addAll(byDay[day] ?? const <String>[]);
+    }
+    final out = merged.toList();
+    out.sort();
+    return out;
+  }
+
   Future<void> _openCustomScheduleEditor() async {
     try {
-      final row =
-          await supabase.from('v3_app_settings').select('bc_custom, vs_custom').eq('id', 'global').maybeSingle();
+      final row = await supabase
+          .from('v3_app_settings')
+          .select('bc_custom, vs_custom, bc_custom_by_day, vs_custom_by_day')
+          .eq('id', 'global')
+          .maybeSingle();
       if (!mounted) return;
 
       final bcCurrent = (row?['bc_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
       final vsCurrent = (row?['vs_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+      final bcByDayCurrent = _parseByDaySchedule(row?['bc_custom_by_day'], bcCurrent);
+      final vsByDayCurrent = _parseByDaySchedule(row?['vs_custom_by_day'], vsCurrent);
 
-      final bcCtrl = TextEditingController(text: _normalizeTimes(bcCurrent).join(', '));
-      final vsCtrl = TextEditingController(text: _normalizeTimes(vsCurrent).join(', '));
+      final bcCtrls = {
+        for (final day in V3DanHelper.workdayNames)
+          day: TextEditingController(text: (bcByDayCurrent[day] ?? const <String>[]).join(', ')),
+      };
+      final vsCtrls = {
+        for (final day in V3DanHelper.workdayNames)
+          day: TextEditingController(text: (vsByDayCurrent[day] ?? const <String>[]).join(', ')),
+      };
 
       await showDialog<void>(
         context: context,
@@ -106,30 +146,37 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               title: const Text('Custom vremena polazaka', style: TextStyle(color: Colors.white)),
               content: SizedBox(
                 width: 420,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Unos formata HH:mm, razdvojeno zarezom.', style: TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: bcCtrl,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'BC custom',
-                        labelStyle: TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: vsCtrl,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'VS custom',
-                        labelStyle: TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ],
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Unos formata HH:mm, razdvojeno zarezom.', style: TextStyle(color: Colors.white70)),
+                      const SizedBox(height: 10),
+                      for (final day in V3DanHelper.workdayNames) ...[
+                        Text(day, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: bcCtrls[day],
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'BC custom - $day',
+                            labelStyle: const TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: vsCtrls[day],
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'VS custom - $day',
+                            labelStyle: const TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -141,26 +188,40 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   onPressed: isSaving
                       ? null
                       : () async {
-                          final bcRaw = _parseTimesCsv(bcCtrl.text);
-                          final vsRaw = _parseTimesCsv(vsCtrl.text);
-                          final bcNorm = _normalizeTimes(bcRaw);
-                          final vsNorm = _normalizeTimes(vsRaw);
+                          final bcByDayNorm = <String, List<String>>{};
+                          final vsByDayNorm = <String, List<String>>{};
+                          final invalidTokens = <String>[];
 
-                          final bcInvalid = bcRaw.where((t) => !_timePattern.hasMatch(t)).toList();
-                          final vsInvalid = vsRaw.where((t) => !_timePattern.hasMatch(t)).toList();
-                          if (bcInvalid.isNotEmpty || vsInvalid.isNotEmpty) {
-                            final invalid = [...bcInvalid, ...vsInvalid].join(', ');
+                          for (final day in V3DanHelper.workdayNames) {
+                            final bcRaw = _parseTimesCsv(bcCtrls[day]?.text ?? '');
+                            final vsRaw = _parseTimesCsv(vsCtrls[day]?.text ?? '');
+
+                            invalidTokens
+                                .addAll(bcRaw.where((t) => !_timePattern.hasMatch(t)).map((t) => '$day BC:$t'));
+                            invalidTokens
+                                .addAll(vsRaw.where((t) => !_timePattern.hasMatch(t)).map((t) => '$day VS:$t'));
+
+                            bcByDayNorm[day] = _normalizeTimes(bcRaw);
+                            vsByDayNorm[day] = _normalizeTimes(vsRaw);
+                          }
+
+                          if (invalidTokens.isNotEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Neispravno vreme: $invalid')),
+                              SnackBar(content: Text('Neispravno vreme: ${invalidTokens.join(', ')}')),
                             );
                             return;
                           }
+
+                          final bcNorm = _flattenByDaySchedule(bcByDayNorm);
+                          final vsNorm = _flattenByDaySchedule(vsByDayNorm);
 
                           setModalState(() => isSaving = true);
                           try {
                             await supabase.from('v3_app_settings').update({
                               'bc_custom': bcNorm,
                               'vs_custom': vsNorm,
+                              'bc_custom_by_day': bcByDayNorm,
+                              'vs_custom_by_day': vsByDayNorm,
                             }).eq('id', 'global');
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
@@ -182,6 +243,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           );
         },
       );
+
+      for (final controller in bcCtrls.values) {
+        controller.dispose();
+      }
+      for (final controller in vsCtrls.values) {
+        controller.dispose();
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -88,6 +88,21 @@ class V3MasterRealtimeManager {
       return [];
     }
 
+    Map<String, List<String>> _toCustomByDay(dynamic val) {
+      final result = {
+        for (final day in V3DanHelper.workdayNames) day: <String>[],
+      };
+      if (val is! Map) return result;
+
+      for (final entry in val.entries) {
+        final normalizedDay = V3DanHelper.normalizeToWorkdayFull(entry.key.toString(), fallback: '');
+        if (normalizedDay.isEmpty) continue;
+        result[normalizedDay] = _toList(entry.value);
+      }
+
+      return result;
+    }
+
     final updated = Map<String, List<String>>.from(rasporedNotifier.value);
     bool changed = false;
 
@@ -108,6 +123,25 @@ class V3MasterRealtimeManager {
     }
 
     if (changed) rasporedNotifier.value = updated;
+
+    final customByDayUpdated = {
+      'bc': Map<String, List<String>>.from(customRasporedByDayNotifier.value['bc'] ?? {}),
+      'vs': Map<String, List<String>>.from(customRasporedByDayNotifier.value['vs'] ?? {}),
+    };
+    bool customByDayChanged = false;
+
+    if (row.containsKey('bc_custom_by_day')) {
+      customByDayUpdated['bc'] = _toCustomByDay(row['bc_custom_by_day']);
+      customByDayChanged = true;
+    }
+    if (row.containsKey('vs_custom_by_day')) {
+      customByDayUpdated['vs'] = _toCustomByDay(row['vs_custom_by_day']);
+      customByDayChanged = true;
+    }
+
+    if (customByDayChanged) {
+      customRasporedByDayNotifier.value = customByDayUpdated;
+    }
 
     unawaited(V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row));
   }

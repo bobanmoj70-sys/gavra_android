@@ -87,8 +87,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   // Moji putnici iz legacy v3GpsRasporedCache (izvor: v3_operativna_nedelja)
   List<_PutnikEntry> _mojiPutnici = [];
 
-  List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value);
-  List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value);
+  List<String> get _bcVremena =>
+      getRasporedVremena('bc', navBarTypeNotifier.value, day: V3DanHelper.fullName(_selectedDate));
+  List<String> get _vsVremena =>
+      getRasporedVremena('vs', navBarTypeNotifier.value, day: V3DanHelper.fullName(_selectedDate));
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),

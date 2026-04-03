@@ -280,7 +280,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       anchor: V3DanHelper.schedulingWeekAnchor(),
     );
     final now = DateTime.now();
-    final vremena = getRasporedVremena(grad.toLowerCase(), navBarTypeNotifier.value)
+    final dayFullName = V3DanHelper.fullName(datumPolaska);
+    final vremena = getRasporedVremena(grad.toLowerCase(), navBarTypeNotifier.value, day: dayFullName)
         .where((v) => _normalizeValidTime(v) != null)
         .toList();
     final currentVreme = info?.vreme;

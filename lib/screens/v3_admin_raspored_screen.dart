@@ -36,8 +36,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
 
-  List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value);
-  List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value);
+  List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+  List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),
         ..._vsVremena.map((v) => '$v VS'),

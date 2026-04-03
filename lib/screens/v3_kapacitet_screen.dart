@@ -37,8 +37,8 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
   /// Čita max_mesta iz kapacitetSlotsCache: {grad: {vreme: max_mesta?}}
   Map<String, Map<String, int?>> _getKapacitetSync() {
     final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
-    final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value);
-    final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value);
+    final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+    final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
     final datumIso = _selectedDatumIso;
     int? _find(String grad, String vreme) {
       for (final r in cache) {
@@ -183,8 +183,8 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
                     stream: _streamTrigger,
                     builder: (context, snapshot) {
                       final data = _getKapacitetSync();
-                      final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value);
-                      final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value);
+                      final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+                      final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
                       return TabBarView(
                         controller: _tabController,
                         children: [

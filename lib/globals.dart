@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/v2_config_service.dart'; // Centralizovani kredencijali
+import 'utils/v3_dan_helper.dart';
 
 export 'utils/v3_dan_helper.dart';
 
@@ -90,8 +91,39 @@ final ValueNotifier<Map<String, List<String>>> rasporedNotifier = ValueNotifier<
   'vs_custom': [],
 });
 
-/// Helper - vraća listu polazaka za grad i sezonu iz rasporedNotifier
-List<String> getRasporedVremena(String grad, String sezona) {
+const List<String> _customWorkdayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak'];
+
+Map<String, List<String>> _emptyCustomDayMap() => {
+      for (final day in _customWorkdayNames) day: <String>[],
+    };
+
+/// CUSTOM RASPORED PO DANIMA - vremena polazaka za radne dane
+/// Struktura: {'bc': {'Ponedeljak': [...], ...}, 'vs': {'Ponedeljak': [...], ...}}
+final ValueNotifier<Map<String, Map<String, List<String>>>> customRasporedByDayNotifier =
+    ValueNotifier<Map<String, Map<String, List<String>>>>({
+  'bc': _emptyCustomDayMap(),
+  'vs': _emptyCustomDayMap(),
+});
+
+/// Helper - vraća listu polazaka za grad i sezonu iz rasporedNotifier.
+/// Kada je sezona `custom` i prosleđen je [day], čita iz dnevnog custom rasporeda.
+List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
+  final normalizedGrad = grad.toLowerCase();
+  final normalizedSezona = sezona.toLowerCase();
+
+  if (normalizedSezona == 'custom' && day != null && day.trim().isNotEmpty) {
+    final normalizedDay = V3DanHelper.normalizeToWorkdayFull(day, fallback: '');
+    if (normalizedDay.isNotEmpty) {
+      final cityMap = customRasporedByDayNotifier.value[normalizedGrad];
+      if (cityMap != null) {
+        final dayTimes = cityMap[normalizedDay];
+        if (dayTimes != null && dayTimes.isNotEmpty) {
+          return dayTimes;
+        }
+      }
+    }
+  }
+
   final key = '${grad.toLowerCase()}_${sezona.toLowerCase()}';
   return rasporedNotifier.value[key] ?? [];
 }
