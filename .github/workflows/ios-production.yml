@@ -33,7 +33,7 @@ permissions:
   contents: write
 
 env:
-  FLUTTER_VERSION: '3.35.6'
+  FLUTTER_VERSION: '3.35.0'
   BUNDLE_ID: 'com.gavra013.gavra013ios'
   APP_ID: '6757114361'
 

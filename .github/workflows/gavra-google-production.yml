@@ -45,7 +45,7 @@ permissions:
   contents: write
 
 env:
-  FLUTTER_VERSION: '3.35.6'
+  FLUTTER_VERSION: '3.35.0'
   PRIVACY_POLICY_URL: 'https://lakisa-code.github.io/gavra_android/privacy-policy.html'
   ACCOUNT_DELETION_URL: 'https://lakisa-code.github.io/gavra_android/delete-account.html'
 
