@@ -36,6 +36,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   late final V3ThemeManager _themeManager;
   static final RegExp _versionPattern = RegExp(r'^\d+(\.\d+){1,3}$');
   static final RegExp _timePattern = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
+  static final RegExp _dateIsoPattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 
   @override
   void initState() {
@@ -79,6 +80,218 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   List<String> _parseTimesCsv(String value) {
     if (value.trim().isEmpty) return [];
     return value.split(RegExp(r'[,\n; ]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  }
+
+  List<Map<String, String>> _parseNeradniDani(dynamic raw) {
+    if (raw is! List) return <Map<String, String>>[];
+
+    final out = <Map<String, String>>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final date = (item['date'] ?? '').toString().trim();
+      if (!_dateIsoPattern.hasMatch(date)) continue;
+
+      final scopeRaw = (item['scope'] ?? 'all').toString().trim().toLowerCase();
+      final scope = (scopeRaw == 'bc' || scopeRaw == 'vs') ? scopeRaw : 'all';
+      final reason = (item['reason'] ?? '').toString().trim();
+
+      out.add({'date': date, 'scope': scope, 'reason': reason});
+    }
+
+    out.sort((a, b) => (a['date'] ?? '').compareTo(b['date'] ?? ''));
+    return out;
+  }
+
+  Future<void> _openNeradniDaniEditor() async {
+    try {
+      final row = await V3AppSettingsService.loadGlobal(selectColumns: 'neradni_dani');
+      if (!mounted) return;
+
+      final items = _parseNeradniDani(row['neradni_dani']);
+
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          var isSaving = false;
+          final dateCtrl = TextEditingController();
+          final reasonCtrl = TextEditingController();
+          var scope = 'all';
+
+          return StatefulBuilder(
+            builder: (context, setModalState) => AlertDialog(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              title: const Text('Neradni dani', style: TextStyle(color: Colors.white)),
+              content: SizedBox(
+                width: 500,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Format datuma: YYYY-MM-DD',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: dateCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Datum',
+                          hintText: '2026-04-10',
+                          labelStyle: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: scope,
+                        dropdownColor: Theme.of(context).colorScheme.primary,
+                        decoration: const InputDecoration(
+                          labelText: 'Scope',
+                          labelStyle: TextStyle(color: Colors.white70),
+                        ),
+                        style: const TextStyle(color: Colors.white),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('Svi (ALL)')),
+                          DropdownMenuItem(value: 'bc', child: Text('BC')),
+                          DropdownMenuItem(value: 'vs', child: Text('VS')),
+                        ],
+                        onChanged: (val) => setModalState(() => scope = val ?? 'all'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: reasonCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Razlog',
+                          hintText: 'Državni praznik',
+                          labelStyle: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: isSaving
+                                  ? null
+                                  : () {
+                                      final date = dateCtrl.text.trim();
+                                      if (!_dateIsoPattern.hasMatch(date)) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Neispravan datum. Koristi YYYY-MM-DD.')),
+                                        );
+                                        return;
+                                      }
+
+                                      final normalized = DateTime.tryParse(date);
+                                      if (normalized == null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Datum nije validan kalendarski.')),
+                                        );
+                                        return;
+                                      }
+
+                                      final normalizedDate =
+                                          '${normalized.year.toString().padLeft(4, '0')}-${normalized.month.toString().padLeft(2, '0')}-${normalized.day.toString().padLeft(2, '0')}';
+
+                                      items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
+                                      items.add({
+                                        'date': normalizedDate,
+                                        'scope': scope,
+                                        'reason': reasonCtrl.text.trim(),
+                                      });
+                                      items.sort((a, b) => (a['date'] ?? '').compareTo(b['date'] ?? ''));
+
+                                      setModalState(() {
+                                        dateCtrl.clear();
+                                        reasonCtrl.clear();
+                                        scope = 'all';
+                                      });
+                                    },
+                              icon: const Icon(Icons.add),
+                              label: const Text('Dodaj / Zameni'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(color: Colors.white24),
+                      const SizedBox(height: 8),
+                      const Text('Aktivna pravila', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      if (items.isEmpty)
+                        const Text('Nema unosa', style: TextStyle(color: Colors.white60))
+                      else
+                        ...items.map(
+                          (entry) => Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${entry['date']} [${(entry['scope'] ?? 'all').toUpperCase()}] — ${entry['reason'] ?? ''}',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: isSaving
+                                      ? null
+                                      : () => setModalState(() {
+                                            items.remove(entry);
+                                          }),
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Otkaži'),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setModalState(() => isSaving = true);
+                          try {
+                            await V3AppSettingsService.updateGlobal({'neradni_dani': items});
+                            if (!mounted) return;
+                            Navigator.of(dialogContext).pop();
+                            ScaffoldMessenger.of(this.context)
+                                .showSnackBar(const SnackBar(content: Text('✅ Neradni dani sačuvani')));
+                          } catch (e) {
+                            if (!mounted) return;
+                            setModalState(() => isSaving = false);
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(content: Text('Greška pri čuvanju: $e')));
+                          }
+                        },
+                  child: const Text('Sačuvaj'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Greška pri učitavanju neradnih dana: $e')),
+      );
+    }
   }
 
   Map<String, List<String>> _parseByDaySchedule(dynamic raw, List<String> fallback) {
@@ -1208,6 +1421,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                       value: '__custom_times__',
                                       child: Text('⏱️  Uredi custom vremena', style: TextStyle(color: Colors.white))),
                                   const PopupMenuItem(
+                                      value: '__non_working_days__',
+                                      child: Text('📅  Uredi neradne dane', style: TextStyle(color: Colors.white))),
+                                  const PopupMenuItem(
                                       value: '__vozaci__',
                                       child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
                                 ],
@@ -1215,6 +1431,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               if (val == null) return;
                               if (val == '__custom_times__') {
                                 await _openCustomScheduleEditor();
+                                return;
+                              }
+                              if (val == '__non_working_days__') {
+                                await _openNeradniDaniEditor();
                                 return;
                               }
                               if (val == '__vozaci__') {

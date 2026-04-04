@@ -19,6 +19,7 @@ import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
+import '../widgets/v3_shimmer_banner.dart';
 
 /// V3 ekran za upravljanje rasporedom vozača.
 /// Admin dodeljuje vozača kroz operativnu tabelu (cache layer ima legacy naziv v3GpsRasporedCache).
@@ -37,6 +38,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   /// ISO datum za izabrani dan u aktivnoj nedelji.
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
+
+  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
   List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
   List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
@@ -704,65 +707,92 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
                   // ── Lista zahteva ──────────────────────────────────────
                   Expanded(
-                    child: _selectedVreme.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.inbox, size: 48, color: Colors.white.withValues(alpha: 0.3)),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Odaberi polazak u donjem meniju',
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          )
-                        : zapisi.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.people_outline, size: 48, color: Colors.white.withValues(alpha: 0.3)),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Nema putnika za ovaj polazak',
-                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: _neradanDanRazlog != null ? 52 : 0),
+                            child: _selectedVreme.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.inbox, size: 48, color: Colors.white.withValues(alpha: 0.3)),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Odaberi polazak u donjem meniju',
+                                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                physics: const BouncingScrollPhysics(),
-                                itemCount: zapisi.length,
-                                itemBuilder: (_, i) {
-                                  final z = zapisi[i];
-                                  final redniBroj = zapisi.sublist(0, i).fold(1, (sum, e) => sum + e.brojMesta);
-                                  final terminDodeljen = vozacTermin != null;
-                                  final indivVozac = _getVozacZaPutnika(z.putnikId, _selectedGrad, slotVreme(z));
-                                  final vozacBoja = indivVozac != null
-                                      ? _parseColor(indivVozac.boja)
-                                      : (terminDodeljen ? _parseColor(vozacTermin.boja) : null);
+                                  )
+                                : zapisi.isEmpty
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.people_outline,
+                                                size: 48, color: Colors.white.withValues(alpha: 0.3)),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'Nema putnika za ovaj polazak',
+                                              style:
+                                                  TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        physics: const BouncingScrollPhysics(),
+                                        itemCount: zapisi.length,
+                                        itemBuilder: (_, i) {
+                                          final z = zapisi[i];
+                                          final redniBroj = zapisi.sublist(0, i).fold(1, (sum, e) => sum + e.brojMesta);
+                                          final terminDodeljen = vozacTermin != null;
+                                          final indivVozac =
+                                              _getVozacZaPutnika(z.putnikId, _selectedGrad, slotVreme(z));
+                                          final vozacBoja = indivVozac != null
+                                              ? _parseColor(indivVozac.boja)
+                                              : (terminDodeljen ? _parseColor(vozacTermin.boja) : null);
 
-                                  final putnik = V3PutnikService.getPutnikById(z.putnikId);
-                                  if (putnik == null || !putnik.aktivno) return const SizedBox.shrink();
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: V3PutnikCard(
-                                      putnik: putnik,
-                                      entry: z,
-                                      redniBroj: redniBroj,
-                                      vozacBoja: vozacBoja,
-                                      onDodeliVozaca: V3StatusFilters.normalizeStatus(z.statusFinal) == 'otkazano'
-                                          ? null
-                                          : () => _showPutnikAssignDialog(z),
-                                      onChanged: () => setState(() {}),
-                                    ),
-                                  );
-                                },
+                                          final putnik = V3PutnikService.getPutnikById(z.putnikId);
+                                          if (putnik == null || !putnik.aktivno) return const SizedBox.shrink();
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 6),
+                                            child: V3PutnikCard(
+                                              putnik: putnik,
+                                              entry: z,
+                                              redniBroj: redniBroj,
+                                              vozacBoja: vozacBoja,
+                                              onDodeliVozaca:
+                                                  V3StatusFilters.normalizeStatus(z.statusFinal) == 'otkazano'
+                                                      ? null
+                                                      : () => _showPutnikAssignDialog(z),
+                                              onChanged: () => setState(() {}),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                          ),
+                        ),
+                        if (_neradanDanRazlog != null)
+                          Positioned(
+                            top: 0,
+                            left: 12,
+                            right: 12,
+                            child: V3ShimmerBanner(
+                              margin: EdgeInsets.zero,
+                              borderRadius: 12,
+                              child: Text(
+                                '📢 Neradan dan ${_selectedDay.toUpperCase()} (${_selectedDatumIso}) — $_neradanDanRazlog',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                               ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -771,6 +801,26 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           bottomNavigationBar: ValueListenableBuilder<String>(
             valueListenable: navBarTypeNotifier,
             builder: (context, navType, _) {
+              final neradanRazlog = _neradanDanRazlog;
+              if (neradanRazlog != null) {
+                return SafeArea(
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
+                    ),
+                    child: Text(
+                      '⛔ Slotovi zaključani za $_selectedDay. Razlog: $neradanRazlog',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+
               final commonProps = _buildNavBarProps();
               if (navType == 'zimski') {
                 return V3BottomNavBarZimski(

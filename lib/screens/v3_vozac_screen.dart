@@ -27,6 +27,7 @@ import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_putnik_card.dart';
+import '../widgets/v3_shimmer_banner.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_promena_sifre_screen.dart';
 import 'v3_welcome_screen.dart';
@@ -473,6 +474,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   String get _selectedDatumIso {
     return V3DanHelper.toIsoDate(_selectedDate);
   }
+
+  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
   void _onPolazakChanged(String grad, String vreme) {
     setState(() {
@@ -1077,6 +1080,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
               bottomNavigationBar: ValueListenableBuilder<String>(
                 valueListenable: navBarTypeNotifier,
                 builder: (context, navType, _) {
+                  final neradanRazlog = _neradanDanRazlog;
+                  if (neradanRazlog != null) {
+                    return SafeArea(
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.20),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
+                        ),
+                        child: Text(
+                          '⛔ Slotovi zaključani za $_selectedDay. Razlog: $neradanRazlog',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+
                   int? getKapacitet(String grad, String vreme) {
                     final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
                     return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
@@ -1135,46 +1158,67 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     return Column(
       children: [
-        // Forced update gate
         const V3UpdateBanner(),
-        // Lista putnika
         Expanded(
-          child: _mojiPutnici.isEmpty
-              ? Center(
-                  child: V3ContainerUtils.styledContainer(
-                    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    padding: const EdgeInsets.all(20),
-                    backgroundColor: Theme.of(context).glassContainer,
-                    border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.inbox, color: Colors.white54, size: 48),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Nema putnika za $_selectedGrad $_selectedVreme',
-                          style: const TextStyle(color: Colors.white70, fontSize: 16),
-                          textAlign: TextAlign.center,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Padding(
+                  padding: EdgeInsets.only(top: _neradanDanRazlog != null ? 52 : 0),
+                  child: _mojiPutnici.isEmpty
+                      ? Center(
+                          child: V3ContainerUtils.styledContainer(
+                            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            padding: const EdgeInsets.all(20),
+                            backgroundColor: Theme.of(context).glassContainer,
+                            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.inbox, color: Colors.white54, size: 48),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Nema putnika za $_selectedGrad $_selectedVreme',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 4, bottom: 16),
+                          itemCount: _mojiPutnici.length,
+                          itemBuilder: (context, index) {
+                            final pz = _mojiPutnici[index];
+                            return V3PutnikCard(
+                              putnik: pz.putnik,
+                              entry: pz.entry,
+                              redniBroj: redniBrojevi[index],
+                              onChanged: _rebuild,
+                              isExcludedFromOptimization: _isExcludedFromOptimization(pz),
+                            );
+                          },
                         ),
-                      ],
+                ),
+              ),
+              if (_neradanDanRazlog != null)
+                Positioned(
+                  top: 6,
+                  left: 12,
+                  right: 12,
+                  child: V3ShimmerBanner(
+                    margin: EdgeInsets.zero,
+                    borderRadius: 12,
+                    child: Text(
+                      '📢 Neradan dan ${_selectedDay.toUpperCase()} (${_selectedDatumIso}) — $_neradanDanRazlog',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                     ),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.only(top: 4, bottom: 16),
-                  itemCount: _mojiPutnici.length,
-                  itemBuilder: (context, index) {
-                    final pz = _mojiPutnici[index];
-                    return V3PutnikCard(
-                      putnik: pz.putnik,
-                      entry: pz.entry,
-                      redniBroj: redniBrojevi[index],
-                      onChanged: _rebuild,
-                      isExcludedFromOptimization: _isExcludedFromOptimization(pz),
-                    );
-                  },
                 ),
+            ],
+          ),
         ),
       ],
     );

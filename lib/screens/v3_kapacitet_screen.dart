@@ -9,6 +9,7 @@ import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../widgets/v3_shimmer_banner.dart';
 
 /// Admin ekran za podešavanje kapaciteta polazaka
 class V3KapacitetScreen extends StatefulWidget {
@@ -24,6 +25,8 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
 
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
+
+  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso);
   @override
   void initState() {
     super.initState();
@@ -170,20 +173,57 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
                 ),
                 // ── TabBarView ─────────────────────────────────────────
                 Expanded(
-                  child: StreamBuilder<void>(
-                    stream: _streamTrigger,
-                    builder: (context, snapshot) {
-                      final data = _getKapacitetSync();
-                      final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
-                      final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
-                      return TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _kapacitetGradTab('BC', bcVremena, data, _editKapacitet, _selectedDatumIso),
-                          _kapacitetGradTab('VS', vsVremena, data, _editKapacitet, _selectedDatumIso),
-                        ],
-                      );
-                    },
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: _neradanDanRazlog != null ? 52 : 0),
+                          child: StreamBuilder<void>(
+                            stream: _streamTrigger,
+                            builder: (context, snapshot) {
+                              final neradanRazlog = _neradanDanRazlog;
+                              if (neradanRazlog != null) {
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    child: Text(
+                                      '⛔ Slotovi su zaključani za ovaj datum.\nRazlog: $neradanRazlog',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              final data = _getKapacitetSync();
+                              final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+                              final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
+                              return TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _kapacitetGradTab('BC', bcVremena, data, _editKapacitet, _selectedDatumIso),
+                                  _kapacitetGradTab('VS', vsVremena, data, _editKapacitet, _selectedDatumIso),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      if (_neradanDanRazlog != null)
+                        Positioned(
+                          top: 0,
+                          left: 12,
+                          right: 12,
+                          child: V3ShimmerBanner(
+                            margin: EdgeInsets.zero,
+                            borderRadius: 12,
+                            child: Text(
+                              '📢 Neradan dan ${_selectedDay.toUpperCase()} (${_selectedDatumIso}) — $_neradanDanRazlog',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],

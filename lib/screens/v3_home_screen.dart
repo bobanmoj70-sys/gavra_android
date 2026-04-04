@@ -32,6 +32,7 @@ import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_putnik_card.dart';
+import '../widgets/v3_shimmer_banner.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_admin_screen.dart';
 import 'v3_vozac_screen.dart';
@@ -55,6 +56,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u aktivnoj sedmici.
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
+
+  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
   Stream<List<V3OperativnaNedeljaEntry>> _buildOperativnaStream(String datumIso) {
     return V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
@@ -1253,54 +1256,81 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       ],
                     ),
                   ),
-                  // Lista putnika/zahteva
+                  // Lista putnika/zahteva + floating neradan-banер
                   Expanded(
-                    child: prikazaniZapisi.isEmpty
-                        ? Center(
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                              child: V3ContainerUtils.iconContainer(
-                                padding: const EdgeInsets.all(16),
-                                backgroundColor: Theme.of(context).glassContainer,
-                                border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                borderRadiusGeometry: BorderRadius.circular(12),
-                                child: const Text(
-                                  'Nema planiranih putnika.',
-                                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: _neradanDanRazlog != null ? 52 : 0),
+                            child: prikazaniZapisi.isEmpty
+                                ? Center(
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                      child: V3ContainerUtils.iconContainer(
+                                        padding: const EdgeInsets.all(16),
+                                        backgroundColor: Theme.of(context).glassContainer,
+                                        border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                        borderRadiusGeometry: BorderRadius.circular(12),
+                                        child: const Text(
+                                          'Nema planiranih putnika.',
+                                          style:
+                                              TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.only(top: 4, bottom: 16),
+                                    itemCount: prikazaniZapisi.length,
+                                    itemBuilder: (ctx, i) {
+                                      final z = prikazaniZapisi[i];
+                                      final p = V3PutnikService.getPutnikById(z.putnikId);
+                                      if (p == null) return const SizedBox.shrink();
+
+                                      final grad = z.grad ?? '';
+                                      final vreme = slotVreme(z);
+                                      final indivVozac = _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
+                                      final vozacBoja = indivVozac != null
+                                          ? _parseVozacColor(indivVozac.boja)
+                                          : getVozacColorForTermin(grad, vreme);
+
+                                      final redniBroj =
+                                          prikazaniZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.brojMesta) + 1;
+
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 8),
+                                        child: V3PutnikCard(
+                                          putnik: p,
+                                          entry: z,
+                                          redniBroj: redniBroj,
+                                          vozacBoja: vozacBoja,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ),
+                        if (_neradanDanRazlog != null)
+                          Positioned(
+                            top: 4,
+                            left: 16,
+                            right: 16,
+                            child: V3ShimmerBanner(
+                              margin: EdgeInsets.zero,
+                              borderRadius: 12,
+                              child: Text(
+                                '📢 Neradan dan: ${_selectedDay.toUpperCase()} (${_selectedDatumIso}) — $_neradanDanRazlog',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
                                 ),
                               ),
                             ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(top: 4, bottom: 16),
-                            itemCount: prikazaniZapisi.length,
-                            itemBuilder: (ctx, i) {
-                              final z = prikazaniZapisi[i];
-                              final p = V3PutnikService.getPutnikById(z.putnikId);
-                              if (p == null) return const SizedBox.shrink();
-
-                              final grad = z.grad ?? '';
-                              final vreme = slotVreme(z);
-                              final indivVozac = _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
-                              final vozacBoja = indivVozac != null
-                                  ? _parseVozacColor(indivVozac.boja)
-                                  : getVozacColorForTermin(grad, vreme);
-
-                              // Kumulativni redni broj — uzima u obzir broj_mesta prethodnih putnika
-                              final redniBroj =
-                                  prikazaniZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.brojMesta) + 1;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: V3PutnikCard(
-                                  putnik: p,
-                                  entry: z,
-                                  redniBroj: redniBroj,
-                                  vozacBoja: vozacBoja,
-                                ),
-                              );
-                            },
                           ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1326,6 +1356,26 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return ValueListenableBuilder<String>(
       valueListenable: navBarTypeNotifier,
       builder: (context, navType, _) {
+        final neradanRazlog = _neradanDanRazlog;
+        if (neradanRazlog != null) {
+          return SafeArea(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.20),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
+              ),
+              child: Text(
+                '⛔ Slotovi su zaključani za $_selectedDay. Razlog: $neradanRazlog',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
+
         if (navType == 'zimski') {
           return V3BottomNavBarZimski(
             sviPolasci: _sviPolasci,

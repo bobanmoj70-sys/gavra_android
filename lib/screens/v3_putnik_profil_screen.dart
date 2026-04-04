@@ -25,6 +25,7 @@ import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../widgets/v3_live_clock_text.dart';
+import '../widgets/v3_shimmer_banner.dart';
 import '../widgets/v3_update_banner.dart';
 import '../widgets/v3_vozac_status_widget.dart';
 import 'v3_putnik_statistika_screen.dart';
@@ -279,6 +280,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       dan,
       anchor: V3DanHelper.schedulingWeekAnchor(),
     );
+    final datumIso = V3DanHelper.toIsoDate(datumPolaska);
+    final neradanRazlog = getNeradanDanRazlog(datumIso: datumIso, grad: grad.toLowerCase());
+    if (neradanRazlog != null) {
+      if (mounted) {
+        V3AppSnackBar.info(ctx, '⛔ Neradan dan (${datumIso}). Razlog: $neradanRazlog');
+      }
+      return;
+    }
+
     final now = DateTime.now();
     final dayFullName = V3DanHelper.fullName(datumPolaska);
     final vremena = getRasporedVremena(grad.toLowerCase(), navBarTypeNotifier.value, day: dayFullName)
@@ -735,49 +745,112 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Forced update gate
-                  const V3UpdateBanner(),
-                  // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
-                  if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
-                    _NotifBanner(onEnable: _requestNotifPermission),
-                  const SizedBox(height: 8),
-                  // ── HEADER CARD ──────────────────────────────────────
-                  _buildHeaderCard(
-                    tip: tip,
-                    imePrezime: imePrezime,
-                    telefon: telefon,
-                    telefon2: telefon2,
-                    adresaBcNaziv: adresaBcNaziv,
-                    adresaVsNaziv: adresaVsNaziv,
-                    adresaBcNaziv2: adresaBcNaziv2,
-                    adresaVsNaziv2: adresaVsNaziv2,
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Forced update gate
+                      const V3UpdateBanner(),
+                      // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
+                      if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
+                        _NotifBanner(onEnable: _requestNotifPermission),
+                      const SizedBox(height: 8),
+                      // ── HEADER CARD ──────────────────────────────────────
+                      _buildHeaderCard(
+                        tip: tip,
+                        imePrezime: imePrezime,
+                        telefon: telefon,
+                        telefon2: telefon2,
+                        adresaBcNaziv: adresaBcNaziv,
+                        adresaVsNaziv: adresaVsNaziv,
+                        adresaBcNaziv2: adresaBcNaziv2,
+                        adresaVsNaziv2: adresaVsNaziv2,
+                      ),
+                      const SizedBox(height: 16),
+                      // ── STATUS WIDGET ────────────────────────────────────
+                      _buildVozacEtaWidgets(),
+                      const SizedBox(height: 10),
+                      _buildStatistikaCard(tip: tip, stats: stats, cenaInfo: cenaInfo, ukupanDug: ukupanDug),
+                      const SizedBox(height: 10),
+                      _buildDetaljneStatistikeSection(
+                        putnikId: putnikId,
+                        imePrezime: imePrezime,
+                        tipPutnika: tip,
+                      ),
+                      const SizedBox(height: 16),
+                      // ── RASPORED ZAHTEVA ─────────────────────────────────
+                      _buildRasporedCard(nedeljaInfo: nedeljaInfo),
+                      const SizedBox(height: 16),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  // ── STATUS WIDGET ────────────────────────────────────
-                  _buildVozacEtaWidgets(),
-                  const SizedBox(height: 10),
-                  _buildStatistikaCard(tip: tip, stats: stats, cenaInfo: cenaInfo, ukupanDug: ukupanDug),
-                  const SizedBox(height: 10),
-                  _buildDetaljneStatistikeSection(
-                    putnikId: putnikId,
-                    imePrezime: imePrezime,
-                    tipPutnika: tip,
-                  ),
-                  const SizedBox(height: 16),
-                  // ── RASPORED ZAHTEVA ─────────────────────────────────
-                  _buildRasporedCard(nedeljaInfo: nedeljaInfo),
-                  const SizedBox(height: 16),
-                ],
-              ),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 16,
+                  right: 16,
+                  child: _buildNeradniDaniBanner(),
+                ),
+              ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNeradniDaniBanner() {
+    return ValueListenableBuilder<List<Map<String, String>>>(
+      valueListenable: neradniDaniNotifier,
+      builder: (context, rules, _) {
+        final weekAnchor = V3DanHelper.schedulingWeekAnchor();
+        final monday = V3DanHelper.dateOnly(weekAnchor.subtract(Duration(days: weekAnchor.weekday - 1)));
+        final friday = monday.add(const Duration(days: 4));
+
+        final lines = <String>[];
+        for (final rule in rules) {
+          final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
+          final date = DateTime.tryParse(dateIso);
+          if (date == null) continue;
+
+          final onlyDate = V3DanHelper.dateOnly(date);
+          if (onlyDate.isBefore(monday) || onlyDate.isAfter(friday)) continue;
+
+          final dayName = V3DanHelper.fullName(onlyDate);
+          final scope = (rule['scope'] ?? 'all').toLowerCase();
+          final scopeLabel = scope == 'bc'
+              ? 'BC'
+              : scope == 'vs'
+                  ? 'VS'
+                  : 'Svi';
+          final reason = (rule['reason'] ?? '').trim();
+          final reasonText = reason.isEmpty ? 'Neradan dan' : reason;
+          lines.add('• $dayName ($dateIso) [$scopeLabel] — $reasonText');
+        }
+
+        if (lines.isEmpty) return const SizedBox.shrink();
+
+        return V3ShimmerBanner(
+          margin: EdgeInsets.zero,
+          borderRadius: 12,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '📢 Neradni dan(i) — aktivna nedelja',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                lines.join('\n'),
+                style: const TextStyle(color: Colors.white, fontSize: 12.5),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
