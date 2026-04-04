@@ -44,8 +44,6 @@ jobs:
     env:
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
       APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APPSTORE_KEY_ID }}
-      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APPSTORE_API_KEY_P8 }}
-      CERTIFICATE_PRIVATE_KEY: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
     
     steps:
       - name: Checkout
@@ -112,6 +110,20 @@ jobs:
 
       - name: Setup keychain
         run: keychain initialize
+
+      - name: Prepare signing keys
+        env:
+          CERT_KEY_CONTENT: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
+          ASC_KEY_CONTENT: ${{ secrets.APPSTORE_API_KEY_P8 }}
+        run: |
+          mkdir -p ~/.private_keys
+          printf '%s' "$CERT_KEY_CONTENT" > /tmp/certificate_private_key.pem
+          printf '%s' "$ASC_KEY_CONTENT" > ~/.private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+          echo "Cert key first line: $(head -1 /tmp/certificate_private_key.pem)"
+          echo "Cert key size: $(wc -c < /tmp/certificate_private_key.pem)"
+          # Export env vars via GITHUB_ENV so all subsequent steps use file paths
+          echo "CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem" >> $GITHUB_ENV
+          echo "APP_STORE_CONNECT_PRIVATE_KEY=@file:$HOME/.private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" >> $GITHUB_ENV
 
       - name: Fetch signing files
         run: |
