@@ -144,8 +144,13 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
+          # DEBUG - provjera secretsa
+          echo "KEYSTORE_BASE64 length: ${#KEYSTORE_BASE64}"
+          echo "KEYSTORE_BASE64 first 20 chars: ${KEYSTORE_BASE64:0:20}"
+          echo "KEYSTORE_BASE64 last 20 chars: ${KEYSTORE_BASE64: -20}"
+
           # 1. Restore Keystore
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/app/gavra-release-key-production.keystore
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/gavra-release-key-production.keystore
           
           # 2. Create key.properties
           printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD" > android/key.properties
@@ -154,13 +159,13 @@ jobs:
           echo "storeFile=gavra-release-key-production.keystore" >> android/key.properties
 
           # 3. Restore Google Play JSON
-          printf '%s' "$GOOGLE_PLAY_JSON_BASE64" | base64 --decode > android/google-service-account.json
+          printf '%s' "$GOOGLE_PLAY_JSON_BASE64" | base64 --decode --ignore-garbage > android/google-service-account.json
 
           # 4. Restore .env file
           printf '%s' "$ENV_FILE_CONTENT" > .env
 
           # 5. Restore google-services.json
-          printf '%s' "$GOOGLE_SERVICES_BASE64" | base64 -d > android/app/google-services.json
+          printf '%s' "$GOOGLE_SERVICES_BASE64" | base64 --decode --ignore-garbage > android/app/google-services.json
 
       - name: 🛡️ Verify Keystore (Fail Fast)
         env:
