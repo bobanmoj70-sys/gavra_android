@@ -835,6 +835,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         return V3ShimmerBanner(
           margin: EdgeInsets.zero,
           borderRadius: 12,
+          backgroundColor: const Color(0xFFB71C1C),
+          borderColor: const Color(0xFFFF6B6B),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

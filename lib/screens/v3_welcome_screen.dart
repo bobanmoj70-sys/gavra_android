@@ -7,11 +7,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3_theme_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../services/v3_theme_manager.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
@@ -58,7 +58,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     _subscribeToVozaciRealtime();
     _setupAnimations();
     _loadAppVersion();
-    Future.delayed(const Duration(milliseconds: 300), _init);
+    unawaited(
+      Future<void>.delayed(const Duration(milliseconds: 300))
+          .then((_) => _init())
+          .catchError((Object e) => debugPrint('[V3WelcomeScreen] delayed init error: $e')),
+    );
   }
 
   List<V3Vozac> _sortedActiveVozaci() {
@@ -112,14 +116,18 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     try {
       final info = await PackageInfo.fromPlatform();
       V3StateUtils.safeSetState(this, () => _appVersion = 'v${info.version}');
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] loadAppVersion error: $e');
+    }
   }
 
   Future<void> _init() async {
     V3StateUtils.safeSetState(this, () => _isLoading = true);
 
     try {
-      await V3MasterRealtimeManager.instance.initV3();
+      await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
+    } on TimeoutException catch (e) {
+      debugPrint('[V3WelcomeScreen] initV3 timeout: $e');
     } catch (e) {
       debugPrint('[V3WelcomeScreen] initV3 error: $e');
     }
@@ -250,8 +258,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         context,
         prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
       );
-    } catch (_) {
-      // Tiho ignoriši grešku auto-login-a
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] auto-login error: $e');
     }
   }
 
@@ -324,7 +332,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     _isResumeRefreshing = true;
     try {
       final rm = V3MasterRealtimeManager.instance;
-      await rm.initV3();
+      await rm.initV3().timeout(const Duration(seconds: 15));
 
       if (!mounted) return;
 
@@ -346,7 +354,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         await _audioPlayer.stop();
         V3StateUtils.safeSetState(this, () => _isAudioPlaying = false);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] stopAudio error: $e');
+    }
   }
 
   Future<void> _loginAsVozac(V3Vozac vozac) async {

@@ -19,7 +19,6 @@ import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
-import '../widgets/v3_shimmer_banner.dart';
 
 /// V3 ekran za upravljanje rasporedom vozača.
 /// Admin dodeljuje vozača kroz operativnu tabelu (cache layer ima legacy naziv v3GpsRasporedCache).
@@ -38,8 +37,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   /// ISO datum za izabrani dan u aktivnoj nedelji.
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
-
-  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
   List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
   List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
@@ -711,7 +708,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                       children: [
                         Positioned.fill(
                           child: Padding(
-                            padding: EdgeInsets.only(top: _neradanDanRazlog != null ? 52 : 0),
+                            padding: EdgeInsets.zero,
                             child: _selectedVreme.isEmpty
                                 ? Center(
                                     child: Column(
@@ -777,20 +774,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                       ),
                           ),
                         ),
-                        if (_neradanDanRazlog != null)
-                          Positioned(
-                            top: 0,
-                            left: 12,
-                            right: 12,
-                            child: V3ShimmerBanner(
-                              margin: EdgeInsets.zero,
-                              borderRadius: 12,
-                              child: Text(
-                                '📢 Neradan dan ${_selectedDay.toUpperCase()} (${_selectedDatumIso}) — $_neradanDanRazlog',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -801,26 +784,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           bottomNavigationBar: ValueListenableBuilder<String>(
             valueListenable: navBarTypeNotifier,
             builder: (context, navType, _) {
-              final neradanRazlog = _neradanDanRazlog;
-              if (neradanRazlog != null) {
-                return SafeArea(
-                  child: Container(
-                    margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.20),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
-                    ),
-                    child: Text(
-                      '⛔ Slotovi zaključani za $_selectedDay. Razlog: $neradanRazlog',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                );
-              }
-
               final commonProps = _buildNavBarProps();
               if (navType == 'zimski') {
                 return V3BottomNavBarZimski(

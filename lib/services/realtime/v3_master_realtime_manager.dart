@@ -45,6 +45,25 @@ class V3MasterRealtimeManager {
     return V3TimeUtils.extractHHmmToken(value);
   }
 
+  String _asString(dynamic value) {
+    return value?.toString() ?? '';
+  }
+
+  bool _asBool(dynamic value, {bool defaultValue = true}) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1' || normalized == 'yes' || normalized == 'y') {
+        return true;
+      }
+      if (normalized == 'false' || normalized == '0' || normalized == 'no' || normalized == 'n') {
+        return false;
+      }
+    }
+    return defaultValue;
+  }
+
   String _gpsTripKey({
     required String vozacId,
     required String datumIso,
@@ -77,7 +96,7 @@ class V3MasterRealtimeManager {
 
     for (final trip in gpsTripStateCache.values) {
       final vozacId = (trip['vozac_id']?.toString() ?? '').trim();
-      final datumIso = V3DanHelper.parseIsoDatePart(trip['datum'] as String? ?? '');
+      final datumIso = V3DanHelper.parseIsoDatePart(_asString(trip['datum']));
       final grad = (trip['grad']?.toString() ?? '').trim().toUpperCase();
       final polazakTime = _extractTimeToken(trip['polazak_vreme']?.toString()) ?? '';
 
@@ -100,7 +119,7 @@ class V3MasterRealtimeManager {
       final vozacId = (entry['vozac_id']?.toString() ?? '').trim();
       if (id == null || vozacId.isEmpty) continue;
 
-      final datumIso = V3DanHelper.parseIsoDatePart(entry['datum'] as String? ?? '');
+      final datumIso = V3DanHelper.parseIsoDatePart(_asString(entry['datum']));
       final grad = (entry['grad']?.toString() ?? '').trim().toUpperCase();
       final polazakTime = _extractTimeToken(entry['dodeljeno_vreme']?.toString()) ??
           _extractTimeToken(entry['zeljeno_vreme']?.toString()) ??
@@ -133,8 +152,8 @@ class V3MasterRealtimeManager {
 
     // nav_bar_type (sa podrškom za zakazani prelaz)
     final navType = resolveEffectiveNavBarType(
-      currentType: row['nav_bar_type'] as String?,
-      nextType: row['nav_bar_type_next'] as String?,
+      currentType: row['nav_bar_type']?.toString(),
+      nextType: row['nav_bar_type_next']?.toString(),
       effectiveAt: row['nav_bar_type_effective_at'],
       now: now,
     );
@@ -145,7 +164,7 @@ class V3MasterRealtimeManager {
     _navTypeSwitchTimer?.cancel();
     _navTypeSwitchTimer = null;
 
-    final nextType = (row['nav_bar_type_next'] as String?)?.toLowerCase();
+    final nextType = row['nav_bar_type_next']?.toString().toLowerCase();
     final effectiveAt = _tryParseDateTime(row['nav_bar_type_effective_at']);
     if (nextType != null && ['zimski', 'letnji', 'praznici', 'custom'].contains(nextType) && effectiveAt != null) {
       final delay = effectiveAt.difference(now);
@@ -236,7 +255,10 @@ class V3MasterRealtimeManager {
       applyNeradniDaniFromSettings(row['neradni_dani']);
     }
 
-    unawaited(V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row));
+    unawaited(
+      V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row)
+          .catchError((Object e) => debugPrint('[V3MasterRealtimeManager] app update info error: $e')),
+    );
   }
 
   final StreamController<void> _changeController = StreamController<void>.broadcast();
@@ -353,7 +375,9 @@ class V3MasterRealtimeManager {
     if (_v3Channel != null) {
       try {
         await supabase.removeChannel(_v3Channel!);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[V3MasterRealtimeManager] removeChannel warning: $e');
+      }
       _v3Channel = null;
     }
 
@@ -393,7 +417,7 @@ class V3MasterRealtimeManager {
 
         bool isActive = true;
         if (hasActiveKey && newRecord.containsKey(activeKey)) {
-          isActive = newRecord[activeKey] as bool? ?? true;
+          isActive = _asBool(newRecord[activeKey], defaultValue: true);
         }
 
         if (payload.eventType == PostgresChangeEvent.delete || (!isActive && !keepInactive)) {

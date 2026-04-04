@@ -85,6 +85,7 @@ void main() async {
     );
   } catch (e) {
     debugPrint('âŒ [main] Supabase.initialize greška: $e');
+    throw Exception('Ne mogu da inicijalizujem Supabase: $e');
   }
 
   // 1. Pokreni V3 Realtime Manager ODMAH (prije UI-a, da ima max vremena za fetch)
@@ -99,7 +100,10 @@ void main() async {
   runApp(const MyApp());
 
   // 4. Čekaj malo da se UI renderira, pa tek onda inicijalizuj ostale servise
-  unawaited(Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks));
+  unawaited(
+    Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks)
+        .catchError((Object e) => debugPrint('⚠️ [main] Startup tasks greška: $e')),
+  );
 }
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI
@@ -113,11 +117,18 @@ Future<void> _doStartupTasks() async {
   }
 
   // Locale - UTF-8 podrska za dijakritiku
-  unawaited(initializeDateFormatting('sr', null));
+  unawaited(
+    initializeDateFormatting('sr', null)
+        .catchError((Object e) => debugPrint('⚠️ [main] initializeDateFormatting greška: $e')),
+  );
 
   // Sve ostalo pokreni istovremeno (paralelno)
-  unawaited(_initNotificationHandlers()); // Samo notification handlers, Firebase je već inicijalizovan
-  unawaited(_initAppServices());
+  unawaited(
+    _initNotificationHandlers().catchError((Object e) => debugPrint('⚠️ [main] Notification handlers greška: $e')),
+  ); // Samo notification handlers, Firebase je već inicijalizovan
+  unawaited(
+    _initAppServices().catchError((Object e) => debugPrint('⚠️ [main] App services greška: $e')),
+  );
 }
 
 /// FCM push inicijalizacija u main() funkciji
@@ -265,9 +276,9 @@ Future<void> _syncPushTokenToCurrentUser(String token) async {
 
 Future<void> _handleNotificationOpenedFromData(Map<String, dynamic> data) async {
   try {
-    final type = (data['type'] as String?)?.trim();
+    final type = data['type']?.toString().trim();
     if (type == 'v3_putnik_eta_start') {
-      final putnikId = (data['putnik_id'] as String?)?.trim() ?? '';
+      final putnikId = data['putnik_id']?.toString().trim() ?? '';
       await _openPutnikProfilFromNotification('putnik_eta_start:$putnikId');
     }
   } catch (e) {
@@ -283,7 +294,7 @@ Future<void> _firebaseMessagingBackgroundHandler(fcm.RemoteMessage message) asyn
   debugPrint("🔔 [FCM] Title: ${message.notification?.title}");
   debugPrint("🔔 [FCM] Body: ${message.notification?.body}");
   debugPrint("🔔 [FCM] Data: ${message.data}");
-  final type = (message.data['type'] as String?)?.trim() ?? '';
+  final type = message.data['type']?.toString().trim() ?? '';
   if (type == 'v3_alternativa') {
     try {
       await _ensureLocalNotificationsInitialized();
@@ -313,7 +324,7 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
   debugPrint("📱 [FCM] Data: ${message.data}");
 
   // Provjeri tip notifikacije
-  final type = message.data['type'] as String?;
+  final type = message.data['type']?.toString().trim();
   final title = (message.notification?.title ?? message.data['title']?.toString() ?? '').trim();
   final body = (message.notification?.body ?? message.data['body']?.toString() ?? '').trim();
   if (type == 'gps_tracking_start') {
@@ -339,11 +350,11 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
 
 /// Rukovanje GPS tracking start notifikacijom
 Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
-  final vozacId = data['vozac_id'] as String?;
-  final polazakVreme = data['polazak_vreme'] as String?;
+  final vozacId = data['vozac_id']?.toString().trim();
+  final polazakVreme = data['polazak_vreme']?.toString().trim();
   final putniciBroj = int.tryParse('${data['putnici_count'] ?? 0}') ?? 0;
 
-  if (vozacId == null || polazakVreme == null) {
+  if (vozacId == null || vozacId.isEmpty || polazakVreme == null || polazakVreme.isEmpty) {
     debugPrint('⚠️ [GPS] Nedostaju podaci u notification: vozacId=$vozacId, polazak=$polazakVreme');
     return;
   }
@@ -639,7 +650,7 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
 
     // 3) Cache refresh fallback
     if (putnikData == null) {
-      await V3MasterRealtimeManager.instance.initV3();
+      await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
       final token = await fcm.FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) {
         putnikData = V3MasterRealtimeManager.instance.putniciCache.values.cast<Map<String, dynamic>?>().firstWhere(
@@ -686,8 +697,8 @@ Future<void> _initAppServices() async {
     );
 
     final navType = resolveEffectiveNavBarType(
-      currentType: settings['nav_bar_type'] as String?,
-      nextType: settings['nav_bar_type_next'] as String?,
+      currentType: settings['nav_bar_type']?.toString(),
+      nextType: settings['nav_bar_type_next']?.toString(),
       effectiveAt: settings['nav_bar_type_effective_at'],
     );
 
@@ -700,7 +711,9 @@ Future<void> _initAppServices() async {
   }
 
   // Provera da li je dostupna nova verzija aplikacije
-  unawaited(V3AppUpdateService.refreshUpdateInfo());
+  unawaited(
+    V3AppUpdateService.refreshUpdateInfo().catchError((Object e) => debugPrint('⚠️ [main] App update info greška: $e')),
+  );
 }
 
 class MyApp extends StatefulWidget {

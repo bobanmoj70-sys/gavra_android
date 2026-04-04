@@ -1160,64 +1160,109 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       children: [
         const V3UpdateBanner(),
         Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Padding(
-                  padding: EdgeInsets.only(top: _neradanDanRazlog != null ? 52 : 0),
-                  child: _mojiPutnici.isEmpty
-                      ? Center(
-                          child: V3ContainerUtils.styledContainer(
-                            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            padding: const EdgeInsets.all(20),
-                            backgroundColor: Theme.of(context).glassContainer,
-                            border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.inbox, color: Colors.white54, size: 48),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Nema putnika za $_selectedGrad $_selectedVreme',
-                                  style: const TextStyle(color: Colors.white70, fontSize: 16),
-                                  textAlign: TextAlign.center,
+          child: ValueListenableBuilder<List<Map<String, String>>>(
+            valueListenable: neradniDaniNotifier,
+            builder: (context, rules, _) {
+              final weekAnchor = V3DanHelper.schedulingWeekAnchor();
+              final monday = V3DanHelper.dateOnly(weekAnchor.subtract(Duration(days: weekAnchor.weekday - 1)));
+              final friday = monday.add(const Duration(days: 4));
+
+              final lines = <String>[];
+              for (final rule in rules) {
+                final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
+                final date = DateTime.tryParse(dateIso);
+                if (date == null) continue;
+
+                final onlyDate = V3DanHelper.dateOnly(date);
+                if (onlyDate.isBefore(monday) || onlyDate.isAfter(friday)) continue;
+
+                final dayName = V3DanHelper.fullName(onlyDate);
+                final scope = (rule['scope'] ?? 'all').toLowerCase();
+                final scopeLabel = scope == 'bc'
+                    ? 'BC'
+                    : scope == 'vs'
+                        ? 'VS'
+                        : 'Svi';
+                final reason = (rule['reason'] ?? '').trim();
+                final reasonText = reason.isEmpty ? 'Neradan dan' : reason;
+                lines.add('• $dayName ($dateIso) [$scopeLabel] — $reasonText');
+              }
+
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: lines.isNotEmpty ? 52 : 0),
+                      child: _mojiPutnici.isEmpty
+                          ? Center(
+                              child: V3ContainerUtils.styledContainer(
+                                margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                padding: const EdgeInsets.all(20),
+                                backgroundColor: Theme.of(context).glassContainer,
+                                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                                borderRadius: BorderRadius.circular(16),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.inbox, color: Colors.white54, size: 48),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Nema putnika za $_selectedGrad $_selectedVreme',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 16),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.only(top: 4, bottom: 16),
+                              itemCount: _mojiPutnici.length,
+                              itemBuilder: (context, index) {
+                                final pz = _mojiPutnici[index];
+                                return V3PutnikCard(
+                                  putnik: pz.putnik,
+                                  entry: pz.entry,
+                                  redniBroj: redniBrojevi[index],
+                                  onChanged: _rebuild,
+                                  isExcludedFromOptimization: _isExcludedFromOptimization(pz),
+                                );
+                              },
                             ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(top: 4, bottom: 16),
-                          itemCount: _mojiPutnici.length,
-                          itemBuilder: (context, index) {
-                            final pz = _mojiPutnici[index];
-                            return V3PutnikCard(
-                              putnik: pz.putnik,
-                              entry: pz.entry,
-                              redniBroj: redniBrojevi[index],
-                              onChanged: _rebuild,
-                              isExcludedFromOptimization: _isExcludedFromOptimization(pz),
-                            );
-                          },
-                        ),
-                ),
-              ),
-              if (_neradanDanRazlog != null)
-                Positioned(
-                  top: 6,
-                  left: 12,
-                  right: 12,
-                  child: V3ShimmerBanner(
-                    margin: EdgeInsets.zero,
-                    borderRadius: 12,
-                    child: Text(
-                      '📢 Neradan dan ${_selectedDay.toUpperCase()} (${_selectedDatumIso}) — $_neradanDanRazlog',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                     ),
                   ),
-                ),
-            ],
+                  if (lines.isNotEmpty)
+                    Positioned(
+                      top: 6,
+                      left: 12,
+                      right: 12,
+                      child: V3ShimmerBanner(
+                        margin: EdgeInsets.zero,
+                        borderRadius: 12,
+                        backgroundColor: const Color(0xFFB71C1C),
+                        borderColor: const Color(0xFFFF6B6B),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '📢 Neradni dan(i) — aktivna nedelja',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              lines.join('\n'),
+                              style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ),
       ],
