@@ -123,7 +123,8 @@ jobs:
           echo "Cert key size: $(wc -c < /tmp/certificate_private_key.pem)"
           # Export env vars via GITHUB_ENV so all subsequent steps use file paths
           echo "CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem" >> $GITHUB_ENV
-          echo "APP_STORE_CONNECT_PRIVATE_KEY=@file:$HOME/.private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" >> $GITHUB_ENV
+          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
+          echo "APP_STORE_CONNECT_PRIVATE_KEY=@file:${ASC_KEY_PATH}" >> $GITHUB_ENV
 
       - name: Fetch signing files
         run: |
