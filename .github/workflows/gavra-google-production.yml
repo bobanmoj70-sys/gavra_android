@@ -135,24 +135,32 @@ jobs:
           channel: 'stable'
 
       - name: Prepare secrets (Linux)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          GOOGLE_PLAY_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+          GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           # 1. Restore Keystore
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n' | base64 -d > android/app/gavra-release-key-production.keystore
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/app/gavra-release-key-production.keystore
           
           # 2. Create key.properties
-          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD" > android/key.properties
+          printf 'keyPassword=%s\n' "$KEY_PASSWORD" >> android/key.properties
+          printf 'keyAlias=%s\n' "$KEY_ALIAS" >> android/key.properties
           echo "storeFile=gavra-release-key-production.keystore" >> android/key.properties
 
           # 3. Restore Google Play JSON
-          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | tr -d '\n' | base64 --decode > android/google-service-account.json
+          printf '%s' "$GOOGLE_PLAY_JSON_BASE64" | base64 --decode > android/google-service-account.json
 
           # 4. Restore .env file
-          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+          printf '%s' "$ENV_FILE_CONTENT" > .env
 
           # 5. Restore google-services.json
-          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | tr -d '\n' | base64 -d > android/app/google-services.json
+          printf '%s' "$GOOGLE_SERVICES_BASE64" | base64 -d > android/app/google-services.json
 
       - name: 🛡️ Verify Keystore (Fail Fast)
         env:
