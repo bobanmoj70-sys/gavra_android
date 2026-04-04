@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v3_putnik.dart';
@@ -10,6 +9,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
+import '../services/v3/v3_trip_stops_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
@@ -827,35 +827,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   Future<void> _persistRouteOrderToOperativna(List<Map<String, dynamic>> optimizedData) async {
     try {
-      final updates = _buildRouteOrderUpdateFutures(optimizedData);
-
-      if (updates.isNotEmpty) {
-        await Future.wait(updates);
+      final vozac = V3VozacService.currentVozac;
+      if (vozac != null) {
+        await V3TripStopsService.upsertStopsForTermin(
+          vozacId: vozac.id,
+          datumIso: _selectedDatumIso,
+          grad: _selectedGrad,
+          polazakVreme: _selectedVreme,
+          optimizedData: optimizedData,
+          source: 'osrm',
+        );
       }
     } catch (e) {
       debugPrint('[V3VozacScreen] _persistRouteOrderToOperativna error: $e');
     }
-  }
-
-  List<Future<void>> _buildRouteOrderUpdateFutures(List<Map<String, dynamic>> optimizedData) {
-    final updates = <Future<void>>[];
-
-    for (final item in optimizedData) {
-      final entry = item['entry'] as V3OperativnaNedeljaEntry?;
-      final entryId = entry?.id;
-      if (entryId == null || entryId.isEmpty) continue;
-
-      final routeOrder = _parseRouteOrder(item['route_order']);
-
-      updates.add(
-        V3OperativnaNedeljaService.updateRouteOrderById(
-          operativnaId: entryId,
-          routeOrder: routeOrder,
-        ),
-      );
-    }
-
-    return updates;
   }
 
   /// Dobija trenutnu GPS poziciju vozača iz baze podataka

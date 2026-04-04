@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import '../../utils/v3_audit_actor.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_pin_zahtev_repository.dart';
 import 'repositories/v3_putnik_repository.dart';
@@ -24,8 +23,22 @@ class V3PinZahtevService {
     );
   }
 
+  static Stream<List<Map<String, dynamic>>> streamZahteviZaPutnika(String putnikId) {
+    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+      tables: ['v3_pin_zahtevi'],
+      build: () => _buildByPutnik(putnikId),
+    );
+  }
+
   static List<Map<String, dynamic>> buildEnrichedListSync() {
     return _buildEnrichedList();
+  }
+
+  static String? latestStatusForPutnikSync(String putnikId) {
+    final rows = _buildByPutnik(putnikId);
+    if (rows.isEmpty) return null;
+    final status = rows.first['status']?.toString().trim();
+    return status == null || status.isEmpty ? null : status;
   }
 
   static Future<bool> hasPendingZahtev(String putnikId) async {
@@ -106,6 +119,25 @@ class V3PinZahtevService {
     }).toList();
   }
 
+  static List<Map<String, dynamic>> _buildByPutnik(String putnikId) {
+    final rm = V3MasterRealtimeManager.instance;
+    final rows = rm.pinZahteviCache.values
+        .where((z) => z['putnik_id']?.toString() == putnikId)
+        .map((z) => Map<String, dynamic>.from(z))
+        .toList();
+
+    DateTime _ts(Map<String, dynamic> row) {
+      final upd = DateTime.tryParse((row['updated_at']?.toString() ?? '').trim());
+      if (upd != null) return upd;
+      final crt = DateTime.tryParse((row['created_at']?.toString() ?? '').trim());
+      if (crt != null) return crt;
+      return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    }
+
+    rows.sort((a, b) => _ts(b).compareTo(_ts(a)));
+    return rows;
+  }
+
   static Future<bool> odobriZahtev({
     required String zahtevId,
     required String pin,
@@ -119,12 +151,7 @@ class V3PinZahtevService {
       if (putnikId == null) return false;
 
       // 1. Ažuriraj putnika sa novim PIN-om u v3_putnici
-      final actor = V3AuditActor.cron('admin_pin');
-      final payload = <String, dynamic>{
-        'pin': pin,
-        if (actor != null) 'updated_by': actor,
-      };
-      await _putnikRepo.updateById(putnikId, payload);
+      await _putnikRepo.updateById(putnikId, {'pin': pin});
 
       // 2. Obeleži zahtev kao odobren (Fire and Forget)
       await _pinRepo.updateById(zahtevId, {'status': 'odobren'});

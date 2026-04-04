@@ -1,5 +1,3 @@
-import '../globals.dart';
-
 class V3AuditActor {
   V3AuditActor._();
 
@@ -17,7 +15,7 @@ class V3AuditActor {
   }
 
   static String? currentUserId() {
-    return _extractUuid(supabase.auth.currentUser?.id);
+    return null;
   }
 
   static String? normalize(

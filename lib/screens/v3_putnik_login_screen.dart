@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
-import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_pin_zahtev_service.dart';
 import '../services/v3/v3_putnik_service.dart';
@@ -269,19 +268,28 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
   void _listenForPin() {
     V3StreamUtils.cancelSubscription('putnik_login_pin');
     final putnikId = _putnikData?['id']?.toString();
+    if (putnikId == null || putnikId.isEmpty) return;
     V3StreamUtils.subscribeToPinRequests(
         key: 'putnik_login',
-        pinStream: V3PinZahtevService.streamZahteviKojiCekaju(),
+        pinStream: V3PinZahtevService.streamZahteviZaPutnika(putnikId),
         onPinUpdate: (lista) {
           if (!mounted) return;
-          // Kada zahtev nestane iz liste čekanja — PIN je odobren
-          final josCeka = lista.any((z) => z['putnik_id']?.toString() == putnikId);
-          if (!josCeka && _currentStep == _LoginStep.zahtevPoslat) {
+          if (_currentStep != _LoginStep.zahtevPoslat) return;
+
+          final status = lista.isEmpty ? null : (lista.first['status']?.toString().trim() ?? '');
+          if (status == 'odobren') {
             V3StreamUtils.cancelSubscription('putnik_login_pin');
             setState(() {
               _currentStep = _LoginStep.pin;
               _infoMessage = '✅ PIN je dodeljen! Unesite PIN koji ste dobili.';
               _errorMessage = null;
+            });
+          } else if (status == 'odbijen') {
+            V3StreamUtils.cancelSubscription('putnik_login_pin');
+            setState(() {
+              _currentStep = _LoginStep.telefon;
+              _infoMessage = null;
+              _errorMessage = '❌ Zahtev za PIN je odbijen. Kontaktirajte admina ili pošaljite novi zahtev.';
             });
           }
         });

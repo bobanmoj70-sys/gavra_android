@@ -16,6 +16,7 @@ class V3OperativnaNedeljaEntry {
   final String? statusFinal;
   final bool aktivno;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
   final int brojMesta;
   final String? zeljenoVreme;
   final String? dodeljivoVreme;
@@ -29,10 +30,8 @@ class V3OperativnaNedeljaEntry {
   final String? otkazaoPutnikId;
   final int? maxMesta;
   final bool pokupljen;
-  final String? napomena;
   final String? altVremePre;
   final String? altVremePosle;
-  final String? altNapomena;
   final bool koristiSekundarnu;
   final String? adresaIdOverride;
   final String? createdBy;
@@ -46,6 +45,7 @@ class V3OperativnaNedeljaEntry {
     this.statusFinal,
     this.aktivno = true,
     this.createdAt,
+    this.updatedAt,
     this.brojMesta = 1,
     this.zeljenoVreme,
     this.dodeljivoVreme,
@@ -59,10 +59,8 @@ class V3OperativnaNedeljaEntry {
     this.otkazaoPutnikId,
     this.maxMesta,
     this.pokupljen = false,
-    this.napomena,
     this.altVremePre,
     this.altVremePosle,
-    this.altNapomena,
     this.koristiSekundarnu = false,
     this.adresaIdOverride,
     this.createdBy,
@@ -80,6 +78,7 @@ class V3OperativnaNedeljaEntry {
       statusFinal: json['status_final'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
+      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
       zeljenoVreme: json['zeljeno_vreme'] as String?,
       dodeljivoVreme: json['dodeljeno_vreme'] as String?,
@@ -93,10 +92,8 @@ class V3OperativnaNedeljaEntry {
       otkazaoPutnikId: json['otkazao_putnik_id'] as String?,
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
       pokupljen: json['pokupljen'] as bool? ?? false,
-      napomena: json['napomena'] as String?,
       altVremePre: json['alt_vreme_pre'] as String?,
       altVremePosle: json['alt_vreme_posle'] as String?,
-      altNapomena: json['alt_napomena'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
       adresaIdOverride: json['adresa_id_override'] as String?,
       createdBy: json['created_by'] as String?,
@@ -111,6 +108,7 @@ class V3OperativnaNedeljaEntry {
       'grad': grad,
       'status_final': statusFinal,
       'aktivno': aktivno,
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       if (zeljenoVreme != null) 'zeljeno_vreme': zeljenoVreme,
       if (dodeljivoVreme != null) 'dodeljeno_vreme': dodeljivoVreme,
       if (vremePokupljen != null) 'vreme_pokupljen': vremePokupljen!.toIso8601String(),
@@ -122,10 +120,8 @@ class V3OperativnaNedeljaEntry {
       if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
       if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
       if (maxMesta != null) 'max_mesta': maxMesta,
-      if (napomena != null) 'napomena': napomena,
       if (altVremePre != null) 'alt_vreme_pre': altVremePre,
       if (altVremePosle != null) 'alt_vreme_posle': altVremePosle,
-      if (altNapomena != null) 'alt_napomena': altNapomena,
       'koristi_sekundarnu': koristiSekundarnu,
       if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
       if (createdBy != null) 'created_by': createdBy,
@@ -332,7 +328,6 @@ class V3OperativnaNedeljaService {
     required String dodeljivoVreme, // HH:mm
     required int brojMesta,
     String? createdBy,
-    String? napomena,
     bool? koristiSekundarnu,
     String? adresaIdOverride,
   }) async {
@@ -353,7 +348,6 @@ class V3OperativnaNedeljaService {
           'dodeljeno_vreme': dodeljivoVreme,
           'status_final': 'odobreno',
           if (actor != null) 'updated_by': actor,
-          if (napomena != null) 'napomena': napomena,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_id_override': adresaIdOverride, // null = briše override
         });
@@ -370,7 +364,6 @@ class V3OperativnaNedeljaService {
           'aktivno': true,
           'pokupljen': false,
           if (actor != null) 'created_by': actor,
-          if (napomena != null) 'napomena': napomena,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
         });

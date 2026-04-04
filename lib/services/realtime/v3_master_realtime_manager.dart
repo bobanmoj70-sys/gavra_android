@@ -29,6 +29,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> gpsTripStateCache = {};
+  final Map<String, Map<String, dynamic>> tripStopsCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
   final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
   final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
@@ -55,6 +56,24 @@ class V3MasterRealtimeManager {
 
   void _rebuildGpsCacheFromOperativna() {
     final gpsTripByKey = <String, Map<String, dynamic>>{};
+    final routeOrderByOperativnaId = <String, int?>{};
+
+    for (final stop in tripStopsCache.values) {
+      final operativnaId = stop['operativna_id']?.toString();
+      if (operativnaId == null || operativnaId.isEmpty) continue;
+
+      final rawOrder = stop['stop_order'];
+      int? parsedOrder;
+      if (rawOrder is int) {
+        parsedOrder = rawOrder;
+      } else if (rawOrder is num) {
+        parsedOrder = rawOrder.toInt();
+      } else {
+        parsedOrder = int.tryParse(rawOrder?.toString() ?? '');
+      }
+
+      routeOrderByOperativnaId[operativnaId] = parsedOrder;
+    }
 
     for (final trip in gpsTripStateCache.values) {
       final vozacId = (trip['vozac_id']?.toString() ?? '').trim();
@@ -103,6 +122,7 @@ class V3MasterRealtimeManager {
       row['nav_bar_type'] = trip?['nav_bar_type'] ?? row['nav_bar_type'] ?? 'zimski';
       row['gps_status'] = trip?['gps_status'] ?? 'pending';
       row['notification_sent'] = trip?['notification_sent'] ?? false;
+      row['route_order'] = routeOrderByOperativnaId[id];
       v3GpsRasporedCache[id] = row;
     }
   }
@@ -285,8 +305,9 @@ class V3MasterRealtimeManager {
       _fillCache(pinZahteviCache, results[9] as List);
       _fillCache(operativnaNedeljaCache, results[10] as List);
       _fillCache(gpsTripStateCache, results[11] as List);
-      _fillCache(kapacitetSlotsCache, results[12] as List);
-      _fillCache(appSettingsCache, results[13] as List);
+      _fillCache(tripStopsCache, results[12] as List);
+      _fillCache(kapacitetSlotsCache, results[13] as List);
+      _fillCache(appSettingsCache, results[14] as List);
       _rebuildGpsCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
       final globalSettings = appSettingsCache['global'];
@@ -332,6 +353,7 @@ class V3MasterRealtimeManager {
     _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
     _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
     _setupTableRealtime('v3_gps_trip_state', gpsTripStateCache, hasActiveKey: false);
+    _setupTableRealtime('v3_trip_stops', tripStopsCache, hasActiveKey: false);
     _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
     _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
 
@@ -361,13 +383,15 @@ class V3MasterRealtimeManager {
         } else {
           cache[id] = Map<String, dynamic>.from(newRecord);
         }
-        if (table == 'v3_operativna_nedelja' || table == 'v3_gps_trip_state') {
+        if (table == 'v3_operativna_nedelja' || table == 'v3_gps_trip_state' || table == 'v3_trip_stops') {
           _rebuildGpsCacheFromOperativna();
         }
         if (table == 'v3_app_settings' && id == 'global') {
           _applyAppSettings(newRecord);
         }
         if (table == 'v3_gps_trip_state') {
+          _scheduleEmit(tables: {table, 'v3_operativna_nedelja'});
+        } else if (table == 'v3_trip_stops') {
           _scheduleEmit(tables: {table, 'v3_operativna_nedelja'});
         } else {
           _scheduleEmit(tables: {table});
@@ -433,6 +457,10 @@ class V3MasterRealtimeManager {
         gpsTripStateCache[id] = row;
         _rebuildGpsCacheFromOperativna();
         break;
+      case 'v3_trip_stops':
+        tripStopsCache[id] = row;
+        _rebuildGpsCacheFromOperativna();
+        break;
       case 'v3_kapacitet_slots':
         kapacitetSlotsCache[id] = row;
         break;
@@ -493,6 +521,8 @@ class V3MasterRealtimeManager {
         return kapacitetSlotsCache;
       case 'v3_gps_trip_state':
         return gpsTripStateCache;
+      case 'v3_trip_stops':
+        return tripStopsCache;
       case 'v3_app_settings':
         return appSettingsCache;
       case 'v3_gps_raspored':

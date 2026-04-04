@@ -19,6 +19,7 @@ class V3RealtimeBootstrapRepository {
       supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka'),
       supabase.from('v3_operativna_nedelja').select(),
       supabase.from('v3_gps_trip_state').select(),
+      supabase.from('v3_trip_stops').select(),
       supabase.from('v3_kapacitet_slots').select().eq('aktivno', true),
       supabase.from('v3_app_settings').select(),
     ]);
