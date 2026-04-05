@@ -60,7 +60,9 @@ class _V3ShimmerBannerState extends State<V3ShimmerBanner> with SingleTickerProv
           children: [
             Padding(
               padding: widget.padding,
-              child: widget.child,
+              child: MediaQuery.withNoTextScaling(
+                child: widget.child,
+              ),
             ),
             Positioned.fill(
               child: IgnorePointer(

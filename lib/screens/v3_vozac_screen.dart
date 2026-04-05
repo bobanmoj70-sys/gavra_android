@@ -1174,54 +1174,50 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                 return !onlyDate.isBefore(monday) && !onlyDate.isAfter(friday);
               });
 
-              return Stack(
+              return Column(
                 children: [
-                  Positioned.fill(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: hasNeradni ? 52 : 0),
-                      child: _mojiPutnici.isEmpty
-                          ? Center(
-                              child: V3ContainerUtils.styledContainer(
-                                margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                padding: const EdgeInsets.all(20),
-                                backgroundColor: Theme.of(context).glassContainer,
-                                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                                borderRadius: BorderRadius.circular(16),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.inbox, color: Colors.white54, size: 48),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Nema putnika za $_selectedGrad $_selectedVreme',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 16),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(top: 4, bottom: 16),
-                              itemCount: _mojiPutnici.length,
-                              itemBuilder: (context, index) {
-                                final pz = _mojiPutnici[index];
-                                return V3PutnikCard(
-                                  putnik: pz.putnik,
-                                  entry: pz.entry,
-                                  redniBroj: redniBrojevi[index],
-                                  onChanged: _rebuild,
-                                  isExcludedFromOptimization: _isExcludedFromOptimization(pz),
-                                );
-                              },
-                            ),
+                  if (hasNeradni)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(12, 6, 12, 0),
+                      child: V3NeradniDaniBanner(),
                     ),
-                  ),
-                  const Positioned(
-                    top: 6,
-                    left: 12,
-                    right: 12,
-                    child: V3NeradniDaniBanner(),
+                  Expanded(
+                    child: _mojiPutnici.isEmpty
+                        ? Center(
+                            child: V3ContainerUtils.styledContainer(
+                              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              padding: const EdgeInsets.all(20),
+                              backgroundColor: Theme.of(context).glassContainer,
+                              border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.inbox, color: Colors.white54, size: 48),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Nema putnika za $_selectedGrad $_selectedVreme',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.only(top: 4, bottom: 16),
+                            itemCount: _mojiPutnici.length,
+                            itemBuilder: (context, index) {
+                              final pz = _mojiPutnici[index];
+                              return V3PutnikCard(
+                                putnik: pz.putnik,
+                                entry: pz.entry,
+                                redniBroj: redniBrojevi[index],
+                                onChanged: _rebuild,
+                                isExcludedFromOptimization: _isExcludedFromOptimization(pz),
+                              );
+                            },
+                          ),
                   ),
                 ],
               );
