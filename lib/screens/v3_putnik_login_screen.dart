@@ -104,6 +104,12 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
   String _normalizePhone(String phone) => V3PhoneUtils.normalize(phone);
 
+  Future<String?> _getFreshPin(String putnikId) async {
+    final pin = await V3PutnikService.getPinById(putnikId);
+    final trimmed = (pin ?? '').trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   // Korak 1: Provjeri telefon u v3_putnici
   Future<void> _checkTelefon() async {
     final telefon = V3TextUtils.getControllerText('putnik_telefon').trim();
@@ -130,7 +136,12 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
 
       _putnikData = found;
       final email = found['email'] as String?;
-      final pin = found['pin'] as String?;
+      final putnikId = found['id']?.toString() ?? '';
+      final freshPin = putnikId.isNotEmpty ? await _getFreshPin(putnikId) : null;
+      if (freshPin != null) {
+        _putnikData!['pin'] = freshPin;
+      }
+      final pin = freshPin ?? (found['pin'] as String?);
 
       if (email == null || email.trim().isEmpty) {
         // Nema email — traži ga
@@ -242,6 +253,19 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
     });
     try {
       final putnikId = _putnikData!['id'].toString();
+      final freshPin = await _getFreshPin(putnikId);
+      if (!mounted) return;
+      if (freshPin != null) {
+        V3StreamUtils.cancelSubscription('putnik_login_pin');
+        setState(() {
+          _putnikData!['pin'] = freshPin;
+          _currentStep = _LoginStep.pin;
+          _infoMessage = '✅ PIN je već dodeljen. Unesite PIN za prijavu.';
+          _errorMessage = null;
+        });
+        return;
+      }
+
       final telefon = _normalizePhone(V3TextUtils.getControllerText('putnik_telefon').trim());
       final success = await V3PinZahtevService.posaljiZahtev(
         putnikId: putnikId,
@@ -276,15 +300,23 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
           if (!mounted) return;
           if (_currentStep != _LoginStep.zahtevPoslat) return;
 
-          final status = lista.isEmpty ? null : (lista.first['status']?.toString().trim() ?? '');
-          if (status == 'odobren') {
+          final statuses = lista
+              .map((row) => (row['status']?.toString().trim() ?? '').toLowerCase())
+              .where((status) => status.isNotEmpty)
+              .toList(growable: false);
+
+          final hasOdobren = statuses.contains('odobren');
+          final hasCeka = statuses.contains('ceka');
+          final hasOdbijen = statuses.contains('odbijen');
+
+          if (hasOdobren) {
             V3StreamUtils.cancelSubscription('putnik_login_pin');
             setState(() {
               _currentStep = _LoginStep.pin;
               _infoMessage = '✅ PIN je dodeljen! Unesite PIN koji ste dobili.';
               _errorMessage = null;
             });
-          } else if (status == 'odbijen') {
+          } else if (!hasCeka && hasOdbijen) {
             V3StreamUtils.cancelSubscription('putnik_login_pin');
             setState(() {
               _currentStep = _LoginStep.telefon;

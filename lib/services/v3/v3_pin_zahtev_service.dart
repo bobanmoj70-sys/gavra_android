@@ -43,6 +43,10 @@ class V3PinZahtevService {
 
   static Future<bool> hasPendingZahtev(String putnikId) async {
     try {
+      final putnik = await _putnikRepo.getActiveById(putnikId);
+      final putnikPin = (putnik?['pin']?.toString() ?? '').trim();
+      if (putnikPin.isNotEmpty) return false;
+
       final rm = V3MasterRealtimeManager.instance;
       // Proveri prvo cache
       final uCacheu =
