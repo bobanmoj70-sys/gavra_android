@@ -211,11 +211,9 @@ String _katLabel(String? kat) {
 class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_operativna_nedelja', 'v3_finansije', 'v3_putnici'],
-        build: () {},
-      ),
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_finansije', 'v3_putnici']),
       builder: (context, _) {
         final iz = _buildIzvestaj();
         return Scaffold(

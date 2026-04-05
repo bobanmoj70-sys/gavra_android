@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../globals.dart';
 import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -105,11 +104,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
       backgroundColor: Colors.transparent,
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(appBarHeight),
-        child: StreamBuilder<void>(
-          stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-            tables: const ['v3_putnici'],
-            build: () {},
-          ),
+        child: StreamBuilder<int>(
+          stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_putnici'),
           builder: (context, _) {
             return V3ContainerUtils.iconContainer(
               backgroundColor: Theme.of(context).glassContainer,
@@ -187,11 +183,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
               ),
               // ── List ────────────────────────────────────────────────────
               Expanded(
-                child: StreamBuilder<void>(
-                  stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-                    tables: const ['v3_putnici'],
-                    build: () {},
-                  ),
+                child: StreamBuilder<int>(
+                  stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_putnici'),
                   builder: (context, _) {
                     return ValueListenableBuilder<TextEditingValue>(
                       valueListenable: V3TextUtils.putniciSearchController,

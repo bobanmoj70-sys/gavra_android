@@ -288,8 +288,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.onChange,
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozaci'),
       builder: (context, _) {
         final svi = V3VozacService.getAllVozaci();
         final aktivni = svi.where((v) => v.aktivno).toList();

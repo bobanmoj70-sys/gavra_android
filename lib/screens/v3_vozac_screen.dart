@@ -26,8 +26,8 @@ import '../widgets/v3_bottom_nav_bar_letnji.dart';
 import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_live_clock_text.dart';
+import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
-import '../widgets/v3_shimmer_banner.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_promena_sifre_screen.dart';
 import 'v3_welcome_screen.dart';
@@ -1163,36 +1163,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           child: ValueListenableBuilder<List<Map<String, String>>>(
             valueListenable: neradniDaniNotifier,
             builder: (context, rules, _) {
-              final weekAnchor = V3DanHelper.schedulingWeekAnchor();
-              final monday = V3DanHelper.dateOnly(weekAnchor.subtract(Duration(days: weekAnchor.weekday - 1)));
-              final friday = monday.add(const Duration(days: 4));
-
-              final lines = <String>[];
-              for (final rule in rules) {
+              final hasNeradni = rules.any((rule) {
                 final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
                 final date = DateTime.tryParse(dateIso);
-                if (date == null) continue;
-
+                if (date == null) return false;
+                final weekAnchor = V3DanHelper.schedulingWeekAnchor();
+                final monday = V3DanHelper.dateOnly(weekAnchor.subtract(Duration(days: weekAnchor.weekday - 1)));
+                final friday = monday.add(const Duration(days: 4));
                 final onlyDate = V3DanHelper.dateOnly(date);
-                if (onlyDate.isBefore(monday) || onlyDate.isAfter(friday)) continue;
-
-                final dayName = V3DanHelper.fullName(onlyDate);
-                final scope = (rule['scope'] ?? 'all').toLowerCase();
-                final scopeLabel = scope == 'bc'
-                    ? 'BC'
-                    : scope == 'vs'
-                        ? 'VS'
-                        : 'Svi';
-                final reason = (rule['reason'] ?? '').trim();
-                final reasonText = reason.isEmpty ? 'Neradan dan' : reason;
-                lines.add('• $dayName ($dateIso) [$scopeLabel] — $reasonText');
-              }
+                return !onlyDate.isBefore(monday) && !onlyDate.isAfter(friday);
+              });
 
               return Stack(
                 children: [
                   Positioned.fill(
                     child: Padding(
-                      padding: EdgeInsets.only(top: lines.isNotEmpty ? 52 : 0),
+                      padding: EdgeInsets.only(top: hasNeradni ? 52 : 0),
                       child: _mojiPutnici.isEmpty
                           ? Center(
                               child: V3ContainerUtils.styledContainer(
@@ -1231,35 +1217,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                             ),
                     ),
                   ),
-                  if (lines.isNotEmpty)
-                    Positioned(
-                      top: 6,
-                      left: 12,
-                      right: 12,
-                      child: V3ShimmerBanner(
-                        margin: EdgeInsets.zero,
-                        borderRadius: 12,
-                        backgroundColor: const Color(0xFFB71C1C),
-                        borderColor: const Color(0xFFFF6B6B),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '📢 Neradni dan(i) — aktivna nedelja',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              lines.join('\n'),
-                              style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  const Positioned(
+                    top: 6,
+                    left: 12,
+                    right: 12,
+                    child: V3NeradniDaniBanner(),
+                  ),
                 ],
               );
             },

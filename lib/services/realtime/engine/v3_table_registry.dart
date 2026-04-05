@@ -1,0 +1,67 @@
+enum V3RealtimeHook {
+  rebuildGpsCache,
+  applyGlobalAppSettings,
+}
+
+class V3RealtimeTableConfig {
+  const V3RealtimeTableConfig({
+    required this.name,
+    this.activeKey = 'aktivno',
+    this.hasActiveKey = true,
+    this.keepInactive = false,
+    this.dependsOn = const <String>[],
+    this.hooks = const <V3RealtimeHook>[],
+  });
+
+  final String name;
+  final String activeKey;
+  final bool hasActiveKey;
+  final bool keepInactive;
+  final List<String> dependsOn;
+  final List<V3RealtimeHook> hooks;
+}
+
+class V3RealtimeTableRegistry {
+  static const List<V3RealtimeTableConfig> defaults = <V3RealtimeTableConfig>[
+    V3RealtimeTableConfig(name: 'v3_adrese'),
+    V3RealtimeTableConfig(name: 'v3_vozaci'),
+    V3RealtimeTableConfig(name: 'v3_vozila'),
+    V3RealtimeTableConfig(name: 'v3_putnici'),
+    V3RealtimeTableConfig(name: 'v3_zahtevi'),
+    V3RealtimeTableConfig(name: 'v3_gorivo'),
+    V3RealtimeTableConfig(name: 'v3_gorivo_promene', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_vozac_lokacije', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_finansije'),
+    V3RealtimeTableConfig(name: 'v3_racuni'),
+    V3RealtimeTableConfig(name: 'v3_racuni_arhiva'),
+    V3RealtimeTableConfig(name: 'v3_pin_zahtevi'),
+    V3RealtimeTableConfig(
+      name: 'v3_operativna_nedelja',
+      keepInactive: true,
+      dependsOn: <String>['v3_gps_trip_state', 'v3_trip_stops'],
+      hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
+    ),
+    V3RealtimeTableConfig(
+      name: 'v3_gps_trip_state',
+      hasActiveKey: false,
+      dependsOn: <String>['v3_operativna_nedelja'],
+      hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
+    ),
+    V3RealtimeTableConfig(
+      name: 'v3_trip_stops',
+      hasActiveKey: false,
+      dependsOn: <String>['v3_operativna_nedelja'],
+      hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
+    ),
+    V3RealtimeTableConfig(name: 'v3_kapacitet_slots'),
+    V3RealtimeTableConfig(
+      name: 'v3_app_settings',
+      hasActiveKey: false,
+      hooks: <V3RealtimeHook>[V3RealtimeHook.applyGlobalAppSettings],
+    ),
+  ];
+
+  static final Map<String, V3RealtimeTableConfig> byName = <String, V3RealtimeTableConfig>{
+    for (final table in defaults) table.name: table,
+  };
+}

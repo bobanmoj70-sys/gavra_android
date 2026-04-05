@@ -20,11 +20,8 @@ class V3PutnikStatistikaScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_operativna_nedelja', 'v3_putnici'],
-        build: () {},
-      ),
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_putnici']),
       builder: (context, _) {
         final godina = DateTime.now().year;
         final meseci = V3PutnikStatistikaService.getZaGodinu(putnikId, godina: godina);

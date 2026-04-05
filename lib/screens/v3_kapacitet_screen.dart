@@ -19,7 +19,7 @@ class V3KapacitetScreen extends StatefulWidget {
 
 class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  late final Stream<void> _streamTrigger;
+  late final Stream<int> _streamTrigger;
   String _selectedDay = V3DanHelper.defaultWorkdayFullName();
 
   String get _selectedDatumIso =>
@@ -29,10 +29,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
     super.initState();
     _selectedDay = V3DanHelper.defaultWorkdayFullName();
     _tabController = TabController(length: 2, vsync: this);
-    _streamTrigger = V3MasterRealtimeManager.instance.v3StreamFromCache(
-      tables: ['v3_kapacitet_slots'],
-      build: () {},
-    );
+    _streamTrigger = V3MasterRealtimeManager.instance.tableRevisionStream('v3_kapacitet_slots');
   }
 
   /// Čita max_mesta iz kapacitetSlotsCache: {grad: {vreme: max_mesta?}}
@@ -175,7 +172,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
                       Positioned.fill(
                         child: Padding(
                           padding: EdgeInsets.zero,
-                          child: StreamBuilder<void>(
+                          child: StreamBuilder<int>(
                             stream: _streamTrigger,
                             builder: (context, snapshot) {
                               final data = _getKapacitetSync();

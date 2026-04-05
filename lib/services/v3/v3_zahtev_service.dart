@@ -80,7 +80,8 @@ class V3ZahtevService {
       ..sort((a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime(2000)) ?? 0);
   }
 
-  static Stream<List<V3Zahtev>> streamZahteviByTip(String tip) => V3MasterRealtimeManager.instance.v3StreamFromCache(
+  static Stream<List<V3Zahtev>> streamZahteviByTip(String tip) =>
+      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_zahtevi', 'v3_putnici'],
         build: () => getZahteviByTip(tip),
       );
@@ -92,9 +93,9 @@ class V3ZahtevService {
   }
 
   static Stream<List<V3Zahtev>> streamPendingZahteviByGrad(String grad) => V3MasterRealtimeManager.instance
-      .v3StreamFromCache(tables: ['v3_zahtevi'], build: () => getPendingZahteviByGrad(grad));
+      .v3StreamFromRevisions(tables: ['v3_zahtevi'], build: () => getPendingZahteviByGrad(grad));
 
-  static Stream<int> streamPendingZahteviCount() => V3MasterRealtimeManager.instance.v3StreamFromCache(
+  static Stream<int> streamPendingZahteviCount() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_zahtevi'],
         build: () {
           final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
@@ -300,13 +301,13 @@ class V3ZahtevService {
   }
 
   static Stream<List<V3Zahtev>> streamOperativniZahteviByDatumAndGrad(String datum, String grad) =>
-      V3MasterRealtimeManager.instance.v3StreamFromCache(
+      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_zahtevi', 'v3_operativna_nedelja'],
         build: () => getOperativniZahteviByDatumAndGrad(datum, grad),
       );
 
   static Stream<List<V3Zahtev>> streamZahteviByDatumAndGrad(String datumIso, String grad) =>
-      V3MasterRealtimeManager.instance.v3StreamFromCache(
+      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_zahtevi'],
         build: () => getZahteviByDatumAndGrad(datumIso, grad),
       );

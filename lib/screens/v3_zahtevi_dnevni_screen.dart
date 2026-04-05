@@ -184,11 +184,8 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       gradient: Theme.of(context).backgroundGradient,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: StreamBuilder<void>(
-          stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-            tables: const ['v3_zahtevi', 'v3_putnici'],
-            build: () {},
-          ),
+        body: StreamBuilder<int>(
+          stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_zahtevi', 'v3_putnici']),
           builder: (context, __) {
             final obrada = _getZahtevi('obrada');
             final odobreno = _getZahtevi('odobreno');

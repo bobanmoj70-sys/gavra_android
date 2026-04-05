@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../../globals.dart';
 import '../../models/v3_dug.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -42,7 +41,7 @@ class V3DugService {
     return dugovi;
   }
 
-  static Stream<List<V3Dug>> streamDugovi() => V3MasterRealtimeManager.instance.v3StreamFromCache(
+  static Stream<List<V3Dug>> streamDugovi() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_operativna_nedelja', 'v3_putnici', 'v3_vozaci'],
         build: () => getDugovi(),
       );

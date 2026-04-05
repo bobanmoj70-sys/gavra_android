@@ -15,7 +15,7 @@ class V3VoziloService {
     return cache.map((r) => V3Vozilo.fromJson(r)).toList()..sort((a, b) => a.naziv.compareTo(b.naziv));
   }
 
-  static Stream<List<V3Vozilo>> streamVozila() => V3MasterRealtimeManager.instance.v3StreamFromCache(
+  static Stream<List<V3Vozilo>> streamVozila() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_vozila'],
         build: () => getAllVozila(),
       );

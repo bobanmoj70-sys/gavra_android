@@ -19,7 +19,7 @@ class V3VozacService {
     return cache.map((r) => V3Vozac.fromJson(r)).toList()..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 
-  static Stream<List<V3Vozac>> streamVozaci() => V3MasterRealtimeManager.instance.v3StreamFromCache(
+  static Stream<List<V3Vozac>> streamVozaci() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_vozaci'],
         build: () => getAllVozaci(),
       );

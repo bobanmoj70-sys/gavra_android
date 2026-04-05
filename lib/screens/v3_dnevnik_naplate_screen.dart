@@ -49,12 +49,9 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     super.initState();
     _ucitajVozace();
 
-    V3StreamUtils.subscribe<void>(
+    V3StreamUtils.subscribe<int>(
       key: 'dnevnik_naplate_cache',
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_operativna_nedelja', 'v3_vozaci'],
-        build: () {},
-      ),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_vozaci']),
       onData: (_) {
         if (!mounted) return;
         _ucitajVozace();

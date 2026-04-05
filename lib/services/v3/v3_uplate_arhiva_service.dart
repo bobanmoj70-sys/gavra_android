@@ -36,7 +36,7 @@ class V3UplateArhivaService {
   }
 
   static Stream<List<V3UplataArhiva>> streamByPutnik(String putnikId) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_finansije'],
       build: () => getByPutnik(putnikId),
     );

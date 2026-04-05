@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
@@ -41,12 +40,9 @@ class _V3PromenaSifreScreenState extends State<V3PromenaSifreScreen> {
   }
 
   void _subscribeRealtime() {
-    V3StreamUtils.subscribe<void>(
+    V3StreamUtils.subscribe<int>(
       key: 'promena_sifre_realtime',
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_vozaci'],
-        build: () {},
-      ),
+      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozaci'),
       onData: (_) {
         if (!mounted) return;
         _loadTrenutnaSifraFromCache();

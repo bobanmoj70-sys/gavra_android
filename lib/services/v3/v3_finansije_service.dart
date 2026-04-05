@@ -42,7 +42,7 @@ class V3FinansijeService {
 
   // --- Backward compat (stari kod koji koristi V3FinansijskiIzvestaj) ---
   static Stream<V3FinansijskiIzvestaj> streamIzvestaj() {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_finansije'],
         build: () {
           final now = DateTime.now();

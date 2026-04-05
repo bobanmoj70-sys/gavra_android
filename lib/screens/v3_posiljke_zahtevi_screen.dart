@@ -51,11 +51,8 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_zahtevi', 'v3_putnici'],
-        build: () {},
-      ),
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_zahtevi', 'v3_putnici']),
       builder: (context, _) {
         final zahtevi = _getPosiljkeZahtevi();
 

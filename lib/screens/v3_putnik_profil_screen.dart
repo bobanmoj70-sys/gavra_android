@@ -25,7 +25,7 @@ import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../widgets/v3_live_clock_text.dart';
-import '../widgets/v3_shimmer_banner.dart';
+import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_update_banner.dart';
 import '../widgets/v3_vozac_status_widget.dart';
 import 'v3_putnik_statistika_screen.dart';
@@ -93,12 +93,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       if (mounted) _refreshWeather();
     });
     // Pratimo promjene cache-a
-    V3StreamUtils.subscribe<void>(
+    V3StreamUtils.subscribe<int>(
       key: 'putnik_profil_cache',
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_putnici', 'v3_zahtevi', 'v3_operativna_nedelja'],
-        build: () {},
-      ),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_putnici', 'v3_zahtevi', 'v3_operativna_nedelja']),
       onData: (_) {
         if (mounted) _refresh();
       },
@@ -791,68 +789,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   top: 8,
                   left: 16,
                   right: 16,
-                  child: _buildNeradniDaniBanner(),
+                  child: const V3NeradniDaniBanner(),
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildNeradniDaniBanner() {
-    return ValueListenableBuilder<List<Map<String, String>>>(
-      valueListenable: neradniDaniNotifier,
-      builder: (context, rules, _) {
-        final weekAnchor = V3DanHelper.schedulingWeekAnchor();
-        final monday = V3DanHelper.dateOnly(weekAnchor.subtract(Duration(days: weekAnchor.weekday - 1)));
-        final friday = monday.add(const Duration(days: 4));
-
-        final lines = <String>[];
-        for (final rule in rules) {
-          final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
-          final date = DateTime.tryParse(dateIso);
-          if (date == null) continue;
-
-          final onlyDate = V3DanHelper.dateOnly(date);
-          if (onlyDate.isBefore(monday) || onlyDate.isAfter(friday)) continue;
-
-          final dayName = V3DanHelper.fullName(onlyDate);
-          final scope = (rule['scope'] ?? 'all').toLowerCase();
-          final scopeLabel = scope == 'bc'
-              ? 'BC'
-              : scope == 'vs'
-                  ? 'VS'
-                  : 'Svi';
-          final reason = (rule['reason'] ?? '').trim();
-          final reasonText = reason.isEmpty ? 'Neradan dan' : reason;
-          lines.add('• $dayName ($dateIso) [$scopeLabel] — $reasonText');
-        }
-
-        if (lines.isEmpty) return const SizedBox.shrink();
-
-        return V3ShimmerBanner(
-          margin: EdgeInsets.zero,
-          borderRadius: 12,
-          backgroundColor: const Color(0xFFB71C1C),
-          borderColor: const Color(0xFFFF6B6B),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '📢 Neradni dan(i) — aktivna nedelja',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                lines.join('\n'),
-                style: const TextStyle(color: Colors.white, fontSize: 12.5),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

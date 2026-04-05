@@ -23,14 +23,14 @@ class V3GorivoService {
 
   /// Stream koji emituje svaki put kad se gorivo promijeni
   static Stream<V3PumpaStanje?> streamStanje() {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_gorivo'],
       build: getStanjeSync,
     );
   }
 
   static Stream<V3PumpaRezervoar?> streamRezervoar() {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_gorivo'],
       build: getRezervoarSync,
     );

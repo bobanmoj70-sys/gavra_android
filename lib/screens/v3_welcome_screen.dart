@@ -71,12 +71,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   void _subscribeToVozaciRealtime() {
-    V3StreamUtils.subscribe<void>(
+    V3StreamUtils.subscribe<int>(
       key: 'welcome_vozaci_realtime',
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_vozaci'],
-        build: () {},
-      ),
+      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozaci'),
       onData: (_) {
         if (!mounted) return;
         V3StateUtils.safeSetState(this, () {
@@ -332,7 +329,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     _isResumeRefreshing = true;
     try {
       final rm = V3MasterRealtimeManager.instance;
-      await rm.initV3().timeout(const Duration(seconds: 15));
+      await rm.recoverOnResume().timeout(const Duration(seconds: 20));
 
       if (!mounted) return;
 

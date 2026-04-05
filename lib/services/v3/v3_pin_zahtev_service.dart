@@ -17,14 +17,14 @@ class V3PinZahtevService {
   }
 
   static Stream<List<Map<String, dynamic>>> streamZahteviKojiCekaju() {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_pin_zahtevi', 'v3_putnici'],
       build: _buildEnrichedList,
     );
   }
 
   static Stream<List<Map<String, dynamic>>> streamZahteviZaPutnika(String putnikId) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_pin_zahtevi'],
       build: () => _buildByPutnik(putnikId),
     );

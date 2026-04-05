@@ -6,6 +6,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../globals.dart';
 import '../../utils/v3_time_utils.dart';
 import '../v3/v3_app_update_service.dart';
+import 'engine/v3_bootstrap_loader.dart';
+import 'engine/v3_cache_store.dart';
+import 'engine/v3_event_bus.dart';
+import 'engine/v3_realtime_connection_manager.dart';
+import 'engine/v3_table_registry.dart';
 import 'repositories/v3_realtime_bootstrap_repository.dart';
 
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
@@ -14,6 +19,15 @@ class V3MasterRealtimeManager {
   static final V3MasterRealtimeManager _instance = V3MasterRealtimeManager._internal();
   static V3MasterRealtimeManager get instance => _instance;
   static final V3RealtimeBootstrapRepository _bootstrapRepository = V3RealtimeBootstrapRepository();
+
+  final V3CacheStore _cacheStore = V3CacheStore();
+  final V3EventBus _eventBus = V3EventBus();
+  final V3RealtimeConnectionManager _connectionManager = V3RealtimeConnectionManager();
+  late final V3BootstrapLoader _bootstrapLoader = V3BootstrapLoader(repository: _bootstrapRepository);
+  bool _cacheStoreRegistered = false;
+  DateTime? _lastDeltaSyncAt;
+  Timer? _healthWatchdogTimer;
+  bool _isRecovering = false;
 
   // --- IN-MEMORY CACHE ---
   final Map<String, Map<String, dynamic>> adreseCache = {};
@@ -26,6 +40,8 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> gorivoPromeneCache = {};
   final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
+  final Map<String, Map<String, dynamic>> racuniCache = {};
+  final Map<String, Map<String, dynamic>> racuniArhivaCache = {};
   final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> gpsTripStateCache = {};
@@ -47,21 +63,6 @@ class V3MasterRealtimeManager {
 
   String _asString(dynamic value) {
     return value?.toString() ?? '';
-  }
-
-  bool _asBool(dynamic value, {bool defaultValue = true}) {
-    if (value is bool) return value;
-    if (value is num) return value != 0;
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-      if (normalized == 'true' || normalized == '1' || normalized == 'yes' || normalized == 'y') {
-        return true;
-      }
-      if (normalized == 'false' || normalized == '0' || normalized == 'no' || normalized == 'n') {
-        return false;
-      }
-    }
-    return defaultValue;
   }
 
   String _gpsTripKey({
@@ -261,12 +262,8 @@ class V3MasterRealtimeManager {
     );
   }
 
-  final StreamController<void> _changeController = StreamController<void>.broadcast();
-  Stream<void> get onChange => _changeController.stream;
-  final StreamController<Set<String>> _tableChangeController = StreamController<Set<String>>.broadcast();
-  static const Duration _emitDebounceWindow = Duration(milliseconds: 90);
-  final Set<String> _pendingTableChanges = <String>{};
-  Timer? _emitDebounceTimer;
+  Stream<void> get onChange => _eventBus.onChange;
+  Stream<Map<String, int>> get onRevisions => _eventBus.onRevisions;
   Timer? _navTypeSwitchTimer;
 
   RealtimeChannel? _v3Channel;
@@ -280,37 +277,35 @@ class V3MasterRealtimeManager {
     return null;
   }
 
-  void _scheduleEmit({Set<String>? tables, bool immediate = false}) {
-    if (tables != null && tables.isNotEmpty) {
-      if (tables.contains('*')) {
-        _pendingTableChanges
-          ..clear()
-          ..add('*');
-      } else if (!_pendingTableChanges.contains('*')) {
-        _pendingTableChanges.addAll(tables);
-      }
-    }
+  void _scheduleEmit({Set<String>? tables, bool immediate = false}) => _eventBus.scheduleEmit(
+        tables: tables,
+        immediate: immediate,
+        revisions: _cacheStore.revisionsSnapshot(),
+      );
 
-    if (immediate) {
-      _emitDebounceTimer?.cancel();
-      _emitDebounceTimer = null;
-      _flushEmit();
-      return;
-    }
+  void _registerCacheStoreIfNeeded() {
+    if (_cacheStoreRegistered) return;
 
-    if (_emitDebounceTimer != null && _emitDebounceTimer!.isActive) return;
-    _emitDebounceTimer = Timer(_emitDebounceWindow, _flushEmit);
-  }
+    _cacheStore.registerTable('v3_adrese', adreseCache);
+    _cacheStore.registerTable('v3_vozaci', vozaciCache);
+    _cacheStore.registerTable('v3_vozila', vozilaCache);
+    _cacheStore.registerTable('v3_putnici', putniciCache);
+    _cacheStore.registerTable('v3_zahtevi', zahteviCache);
+    _cacheStore.registerTable('v3_gorivo', gorivoCache);
+    _cacheStore.registerTable('v3_gorivo_promene', gorivoPromeneCache);
+    _cacheStore.registerTable('v3_vozac_lokacije', vozacLokacijeCache);
+    _cacheStore.registerTable('v3_finansije', troskoviCache);
+    _cacheStore.registerTable('v3_racuni', racuniCache);
+    _cacheStore.registerTable('v3_racuni_arhiva', racuniArhivaCache);
+    _cacheStore.registerTable('v3_pin_zahtevi', pinZahteviCache);
+    _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
+    _cacheStore.registerTable('v3_gps_trip_state', gpsTripStateCache);
+    _cacheStore.registerTable('v3_trip_stops', tripStopsCache);
+    _cacheStore.registerTable('v3_kapacitet_slots', kapacitetSlotsCache);
+    _cacheStore.registerTable('v3_app_settings', appSettingsCache);
+    _cacheStore.registerTable('v3_gps_raspored', v3GpsRasporedCache);
 
-  void _flushEmit() {
-    _emitDebounceTimer = null;
-
-    if (_pendingTableChanges.isEmpty) return;
-    final changed = _pendingTableChanges.contains('*') ? <String>{'*'} : Set<String>.from(_pendingTableChanges);
-    _pendingTableChanges.clear();
-
-    _changeController.add(null);
-    _tableChangeController.add(changed);
+    _cacheStoreRegistered = true;
   }
 
   Future<void> initV3() async {
@@ -331,30 +326,22 @@ class V3MasterRealtimeManager {
   Future<void> _initV3Internal() async {
     debugPrint('[V3MasterRealtimeManager] ⚡ STARTED initV3()');
     try {
-      final results = await _bootstrapRepository.fetchInitialData();
+      _registerCacheStoreIfNeeded();
+      final results = await _bootstrapLoader.loadFull();
 
-      _fillCache(adreseCache, results[0] as List);
-      _fillCache(vozaciCache, results[1] as List);
-      _fillCache(vozilaCache, results[2] as List);
-      _fillCache(putniciCache, results[3] as List);
-      _fillCache(zahteviCache, results[4] as List);
-      _fillCache(gorivoCache, results[5] as List);
-      _fillCache(gorivoPromeneCache, results[6] as List);
-      _fillCache(vozacLokacijeCache, results[7] as List);
-      _fillCache(troskoviCache, results[8] as List);
-      _fillCache(pinZahteviCache, results[9] as List);
-      _fillCache(operativnaNedeljaCache, results[10] as List);
-      _fillCache(gpsTripStateCache, results[11] as List);
-      _fillCache(tripStopsCache, results[12] as List);
-      _fillCache(kapacitetSlotsCache, results[13] as List);
-      _fillCache(appSettingsCache, results[14] as List);
+      for (final table in V3RealtimeTableRegistry.defaults) {
+        _cacheStore.replaceAll(table.name, results[table.name] ?? const <dynamic>[]);
+      }
+
       _rebuildGpsCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
       final globalSettings = appSettingsCache['global'];
       if (globalSettings != null) _applyAppSettings(globalSettings);
 
       await _setupRealtime();
+      _startHealthWatchdog();
       _isInitialized = true;
+      _lastDeltaSyncAt = DateTime.now().toUtc();
       _scheduleEmit(tables: {'*'}, immediate: true);
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
     } catch (e) {
@@ -363,154 +350,238 @@ class V3MasterRealtimeManager {
     }
   }
 
-  void _fillCache(Map<String, Map<String, dynamic>> cache, List data) {
-    cache.clear();
-    for (var item in data) {
-      final id = item['id']?.toString();
-      if (id != null) cache[id] = item as Map<String, dynamic>;
-    }
-  }
-
   Future<void> _setupRealtime() async {
-    if (_v3Channel != null) {
-      try {
-        await supabase.removeChannel(_v3Channel!);
-      } catch (e) {
-        debugPrint('[V3MasterRealtimeManager] removeChannel warning: $e');
-      }
-      _v3Channel = null;
-    }
-
-    _v3Channel = supabase.channel('v3_realtime_all');
-
-    _setupTableRealtime('v3_adrese', adreseCache);
-    _setupTableRealtime('v3_vozaci', vozaciCache);
-    _setupTableRealtime('v3_vozila', vozilaCache);
-    _setupTableRealtime('v3_putnici', putniciCache);
-    _setupTableRealtime('v3_zahtevi', zahteviCache);
-    _setupTableRealtime('v3_gorivo', gorivoCache);
-    _setupTableRealtime('v3_gorivo_promene', gorivoPromeneCache, hasActiveKey: false);
-    _setupTableRealtime('v3_vozac_lokacije', vozacLokacijeCache, hasActiveKey: false);
-    _setupTableRealtime('v3_finansije', troskoviCache);
-    _setupTableRealtime('v3_pin_zahtevi', pinZahteviCache);
-    _setupTableRealtime('v3_operativna_nedelja', operativnaNedeljaCache, keepInactive: true);
-    _setupTableRealtime('v3_gps_trip_state', gpsTripStateCache, hasActiveKey: false);
-    _setupTableRealtime('v3_trip_stops', tripStopsCache, hasActiveKey: false);
-    _setupTableRealtime('v3_kapacitet_slots', kapacitetSlotsCache);
-    _setupTableRealtime('v3_app_settings', appSettingsCache, hasActiveKey: false);
-
-    _v3Channel!.subscribe();
-  }
-
-  void _setupTableRealtime(String table, Map<String, Map<String, dynamic>> cache,
-      {String activeKey = 'aktivno', bool hasActiveKey = true, bool keepInactive = false}) {
-    _v3Channel?.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: table,
-      callback: (payload) {
-        final newRecord = payload.newRecord;
-        final oldRecord = payload.oldRecord;
-        final id = (newRecord['id'] ?? oldRecord['id'])?.toString();
-
-        if (id == null) return;
-
-        bool isActive = true;
-        if (hasActiveKey && newRecord.containsKey(activeKey)) {
-          isActive = _asBool(newRecord[activeKey], defaultValue: true);
+    _registerCacheStoreIfNeeded();
+    _v3Channel = await _connectionManager.connect(
+      configure: (channel) {
+        for (final config in V3RealtimeTableRegistry.defaults) {
+          channel.onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: config.name,
+            callback: (payload) {
+              _connectionManager.markEvent();
+              _onTablePayload(config: config, payload: payload);
+            },
+          );
         }
-
-        if (payload.eventType == PostgresChangeEvent.delete || (!isActive && !keepInactive)) {
-          cache.remove(id);
+      },
+      onState: (state, {error}) {
+        if (error != null) {
+          debugPrint('[RT] connection state=$state error=$error');
         } else {
-          cache[id] = Map<String, dynamic>.from(newRecord);
+          debugPrint('[RT] connection state=$state');
         }
-        if (table == 'v3_operativna_nedelja' || table == 'v3_gps_trip_state' || table == 'v3_trip_stops') {
-          _rebuildGpsCacheFromOperativna();
-        }
-        if (table == 'v3_app_settings' && id == 'global') {
-          _applyAppSettings(newRecord);
-        }
-        if (table == 'v3_gps_trip_state') {
-          _scheduleEmit(tables: {table, 'v3_operativna_nedelja'});
-        } else if (table == 'v3_trip_stops') {
-          _scheduleEmit(tables: {table, 'v3_operativna_nedelja'});
-        } else {
-          _scheduleEmit(tables: {table});
+
+        if (state == V3RealtimeConnectionState.subscribed) {
+          _scheduleEmit(tables: {'*'}, immediate: true);
         }
       },
     );
   }
 
-  Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
-    final watchedTables = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toSet();
+  void _onTablePayload({
+    required V3RealtimeTableConfig config,
+    required PostgresChangePayload payload,
+  }) {
+    final changed = _cacheStore.applyRealtimeMutation(
+      table: config.name,
+      newRecord: payload.newRecord,
+      oldRecord: payload.oldRecord,
+      isDelete: payload.eventType == PostgresChangeEvent.delete,
+      activeKey: config.activeKey,
+      hasActiveKey: config.hasActiveKey,
+      keepInactive: config.keepInactive,
+    );
 
-    return _tableChangeController.stream
-        .where((changedTables) {
-          if (changedTables.contains('*') || watchedTables.isEmpty) return true;
-          for (final table in watchedTables) {
-            if (changedTables.contains(table)) return true;
+    if (!changed) return;
+
+    final id = (payload.newRecord['id'] ?? payload.oldRecord['id'])?.toString();
+
+    for (final hook in config.hooks) {
+      switch (hook) {
+        case V3RealtimeHook.rebuildGpsCache:
+          _rebuildGpsCacheFromOperativna();
+          break;
+        case V3RealtimeHook.applyGlobalAppSettings:
+          if (id == 'global') {
+            _applyAppSettings(payload.newRecord);
           }
-          return false;
-        })
-        .map((_) => build())
-        .asBroadcastStream(
-          onListen: (subs) => _tableChangeController.add({'*'}),
+          break;
+      }
+    }
+
+    final affected = <String>{config.name, ...config.dependsOn};
+    _scheduleEmit(tables: affected);
+  }
+
+  Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
+    return v3StreamFromRevisions(tables: tables, build: build);
+  }
+
+  Stream<T> v3StreamFromRevisions<T>({required List<String> tables, required T Function() build}) {
+    final normalized = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toList(growable: false);
+
+    return Stream<T>.multi(
+      (controller) {
+        controller.add(build());
+        final sub = tablesRevisionStream(normalized).listen(
+          (_) => controller.add(build()),
+          onError: controller.addError,
         );
+        controller.onCancel = sub.cancel;
+      },
+      isBroadcast: true,
+    );
+  }
+
+  int tableRevision(String table) => _cacheStore.revision(table);
+
+  Stream<int> tableRevisionStream(String table) {
+    final normalized = table.trim();
+    return onRevisions.map((snapshot) => snapshot[normalized] ?? _cacheStore.revision(normalized)).distinct();
+  }
+
+  Stream<int> tablesRevisionStream(List<String> tables) {
+    final normalized = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toList(growable: false);
+    if (normalized.isEmpty) {
+      return onRevisions.map((_) => 0).distinct();
+    }
+
+    return onRevisions.map((snapshot) {
+      var hash = 17;
+      for (final table in normalized) {
+        final revision = snapshot[table] ?? _cacheStore.revision(table);
+        hash = (hash * 31) ^ revision;
+      }
+      return hash;
+    }).distinct();
+  }
+
+  Future<void> recoverOnResume() async {
+    if (_isRecovering) return;
+    _isRecovering = true;
+    try {
+      await initV3();
+
+      final needsReconnect =
+          _connectionManager.state != V3RealtimeConnectionState.subscribed || !_connectionManager.isHealthy;
+      if (needsReconnect) {
+        await _setupRealtime();
+      }
+
+      await _syncDeltaFromWatermarks();
+      _scheduleEmit(tables: {'*'}, immediate: true);
+    } finally {
+      _isRecovering = false;
+    }
+  }
+
+  Future<void> _syncDeltaFromWatermarks() async {
+    final watermarks = <String, DateTime?>{
+      for (final table in V3RealtimeTableRegistry.defaults) table.name: _cacheStore.watermark(table.name),
+    };
+
+    final delta = await _bootstrapLoader.loadDeltaAll(watermarks);
+    if (delta.isEmpty) {
+      _lastDeltaSyncAt = DateTime.now().toUtc();
+      return;
+    }
+
+    final affected = <String>{};
+    for (final entry in delta.entries) {
+      final config = V3RealtimeTableRegistry.byName[entry.key];
+      if (config == null) continue;
+
+      for (final row in entry.value) {
+        _cacheStore.applyDeltaRow(
+          table: config.name,
+          row: row,
+          activeKey: config.activeKey,
+          hasActiveKey: config.hasActiveKey,
+          keepInactive: config.keepInactive,
+        );
+      }
+
+      if (config.hooks.contains(V3RealtimeHook.rebuildGpsCache)) {
+        _rebuildGpsCacheFromOperativna();
+      }
+      if (config.hooks.contains(V3RealtimeHook.applyGlobalAppSettings)) {
+        final global = appSettingsCache['global'];
+        if (global != null) {
+          _applyAppSettings(global);
+        }
+      }
+
+      affected
+        ..add(config.name)
+        ..addAll(config.dependsOn);
+    }
+
+    _lastDeltaSyncAt = DateTime.now().toUtc();
+    if (affected.isNotEmpty) {
+      _scheduleEmit(tables: affected);
+    }
+  }
+
+  void _startHealthWatchdog() {
+    _healthWatchdogTimer?.cancel();
+    _healthWatchdogTimer = Timer.periodic(const Duration(seconds: 90), (_) {
+      if (!_isInitialized || _isRecovering) return;
+
+      final unhealthy =
+          _connectionManager.state != V3RealtimeConnectionState.subscribed || !_connectionManager.isHealthy;
+      if (unhealthy) {
+        unawaited(recoverOnResume());
+      }
+    });
   }
 
   void v3UpsertToCache(String table, Map<String, dynamic> row) {
     final id = row['id']?.toString();
     if (id == null) return;
 
+    _cacheStore.upsert(table, row);
+
     switch (table) {
       case 'v3_adrese':
-        adreseCache[id] = row;
         break;
       case 'v3_vozaci':
-        vozaciCache[id] = row;
         break;
       case 'v3_vozila':
-        vozilaCache[id] = row;
         break;
       case 'v3_putnici':
-        putniciCache[id] = row;
         break;
       case 'v3_zahtevi':
-        zahteviCache[id] = row;
         break;
       case 'v3_gorivo':
-        gorivoCache[id] = row;
         break;
       case 'v3_gorivo_promene':
-        gorivoPromeneCache[id] = row;
         break;
       case 'v3_vozac_lokacije':
-        vozacLokacijeCache[id] = row;
         break;
       case 'v3_finansije':
-        troskoviCache[id] = row;
+        break;
+      case 'v3_racuni':
+        break;
+      case 'v3_racuni_arhiva':
         break;
       case 'v3_operativna_nedelja':
-        operativnaNedeljaCache[id] = row;
         _rebuildGpsCacheFromOperativna();
         break;
       case 'v3_gps_trip_state':
-        gpsTripStateCache[id] = row;
         _rebuildGpsCacheFromOperativna();
         break;
       case 'v3_trip_stops':
-        tripStopsCache[id] = row;
         _rebuildGpsCacheFromOperativna();
         break;
       case 'v3_kapacitet_slots':
-        kapacitetSlotsCache[id] = row;
         break;
       case 'v3_pin_zahtevi':
         if (row['status'] == 'ceka') {
-          pinZahteviCache[id] = row;
+          _cacheStore.upsert(table, row);
         } else {
-          pinZahteviCache.remove(id);
+          _cacheStore.remove(table, id);
         }
         break;
     }
@@ -555,6 +626,10 @@ class V3MasterRealtimeManager {
         return vozacLokacijeCache;
       case 'v3_finansije':
         return troskoviCache;
+      case 'v3_racuni':
+        return racuniCache;
+      case 'v3_racuni_arhiva':
+        return racuniArhivaCache;
       case 'v3_pin_zahtevi':
         return pinZahteviCache;
       case 'v3_operativna_nedelja':

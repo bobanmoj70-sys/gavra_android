@@ -169,7 +169,7 @@ class V3OperativnaNedeljaService {
     required String vreme,
     required DateTime datum,
   }) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_operativna_nedelja'],
       build: () => getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum),
     );
@@ -183,7 +183,7 @@ class V3OperativnaNedeljaService {
 
   /// Stream koji emituje sve zapise za dati grad za celu nedelju.
   static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByGrad(String grad) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_operativna_nedelja'],
       build: () => getOperativnaNedeljaByGrad(grad),
     );
@@ -203,7 +203,7 @@ class V3OperativnaNedeljaService {
 
   /// Stream koji emituje zapise za tačan datum i grad.
   static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByDatumAndGrad(String datumIso, String grad) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_operativna_nedelja'],
       build: () => getOperativnaNedeljaByDatumAndGrad(datumIso, grad),
     );
@@ -223,7 +223,7 @@ class V3OperativnaNedeljaService {
 
   /// Stream koji emituje sve zapise za tačan datum (svi gradovi).
   static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByDatum(String datumIso) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_operativna_nedelja'],
       build: () => getOperativnaNedeljaByDatum(datumIso),
     );
@@ -306,7 +306,7 @@ class V3OperativnaNedeljaService {
     required String vreme,
     required DateTime datum,
   }) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_operativna_nedelja'],
       build: () {
         final kapacitet = getKapacitetVozila(grad, vreme, datum);

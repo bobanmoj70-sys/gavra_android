@@ -210,11 +210,8 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<void>(
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<void>(
-        tables: const ['v3_vozaci'],
-        build: () {},
-      ),
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozaci'),
       builder: (context, _) {
         return V3ContainerUtils.backgroundContainer(
           gradient: Theme.of(context).backgroundGradient,

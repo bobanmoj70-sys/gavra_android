@@ -58,7 +58,7 @@ class V3VozacLokacijaService {
 
   /// Stream of all active driver locations for passengers to see markers on map.
   static Stream<List<Map<String, dynamic>>> streamAktivneLokacije() {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_vozac_lokacije'],
       build: () {
         final cache = V3MasterRealtimeManager.instance.vozacLokacijeCache;

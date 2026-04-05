@@ -66,7 +66,7 @@ class _V3PutnikLoginScreenState extends State<V3PutnikLoginScreen> with WidgetsB
     if (_isResumeRefreshing || !mounted) return;
     _isResumeRefreshing = true;
     try {
-      await V3MasterRealtimeManager.instance.initV3();
+      await V3MasterRealtimeManager.instance.recoverOnResume();
     } catch (e) {
       debugPrint('[V3PutnikLoginScreen] refreshOnResume error: $e');
     } finally {

@@ -21,7 +21,7 @@ class V3AdresaService {
   }
 
   static Stream<List<V3Adresa>> streamAdrese() =>
-      V3MasterRealtimeManager.instance.v3StreamFromCache(tables: ['v3_adrese'], build: getSortedAdrese);
+      V3MasterRealtimeManager.instance.v3StreamFromRevisions(tables: ['v3_adrese'], build: getSortedAdrese);
 
   static V3Adresa? getAdresaById(String? id) {
     if (id == null || id.isEmpty) return null;
