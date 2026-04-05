@@ -1144,6 +1144,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     children: [
                       // Forced update gate
                       const V3UpdateBanner(),
+                      const V3NeradniDaniBanner(
+                        margin: EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
+                      ),
                       // Action buttons
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1331,12 +1334,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       return _buildBottomNavBar(getPutnikCount, getKapacitet, getVozacColorForTermin);
                     },
                   ),
-                ),
-                Positioned(
-                  top: 8,
-                  left: 16,
-                  right: 16,
-                  child: const V3NeradniDaniBanner(),
                 ),
               ],
             ),
