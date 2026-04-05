@@ -50,6 +50,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedDay = 'Ponedeljak';
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
+  Offset _homeBannerOffset = const Offset(16, 4);
 
   late Stream<List<V3OperativnaNedeljaEntry>> _operativnaStream;
 
@@ -1353,32 +1354,59 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               ),
                             ),
                             if (lines.isNotEmpty)
-                              Positioned(
-                                top: 4,
-                                left: 16,
-                                right: 16,
-                                child: V3ShimmerBanner(
-                                  margin: EdgeInsets.zero,
-                                  borderRadius: 12,
-                                  backgroundColor: const Color(0xFFB71C1C),
-                                  borderColor: const Color(0xFFFF6B6B),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        '📢 Neradni dan(i) — aktivna nedelja',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
+                              Positioned.fill(
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final bannerWidth = (constraints.maxWidth - 32).clamp(260.0, 420.0).toDouble();
+                                    final minX = 8.0;
+                                    final maxX = (constraints.maxWidth - bannerWidth - 8).clamp(minX, double.infinity);
+                                    final minY = 4.0;
+                                    final maxY = (constraints.maxHeight - 92).clamp(minY, double.infinity);
+
+                                    final clampedX = _homeBannerOffset.dx.clamp(minX, maxX).toDouble();
+                                    final clampedY = _homeBannerOffset.dy.clamp(minY, maxY).toDouble();
+
+                                    return Stack(
+                                      children: [
+                                        Positioned(
+                                          top: clampedY,
+                                          left: clampedX,
+                                          width: bannerWidth,
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onPanUpdate: (details) {
+                                              final nextX = (clampedX + details.delta.dx).clamp(minX, maxX).toDouble();
+                                              final nextY = (clampedY + details.delta.dy).clamp(minY, maxY).toDouble();
+                                              setState(() => _homeBannerOffset = Offset(nextX, nextY));
+                                            },
+                                            child: V3ShimmerBanner(
+                                              margin: EdgeInsets.zero,
+                                              borderRadius: 12,
+                                              backgroundColor: const Color(0xFFB71C1C),
+                                              borderColor: const Color(0xFFFF6B6B),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    '📢 Neradni dan(i) — aktivna nedelja',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    lines.join('\n'),
+                                                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        lines.join('\n'),
-                                        style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    );
+                                  },
                                 ),
                               ),
                           ],
