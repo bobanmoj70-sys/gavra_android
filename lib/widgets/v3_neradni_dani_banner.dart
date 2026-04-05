@@ -51,19 +51,22 @@ class V3NeradniDaniBanner extends StatelessWidget {
           borderRadius: 12,
           backgroundColor: const Color(0xFFB71C1C),
           borderColor: const Color(0xFFFF6B6B),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '📢 Neradni dan(i) — aktivna nedelja',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                lines.join('\n'),
-                style: const TextStyle(color: Colors.white, fontSize: 12.5),
-              ),
-            ],
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '📢 Neradni dan(i) — aktivna nedelja',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  lines.join('\n'),
+                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                ),
+              ],
+            ),
           ),
         );
       },
