@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_animation_utils.dart';
@@ -16,6 +17,7 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 import 'v3_o_nama_screen.dart';
 import 'v3_putnik_auth_screen.dart';
+import 'v3_putnik_profil_screen.dart';
 import 'v3_vozac_login_screen.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
@@ -117,6 +119,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       debugPrint('[V3WelcomeScreen] initV3 error: $e');
     }
 
+    final autoLoginDone = await _tryAutoLoginPutnik();
+    if (autoLoginDone) {
+      return;
+    }
+
     debugPrint('[V3WelcomeScreen] _init() started - waiting for vozaciCache...');
 
     int retries = 0;
@@ -144,8 +151,30 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         _isLoading = false;
       });
     }
+  }
 
-    // Fresh start: nema auto-login prečica sa welcome ekrana.
+  Future<bool> _tryAutoLoginPutnik() async {
+    try {
+      // Pokušaj 1: Supabase sesija (vozači koji su putnici)
+      Map<String, dynamic>? restored = await V3ClosedAuthService.restorePutnikFromCurrentSession();
+
+      // Pokušaj 2: Firebase Phone Auth sesija (SMS putnici)
+      restored ??= await V3ClosedAuthService.restorePutnikFromFirebaseSession();
+
+      if (!mounted || restored == null) return false;
+
+      await _stopAudio();
+      if (!mounted) return false;
+
+      V3NavigationUtils.pushReplacement(
+        context,
+        V3PutnikProfilScreen(putnikData: Map<String, dynamic>.from(restored)),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] auto-login putnik error: $e');
+      return false;
+    }
   }
 
   @override
@@ -180,18 +209,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     if (_isResumeRefreshing || !mounted) return;
     _isResumeRefreshing = true;
     try {
-      final rm = V3MasterRealtimeManager.instance;
-      await rm.recoverOnResume().timeout(const Duration(seconds: 20));
-
       if (!mounted) return;
-
-      final vozaci = _sortedActiveVozaci();
-
       V3StateUtils.safeSetState(this, () {
-        _vozaci = vozaci;
+        _vozaci = _sortedActiveVozaci();
       });
-    } catch (e) {
-      debugPrint('[V3WelcomeScreen] refreshOnResume error: $e');
     } finally {
       _isResumeRefreshing = false;
     }

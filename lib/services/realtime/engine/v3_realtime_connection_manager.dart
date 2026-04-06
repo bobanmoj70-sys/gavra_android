@@ -31,17 +31,9 @@ class V3RealtimeConnectionManager {
   int _reconnectAttempts = 0;
   bool _disposed = false;
   bool _isSubscribing = false;
-  DateTime? _lastEventAt;
 
   V3RealtimeConnectionState _state = V3RealtimeConnectionState.idle;
   V3RealtimeConnectionState get state => _state;
-  DateTime? get lastEventAt => _lastEventAt;
-  bool get isHealthy {
-    if (_state != V3RealtimeConnectionState.subscribed) return false;
-    final last = _lastEventAt;
-    if (last == null) return false;
-    return DateTime.now().difference(last) < const Duration(minutes: 5);
-  }
 
   Future<RealtimeChannel> connect({
     required void Function(RealtimeChannel channel) configure,
@@ -49,12 +41,12 @@ class V3RealtimeConnectionManager {
   }) async {
     _setState(V3RealtimeConnectionState.connecting, onState: onState);
 
+    _syncRealtimeAuthTokenIfAvailable();
+
     final existingChannel = _channel;
+    _channel = null;
     if (existingChannel != null) {
       await _safeRemoveChannel(existingChannel);
-      if (identical(_channel, existingChannel)) {
-        _channel = null;
-      }
     }
 
     final channel = _client.channel(_channelName);
@@ -68,7 +60,6 @@ class V3RealtimeConnectionManager {
       switch (status) {
         case RealtimeSubscribeStatus.subscribed:
           _reconnectAttempts = 0;
-          _lastEventAt = DateTime.now();
           _setState(V3RealtimeConnectionState.subscribed, onState: onState);
           break;
         case RealtimeSubscribeStatus.channelError:
@@ -81,24 +72,11 @@ class V3RealtimeConnectionManager {
           break;
         case RealtimeSubscribeStatus.closed:
           _setState(V3RealtimeConnectionState.closed, onState: onState);
-          unawaited(_scheduleReconnect(configure: configure, onState: onState));
           break;
       }
     });
 
     return channel;
-  }
-
-  void markEvent() {
-    _lastEventAt = DateTime.now();
-  }
-
-  Future<void> forceReconnect({
-    required void Function(RealtimeChannel channel) configure,
-    required V3ConnectionStateCallback onState,
-  }) async {
-    _setState(V3RealtimeConnectionState.reconnecting, onState: onState);
-    await connect(configure: configure, onState: onState);
   }
 
   Future<void> _scheduleReconnect({
@@ -112,7 +90,22 @@ class V3RealtimeConnectionManager {
     await Future<void>.delayed(delay);
 
     if (_disposed) return;
-    await connect(configure: configure, onState: onState);
+    try {
+      await connect(configure: configure, onState: onState);
+    } catch (e) {
+      _setState(V3RealtimeConnectionState.error, onState: onState, error: e);
+    }
+  }
+
+  void _syncRealtimeAuthTokenIfAvailable() {
+    final token = _client.auth.currentSession?.accessToken;
+    if (token == null || token.isEmpty) return;
+
+    try {
+      _client.realtime.setAuth(token);
+    } catch (e) {
+      debugPrint('[V3RealtimeConnectionManager] setAuth warning: $e');
+    }
   }
 
   Duration _backoffDelay(int attempt) {

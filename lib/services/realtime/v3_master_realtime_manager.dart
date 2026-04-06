@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,7 +10,6 @@ import '../v3/v3_app_update_service.dart';
 import 'engine/v3_bootstrap_loader.dart';
 import 'engine/v3_cache_store.dart';
 import 'engine/v3_event_bus.dart';
-import 'engine/v3_realtime_connection_manager.dart';
 import 'engine/v3_table_registry.dart';
 import 'repositories/v3_realtime_bootstrap_repository.dart';
 
@@ -22,12 +22,14 @@ class V3MasterRealtimeManager {
 
   final V3CacheStore _cacheStore = V3CacheStore();
   final V3EventBus _eventBus = V3EventBus();
-  final V3RealtimeConnectionManager _connectionManager = V3RealtimeConnectionManager();
   late final V3BootstrapLoader _bootstrapLoader = V3BootstrapLoader(repository: _bootstrapRepository);
   bool _cacheStoreRegistered = false;
-  DateTime? _lastDeltaSyncAt;
-  Timer? _healthWatchdogTimer;
-  bool _isRecovering = false;
+
+  // --- REALTIME ---
+  RealtimeChannel? _channel;
+  int _reconnectAttempts = 0;
+  final bool _realtimeDisposed = false;
+  bool _isSubscribing = false;
 
   // --- IN-MEMORY CACHE ---
   final Map<String, Map<String, dynamic>> adreseCache = {};
@@ -265,7 +267,6 @@ class V3MasterRealtimeManager {
   Stream<Map<String, int>> get onRevisions => _eventBus.onRevisions;
   Timer? _navTypeSwitchTimer;
 
-  RealtimeChannel? _v3Channel;
   Future<void>? _initInFlight;
   bool _isInitialized = false;
 
@@ -337,9 +338,7 @@ class V3MasterRealtimeManager {
       if (globalSettings != null) _applyAppSettings(globalSettings);
 
       await _setupRealtime();
-      _startHealthWatchdog();
       _isInitialized = true;
-      _lastDeltaSyncAt = DateTime.now().toUtc();
       _scheduleEmit(tables: {'*'}, immediate: true);
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
     } catch (e) {
@@ -350,32 +349,78 @@ class V3MasterRealtimeManager {
 
   Future<void> _setupRealtime() async {
     _registerCacheStoreIfNeeded();
-    _v3Channel = await _connectionManager.connect(
-      configure: (channel) {
-        for (final config in V3RealtimeTableRegistry.defaults) {
-          channel.onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: config.name,
-            callback: (payload) {
-              _connectionManager.markEvent();
-              _onTablePayload(config: config, payload: payload);
-            },
-          );
-        }
-      },
-      onState: (state, {error}) {
-        if (error != null) {
-          debugPrint('[RT] connection state=$state error=$error');
-        } else {
-          debugPrint('[RT] connection state=$state');
-        }
 
-        if (state == V3RealtimeConnectionState.subscribed) {
+    final existing = _channel;
+    _channel = null;
+    if (existing != null) {
+      try {
+        await supabase.removeChannel(existing);
+      } catch (e) {
+        debugPrint('[RT] removeChannel warning: $e');
+      }
+    }
+
+    _syncRealtimeAuth();
+
+    final channel = supabase.channel('v3_realtime_all');
+    for (final config in V3RealtimeTableRegistry.defaults) {
+      channel.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: config.name,
+        callback: (payload) => _onTablePayload(config: config, payload: payload),
+      );
+    }
+
+    _channel = channel;
+    _isSubscribing = true;
+
+    channel.subscribe((status, [error]) {
+      _isSubscribing = false;
+      switch (status) {
+        case RealtimeSubscribeStatus.subscribed:
+          _reconnectAttempts = 0;
+          debugPrint('[RT] subscribed');
           _scheduleEmit(tables: {'*'}, immediate: true);
-        }
-      },
-    );
+          break;
+        case RealtimeSubscribeStatus.channelError:
+          debugPrint('[RT] channelError: $error');
+          unawaited(_scheduleReconnect());
+          break;
+        case RealtimeSubscribeStatus.timedOut:
+          debugPrint('[RT] timedOut');
+          unawaited(_scheduleReconnect());
+          break;
+        case RealtimeSubscribeStatus.closed:
+          debugPrint('[RT] closed');
+          break;
+      }
+    });
+  }
+
+  void _syncRealtimeAuth() {
+    final token = supabase.auth.currentSession?.accessToken;
+    if (token == null || token.isEmpty) return;
+    try {
+      supabase.realtime.setAuth(token);
+    } catch (e) {
+      debugPrint('[RT] setAuth warning: $e');
+    }
+  }
+
+  Future<void> _scheduleReconnect() async {
+    if (_realtimeDisposed || _isSubscribing) return;
+    _reconnectAttempts += 1;
+    final cappedAttempt = _reconnectAttempts > 6 ? 6 : _reconnectAttempts;
+    final baseMs = 500 * (1 << cappedAttempt);
+    final jitter = Random().nextInt(250);
+    await Future<void>.delayed(Duration(milliseconds: (baseMs + jitter).toInt()));
+    if (_realtimeDisposed) return;
+    try {
+      await _setupRealtime();
+    } catch (e) {
+      debugPrint('[RT] reconnect error: $e');
+    }
   }
 
   void _onTablePayload({
@@ -454,85 +499,6 @@ class V3MasterRealtimeManager {
       }
       return hash;
     }).distinct();
-  }
-
-  Future<void> recoverOnResume() async {
-    if (_isRecovering) return;
-    _isRecovering = true;
-    try {
-      await initV3();
-
-      final needsReconnect =
-          _connectionManager.state != V3RealtimeConnectionState.subscribed || !_connectionManager.isHealthy;
-      if (needsReconnect) {
-        await _setupRealtime();
-      }
-
-      await _syncDeltaFromWatermarks();
-      _scheduleEmit(tables: {'*'}, immediate: true);
-    } finally {
-      _isRecovering = false;
-    }
-  }
-
-  Future<void> _syncDeltaFromWatermarks() async {
-    final watermarks = <String, DateTime?>{
-      for (final table in V3RealtimeTableRegistry.defaults) table.name: _cacheStore.watermark(table.name),
-    };
-
-    final delta = await _bootstrapLoader.loadDeltaAll(watermarks);
-    if (delta.isEmpty) {
-      _lastDeltaSyncAt = DateTime.now().toUtc();
-      return;
-    }
-
-    final affected = <String>{};
-    for (final entry in delta.entries) {
-      final config = V3RealtimeTableRegistry.byName[entry.key];
-      if (config == null) continue;
-
-      for (final row in entry.value) {
-        _cacheStore.applyDeltaRow(
-          table: config.name,
-          row: row,
-          activeKey: config.activeKey,
-          hasActiveKey: config.hasActiveKey,
-          keepInactive: config.keepInactive,
-        );
-      }
-
-      if (config.hooks.contains(V3RealtimeHook.rebuildGpsCache)) {
-        _rebuildGpsCacheFromOperativna();
-      }
-      if (config.hooks.contains(V3RealtimeHook.applyGlobalAppSettings)) {
-        final global = appSettingsCache['global'];
-        if (global != null) {
-          _applyAppSettings(global);
-        }
-      }
-
-      affected
-        ..add(config.name)
-        ..addAll(config.dependsOn);
-    }
-
-    _lastDeltaSyncAt = DateTime.now().toUtc();
-    if (affected.isNotEmpty) {
-      _scheduleEmit(tables: affected);
-    }
-  }
-
-  void _startHealthWatchdog() {
-    _healthWatchdogTimer?.cancel();
-    _healthWatchdogTimer = Timer.periodic(const Duration(seconds: 90), (_) {
-      if (!_isInitialized || _isRecovering) return;
-
-      final unhealthy =
-          _connectionManager.state != V3RealtimeConnectionState.subscribed || !_connectionManager.isHealthy;
-      if (unhealthy) {
-        unawaited(recoverOnResume());
-      }
-    });
   }
 
   void v3UpsertToCache(String table, Map<String, dynamic> row) {

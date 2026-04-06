@@ -6,6 +6,8 @@ import 'package:permission_handler/permission_handler.dart';
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
+import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_firebase_sms_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
@@ -554,6 +556,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
     await V3BiometricService().clearCredentials();
+    await V3FirebaseSmsService.signOut();
+    await V3ClosedAuthService.clearFirebasePutnikPhone();
     if (!mounted) return;
     V3AppSnackBar.success(context, '✅ Uspešno odjavljeni');
     await Future<void>.delayed(const Duration(milliseconds: 350));
