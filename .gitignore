@@ -91,6 +91,7 @@ temp_apk*/
 
 # Supabase credentials
 .supabase_credentials
+supabase/.env*
 
 # ⚠️ TAJNE - NIKADA NE COMMITUJ!
 google-play-key.json
