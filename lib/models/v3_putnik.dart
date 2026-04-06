@@ -1,6 +1,6 @@
 import '../utils/v3_date_utils.dart';
 
-/// Universal model for all types of passengers in v3_putnici table
+/// Universal model for all passenger types from logical `v3_putnici` cache (`v3_auth` source)
 class V3Putnik {
   final String id;
   final String imePrezime;

@@ -21,7 +21,8 @@ class V3VozacLokacijaUpdate {
 
   Map<String, dynamic> toJson() {
     return {
-      'vozac_id': vozacId,
+      'created_by': vozacId,
+      'updated_by': vozacId,
       'lat': lat,
       'lng': lng,
       'brzina': brzina ?? 0,
@@ -50,7 +51,10 @@ class V3VozacLokacijaService {
   /// Sets driver's active status. When deactivated, the marker disappears for passengers.
   static Future<void> postaviAktivnost(String vozacId, bool aktivno) async {
     try {
-      await _repo.updateByVozacId(vozacId, {'aktivno': aktivno});
+      await _repo.updateByCreatedBy(vozacId, {
+        'aktivno': aktivno,
+        'updated_by': vozacId,
+      });
     } catch (e) {
       debugPrint('[V3VozacLokacijaService] postaviAktivnost error: $e');
     }
@@ -70,11 +74,11 @@ class V3VozacLokacijaService {
   /// Gets specific driver's location from the synchronized cache.
   static Map<String, dynamic>? getVozacLokacijaSync(String vozacId, {bool onlyActive = false}) {
     final cache = V3MasterRealtimeManager.instance.vozacLokacijeCache;
-    // Note: cache key is UID of the record in v3_vozac_lokacije, not vozac_id.
-    // We search the values for the matching vozac_id.
+    // Note: cache key is UID of the record in v3_vozac_lokacije, not created_by.
+    // We search the values for the matching created_by.
     try {
       return cache.values.firstWhere(
-        (l) => l['vozac_id']?.toString() == vozacId && (!onlyActive || l['aktivno'] == true),
+        (l) => l['created_by']?.toString() == vozacId && (!onlyActive || l['aktivno'] == true),
       );
     } catch (_) {
       return null;

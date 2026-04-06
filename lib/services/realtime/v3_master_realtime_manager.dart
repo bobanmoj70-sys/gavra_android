@@ -45,8 +45,6 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> racuniCache = {};
   final Map<String, Map<String, dynamic>> racuniArhivaCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
-  final Map<String, Map<String, dynamic>> gpsTripStateCache = {};
-  final Map<String, Map<String, dynamic>> tripStopsCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
   final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
   final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
@@ -66,55 +64,7 @@ class V3MasterRealtimeManager {
     return value?.toString() ?? '';
   }
 
-  String _gpsTripKey({
-    required String vozacId,
-    required String datumIso,
-    required String grad,
-    required String polazakTime,
-  }) {
-    return '${vozacId.trim()}|${datumIso.trim()}|${grad.trim().toUpperCase()}|${polazakTime.trim()}';
-  }
-
   void _rebuildGpsCacheFromOperativna() {
-    final gpsTripByKey = <String, Map<String, dynamic>>{};
-    final routeOrderByOperativnaId = <String, int?>{};
-
-    for (final stop in tripStopsCache.values) {
-      final operativnaId = stop['operativna_id']?.toString();
-      if (operativnaId == null || operativnaId.isEmpty) continue;
-
-      final rawOrder = stop['stop_order'];
-      int? parsedOrder;
-      if (rawOrder is int) {
-        parsedOrder = rawOrder;
-      } else if (rawOrder is num) {
-        parsedOrder = rawOrder.toInt();
-      } else {
-        parsedOrder = int.tryParse(rawOrder?.toString() ?? '');
-      }
-
-      routeOrderByOperativnaId[operativnaId] = parsedOrder;
-    }
-
-    for (final trip in gpsTripStateCache.values) {
-      final vozacId = (trip['vozac_id']?.toString() ?? '').trim();
-      final datumIso = V3DanHelper.parseIsoDatePart(_asString(trip['datum']));
-      final grad = (trip['grad']?.toString() ?? '').trim().toUpperCase();
-      final polazakTime = _extractTimeToken(trip['polazak_vreme']?.toString()) ?? '';
-
-      if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || polazakTime.isEmpty) {
-        continue;
-      }
-
-      final key = _gpsTripKey(
-        vozacId: vozacId,
-        datumIso: datumIso,
-        grad: grad,
-        polazakTime: polazakTime,
-      );
-      gpsTripByKey[key] = trip;
-    }
-
     v3GpsRasporedCache.clear();
     for (final entry in operativnaNedeljaCache.values) {
       final id = entry['id']?.toString();
@@ -127,23 +77,12 @@ class V3MasterRealtimeManager {
           _extractTimeToken(entry['zeljeno_vreme']?.toString()) ??
           '';
 
-      final tripKey = polazakTime.isEmpty
-          ? null
-          : _gpsTripKey(
-              vozacId: vozacId,
-              datumIso: datumIso,
-              grad: grad,
-              polazakTime: polazakTime,
-            );
-      final trip = tripKey != null ? gpsTripByKey[tripKey] : null;
-
       final row = Map<String, dynamic>.from(entry);
       row['vreme'] = row['vreme'] ?? row['dodeljeno_vreme'] ?? row['zeljeno_vreme'];
-      row['polazak_vreme'] = trip?['polazak_vreme'];
-      row['nav_bar_type'] = trip?['nav_bar_type'] ?? row['nav_bar_type'] ?? 'zimski';
-      row['gps_status'] = trip?['gps_status'] ?? 'pending';
-      row['notification_sent'] = trip?['notification_sent'] ?? false;
-      row['route_order'] = routeOrderByOperativnaId[id];
+      row['polazak_vreme'] = row['dodeljeno_vreme'] ?? row['zeljeno_vreme'];
+      row['nav_bar_type'] = row['nav_bar_type'] ?? 'zimski';
+      row['gps_status'] = row['gps_status'] ?? 'pending';
+      row['notification_sent'] = row['notification_sent'] ?? false;
       v3GpsRasporedCache[id] = row;
     }
   }
@@ -288,8 +227,8 @@ class V3MasterRealtimeManager {
 
     _cacheStore.registerTable('v3_adrese', adreseCache);
     _cacheStore.registerTable('v3_vozaci', vozaciCache);
-    _cacheStore.registerTable('v3_vozila', vozilaCache);
     _cacheStore.registerTable('v3_putnici', putniciCache);
+    _cacheStore.registerTable('v3_vozila', vozilaCache);
     _cacheStore.registerTable('v3_zahtevi', zahteviCache);
     _cacheStore.registerTable('v3_gorivo', gorivoCache);
     _cacheStore.registerTable('v3_gorivo_promene', gorivoPromeneCache);
@@ -298,8 +237,6 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_racuni', racuniCache);
     _cacheStore.registerTable('v3_racuni_arhiva', racuniArhivaCache);
     _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
-    _cacheStore.registerTable('v3_gps_trip_state', gpsTripStateCache);
-    _cacheStore.registerTable('v3_trip_stops', tripStopsCache);
     _cacheStore.registerTable('v3_kapacitet_slots', kapacitetSlotsCache);
     _cacheStore.registerTable('v3_app_settings', appSettingsCache);
     _cacheStore.registerTable('v3_gps_raspored', v3GpsRasporedCache);
@@ -364,11 +301,18 @@ class V3MasterRealtimeManager {
 
     final channel = supabase.channel('v3_realtime_all');
     for (final config in V3RealtimeTableRegistry.defaults) {
+      final sourceTable = (config.name == 'v3_vozaci' || config.name == 'v3_putnici') ? 'v3_auth' : config.name;
       channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
-        table: config.name,
-        callback: (payload) => _onTablePayload(config: config, payload: payload),
+        table: sourceTable,
+        callback: (payload) {
+          if (config.name == 'v3_vozaci' || config.name == 'v3_putnici') {
+            _onAuthBackedPayload(config: config, payload: payload);
+            return;
+          }
+          _onTablePayload(config: config, payload: payload);
+        },
       );
     }
 
@@ -458,6 +402,87 @@ class V3MasterRealtimeManager {
     _scheduleEmit(tables: affected);
   }
 
+  void _onAuthBackedPayload({
+    required V3RealtimeTableConfig config,
+    required PostgresChangePayload payload,
+  }) {
+    final mappedNew = _mapAuthToLegacyRow(payload.newRecord, config.name);
+    final mappedOld = _mapAuthToLegacyRow(payload.oldRecord, config.name);
+
+    final shouldDelete = payload.eventType == PostgresChangeEvent.delete || (mappedNew.isEmpty && mappedOld.isNotEmpty);
+
+    final changed = _cacheStore.applyRealtimeMutation(
+      table: config.name,
+      newRecord: mappedNew,
+      oldRecord: mappedOld,
+      isDelete: shouldDelete,
+      activeKey: config.activeKey,
+      hasActiveKey: config.hasActiveKey,
+      keepInactive: config.keepInactive,
+    );
+
+    if (!changed) return;
+    final affected = <String>{config.name, ...config.dependsOn};
+    _scheduleEmit(tables: affected);
+  }
+
+  Map<String, dynamic> _mapAuthToLegacyRow(Map<String, dynamic> row, String logicalTable) {
+    if (logicalTable == 'v3_vozaci') {
+      return _mapAuthToLegacyVozac(row);
+    }
+    if (logicalTable == 'v3_putnici') {
+      return _mapAuthToLegacyPutnik(row);
+    }
+    return <String, dynamic>{};
+  }
+
+  Map<String, dynamic> _mapAuthToLegacyVozac(Map<String, dynamic> row) {
+    final tip = row['tip']?.toString().trim().toLowerCase();
+    if (tip != 'vozac') return <String, dynamic>{};
+
+    final id = row['auth_id']?.toString();
+    if (id == null || id.isEmpty) return <String, dynamic>{};
+
+    return <String, dynamic>{
+      'id': id,
+      'ime_prezime': row['ime'],
+      'telefon_1': row['telefon'],
+      'telefon_2': row['telefon_2'],
+      'boja': row['boja'],
+      'push_token': row['push_token'],
+      'aktivno': row['aktivno'] ?? true,
+      'created_at': row['created_at'],
+      'updated_at': row['updated_at'],
+    };
+  }
+
+  Map<String, dynamic> _mapAuthToLegacyPutnik(Map<String, dynamic> row) {
+    final tip = row['tip']?.toString().trim().toLowerCase();
+    if (tip == null || tip.isEmpty || tip == 'vozac') return <String, dynamic>{};
+
+    final id = row['auth_id']?.toString();
+    if (id == null || id.isEmpty) return <String, dynamic>{};
+
+    return <String, dynamic>{
+      'id': id,
+      'ime_prezime': row['ime'],
+      'telefon_1': row['telefon'],
+      'telefon_2': row['telefon_2'],
+      'tip_putnika': row['tip'],
+      'adresa_bc_id': row['adresa_bc_id'],
+      'adresa_vs_id': row['adresa_vs_id'],
+      'adresa_bc_id_2': row['adresa_bc_id_2'],
+      'adresa_vs_id_2': row['adresa_vs_id_2'],
+      'cena_po_danu': row['cena_po_danu'],
+      'cena_po_pokupljenju': row['cena_po_pokupljenju'],
+      'push_token': row['push_token'],
+      'push_token_2': row['push_token_2'],
+      'aktivno': row['aktivno'] ?? true,
+      'created_at': row['created_at'],
+      'updated_at': row['updated_at'],
+    };
+  }
+
   Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
     return v3StreamFromRevisions(tables: tables, build: build);
   }
@@ -533,12 +558,6 @@ class V3MasterRealtimeManager {
       case 'v3_operativna_nedelja':
         _rebuildGpsCacheFromOperativna();
         break;
-      case 'v3_gps_trip_state':
-        _rebuildGpsCacheFromOperativna();
-        break;
-      case 'v3_trip_stops':
-        _rebuildGpsCacheFromOperativna();
-        break;
       case 'v3_kapacitet_slots':
         break;
     }
@@ -591,10 +610,6 @@ class V3MasterRealtimeManager {
         return operativnaNedeljaCache;
       case 'v3_kapacitet_slots':
         return kapacitetSlotsCache;
-      case 'v3_gps_trip_state':
-        return gpsTripStateCache;
-      case 'v3_trip_stops':
-        return tripStopsCache;
       case 'v3_app_settings':
         return appSettingsCache;
       case 'v3_gps_raspored':

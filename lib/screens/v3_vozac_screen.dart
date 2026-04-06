@@ -6,10 +6,10 @@ import 'package:permission_handler/permission_handler.dart';
 import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_firebase_sms_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
-import '../services/v3/v3_trip_stops_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
@@ -568,6 +568,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
     if (ok == true && mounted) {
       V3VozacService.currentVozac = null;
+      await V3FirebaseSmsService.signOut();
+      if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),
         (r) => false,
@@ -828,21 +830,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<void> _persistRouteOrderToOperativna(List<Map<String, dynamic>> optimizedData) async {
-    try {
-      final vozac = V3VozacService.currentVozac;
-      if (vozac != null) {
-        await V3TripStopsService.upsertStopsForTermin(
-          vozacId: vozac.id,
-          datumIso: _selectedDatumIso,
-          grad: _selectedGrad,
-          polazakVreme: _selectedVreme,
-          optimizedData: optimizedData,
-          source: 'osrm',
-        );
-      }
-    } catch (e) {
-      debugPrint('[V3VozacScreen] _persistRouteOrderToOperativna error: $e');
-    }
+    return;
   }
 
   /// Dobija trenutnu GPS poziciju vozača iz baze podataka

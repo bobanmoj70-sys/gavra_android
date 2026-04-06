@@ -25,8 +25,8 @@ class V3RealtimeTableRegistry {
   static const List<V3RealtimeTableConfig> defaults = <V3RealtimeTableConfig>[
     V3RealtimeTableConfig(name: 'v3_adrese'),
     V3RealtimeTableConfig(name: 'v3_vozaci'),
-    V3RealtimeTableConfig(name: 'v3_vozila'),
     V3RealtimeTableConfig(name: 'v3_putnici'),
+    V3RealtimeTableConfig(name: 'v3_vozila'),
     V3RealtimeTableConfig(name: 'v3_zahtevi'),
     V3RealtimeTableConfig(name: 'v3_gorivo'),
     V3RealtimeTableConfig(name: 'v3_gorivo_promene', hasActiveKey: false),
@@ -37,19 +37,6 @@ class V3RealtimeTableRegistry {
     V3RealtimeTableConfig(
       name: 'v3_operativna_nedelja',
       keepInactive: true,
-      dependsOn: <String>['v3_gps_trip_state', 'v3_trip_stops'],
-      hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
-    ),
-    V3RealtimeTableConfig(
-      name: 'v3_gps_trip_state',
-      hasActiveKey: false,
-      dependsOn: <String>['v3_operativna_nedelja'],
-      hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
-    ),
-    V3RealtimeTableConfig(
-      name: 'v3_trip_stops',
-      hasActiveKey: false,
-      dependsOn: <String>['v3_operativna_nedelja'],
       hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
     ),
     V3RealtimeTableConfig(name: 'v3_kapacitet_slots'),

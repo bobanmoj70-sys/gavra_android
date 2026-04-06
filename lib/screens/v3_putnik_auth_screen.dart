@@ -93,6 +93,16 @@ class _V3PutnikAuthScreenState extends State<V3PutnikAuthScreen> {
         return;
       }
 
+      if (result.autoVerified) {
+        // Automatska verifikacija na Androidu uspela
+        setState(() {
+          _normalizedPhone = normalized;
+          _statusMessage = '✅ Auto-verifikacija uspešna! Prijavljivanje...';
+        });
+        await _bridgeAndLoadProfile();
+        return;
+      }
+
       // 3. Pređi na korak unosa koda
       setState(() {
         _verificationId = result.verificationId;
@@ -148,12 +158,21 @@ class _V3PutnikAuthScreenState extends State<V3PutnikAuthScreen> {
       }
 
       setState(() => _statusMessage = '✅ Kod tačan! Učitavam profil...');
+      await _bridgeAndLoadProfile();
+    } catch (e) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, 'Greška: $e');
+      setState(() => _statusMessage = '');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
-      final gateRow = await V3ClosedAuthService.bridgeFirebaseSessionToV3Auth(
-        fallbackPhone: _normalizedPhone!,
-      );
+  Future<void> _bridgeAndLoadProfile() async {
+    try {
+      final gateRow = await V3ClosedAuthService.bridgeFirebaseSessionToV3Auth();
       final canonicalPhone = V3ClosedAuthService.normalizePhone(
-        gateRow['telefon']?.toString() ?? _normalizedPhone!,
+        gateRow['telefon']?.toString() ?? '',
       );
       if (canonicalPhone.isEmpty) {
         V3AppSnackBar.error(context, '❌ Kapija autorizacije nije vratila validan telefon.');
@@ -185,10 +204,8 @@ class _V3PutnikAuthScreenState extends State<V3PutnikAuthScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, 'Greška: $e');
+      V3AppSnackBar.error(context, 'Greška pri prijavljivanju: $e');
       setState(() => _statusMessage = '');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -347,16 +364,6 @@ class _V3PutnikAuthScreenState extends State<V3PutnikAuthScreen> {
           icon: Icons.verified_user_outlined,
           isLoading: _isLoading,
           onPressed: _verifyOtp,
-        ),
-        const SizedBox(height: 12),
-        // Pošalji ponovo
-        TextButton.icon(
-          onPressed: _isLoading ? null : _resetToStep1,
-          icon: const Icon(Icons.refresh, color: Colors.white60, size: 18),
-          label: const Text(
-            'Nisam dobio SMS – pošalji ponovo',
-            style: TextStyle(color: Colors.white60, fontSize: 13),
-          ),
         ),
       ],
     );

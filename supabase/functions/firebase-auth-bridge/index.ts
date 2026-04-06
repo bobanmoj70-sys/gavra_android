@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
     }
 
-    const body = (await req.json()) as { firebase_id_token?: string; fallback_phone?: string };
+    const body = (await req.json()) as { firebase_id_token?: string };
     const firebaseIdToken = String(body?.firebase_id_token ?? '').trim();
     if (!firebaseIdToken) {
       return new Response(JSON.stringify({ ok: false, error: 'firebase_id_token is required' }), {
@@ -79,17 +79,9 @@ Deno.serve(async (req) => {
     }
 
     const firebase = await verifyFirebaseToken(firebaseIdToken);
-    const fallbackPhone = normalizePhone(String(body?.fallback_phone ?? ''));
     const phone = firebase.phone;
 
     if (!phone) {
-      return new Response(JSON.stringify({ ok: false, error: 'Access denied' }), {
-        status: 403,
-        headers: jsonHeaders,
-      });
-    }
-
-    if (fallbackPhone && fallbackPhone !== phone) {
       return new Response(JSON.stringify({ ok: false, error: 'Access denied' }), {
         status: 403,
         headers: jsonHeaders,
@@ -102,7 +94,7 @@ Deno.serve(async (req) => {
 
     const { data: authRow, error: authError } = await admin
       .from('v3_auth')
-      .select('id, telefon, auth_id, firebase_uid')
+      .select('auth_id, telefon, firebase_uid')
       .eq('telefon', phone)
       .maybeSingle();
 
@@ -119,33 +111,74 @@ Deno.serve(async (req) => {
 
     if (authRow.firebase_uid && authRow.firebase_uid !== firebase.uid) {
       return new Response(
-        JSON.stringify({
-          ok: false,
-          error: 'Access denied',
-        }),
+        JSON.stringify({ ok: false, error: 'Access denied' }),
         { status: 409, headers: jsonHeaders },
       );
     }
 
-    let finalRow = authRow;
-    if (!authRow.firebase_uid) {
-      const { data: updatedRow, error: updateError } = await admin
-        .from('v3_auth')
-        .update({ firebase_uid: firebase.uid })
-        .eq('id', authRow.id)
-        .select('id, telefon, auth_id, firebase_uid')
-        .single();
+    // ─── Korak 1: Osiguraj da auth.users postoji ──────────────────
+    let authId: string = authRow.auth_id ?? '';
 
-      if (updateError) {
-        throw new Error(`v3_auth update failed: ${updateError.message}`);
+    if (!authId) {
+      // Novi korisnik - kreira se auth.users red pri prvom loginu
+      const { data: newUser, error: createError } = await admin.auth.admin.createUser({
+        phone: phone,
+        phone_confirm: true,
+      });
+
+      if (createError || !newUser?.user?.id) {
+        throw new Error(`Kreiranje auth.users nije uspelo: ${createError?.message ?? 'nepoznata greška'}`);
       }
-      finalRow = updatedRow;
+
+      authId = newUser.user.id;
+
+      // Upiši auth_id u v3_auth
+      const { error: linkError } = await admin
+        .from('v3_auth')
+        .update({ auth_id: authId })
+        .eq('telefon', phone);
+
+      if (linkError) {
+        throw new Error(`Vezivanje auth_id nije uspelo: ${linkError.message}`);
+      }
+    } else {
+      // Postojeći korisnik - proveri da li auth.users red zaista postoji
+      const { data: existingUser, error: checkError } = await admin.auth.admin.getUserById(authId);
+      if (checkError || !existingUser?.user) {
+        // auth_id postoji u v3_auth ali auth.users red ne postoji - rekreiraj
+        const { data: recreatedUser, error: recreateError } = await admin.auth.admin.createUser({
+          phone: phone,
+          phone_confirm: true,
+        });
+
+        if (recreateError || !recreatedUser?.user?.id) {
+          throw new Error(`Rekreiranje auth.users nije uspelo: ${recreateError?.message ?? 'nepoznata greška'}`);
+        }
+
+        authId = recreatedUser.user.id;
+
+        const { error: relinkError } = await admin
+          .from('v3_auth')
+          .update({ auth_id: authId })
+          .eq('telefon', phone);
+
+        if (relinkError) {
+          throw new Error(`Re-vezivanje auth_id nije uspelo: ${relinkError.message}`);
+        }
+      }
     }
 
-    let authUserExists = false;
-    if (finalRow.auth_id) {
-      const { data: userData, error: userError } = await admin.auth.admin.getUserById(String(finalRow.auth_id));
-      authUserExists = !userError && !!userData?.user;
+    // ─── Korak 2: Upiši firebase_uid ako već nije ─────────────────
+    const needsFirebaseUpdate = !authRow.firebase_uid;
+    if (needsFirebaseUpdate) {
+      const { error: updateError } = await admin
+        .from('v3_auth')
+        .update({ firebase_uid: firebase.uid })
+        .eq('auth_id', authRow.auth_id);
+
+      if (updateError) {
+        throw new Error(`firebase_uid update nije uspeo: ${updateError.message}`);
+      }
     }
 
     return new Response(
@@ -156,9 +189,10 @@ Deno.serve(async (req) => {
           aud: firebase.aud,
           phone,
         },
-        v3_auth: finalRow,
-        links: {
-          auth_user_exists: authUserExists,
+        v3_auth: {
+          telefon: authRow.telefon,
+          auth_id: authId,
+          firebase_uid: authRow.firebase_uid ?? firebase.uid,
         },
       }),
       { status: 200, headers: jsonHeaders },

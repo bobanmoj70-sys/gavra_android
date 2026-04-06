@@ -28,6 +28,8 @@ import 'utils/v3_time_utils.dart';
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 bool _localNotificationsInitialized = false;
+// Rezultat Firebase inicijalizacije - keširano da se izbegne dupli GMS check
+bool _firebaseInitialized = false;
 
 Future<void> _ensureLocalNotificationsInitialized() async {
   if (_localNotificationsInitialized) return;
@@ -162,6 +164,7 @@ Future<void> _initFirebaseSync() async {
       }
     }
 
+    _firebaseInitialized = fcmInitialized;
     if (fcmInitialized) {
       debugPrint('🟢 [Push] FCM dostupan');
     } else {
@@ -177,15 +180,8 @@ Future<void> _initNotificationHandlers() async {
   try {
     // 1. FCM Handlers (ako je Firebase inicijalizovan)
     try {
-      final bool shouldConfigureFcmHandlers;
-      if (Platform.isIOS) {
-        shouldConfigureFcmHandlers = true;
-      } else {
-        final gmsAvailability = await GoogleApiAvailability.instance.checkGooglePlayServicesAvailability();
-        shouldConfigureFcmHandlers = gmsAvailability == GooglePlayServicesAvailability.success;
-      }
-
-      if (shouldConfigureFcmHandlers) {
+      // Koristimo keširani rezultat iz _initFirebaseSync - nema potrebe za ponovnim GMS pozivom
+      if (_firebaseInitialized) {
         if (Platform.isIOS) {
           await fcm.FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
             alert: true,
@@ -249,7 +245,7 @@ Future<void> _syncPushTokenToCurrentUser(String token) async {
     final currentVozac = V3VozacService.currentVozac;
     if (currentVozac != null) {
       await V3VozacService.updatePushToken(vozacId: currentVozac.id, pushToken: safeToken);
-      debugPrint('✅ [Push] Token sync: v3_vozaci');
+      debugPrint('✅ [Push] Token sync: v3_auth (vozac)');
       return;
     }
 
@@ -267,7 +263,7 @@ Future<void> _syncPushTokenToCurrentUser(String token) async {
       );
       currentPutnik?.addAll(updated);
 
-      debugPrint('✅ [Push] Token sync: v3_putnici');
+      debugPrint('✅ [Push] Token sync: v3_auth (putnik)');
     }
   } catch (e) {
     debugPrint('⚠️ [Push] Token sync greška: $e');

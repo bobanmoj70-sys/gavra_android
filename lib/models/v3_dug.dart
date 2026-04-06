@@ -59,7 +59,7 @@ class V3Dug {
   }
 
   /// Kreira V3Dug iz reda tabele v3_operativna_nedelja.
-  /// [putnikData] — red iz v3_putnici cache-a za ovog putnika.
+  /// [putnikData] — red iz logical `v3_putnici` cache-a za ovog putnika (`v3_auth` source).
   factory V3Dug.fromOperacija(
     Map<String, dynamic> json, {
     Map<String, dynamic>? putnikData,

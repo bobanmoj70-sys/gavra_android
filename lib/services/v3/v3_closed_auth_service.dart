@@ -58,9 +58,7 @@ class V3ClosedAuthService {
     await _storage.delete(key: _firebasePhoneKey);
   }
 
-  static Future<Map<String, dynamic>> bridgeFirebaseSessionToV3Auth({
-    String? fallbackPhone,
-  }) async {
+  static Future<Map<String, dynamic>> bridgeFirebaseSessionToV3Auth() async {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser == null) {
       throw Exception('Firebase sesija ne postoji.');
@@ -75,7 +73,6 @@ class V3ClosedAuthService {
       'firebase-auth-bridge',
       body: {
         'firebase_id_token': firebaseIdToken,
-        'fallback_phone': fallbackPhone,
       },
     );
 
@@ -94,7 +91,19 @@ class V3ClosedAuthService {
       throw Exception('Bridge funkcija nije vratila v3_auth payload.');
     }
 
-    return Map<String, dynamic>.from(v3Auth);
+    // Garantovano: auth_id je uvek popunjen nakon bridge poziva
+    final result = Map<String, dynamic>.from(v3Auth);
+    if (result['auth_id'] == null || result['auth_id'].toString().isEmpty) {
+      throw Exception('Bridge nije vratio auth_id - auth.users kreiranje nije uspelo.');
+    }
+
+    return result;
+  }
+
+  /// Vraća auth_id (= auth.users UUID) iz keširane bridge sesije.
+  /// Ovo je kanonski UUID korisnika za created_by/updated_by kolone.
+  static String? extractAuthId(Map<String, dynamic> bridgeRow) {
+    return bridgeRow['auth_id']?.toString();
   }
 
   /// Pokušaj auto-login via Firebase sesije + sačuvanog telefona.
@@ -103,12 +112,12 @@ class V3ClosedAuthService {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser == null) return null;
 
-    final storedPhone = await _storage.read(key: _firebasePhoneKey);
-    final gateRow = await bridgeFirebaseSessionToV3Auth(fallbackPhone: storedPhone);
+    final gateRow = await bridgeFirebaseSessionToV3Auth();
 
-    final phone = normalizePhone(gateRow['telefon']?.toString() ?? storedPhone ?? '');
+    final phone = normalizePhone(gateRow['telefon']?.toString() ?? '');
     if (phone.isEmpty) return null;
 
+    final storedPhone = await _storage.read(key: _firebasePhoneKey);
     if (storedPhone == null || storedPhone != phone) {
       await saveFirebasePutnikPhone(phone);
     }

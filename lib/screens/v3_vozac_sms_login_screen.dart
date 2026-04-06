@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -95,6 +96,13 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
       return;
     }
 
+    // Mora postojati aktivna Firebase sesija - bez nje bridge ne može da verifikuje
+    if (FirebaseAuth.instance.currentUser == null) {
+      if (mounted) V3AppSnackBar.info(context, 'ℹ️ Sesija je istekla. Prijavi se SMS-om.');
+      _resetToStep1();
+      return;
+    }
+
     final authenticated = await V3BiometricService().authenticate(
       reason: 'Potvrdi identitet za prijavu kao ${widget.vozac.imePrezime}',
     );
@@ -136,6 +144,16 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
       if (!result.success) {
         V3AppSnackBar.error(context, result.errorMessage ?? '❌ Greška pri slanju SMS-a.');
         setState(() => _statusMessage = '');
+        return;
+      }
+
+      if (result.autoVerified) {
+        // Automatska verifikacija uspesna
+        setState(() {
+          _normalizedPhone = phone;
+          _statusMessage = '✅ Auto-verifikacija uspešna! Prijavljivanje...';
+        });
+        await _finalizeLogin();
         return;
       }
 
@@ -207,11 +225,9 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
   Future<void> _finalizeLogin({bool skipBiometricSave = false}) async {
     try {
       // Verifikuj Firebase token kroz bridge i dobij kanonski telefon
-      final gateRow = await V3ClosedAuthService.bridgeFirebaseSessionToV3Auth(
-        fallbackPhone: _normalizedPhone ?? V3PhoneUtils.normalize(widget.vozac.telefon1 ?? ''),
-      );
+      final gateRow = await V3ClosedAuthService.bridgeFirebaseSessionToV3Auth();
       final canonicalPhone = V3ClosedAuthService.normalizePhone(
-        gateRow['telefon']?.toString() ?? widget.vozac.telefon1 ?? '',
+        gateRow['telefon']?.toString() ?? '',
       );
 
       if (!mounted) return;
@@ -432,15 +448,6 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
           isLoading: _isLoading,
           fontSize: 18,
           fontWeight: FontWeight.bold,
-        ),
-        const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: _isLoading ? null : _resetToStep1,
-          icon: const Icon(Icons.refresh, color: Colors.white60, size: 18),
-          label: const Text(
-            'Nisam dobio SMS – pošalji ponovo',
-            style: TextStyle(color: Colors.white60, fontSize: 13),
-          ),
         ),
       ],
     );

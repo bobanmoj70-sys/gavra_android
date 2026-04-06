@@ -8,7 +8,7 @@ import '../../utils/v3_audit_korisnik.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
 
-/// Service for V3 passengers (unified `v3_putnici` table).
+/// Service for V3 passengers (logical `v3_putnici` cache backed by `v3_auth`).
 class V3PutnikService {
   V3PutnikService._();
   static final V3PutnikRepository _repo = V3PutnikRepository();

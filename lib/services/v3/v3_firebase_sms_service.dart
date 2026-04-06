@@ -6,16 +6,20 @@ import 'package:flutter/foundation.dart';
 /// Rezultat slanja SMS verifikacionog koda
 class SmsSendResult {
   final bool success;
+  final bool autoVerified;
   final String? verificationId;
   final String? errorMessage;
 
   const SmsSendResult._({
     required this.success,
+    this.autoVerified = false,
     this.verificationId,
     this.errorMessage,
   });
 
   factory SmsSendResult.ok(String verificationId) => SmsSendResult._(success: true, verificationId: verificationId);
+
+  factory SmsSendResult.autoVerified() => const SmsSendResult._(success: true, autoVerified: true);
 
   factory SmsSendResult.fail(String message) => SmsSendResult._(success: false, errorMessage: message);
 }
@@ -60,9 +64,19 @@ class V3FirebaseSmsService {
         timeout: const Duration(seconds: 60),
 
         // ✅ Automatska verifikacija (Android samo) – retko se dešava
-        verificationCompleted: (PhoneAuthCredential credential) {
+        verificationCompleted: (PhoneAuthCredential credential) async {
           debugPrint('[SMS] Auto-verifikacija (Android) uspešna.');
-          // Ne radimo ništa – korisnik će ručno uneti kod
+          try {
+            await _auth.signInWithCredential(credential);
+            if (!completer.isCompleted) {
+              completer.complete(SmsSendResult.autoVerified());
+            }
+          } catch (e) {
+            debugPrint('[SMS] Greška pri auto-verifikaciji: $e');
+            if (!completer.isCompleted) {
+              completer.complete(SmsSendResult.fail('Greška pri automatskoj verifikaciji: $e'));
+            }
+          }
         },
 
         // ❌ Greška pri slanju
@@ -82,9 +96,11 @@ class V3FirebaseSmsService {
         // ⏱️ Timeout
         codeAutoRetrievalTimeout: (String verificationId) {
           debugPrint('[SMS] Auto-retrieval timeout');
-          // Ako još nismo dobili odgovor, smatramo da je kod poslat
+          // Timeout znači samo da Android auto-verify nije stigao - SMS je već ranije potvrđen
+          // kroz codeSent callback, tako da ne radimo ništa ovde
           if (!completer.isCompleted) {
-            completer.complete(SmsSendResult.ok(verificationId));
+            // Ako smo ovde a completer nije završen, znači ni codeSent ni error nisu stigli
+            completer.complete(SmsSendResult.fail('❌ Timeout: SMS nije mogao da se pošalje. Pokušaj ponovo.'));
           }
         },
       );
