@@ -8,7 +8,7 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_actor.dart';
+import '../utils/v3_audit_korisnik.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -650,7 +650,7 @@ class _PutnikCard extends StatelessWidget {
               await V3PutnikService.updatePinById(
                 putnikId: putnik.id,
                 pin: ctrl.text,
-                updatedBy: V3AuditActor.cron('admin_pin_edit'),
+                updatedBy: V3AuditKorisnik.normalize('admin_pin_edit'),
               );
               if (context.mounted) V3AppSnackBar.success(context, '✅ PIN sačuvan');
             } catch (e) {
@@ -742,10 +742,8 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         cenaPoPokupljenju: (_tip == 'dnevni' || _tip == 'posiljka')
             ? double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0
             : 0.0, // radnici/ucenici koriste cenaPoDanu
-        placeniMesec: widget.existing?.placeniMesec,
-        placenaGodina: widget.existing?.placenaGodina,
       );
-      await V3PutnikService.addUpdatePutnik(putnik, createdBy: V3AuditActor.cron('admin'));
+      await V3PutnikService.addUpdatePutnik(putnik, createdBy: V3AuditKorisnik.normalize('admin'));
       if (mounted) {
         V3AppSnackBar.success(context, widget.existing == null ? '✅ Putnik dodan' : '✅ Putnik sačuvan');
         Navigator.pop(context);

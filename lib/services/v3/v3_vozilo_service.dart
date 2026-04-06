@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/v3_vozilo.dart';
-import '../../utils/v3_audit_actor.dart';
+import '../../utils/v3_audit_korisnik.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozilo_repository.dart';
 
@@ -28,7 +28,7 @@ class V3VoziloService {
   static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();
-      final actor = V3AuditActor.cron('admin');
+      final actor = V3AuditKorisnik.normalize('admin');
       if (actor != null) data['updated_by'] = actor;
 
       await _repo.upsert(data);
@@ -40,7 +40,7 @@ class V3VoziloService {
 
   static Future<void> deactivateVozilo(String id) async {
     try {
-      final actor = V3AuditActor.cron('admin');
+      final actor = V3AuditKorisnik.normalize('admin');
       final payload = <String, dynamic>{'aktivno': false};
       if (actor != null) payload['updated_by'] = actor;
       await _repo.updateById(id, payload);

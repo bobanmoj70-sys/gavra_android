@@ -2,15 +2,11 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3/v3_putnik_service.dart';
-import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
-import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_button_utils.dart';
@@ -18,13 +14,9 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
-import '../utils/v3_validation_utils.dart';
-import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
-import 'v3_putnik_login_screen.dart';
-import 'v3_putnik_profil_screen.dart';
+import 'v3_putnik_auth_screen.dart';
 import 'v3_vozac_login_screen.dart';
-import 'v3_vozac_screen.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
   const V3WelcomeScreen({super.key});
@@ -45,11 +37,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
   String _appVersion = '';
   bool _isLoading = true;
-  bool _autoLoginDone = false;
   List<V3Vozac> _vozaci = [];
-
-  static const _secureStorage = FlutterSecureStorage();
-  static const String _lastVozacKey = 'last_v3_vozac_ime';
 
   @override
   void initState() {
@@ -157,143 +145,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       });
     }
 
-    // Dozvole — prikaži onboarding screen ako nije prikazan, pa tek onda auto-login
-    // Auto-login: provjeri in-memory sesiju ili biometriju za zadnjeg vozača
-    await _checkAutoLogin();
-  }
-
-  Future<void> _checkAutoLogin() async {
-    if (_autoLoginDone) return;
-
-    // 1) In-memory sesija još postoji (app nije ubita)
-    if (V3VozacService.currentVozac != null) {
-      _autoLoginDone = true;
-      if (!mounted) return;
-      await _stopAudio();
-      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
-      final vozac = V3VozacService.currentVozac!;
-      final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
-      V3NavigationUtils.pushReplacement(
-        context,
-        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
-      );
-      return;
-    }
-
-    if (V3PutnikService.currentPutnik != null) {
-      _autoLoginDone = true;
-      if (!mounted) return;
-      await _stopAudio();
-      await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
-      V3NavigationUtils.pushReplacement(
-        context,
-        V3PutnikProfilScreen(putnikData: V3PutnikService.currentPutnik!),
-      );
-      return;
-    }
-
-    // 2) Provjeri zadnjeg vozača u SecureStorage + biometriju/RememberMe
-    try {
-      final bio = V3BiometricService();
-      final bioAvailable = await bio.isBiometricAvailable();
-      final bioEnabled = await bio.isBiometricEnabled();
-      final rememberMe = await bio.isRememberMeEnabled();
-
-      if (bioEnabled || rememberMe) {
-        final creds = await bio.getSavedCredentials();
-        if (creds != null) {
-          final phone = creds['phone']!;
-          final pin = creds['pin']!;
-
-          if (bioEnabled && bioAvailable) {
-            // Autentifikacija biometrijom
-            final authenticated = await bio.authenticate(
-              reason: 'Prijavite se kao putnik',
-            );
-            if (!authenticated || !mounted) return;
-          }
-
-          // Ako je RememberMe ili Biometrija uspešna — uradi login
-          await _doPutnikAutoLogin(phone, pin);
-          if (_autoLoginDone) return;
-        }
-      }
-
-      final lastIme = await _secureStorage.read(key: _lastVozacKey);
-      if (lastIme == null || lastIme.isEmpty) return;
-
-      final vozac = V3VozacService.getVozacByName(lastIme);
-      if (vozac == null || !vozac.aktivno) return;
-
-      // Provjeri da li postoje biometrijski kredencijali za ovog vozača
-      final bioKey = 'biometric_v3_vozac_$lastIme';
-      final bioRaw = await _secureStorage.read(key: bioKey);
-      if (bioRaw == null) return;
-
-      // Provjeri dostupnost biometrije
-      final bioAvailableCheck = await bio.isBiometricAvailable();
-      if (!bioAvailableCheck) return;
-
-      if (!mounted) return;
-
-      _autoLoginDone = true;
-
-      // Autentifikacija biometrijom
-      final authenticated = await bio.authenticate(
-        reason: 'Nastavi kao $lastIme',
-      );
-      if (!authenticated || !mounted) return;
-
-      V3VozacService.currentVozac = vozac;
-      await _secureStorage.write(key: _lastVozacKey, value: vozac.imePrezime);
-      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
-
-      if (!mounted) return;
-      await _stopAudio();
-      final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
-      V3NavigationUtils.pushReplacement(
-        context,
-        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
-      );
-    } catch (e) {
-      debugPrint('[V3WelcomeScreen] auto-login error: $e');
-    }
-  }
-
-  Future<void> _doPutnikAutoLogin(String phone, String pin) async {
-    // Čekaj da se učita cache putnika ako je prazan
-    int retries = 0;
-    while (V3MasterRealtimeManager.instance.putniciCache.isEmpty && retries < 10) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      retries++;
-    }
-
-    final normalized = V3ValidationUtils.normalizePhone(phone);
-    Map<String, dynamic>? found;
-    final cache = V3MasterRealtimeManager.instance.putniciCache;
-    for (final row in cache.values) {
-      final t1 = V3ValidationUtils.normalizePhone(row['telefon_1']?.toString() ?? '');
-      final t2 = V3ValidationUtils.normalizePhone(row['telefon_2']?.toString() ?? '');
-      if (t1 == normalized || (t2.isNotEmpty && t2 == normalized)) {
-        found = Map<String, dynamic>.from(row);
-        break;
-      }
-    }
-
-    if (found == null) return;
-    if (found['pin']?.toString() != pin) return;
-
-    _autoLoginDone = true;
-    V3PutnikService.currentPutnik = found;
-    await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
-
-    if (!mounted) return;
-    await _stopAudio();
-
-    V3NavigationUtils.pushReplacement(
-      context,
-      V3PutnikProfilScreen(putnikData: found),
-    );
+    // Fresh start: nema auto-login prečica sa welcome ekrana.
   }
 
   @override
@@ -633,7 +485,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                       onTap: () {
                         V3NavigationUtils.pushScreen(
                           context,
-                          const V3PutnikLoginScreen(),
+                          const V3PutnikAuthScreen(),
                         );
                       },
                       child: V3ContainerUtils.gradientContainer(

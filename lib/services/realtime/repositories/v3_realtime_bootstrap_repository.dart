@@ -26,7 +26,6 @@ class V3RealtimeBootstrapRepository {
       _withTimeout('v3_finansije', supabase.from('v3_finansije').select().eq('aktivno', true)),
       _withTimeout('v3_racuni', supabase.from('v3_racuni').select().eq('aktivno', true)),
       _withTimeout('v3_racuni_arhiva', supabase.from('v3_racuni_arhiva').select().eq('aktivno', true)),
-      _withTimeout('v3_pin_zahtevi', supabase.from('v3_pin_zahtevi').select().eq('status', 'ceka')),
       _withTimeout('v3_operativna_nedelja', supabase.from('v3_operativna_nedelja').select()),
       _withTimeout('v3_gps_trip_state', supabase.from('v3_gps_trip_state').select()),
       _withTimeout('v3_trip_stops', supabase.from('v3_trip_stops').select()),

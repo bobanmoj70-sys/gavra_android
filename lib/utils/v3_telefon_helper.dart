@@ -11,7 +11,7 @@ import 'v3_phone_utils.dart';
 ///
 /// **15+ DUPLIKATA ELIMINISANO:**
 /// - Tel pozivi (v3_o_nama_screen.dart, v3_putnici_screen.dart, v3_putnik_card.dart, tail_debug.txt)
-/// - SMS pozivi (v3_pin_zahtevi_screen.dart, _pinPosaljiSms funkcija)
+/// - SMS pozivi (legacy PIN ekran je uklonjen u fresh-start auth čišćenju)
 /// - Email pozivi (v3_o_nama_screen.dart)
 /// - Maps pozivi (v3_vozac_screen.dart, v3_o_nama_screen.dart, v3_putnik_card.dart)
 ///

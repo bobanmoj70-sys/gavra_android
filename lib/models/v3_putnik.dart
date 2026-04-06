@@ -21,9 +21,6 @@ class V3Putnik {
   final double cenaPoDanu;
   final double cenaPoPokupljenju;
 
-  final int? placeniMesec;
-  final int? placenaGodina;
-
   final String? pushToken;
   final String? pushToken2;
   final bool aktivno;
@@ -47,8 +44,6 @@ class V3Putnik {
     this.skola,
     this.cenaPoDanu = 0.0,
     this.cenaPoPokupljenju = 0.0,
-    this.placeniMesec,
-    this.placenaGodina,
     this.pushToken,
     this.pushToken2,
     this.aktivno = true,
@@ -74,8 +69,6 @@ class V3Putnik {
       skola: json['skola'] as String?,
       cenaPoDanu: (json['cena_po_danu'] as num?)?.toDouble() ?? 0.0,
       cenaPoPokupljenju: (json['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0,
-      placeniMesec: json['placeni_mesec'] as int?,
-      placenaGodina: json['placena_godina'] as int?,
       pushToken: json['push_token'] as String?,
       pushToken2: json['push_token_2'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
@@ -102,8 +95,6 @@ class V3Putnik {
       'skola': skola,
       'cena_po_danu': cenaPoDanu,
       'cena_po_pokupljenju': cenaPoPokupljenju,
-      'placeni_mesec': placeniMesec,
-      'placena_godina': placenaGodina,
       'aktivno': aktivno,
       if (pushToken != null) 'push_token': pushToken,
       if (pushToken2 != null) 'push_token_2': pushToken2,
@@ -127,8 +118,6 @@ class V3Putnik {
     String? skola,
     double? cenaPoDanu,
     double? cenaPoPokupljenju,
-    int? placeniMesec,
-    int? placenaGodina,
     String? pushToken,
     String? pushToken2,
     bool? aktivno,
@@ -149,8 +138,6 @@ class V3Putnik {
       skola: skola ?? this.skola,
       cenaPoDanu: cenaPoDanu ?? this.cenaPoDanu,
       cenaPoPokupljenju: cenaPoPokupljenju ?? this.cenaPoPokupljenju,
-      placeniMesec: placeniMesec ?? this.placeniMesec,
-      placenaGodina: placenaGodina ?? this.placenaGodina,
       pushToken: pushToken ?? this.pushToken,
       pushToken2: pushToken2 ?? this.pushToken2,
       aktivno: aktivno ?? this.aktivno,

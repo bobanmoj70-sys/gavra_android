@@ -28,12 +28,11 @@ class V3BootstrapLoader {
       'v3_finansije': (results[8] as List).cast<dynamic>(),
       'v3_racuni': (results[9] as List).cast<dynamic>(),
       'v3_racuni_arhiva': (results[10] as List).cast<dynamic>(),
-      'v3_pin_zahtevi': (results[11] as List).cast<dynamic>(),
-      'v3_operativna_nedelja': (results[12] as List).cast<dynamic>(),
-      'v3_gps_trip_state': (results[13] as List).cast<dynamic>(),
-      'v3_trip_stops': (results[14] as List).cast<dynamic>(),
-      'v3_kapacitet_slots': (results[15] as List).cast<dynamic>(),
-      'v3_app_settings': (results[16] as List).cast<dynamic>(),
+      'v3_operativna_nedelja': (results[11] as List).cast<dynamic>(),
+      'v3_gps_trip_state': (results[12] as List).cast<dynamic>(),
+      'v3_trip_stops': (results[13] as List).cast<dynamic>(),
+      'v3_kapacitet_slots': (results[14] as List).cast<dynamic>(),
+      'v3_app_settings': (results[15] as List).cast<dynamic>(),
     };
   }
 
@@ -65,7 +64,6 @@ class V3BootstrapLoader {
         break;
       case 'v3_gorivo_promene':
       case 'v3_vozac_lokacije':
-      case 'v3_pin_zahtevi':
       case 'v3_operativna_nedelja':
       case 'v3_gps_trip_state':
       case 'v3_trip_stops':

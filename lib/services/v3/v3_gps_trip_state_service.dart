@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../utils/v3_audit_actor.dart';
+import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_time_utils.dart';
 import 'repositories/v3_gps_trip_state_repository.dart';
 
@@ -49,8 +49,8 @@ class V3GpsTripStateService {
         if (navBarType != null) 'nav_bar_type': navBarType,
         if (trackingStartedAt != null) 'tracking_started_at': trackingStartedAt.toIso8601String(),
         if (trackingStoppedAt != null) 'tracking_stopped_at': trackingStoppedAt.toIso8601String(),
-        if (createdBy != null) 'created_by': V3AuditActor.normalize(createdBy),
-        if (updatedBy != null) 'updated_by': V3AuditActor.normalize(updatedBy),
+        if (createdBy != null) 'created_by': V3AuditKorisnik.normalize(createdBy),
+        if (updatedBy != null) 'updated_by': V3AuditKorisnik.normalize(updatedBy),
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -108,7 +108,7 @@ class V3GpsTripStateService {
         if (gpsStatus == 'tracking') 'tracking_started_at': now.toIso8601String(),
         if (gpsStatus != 'tracking') 'tracking_stopped_at': now.toIso8601String(),
         'updated_at': now.toIso8601String(),
-        if (updatedBy != null) 'updated_by': V3AuditActor.normalize(updatedBy),
+        if (updatedBy != null) 'updated_by': V3AuditKorisnik.normalize(updatedBy),
       });
     } catch (e) {
       debugPrint('[V3GpsTripStateService] updateTrackingStatus error: $e');

@@ -64,7 +64,8 @@ class V3EventBus {
       return;
     }
 
-    if (_emitDebounceTimer != null && _emitDebounceTimer!.isActive) return;
+    final timer = _emitDebounceTimer;
+    if (timer != null && timer.isActive) return;
     _emitDebounceTimer = Timer(emitDebounceWindow, _flushEmit);
   }
 

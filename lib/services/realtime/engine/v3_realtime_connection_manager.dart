@@ -36,10 +36,12 @@ class V3RealtimeConnectionManager {
   V3RealtimeConnectionState _state = V3RealtimeConnectionState.idle;
   V3RealtimeConnectionState get state => _state;
   DateTime? get lastEventAt => _lastEventAt;
-  bool get isHealthy =>
-      _state == V3RealtimeConnectionState.subscribed &&
-      _lastEventAt != null &&
-      DateTime.now().difference(_lastEventAt!) < const Duration(minutes: 5);
+  bool get isHealthy {
+    if (_state != V3RealtimeConnectionState.subscribed) return false;
+    final last = _lastEventAt;
+    if (last == null) return false;
+    return DateTime.now().difference(last) < const Duration(minutes: 5);
+  }
 
   Future<RealtimeChannel> connect({
     required void Function(RealtimeChannel channel) configure,
@@ -47,9 +49,12 @@ class V3RealtimeConnectionManager {
   }) async {
     _setState(V3RealtimeConnectionState.connecting, onState: onState);
 
-    if (_channel != null) {
-      await _safeRemoveChannel(_channel!);
-      _channel = null;
+    final existingChannel = _channel;
+    if (existingChannel != null) {
+      await _safeRemoveChannel(existingChannel);
+      if (identical(_channel, existingChannel)) {
+        _channel = null;
+      }
     }
 
     final channel = _client.channel(_channelName);

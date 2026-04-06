@@ -34,7 +34,6 @@ class V3RealtimeTableRegistry {
     V3RealtimeTableConfig(name: 'v3_finansije'),
     V3RealtimeTableConfig(name: 'v3_racuni'),
     V3RealtimeTableConfig(name: 'v3_racuni_arhiva'),
-    V3RealtimeTableConfig(name: 'v3_pin_zahtevi'),
     V3RealtimeTableConfig(
       name: 'v3_operativna_nedelja',
       keepInactive: true,

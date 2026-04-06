@@ -1,8 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -22,9 +23,8 @@ import '../utils/v3_text_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_vozac_screen.dart';
 
-/// V3 Vozač Login Screen
-/// Email + telefon + šifra validacija iz V3 cache-a
-/// Biometrijska prijava per-vozač (flutter_secure_storage)
+/// V3 Vozač Login Screen (NOVI SUPABASE AUTH)
+/// Samo Email + Šifra sa biometrijom
 class V3VozacLoginScreen extends StatefulWidget {
   final V3Vozac vozac;
 
@@ -77,10 +77,6 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         _hasSavedCredentials = hasCreds;
         _biometricIcon = info.icon;
       });
-
-      if (available && hasCreds) {
-        await _loginWithBiometric();
-      }
     }
   }
 
@@ -114,7 +110,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
     if (!authenticated) {
       if (mounted) {
-        V3AppSnackBar.error(context, '❌ Biometrijska autentifikacija nije uspjela');
+        V3AppSnackBar.error(context, '❌ Biometrijska autentifikacija nije uspela');
       }
       return;
     }
@@ -129,7 +125,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     await _login(saveBiometric: false);
   }
 
-  // ─── Login logika ───────────────────────────────────────────────
+  String _normalizePhone(String raw) => V3PhoneUtils.normalize(raw.trim());
+
+  // ─── Login logika (Supabase) ───────────────────────────────────
 
   Future<void> _login({bool saveBiometric = true}) async {
     if (!_formKey.currentState!.validate()) return;
@@ -137,53 +135,77 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     V3StateUtils.safeSetState(this, () => _isLoading = true);
 
     try {
-      // Učitaj vozača iz cache-a po imenu
-      final vozac = V3VozacService.getVozacByName(widget.vozac.imePrezime);
+      final email = V3TextUtils.getControllerText('vozac_email').trim().toLowerCase();
+      final telefon = V3TextUtils.getControllerText('vozac_telefon').trim();
+      final sifra = V3TextUtils.getControllerText('vozac_sifra');
 
-      if (vozac == null) {
+      if (email.isEmpty || telefon.isEmpty || sifra.isEmpty) {
         if (mounted) {
-          V3AppSnackBar.error(context, '❌ Vozač "${widget.vozac.imePrezime}" nije pronađen.');
+          V3ErrorUtils.validationError(this, context, '❌ Unesite telefon, email i šifru.');
         }
         return;
       }
 
-      final email = V3TextUtils.getControllerText('vozac_email').trim().toLowerCase();
-      final telefon = _normalizePhone(V3TextUtils.getControllerText('vozac_telefon').trim());
-      final sifra = V3TextUtils.getControllerText('vozac_sifra');
-
-      // Provjera emaila
-      if ((vozac.email ?? '').toLowerCase() != email) {
-        V3ErrorUtils.validationError(this, context, '❌ Pogrešan email.');
+      final vozacFromCache = V3VozacService.getVozacByName(widget.vozac.imePrezime);
+      if (vozacFromCache == null) {
+        if (mounted) V3AppSnackBar.error(context, '❌ Vozač nije pronađen.');
         return;
       }
 
-      // Provjera telefona — prihvata telefon_1 ili telefon_2
-      final stored1 = _normalizePhone(vozac.telefon1 ?? '');
-      final stored2 = _normalizePhone(vozac.telefon2 ?? '');
-      final telefonMatch = (stored1.isNotEmpty && stored1 == telefon) || (stored2.isNotEmpty && stored2 == telefon);
-      if (stored1.isNotEmpty && !telefonMatch) {
-        V3ErrorUtils.validationError(this, context, '❌ Pogrešan broj telefona.');
+      final enteredPhone = _normalizePhone(telefon);
+      final tel1 = _normalizePhone(vozacFromCache.telefon1 ?? '');
+      final tel2 = _normalizePhone(vozacFromCache.telefon2 ?? '');
+      final phoneMatch = enteredPhone.isNotEmpty && (enteredPhone == tel1 || (tel2.isNotEmpty && enteredPhone == tel2));
+      if (!phoneMatch) {
+        if (mounted) {
+          V3ErrorUtils.validationError(this, context, '❌ Pogrešan broj telefona.');
+        }
         return;
       }
 
-      // Provjera šifre (ako postoji)
-      final storedSifra = vozac.sifra ?? '';
-      if (storedSifra.isNotEmpty && storedSifra != sifra) {
-        V3ErrorUtils.validationError(this, context, '❌ Pogrešna šifra.');
+      // 🔥 OVO JE ZVANIČAN SUPABASE AUTH 🔥
+      try {
+        final AuthResponse res = await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: sifra,
+        );
+
+        if (res.user == null) {
+          throw Exception('Nedostaje korisnički objekat nakon prijave.');
+        }
+      } on AuthException catch (e) {
+        debugPrint("[SupabaseAuth] Prijavljivanje odbijeno: ${e.message}");
+
+        String poruka = '❌ Pogrešan email ili šifra.';
+        if (e.message.contains('Invalid login')) {
+          poruka = '❌ Pogrešan email ili šifra.';
+        } else if (e.message.contains('Email not confirmed')) {
+          poruka = '❌ Email adresa nije potvrđena.';
+        }
+
+        if (mounted) {
+          V3ErrorUtils.validationError(this, context, poruka);
+        }
         return;
       }
 
-      // ✅ LOGIN USPJEŠAN
+      // Učitaj kompletan model vozača zbog ostatka aplikacije
+      final vozac = V3VozacService.getVozacByName(widget.vozac.imePrezime);
+      if (vozac == null) {
+        if (mounted) V3AppSnackBar.error(context, '❌ Vozač nije profilisan u bazi profila.');
+        return;
+      }
+
+      // ✅ KONAČNA DOPUŠTANJA UNUTAR APLIKACIJE
       V3VozacService.currentVozac = vozac;
 
-      // 🎯 PUSH TOKEN SISTEM (FCM)
+      // Push Tokeni (FCM)
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       await _savePushToken(vozac.id);
 
-      // Zapamti zadnjeg prijavljenog vozača za auto-login pri sljedećem startu
+      // Keširanje korisnika za buduće
       await _secureStorage.write(key: 'last_v3_vozac_ime', value: vozac.imePrezime);
 
-      // Sačuvaj za biometriju
       if (saveBiometric && _biometricAvailable) {
         await _saveBiometricCredentials();
       }
@@ -196,15 +218,15 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
       );
     } catch (e) {
-      V3AppSnackBar.error(context, 'Greška: $e');
+      if (mounted) {
+        V3AppSnackBar.error(context, 'Greška: $e');
+      }
     } finally {
-      V3StateUtils.safeSetState(this, () => _isLoading = false);
+      if (mounted) {
+        V3StateUtils.safeSetState(this, () => _isLoading = false);
+      }
     }
   }
-
-  // ─── Helpers ───────────────────────────────────────────────────
-
-  String _normalizePhone(String phone) => V3PhoneUtils.normalize(phone);
 
   // ─── Build ─────────────────────────────────────────────────────
 
@@ -222,7 +244,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               title: const Text(
-                '🔐 Prijava',
+                '🔐 Panel Vozača',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               iconTheme: const IconThemeData(color: Colors.white),
@@ -288,14 +310,14 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
                       border: Border.all(color: Colors.white24),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.5), size: 20),
+                          Icon(Icons.shield_outlined, color: Colors.amber.withValues(alpha: 0.8), size: 24),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Unesi podatke koje je admin postavio za tebe.',
+                              'Prijavljujete se na novi visoko-bezbednosni server.',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.65),
-                                fontSize: 12,
+                                fontSize: 13,
                               ),
                             ),
                           ),
@@ -335,30 +357,19 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
           alignment: Alignment.center,
           child: Text(
             initials,
-            style: TextStyle(
-              color: boja,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: boja, fontSize: 26, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 12),
         Text(
           'Dobrodošao, ${widget.vozac.imePrezime}!',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
         Text(
-          'Potvrdi svoje podatke za prijavu',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.65),
-            fontSize: 14,
-          ),
+          'Unesi telefon, email i šifru za prijavu.',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 14),
           textAlign: TextAlign.center,
         ),
       ],
@@ -370,33 +381,20 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     if (vozacId.isEmpty) return;
 
     String? fcmToken;
-
-    // 1. Pokušaj FCM token
     try {
       fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken != null) {
-        debugPrint('[VozacLogin] FCM token: ${fcmToken.substring(0, 20)}...');
-      }
     } catch (e) {
       debugPrint('[VozacLogin] FCM token greška: $e');
     }
 
-    // 2. Sačuvaj u bazu (update samo non-null vrednosti)
     try {
       final updateData = <String, dynamic>{};
-
       if (fcmToken != null) {
         updateData['push_token'] = fcmToken;
-      }
-
-      if (updateData.isNotEmpty) {
         await V3VozacService.updatePushToken(
           vozacId: vozacId,
           pushToken: updateData['push_token'] as String?,
         );
-        debugPrint('[VozacLogin] Push tokeni sačuvani: ${updateData.keys.join(', ')}');
-      } else {
-        debugPrint('[VozacLogin] ⚠️ Nijedan push token nije dostupan!');
       }
     } catch (e) {
       debugPrint('[VozacLogin] Database update greška: $e');

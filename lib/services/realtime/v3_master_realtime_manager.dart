@@ -42,7 +42,6 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> racuniCache = {};
   final Map<String, Map<String, dynamic>> racuniArhivaCache = {};
-  final Map<String, Map<String, dynamic>> pinZahteviCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> gpsTripStateCache = {};
   final Map<String, Map<String, dynamic>> tripStopsCache = {};
@@ -297,7 +296,6 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_finansije', troskoviCache);
     _cacheStore.registerTable('v3_racuni', racuniCache);
     _cacheStore.registerTable('v3_racuni_arhiva', racuniArhivaCache);
-    _cacheStore.registerTable('v3_pin_zahtevi', pinZahteviCache);
     _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
     _cacheStore.registerTable('v3_gps_trip_state', gpsTripStateCache);
     _cacheStore.registerTable('v3_trip_stops', tripStopsCache);
@@ -577,13 +575,6 @@ class V3MasterRealtimeManager {
         break;
       case 'v3_kapacitet_slots':
         break;
-      case 'v3_pin_zahtevi':
-        if (row['status'] == 'ceka') {
-          _cacheStore.upsert(table, row);
-        } else {
-          _cacheStore.remove(table, id);
-        }
-        break;
     }
 
     _scheduleEmit(tables: {table});
@@ -630,8 +621,6 @@ class V3MasterRealtimeManager {
         return racuniCache;
       case 'v3_racuni_arhiva':
         return racuniArhivaCache;
-      case 'v3_pin_zahtevi':
-        return pinZahteviCache;
       case 'v3_operativna_nedelja':
         return operativnaNedeljaCache;
       case 'v3_kapacitet_slots':

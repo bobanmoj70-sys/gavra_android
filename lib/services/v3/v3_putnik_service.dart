@@ -4,7 +4,7 @@ import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
 import '../../models/v3_zahtev.dart';
-import '../../utils/v3_audit_actor.dart';
+import '../../utils/v3_audit_korisnik.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
 
@@ -66,7 +66,7 @@ class V3PutnikService {
     final id = putnikId.trim();
     if (id.isEmpty) return;
 
-    final actorUuid = V3AuditActor.normalize(updatedBy, fallback: currentVozac?.id);
+    final actorUuid = V3AuditKorisnik.normalize(updatedBy, fallback: currentVozac?.id);
     await _repo.updateById(id, {
       'pin': (pin == null || pin.trim().isEmpty) ? null : pin.trim(),
       if (actorUuid != null) 'updated_by': actorUuid,
@@ -92,8 +92,8 @@ class V3PutnikService {
   static Future<void> addUpdatePutnik(V3Putnik putnik, {String? createdBy, String? updatedBy}) async {
     try {
       final data = putnik.toJson();
-      final createdByUuid = V3AuditActor.normalize(createdBy);
-      final updatedByUuid = V3AuditActor.normalize(updatedBy, fallback: createdByUuid);
+      final createdByUuid = V3AuditKorisnik.normalize(createdBy);
+      final updatedByUuid = V3AuditKorisnik.normalize(updatedBy, fallback: createdByUuid);
 
       if (putnik.id.isEmpty) data.remove('id');
       if (putnik.id.isEmpty && createdByUuid != null) data['created_by'] = createdByUuid;
@@ -116,7 +116,7 @@ class V3PutnikService {
     String? updatedBy,
   }) async {
     try {
-      final actorUuid = V3AuditActor.normalize(updatedBy, fallback: currentVozac?.id);
+      final actorUuid = V3AuditKorisnik.normalize(updatedBy, fallback: currentVozac?.id);
       await _repo.updateById(id, {
         'aktivno': aktivno,
         if (actorUuid != null) 'updated_by': actorUuid,

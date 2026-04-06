@@ -17,7 +17,6 @@ import 'v3_finansije_screen.dart';
 import 'v3_gorivo_screen.dart';
 import 'v3_kapacitet_screen.dart';
 import 'v3_odrzavanje_screen.dart';
-import 'v3_pin_zahtevi_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
@@ -1212,11 +1211,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }).length;
   }
 
-  int _getPinZahteviCount() {
-    final cache = V3MasterRealtimeManager.instance.pinZahteviCache;
-    return cache.values.where((row) => (row['status']?.toString() ?? '') == 'ceka').length;
-  }
-
   int _getPosiljkeZahteviCount() {
     final rm = V3MasterRealtimeManager.instance;
     final posiljkaPutnici = rm.putniciCache.values
@@ -1303,8 +1297,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(
-          const ['v3_operativna_nedelja', 'v3_putnici', 'v3_zahtevi', 'v3_pin_zahtevi', 'v3_vozaci']),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_putnici', 'v3_zahtevi', 'v3_vozaci']),
       builder: (context, _) => _buildScaffold(context),
     );
   }
@@ -1642,7 +1636,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 ),
               ),
 
-              // ─── RED 4: Badge gumbi — Učenici, Radnici, Pošiljke, PIN, Zahtevi ───
+              // ─── RED 4: Badge gumbi — Učenici, Radnici, Pošiljke, Zahtevi ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
@@ -1695,19 +1689,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
                           const V3PosiljkeZahteviScreen(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // 🔑 PIN zahtevi
-                    Expanded(
-                      child: _BadgeBtn(
-                        emoji: '🔑',
-                        color: Colors.amber,
-                        badgeCount: _getPinZahteviCount(),
-                        onTap: () => V3NavigationUtils.pushScreen<void>(
-                          context,
-                          const V3PinZahteviScreen(),
                         ),
                       ),
                     ),

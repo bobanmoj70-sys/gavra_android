@@ -9,7 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../models/v3_putnik.dart';
-import '../../utils/v3_audit_actor.dart';
+import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_stream_utils.dart';
 import '../../utils/v3_time_utils.dart';
@@ -60,7 +60,7 @@ class V3ForegroundGpsService {
         polazakVreme: polazakVreme,
         gpsStatus: gpsStatus,
         datumIso: datumIso,
-        updatedBy: V3AuditActor.cron('app_foreground_gps_sync'),
+        updatedBy: V3AuditKorisnik.normalize('app_foreground_gps_sync'),
       );
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] syncTrackingStatus error: $e');

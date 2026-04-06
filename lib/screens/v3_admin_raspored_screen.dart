@@ -9,7 +9,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_actor.dart';
+import '../utils/v3_audit_korisnik.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
@@ -301,7 +301,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         operativnaIds: operativnaIds,
         vozacId: vozac.id,
         navBarType: navBarTypeNotifier.value,
-        updatedBy: V3AuditActor.cron('admin_termin_bulk'),
+        updatedBy: V3AuditKorisnik.normalize('admin_termin_bulk'),
       );
 
       if (putnici.isNotEmpty) {
@@ -315,8 +315,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           navBarType: navBarTypeNotifier.value,
           trackingStartedAt: null,
           trackingStoppedAt: null,
-          createdBy: V3AuditActor.cron('admin_termin_bulk'),
-          updatedBy: V3AuditActor.cron('admin_termin_bulk'),
+          createdBy: V3AuditKorisnik.normalize('admin_termin_bulk'),
+          updatedBy: V3AuditKorisnik.normalize('admin_termin_bulk'),
         );
       }
       if (mounted) {
@@ -337,7 +337,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         datumIso: _selectedDatumIso,
         grad: grad,
         dodeljenoVreme: normVreme,
-        updatedBy: V3AuditActor.cron('admin_termin_remove'),
+        updatedBy: V3AuditKorisnik.normalize('admin_termin_remove'),
       );
 
       await V3GpsTripStateService.removeTripsByTermin(
@@ -373,14 +373,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       final data = <String, dynamic>{
         'vozac_id': vozac.id,
         'nav_bar_type': navBarTypeNotifier.value,
-        'updated_by': V3AuditActor.cron('admin_individual'),
+        'updated_by': V3AuditKorisnik.normalize('admin_individual'),
       };
       print('🔍 DODELI PUTNIKA DEBUG: $data');
       await V3OperativnaNedeljaService.assignVozacByOperativnaId(
         operativnaId: operativna['id'] as String,
         vozacId: vozac.id,
         navBarType: navBarTypeNotifier.value,
-        updatedBy: V3AuditActor.cron('admin_individual'),
+        updatedBy: V3AuditKorisnik.normalize('admin_individual'),
       );
 
       await V3GpsTripStateService.upsertTripState(
@@ -391,8 +391,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         gpsStatus: 'pending',
         notificationSent: false,
         navBarType: navBarTypeNotifier.value,
-        createdBy: V3AuditActor.cron('admin_individual'),
-        updatedBy: V3AuditActor.cron('admin_individual'),
+        createdBy: V3AuditKorisnik.normalize('admin_individual'),
+        updatedBy: V3AuditKorisnik.normalize('admin_individual'),
       );
 
       if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
@@ -409,7 +409,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         grad: grad,
         dodeljenoVreme: normVreme,
         datumIso: _selectedDatumIso,
-        updatedBy: V3AuditActor.cron('admin_individual_remove'),
+        updatedBy: V3AuditKorisnik.normalize('admin_individual_remove'),
       );
 
       await V3GpsTripStateService.cleanupOrphanTripsForTermin(

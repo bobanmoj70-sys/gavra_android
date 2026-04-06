@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../globals.dart';
 import '../../models/v3_vozac.dart';
-import '../../utils/v3_audit_actor.dart';
+import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozac_repository.dart';
@@ -54,7 +54,7 @@ class V3VozacService {
 
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
-      final actorUuid = V3AuditActor.normalize(currentVozac?.id);
+      final actorUuid = V3AuditKorisnik.normalize(currentVozac?.id);
       if (vozac.id.isNotEmpty) {
         // Edit — ne diramo push_token
         await _repo.updateById(vozac.id, {
@@ -97,7 +97,7 @@ class V3VozacService {
     String? updatedBy,
   }) async {
     try {
-      final actorUuid = V3AuditActor.normalize(updatedBy, fallback: currentVozac?.id);
+      final actorUuid = V3AuditKorisnik.normalize(updatedBy, fallback: currentVozac?.id);
       await _repo.updateById(id, {
         'aktivno': aktivno,
         if (actorUuid != null) 'updated_by': actorUuid,

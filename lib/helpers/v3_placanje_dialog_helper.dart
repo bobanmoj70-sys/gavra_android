@@ -8,7 +8,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_uplate_arhiva_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_actor.dart';
+import '../utils/v3_audit_korisnik.dart';
 
 class V3PlacanjeRezultat {
   final double iznos;
@@ -283,19 +283,10 @@ class V3PlacanjeDialogHelper {
           zaGodinu: rezultat.godina,
           vozacId: vozac.id,
           vozacImePrezime: vozac.imePrezime,
-          createdBy: V3AuditActor.vozac(vozac.id),
-          updatedBy: V3AuditActor.vozac(vozac.id),
+          createdBy: V3AuditKorisnik.normalize(vozac.id),
+          updatedBy: V3AuditKorisnik.normalize(vozac.id),
         ),
       );
-
-      // Za radnika i učenika upisujemo i status plaćenog perioda na kartonu putnika.
-      if (putnik != null && isMesecnaUplata) {
-        final azuriran = putnik.copyWith(
-          placeniMesec: rezultat.mesec,
-          placenaGodina: rezultat.godina,
-        );
-        await V3PutnikService.addUpdatePutnik(azuriran, updatedBy: V3AuditActor.vozac(vozac.id));
-      }
 
       if (context.mounted) {
         V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za $imePrezime');
