@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../globals.dart';
 import '../../models/v3_vozac.dart';
 import '../../utils/v3_audit_korisnik.dart';
+import '../../utils/v3_phone_utils.dart';
 import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozac_repository.dart';
@@ -35,6 +36,21 @@ class V3VozacService {
       final match = cache.firstWhere(
         (r) => r['ime_prezime'].toString().toLowerCase() == name.toLowerCase(),
       );
+      return V3Vozac.fromJson(match);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static V3Vozac? getVozacByPhone(String normalizedPhone) {
+    if (normalizedPhone.isEmpty) return null;
+    final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
+    try {
+      final match = cache.firstWhere((r) {
+        final t1 = V3PhoneUtils.normalize(r['telefon_1']?.toString() ?? '');
+        final t2 = V3PhoneUtils.normalize(r['telefon_2']?.toString() ?? '');
+        return t1 == normalizedPhone || (t2.isNotEmpty && t2 == normalizedPhone);
+      });
       return V3Vozac.fromJson(match);
     } catch (_) {
       return null;

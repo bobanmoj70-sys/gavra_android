@@ -18,7 +18,7 @@ import '../utils/v3_stream_utils.dart';
 import 'v3_o_nama_screen.dart';
 import 'v3_putnik_auth_screen.dart';
 import 'v3_putnik_profil_screen.dart';
-import 'v3_vozac_login_screen.dart';
+import 'v3_vozac_sms_login_screen.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
   const V3WelcomeScreen({super.key});
@@ -232,7 +232,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _loginAsVozac(V3Vozac vozac) async {
     await _stopAudio();
     if (!mounted) return;
-    V3NavigationUtils.pushScreen(context, V3VozacLoginScreen(vozac: vozac));
+    V3NavigationUtils.pushScreen(context, V3VozacSmsLoginScreen(vozac: vozac));
   }
 
   Future<void> _showVozacDialog() async {
