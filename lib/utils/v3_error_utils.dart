@@ -52,7 +52,7 @@ class V3ErrorUtils {
   /// Show validation error message
   ///
   /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, '❌ Validation message');
-  /// **Primjer:** V3ErrorUtils.validationError(this, context, 'Pogrešan email');
+  /// **Primjer:** V3ErrorUtils.validationError(this, context, 'Pogrešan unos');
   static void validationError(State state, BuildContext context, String message) {
     safeError(state, context, '❌ $message');
   }
@@ -127,7 +127,7 @@ class V3ErrorUtils {
   /// Validate and show error if validation fails
   ///
   /// **Koristi umjesto:** ručnog validation + error display
-  /// **Primjer:** if (!V3ErrorUtils.validate(this, context, email.isNotEmpty, 'Email je obavezan')) return;
+  /// **Primjer:** if (!V3ErrorUtils.validate(this, context, broj.isNotEmpty, 'Polje je obavezno')) return;
   static bool validate(
     State state,
     BuildContext context,
@@ -145,7 +145,7 @@ class V3ErrorUtils {
   ///
   /// **Koristi umjesto:** višestruke validation provjere
   /// **Primjer:** if (!V3ErrorUtils.validateAll(this, context, [
-  ///   (email.isNotEmpty, 'Email je obavezan'),
+  ///   (broj.isNotEmpty, 'Polje je obavezno'),
   ///   (password.length >= 6, 'Šifra mora imati min 6 karaktera')
   /// ])) return;
   static bool validateAll(

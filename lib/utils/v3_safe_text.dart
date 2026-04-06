@@ -87,7 +87,7 @@ class V3SafeText extends StatelessWidget {
     );
   }
 
-  /// Email/telefon - 1 linija, ellipsis sa middle cutting
+  /// Kontakt/telefon - 1 linija, ellipsis sa middle cutting
   static Widget contact(String contact, {TextStyle? style}) {
     return V3SafeText(
       _formatContact(contact),
@@ -124,7 +124,7 @@ class V3SafeText extends StatelessWidget {
     if (contact.isEmpty) return contact;
     if (contact.length <= 20) return contact;
 
-    // Za email: user...@domain.com
+    // Za kontakt: 064...2560
     if (contact.contains('@')) {
       final parts = contact.split('@');
       if (parts.length == 2) {

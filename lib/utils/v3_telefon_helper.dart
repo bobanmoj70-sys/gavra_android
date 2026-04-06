@@ -6,13 +6,12 @@ import 'v3_app_snack_bar.dart';
 import 'v3_error_utils.dart';
 import 'v3_phone_utils.dart';
 
-/// 📞 V3TelefonHelper - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ ПОЗИВА/SMS/EMAIL
+/// 📞 V3TelefonHelper - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ ПОЗИВА/SMS
 /// Елиминише све duplikate launchUrl(Uri(scheme: 'tel'...)) позива!
 ///
 /// **15+ DUPLIKATA ELIMINISANO:**
 /// - Tel pozivi (v3_o_nama_screen.dart, v3_putnici_screen.dart, v3_putnik_card.dart, tail_debug.txt)
-/// - SMS pozivi (legacy PIN ekran je uklonjen u fresh-start auth čišćenju)
-/// - Email pozivi (v3_o_nama_screen.dart)
+/// - SMS pozivi
 /// - Maps pozivi (v3_vozac_screen.dart, v3_o_nama_screen.dart, v3_putnik_card.dart)
 ///
 /// **UNIFIED ERROR HANDLING + PERMISSION MANAGEMENT + CONTEXT SAFETY**
@@ -88,7 +87,7 @@ class V3TelefonHelper {
   /// Pošalji SMS sa custom porukom
   ///
   /// **Koristi umjesto:** duplikata smsUri launch koda
-  /// **Primjer:** V3TelefonHelper.posaljiSms(this, context, '064123456', 'Vaš PIN: 1234');
+  /// **Primjer:** V3TelefonHelper.posaljiSms(this, context, '064123456', 'Poruka');
   static Future<void> posaljiSms(State state, BuildContext context, String broj, String poruka) async {
     if (broj.isEmpty) {
       V3ErrorUtils.validationError(state, context, 'Telefon broj nije dostupan');
@@ -112,47 +111,6 @@ class V3TelefonHelper {
       }
     } catch (e) {
       V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju SMS: $e');
-    }
-  }
-
-  /// Pošalji PIN SMS sa standardnom Gavra 013 porukom
-  ///
-  /// **Koristi umjesto:** _pinPosaljiSms duplikata
-  /// **Primjer:** V3TelefonHelper.posaljiPin(this, context, '064123456', '1234', 'Marko Marković');
-  static Future<void> posaljiPin(State state, BuildContext context, String broj, String pin, String ime) async {
-    final imeText = ime.trim().isEmpty ? '' : '$ime,\n';
-    final poruka = '$imeText'
-        'Vaš PIN za aplikaciju Gavra 013 je: $pin\n\n'
-        'Koristite ovaj PIN zajedno sa brojem telefona za pristup.\n'
-        '- Gavra 013';
-
-    await posaljiSms(state, context, broj, poruka);
-  }
-
-  // ─── EMAIL POZIVI ───────────────────────────────────────────────────────
-
-  /// Otvori email aplikaciju sa predefined email adresom
-  ///
-  /// **Koristi umjesto:** mailto: launch duplikata
-  /// **Primjer:** V3TelefonHelper.posaljiEmail(this, context, 'gavriconi19@gmail.com');
-  static Future<void> posaljiEmail(State state, BuildContext context, String email) async {
-    if (email.isEmpty) {
-      V3ErrorUtils.validationError(state, context, 'Email adresa nije dostupna');
-      return;
-    }
-
-    final uri = Uri(scheme: 'mailto', path: email);
-
-    try {
-      if (!state.mounted) return;
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (!state.mounted) return;
-        V3AppSnackBar.error(context, 'Ne mogu da otvorim email aplikaciju');
-      }
-    } catch (e) {
-      V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju emaila: $e');
     }
   }
 

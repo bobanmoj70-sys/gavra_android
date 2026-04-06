@@ -6,8 +6,6 @@ import 'package:gavra_android/utils/v3_phone_utils.dart';
 class V3InputUtils {
   V3InputUtils._();
 
-  static final RegExp _emailRegex = RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,}$');
-
   // ─── СТАНДАРДНИ INPUT FIELD-ОВИ ─────────────────────────────────────────
 
   /// Стандардни TextField са unified стилизовањем
@@ -180,23 +178,6 @@ class V3InputUtils {
 
   // ─── СПЕЦИЈАЛИЗОВАНИ INPUT FIELD-ОВИ ────────────────────────────────────
 
-  /// Email input field са валидацијом
-  static Widget emailField({
-    required TextEditingController controller,
-    String label = 'Email адреса',
-    String? hint,
-    bool isRequired = true,
-  }) {
-    return formField(
-      controller: controller,
-      label: label,
-      icon: Icons.email,
-      hint: hint,
-      keyboardType: TextInputType.emailAddress,
-      validator: (v) => emailValidator(v, isRequired: isRequired),
-    );
-  }
-
   /// Телефон input field са валидацијом
   static Widget phoneField({
     required TextEditingController controller,
@@ -211,37 +192,6 @@ class V3InputUtils {
       hint: hint ?? '06x xxx xxxx',
       keyboardType: TextInputType.phone,
       validator: (v) => phoneValidator(v, isRequired: isRequired),
-    );
-  }
-
-  /// Шифра input field са toggle visibility
-  static Widget passwordField({
-    required TextEditingController controller,
-    required bool isVisible,
-    required VoidCallback onToggleVisibility,
-    String label = 'Шифра',
-    String? hint,
-    String? Function(String?)? validator,
-  }) {
-    return Builder(
-      builder: (context) {
-        final color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70);
-        return formField(
-          controller: controller,
-          label: label,
-          icon: Icons.lock,
-          hint: hint,
-          obscureText: !isVisible,
-          suffixIcon: IconButton(
-            icon: Icon(
-              isVisible ? Icons.visibility_off : Icons.visibility,
-              color: color,
-            ),
-            onPressed: onToggleVisibility,
-          ),
-          validator: validator,
-        );
-      },
     );
   }
 
@@ -284,79 +234,12 @@ class V3InputUtils {
     );
   }
 
-  /// PIN input field са специјалним стилизовањем
-  static Widget pinField({
-    required TextEditingController controller,
-    String label = 'PIN код',
-    String? hint = '• • • •',
-    int maxLength = 4,
-    ValueChanged<String>? onSubmitted,
-  }) {
-    return Builder(
-      builder: (context) {
-        final theme = Theme.of(context);
-        final cs = theme.colorScheme;
-        final isDark = theme.brightness == Brightness.dark;
-
-        return TextField(
-          controller: controller,
-          style: TextStyle(
-            color: cs.onSurface,
-            fontSize: 24,
-            letterSpacing: 8,
-            fontWeight: FontWeight.bold,
-          ),
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          maxLength: maxLength,
-          obscureText: true,
-          onSubmitted: onSubmitted,
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.78)),
-            hintText: hint,
-            hintStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.45), letterSpacing: 8),
-            counterText: '',
-            filled: true,
-            fillColor: isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: isDark ? Colors.amber.withValues(alpha: 0.3) : cs.outline.withValues(alpha: 0.6)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: cs.primary),
-            ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 20),
-          ),
-        );
-      },
-    );
-  }
-
   // ─── ВАЛИДАТОРИ ─────────────────────────────────────────────────────────
 
   /// Стандардни required валидатор
   static String? requiredValidator(String? value, [String message = 'Ово поље је обавезно']) {
     if (value == null || value.trim().isEmpty) {
       return message;
-    }
-    return null;
-  }
-
-  /// Email валидатор
-  static String? emailValidator(String? value, {bool isRequired = true}) {
-    final normalized = value?.trim() ?? '';
-    if (isRequired && normalized.isEmpty) {
-      return 'Унесите email адресу';
-    }
-    if (normalized.isNotEmpty && !_emailRegex.hasMatch(normalized)) {
-      return 'Неисправан email формат';
     }
     return null;
   }
@@ -376,28 +259,6 @@ class V3InputUtils {
           !V3PhoneUtils.isValid(normalized)) {
         return 'Неисправан број телефона';
       }
-    }
-    return null;
-  }
-
-  /// Шифра валидатор
-  static String? passwordValidator(String? value, {int minLength = 4}) {
-    if (value == null || value.isEmpty) {
-      return 'Унесите шифру';
-    }
-    if (value.length < minLength) {
-      return 'Шифра мора имати минимум $minLength карактера';
-    }
-    return null;
-  }
-
-  /// Потврда шифре валидатор
-  static String? confirmPasswordValidator(String? value, String originalPassword) {
-    if (value == null || value.isEmpty) {
-      return 'Потврдите шифру';
-    }
-    if (value != originalPassword) {
-      return 'Шифре се не поклапају';
     }
     return null;
   }

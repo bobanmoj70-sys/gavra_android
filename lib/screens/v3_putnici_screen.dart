@@ -12,7 +12,6 @@ import '../utils/v3_audit_korisnik.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
-import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -492,15 +491,6 @@ class _PutnikCard extends StatelessWidget {
                     color: Colors.purpleAccent,
                     onPressed: onDetaljneStatistike,
                   )),
-                  const SizedBox(width: 6),
-                  Expanded(
-                      child: _actionBtn(
-                    context: context,
-                    icon: Icons.lock_outline,
-                    label: 'PIN',
-                    color: Colors.amber,
-                    onPressed: () => _showPinDialog(context),
-                  )),
                 ],
               ),
               const SizedBox(height: 6),
@@ -625,43 +615,6 @@ class _PutnikCard extends StatelessWidget {
       ),
     );
   }
-
-  void _showPinDialog(BuildContext context) {
-    final ctrl = TextEditingController(text: putnik.pin ?? '');
-    V3DialogUtils.showCustomDialog<void>(
-      context: context,
-      title: '🔐 PIN — ${putnik.imePrezime}',
-      content: TextField(
-        controller: ctrl,
-        keyboardType: TextInputType.number,
-        maxLength: 6,
-        decoration: const InputDecoration(
-          labelText: 'PIN kod',
-          hintText: 'Unesi 4–6 cifara',
-          border: OutlineInputBorder(),
-        ),
-      ),
-      actions: [
-        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'Otkaži'),
-        V3ButtonUtils.primaryButton(
-          onPressed: () async {
-            Navigator.pop(context);
-            try {
-              await V3PutnikService.updatePinById(
-                putnikId: putnik.id,
-                pin: ctrl.text,
-                updatedBy: V3AuditKorisnik.normalize('admin_pin_edit'),
-              );
-              if (context.mounted) V3AppSnackBar.success(context, '✅ PIN sačuvan');
-            } catch (e) {
-              if (context.mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
-            }
-          },
-          text: 'Sačuvaj',
-        ),
-      ],
-    );
-  }
 }
 
 // ─── Add / Edit Dialog ────────────────────────────────────────────────────────
@@ -678,7 +631,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
   late final TextEditingController _ime = TextEditingController(text: widget.existing?.imePrezime ?? '');
   late final TextEditingController _tel1 = TextEditingController(text: widget.existing?.telefon1 ?? '');
   late final TextEditingController _tel2 = TextEditingController(text: widget.existing?.telefon2 ?? '');
-  late final TextEditingController _email = TextEditingController(text: widget.existing?.email ?? '');
   late final TextEditingController _skola = TextEditingController(text: widget.existing?.skola ?? '');
   late final TextEditingController _opis = TextEditingController(text: widget.existing?.opisPosiljke ?? '');
   late final TextEditingController _cenaDan = TextEditingController(text: () {
@@ -710,7 +662,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
 
   @override
   void dispose() {
-    for (final c in [_ime, _tel1, _tel2, _email, _skola, _opis, _cenaDan]) c.dispose();
+    for (final c in [_ime, _tel1, _tel2, _skola, _opis, _cenaDan]) c.dispose();
     super.dispose();
   }
 
@@ -726,7 +678,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         imePrezime: _ime.text.trim(),
         telefon1: V3PhoneUtils.normalizeOrNull(_tel1.text),
         telefon2: V3PhoneUtils.normalizeOrNull(_tel2.text),
-        email: _email.text.trim().isEmpty ? null : _email.text.trim(),
         skola: _tip == 'ucenik' && _skola.text.trim().isNotEmpty ? _skola.text.trim() : null,
         opisPosiljke: _tip == 'posiljka' && _opis.text.trim().isNotEmpty ? _opis.text.trim() : null,
         tipPutnika: _tip,
@@ -738,7 +689,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         adresaBcId2: _adresaBc2?.id,
         adresaVsId: _adresaVs1?.id,
         adresaVsId2: _adresaVs2?.id,
-        pin: widget.existing?.pin,
         cenaPoPokupljenju: (_tip == 'dnevni' || _tip == 'posiljka')
             ? double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0
             : 0.0, // radnici/ucenici koriste cenaPoDanu
@@ -937,13 +887,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Email
-                    V3InputUtils.emailField(
-                      controller: _email,
-                      label: 'Email (opciono)',
-                      isRequired: false,
                     ),
                     const SizedBox(height: 10),
                     // Cena

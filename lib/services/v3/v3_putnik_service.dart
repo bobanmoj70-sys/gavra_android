@@ -50,29 +50,6 @@ class V3PutnikService {
     return null;
   }
 
-  static Future<String?> getPinById(String putnikId) async {
-    final id = putnikId.trim();
-    if (id.isEmpty) return null;
-
-    final row = await _repo.getPinById(id);
-    return row == null ? null : row['pin']?.toString();
-  }
-
-  static Future<void> updatePinById({
-    required String putnikId,
-    String? pin,
-    String? updatedBy,
-  }) async {
-    final id = putnikId.trim();
-    if (id.isEmpty) return;
-
-    final actorUuid = V3AuditKorisnik.normalize(updatedBy, fallback: currentVozac?.id);
-    await _repo.updateById(id, {
-      'pin': (pin == null || pin.trim().isEmpty) ? null : pin.trim(),
-      if (actorUuid != null) 'updated_by': actorUuid,
-    });
-  }
-
   static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
     final id = putnikId.trim();
     if (id.isEmpty) return null;

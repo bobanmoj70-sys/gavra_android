@@ -161,7 +161,7 @@ class V3StreamUtils {
     );
   }
 
-  /// PIN zahtev subscription
+  /// Zahtev subscription
   static StreamSubscription<List<Map<String, dynamic>>> subscribeToPinRequests({
     required String key,
     required Stream<List<Map<String, dynamic>>> pinStream,

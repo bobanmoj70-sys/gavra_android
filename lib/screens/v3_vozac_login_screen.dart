@@ -3,7 +3,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -23,8 +22,8 @@ import '../utils/v3_text_utils.dart';
 import 'v3_home_screen.dart';
 import 'v3_vozac_screen.dart';
 
-/// V3 Vozač Login Screen (NOVI SUPABASE AUTH)
-/// Samo Email + Šifra sa biometrijom
+/// V3 Vozač Login Screen
+/// Samo Telefon + Šifra sa biometrijom
 class V3VozacLoginScreen extends StatefulWidget {
   final V3Vozac vozac;
 
@@ -39,7 +38,6 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
   static const _secureStorage = FlutterSecureStorage();
 
   bool _isLoading = false;
-  bool _sifraVisible = false;
 
   // Biometrija
   bool _biometricAvailable = false;
@@ -57,9 +55,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
   @override
   void dispose() {
-    V3TextUtils.disposeController('vozac_email');
     V3TextUtils.disposeController('vozac_telefon');
-    V3TextUtils.disposeController('vozac_sifra');
     super.dispose();
   }
 
@@ -88,9 +84,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
   Future<void> _saveBiometricCredentials() async {
     if (!_biometricAvailable) return;
     final data = jsonEncode({
-      'email': V3TextUtils.getControllerText('vozac_email').trim(),
       'telefon': V3TextUtils.getControllerText('vozac_telefon').trim(),
-      'sifra': V3TextUtils.getControllerText('vozac_sifra'),
     });
     await _secureStorage.write(key: _biometricKey, value: data);
   }
@@ -118,9 +112,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     if (!mounted) return;
 
     final data = jsonDecode(raw) as Map<String, dynamic>;
-    V3TextUtils.setControllerText('vozac_email', data['email']?.toString() ?? '');
     V3TextUtils.setControllerText('vozac_telefon', data['telefon']?.toString() ?? '');
-    V3TextUtils.setControllerText('vozac_sifra', data['sifra']?.toString() ?? '');
 
     await _login(saveBiometric: false);
   }
@@ -135,13 +127,11 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
     V3StateUtils.safeSetState(this, () => _isLoading = true);
 
     try {
-      final email = V3TextUtils.getControllerText('vozac_email').trim().toLowerCase();
       final telefon = V3TextUtils.getControllerText('vozac_telefon').trim();
-      final sifra = V3TextUtils.getControllerText('vozac_sifra');
 
-      if (email.isEmpty || telefon.isEmpty || sifra.isEmpty) {
+      if (telefon.isEmpty) {
         if (mounted) {
-          V3ErrorUtils.validationError(this, context, '❌ Unesite telefon, email i šifru.');
+          V3ErrorUtils.validationError(this, context, '❌ Unesite telefon.');
         }
         return;
       }
@@ -159,32 +149,6 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       if (!phoneMatch) {
         if (mounted) {
           V3ErrorUtils.validationError(this, context, '❌ Pogrešan broj telefona.');
-        }
-        return;
-      }
-
-      // 🔥 OVO JE ZVANIČAN SUPABASE AUTH 🔥
-      try {
-        final AuthResponse res = await Supabase.instance.client.auth.signInWithPassword(
-          email: email,
-          password: sifra,
-        );
-
-        if (res.user == null) {
-          throw Exception('Nedostaje korisnički objekat nakon prijave.');
-        }
-      } on AuthException catch (e) {
-        debugPrint("[SupabaseAuth] Prijavljivanje odbijeno: ${e.message}");
-
-        String poruka = '❌ Pogrešan email ili šifra.';
-        if (e.message.contains('Invalid login')) {
-          poruka = '❌ Pogrešan email ili šifra.';
-        } else if (e.message.contains('Email not confirmed')) {
-          poruka = '❌ Email adresa nije potvrđena.';
-        }
-
-        if (mounted) {
-          V3ErrorUtils.validationError(this, context, poruka);
         }
         return;
       }
@@ -263,21 +227,9 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
                   children: [
                     _buildHeader(),
                     const SizedBox(height: 32),
-                    V3InputUtils.emailField(
-                      controller: V3TextUtils.vozacEmailController,
-                      label: 'Email adresa',
-                    ),
-                    const SizedBox(height: 16),
                     V3InputUtils.phoneField(
                       controller: V3TextUtils.vozacTelefonController,
                       label: 'Broj telefona',
-                    ),
-                    const SizedBox(height: 16),
-                    V3InputUtils.passwordField(
-                      controller: V3TextUtils.vozacSifraController,
-                      isVisible: _sifraVisible,
-                      onToggleVisibility: () => V3StateUtils.safeSetState(this, () => _sifraVisible = !_sifraVisible),
-                      label: 'Šifra',
                     ),
                     const SizedBox(height: 32),
                     V3ButtonUtils.elevatedButton(
@@ -368,7 +320,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Unesi telefon, email i šifru za prijavu.',
+          'Unesi telefon za prijavu.',
           style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 14),
           textAlign: TextAlign.center,
         ),

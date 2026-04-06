@@ -6,8 +6,6 @@ class V3Putnik {
   final String imePrezime;
   final String? telefon1;
   final String? telefon2;
-  final String? email;
-  final String? pin;
   final String tipPutnika; // 'dnevni', 'radnik', 'ucenik', 'posiljka'
   final String? adresaBcId;
   final String? adresaVsId;
@@ -33,8 +31,6 @@ class V3Putnik {
     required this.imePrezime,
     this.telefon1,
     this.telefon2,
-    this.email,
-    this.pin,
     required this.tipPutnika,
     this.adresaBcId,
     this.adresaVsId,
@@ -58,8 +54,6 @@ class V3Putnik {
       imePrezime: json['ime_prezime'] as String? ?? '',
       telefon1: json['telefon_1'] as String?,
       telefon2: json['telefon_2'] as String?,
-      email: json['email'] as String?,
-      pin: json['pin'] as String?,
       tipPutnika: json['tip_putnika'] as String? ?? 'dnevni',
       adresaBcId: json['adresa_bc_id'] as String?,
       adresaVsId: json['adresa_vs_id'] as String?,
@@ -84,8 +78,6 @@ class V3Putnik {
       'ime_prezime': imePrezime,
       'telefon_1': telefon1,
       'telefon_2': telefon2,
-      'email': email,
-      'pin': pin,
       'tip_putnika': tipPutnika,
       'adresa_bc_id': adresaBcId,
       'adresa_vs_id': adresaVsId,
@@ -107,8 +99,6 @@ class V3Putnik {
     String? imePrezime,
     String? telefon1,
     String? telefon2,
-    String? email,
-    String? pin,
     String? tipPutnika,
     String? adresaBcId,
     String? adresaVsId,
@@ -127,8 +117,6 @@ class V3Putnik {
       imePrezime: imePrezime ?? this.imePrezime,
       telefon1: telefon1 ?? this.telefon1,
       telefon2: telefon2 ?? this.telefon2,
-      email: email ?? this.email,
-      pin: pin ?? this.pin,
       tipPutnika: tipPutnika ?? this.tipPutnika,
       adresaBcId: adresaBcId ?? this.adresaBcId,
       adresaVsId: adresaVsId ?? this.adresaVsId,

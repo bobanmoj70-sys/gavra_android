@@ -26,7 +26,6 @@ class V3RacunService {
   static const String _firmaTekuciRacun = '340-11436537-92';
   static const String _firmaVlasnik = 'Bojan Gavrilović';
   static const String _firmaTel = '064/116-2560';
-  static const String _firmaEmail = 'gavriconi19@gmail.com';
 
   static const String _napomenaPDV = 'Poreski obveznik nije u sistemu PDV-a';
   static const String _napomenaValidnost =

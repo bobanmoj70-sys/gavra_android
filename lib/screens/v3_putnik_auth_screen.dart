@@ -72,7 +72,7 @@ class _V3PutnikAuthScreenState extends State<V3PutnikAuthScreen> {
       if (!mounted) return;
 
       if (!exists) {
-        V3AppSnackBar.error(context, '❌ Broj telefona nije pronađen u sistemu.');
+        V3AppSnackBar.error(context, '❌ Trenutno nije moguće poslati kod za ovaj broj.');
         setState(() => _statusMessage = '');
         return;
       }
@@ -293,7 +293,7 @@ class _V3PutnikAuthScreenState extends State<V3PutnikAuthScreen> {
       children: [
         const SizedBox(height: 12),
         _buildInfoBox(
-          icon: Icons.mark_email_read_outlined,
+          icon: Icons.sms_outlined,
           text: 'SMS kod je poslat na $_normalizedPhone\n\nUnesite 6-cifreni kod:',
         ),
         const SizedBox(height: 24),

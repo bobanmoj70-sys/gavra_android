@@ -37,10 +37,6 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     await V3TelefonHelper.pozovi(this, context, phoneNumber);
   }
 
-  Future<void> _sendEmail(String email) async {
-    await V3TelefonHelper.posaljiEmail(this, context, email);
-  }
-
   Future<void> _openMaps() async {
     await V3TelefonHelper.otvoriMaps(
       this,
@@ -122,13 +118,6 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
                       label: 'Mobilni',
                       value: '064/116-2560',
                       onTap: () => _makePhoneCall('0641162560'),
-                    ),
-                    const Divider(color: Colors.white24, height: 20),
-                    _buildContactRow(
-                      icon: Icons.email,
-                      label: 'Email',
-                      value: 'gavriconi19@gmail.com',
-                      onTap: () => _sendEmail('gavriconi19@gmail.com'),
                     ),
                   ],
                 ),

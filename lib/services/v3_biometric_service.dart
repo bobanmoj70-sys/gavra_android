@@ -14,7 +14,7 @@ class V3BiometricService {
   static const String _keyBiometricEnabled = 'biometric_enabled';
   static const String _keyRememberMe = 'remember_me_enabled';
   static const String _keySavedPhone = 'biometric_saved_phone';
-  static const String _keySavedPin = 'biometric_saved_pin';
+  static const String _keySavedSecret = 'biometric_saved_secret';
 
   // Provjeri da li uređaj podržava biometriju
   Future<bool> isDeviceSupported() async {
@@ -62,10 +62,10 @@ class V3BiometricService {
     await _secureStorage.write(key: _keyRememberMe, value: enabled.toString());
   }
 
-  // Sačuvaj kredencijale (telefon + PIN)
-  Future<void> saveCredentials(String phone, String pin, {bool isBiometric = true}) async {
+  // Sačuvaj kredencijale (telefon + dodatni credential)
+  Future<void> saveCredentials(String phone, String secret, {bool isBiometric = true}) async {
     await _secureStorage.write(key: _keySavedPhone, value: phone);
-    await _secureStorage.write(key: _keySavedPin, value: pin);
+    await _secureStorage.write(key: _keySavedSecret, value: secret);
     if (isBiometric) {
       await setBiometricEnabled(true);
       await setRememberMeEnabled(false);
@@ -78,15 +78,15 @@ class V3BiometricService {
   // Dohvati sačuvane kredencijale
   Future<Map<String, String>?> getSavedCredentials() async {
     final phone = await _secureStorage.read(key: _keySavedPhone);
-    final pin = await _secureStorage.read(key: _keySavedPin);
-    if (phone == null || pin == null || phone.isEmpty || pin.isEmpty) return null;
-    return {'phone': phone, 'pin': pin};
+    final secret = await _secureStorage.read(key: _keySavedSecret);
+    if (phone == null || secret == null || phone.isEmpty || secret.isEmpty) return null;
+    return {'phone': phone, 'secret': secret};
   }
 
   // Obriši sačuvane kredencijale
   Future<void> clearCredentials() async {
     await _secureStorage.delete(key: _keySavedPhone);
-    await _secureStorage.delete(key: _keySavedPin);
+    await _secureStorage.delete(key: _keySavedSecret);
     await setBiometricEnabled(false);
     await setRememberMeEnabled(false);
   }

@@ -61,7 +61,7 @@ class V3FirebaseSmsService {
 
         // ✅ Automatska verifikacija (Android samo) – retko se dešava
         verificationCompleted: (PhoneAuthCredential credential) {
-          debugPrint('[SMS] Auto-verifikacija (Android): ${credential.smsCode}');
+          debugPrint('[SMS] Auto-verifikacija (Android) uspešna.');
           // Ne radimo ništa – korisnik će ručno uneti kod
         },
 
@@ -74,7 +74,7 @@ class V3FirebaseSmsService {
 
         // 📨 SMS uspešno poslat
         codeSent: (String verificationId, int? resendToken) {
-          debugPrint('[SMS] Kod poslat, verificationId: $verificationId');
+          debugPrint('[SMS] Kod poslat.');
           onStatusUpdate('✅ SMS kod je poslat!');
           completer.complete(SmsSendResult.ok(verificationId));
         },

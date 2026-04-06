@@ -41,17 +41,6 @@ class V3VozacService {
     }
   }
 
-  static Future<String?> getSifraByIme(String vozacIme) async {
-    final ime = vozacIme.trim();
-    if (ime.isEmpty) return null;
-
-    final fromCache = getVozacByName(ime)?.sifra;
-    if (fromCache != null && fromCache.isNotEmpty) return fromCache;
-
-    final row = await _repo.getSifraByIme(ime);
-    return row == null ? null : row['sifra']?.toString();
-  }
-
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
       final actorUuid = V3AuditKorisnik.normalize(currentVozac?.id);
@@ -61,8 +50,6 @@ class V3VozacService {
           'ime_prezime': vozac.imePrezime,
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
-          'email': vozac.email,
-          'sifra': vozac.sifra,
           'boja': vozac.boja,
           'aktivno': vozac.aktivno,
           if (actorUuid != null) 'updated_by': actorUuid,
@@ -73,8 +60,6 @@ class V3VozacService {
           'ime_prezime': vozac.imePrezime,
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
-          'email': vozac.email,
-          'sifra': vozac.sifra,
           'boja': vozac.boja,
           'aktivno': vozac.aktivno,
           if (actorUuid != null) 'created_by': actorUuid,
@@ -124,15 +109,6 @@ class V3VozacService {
       debugPrint('[V3VozacService] updatePushToken error: $e');
       rethrow;
     }
-  }
-
-  static Future<void> updateSifraByIme({
-    required String imePrezime,
-    required String novaSifra,
-  }) async {
-    final ime = imePrezime.trim();
-    if (ime.isEmpty) return;
-    await _repo.updateByImePrezime(ime, {'sifra': novaSifra});
   }
 
   static Future<bool> hasActiveVozacWithPushToken({

@@ -70,8 +70,6 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
   Future<void> _showVozacDialog({V3Vozac? vozac}) async {
     final isEdit = vozac != null;
     final imeCtrl = TextEditingController(text: vozac?.imePrezime ?? '');
-    final emailCtrl = TextEditingController(text: vozac?.email ?? '');
-    final sifraCtrl = TextEditingController(text: vozac?.sifra ?? '');
     final tel1Ctrl = TextEditingController(text: vozac?.telefon1 ?? '');
     final tel2Ctrl = TextEditingController(text: vozac?.telefon2 ?? '');
     Color selectedColor = _hexToColor(vozac?.boja);
@@ -124,29 +122,6 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                       label: 'Ime i prezime',
                       icon: Icons.person,
                       validator: (v) => (v?.isEmpty ?? true) ? 'Unesite ime' : null,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Email
-                    _inputField(
-                      controller: emailCtrl,
-                      label: 'Email',
-                      icon: Icons.email,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (v) {
-                        if (v?.isEmpty ?? true) return 'Unesite email';
-                        if (!v!.contains('@')) return 'Neispravan email';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Šifra
-                    _inputField(
-                      controller: sifraCtrl,
-                      label: 'Šifra',
-                      icon: Icons.lock,
-                      obscureText: true,
                     ),
                     const SizedBox(height: 12),
 
@@ -210,8 +185,6 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                           final novi = V3Vozac(
                             id: vozac?.id ?? '',
                             imePrezime: imeCtrl.text.trim(),
-                            email: emailCtrl.text.trim().toLowerCase(),
-                            sifra: sifraCtrl.text.isEmpty ? vozac?.sifra : sifraCtrl.text,
                             telefon1: tel1Ctrl.text.trim().isEmpty ? null : tel1Ctrl.text.trim(),
                             telefon2: tel2Ctrl.text.trim().isEmpty ? null : tel2Ctrl.text.trim(),
                             boja: _colorToHex(selectedColor),
@@ -250,8 +223,6 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
     // Dispose nakon što animacija zatvaranja završi — sprječava "used after dispose" crash
     WidgetsBinding.instance.addPostFrameCallback((_) {
       imeCtrl.dispose();
-      emailCtrl.dispose();
-      sifraCtrl.dispose();
       tel1Ctrl.dispose();
       tel2Ctrl.dispose();
     });
@@ -532,19 +503,6 @@ class _VozacKartica extends StatelessWidget {
                           ),
                       ],
                     ),
-                    if (vozac.email?.isNotEmpty == true)
-                      Row(
-                        children: [
-                          const Icon(Icons.email, size: 12, color: Colors.white38),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: V3SafeText.contact(
-                              vozac.email!,
-                              style: const TextStyle(color: Colors.white60, fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
                     if (vozac.telefon1?.isNotEmpty == true)
                       Row(
                         children: [

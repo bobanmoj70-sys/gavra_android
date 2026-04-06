@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createRemoteJWKSet, jwtVerify } from 'https://esm.sh/jose@5.9.6';
 
 const jsonHeaders = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -20,31 +21,30 @@ function normalizePhone(value: string): string {
 }
 
 async function verifyFirebaseToken(firebaseIdToken: string): Promise<{ uid: string; phone: string; aud: string }> {
-  const verifyRes = await fetch(
-    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(firebaseIdToken)}`,
-  );
-
-  if (!verifyRes.ok) {
-    const body = await verifyRes.text();
-    throw new Error(`Invalid Firebase token: ${verifyRes.status} ${body.slice(0, 300)}`);
-  }
-
-  const payload = await verifyRes.json();
-  const uid = String(payload.sub ?? payload.user_id ?? '').trim();
-  const aud = String(payload.aud ?? '').trim();
-  const phone = normalizePhone(String(payload.phone_number ?? ''));
-  const exp = Number(payload.exp ?? 0);
-  const now = Math.floor(Date.now() / 1000);
-
-  if (!uid) throw new Error('Firebase token missing uid');
-  if (!aud) throw new Error('Firebase token missing aud');
-  if (!Number.isFinite(exp) || exp <= now) throw new Error('Firebase token expired');
-
   const expectedAud = String(
     Deno.env.get('FIREBASE_PROJECT_ID') ?? 'gavra-notif-20250920162521',
   ).trim();
-  if (expectedAud && aud !== expectedAud) {
-    throw new Error(`Firebase token aud mismatch (${aud} != ${expectedAud})`);
+  if (!expectedAud) {
+    throw new Error('Invalid server configuration');
+  }
+
+  const issuer = `https://securetoken.google.com/${expectedAud}`;
+  const jwks = createRemoteJWKSet(
+    new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
+  );
+
+  const verified = await jwtVerify(firebaseIdToken, jwks, {
+    issuer,
+    audience: expectedAud,
+  });
+
+  const payload = verified.payload;
+  const uid = String(payload.sub ?? '').trim();
+  const aud = String(payload.aud ?? '').trim();
+  const phone = normalizePhone(String(payload.phone_number ?? ''));
+
+  if (!uid || !aud) {
+    throw new Error('Invalid credentials');
   }
 
   return { uid, phone, aud };
@@ -80,11 +80,18 @@ Deno.serve(async (req) => {
 
     const firebase = await verifyFirebaseToken(firebaseIdToken);
     const fallbackPhone = normalizePhone(String(body?.fallback_phone ?? ''));
-    const phone = firebase.phone || fallbackPhone;
+    const phone = firebase.phone;
 
     if (!phone) {
-      return new Response(JSON.stringify({ ok: false, error: 'No phone in Firebase token or fallback_phone' }), {
+      return new Response(JSON.stringify({ ok: false, error: 'Invalid credentials' }), {
         status: 400,
+        headers: jsonHeaders,
+      });
+    }
+
+    if (fallbackPhone && fallbackPhone !== phone) {
+      return new Response(JSON.stringify({ ok: false, error: 'Phone mismatch' }), {
+        status: 403,
         headers: jsonHeaders,
       });
     }
@@ -104,7 +111,7 @@ Deno.serve(async (req) => {
     }
 
     if (!authRow) {
-      return new Response(JSON.stringify({ ok: false, error: 'Phone not allowed by v3_auth gate', phone }), {
+      return new Response(JSON.stringify({ ok: false, error: 'Access denied' }), {
         status: 403,
         headers: jsonHeaders,
       });
@@ -114,8 +121,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'firebase_uid conflict for phone',
-          phone,
+          error: 'Access denied',
         }),
         { status: 409, headers: jsonHeaders },
       );
@@ -161,7 +167,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Invalid credentials',
       }),
       { status: 400, headers: jsonHeaders },
     );

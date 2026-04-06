@@ -5,8 +5,6 @@ class V3Vozac {
   final String imePrezime;
   final String? telefon1;
   final String? telefon2;
-  final String? email;
-  final String? sifra;
   final String? boja;
   final String? pushToken;
   final bool aktivno;
@@ -18,8 +16,6 @@ class V3Vozac {
     required this.imePrezime,
     this.telefon1,
     this.telefon2,
-    this.email,
-    this.sifra,
     this.boja,
     this.pushToken,
     this.aktivno = true,
@@ -33,8 +29,6 @@ class V3Vozac {
       imePrezime: json['ime_prezime'] as String? ?? '',
       telefon1: json['telefon_1'] as String?,
       telefon2: json['telefon_2'] as String?,
-      email: json['email'] as String?,
-      sifra: json['sifra'] as String?,
       boja: json['boja'] as String?,
       pushToken: json['push_token'] as String?,
       aktivno: json['aktivno'] as bool? ?? true,
@@ -49,8 +43,6 @@ class V3Vozac {
       'ime_prezime': imePrezime,
       'telefon_1': telefon1,
       'telefon_2': telefon2,
-      'email': email,
-      'sifra': sifra,
       'boja': boja,
       'push_token': pushToken,
       'aktivno': aktivno,

@@ -29,7 +29,6 @@ import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
-import 'v3_promena_sifre_screen.dart';
 import 'v3_welcome_screen.dart';
 
 /// V3VozacScreen — ekran za vozača (Voja).
@@ -1013,7 +1012,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 child: _buildDanPickerBtn(context, height: appBarButtonHeight),
                               ),
                               const SizedBox(width: 4),
-                              // ⚙️ Popup meni — šifra + logout
+                              // ⚙️ Popup meni — tema + logout
                               PopupMenuButton<String>(
                                 onSelected: (val) async {
                                   if (val == 'tema') {
@@ -1021,12 +1020,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, '🎨 Tema promenjena');
-                                  } else if (val == 'sifra') {
-                                    if (!mounted || vozac == null) return;
-                                    V3NavigationUtils.pushScreen<void>(
-                                      context,
-                                      V3PromenaSifreScreen(vozacIme: vozac.imePrezime),
-                                    );
                                   } else if (val == 'logout') {
                                     _logout();
                                   }
@@ -1041,14 +1034,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                     ]),
                                   ),
                                   PopupMenuDivider(),
-                                  PopupMenuItem(
-                                    value: 'sifra',
-                                    child: Row(children: [
-                                      Icon(Icons.lock_reset, color: Colors.blueAccent),
-                                      SizedBox(width: 8),
-                                      Text('Promeni šifru'),
-                                    ]),
-                                  ),
                                   PopupMenuItem(
                                     value: 'logout',
                                     child: Row(children: [

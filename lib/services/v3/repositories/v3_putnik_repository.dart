@@ -9,10 +9,6 @@ class V3PutnikRepository {
         .limit(1);
   }
 
-  Future<Map<String, dynamic>?> getPinById(String id) {
-    return supabase.from('v3_putnici').select('pin').eq('id', id).maybeSingle();
-  }
-
   Future<Map<String, dynamic>?> getActiveById(String id) {
     return supabase.from('v3_putnici').select().eq('id', id).eq('aktivno', true).maybeSingle();
   }

@@ -36,15 +36,7 @@ class V3TextUtils {
   // СПЕЦИЈАЛИЗОВАНИ КОНТРОЛЕРИ ЗА ЧЕСТО КОРИШЋЕНЕ ФОРМЕ
 
   /// Контролери за логин форме
-  static TextEditingController get emailController => getController('email');
   static TextEditingController get telefonController => getController('telefon');
-  static TextEditingController get sifraController => getController('sifra');
-  static TextEditingController get pinController => getController('pin');
-
-  /// Контролери за промену шифре
-  static TextEditingController get staraSifraController => getController('stara_sifra');
-  static TextEditingController get novaSifraController => getController('nova_sifra');
-  static TextEditingController get potvrdaSifraController => getController('potvrda_sifra');
 
   /// Контролер за претрагу
   static TextEditingController get searchController => getController('search');
@@ -55,12 +47,8 @@ class V3TextUtils {
   static TextEditingController get adreseSearchController => getController('adrese_search');
 
   /// Scoped контролери за логин форме (путник/возач)
-  static TextEditingController get putnikEmailController => getController('putnik_email');
   static TextEditingController get putnikTelefonController => getController('putnik_telefon');
-  static TextEditingController get putnikPinController => getController('putnik_pin');
-  static TextEditingController get vozacEmailController => getController('vozac_email');
   static TextEditingController get vozacTelefonController => getController('vozac_telefon');
-  static TextEditingController get vozacSifraController => getController('vozac_sifra');
 
   /// Контролери за адресе/локације
   static TextEditingController get imeController => getController('ime');
@@ -99,12 +87,6 @@ class V3TextUtils {
     if (text.length < minLength) return false;
     if (maxLength != null && text.length > maxLength) return false;
     return true;
-  }
-
-  /// Валидација имејла
-  static bool isValidEmail(String key) {
-    final email = getControllerText(key);
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
   /// Валидација телефона
