@@ -83,14 +83,14 @@ Deno.serve(async (req) => {
     const phone = firebase.phone;
 
     if (!phone) {
-      return new Response(JSON.stringify({ ok: false, error: 'Invalid credentials' }), {
-        status: 400,
+      return new Response(JSON.stringify({ ok: false, error: 'Access denied' }), {
+        status: 403,
         headers: jsonHeaders,
       });
     }
 
     if (fallbackPhone && fallbackPhone !== phone) {
-      return new Response(JSON.stringify({ ok: false, error: 'Phone mismatch' }), {
+      return new Response(JSON.stringify({ ok: false, error: 'Access denied' }), {
         status: 403,
         headers: jsonHeaders,
       });

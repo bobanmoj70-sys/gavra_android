@@ -138,7 +138,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
 
       final vozacFromCache = V3VozacService.getVozacByName(widget.vozac.imePrezime);
       if (vozacFromCache == null) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Vozač nije pronađen.');
+        if (mounted) V3AppSnackBar.error(context, '❌ Prijava nije uspela. Proveri podatke i pokušaj ponovo.');
         return;
       }
 
@@ -148,7 +148,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       final phoneMatch = enteredPhone.isNotEmpty && (enteredPhone == tel1 || (tel2.isNotEmpty && enteredPhone == tel2));
       if (!phoneMatch) {
         if (mounted) {
-          V3ErrorUtils.validationError(this, context, '❌ Pogrešan broj telefona.');
+          V3ErrorUtils.validationError(this, context, '❌ Prijava nije uspela. Proveri podatke i pokušaj ponovo.');
         }
         return;
       }
@@ -156,7 +156,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       // Učitaj kompletan model vozača zbog ostatka aplikacije
       final vozac = V3VozacService.getVozacByName(widget.vozac.imePrezime);
       if (vozac == null) {
-        if (mounted) V3AppSnackBar.error(context, '❌ Vozač nije profilisan u bazi profila.');
+        if (mounted) V3AppSnackBar.error(context, '❌ Prijava nije uspela. Proveri podatke i pokušaj ponovo.');
         return;
       }
 
@@ -183,7 +183,7 @@ class _V3VozacLoginScreenState extends State<V3VozacLoginScreen> {
       );
     } catch (e) {
       if (mounted) {
-        V3AppSnackBar.error(context, 'Greška: $e');
+        V3AppSnackBar.error(context, '❌ Prijava trenutno nije dostupna. Pokušaj ponovo kasnije.');
       }
     } finally {
       if (mounted) {

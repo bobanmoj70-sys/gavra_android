@@ -72,7 +72,7 @@ class _V3PutnikAuthScreenState extends State<V3PutnikAuthScreen> {
       if (!mounted) return;
 
       if (!exists) {
-        V3AppSnackBar.error(context, '❌ Trenutno nije moguće poslati kod za ovaj broj.');
+        V3AppSnackBar.error(context, '❌ Trenutno nije moguće poslati kod. Pokušaj ponovo kasnije.');
         setState(() => _statusMessage = '');
         return;
       }
