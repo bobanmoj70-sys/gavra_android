@@ -136,36 +136,38 @@ Future<void> _doStartupTasks() async {
 /// FCM push inicijalizacija u main() funkciji
 Future<void> _initFirebaseSync() async {
   try {
-    bool fcmInitialized = false;
+    bool firebaseCoreReady = false;
+    bool fcmReady = false;
 
-    if (Platform.isIOS) {
-      try {
+    try {
+      if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp().timeout(const Duration(seconds: 5));
-        debugPrint('✅ [FCM] Firebase inicijalizovan - iOS');
-        fcmInitialized = true;
-      } catch (e) {
-        debugPrint('⚠️ [FCM] iOS init greška: $e');
       }
-    } else {
-      final gmsAvailability = await GoogleApiAvailability.instance
-          .checkGooglePlayServicesAvailability()
-          .timeout(const Duration(seconds: 2));
+      firebaseCoreReady = true;
+      debugPrint('✅ [Firebase] Core inicijalizovan');
+    } catch (e) {
+      debugPrint('⚠️ [Firebase] Core init greška: $e');
+    }
 
-      if (gmsAvailability == GooglePlayServicesAvailability.success) {
-        try {
-          await Firebase.initializeApp().timeout(const Duration(seconds: 5));
-          debugPrint('✅ [FCM] Firebase inicijalizovan - GMS dostupan');
-          fcmInitialized = true;
-        } catch (e) {
-          debugPrint('⚠️ [FCM] Init greška: $e');
-        }
+    if (firebaseCoreReady) {
+      if (Platform.isIOS) {
+        fcmReady = true;
       } else {
-        debugPrint('⚠️ [FCM] Google Play Services nedostupan: $gmsAvailability');
+        final gmsAvailability = await GoogleApiAvailability.instance
+            .checkGooglePlayServicesAvailability()
+            .timeout(const Duration(seconds: 2));
+
+        if (gmsAvailability == GooglePlayServicesAvailability.success) {
+          fcmReady = true;
+          debugPrint('✅ [FCM] GMS dostupan');
+        } else {
+          debugPrint('⚠️ [FCM] Google Play Services nedostupan: $gmsAvailability');
+        }
       }
     }
 
-    _firebaseInitialized = fcmInitialized;
-    if (fcmInitialized) {
+    _firebaseInitialized = firebaseCoreReady && fcmReady;
+    if (_firebaseInitialized) {
       debugPrint('🟢 [Push] FCM dostupan');
     } else {
       debugPrint('🔴 [Push] FCM nije dostupan!');

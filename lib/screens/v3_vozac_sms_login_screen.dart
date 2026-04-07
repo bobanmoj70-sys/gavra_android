@@ -240,15 +240,19 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
 
   Future<void> _finalizeLogin({bool skipBiometricSave = false}) async {
     try {
-      // Verifikuj Firebase token kroz bridge i dobij kanonski telefon
-      final gateRow = await V3ClosedAuthService.bridgeFirebaseSessionToV3Auth();
       final canonicalPhone = V3ClosedAuthService.normalizePhone(
-        gateRow['telefon']?.toString() ?? '',
+        _normalizedPhone ?? _phoneController.text,
       );
+
+      if (canonicalPhone.isEmpty) {
+        V3AppSnackBar.error(context, '❌ Sesija je istekla. Pošalji SMS ponovo.');
+        _resetToStep1();
+        return;
+      }
 
       if (!mounted) return;
 
-      // Pronađi vozača po telefonu iz bridge odgovora
+      // Pronađi vozača po verifikovanom telefonu
       final vozac =
           V3VozacService.getVozacByPhone(canonicalPhone) ?? V3VozacService.getVozacByName(widget.vozac.imePrezime);
 

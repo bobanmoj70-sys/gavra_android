@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 /// Rezultat slanja SMS verifikacionog koda
@@ -46,6 +47,14 @@ class V3FirebaseSmsService {
 
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  static Future<void> _disableCaptchaFlow() async {
+    try {
+      await _auth.setSettings(appVerificationDisabledForTesting: true);
+    } catch (e) {
+      debugPrint('[SMS] Ne mogu da isključim app verification: $e');
+    }
+  }
+
   // ─── Slanje SMS koda ────────────────────────────────────────────
 
   /// Šalje SMS verifikacioni kod na [phoneNumber] (u +381 formatu).
@@ -57,6 +66,13 @@ class V3FirebaseSmsService {
     final completer = _SmsSendCompleter();
 
     try {
+      final firebaseReady = await _ensureFirebaseInitialized();
+      if (!firebaseReady) {
+        return SmsSendResult.fail('Firebase nije inicijalizovan. Pokušaj ponovo za par sekundi.');
+      }
+
+      await _disableCaptchaFlow();
+
       onStatusUpdate('📨 Šaljem SMS kod...');
 
       await _auth.verifyPhoneNumber(
@@ -125,6 +141,13 @@ class V3FirebaseSmsService {
     }
 
     try {
+      final firebaseReady = await _ensureFirebaseInitialized();
+      if (!firebaseReady) {
+        return OtpVerifyResult.fail('Firebase nije inicijalizovan. Pokušaj ponovo za par sekundi.');
+      }
+
+      await _disableCaptchaFlow();
+
       final credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode.trim(),
@@ -147,9 +170,24 @@ class V3FirebaseSmsService {
   /// Odjavljuje korisnika iz Firebase Auth (ne utiče na Supabase sesiju).
   static Future<void> signOut() async {
     try {
+      final firebaseReady = await _ensureFirebaseInitialized();
+      if (!firebaseReady) return;
+
       await _auth.signOut();
     } catch (e) {
       debugPrint('[SMS] Greška pri odjavi: $e');
+    }
+  }
+
+  static Future<bool> _ensureFirebaseInitialized() async {
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+      return Firebase.apps.isNotEmpty;
+    } catch (e) {
+      debugPrint('[SMS] Firebase init check greška: $e');
+      return false;
     }
   }
 
