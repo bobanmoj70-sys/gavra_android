@@ -179,7 +179,7 @@ class V3PumpaTocenje {
       voziloId: json['vozilo_id']?.toString() ?? '',
       kolicina: (json['kolicina'] as num).toDouble(),
       kilometraza: json['kilometraza'] as int?,
-      vozacId: json['vozac_id']?.toString(),
+      vozacId: json['created_by']?.toString(),
       datum: DateTime.parse(json['datum'] as String),
     );
   }
@@ -188,7 +188,7 @@ class V3PumpaTocenje {
         'vozilo_id': voziloId,
         'kolicina': kolicina,
         'kilometraza': kilometraza,
-        'vozac_id': vozacId,
+        'created_by': vozacId,
         'datum': datum.toIso8601String(),
       };
 }

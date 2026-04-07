@@ -29,10 +29,12 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
 
     return rm.zahteviCache.values
         .where((r) {
-          if (!radniciIds.contains(r['putnik_id'])) return false;
+          final putnikId = (r['putnik_id']?.toString() ?? '').trim();
+          if (putnikId.isEmpty) return false;
+          if (!radniciIds.contains(putnikId)) return false;
           // Samo zahtevi koje je radnik sam poslao
           final createdBy = (r['created_by']?.toString() ?? '').trim();
-          return createdBy.startsWith('putnik:');
+          return createdBy == putnikId;
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()

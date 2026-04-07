@@ -212,7 +212,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           !V3StatusFilters.isCanceledOrRejected(rowStatus) &&
           rowVreme == normV &&
           rowDatum == datum) {
-        final vozacId = row['vozac_id']?.toString();
+        final vozacId = (row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString();
         if (vozacId != null && vozacId.isNotEmpty) {
           return V3VozacService.getVozacById(vozacId);
         }
@@ -985,7 +985,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               if (V3StatusFilters.isCanceledOrRejected(row['status_final']?.toString())) continue;
               if (V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') != _selectedDatumIso) continue;
               if (V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '') != vremeNorm) continue;
-              final vozacId = row['vozac_id']?.toString();
+              final vozacId = (row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString();
               if (vozacId == null || vozacId.isEmpty) continue;
               final vozac = V3VozacService.getVozacById(vozacId);
               if (vozac != null) {

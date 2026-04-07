@@ -153,14 +153,13 @@ class V3VozacService {
           final vremeMatch = normV(r['vreme']?.toString()) == vremeNorm;
           final status = r['status_final']?.toString();
           final statusMatch = !V3StatusFilters.isCanceledOrRejected(status);
-          final masterTermin = r['created_by'] == null; // ← SAMO MASTER ZAPISI
 
           if (datumMatch && gradMatch && vremeMatch) {
             print(
-                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} status=${r['status_final']} vozac_id=${r['vozac_id']} master=$masterTermin');
+                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} status=${r['status_final']} pokupljen_vozac_id=${r['pokupljen_vozac_id']}');
           }
 
-          return datumMatch && gradMatch && vremeMatch && statusMatch && masterTermin;
+          return datumMatch && gradMatch && vremeMatch && statusMatch;
         },
       );
 
@@ -175,15 +174,26 @@ class V3VozacService {
         return null;
       }
 
-      final termin = matchingTermini.first;
-      final vozacId = termin['vozac_id']?.toString();
-      if (vozacId == null) {
-        print('❌ VOZAC_ID is null for termin ${termin['id']}');
+      final vozacIds = matchingTermini
+          .map((row) => (row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString() ?? '')
+          .where((id) => id.trim().isNotEmpty)
+          .map((id) => id.trim())
+          .toSet();
+
+      if (vozacIds.isEmpty) {
+        print('❌ NO VOZAC found for $datumIso $grad $vremeNorm');
         return null;
       }
+
+      if (vozacIds.length > 1) {
+        print('❌ AMBIGUOUS VOZAC set for $datumIso $grad $vremeNorm: $vozacIds');
+        return null;
+      }
+
+      final vozacId = vozacIds.first;
       final vozac = rm.vozaciCache[vozacId];
       if (vozac == null) {
-        print('❌ VOZAC not found in cache for vozac_id $vozacId');
+        print('❌ VOZAC not found in cache for vozac $vozacId');
         return null;
       }
       final hex = vozac['boja']?.toString();

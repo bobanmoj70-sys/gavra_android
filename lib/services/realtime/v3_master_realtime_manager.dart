@@ -623,7 +623,7 @@ class V3MasterRealtimeManager {
     }).toList(growable: false);
   }
 
-  /// Osvježi v3GpsRasporedCache - gradi se lokalno iz v3_operativna_nedelja (WHERE vozac_id IS NOT NULL)
+  /// Osvježi v3GpsRasporedCache - gradi se lokalno iz v3_operativna_nedelja.
   Future<void> refreshV3GpsRaspored() async {
     try {
       _rebuildGpsCacheFromOperativna();

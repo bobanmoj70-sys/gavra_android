@@ -188,7 +188,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
     String? zajednickiVozacId;
     for (final row in terminRows) {
-      final vozacId = (row['vozac_id'] as String?)?.trim();
+      final vozacId = (row['pokupljen_vozac_id'] as String?)?.trim();
       if (vozacId == null || vozacId.isEmpty) {
         return null;
       }
@@ -217,7 +217,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           !V3StatusFilters.isCanceledOrRejected(statusFinal) &&
           V3ValidationUtils.normalizeVreme(rowVreme) == normV &&
           V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum) {
-        final vozacId = row['vozac_id'] as String?;
+        final vozacId = row['pokupljen_vozac_id'] as String?;
         if (vozacId != null && vozacId.isNotEmpty) {
           final vozac = V3VozacService.getVozacById(vozacId);
           if (vozac != null) return vozac;
@@ -343,7 +343,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       }
 
       final data = <String, dynamic>{
-        'vozac_id': vozac.id,
+        'pokupljen_vozac_id': vozac.id,
         'nav_bar_type': navBarTypeNotifier.value,
         'updated_by': V3AuditKorisnik.normalize('admin_individual'),
       };

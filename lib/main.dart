@@ -348,7 +348,7 @@ Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
 
 /// Rukovanje GPS tracking start notifikacijom
 Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
-  final vozacId = data['vozac_id']?.toString().trim();
+  final vozacId = data['vozac_auth_id']?.toString().trim();
   final polazakVreme = data['polazak_vreme']?.toString().trim();
   final putniciBroj = int.tryParse('${data['putnici_count'] ?? 0}') ?? 0;
 

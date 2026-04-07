@@ -42,7 +42,7 @@ class V3UplataArhiva {
       tipAkcije: (json['tip_akcije'] as String?) ?? (json['isplata_iz'] as String?) ?? 'uplata',
       zaMesec: (json['za_mesec'] as int?) ?? (json['mesec'] as int?) ?? 0,
       zaGodinu: (json['za_godinu'] as int?) ?? (json['godina'] as int?) ?? 0,
-      vozacId: (json['naplatio_vozac_id'] ?? json['vozac_id'])?.toString() ?? '',
+      vozacId: json['naplatio_vozac_id']?.toString() ?? '',
       vozacImePrezime: json['vozac_ime'] as String? ?? '',
       updatedBy: json['updated_by'] as String?,
       createdBy: json['created_by'] as String?,

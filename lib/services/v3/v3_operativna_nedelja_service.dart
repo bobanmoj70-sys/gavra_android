@@ -385,7 +385,7 @@ class V3OperativnaNedeljaService {
 
     for (final id in operativnaIds) {
       await _updateById(id, {
-        'vozac_id': vozacId,
+        'pokupljen_vozac_id': vozacId,
         'nav_bar_type': navBarType,
         if (actor != null) 'updated_by': actor,
       });
@@ -404,7 +404,7 @@ class V3OperativnaNedeljaService {
       grad: grad,
       dodeljenoVreme: dodeljenoVreme,
       payload: {
-        'vozac_id': null,
+        'pokupljen_vozac_id': null,
         'route_order': null,
         if (actor != null) 'updated_by': actor,
       },
@@ -423,7 +423,7 @@ class V3OperativnaNedeljaService {
   }) async {
     final actor = V3AuditKorisnik.normalize(updatedBy);
     await _updateById(operativnaId, {
-      'vozac_id': vozacId,
+      'pokupljen_vozac_id': vozacId,
       'nav_bar_type': navBarType,
       if (actor != null) 'updated_by': actor,
     });
@@ -443,7 +443,7 @@ class V3OperativnaNedeljaService {
       dodeljenoVreme: dodeljenoVreme,
       datumIso: datumIso,
       payload: {
-        'vozac_id': null,
+        'pokupljen_vozac_id': null,
         'route_order': null,
         if (actor != null) 'updated_by': actor,
       },

@@ -31,7 +31,7 @@ class V3DnevnaPredajaService {
 
       return V3DnevnaPredaja(
         id: (res['id'] as String?) ?? '',
-        vozacId: (res['naplatio_vozac_id'] as String?) ?? (res['vozac_id'] as String?),
+        vozacId: res['naplatio_vozac_id'] as String?,
         datum: V3DanHelper.dateOnly(datumPredaje),
         predaoIznos: predaoIznos,
         createdAt: createdAt,

@@ -288,7 +288,7 @@ class V3ForegroundGpsService {
       ),
       payload: jsonEncode({
         'action': 'gps_tracking',
-        'vozac_id': _currentVozacId,
+        'vozac_auth_id': _currentVozacId,
         'polazak_vreme': polazakVreme,
       }),
     );

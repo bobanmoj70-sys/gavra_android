@@ -95,8 +95,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       final status = row['naplata_status'] as String? ?? '';
       if (status != 'placeno') continue;
 
-      // Primarno vozac koji je naplatio, fallback na vozac_id za starije zapise.
-      final vozacId = (row['naplatio_vozac_id'] ?? row['vozac_id'])?.toString() ?? '';
+      final vozacId = row['naplatio_vozac_id']?.toString() ?? '';
       if (vozacId != _selectedVozacId) continue;
 
       final vremePlaceno = row['vreme_placen'] as String? ?? '';
@@ -107,7 +106,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       final payDay = DateTime(dt.year, dt.month, dt.day);
       if (payDay != target) continue;
 
-        final putnikId = row['created_by']?.toString() ?? '';
+      final putnikId = row['created_by']?.toString() ?? '';
       final putnikData = putniciCache[putnikId];
       final ime = (putnikData?['ime_prezime'] as String?) ??
           row['ime_prezime'] as String? ??

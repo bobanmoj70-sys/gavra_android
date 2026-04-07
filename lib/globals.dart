@@ -184,20 +184,6 @@ bool isNeradanDan({
   return getNeradanDanRazlog(datumIso: datumIso, grad: grad) != null;
 }
 
-List<String> _mergeCustomByDayTimes(String grad) {
-  final cityMap = customRasporedByDayNotifier.value[grad.toLowerCase()];
-  if (cityMap == null || cityMap.isEmpty) return <String>[];
-
-  final merged = <String>{};
-  for (final day in V3DanHelper.workdayNames) {
-    merged.addAll(cityMap[day] ?? const <String>[]);
-  }
-
-  final out = merged.toList();
-  out.sort();
-  return out;
-}
-
 /// Helper - vraća listu polazaka za grad i sezonu iz rasporedNotifier.
 /// Kada je sezona `custom` i prosleđen je [day], čita iz dnevnog custom rasporeda.
 List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
@@ -230,10 +216,7 @@ List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
       }
     }
 
-    final mergedByDay = _mergeCustomByDayTimes(normalizedGrad);
-    if (mergedByDay.isNotEmpty) {
-      return mergedByDay;
-    }
+    return <String>[];
   }
 
   final key = '${grad.toLowerCase()}_${sezona.toLowerCase()}';

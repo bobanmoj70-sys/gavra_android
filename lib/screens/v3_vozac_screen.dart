@@ -162,26 +162,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Map<String, String> _buildInheritedVozacByTermin() {
     final rm = V3MasterRealtimeManager.instance;
     final inherited = <String, String>{};
-    final passengerVozacIdsByTermin = <String, Set<String>>{};
+    final vozacIdsByTermin = <String, Set<String>>{};
 
     for (final row in rm.v3GpsRasporedCache.values) {
       if (!_isGpsRowEligible(row)) continue;
-      final vozacId = (row['vozac_id']?.toString() ?? '').trim();
+      final vozacId = ((row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString() ?? '').trim();
       if (vozacId.isEmpty) continue;
 
       final key = _terminKeyFromGpsRow(row);
-      final isMasterTerminRow = row['created_by'] == null;
-
-      if (isMasterTerminRow) {
-        inherited.putIfAbsent(key, () => vozacId);
-        continue;
-      }
-
-      passengerVozacIdsByTermin.putIfAbsent(key, () => <String>{}).add(vozacId);
+      vozacIdsByTermin.putIfAbsent(key, () => <String>{}).add(vozacId);
     }
 
-    for (final entry in passengerVozacIdsByTermin.entries) {
-      if (inherited.containsKey(entry.key)) continue;
+    for (final entry in vozacIdsByTermin.entries) {
       if (entry.value.length == 1) {
         inherited[entry.key] = entry.value.first;
       }
@@ -191,7 +183,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   String _effectiveVozacIdForRow(Map<String, dynamic> row, Map<String, String> inheritedVozacByTermin) {
-    final explicit = (row['vozac_id']?.toString() ?? '').trim();
+    final explicit = ((row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString() ?? '').trim();
     if (explicit.isNotEmpty) return explicit;
     final inherited = inheritedVozacByTermin[_terminKeyFromGpsRow(row)];
     if (inherited != null && inherited.isNotEmpty) return inherited;
@@ -348,7 +340,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     // Putnici individualno dodijeljeni OVOM vozaču (v3_gps_raspored) - override
     final individualniOvajVozac = rm.v3GpsRasporedCache.values.where((r) =>
-        (r['vozac_id']?.toString() ?? '').trim() == vozac.id &&
+        ((r['pokupljen_vozac_id'] ?? r['naplatio_vozac_id'])?.toString() ?? '').trim() == vozac.id &&
         rowDatum(r) == _selectedDatumIso &&
         rowGrad(r) == _selectedGrad &&
         _normV(r['vreme']?.toString()) == selectedVNorm &&

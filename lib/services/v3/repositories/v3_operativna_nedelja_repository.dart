@@ -75,7 +75,7 @@ class V3OperativnaNedeljaRepository {
     return supabase
         .from('v3_operativna_nedelja')
         .select('id, datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, created_by, pokupljen')
-        .eq('vozac_id', vozacId)
+        .eq('pokupljen_vozac_id', vozacId)
         .inFilter('status_final', _aktivniStatusi)
         .gte('datum', fromDate)
         .lte('datum', toDate);

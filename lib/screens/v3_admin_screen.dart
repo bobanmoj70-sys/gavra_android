@@ -1173,7 +1173,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       if (!uceniciIds.contains(putnikId)) return false;
 
       final createdBy = (row['created_by']?.toString() ?? '').trim();
-      return createdBy.startsWith('putnik:');
+      return createdBy == putnikId;
     }).length;
   }
 
@@ -1192,7 +1192,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       if (!radniciIds.contains(putnikId)) return false;
 
       final createdBy = (row['created_by']?.toString() ?? '').trim();
-      return createdBy.startsWith('putnik:');
+      return createdBy == putnikId;
     }).length;
   }
 
@@ -1208,7 +1208,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       if (tip != 'dnevni') return false;
 
       final createdBy = (row['created_by']?.toString() ?? '').trim();
-      return createdBy.startsWith('putnik:');
+      return createdBy == putnikId;
     }).length;
   }
 
@@ -1225,7 +1225,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       if (!posiljkaPutnici.contains(putnikId)) return false;
 
       final createdBy = (r['created_by']?.toString() ?? '').trim();
-      return createdBy.startsWith('putnik:');
+      return createdBy == putnikId;
     }).length;
   }
 

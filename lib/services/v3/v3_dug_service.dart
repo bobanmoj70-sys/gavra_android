@@ -29,10 +29,10 @@ class V3DugService {
       // Samo dnevni i posiljka imaju dugovanje po pokupljenju
       if (tip != 'dnevni' && tip != 'posiljka') continue;
       try {
-        final pickupVozacId = (row['pokupljen_vozac_id'] ?? row['vozac_id']) as String? ?? '';
+        final pickupVozacId = row['pokupljen_vozac_id'] as String? ?? '';
         final vozacData = pickupVozacId.isNotEmpty ? rm.vozaciCache[pickupVozacId] : null;
         final rowWithDriver = Map<String, dynamic>.from(row);
-        rowWithDriver['vozac_id'] = pickupVozacId;
+        rowWithDriver['pokupljen_vozac_id'] = pickupVozacId;
         rowWithDriver['vozac_ime'] = vozacData?['ime_prezime'] as String? ?? '';
         dugovi.add(V3Dug.fromOperacija(rowWithDriver, putnikData: putnikData));
       } catch (_) {}

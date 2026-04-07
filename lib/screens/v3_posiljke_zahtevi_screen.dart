@@ -30,10 +30,12 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
 
     final zahtevi = rm.zahteviCache.values
         .where((r) {
-          if (!posiljkaPutnici.contains(r['putnik_id'])) return false;
-          // Samo zahtevi koje je pošiljatelj sam poslao (created_by počinje sa 'putnik:')
-          final createdBy = r['created_by'] as String? ?? '';
-          return createdBy.startsWith('putnik:');
+          final putnikId = (r['putnik_id']?.toString() ?? '').trim();
+          if (putnikId.isEmpty) return false;
+          if (!posiljkaPutnici.contains(putnikId)) return false;
+          // Samo zahtevi koje je pošiljatelj sam poslao
+          final createdBy = (r['created_by']?.toString() ?? '').trim();
+          return createdBy == putnikId;
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()
