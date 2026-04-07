@@ -37,6 +37,7 @@ class V3VozacSmsLoginScreen extends StatefulWidget {
 }
 
 class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
+  final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   static const _secureStorage = FlutterSecureStorage();
 
@@ -57,13 +58,13 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
   @override
   void initState() {
     super.initState();
+    _phoneController.text = V3PhoneUtils.normalize(widget.vozac.telefon1 ?? '');
     _checkBiometric();
-    // Automatski pošalji SMS čim se ekran otvori
-    WidgetsBinding.instance.addPostFrameCallback((_) => _sendSms());
   }
 
   @override
   void dispose() {
+    _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
   }
@@ -119,7 +120,13 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
   // ─── Korak 1: Pošalji SMS ──────────────────────────────────────
 
   Future<void> _sendSms() async {
-    final phone = V3PhoneUtils.normalize(widget.vozac.telefon1 ?? '');
+    final inputPhone = _phoneController.text.trim();
+    if (inputPhone.isEmpty) {
+      V3AppSnackBar.warning(context, 'Unesite broj telefona.');
+      return;
+    }
+
+    final phone = V3ClosedAuthService.normalizePhone(inputPhone);
 
     if (phone.isEmpty || !V3PhoneUtils.isValid(phone)) {
       V3AppSnackBar.error(context, '❌ Vozač nema validan broj telefona.');
@@ -128,10 +135,19 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
 
     setState(() {
       _isLoading = true;
-      _statusMessage = '📨 Šaljem SMS kod na $phone...';
+      _statusMessage = '🔍 Proveravam broj u sistemu...';
     });
 
     try {
+      final exists = await V3ClosedAuthService.phoneExists(phone);
+      if (!mounted) return;
+
+      if (!exists) {
+        V3AppSnackBar.error(context, '❌ Trenutno nije moguće poslati kod. Pokušaj ponovo kasnije.');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
       final result = await V3FirebaseSmsService.sendSmsCode(
         phoneNumber: phone,
         onStatusUpdate: (msg) {
@@ -280,7 +296,6 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
       _otpController.clear();
       _statusMessage = '';
     });
-    _sendSms();
   }
 
   Future<void> _savePushToken(String vozacId) async {
@@ -336,7 +351,7 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
                   const SizedBox(height: 32),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
-                    child: _step == _VozacAuthStep.slanjeSms ? _buildSendingStep() : _buildOtpStep(),
+                    child: _step == _VozacAuthStep.slanjeSms ? _buildPhoneStep() : _buildOtpStep(),
                   ),
                   if (_biometricAvailable && _hasSavedCredentials) ...[
                     const SizedBox(height: 16),
@@ -364,23 +379,57 @@ class _V3VozacSmsLoginScreenState extends State<V3VozacSmsLoginScreen> {
 
   // ─── UI koraci ─────────────────────────────────────────────────
 
-  Widget _buildSendingStep() {
+  Widget _buildPhoneStep() {
     return Column(
-      key: const ValueKey('sending'),
+      key: const ValueKey('phone'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildInfoBox(
           icon: Icons.sms_outlined,
-          text: 'Šaljemo SMS verifikacioni kod na vaš broj.\nSačekajte trenutak...',
+          text: 'Unesite broj telefona. Poslaćemo vam SMS kod za potvrdu identiteta.',
+        ),
+        const SizedBox(height: 24),
+        TextField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          enabled: !_isLoading,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Broj telefona',
+            hintText: '06x xxx xxxx',
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.1),
+            prefixIcon: const Icon(Icons.phone, color: Colors.amber),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.amber, width: 2),
+            ),
+          ),
+          onSubmitted: (_) {
+            if (!_isLoading) _sendSms();
+          },
         ),
         if (_statusMessage.isNotEmpty) ...[
           const SizedBox(height: 16),
           _buildStatusMessage(_statusMessage),
         ],
-        if (_isLoading) ...[
-          const SizedBox(height: 20),
-          const Center(child: CircularProgressIndicator(color: Colors.amber)),
-        ],
+        const SizedBox(height: 24),
+        V3ButtonUtils.primaryButton(
+          text: 'Pošalji SMS kod',
+          icon: Icons.send,
+          isLoading: _isLoading,
+          onPressed: _sendSms,
+        ),
       ],
     );
   }
