@@ -31,7 +31,7 @@ class V3DnevnaPredajaService {
 
       return V3DnevnaPredaja(
         id: (res['id'] as String?) ?? '',
-        vozacId: res['vozac_id'] as String?,
+        vozacId: (res['naplatio_vozac_id'] as String?) ?? (res['vozac_id'] as String?),
         datum: V3DanHelper.dateOnly(datumPredaje),
         predaoIznos: predaoIznos,
         createdAt: createdAt,
@@ -65,7 +65,7 @@ class V3DnevnaPredajaService {
       'ponavljaj_mesecno': false,
       'mesec': predaja.datum.month,
       'godina': predaja.datum.year,
-      'vozac_id': predaja.vozacId,
+      'naplatio_vozac_id': predaja.vozacId,
       'aktivno': true,
       'tip': _tip,
       'updated_at': DateTime.now().toIso8601String(),

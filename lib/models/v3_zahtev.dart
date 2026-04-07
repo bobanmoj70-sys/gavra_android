@@ -43,15 +43,17 @@ class V3Zahtev {
   });
 
   factory V3Zahtev.fromJson(Map<String, dynamic> json) {
+    final putnikId = (json['putnik_id'] as String?) ?? (json['created_by'] as String?) ?? '';
+
     return V3Zahtev(
       id: json['id'] as String? ?? '',
-      putnikId: json['putnik_id'] as String? ?? '',
+      putnikId: putnikId,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String? ?? '',
       zeljenoVreme: json['zeljeno_vreme'] as String? ?? '',
       brojMesta: json['broj_mesta'] as int? ?? 1,
       status: json['status'] as String? ?? 'obrada',
-      napomena: json['napomena'] as String?,
+      napomena: (json['napomena'] as String?) ?? (json['alt_napomena'] as String?),
       dodeljenoVreme: json['dodeljeno_vreme'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
       adresaIdOverride: json['adresa_id_override'] as String?,
@@ -66,15 +68,16 @@ class V3Zahtev {
   }
 
   Map<String, dynamic> toJson() {
+    final effectiveCreatedBy =
+        (createdBy != null && createdBy!.isNotEmpty) ? createdBy : (putnikId.isNotEmpty ? putnikId : null);
+
     return {
       if (id.isNotEmpty) 'id': id,
-      'putnik_id': putnikId.isNotEmpty ? putnikId : null,
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       'zeljeno_vreme': zeljenoVreme.isEmpty ? null : zeljenoVreme,
       'broj_mesta': brojMesta,
       'status': status,
-      'napomena': napomena,
       'dodeljeno_vreme': dodeljenoVreme,
       'koristi_sekundarnu': koristiSekundarnu,
       'adresa_id_override': adresaIdOverride,
@@ -82,7 +85,7 @@ class V3Zahtev {
       'alt_vreme_posle': altVremePosle,
       'alt_napomena': altNapomena,
       'aktivno': aktivno,
-      if (createdBy != null) 'created_by': createdBy,
+      if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
     };
   }
 

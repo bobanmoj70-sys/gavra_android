@@ -70,7 +70,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_zahtevi')
             .select(
-                'id, putnik_id, datum, grad, zeljeno_vreme, broj_mesta, status, napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, aktivno, created_at, updated_at, created_by, scheduled_at')
+                'id, putnik_id:created_by, datum, grad, zeljeno_vreme, broj_mesta, status, napomena:alt_napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, aktivno, created_at, updated_at, created_by, scheduled_at')
             .gte('updated_at', iso);
         break;
       case 'v3_gorivo_promene':

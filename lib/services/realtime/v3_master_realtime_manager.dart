@@ -371,10 +371,13 @@ class V3MasterRealtimeManager {
     required V3RealtimeTableConfig config,
     required PostgresChangePayload payload,
   }) {
+    final normalizedNew = config.name == 'v3_zahtevi' ? _normalizeZahtevRow(payload.newRecord) : payload.newRecord;
+    final normalizedOld = config.name == 'v3_zahtevi' ? _normalizeZahtevRow(payload.oldRecord) : payload.oldRecord;
+
     final changed = _cacheStore.applyRealtimeMutation(
       table: config.name,
-      newRecord: payload.newRecord,
-      oldRecord: payload.oldRecord,
+      newRecord: normalizedNew,
+      oldRecord: normalizedOld,
       isDelete: payload.eventType == PostgresChangeEvent.delete,
       activeKey: config.activeKey,
       hasActiveKey: config.hasActiveKey,
@@ -527,10 +530,11 @@ class V3MasterRealtimeManager {
   }
 
   void v3UpsertToCache(String table, Map<String, dynamic> row) {
-    final id = row['id']?.toString();
+    final normalizedRow = table == 'v3_zahtevi' ? _normalizeZahtevRow(row) : row;
+    final id = normalizedRow['id']?.toString();
     if (id == null) return;
 
-    _cacheStore.upsert(table, row);
+    _cacheStore.upsert(table, normalizedRow);
 
     switch (table) {
       case 'v3_adrese':
@@ -563,6 +567,24 @@ class V3MasterRealtimeManager {
     }
 
     _scheduleEmit(tables: {table});
+  }
+
+  Map<String, dynamic> _normalizeZahtevRow(Map<String, dynamic> row) {
+    if (row.isEmpty) return row;
+
+    final normalized = Map<String, dynamic>.from(row);
+    final putnikId = normalized['putnik_id']?.toString().trim();
+    final createdBy = normalized['created_by']?.toString().trim();
+
+    if ((putnikId == null || putnikId.isEmpty) && createdBy != null && createdBy.isNotEmpty) {
+      normalized['putnik_id'] = createdBy;
+    }
+
+    if ((createdBy == null || createdBy.isEmpty) && putnikId != null && putnikId.isNotEmpty) {
+      normalized['created_by'] = putnikId;
+    }
+
+    return normalized;
   }
 
   /// Osvježi v3GpsRasporedCache - gradi se lokalno iz v3_operativna_nedelja (WHERE vozac_id IS NOT NULL)

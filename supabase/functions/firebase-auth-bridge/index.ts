@@ -92,22 +92,32 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: authRow, error: authError } = await admin
+    const { data: authRows, error: authError } = await admin
       .from('v3_auth')
-      .select('auth_id, telefon, firebase_uid')
-      .eq('telefon', phone)
-      .maybeSingle();
+      .select('auth_id, telefon, telefon_2, firebase_uid, aktivno')
+      .or(`telefon.eq.${phone},telefon_2.eq.${phone}`)
+      .eq('aktivno', true)
+      .limit(2);
 
     if (authError) {
       throw new Error(`v3_auth lookup failed: ${authError.message}`);
     }
 
-    if (!authRow) {
+    if (!authRows || authRows.length === 0) {
       return new Response(JSON.stringify({ ok: false, error: 'Access denied' }), {
         status: 403,
         headers: jsonHeaders,
       });
     }
+
+    if (authRows.length > 1) {
+      return new Response(JSON.stringify({ ok: false, error: 'Access denied' }), {
+        status: 409,
+        headers: jsonHeaders,
+      });
+    }
+
+    const authRow = authRows[0];
 
     if (authRow.firebase_uid && authRow.firebase_uid !== firebase.uid) {
       return new Response(
@@ -136,7 +146,8 @@ Deno.serve(async (req) => {
       const { error: linkError } = await admin
         .from('v3_auth')
         .update({ auth_id: authId })
-        .eq('telefon', phone);
+        .or(`telefon.eq.${phone},telefon_2.eq.${phone}`)
+        .eq('aktivno', true);
 
       if (linkError) {
         throw new Error(`Vezivanje auth_id nije uspelo: ${linkError.message}`);
@@ -160,7 +171,8 @@ Deno.serve(async (req) => {
         const { error: relinkError } = await admin
           .from('v3_auth')
           .update({ auth_id: authId })
-          .eq('telefon', phone);
+          .or(`telefon.eq.${phone},telefon_2.eq.${phone}`)
+          .eq('aktivno', true);
 
         if (relinkError) {
           throw new Error(`Re-vezivanje auth_id nije uspelo: ${relinkError.message}`);
@@ -174,7 +186,7 @@ Deno.serve(async (req) => {
       const { error: updateError } = await admin
         .from('v3_auth')
         .update({ firebase_uid: firebase.uid })
-        .eq('auth_id', authRow.auth_id);
+        .eq('auth_id', authId);
 
       if (updateError) {
         throw new Error(`firebase_uid update nije uspeo: ${updateError.message}`);
