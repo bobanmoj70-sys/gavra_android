@@ -28,8 +28,8 @@ jobs:
     name: 🚀 Build & Submit to App Store
     runs-on: macos-latest
     env:
-      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APPSTORE_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
     
     steps:
       - name: Checkout
@@ -100,16 +100,31 @@ jobs:
       - name: Prepare signing keys
         env:
           CERT_KEY_CONTENT: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
-          ASC_KEY_CONTENT: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          ASC_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          ASC_KEY_B64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
         run: |
+          if [ -z "$APP_STORE_CONNECT_KEY_IDENTIFIER" ]; then
+            echo "❌ Missing APP_STORE_CONNECT_KEY_IDENTIFIER"
+            exit 1
+          fi
+
           mkdir -p ~/.private_keys
           printf '%s' "$CERT_KEY_CONTENT" > /tmp/certificate_private_key.pem
-          printf '%s' "$ASC_KEY_CONTENT" > ~/.private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+
+          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+          if [ -n "$ASC_KEY_CONTENT" ]; then
+            printf '%s' "$ASC_KEY_CONTENT" > "$ASC_KEY_PATH"
+          elif [ -n "$ASC_KEY_B64" ]; then
+            printf '%s' "$ASC_KEY_B64" | base64 --decode > "$ASC_KEY_PATH"
+          else
+            echo "❌ Missing APP_STORE_CONNECT_PRIVATE_KEY or APP_STORE_CONNECT_PRIVATE_KEY_BASE64"
+            exit 1
+          fi
+
           echo "Cert key first line: $(head -1 /tmp/certificate_private_key.pem)"
           echo "Cert key size: $(wc -c < /tmp/certificate_private_key.pem)"
           # Export env vars via GITHUB_ENV so all subsequent steps use file paths
           echo "CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem" >> $GITHUB_ENV
-          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
           echo "APP_STORE_CONNECT_PRIVATE_KEY=@file:${ASC_KEY_PATH}" >> $GITHUB_ENV
 
       - name: Fetch signing files
@@ -150,23 +165,6 @@ jobs:
           ls -la build/ios/ipa || true
           echo "Searching for any .ipa files"
           find build -name '*.ipa' -print || true
-
-      - name: Upload to App Store Connect
-        run: |
-          IPA=$(find build -name '*.ipa' | head -n1 || true)
-          if [ -z "$IPA" ]; then
-            echo "❌ No .ipa found in build output. Build may have failed or path differs."
-            exit 1
-          fi
-          echo "Uploading IPA: $IPA"
-          app-store-connect publish --path "$IPA"
-          echo "✅ Build uploaded to App Store Connect!"
-
-      - name: Wait for build processing
-        run: |
-          echo "⏳ Waiting 5 minutes for Apple to process build..."
-          sleep 300
-          echo "✅ Build should be processed now"
 
       - name: Summary
         if: always()
