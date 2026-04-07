@@ -6,8 +6,8 @@ enum V3RealtimeHook {
 class V3RealtimeTableConfig {
   const V3RealtimeTableConfig({
     required this.name,
-    this.activeKey = 'aktivno',
-    this.hasActiveKey = true,
+    this.activeKey = 'is_active',
+    this.hasActiveKey = false,
     this.keepInactive = false,
     this.dependsOn = const <String>[],
     this.hooks = const <V3RealtimeHook>[],
@@ -24,10 +24,10 @@ class V3RealtimeTableConfig {
 class V3RealtimeTableRegistry {
   static const List<V3RealtimeTableConfig> defaults = <V3RealtimeTableConfig>[
     V3RealtimeTableConfig(name: 'v3_adrese', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_vozaci'),
-    V3RealtimeTableConfig(name: 'v3_putnici'),
-    V3RealtimeTableConfig(name: 'v3_vozila'),
-    V3RealtimeTableConfig(name: 'v3_zahtevi'),
+    V3RealtimeTableConfig(name: 'v3_vozaci', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_putnici', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_vozila', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_zahtevi', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_gorivo', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_gorivo_promene', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_vozac_lokacije', hasActiveKey: false),

@@ -88,14 +88,6 @@ class V3PutnikService {
     await _repo.deleteById(id);
   }
 
-  static Future<void> setAktivno({
-    required String id,
-    required bool aktivno,
-    String? updatedBy,
-  }) async {
-    throw UnsupportedError('v3_auth.aktivno je uklonjen; setAktivno više nije podržan.');
-  }
-
   static Future<Map<String, String>> updatePushTokensOnLogin({
     required String putnikId,
     required String token,
@@ -167,10 +159,10 @@ class V3PutnikService {
 
     final filtriraniZahtevi = rm.zahteviCache.values.where((z) {
       final isDanas = z['datum'] == nowIso;
-      final isAktivno = !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
+      final statusAllowed = !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
       final isGrad = z['grad'] == grad;
       final isVreme = z['zeljeno_vreme'] == vreme;
-      return isDanas && isAktivno && isGrad && isVreme;
+      return isDanas && statusAllowed && isGrad && isVreme;
     }).toList();
 
     for (final z in filtriraniZahtevi) {

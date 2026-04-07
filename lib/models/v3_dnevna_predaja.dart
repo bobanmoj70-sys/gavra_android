@@ -13,7 +13,6 @@ class V3DnevnaPredaja {
   final String? napomena;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  final bool aktivno;
 
   V3DnevnaPredaja({
     required this.id,
@@ -26,7 +25,6 @@ class V3DnevnaPredaja {
     this.napomena,
     this.createdAt,
     this.updatedAt,
-    this.aktivno = true,
   });
 
   factory V3DnevnaPredaja.fromJson(Map<String, dynamic> json) {
@@ -41,7 +39,6 @@ class V3DnevnaPredaja {
       napomena: json['napomena'] as String?,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
-      aktivno: json['aktivno'] as bool? ?? true,
     );
   }
 
@@ -54,7 +51,6 @@ class V3DnevnaPredaja {
         'ukupno_naplaceno': ukupnoNaplaceno,
         'razlika': razlika,
         'napomena': napomena,
-        'aktivno': aktivno,
       };
 
   V3DnevnaPredaja copyWith({
@@ -68,7 +64,6 @@ class V3DnevnaPredaja {
     String? napomena,
     DateTime? createdAt,
     DateTime? updatedAt,
-    bool? aktivno,
   }) {
     return V3DnevnaPredaja(
       id: id ?? this.id,
@@ -81,7 +76,6 @@ class V3DnevnaPredaja {
       napomena: napomena ?? this.napomena,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      aktivno: aktivno ?? this.aktivno,
     );
   }
 }

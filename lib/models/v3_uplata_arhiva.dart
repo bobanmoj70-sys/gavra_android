@@ -12,7 +12,6 @@ class V3UplataArhiva {
   final int zaGodinu;
   final String vozacId;
   final String vozacImePrezime;
-  final bool aktivno;
   final String? updatedBy;
   final String? createdBy;
 
@@ -28,7 +27,6 @@ class V3UplataArhiva {
     this.zaGodinu = 0,
     required this.vozacId,
     required this.vozacImePrezime,
-    this.aktivno = true,
     this.updatedBy,
     this.createdBy,
   });
@@ -46,7 +44,6 @@ class V3UplataArhiva {
       zaGodinu: (json['za_godinu'] as int?) ?? (json['godina'] as int?) ?? 0,
       vozacId: (json['naplatio_vozac_id'] ?? json['vozac_id'])?.toString() ?? '',
       vozacImePrezime: json['vozac_ime'] as String? ?? '',
-      aktivno: json['aktivno'] as bool? ?? true,
       updatedBy: json['updated_by'] as String?,
       createdBy: json['created_by'] as String?,
     );
@@ -63,7 +60,6 @@ class V3UplataArhiva {
         'godina': zaGodinu,
         'naplatio_vozac_id': vozacId,
         'vozac_ime': vozacImePrezime,
-        'aktivno': aktivno,
         'updated_by': updatedBy,
       };
 }

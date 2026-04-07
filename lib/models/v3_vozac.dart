@@ -7,7 +7,6 @@ class V3Vozac {
   final String? telefon2;
   final String? boja;
   final String? pushToken;
-  final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -18,7 +17,6 @@ class V3Vozac {
     this.telefon2,
     this.boja,
     this.pushToken,
-    this.aktivno = true,
     this.createdAt,
     this.updatedAt,
   });
@@ -31,7 +29,6 @@ class V3Vozac {
       telefon2: json['telefon_2'] as String?,
       boja: json['boja'] as String?,
       pushToken: json['push_token'] as String?,
-      aktivno: json['aktivno'] as bool? ?? true,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
@@ -45,7 +42,6 @@ class V3Vozac {
       'telefon_2': telefon2,
       'boja': boja,
       'push_token': pushToken,
-      'aktivno': aktivno,
     };
   }
 }

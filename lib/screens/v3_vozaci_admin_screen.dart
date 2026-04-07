@@ -188,7 +188,6 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                             telefon1: tel1Ctrl.text.trim().isEmpty ? null : tel1Ctrl.text.trim(),
                             telefon2: tel2Ctrl.text.trim().isEmpty ? null : tel2Ctrl.text.trim(),
                             boja: _colorToHex(selectedColor),
-                            aktivno: true,
                           );
                           try {
                             await V3VozacService.addUpdateVozac(novi);

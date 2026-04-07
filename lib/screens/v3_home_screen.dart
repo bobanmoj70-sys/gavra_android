@@ -234,7 +234,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       ...V3PutnikService.getPutniciByTip('dnevni'),
       ...V3PutnikService.getPutniciByTip('ucenik'),
       ...V3PutnikService.getPutniciByTip('posiljka'),
-    ].where((p) => p.aktivno).toList()
+    ].toList()
       ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
 
     showDialog<void>(

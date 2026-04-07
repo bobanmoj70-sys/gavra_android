@@ -91,14 +91,6 @@ class V3VozacService {
     await _repo.deleteById(id);
   }
 
-  static Future<void> setAktivno({
-    required String id,
-    required bool aktivno,
-    String? updatedBy,
-  }) async {
-    throw UnsupportedError('v3_auth.aktivno je uklonjen; setAktivno više nije podržan.');
-  }
-
   static Future<void> updatePushToken({
     required String vozacId,
     String? pushToken,
@@ -160,15 +152,15 @@ class V3VozacService {
           final gradMatch = r['grad']?.toString().toUpperCase() == grad.toUpperCase();
           final vremeMatch = normV(r['vreme']?.toString()) == vremeNorm;
           final status = r['status_final']?.toString();
-          final aktivnoMatch = !V3StatusFilters.isCanceledOrRejected(status);
+          final statusMatch = !V3StatusFilters.isCanceledOrRejected(status);
           final masterTermin = r['created_by'] == null; // ← SAMO MASTER ZAPISI
 
           if (datumMatch && gradMatch && vremeMatch) {
             print(
-                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} aktivno=${r['aktivno']} vozac_id=${r['vozac_id']} master=$masterTermin');
+                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} status=${r['status_final']} vozac_id=${r['vozac_id']} master=$masterTermin');
           }
 
-          return datumMatch && gradMatch && vremeMatch && aktivnoMatch && masterTermin;
+          return datumMatch && gradMatch && vremeMatch && statusMatch && masterTermin;
         },
       );
 
@@ -178,7 +170,7 @@ class V3VozacService {
         final cacheItems = rm.v3GpsRasporedCache.values.take(3).toList();
         for (final item in cacheItems) {
           print(
-              '   Cache sample: datum=${item['datum']} grad=${item['grad']} vreme=${item['vreme']} aktivno=${item['aktivno']}');
+              '   Cache sample: datum=${item['datum']} grad=${item['grad']} vreme=${item['vreme']} status=${item['status_final']}');
         }
         return null;
       }
