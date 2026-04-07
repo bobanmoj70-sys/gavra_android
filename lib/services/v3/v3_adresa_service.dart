@@ -71,7 +71,7 @@ class V3AdresaService {
 
   static Future<void> deleteAdresa(String id) async {
     try {
-      await _repo.updateById(id, {'aktivno': false});
+      await _repo.deleteById(id);
     } catch (e) {
       debugPrint('[V3AdresaService] Delete error: $e');
       rethrow;

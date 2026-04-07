@@ -12,7 +12,6 @@ class V3KapacitetSlotsRepository {
         .eq('grad', grad)
         .eq('datum', datum)
         .eq('vreme', vreme)
-        .eq('aktivno', true)
         .maybeSingle();
   }
 
@@ -32,7 +31,6 @@ class V3KapacitetSlotsRepository {
             'vreme': vreme,
             'datum': datumIso,
             'max_mesta': maxMesta,
-            'aktivno': true,
             'updated_at': DateTime.now().toIso8601String(),
           },
           onConflict: 'grad,vreme,datum',

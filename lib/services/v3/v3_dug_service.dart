@@ -22,7 +22,7 @@ class V3DugService {
       if (naplataSt != 'nije_placeno') continue;
       final isPokupljen = row['pokupljen'] == true;
       if (!isPokupljen) continue;
-      final putnikId = row['putnik_id'] as String? ?? '';
+      final putnikId = row['created_by'] as String? ?? '';
       final putnikData = rm.putniciCache[putnikId];
       if (putnikData == null) continue;
       final tip = putnikData['tip_putnika'] as String? ?? 'dnevni';

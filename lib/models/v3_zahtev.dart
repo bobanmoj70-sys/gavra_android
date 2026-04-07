@@ -16,7 +16,6 @@ class V3Zahtev {
   final String? altVremePre;
   final String? altVremePosle;
   final String? altNapomena;
-  final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? createdBy;
@@ -36,7 +35,6 @@ class V3Zahtev {
     this.altVremePre,
     this.altVremePosle,
     this.altNapomena,
-    this.aktivno = true,
     this.createdAt,
     this.updatedAt,
     this.createdBy,
@@ -60,7 +58,6 @@ class V3Zahtev {
       altVremePre: json['alt_vreme_pre'] as String?,
       altVremePosle: json['alt_vreme_posle'] as String?,
       altNapomena: json['alt_napomena'] as String?,
-      aktivno: json['aktivno'] as bool? ?? true,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       createdBy: json['created_by'] as String?,
@@ -84,7 +81,6 @@ class V3Zahtev {
       'alt_vreme_pre': altVremePre,
       'alt_vreme_posle': altVremePosle,
       'alt_napomena': altNapomena,
-      'aktivno': aktivno,
       if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
     };
   }
@@ -104,7 +100,6 @@ class V3Zahtev {
     String? altVremePre,
     String? altVremePosle,
     String? altNapomena,
-    bool? aktivno,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -123,7 +118,6 @@ class V3Zahtev {
       altVremePre: altVremePre ?? this.altVremePre,
       altVremePosle: altVremePosle ?? this.altVremePosle,
       altNapomena: altNapomena ?? this.altNapomena,
-      aktivno: aktivno ?? this.aktivno,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -12,7 +12,6 @@ class V3Trosak {
   final int mesec;
   final int godina;
   final String? vozacId;
-  final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -27,7 +26,6 @@ class V3Trosak {
     required this.mesec,
     required this.godina,
     this.vozacId,
-    this.aktivno = true,
     this.createdAt,
     this.updatedAt,
   });
@@ -45,7 +43,6 @@ class V3Trosak {
       mesec: json['mesec'] as int? ?? now.month,
       godina: json['godina'] as int? ?? now.year,
       vozacId: (json['naplatio_vozac_id'] ?? json['vozac_id'])?.toString(),
-      aktivno: json['aktivno'] as bool? ?? true,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
@@ -62,7 +59,6 @@ class V3Trosak {
         'mesec': mesec,
         'godina': godina,
         'naplatio_vozac_id': vozacId,
-        'aktivno': aktivno,
       };
 }
 

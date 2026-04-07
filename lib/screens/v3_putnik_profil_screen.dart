@@ -155,10 +155,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
       for (final grad in const ['BC', 'VS']) {
         final opRows = rm.operativnaNedeljaCache.values.where((e) {
-          return (e['putnik_id']?.toString() ?? '') == putnikId &&
+          final status = V3StatusFilters.normalizeStatus(e['status_final']?.toString() ?? 'obrada');
+          return (e['created_by']?.toString() ?? '') == putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               (e['grad']?.toString().toUpperCase() ?? '') == grad &&
-              e['aktivno'] == true;
+              !V3StatusFilters.isCanceledOrRejected(status);
         }).toList();
 
         if (opRows.isEmpty) continue;
@@ -575,8 +576,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     if (putnikId == null) return const SizedBox.shrink();
     final rm = V3MasterRealtimeManager.instance;
     final operativniTermini = rm.v3GpsRasporedCache.values
-        .where((r) => (r['putnik_id']?.toString() ?? '') == putnikId)
-        .where((r) => r['aktivno'] != false)
+        .where((r) => (r['created_by']?.toString() ?? '') == putnikId)
+        .where((r) => !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString()))
         .where((r) => (r['vozac_id'] as String?) != null)
         .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
         .where((r) => V3StatusFilters.isApproved(r['status_final']?.toString()))
@@ -672,7 +673,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         });
 
       for (final r in prethodnici) {
-        final pPutnikId = r['putnik_id']?.toString();
+        final pPutnikId = r['created_by']?.toString();
         final pOverride = r['adresa_id_override'] as String?;
         final pGrad = (r['grad'] as String? ?? '').toUpperCase();
         final pKoristiSek = r['koristi_sekundarnu'] as bool? ?? false;

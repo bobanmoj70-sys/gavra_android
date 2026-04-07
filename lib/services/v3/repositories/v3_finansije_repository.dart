@@ -5,6 +5,10 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload);
   }
 
+  Future<void> deleteById(String id) {
+    return supabase.from('v3_finansije').delete().eq('id', id);
+  }
+
   Future<void> updateById(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_finansije').update(payload).eq('id', id);
   }

@@ -96,7 +96,6 @@ _V3IzvestajData _buildIzvestaj() {
   int voznjiDan = 0, voznjiNed = 0, voznjiMes = 0, voznjiGod = 0;
 
   for (final row in finansijeCache) {
-    if (row['aktivno'] == false) continue;
     if (row['tip'] != 'prihod') continue;
 
     final createdStr = row['created_at'] as String?;
@@ -133,7 +132,6 @@ _V3IzvestajData _buildIzvestaj() {
   final troskoviGod = V3FinansijeService.getTroskoviMesec(mesec: null, godina: now.year);
 
   for (final row in finansijeCache) {
-    if (row['aktivno'] == false) continue;
     if (row['tip'] != 'rashod') continue;
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;

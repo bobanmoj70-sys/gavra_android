@@ -36,7 +36,6 @@ class V3DnevnaPredajaService {
         predaoIznos: predaoIznos,
         createdAt: createdAt,
         updatedAt: V3DateUtils.parseTs(res['updated_at'] as String?),
-        aktivno: res['aktivno'] as bool? ?? true,
       );
     } catch (e) {
       return null;
@@ -66,7 +65,6 @@ class V3DnevnaPredajaService {
       'mesec': predaja.datum.month,
       'godina': predaja.datum.year,
       'naplatio_vozac_id': predaja.vozacId,
-      'aktivno': true,
       'tip': _tip,
       'updated_at': DateTime.now().toIso8601String(),
     };

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../globals.dart';
 import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_date_utils.dart';
+import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_string_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -14,7 +15,6 @@ class V3OperativnaNedeljaEntry {
   final String? grad;
   final String? vreme;
   final String? statusFinal;
-  final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final int brojMesta;
@@ -43,7 +43,6 @@ class V3OperativnaNedeljaEntry {
     this.grad,
     this.vreme,
     this.statusFinal,
-    this.aktivno = true,
     this.createdAt,
     this.updatedAt,
     this.brojMesta = 1,
@@ -67,16 +66,15 @@ class V3OperativnaNedeljaEntry {
   });
 
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
-    final efektivnoVreme = (json['dodeljeno_vreme'] as String?) ?? (json['zeljeno_vreme'] as String?);
+    final effectivePutnikId = (json['created_by'] as String?) ?? '';
 
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
-      putnikId: json['putnik_id'] as String? ?? '',
+      putnikId: effectivePutnikId,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String?,
-      vreme: efektivnoVreme,
+      vreme: json['dodeljeno_vreme'] as String?,
       statusFinal: json['status_final'] as String?,
-      aktivno: json['aktivno'] as bool? ?? true,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
@@ -101,13 +99,13 @@ class V3OperativnaNedeljaEntry {
   }
 
   Map<String, dynamic> toJson() {
+    final effectiveCreatedBy = createdBy ?? (putnikId.isNotEmpty ? putnikId : null);
     return {
       'id': id,
-      'putnik_id': putnikId,
+      if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       'status_final': statusFinal,
-      'aktivno': aktivno,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       if (zeljenoVreme != null) 'zeljeno_vreme': zeljenoVreme,
       if (dodeljivoVreme != null) 'dodeljeno_vreme': dodeljivoVreme,
@@ -124,7 +122,6 @@ class V3OperativnaNedeljaEntry {
       if (altVremePosle != null) 'alt_vreme_posle': altVremePosle,
       'koristi_sekundarnu': koristiSekundarnu,
       if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
-      if (createdBy != null) 'created_by': createdBy,
     };
   }
 }
@@ -132,6 +129,10 @@ class V3OperativnaNedeljaEntry {
 class V3OperativnaNedeljaService {
   V3OperativnaNedeljaService._();
   static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
+
+  static bool _isOperativnaAktivnaPoStatusu(String? status) {
+    return !V3StatusFilters.isCanceledOrRejected(status);
+  }
 
   static Future<void> _updateById(
     String id,
@@ -153,11 +154,10 @@ class V3OperativnaNedeljaService {
 
     return cache
         .where((r) {
-          final efektivnoVreme = (r['dodeljeno_vreme'] as String?) ?? (r['zeljeno_vreme'] as String?);
           return r['grad'] == grad &&
-              efektivnoVreme == vreme &&
+              r['dodeljeno_vreme'] == vreme &&
               r['datum'].toString() == datumStr &&
-              r['aktivno'] == true;
+              _isOperativnaAktivnaPoStatusu(r['status_final']?.toString());
         })
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
         .toList()
@@ -271,8 +271,7 @@ class V3OperativnaNedeljaService {
     for (final r in cache) {
       if (r['grad'] == grad &&
           V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
-          r['datum'].toString().startsWith(datumStr) &&
-          r['aktivno'] == true) {
+          r['datum'].toString().startsWith(datumStr)) {
         return (r['max_mesta'] as num?)?.toInt();
       }
     }
@@ -280,14 +279,12 @@ class V3OperativnaNedeljaService {
   }
 
   /// Čita broj zauzetih mesta — suma broj_mesta zapisa sa statusom koji zauzima mjesto.
-  /// Filtrira: aktivno=true i status_final IN (obrada, odobreno, alternativa).
+  /// Filtrira: status_final IN (obrada, odobreno, alternativa).
   /// Napomena: pokupljeni putnici imaju status_final='odobreno' + pokupljen=true, pa su već u skupu.
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
     const aktivniStatusi = {'obrada', 'odobreno', 'alternativa'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
-    return zapisi
-        .where((e) => e.aktivno && aktivniStatusi.contains(e.statusFinal))
-        .fold(0, (sum, e) => sum + e.brojMesta);
+    return zapisi.where((e) => aktivniStatusi.contains(e.statusFinal)).fold(0, (sum, e) => sum + e.brojMesta);
   }
 
   /// Čita broj slobodnih mesta za dati grad/vreme/datum.
@@ -319,7 +316,7 @@ class V3OperativnaNedeljaService {
 
   /// Direktan INSERT u v3_operativna_nedelja — za vozača koji dodaje putnika.
   /// Upisuje: zeljeno_vreme, dodeljeno_vreme, status_final='odobreno', created_by UUID (ako je dostupan).
-  /// Ako već postoji aktivan zapis za isti putnik+datum+grad → UPDATE vreme+status.
+  /// Ako već postoji zapis za isti putnik+datum+grad → UPDATE vreme+status.
   static Future<void> createOrUpdateByVozac({
     required String putnikId,
     required String datum, // yyyy-MM-dd
@@ -334,11 +331,15 @@ class V3OperativnaNedeljaService {
     try {
       final actor = V3AuditKorisnik.normalize(createdBy);
 
-      // Provjeri postoji li već aktivan zapis
+      // Provjeri postoji li već zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
         final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
-        return r['putnik_id'] == putnikId && rDatum == datum && r['grad'] == grad && r['aktivno'] == true;
+        final rowPutnikId = r['created_by']?.toString();
+        return rowPutnikId == putnikId &&
+            rDatum == datum &&
+            r['grad'] == grad &&
+            _isOperativnaAktivnaPoStatusu(r['status_final']?.toString());
       }).toList();
 
       if (postojeci.isNotEmpty) {
@@ -354,16 +355,15 @@ class V3OperativnaNedeljaService {
       } else {
         // INSERT direktno u operativna_nedelja
         await _repo.insert({
-          'putnik_id': putnikId,
+          'created_by': putnikId,
           'datum': datum,
           'grad': grad,
           'zeljeno_vreme': zeljenoVreme,
           'dodeljeno_vreme': dodeljivoVreme,
           'broj_mesta': brojMesta,
           'status_final': 'odobreno',
-          'aktivno': true,
           'pokupljen': false,
-          if (actor != null) 'created_by': actor,
+          if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
         });

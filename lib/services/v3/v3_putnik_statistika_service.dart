@@ -114,8 +114,8 @@ class V3PutnikStatistikaService {
 
     final rows = <Map<String, dynamic>>[];
     for (final row in rm.operativnaNedeljaCache.values) {
-      if (row['putnik_id']?.toString() != putnikId) continue;
-      if (row['aktivno'] == false) continue;
+      final rowPutnikId = row['created_by']?.toString();
+      if (rowPutnikId != putnikId) continue;
       final datum = _extractDatum(row);
       if (datum == null) continue;
       if (datum.year != godina || datum.month != mesec) continue;
@@ -286,8 +286,8 @@ class V3PutnikStatistikaService {
     final rows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
 
     for (final row in rows) {
-      if (row['aktivno'] == false) continue;
-      if (row['putnik_id']?.toString() != putnikId) continue;
+      final rowPutnikId = row['created_by']?.toString();
+      if (rowPutnikId != putnikId) continue;
       final datum = _extractDatum(row);
       if (datum == null) continue;
       meseci.add((datum.year, datum.month));
@@ -305,7 +305,6 @@ class V3PutnikStatistikaService {
     final arhiva = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
 
     return arhiva.where((row) {
-      if (row['aktivno'] == false) return false;
       if (row['tip'] != 'prihod') return false;
       if (row['putnik_id']?.toString() != putnikId) return false;
       if ((row['godina'] as int?) != godina) return false;

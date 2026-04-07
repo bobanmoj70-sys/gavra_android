@@ -5,6 +5,7 @@ import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
 import '../../models/v3_zahtev.dart';
 import '../../utils/v3_audit_korisnik.dart';
+import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
 
@@ -84,7 +85,7 @@ class V3PutnikService {
   }
 
   static Future<void> deactivatePutnik(String id) async {
-    await setAktivno(id: id, aktivno: false);
+    await _repo.deleteById(id);
   }
 
   static Future<void> setAktivno({
@@ -92,16 +93,7 @@ class V3PutnikService {
     required bool aktivno,
     String? updatedBy,
   }) async {
-    try {
-      final actorUuid = V3AuditKorisnik.normalize(updatedBy, fallback: currentVozac?.id);
-      await _repo.updateById(id, {
-        'aktivno': aktivno,
-        if (actorUuid != null) 'updated_by': actorUuid,
-      });
-    } catch (e) {
-      debugPrint('[V3PutnikService] setAktivno error: $e');
-      rethrow;
-    }
+    throw UnsupportedError('v3_auth.aktivno je uklonjen; setAktivno više nije podržan.');
   }
 
   static Future<Map<String, String>> updatePushTokensOnLogin({
@@ -139,13 +131,15 @@ class V3PutnikService {
     final rez = <Map<String, dynamic>>[];
 
     // 1. Pronađi sve zahteve za danas
-    final danasnjiZahtevi = rm.zahteviCache.values.where((z) => z['datum'] == nowIso && z['aktivno'] == true).toList();
+    final danasnjiZahtevi = rm.zahteviCache.values
+        .where((z) => z['datum'] == nowIso && !V3StatusFilters.isCanceledOrRejected(z['status']?.toString()))
+        .toList();
 
     // 2. Za svaki zahtev nađi putnika
     for (final z in danasnjiZahtevi) {
       final pid = z['putnik_id'];
       final pData = rm.putniciCache[pid];
-      if (pData != null && pData['aktivno'] == true) {
+      if (pData != null) {
         rez.add({
           'putnik': V3Putnik.fromJson(pData),
           'zahtev': V3Zahtev.fromJson(z),
@@ -173,7 +167,7 @@ class V3PutnikService {
 
     final filtriraniZahtevi = rm.zahteviCache.values.where((z) {
       final isDanas = z['datum'] == nowIso;
-      final isAktivno = z['aktivno'] == true;
+      final isAktivno = !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
       final isGrad = z['grad'] == grad;
       final isVreme = z['zeljeno_vreme'] == vreme;
       return isDanas && isAktivno && isGrad && isVreme;
@@ -182,7 +176,7 @@ class V3PutnikService {
     for (final z in filtriraniZahtevi) {
       final pid = z['putnik_id'];
       final pData = rm.putniciCache[pid];
-      if (pData != null && pData['aktivno'] == true) {
+      if (pData != null) {
         rez.add({
           'putnik': V3Putnik.fromJson(pData),
           'zahtev': V3Zahtev.fromJson(z),
@@ -209,7 +203,7 @@ class V3PutnikService {
         final rm = V3MasterRealtimeManager.instance;
         final matchingZahtevi = rm.zahteviCache.values.where((z) {
           final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
-          return rDatum == datumIso && z['aktivno'] == true;
+          return rDatum == datumIso && !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
         });
 
         final Set<String> uniquePutnikIds = matchingZahtevi.map((z) => z['putnik_id'] as String).toSet();
@@ -231,8 +225,7 @@ class V3PutnikService {
 
   static Future<List<V3Putnik>> getAllAktivniPutnici() async {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    return cache.where((p) => p['aktivno'] == true).map((p) => V3Putnik.fromJson(p)).toList()
-      ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+    return cache.map((p) => V3Putnik.fromJson(p)).toList()..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 
   /// Filtrira putnike po tačnom datumu, gradu i vremenu.
@@ -250,7 +243,6 @@ class V3PutnikService {
       return rDatum == datumIso &&
           z['grad'] == grad &&
           z['zeljeno_vreme'] == vreme &&
-          z['aktivno'] == true &&
           z['status'] != 'otkazano' &&
           z['status'] != 'odbijeno';
     });
@@ -259,7 +251,7 @@ class V3PutnikService {
       final pid = z['putnik_id']?.toString() ?? '';
       if (rez.containsKey(pid)) continue;
       final pData = rm.putniciCache[pid];
-      if (pData != null && pData['aktivno'] == true) {
+      if (pData != null) {
         rez[pid] = {
           'id': pid,
           'ime_prezime': pData['ime_prezime']?.toString() ?? '',

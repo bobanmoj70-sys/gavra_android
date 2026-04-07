@@ -46,7 +46,6 @@ class V3ZahtevDomainService {
       'alt_vreme_pre': null,
       'alt_vreme_posle': null,
       'alt_napomena': null,
-      'aktivno': true,
       if (createdAtIso != null) 'created_at': createdAtIso,
       if (updatedBy != null) 'updated_by': updatedBy,
     };

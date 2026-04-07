@@ -1,6 +1,8 @@
 import '../../../globals.dart';
 
 class V3OperativnaNedeljaRepository {
+  static const List<String> _aktivniStatusi = ['obrada', 'odobreno', 'alternativa'];
+
   Future<Map<String, dynamic>?> updateByIdReturningMaybeSingle(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_operativna_nedelja').update(payload).eq('id', id).select().maybeSingle();
   }
@@ -32,7 +34,7 @@ class V3OperativnaNedeljaRepository {
         .select();
   }
 
-  Future<List<dynamic>> updateByPutnikDatumGradAktivnoReturningList({
+  Future<List<dynamic>> updateByPutnikDatumGradStatusReturningList({
     required String putnikId,
     required String datumIso,
     required String grad,
@@ -41,10 +43,10 @@ class V3OperativnaNedeljaRepository {
     return supabase
         .from('v3_operativna_nedelja')
         .update(payload)
-        .eq('putnik_id', putnikId)
+        .eq('created_by', putnikId)
         .eq('datum', datumIso)
         .eq('grad', grad)
-        .eq('aktivno', true)
+        .inFilter('status_final', _aktivniStatusi)
         .select();
   }
 
@@ -58,7 +60,7 @@ class V3OperativnaNedeljaRepository {
     return supabase
         .from('v3_operativna_nedelja')
         .update(payload)
-        .eq('putnik_id', putnikId)
+        .eq('created_by', putnikId)
         .eq('grad', grad)
         .eq('dodeljeno_vreme', dodeljenoVreme)
         .eq('datum', datumIso)
@@ -72,9 +74,9 @@ class V3OperativnaNedeljaRepository {
   }) {
     return supabase
         .from('v3_operativna_nedelja')
-        .select('id, datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, aktivno, putnik_id, pokupljen')
+        .select('id, datum, grad, dodeljeno_vreme, zeljeno_vreme, status_final, created_by, pokupljen')
         .eq('vozac_id', vozacId)
-        .eq('aktivno', true)
+        .inFilter('status_final', _aktivniStatusi)
         .gte('datum', fromDate)
         .lte('datum', toDate);
   }

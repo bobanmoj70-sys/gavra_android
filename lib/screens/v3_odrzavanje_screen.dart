@@ -102,9 +102,9 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                 return const Center(child: CircularProgressIndicator(color: Colors.white));
               }
 
-              final vozila = snapshot.data!.where((v) => v.aktivno).toList();
+              final vozila = snapshot.data!;
               if (vozila.isEmpty) {
-                return const Center(child: Text('Nema aktivnih vozila.', style: TextStyle(color: Colors.white)));
+                return const Center(child: Text('Nema vozila.', style: TextStyle(color: Colors.white)));
               }
 
               if (_selected == null) {

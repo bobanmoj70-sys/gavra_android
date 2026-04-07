@@ -34,8 +34,6 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
     final todayOnly = V3DanHelper.dateOnlyFrom(today.year, today.month, today.day);
     final windowEnd = todayOnly.add(const Duration(days: 14));
     return rm.zahteviCache.values.map((v) => V3Zahtev.fromJson(v)).where((z) {
-      if (!z.aktivno) return false;
-
       // Ako tražimo 'obrada', prikaži i one koji su u statusu 'alternativa' (jer ih dispečer i dalje vidi kao nešto na čemu radi)
       if (status == 'obrada') {
         if (z.status != 'obrada' && z.status != 'alternativa') return false;

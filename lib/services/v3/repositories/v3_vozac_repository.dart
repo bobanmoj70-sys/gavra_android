@@ -3,6 +3,10 @@ import 'package:uuid/uuid.dart';
 import '../../../globals.dart';
 
 class V3VozacRepository {
+  Future<void> deleteById(String id) {
+    return supabase.from('v3_auth').delete().eq('auth_id', id).eq('tip', 'vozac');
+  }
+
   Future<void> updateById(String id, Map<String, dynamic> payload) {
     final mapped = _mapLegacyPayloadToAuthUpdate(payload);
     if (mapped.isEmpty) return Future.value();
@@ -20,7 +24,6 @@ class V3VozacRepository {
         .eq('auth_id', vozacId)
         .eq('tip', 'vozac')
         .eq('push_token', pushToken)
-        .eq('aktivno', true)
         .maybeSingle();
   }
 
@@ -38,7 +41,6 @@ class V3VozacRepository {
       'telefon_2': payload['telefon_2'],
       'boja': payload['boja'],
       'push_token': payload['push_token'],
-      'aktivno': payload['aktivno'] ?? true,
       'tip': 'vozac',
     };
     return supabase.from('v3_auth').insert(mapped);
@@ -52,7 +54,6 @@ class V3VozacRepository {
     if (payload.containsKey('telefon_2')) out['telefon_2'] = payload['telefon_2'];
     if (payload.containsKey('boja')) out['boja'] = payload['boja'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
-    if (payload.containsKey('aktivno')) out['aktivno'] = payload['aktivno'];
 
     return out;
   }

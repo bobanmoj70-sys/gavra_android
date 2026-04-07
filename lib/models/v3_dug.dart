@@ -30,7 +30,7 @@ class V3Dug {
   factory V3Dug.fromJson(Map<String, dynamic> json) {
     return V3Dug(
       id: json['id'] as String? ?? '',
-      putnikId: json['putnik_id'] as String? ?? '',
+      putnikId: (json['created_by'] as String?) ?? '',
       imePrezime: json['ime_prezime'] as String? ?? json['putnik_ime'] as String? ?? 'Nepoznato',
       tipPutnika: json['tip_putnika'] as String? ?? 'dnevni',
       vozacId: json['vozac_id'] as String? ?? '',
@@ -69,7 +69,7 @@ class V3Dug {
     final iznos = (putnikData?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
     return V3Dug(
       id: json['id']?.toString() ?? '',
-      putnikId: json['putnik_id']?.toString() ?? '',
+      putnikId: json['created_by']?.toString() ?? '',
       imePrezime: putnikData?['ime_prezime'] as String? ??
           json['ime_prezime'] as String? ??
           json['putnik_ime'] as String? ??

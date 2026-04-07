@@ -56,7 +56,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   List<V3Vozac> _sortedActiveVozaci() {
-    return V3VozacService.getAllVozaci().where((v) => v.aktivno && v.imePrezime.isNotEmpty).toList()
+    return V3VozacService.getAllVozaci().where((v) => v.imePrezime.isNotEmpty).toList()
       ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 

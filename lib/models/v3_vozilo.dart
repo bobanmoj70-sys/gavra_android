@@ -6,7 +6,6 @@ class V3Vozilo {
   final String? marka;
   final String? model;
   final double trenutnaKm;
-  final bool aktivno;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -43,7 +42,6 @@ class V3Vozilo {
     this.marka,
     this.model,
     this.trenutnaKm = 0.0,
-    this.aktivno = true,
     this.createdAt,
     this.updatedAt,
     this.brojSasije,
@@ -106,7 +104,6 @@ class V3Vozilo {
       marka: json['marka'] as String?,
       model: json['model'] as String?,
       trenutnaKm: (json['trenutna_km'] as num?)?.toDouble() ?? 0.0,
-      aktivno: json['aktivno'] as bool? ?? true,
       createdAt: parseDate(json['created_at']),
       updatedAt: parseDate(json['updated_at']),
       brojSasije: json['broj_sasije'] as String?,
@@ -144,7 +141,6 @@ class V3Vozilo {
       'marka': marka,
       'model': model,
       'trenutna_km': trenutnaKm,
-      'aktivno': aktivno,
       if (brojSasije != null) 'broj_sasije': brojSasije,
       if (godinaProizvodnje != null) 'godina_proizvodnje': godinaProizvodnje,
       if (napomena != null) 'napomena': napomena,

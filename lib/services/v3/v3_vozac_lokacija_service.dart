@@ -9,14 +9,12 @@ class V3VozacLokacijaUpdate {
   final double lat;
   final double lng;
   final double? brzina;
-  final bool aktivno;
 
   V3VozacLokacijaUpdate({
     required this.vozacId,
     required this.lat,
     required this.lng,
     this.brzina,
-    this.aktivno = true,
   });
 
   Map<String, dynamic> toJson() {
@@ -26,7 +24,6 @@ class V3VozacLokacijaUpdate {
       'lat': lat,
       'lng': lng,
       'brzina': brzina ?? 0,
-      'aktivno': aktivno,
     };
   }
 }
@@ -36,6 +33,7 @@ class V3VozacLokacijaUpdate {
 class V3VozacLokacijaService {
   V3VozacLokacijaService._();
   static final V3VozacLokacijaRepository _repo = V3VozacLokacijaRepository();
+  static const Duration _activeLocationWindow = Duration(minutes: 3);
 
   /// Updates driver's location in the database using Fire-and-Forget.
   /// Poziva se često iz GPS stream-a i koristi se za ETA/status prikaz.
@@ -48,25 +46,13 @@ class V3VozacLokacijaService {
     }
   }
 
-  /// Sets driver's active status. When deactivated, the marker disappears for passengers.
-  static Future<void> postaviAktivnost(String vozacId, bool aktivno) async {
-    try {
-      await _repo.updateByCreatedBy(vozacId, {
-        'aktivno': aktivno,
-        'updated_by': vozacId,
-      });
-    } catch (e) {
-      debugPrint('[V3VozacLokacijaService] postaviAktivnost error: $e');
-    }
-  }
-
   /// Stream of all active driver locations for passengers to see markers on map.
   static Stream<List<Map<String, dynamic>>> streamAktivneLokacije() {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_vozac_lokacije'],
       build: () {
         final cache = V3MasterRealtimeManager.instance.vozacLokacijeCache;
-        return cache.values.where((l) => l['aktivno'] == true).toList();
+        return cache.values.where(_isLokacijaAktivna).toList();
       },
     );
   }
@@ -78,10 +64,17 @@ class V3VozacLokacijaService {
     // We search the values for the matching created_by.
     try {
       return cache.values.firstWhere(
-        (l) => l['created_by']?.toString() == vozacId && (!onlyActive || l['aktivno'] == true),
+        (l) => l['created_by']?.toString() == vozacId && (!onlyActive || _isLokacijaAktivna(l)),
       );
     } catch (_) {
       return null;
     }
+  }
+
+  static bool _isLokacijaAktivna(Map<String, dynamic> row) {
+    final updatedRaw = row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
+    final updatedAt = DateTime.tryParse(updatedRaw);
+    if (updatedAt == null) return false;
+    return DateTime.now().difference(updatedAt) <= _activeLocationWindow;
   }
 }

@@ -96,9 +96,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   void _syncSelectedSlotForDatum(String datumIso) {
     final entries = V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso);
     final validEntries = entries.where((e) {
-      if (!e.aktivno) return false;
-      if (V3StatusFilters.isRejected(e.statusFinal)) return false;
-      if (V3StatusFilters.normalizeStatus(e.statusFinal) == 'obrada') return false;
+      if (V3StatusFilters.isCanceledOrRejected(e.statusFinal)) return false;
       final grad = (e.grad ?? '').trim();
       final vreme = _normalizeVreme(e.dodeljivoVreme);
       return grad.isNotEmpty && vreme.isNotEmpty;
@@ -208,9 +206,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '');
       final rowDatum = V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
-      if (row['putnik_id'] == putnikId &&
+      final rowStatus = row['status_final']?.toString();
+      if (row['created_by'] == putnikId &&
           rowGrad == grad &&
-          row['aktivno'] == true &&
+          !V3StatusFilters.isCanceledOrRejected(rowStatus) &&
           rowVreme == normV &&
           rowDatum == datum) {
         final vozacId = row['vozac_id']?.toString();
@@ -910,15 +909,24 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           String slotVreme(V3OperativnaNedeljaEntry z) => z.dodeljivoVreme ?? '';
 
           final selectedVremeNorm = _normalizeVreme(_selectedVreme);
+          final rm = V3MasterRealtimeManager.instance;
+
+          V3Putnik? _resolvePutnik(V3OperativnaNedeljaEntry z) {
+            final fromPutnici = V3PutnikService.getPutnikById(z.putnikId);
+            if (fromPutnici != null) return fromPutnici;
+
+            final putnikCacheRow = rm.putniciCache[z.putnikId];
+            if (putnikCacheRow != null) return V3Putnik.fromJson(putnikCacheRow);
+
+            return null;
+          }
 
           // Lista: datum dolazi iz stream-a, filtriraj samo po gradu i vremenu
           final currentVozacId = V3VozacService.currentVozac?.id;
           final prikazaniZapisi = sviZapisi.where((z) {
-            if (!z.aktivno) return false;
+            if (V3StatusFilters.isCanceledOrRejected(z.statusFinal)) return false;
             if (z.grad != _selectedGrad) return false;
             if (_normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
-            if (V3StatusFilters.isRejected(z.statusFinal)) return false;
-            if (V3StatusFilters.normalizeStatus(z.statusFinal) == 'obrada') return false;
             return true;
           }).toList()
             ..sort((a, b) {
@@ -943,15 +951,22 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               return aIme.compareTo(bIme);
             });
 
+          final resolvedZapisi = prikazaniZapisi
+              .map((z) {
+                final p = _resolvePutnik(z);
+                if (p == null) return null;
+                return (entry: z, putnik: p);
+              })
+              .whereType<({V3OperativnaNedeljaEntry entry, V3Putnik putnik})>()
+              .toList();
+
           // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
           int getPutnikCount(String grad, String vreme) {
             final targetVremeNorm = _normalizeVreme(vreme);
             return sviZapisi.where((z) {
-              if (!z.aktivno) return false;
+              if (V3StatusFilters.isCanceledOrRejected(z.statusFinal)) return false;
               if (z.grad != grad) return false;
               if (_normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
-              if (V3StatusFilters.isCanceledOrRejected(z.statusFinal)) return false;
-              if (V3StatusFilters.normalizeStatus(z.statusFinal) == 'obrada') return false;
               return true;
             }).fold(0, (sum, z) => sum + z.brojMesta);
           }
@@ -967,7 +982,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             final rm = V3MasterRealtimeManager.instance;
             for (final row in rm.v3GpsRasporedCache.values) {
               if (row['grad'] != grad) continue;
-              if (row['aktivno'] != true) continue;
+              if (V3StatusFilters.isCanceledOrRejected(row['status_final']?.toString())) continue;
               if (V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') != _selectedDatumIso) continue;
               if (V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '') != vremeNorm) continue;
               final vozacId = row['vozac_id']?.toString();
@@ -1276,7 +1291,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         child: ValueListenableBuilder<List<Map<String, String>>>(
                           valueListenable: neradniDaniNotifier,
                           builder: (context, rules, _) {
-                            return prikazaniZapisi.isEmpty
+                            return resolvedZapisi.isEmpty
                                 ? Center(
                                     child: Container(
                                       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -1295,11 +1310,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   )
                                 : ListView.builder(
                                     padding: const EdgeInsets.only(top: 4, bottom: 16),
-                                    itemCount: prikazaniZapisi.length,
+                                    itemCount: resolvedZapisi.length,
                                     itemBuilder: (ctx, i) {
-                                      final z = prikazaniZapisi[i];
-                                      final p = V3PutnikService.getPutnikById(z.putnikId);
-                                      if (p == null) return const SizedBox.shrink();
+                                      final row = resolvedZapisi[i];
+                                      final z = row.entry;
+                                      final p = row.putnik;
 
                                       final grad = z.grad ?? '';
                                       final vreme = slotVreme(z);
@@ -1309,7 +1324,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                           : getVozacColorForTermin(grad, vreme);
 
                                       final redniBroj =
-                                          prikazaniZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.brojMesta) + 1;
+                                          resolvedZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.entry.brojMesta) + 1;
 
                                       return Padding(
                                         padding: const EdgeInsets.only(bottom: 8),

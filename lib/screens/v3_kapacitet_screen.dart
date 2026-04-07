@@ -42,8 +42,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
       for (final r in cache) {
         if (r['grad'] == grad &&
             V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
-            r['datum'].toString().startsWith(datumIso) &&
-            r['aktivno'] == true) {
+            r['datum'].toString().startsWith(datumIso)) {
           return (r['max_mesta'] as num?)?.toInt();
         }
       }
@@ -300,8 +299,7 @@ String? _getSlotId(String grad, String vreme, String datumIso) {
   for (final r in cache) {
     if (r['grad'] == grad &&
         V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
-        r['datum'].toString().startsWith(datumIso) &&
-        r['aktivno'] == true) {
+        r['datum'].toString().startsWith(datumIso)) {
       return r['id'] as String?;
     }
   }

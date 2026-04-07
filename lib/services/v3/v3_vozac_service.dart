@@ -4,6 +4,7 @@ import '../../globals.dart';
 import '../../models/v3_vozac.dart';
 import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_phone_utils.dart';
+import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozac_repository.dart';
@@ -67,7 +68,6 @@ class V3VozacService {
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
           'boja': vozac.boja,
-          'aktivno': vozac.aktivno,
           if (actorUuid != null) 'updated_by': actorUuid,
         });
       } else {
@@ -77,7 +77,6 @@ class V3VozacService {
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
           'boja': vozac.boja,
-          'aktivno': vozac.aktivno,
           if (actorUuid != null) 'created_by': actorUuid,
           if (actorUuid != null) 'updated_by': actorUuid,
         });
@@ -89,7 +88,7 @@ class V3VozacService {
   }
 
   static Future<void> deactivateVozac(String id) async {
-    await setAktivno(id: id, aktivno: false);
+    await _repo.deleteById(id);
   }
 
   static Future<void> setAktivno({
@@ -97,16 +96,7 @@ class V3VozacService {
     required bool aktivno,
     String? updatedBy,
   }) async {
-    try {
-      final actorUuid = V3AuditKorisnik.normalize(updatedBy, fallback: currentVozac?.id);
-      await _repo.updateById(id, {
-        'aktivno': aktivno,
-        if (actorUuid != null) 'updated_by': actorUuid,
-      });
-    } catch (e) {
-      debugPrint('[V3VozacService] setAktivno error: $e');
-      rethrow;
-    }
+    throw UnsupportedError('v3_auth.aktivno je uklonjen; setAktivno više nije podržan.');
   }
 
   static Future<void> updatePushToken({
@@ -169,8 +159,9 @@ class V3VozacService {
           final datumMatch = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == datumIso;
           final gradMatch = r['grad']?.toString().toUpperCase() == grad.toUpperCase();
           final vremeMatch = normV(r['vreme']?.toString()) == vremeNorm;
-          final aktivnoMatch = r['aktivno'] == true;
-          final masterTermin = r['putnik_id'] == null; // ← SAMO MASTER ZAPISI
+          final status = r['status_final']?.toString();
+          final aktivnoMatch = !V3StatusFilters.isCanceledOrRejected(status);
+          final masterTermin = r['created_by'] == null; // ← SAMO MASTER ZAPISI
 
           if (datumMatch && gradMatch && vremeMatch) {
             print(

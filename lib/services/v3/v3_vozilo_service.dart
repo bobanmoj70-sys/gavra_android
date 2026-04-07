@@ -38,18 +38,6 @@ class V3VoziloService {
     }
   }
 
-  static Future<void> deactivateVozilo(String id) async {
-    try {
-      final actor = V3AuditKorisnik.normalize('admin');
-      final payload = <String, dynamic>{'aktivno': false};
-      if (actor != null) payload['updated_by'] = actor;
-      await _repo.updateById(id, payload);
-    } catch (e) {
-      debugPrint('[V3VoziloService] Deactivate error: $e');
-      rethrow;
-    }
-  }
-
   /// Ažurira kolsku knjigu vozila (samo proslijeđena polja).
   static Future<void> updateKolskaKnjiga(String voziloId, Map<String, dynamic> data) async {
     try {

@@ -9,6 +9,7 @@ import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
+import '../utils/v3_status_filters.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
@@ -943,9 +944,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final vsNames = <String>{};
 
     for (final r in rm.operativnaNedeljaCache.values) {
-      final putnikId = r['putnik_id']?.toString();
+      final putnikId = r['created_by']?.toString();
       if (putnikId == null || !uceniciIds.contains(putnikId)) continue;
-      if (r['aktivno'] != true) continue;
+      if (V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString())) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
@@ -1063,9 +1064,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final vsNames = <String>{};
 
     for (final r in rm.operativnaNedeljaCache.values) {
-      final putnikId = r['putnik_id']?.toString();
+      final putnikId = r['created_by']?.toString();
       if (putnikId == null || !dnevniIds.contains(putnikId)) continue;
-      if (r['aktivno'] != true) continue;
+      if (V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString())) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;

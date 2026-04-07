@@ -68,18 +68,15 @@ class V3MasterRealtimeManager {
     v3GpsRasporedCache.clear();
     for (final entry in operativnaNedeljaCache.values) {
       final id = entry['id']?.toString();
-      final vozacId = (entry['vozac_id']?.toString() ?? '').trim();
-      if (id == null || vozacId.isEmpty) continue;
+      if (id == null) continue;
 
       final datumIso = V3DanHelper.parseIsoDatePart(_asString(entry['datum']));
       final grad = (entry['grad']?.toString() ?? '').trim().toUpperCase();
-      final polazakTime = _extractTimeToken(entry['dodeljeno_vreme']?.toString()) ??
-          _extractTimeToken(entry['zeljeno_vreme']?.toString()) ??
-          '';
+      final polazakTime = _extractTimeToken(entry['dodeljeno_vreme']?.toString()) ?? '';
 
       final row = Map<String, dynamic>.from(entry);
-      row['vreme'] = row['vreme'] ?? row['dodeljeno_vreme'] ?? row['zeljeno_vreme'];
-      row['polazak_vreme'] = row['dodeljeno_vreme'] ?? row['zeljeno_vreme'];
+      row['vreme'] = row['vreme'] ?? row['dodeljeno_vreme'];
+      row['polazak_vreme'] = row['dodeljeno_vreme'];
       row['nav_bar_type'] = row['nav_bar_type'] ?? 'zimski';
       row['gps_status'] = row['gps_status'] ?? 'pending';
       row['notification_sent'] = row['notification_sent'] ?? false;
@@ -266,7 +263,9 @@ class V3MasterRealtimeManager {
       final results = await _bootstrapLoader.loadFull();
 
       for (final table in V3RealtimeTableRegistry.defaults) {
-        _cacheStore.replaceAll(table.name, results[table.name] ?? const <dynamic>[]);
+        final rawRows = results[table.name] ?? const <dynamic>[];
+        final normalizedRows = _normalizeRowsForTable(table.name, rawRows);
+        _cacheStore.replaceAll(table.name, normalizedRows);
       }
 
       _rebuildGpsCacheFromOperativna();
@@ -371,8 +370,8 @@ class V3MasterRealtimeManager {
     required V3RealtimeTableConfig config,
     required PostgresChangePayload payload,
   }) {
-    final normalizedNew = config.name == 'v3_zahtevi' ? _normalizeZahtevRow(payload.newRecord) : payload.newRecord;
-    final normalizedOld = config.name == 'v3_zahtevi' ? _normalizeZahtevRow(payload.oldRecord) : payload.oldRecord;
+    final normalizedNew = _normalizeRowForTable(config.name, payload.newRecord);
+    final normalizedOld = _normalizeRowForTable(config.name, payload.oldRecord);
 
     final changed = _cacheStore.applyRealtimeMutation(
       table: config.name,
@@ -453,7 +452,7 @@ class V3MasterRealtimeManager {
       'telefon_2': row['telefon_2'],
       'boja': row['boja'],
       'push_token': row['push_token'],
-      'aktivno': row['aktivno'] ?? true,
+      'aktivno': true,
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };
@@ -480,7 +479,7 @@ class V3MasterRealtimeManager {
       'cena_po_pokupljenju': row['cena_po_pokupljenju'],
       'push_token': row['push_token'],
       'push_token_2': row['push_token_2'],
-      'aktivno': row['aktivno'] ?? true,
+      'aktivno': true,
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };
@@ -530,7 +529,7 @@ class V3MasterRealtimeManager {
   }
 
   void v3UpsertToCache(String table, Map<String, dynamic> row) {
-    final normalizedRow = table == 'v3_zahtevi' ? _normalizeZahtevRow(row) : row;
+    final normalizedRow = _normalizeRowForTable(table, row);
     final id = normalizedRow['id']?.toString();
     if (id == null) return;
 
@@ -585,6 +584,45 @@ class V3MasterRealtimeManager {
     }
 
     return normalized;
+  }
+
+  Map<String, dynamic> _normalizeOperativnaRow(Map<String, dynamic> row) {
+    if (row.isEmpty) return row;
+
+    final normalized = Map<String, dynamic>.from(row);
+    final putnikId = normalized['putnik_id']?.toString().trim();
+    final createdBy = normalized['created_by']?.toString().trim();
+
+    if ((putnikId == null || putnikId.isEmpty) && createdBy != null && createdBy.isNotEmpty) {
+      normalized['putnik_id'] = createdBy;
+    }
+
+    if ((createdBy == null || createdBy.isEmpty) && putnikId != null && putnikId.isNotEmpty) {
+      normalized['created_by'] = putnikId;
+    }
+
+    return normalized;
+  }
+
+  Map<String, dynamic> _normalizeRowForTable(String table, Map<String, dynamic> row) {
+    switch (table) {
+      case 'v3_zahtevi':
+        return _normalizeZahtevRow(row);
+      case 'v3_operativna_nedelja':
+        return _normalizeOperativnaRow(row);
+      default:
+        return row;
+    }
+  }
+
+  List<dynamic> _normalizeRowsForTable(String table, List<dynamic> rows) {
+    if (rows.isEmpty) return rows;
+    return rows.map((row) {
+      if (row is Map<String, dynamic>) {
+        return _normalizeRowForTable(table, row);
+      }
+      return row;
+    }).toList(growable: false);
   }
 
   /// Osvježi v3GpsRasporedCache - gradi se lokalno iz v3_operativna_nedelja (WHERE vozac_id IS NOT NULL)

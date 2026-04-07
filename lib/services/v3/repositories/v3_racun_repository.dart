@@ -14,7 +14,6 @@ class V3RacunRepository {
     return supabase
         .from('v3_racuni')
         .select('putnik_id, firma_naziv, firma_adresa, firma_pib, firma_mb, firma_ziro')
-        .inFilter('putnik_id', putnikIds)
-        .eq('aktivno', true);
+        .inFilter('putnik_id', putnikIds);
   }
 }

@@ -41,12 +41,10 @@ class V3StatusFilters {
     return pokupljen || isCanceledOrRejected(status);
   }
 
-  static bool isActiveForDisplay({
-    required bool aktivno,
+  static bool isVisibleForDisplay({
     String? status,
     bool pokupljen = false,
   }) {
-    if (!aktivno) return false;
     if (isCanceledOrRejected(status)) return false;
     return true;
   }

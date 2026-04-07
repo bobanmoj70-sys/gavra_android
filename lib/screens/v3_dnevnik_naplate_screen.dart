@@ -107,7 +107,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       final payDay = DateTime(dt.year, dt.month, dt.day);
       if (payDay != target) continue;
 
-      final putnikId = row['putnik_id']?.toString() ?? '';
+        final putnikId = row['created_by']?.toString() ?? '';
       final putnikData = putniciCache[putnikId];
       final ime = (putnikData?['ime_prezime'] as String?) ??
           row['ime_prezime'] as String? ??

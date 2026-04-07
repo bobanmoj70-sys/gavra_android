@@ -652,7 +652,7 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
       final token = await fcm.FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) {
         putnikData = V3MasterRealtimeManager.instance.putniciCache.values.cast<Map<String, dynamic>?>().firstWhere(
-              (p) => p != null && p['aktivno'] == true && (p['push_token'] == token || p['push_token_2'] == token),
+              (p) => p != null && (p['push_token'] == token || p['push_token_2'] == token),
               orElse: () => null,
             );
       }

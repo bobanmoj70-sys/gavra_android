@@ -30,7 +30,7 @@ class V3ZahtevService {
     return DateTime.tryParse(value) ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 
-  static List<Map<String, dynamic>> _aktivniRedoviPoKontekstu({
+  static List<Map<String, dynamic>> _vidljiviRedoviPoKontekstu({
     required String putnikId,
     required DateTime datum,
     required String grad,
@@ -43,8 +43,7 @@ class V3ZahtevService {
       return (row['putnik_id']?.toString() ?? '') == putnikId &&
           rowDatum == datumIso &&
           rowGrad == targetGrad &&
-          V3StatusFilters.isActiveForDisplay(
-            aktivno: row['aktivno'] == true,
+          V3StatusFilters.isVisibleForDisplay(
             status: row['status']?.toString(),
           );
     }).toList();
@@ -64,7 +63,7 @@ class V3ZahtevService {
 
   static void _assertDatumUTekucojNedelji(DateTime datum) {
     if (!V3DanHelper.isInSchedulingWorkweek(datum)) {
-      throw Exception('Zakazivanje je dozvoljeno samo u aktivnoj sedmici.');
+      throw Exception('Zakazivanje je dozvoljeno samo u tekućoj sedmici.');
     }
   }
 
@@ -134,7 +133,7 @@ class V3ZahtevService {
     bool koristiSekundarnu = false,
     String? updatedBy,
   }) async {
-    final aktivni = _aktivniRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
+    final aktivni = _vidljiviRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
     if (aktivni.isNotEmpty) {
       final row = aktivni.first;
       final rowKey = (row['id']?.toString() ?? '').trim();
@@ -162,7 +161,6 @@ class V3ZahtevService {
       brojMesta: brojMesta,
       status: 'obrada',
       koristiSekundarnu: koristiSekundarnu,
-      aktivno: true,
     );
     await createZahtev(zahtev, createdBy: updatedBy);
   }
@@ -173,7 +171,7 @@ class V3ZahtevService {
     required String grad,
     String? otkazaoPutnikId,
   }) async {
-    final aktivni = _aktivniRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
+    final aktivni = _vidljiviRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
     if (aktivni.isNotEmpty) {
       final row = aktivni.first;
       final rowKey = (row['id']?.toString() ?? '').trim();
@@ -193,7 +191,7 @@ class V3ZahtevService {
     }
 
     final datumIso = _datumKey(datum);
-    final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivnoReturningList(
+    final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradStatusReturningList(
       putnikId: putnikId,
       datumIso: datumIso,
       grad: grad,
@@ -246,7 +244,9 @@ class V3ZahtevService {
     return cache
         .where((r) {
           final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
-          return rDatum == datumIso && r['grad'] == grad && r['aktivno'] == true;
+          return rDatum == datumIso &&
+              r['grad'] == grad &&
+              !V3StatusFilters.isCanceledOrRejected(r['status']?.toString());
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()
@@ -255,41 +255,19 @@ class V3ZahtevService {
 
   /// Dohvata zahteve iz operativnog plana za određeni datum i grad.
   static List<V3Zahtev> getOperativniZahteviByDatumAndGrad(String datum, String grad) {
-    // Ovde možemo kombinovati redovne zahteve i operativni plan
     final opCache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-    final zCache = V3MasterRealtimeManager.instance.zahteviCache.values;
 
     // Prvo nađemo sve u operativnoj nedelji za taj dan
     final opFiltered = opCache.where((r) => r['datum'] == datum && r['grad'] == grad).toList();
 
-    // Mapiramo ih nazad u V3Zahtev objekte
+    // Mapiramo operativne zapise direktno u V3Zahtev objekte.
+    // v3_zahtevi služi samo za obradu zahteva, ne za prikaz operativne liste.
     return opFiltered.map((op) {
-      final efektivnoDodeljeno = (op['dodeljeno_vreme'] as String?) ?? (op['zeljeno_vreme'] as String?) ?? '00:00';
+      final efektivnoDodeljeno = (op['dodeljeno_vreme'] as String?) ?? '00:00';
       final efektivnoZeljeno = (op['zeljeno_vreme'] as String?) ?? efektivnoDodeljeno;
-      final putnikId = op['putnik_id'] as String?;
-      if (putnikId != null) {
-        final base = zCache.firstWhere(
-          (z) =>
-              z['putnik_id'] == putnikId &&
-              (z['datum'] as String? ?? '').startsWith(datum) &&
-              z['grad'] == grad &&
-              z['aktivno'] == true,
-          orElse: () => <String, dynamic>{},
-        );
-        if (base.isNotEmpty) {
-          final z = V3Zahtev.fromJson(base);
-          // Prepisujemo operativnim podacima
-          return z.copyWith(
-            status: op['status_final'] as String? ?? z.status,
-            zeljenoVreme: efektivnoZeljeno,
-            dodeljenoVreme: efektivnoDodeljeno,
-          );
-        }
-      }
-      // Ako nema zahteva (vozačev direktan unos), kreiramo dummy/osnovni
       return V3Zahtev(
         id: op['id'] as String? ?? 'temp',
-        putnikId: op['putnik_id'] as String? ?? '',
+        putnikId: op['created_by'] as String? ?? '',
         grad: grad,
         datum: DateTime.tryParse(datum) ?? DateTime.now(),
         zeljenoVreme: efektivnoZeljeno,
@@ -297,12 +275,12 @@ class V3ZahtevService {
         status: op['status_final'] as String? ?? 'obrada',
       );
     }).toList()
-      ..sort((a, b) => (a.dodeljenoVreme ?? a.zeljenoVreme).compareTo(b.dodeljenoVreme ?? b.zeljenoVreme));
+      ..sort((a, b) => (a.dodeljenoVreme ?? '').compareTo(b.dodeljenoVreme ?? ''));
   }
 
   static Stream<List<V3Zahtev>> streamOperativniZahteviByDatumAndGrad(String datum, String grad) =>
       V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_zahtevi', 'v3_operativna_nedelja'],
+        tables: ['v3_operativna_nedelja'],
         build: () => getOperativniZahteviByDatumAndGrad(datum, grad),
       );
 
@@ -492,7 +470,7 @@ class V3ZahtevService {
       final rowGrad = (row['grad']?.toString() ?? '').trim();
       final rowDatum = (row['datum']?.toString() ?? '').split('T').first;
       final rowStatus = (row['status_final']?.toString() ?? '').trim();
-      return rowGrad == grad && rowDatum == datum && rowStatus == 'odobreno' && row['aktivno'] == true;
+      return rowGrad == grad && rowDatum == datum && rowStatus == 'odobreno';
     }).toList();
 
     final usedCount = usedRows.where((row) {

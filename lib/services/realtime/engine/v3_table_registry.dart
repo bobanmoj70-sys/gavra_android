@@ -23,23 +23,24 @@ class V3RealtimeTableConfig {
 
 class V3RealtimeTableRegistry {
   static const List<V3RealtimeTableConfig> defaults = <V3RealtimeTableConfig>[
-    V3RealtimeTableConfig(name: 'v3_adrese'),
+    V3RealtimeTableConfig(name: 'v3_adrese', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_vozaci'),
     V3RealtimeTableConfig(name: 'v3_putnici'),
     V3RealtimeTableConfig(name: 'v3_vozila'),
     V3RealtimeTableConfig(name: 'v3_zahtevi'),
-    V3RealtimeTableConfig(name: 'v3_gorivo'),
+    V3RealtimeTableConfig(name: 'v3_gorivo', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_gorivo_promene', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_vozac_lokacije', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_finansije'),
-    V3RealtimeTableConfig(name: 'v3_racuni'),
-    V3RealtimeTableConfig(name: 'v3_racuni_arhiva'),
+    V3RealtimeTableConfig(name: 'v3_finansije', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_racuni', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_racuni_arhiva', hasActiveKey: false),
     V3RealtimeTableConfig(
       name: 'v3_operativna_nedelja',
+      hasActiveKey: false,
       keepInactive: true,
       hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
     ),
-    V3RealtimeTableConfig(name: 'v3_kapacitet_slots'),
+    V3RealtimeTableConfig(name: 'v3_kapacitet_slots', hasActiveKey: false),
     V3RealtimeTableConfig(
       name: 'v3_app_settings',
       hasActiveKey: false,

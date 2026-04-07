@@ -83,7 +83,12 @@ class V3ClosedAuthService {
 
     final payload = Map<String, dynamic>.from(data);
     if (payload['ok'] != true) {
-      throw Exception(payload['error']?.toString() ?? 'Bridge funkcija je odbila pristup.');
+      final code = payload['error']?.toString() ?? 'Bridge funkcija je odbila pristup.';
+      final reason = payload['reason']?.toString();
+      if (reason != null && reason.trim().isNotEmpty) {
+        throw Exception('$code: $reason');
+      }
+      throw Exception(code);
     }
 
     final v3Auth = payload['v3_auth'];

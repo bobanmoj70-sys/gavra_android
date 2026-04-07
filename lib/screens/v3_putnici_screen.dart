@@ -39,20 +39,6 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
 
   String _normalizeTip(dynamic tip) => (tip?.toString() ?? '').trim().toLowerCase();
 
-  bool _isAktivan(dynamic value) {
-    if (value is bool) return value;
-    if (value is num) return value != 0;
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-      return normalized == 'true' ||
-          normalized == '1' ||
-          normalized == 't' ||
-          normalized == 'yes' ||
-          normalized == 'da';
-    }
-    return false;
-  }
-
   bool _matchesFilterTip(dynamic tipValue, String selectedTip) {
     if (selectedTip == 'svi') return true;
     return _normalizeTip(tipValue) == _normalizeTip(selectedTip);
@@ -67,16 +53,13 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
   // ─── Badge counts ─────────────────────────────────────────────────────────
   int _count(String tip) {
     return V3MasterRealtimeManager.instance.putniciCache.values
-        .where((r) => _isAktivan(r['aktivno']) && _matchesFilterTip(r['tip_putnika'], tip))
+        .where((r) => _matchesFilterTip(r['tip_putnika'], tip))
         .length;
   }
 
   // ─── Filtered list ────────────────────────────────────────────────────────
   List<V3Putnik> _filtriraj() {
-    var lista = V3MasterRealtimeManager.instance.putniciCache.values
-        .where((r) => _isAktivan(r['aktivno']))
-        .map((r) => V3Putnik.fromJson(r))
-        .toList();
+    var lista = V3MasterRealtimeManager.instance.putniciCache.values.map((r) => V3Putnik.fromJson(r)).toList();
 
     if (_selectedFilter != 'svi') {
       lista = lista.where((p) => _matchesFilterTip(p.tipPutnika, _selectedFilter)).toList();
@@ -236,7 +219,6 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                                       redniBroj: i + 1,
                                       onEdit: () => _showEditDialog(lista[i]),
                                       onDelete: () => _obrisi(lista[i]),
-                                      onToggle: () => _toggleAktivno(lista[i]),
                                       onDetaljneStatistike: () {
                                         Navigator.of(context).push(
                                           MaterialPageRoute<void>(
@@ -308,18 +290,6 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
     );
   }
 
-  // ─── Toggle aktivno ───────────────────────────────────────────────────────
-  Future<void> _toggleAktivno(V3Putnik p) async {
-    try {
-      await V3PutnikService.setAktivno(id: p.id, aktivno: !p.aktivno);
-      if (mounted) {
-        V3AppSnackBar.success(context, p.aktivno ? '${p.imePrezime} deaktiviran' : '${p.imePrezime} aktiviran');
-      }
-    } catch (e) {
-      V3ErrorUtils.asyncError(this, context, e);
-    }
-  }
-
   // ─── Delete ───────────────────────────────────────────────────────────────
   Future<void> _obrisi(V3Putnik p) async {
     final potvrda = await V3DialogHelper.showConfirmDialog(
@@ -360,7 +330,6 @@ class _PutnikCard extends StatelessWidget {
     required this.redniBroj,
     required this.onEdit,
     required this.onDelete,
-    required this.onToggle,
     required this.onDetaljneStatistike,
   });
 
@@ -368,7 +337,6 @@ class _PutnikCard extends StatelessWidget {
   final int redniBroj;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onToggle;
   final VoidCallback onDetaljneStatistike;
 
   Color get _tipColor => switch (putnik.tipPutnika) {
@@ -474,15 +442,6 @@ class _PutnikCard extends StatelessWidget {
               // ── Action buttons row 1 ─────────────────────────────────
               Row(
                 children: [
-                  Expanded(
-                      child: _actionBtn(
-                    context: context,
-                    icon: putnik.aktivno ? Icons.toggle_on_outlined : Icons.toggle_off_outlined,
-                    label: putnik.aktivno ? 'Aktivan' : 'Neaktivan',
-                    color: putnik.aktivno ? Colors.green : Colors.grey,
-                    onPressed: onToggle,
-                  )),
-                  const SizedBox(width: 6),
                   Expanded(
                       child: _actionBtn(
                     context: context,
@@ -684,7 +643,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         cenaPoDanu: (_tip == 'dnevni' || _tip == 'posiljka')
             ? 0.0 // dnevni/posiljka koriste cenaPoPokupljenju
             : double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0,
-        aktivno: widget.existing?.aktivno ?? true,
         adresaBcId: _adresaBc1?.id,
         adresaBcId2: _adresaBc2?.id,
         adresaVsId: _adresaVs1?.id,

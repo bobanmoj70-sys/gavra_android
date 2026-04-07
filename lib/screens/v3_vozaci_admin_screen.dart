@@ -231,25 +231,16 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
   Future<void> _confirmDeactivate(V3Vozac vozac) async {
     final potvrda = await V3DialogHelper.showConfirmDialog(
       context,
-      title: 'Deaktiviraj vozača',
-      message: 'Vozač ${vozac.imePrezime} neće moći da se prijavi.\nMoguće reaktivirati kasnije.',
-      confirmText: 'Deaktiviraj',
+      title: 'Obriši vozača',
+      message: 'Vozač ${vozac.imePrezime} će biti trajno obrisan.',
+      confirmText: 'Obriši',
       cancelText: 'Otkaži',
       isDangerous: true,
     );
     if (potvrda != true) return;
     try {
       await V3VozacService.deactivateVozac(vozac.id);
-      if (mounted) V3AppSnackBar.success(context, '🗑️ ${vozac.imePrezime} deaktiviran');
-    } catch (e) {
-      V3ErrorUtils.asyncError(this, context, e);
-    }
-  }
-
-  Future<void> _reaktivirajVozaca(V3Vozac vozac) async {
-    try {
-      await V3VozacService.setAktivno(id: vozac.id, aktivno: true);
-      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} reaktiviran');
+      if (mounted) V3AppSnackBar.success(context, '🗑️ ${vozac.imePrezime} obrisan');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -263,9 +254,9 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
       stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozaci'),
       builder: (context, _) {
         final svi = V3VozacService.getAllVozaci();
-        final aktivni = svi.where((v) => v.aktivno).toList();
-        final neaktivni = svi.where((v) => !v.aktivno).toList();
-        final prikazani = _showNeaktivni ? svi : aktivni;
+        final aktivni = svi;
+        final neaktivni = const <V3Vozac>[];
+        final prikazani = svi;
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -368,14 +359,13 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                             itemBuilder: (_, i) {
                               final v = prikazani[i];
                               final boja = _hexToColor(v.boja);
-                              final jeNeaktivan = !v.aktivno;
                               return _VozacKartica(
                                 vozac: v,
                                 boja: boja,
-                                jeNeaktivan: jeNeaktivan,
+                                jeNeaktivan: false,
                                 onEdit: () => _showUrediDialog(v),
-                                onDeactivate: jeNeaktivan ? null : () => _confirmDeactivate(v),
-                                onReactivate: jeNeaktivan ? () => _reaktivirajVozaca(v) : null,
+                                onDeactivate: () => _confirmDeactivate(v),
+                                onReactivate: null,
                               );
                             },
                           ),

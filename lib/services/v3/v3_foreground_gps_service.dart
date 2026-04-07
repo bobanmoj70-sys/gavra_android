@@ -189,10 +189,6 @@ class V3ForegroundGpsService {
       );
     }
 
-    if (vozacId != null && vozacId.trim().isNotEmpty) {
-      await V3VozacLokacijaService.postaviAktivnost(vozacId, false);
-    }
-
     debugPrint('[V3ForegroundGpsService] Tracking zaustavljen');
   }
 
@@ -328,7 +324,6 @@ class V3ForegroundGpsService {
               lat: position.latitude,
               lng: position.longitude,
               brzina: position.speed * 3.6, // m/s -> km/h
-              aktivno: true,
             ),
           );
 
@@ -377,7 +372,6 @@ class V3ForegroundGpsService {
           lat: position.latitude,
           lng: position.longitude,
           brzina: position.speed * 3.6,
-          aktivno: true,
         ),
       );
     } catch (e) {
@@ -401,7 +395,6 @@ class V3ForegroundGpsService {
           lat: position.latitude,
           lng: position.longitude,
           brzina: position.speed * 3.6,
-          aktivno: true,
         ),
       );
     } catch (e) {
@@ -477,12 +470,12 @@ class V3ForegroundGpsService {
       final rows = (rowsRaw).cast<Map<String, dynamic>>();
 
       String? rowTime(Map<String, dynamic> row) {
-        final raw = row['dodeljeno_vreme']?.toString() ?? row['zeljeno_vreme']?.toString();
+        final raw = row['dodeljeno_vreme']?.toString();
         return _extractTimeToken(raw);
       }
 
       final relevantRows = rows.where((row) {
-        if (row['putnik_id'] == null) return false;
+        if (row['created_by'] == null) return false;
         final status = row['status_final']?.toString() ?? '';
         if (V3StatusFilters.isCanceledOrRejected(status)) return false;
         final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();

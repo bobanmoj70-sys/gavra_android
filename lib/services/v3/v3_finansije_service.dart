@@ -15,7 +15,7 @@ class V3FinansijeService {
     final g = godina ?? now.year;
     final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
     return cache.values
-        .where((r) => r['aktivno'] != false && r['tip'] == 'rashod' && r['mesec'] == m && r['godina'] == g)
+        .where((r) => r['tip'] == 'rashod' && r['mesec'] == m && r['godina'] == g)
         .map((r) => V3Trosak.fromJson(r))
         .toList()
       ..sort((a, b) => (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
@@ -33,7 +33,7 @@ class V3FinansijeService {
   /// Briše trošak (Fire and Forget)
   static Future<void> deleteTrosak(String id) async {
     try {
-      await _repo.updateById(id, {'aktivno': false});
+      await _repo.deleteById(id);
     } catch (e) {
       debugPrint('[V3FinansijeService] deleteTrosak error: $e');
       rethrow;

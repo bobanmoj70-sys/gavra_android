@@ -119,8 +119,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
           _V3DetaljiCard(
             children: [
               _gorivoDetaljiRow('🔖 Naziv', stanje.naziv, Colors.white70),
-              _gorivoDetaljiRow(
-                  '✅ Aktivno', stanje.aktivno ? 'Da' : 'Ne', stanje.aktivno ? Colors.greenAccent : Colors.redAccent),
             ],
           ),
         ],

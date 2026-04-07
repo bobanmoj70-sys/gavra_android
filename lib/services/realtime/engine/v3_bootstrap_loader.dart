@@ -54,7 +54,7 @@ class V3BootstrapLoader {
       case 'v3_vozaci':
         response = await _client
             .from('v3_auth')
-            .select('auth_id, ime, telefon, telefon_2, boja, push_token, aktivno, created_at, updated_at, tip')
+            .select('auth_id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
             .eq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
@@ -62,7 +62,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_auth')
             .select(
-                'auth_id, ime, telefon, telefon_2, tip, adresa_bc_id, adresa_vs_id, adresa_bc_id_2, adresa_vs_id_2, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, aktivno, created_at, updated_at')
+                'auth_id, ime, telefon, telefon_2, tip, adresa_bc_id, adresa_vs_id, adresa_bc_id_2, adresa_vs_id_2, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at')
             .neq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
@@ -70,7 +70,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_zahtevi')
             .select(
-                'id, putnik_id:created_by, datum, grad, zeljeno_vreme, broj_mesta, status, napomena:alt_napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, aktivno, created_at, updated_at, created_by, scheduled_at')
+                'id, putnik_id:created_by, datum, grad, zeljeno_vreme, broj_mesta, status, napomena:alt_napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, created_at, updated_at, created_by, scheduled_at')
             .gte('updated_at', iso);
         break;
       case 'v3_gorivo_promene':
@@ -104,7 +104,7 @@ class V3BootstrapLoader {
       'telefon_2': row['telefon_2'],
       'boja': row['boja'],
       'push_token': row['push_token'],
-      'aktivno': row['aktivno'] ?? true,
+      'aktivno': true,
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };
@@ -125,7 +125,7 @@ class V3BootstrapLoader {
       'cena_po_pokupljenju': row['cena_po_pokupljenju'],
       'push_token': row['push_token'],
       'push_token_2': row['push_token_2'],
-      'aktivno': row['aktivno'] ?? true,
+      'aktivno': true,
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };

@@ -14,8 +14,6 @@ class V3PumpaStanje {
 
   final double stanjeBrojacPistolj;
 
-  final bool aktivno;
-
   final DateTime? updatedAt;
 
   final DateTime? createdAt;
@@ -26,7 +24,6 @@ class V3PumpaStanje {
     this.kapacitetLitri = 0,
     required this.trenutnoStanje,
     this.stanjeBrojacPistolj = 0,
-    this.aktivno = true,
     this.updatedAt,
     this.createdAt,
   });
@@ -38,7 +35,6 @@ class V3PumpaStanje {
       kapacitetLitri: (json['kapacitet_litri'] as num?)?.toDouble() ?? 0,
       trenutnoStanje: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? 0,
       stanjeBrojacPistolj: (json['brojac_pistolj_litri'] as num?)?.toDouble() ?? 0,
-      aktivno: json['aktivno'] as bool? ?? true,
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
     );
@@ -50,7 +46,6 @@ class V3PumpaStanje {
         'kapacitet_litri': kapacitetLitri,
         'trenutno_stanje_litri': trenutnoStanje,
         'brojac_pistolj_litri': stanjeBrojacPistolj,
-        'aktivno': aktivno,
       };
 }
 

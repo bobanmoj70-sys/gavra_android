@@ -12,10 +12,7 @@ class V3UplateArhivaService {
     final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
     return cache.values
         .where((row) =>
-            row['aktivno'] != false &&
-            row['tip'] == 'prihod' &&
-            row['kategorija'] == 'voznja' &&
-            row['created_by']?.toString() == putnikId)
+            row['tip'] == 'prihod' && row['kategorija'] == 'voznja' && row['created_by']?.toString() == putnikId)
         .map((row) => V3UplataArhiva.fromJson(row))
         .toList()
       ..sort((a, b) => (b.createdAt ?? DateTime(1970)).compareTo(a.createdAt ?? DateTime(1970)));
@@ -25,11 +22,7 @@ class V3UplateArhivaService {
     final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
     return cache.values
         .where((row) =>
-            row['aktivno'] != false &&
-            row['tip'] == 'prihod' &&
-            row['mesec'] == mesec &&
-            row['godina'] == godina &&
-            row['kategorija'] == 'voznja')
+            row['tip'] == 'prihod' && row['mesec'] == mesec && row['godina'] == godina && row['kategorija'] == 'voznja')
         .map((row) => V3UplataArhiva.fromJson(row))
         .toList()
       ..sort((a, b) => (b.createdAt ?? DateTime(1970)).compareTo(a.createdAt ?? DateTime(1970)));
@@ -57,7 +50,6 @@ class V3UplateArhivaService {
         'created_by': (zapis.createdBy != null && zapis.createdBy!.isNotEmpty) ? zapis.createdBy : zapis.putnikId,
         'putnik_ime': zapis.putnikImePrezime,
         'vozac_ime': zapis.vozacImePrezime,
-        'aktivno': zapis.aktivno,
         'updated_by': zapis.updatedBy,
       });
     } catch (e) {
