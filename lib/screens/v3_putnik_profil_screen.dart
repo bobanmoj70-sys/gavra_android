@@ -601,6 +601,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     await V3BiometricService().clearCredentials();
     await V3FirebaseSmsService.signOut();
     await V3ClosedAuthService.clearFirebasePutnikPhone();
+    await V3ClosedAuthService.clearFirebaseVozacPhone();
     if (!mounted) return;
     V3AppSnackBar.success(context, '✅ Uspešno odjavljeni');
     await Future<void>.delayed(const Duration(milliseconds: 350));

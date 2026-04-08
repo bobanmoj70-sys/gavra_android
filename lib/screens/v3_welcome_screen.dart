@@ -98,7 +98,39 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       debugPrint('[V3WelcomeScreen] initV3 error: $e');
     }
 
+    final vozacRestored = await _tryAutoLoginVozac();
+    if (vozacRestored) return;
+
     await _tryAutoLoginPutnik();
+  }
+
+  Future<bool> _tryAutoLoginVozac() async {
+    try {
+      await V3ClosedAuthService.restoreVozacFromFirebaseSession();
+      final restoredVozac = V3VozacService.currentVozac;
+
+      if (!mounted || restoredVozac == null) return false;
+
+      await _stopAudio();
+      if (!mounted) return false;
+
+      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
+
+      unawaited(
+        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:auto_login_vozac')
+            .catchError((Object e) => debugPrint('[V3WelcomeScreen] auto-login vozac push sync error: $e')),
+      );
+
+      final prefersVozacScreen = restoredVozac.imePrezime.toLowerCase() == 'voja';
+      V3NavigationUtils.pushReplacement(
+        context,
+        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] auto-login vozac error: $e');
+      return false;
+    }
   }
 
   Future<bool> _tryAutoLoginPutnik() async {
@@ -187,6 +219,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
     if (vozac != null) {
       V3VozacService.currentVozac = vozac;
+      await V3ClosedAuthService.saveFirebaseVozacPhone(phone);
+      await V3ClosedAuthService.clearFirebasePutnikPhone();
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(
         V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_vozac')
@@ -207,6 +241,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
     V3PutnikService.currentPutnik = putnik;
     await V3ClosedAuthService.saveFirebasePutnikPhone(phone);
+    await V3ClosedAuthService.clearFirebaseVozacPhone();
     await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
     unawaited(
       V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_putnik')

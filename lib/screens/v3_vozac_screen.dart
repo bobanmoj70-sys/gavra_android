@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_firebase_sms_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
@@ -585,6 +586,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (ok == true && mounted) {
       V3VozacService.currentVozac = null;
       await V3FirebaseSmsService.signOut();
+      await V3ClosedAuthService.clearFirebaseVozacPhone();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),
