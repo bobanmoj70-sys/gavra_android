@@ -119,3 +119,7 @@ debug_output.txt
 tail_debug.txt
 tail_debug_vozac.txt
 temp_screenshots/
+
+# Local secret/placeholder files
+ios/APPSTORE_ISSUER_ID.txt
+supabase/empty.env
