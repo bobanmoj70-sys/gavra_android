@@ -335,6 +335,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         extendBodyBehindAppBar: true,
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          automaticallyImplyLeading: false,
+          centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: Text(
@@ -342,12 +344,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           iconTheme: const IconThemeData(color: Colors.white),
-          leading: _step == _SmsStep.unosKoda
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: _isLoading ? null : _resetToStep1,
-                )
-              : null,
         ),
         body: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
@@ -518,13 +514,14 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: Colors.white24),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(icon, color: Colors.amber, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 13.5,

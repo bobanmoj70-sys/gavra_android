@@ -1,4 +1,5 @@
 import '../../globals.dart';
+import '../../utils/v3_phone_utils.dart';
 
 class V3AuthLookupService {
   V3AuthLookupService._();
@@ -7,15 +8,12 @@ class V3AuthLookupService {
       'auth_id, ime, telefon, telefon_2, boja, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_provider, push_token_2, push_provider_2, created_at, updated_at';
 
   static Future<Map<String, dynamic>?> getVozacByPhone(String normalizedPhone) async {
-    final phone = normalizedPhone.trim();
-    if (phone.isEmpty) return null;
+    final candidates = _phoneCandidates(normalizedPhone);
+    if (candidates.isEmpty) return null;
 
-    final rows = await supabase
-        .from('v3_auth')
-        .select(_authLookupSelect)
-        .eq('tip', 'vozac')
-        .or('telefon.eq.$phone,telefon_2.eq.$phone')
-        .limit(2);
+    final orClause = _buildPhoneOrClause(candidates);
+
+    final rows = await supabase.from('v3_auth').select(_authLookupSelect).eq('tip', 'vozac').or(orClause).limit(2);
 
     if (rows.length > 1) {
       throw StateError('Pronađeno više vozača za isti broj telefona.');
@@ -26,15 +24,12 @@ class V3AuthLookupService {
   }
 
   static Future<Map<String, dynamic>?> getPutnikByPhone(String normalizedPhone) async {
-    final phone = normalizedPhone.trim();
-    if (phone.isEmpty) return null;
+    final candidates = _phoneCandidates(normalizedPhone);
+    if (candidates.isEmpty) return null;
 
-    final rows = await supabase
-        .from('v3_auth')
-        .select(_authLookupSelect)
-        .neq('tip', 'vozac')
-        .or('telefon.eq.$phone,telefon_2.eq.$phone')
-        .limit(2);
+    final orClause = _buildPhoneOrClause(candidates);
+
+    final rows = await supabase.from('v3_auth').select(_authLookupSelect).neq('tip', 'vozac').or(orClause).limit(2);
 
     if (rows.length > 1) {
       throw StateError('Pronađeno više putnika za isti broj telefona.');
@@ -77,5 +72,42 @@ class V3AuthLookupService {
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };
+  }
+
+  static List<String> _phoneCandidates(String inputPhone) {
+    final raw = inputPhone.trim();
+    if (raw.isEmpty) return const [];
+
+    final normalized = V3PhoneUtils.normalize(raw);
+    final digits = normalized.replaceAll('+', '');
+    final out = <String>{};
+
+    void addCandidate(String? value) {
+      final v = (value ?? '').trim();
+      if (v.isNotEmpty) out.add(v);
+    }
+
+    addCandidate(raw);
+    addCandidate(normalized);
+
+    if (digits.isNotEmpty) {
+      addCandidate(digits); // 381...
+      addCandidate('+$digits');
+    }
+
+    if (digits.startsWith('381') && digits.length > 3) {
+      addCandidate('0${digits.substring(3)}');
+    }
+
+    return out.toList();
+  }
+
+  static String _buildPhoneOrClause(List<String> phones) {
+    final clauses = <String>[];
+    for (final phone in phones) {
+      clauses.add('telefon.eq.$phone');
+      clauses.add('telefon_2.eq.$phone');
+    }
+    return clauses.join(',');
   }
 }

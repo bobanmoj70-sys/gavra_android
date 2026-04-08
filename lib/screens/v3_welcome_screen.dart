@@ -520,9 +520,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'Designed Developed Crafted with balls',
+                          'Designed - Developed - Crafted with balls',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
                             letterSpacing: 1,
                             color: Colors.white.withValues(alpha: 0.5),
                           ),
