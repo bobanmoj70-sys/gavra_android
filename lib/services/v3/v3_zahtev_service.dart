@@ -191,13 +191,13 @@ class V3ZahtevService {
     }
 
     final datumIso = _datumKey(datum);
-    final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradStatusReturningList(
+    final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
       putnikId: putnikId,
       datumIso: datumIso,
       grad: grad,
       payload: {
-        'status_final': 'otkazano',
-        if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
+        if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
+        'otkazano_at': DateTime.now().toIso8601String(),
       },
     );
 
@@ -222,7 +222,7 @@ class V3ZahtevService {
     }
   }
 
-  /// Prepisuje zeljeno_vreme i dodeljeno_vreme postojećeg zahteva (admin use-case).
+  /// Prepisuje trazeni_polazak_at i polazak_at postojećeg zahteva (admin use-case).
   static Future<void> updateVreme(String id, String novoVreme, {String? status}) async {
     try {
       final row = await _domain.assignTime(
@@ -253,26 +253,25 @@ class V3ZahtevService {
       ..sort((a, b) => (a.zeljenoVreme).compareTo(b.zeljenoVreme));
   }
 
-  /// Dohvata zahteve iz operativnog plana za određeni datum i grad.
+  /// Dohvata operativne zapise za određeni datum i grad.
   static List<V3Zahtev> getOperativniZahteviByDatumAndGrad(String datum, String grad) {
     final opCache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
 
-    // Prvo nađemo sve u operativnoj nedelji za taj dan
+    // Prvo nađemo sve operativne redove za taj dan i grad.
     final opFiltered = opCache.where((r) => r['datum'] == datum && r['grad'] == grad).toList();
 
     // Mapiramo operativne zapise direktno u V3Zahtev objekte.
     // v3_zahtevi služi samo za obradu zahteva, ne za prikaz operativne liste.
     return opFiltered.map((op) {
-      final efektivnoDodeljeno = (op['dodeljeno_vreme'] as String?) ?? '00:00';
-      final efektivnoZeljeno = (op['zeljeno_vreme'] as String?) ?? efektivnoDodeljeno;
+      final efektivnoDodeljeno = (op['polazak_at'] as String?) ?? '00:00';
       return V3Zahtev(
         id: op['id'] as String? ?? 'temp',
         putnikId: op['created_by'] as String? ?? '',
         grad: grad,
         datum: DateTime.tryParse(datum) ?? DateTime.now(),
-        zeljenoVreme: efektivnoZeljeno,
+        zeljenoVreme: efektivnoDodeljeno,
         dodeljenoVreme: efektivnoDodeljeno,
-        status: op['status_final'] as String? ?? 'obrada',
+        status: V3StatusFilters.deriveOperativnaStatus(op),
       );
     }).toList()
       ..sort((a, b) => (a.dodeljenoVreme ?? '').compareTo(b.dodeljenoVreme ?? ''));
@@ -306,8 +305,8 @@ class V3ZahtevService {
       if (otkazaoVozacId != null) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
         final payload = {
-          'status_final': 'otkazano',
-          'otkazao_vozac_id': otkazaoVozacId,
+          'otkazano_by': otkazaoVozacId,
+          'otkazano_at': DateTime.now().toIso8601String(),
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
@@ -327,8 +326,8 @@ class V3ZahtevService {
         );
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
         final payload2 = {
-          'status_final': 'otkazano',
-          if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
+          if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
+          'otkazano_at': DateTime.now().toIso8601String(),
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);
@@ -343,12 +342,11 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> oznaciPokupljen({String? pokupljenVozacId, String? operativnaId}) async {
+  static Future<void> oznaciPokupljen({String? pokupljenBy, String? operativnaId}) async {
     try {
       final payload = {
-        'vreme_pokupljen': DateTime.now().toIso8601String(),
-        'pokupljen': true,
-        if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
+        'pokupljen_at': DateTime.now().toIso8601String(),
+        if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
       };
       if (operativnaId != null && operativnaId.isNotEmpty) {
         final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
@@ -366,7 +364,7 @@ class V3ZahtevService {
     try {
       final row = await _repository.updateRaw(
         id,
-        {'dodeljeno_vreme': vreme},
+        {'polazak_at': vreme},
       );
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -400,14 +398,12 @@ class V3ZahtevService {
     required String id,
     String? vremePre,
     String? vremePosle,
-    String? napomena,
   }) async {
     try {
       await _domain.offerAlternative(
         id: id,
         vremePre: vremePre,
         vremePosle: vremePosle,
-        napomena: napomena,
       );
     } catch (e) {
       debugPrint('[V3ZahtevService] Alternativa error: $e');
@@ -441,8 +437,8 @@ class V3ZahtevService {
       throw Exception('Zahtev više nije u statusu alternativa.');
     }
 
-    final altPre = (zahtev['alt_vreme_pre']?.toString() ?? '').trim();
-    final altPosle = (zahtev['alt_vreme_posle']?.toString() ?? '').trim();
+    final altPre = (zahtev['alternativa_pre_at']?.toString() ?? '').trim();
+    final altPosle = (zahtev['alternativa_posle_at']?.toString() ?? '').trim();
     final allowedTimes = <String>{
       if (altPre.isNotEmpty) toHHmm(altPre),
       if (altPosle.isNotEmpty) toHHmm(altPosle),
@@ -469,16 +465,14 @@ class V3ZahtevService {
     final usedRows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((row) {
       final rowGrad = (row['grad']?.toString() ?? '').trim();
       final rowDatum = (row['datum']?.toString() ?? '').split('T').first;
-      final rowStatus = (row['status_final']?.toString() ?? '').trim();
+      final rowStatus = V3StatusFilters.deriveOperativnaStatus(row);
       return rowGrad == grad && rowDatum == datum && rowStatus == 'odobreno';
     }).toList();
 
     final usedCount = usedRows.where((row) {
-      final assigned = (row['dodeljeno_vreme']?.toString() ?? '').trim();
-      final desired = (row['zeljeno_vreme']?.toString() ?? '').trim();
-      final effective = assigned.isNotEmpty ? assigned : desired;
-      if (effective.isEmpty) return false;
-      return toHHmm(effective) == selectedHHmm;
+      final assigned = (row['polazak_at']?.toString() ?? '').trim();
+      if (assigned.isEmpty) return false;
+      return toHHmm(assigned) == selectedHHmm;
     }).length;
     if (maxMesta > 0 && usedCount >= maxMesta) {
       throw Exception('Termin $izabranoVremeNormalized je trenutno popunjen.');
@@ -488,10 +482,10 @@ class V3ZahtevService {
       id,
       {
         'status': 'odobreno',
-        'zeljeno_vreme': izabranoVremeNormalized,
-        'dodeljeno_vreme': izabranoVremeNormalized,
-        'alt_vreme_pre': null,
-        'alt_vreme_posle': null,
+        'trazeni_polazak_at': izabranoVremeNormalized,
+        'polazak_at': izabranoVremeNormalized,
+        'alternativa_pre_at': null,
+        'alternativa_posle_at': null,
       },
     );
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
@@ -502,8 +496,8 @@ class V3ZahtevService {
       id,
       {
         'status': 'odbijeno',
-        'alt_vreme_pre': null,
-        'alt_vreme_posle': null,
+        'alternativa_pre_at': null,
+        'alternativa_posle_at': null,
       },
     );
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);

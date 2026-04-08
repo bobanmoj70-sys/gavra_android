@@ -25,7 +25,7 @@ import '../utils/v3_text_utils.dart';
 
 /// DNEVNIK NAPLATE — V3
 /// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
-/// Podaci iz v3_operativna_nedelja cache (naplata_status = 'placeno')
+/// Podaci iz v3_operativna_nedelja cache (placeno kada je naplacen_at postavljen)
 class V3DnevnikNaplateScreen extends StatefulWidget {
   const V3DnevnikNaplateScreen({super.key});
 
@@ -92,13 +92,12 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
     final rows = <_NaplataRow>[];
     for (final row in cache.values) {
-      final status = row['naplata_status'] as String? ?? '';
-      if (status != 'placeno') continue;
+      if (row['naplacen_at'] == null) continue;
 
-      final vozacId = row['naplatio_vozac_id']?.toString() ?? '';
+      final vozacId = row['naplacen_by']?.toString() ?? '';
       if (vozacId != _selectedVozacId) continue;
 
-      final vremePlaceno = row['vreme_placen'] as String? ?? '';
+      final vremePlaceno = row['naplacen_at'] as String? ?? '';
       final sortTs = vremePlaceno.isNotEmpty ? vremePlaceno : (row['updated_at'] as String? ?? '');
       final dt = V3DateUtils.parseTs(sortTs);
       if (dt == null) continue;
@@ -112,7 +111,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
           row['ime_prezime'] as String? ??
           row['putnik_ime'] as String? ??
           '?';
-      final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
+      final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
       final vreme = V3DanHelper.formatVreme(dt.hour, dt.minute);
       rows.add(_NaplataRow(
         id: row['id']?.toString() ?? '',

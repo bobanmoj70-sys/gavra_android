@@ -175,7 +175,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final validEntries = entries.where((e) {
       if (V3StatusFilters.isCanceledOrRejected(e.statusFinal)) return false;
       final grad = (e.grad ?? '').trim();
-      final vreme = _normalizeVreme(e.dodeljivoVreme);
+      final vreme = _normalizeVreme(e.polazakAt);
       return grad.isNotEmpty && vreme.isNotEmpty;
     }).toList();
 
@@ -183,27 +183,27 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     final currentVremeNorm = _normalizeVreme(_selectedVreme);
     final hasCurrentSelection = validEntries.any(
-      (e) => (e.grad ?? '') == _selectedGrad && _normalizeVreme(e.dodeljivoVreme) == currentVremeNorm,
+      (e) => (e.grad ?? '') == _selectedGrad && _normalizeVreme(e.polazakAt) == currentVremeNorm,
     );
     if (hasCurrentSelection) return;
 
     final now = DateTime.now();
     final currentMinutes = now.hour * 60 + now.minute;
     validEntries.sort((a, b) {
-      final aMinutes = _timeToMinutes(_normalizeVreme(a.dodeljivoVreme));
-      final bMinutes = _timeToMinutes(_normalizeVreme(b.dodeljivoVreme));
+      final aMinutes = _timeToMinutes(_normalizeVreme(a.polazakAt));
+      final bMinutes = _timeToMinutes(_normalizeVreme(b.polazakAt));
       final aDiff = aMinutes < 0 ? 99999 : (aMinutes - currentMinutes).abs();
       final bDiff = bMinutes < 0 ? 99999 : (bMinutes - currentMinutes).abs();
       if (aDiff != bDiff) return aDiff.compareTo(bDiff);
       final ga = (a.grad ?? '').toUpperCase();
       final gb = (b.grad ?? '').toUpperCase();
       if (ga != gb) return ga.compareTo(gb);
-      return _normalizeVreme(a.dodeljivoVreme).compareTo(_normalizeVreme(b.dodeljivoVreme));
+      return _normalizeVreme(a.polazakAt).compareTo(_normalizeVreme(b.polazakAt));
     });
 
     final first = validEntries.first;
     _selectedGrad = first.grad ?? _selectedGrad;
-    _selectedVreme = _normalizeVreme(first.dodeljivoVreme);
+    _selectedVreme = _normalizeVreme(first.polazakAt);
   }
 
   @override
@@ -295,7 +295,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '');
       final rowDatum = V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
-      final rowStatus = row['status_final']?.toString();
+      final rowStatus = V3StatusFilters.deriveOperativnaStatus(row);
       if (row['created_by'] == putnikId &&
           rowGrad == grad &&
           !V3StatusFilters.isCanceledOrRejected(rowStatus) &&
@@ -310,8 +310,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return null;
   }
 
-  /// Dijalog za dodavanje novog zahteva (rezervacije)
-  void _showDodajZahtevDialog() {
+  /// Dijalog za dodavanje novog operativnog termina (rezervacije)
+  void _showDodajTerminDialog() {
     V3Putnik? selectedPutnik;
     V3Adresa? selectedAdresa; // override adresa (null = koristi putnikovu)
     int brojMesta = 1;
@@ -549,13 +549,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         }
                                       }
 
-                                      // Direktan INSERT u v3_operativna_nedelja — bez zahteva
+                                      // Direktan INSERT u v3_operativna_nedelja — bez upisa u v3_zahtevi
                                       await V3OperativnaNedeljaService.createOrUpdateByVozac(
                                         putnikId: selectedPutnik!.id,
                                         datum: isoDate,
                                         grad: _selectedGrad,
-                                        zeljenoVreme: _selectedVreme,
-                                        dodeljivoVreme: _selectedVreme,
+                                        polazakAt: _selectedVreme,
                                         brojMesta: brojMesta,
                                         createdBy: V3AuditKorisnik.normalize(vozacId),
                                         koristiSekundarnu: koristiSekundarnu,
@@ -689,7 +688,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   // ─── Dialog: Račun za firme (B2B) ────────────────────────────────
   void _showRacunZaFirmeDialog() {
-    // Pripremi listu putnika sa aktivnim zahtevima za odabrani dan/grad/vreme
+    // Pripremi listu putnika sa aktivnim terminima za odabrani dan/grad/vreme
     final putnici = V3PutnikService.getKombinovaniPutniciFiltrirano(
       grad: _selectedGrad,
       vreme: _selectedVreme,
@@ -995,7 +994,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         builder: (context, snapshot) {
           final sviZapisi = snapshot.data ?? [];
 
-          String slotVreme(V3OperativnaNedeljaEntry z) => z.dodeljivoVreme ?? '';
+          String slotVreme(V3OperativnaNedeljaEntry z) => z.polazakAt ?? '';
 
           final selectedVremeNorm = _normalizeVreme(_selectedVreme);
           final rm = V3MasterRealtimeManager.instance;
@@ -1021,7 +1020,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             ..sort((a, b) {
               int sortRank(V3OperativnaNedeljaEntry e) {
                 if (V3StatusFilters.normalizeStatus(e.statusFinal) == 'otkazano') return 3;
-                if (e.pokupljen) return 2;
+                if (e.pokupljenAt != null) return 2;
                 // Provjeri da li je putnik dodijeljen logovanom vozaču
                 if (currentVozacId != null) {
                   final indiv = _getVozacZaPutnika(e.putnikId, e.grad ?? '', slotVreme(e), _selectedDatumIso);
@@ -1071,7 +1070,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             final rm = V3MasterRealtimeManager.instance;
             for (final row in rm.operativnaAssignedCache.values) {
               if (row['grad'] != grad) continue;
-              if (V3StatusFilters.isCanceledOrRejected(row['status_final']?.toString())) continue;
+              if (V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(row))) {
+                continue;
+              }
               if (V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') != _selectedDatumIso) continue;
               if (V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '') != vremeNorm) continue;
               final vozacId = _vozacIdForOperativnaRow(row);
@@ -1260,7 +1261,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               child: _V3HomeButton(
                                 label: 'Dodaj',
                                 icon: Icons.person_add,
-                                onTap: _showDodajZahtevDialog,
+                                onTap: _showDodajTerminDialog,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -1375,7 +1376,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           ],
                         ),
                       ),
-                      // Lista putnika/zahteva + floating neradan-banер
+                      // Lista putnika/termina + floating neradan-banер
                       Expanded(
                         child: ValueListenableBuilder<List<Map<String, String>>>(
                           valueListenable: neradniDaniNotifier,

@@ -13,7 +13,6 @@ class V3ZahtevPatch {
   final String? dodeljenoVreme;
   final String? altVremePre;
   final String? altVremePosle;
-  final String? altNapomena;
   final bool? koristiSekundarnu;
   final String? adresaIdOverride;
 
@@ -24,7 +23,6 @@ class V3ZahtevPatch {
     this.dodeljenoVreme,
     this.altVremePre,
     this.altVremePosle,
-    this.altNapomena,
     this.koristiSekundarnu,
     this.adresaIdOverride,
   });

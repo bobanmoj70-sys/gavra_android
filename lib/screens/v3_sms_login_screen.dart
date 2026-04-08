@@ -130,8 +130,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
 
     if (FirebaseAuth.instance.currentUser == null) {
-      if (mounted) V3AppSnackBar.info(context, 'ℹ️ Sesija je istekla. Prijavi se SMS-om.');
-      _resetToStep1();
+      await _secureStorage.delete(key: widget.biometricKey!);
+      if (mounted) {
+        setState(() => _hasSavedCredentials = false);
+        V3AppSnackBar.info(context, 'ℹ️ Sesija je istekla. Prijavi se SMS-om.');
+        _resetToStep1();
+      }
       return;
     }
 
@@ -142,6 +146,16 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     if (!authenticated) {
       if (mounted) V3AppSnackBar.error(context, '❌ Biometrijska autentifikacija nije uspela');
       return;
+    }
+
+    final normalized = V3ClosedAuthService.normalizePhone(raw);
+    if (normalized.isEmpty) {
+      if (mounted) V3AppSnackBar.error(context, '❌ Sačuvan telefon nije ispravan. Prijavi se SMS-om.');
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _normalizedPhone = normalized);
     }
 
     if (!mounted) return;
@@ -171,10 +185,20 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     setState(() {
       _isLoading = true;
-      _statusMessage = '📨 Pripremam verifikaciju...';
+      _statusMessage = '🔍 Proveravam broj...';
     });
 
     try {
+      final exists = await V3ClosedAuthService.phoneExists(phone);
+      if (!mounted) return;
+      if (!exists) {
+        V3AppSnackBar.error(context, '❌ Broj nije registrovan u sistemu.');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
+      setState(() => _statusMessage = '📨 Pripremam verifikaciju...');
+
       final result = await V3FirebaseSmsService.sendSmsCode(
         phoneNumber: phone,
         onStatusUpdate: (msg) {

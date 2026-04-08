@@ -68,11 +68,11 @@ class V3MasterRealtimeManager {
 
       final datumIso = V3DanHelper.parseIsoDatePart(_asString(entry['datum']));
       final grad = (entry['grad']?.toString() ?? '').trim().toUpperCase();
-      final polazakTime = _extractTimeToken(entry['dodeljeno_vreme']?.toString()) ?? '';
+      final polazakTime = _extractTimeToken(entry['polazak_at']?.toString()) ?? '';
 
       final row = Map<String, dynamic>.from(entry);
-      row['vreme'] = row['vreme'] ?? row['dodeljeno_vreme'];
-      row['polazak_vreme'] = row['dodeljeno_vreme'];
+      row['vreme'] = row['vreme'] ?? row['polazak_at'];
+      row['polazak_vreme'] = row['polazak_at'];
       row['nav_bar_type'] = row['nav_bar_type'] ?? 'zimski';
       row['gps_status'] = row['gps_status'] ?? 'pending';
       row['notification_sent'] = row['notification_sent'] ?? false;
@@ -478,10 +478,10 @@ class V3MasterRealtimeManager {
       'telefon_1': row['telefon'],
       'telefon_2': row['telefon_2'],
       'tip_putnika': row['tip'],
-      'adresa_bc_id': row['adresa_bc_id'],
-      'adresa_vs_id': row['adresa_vs_id'],
-      'adresa_bc_id_2': row['adresa_bc_id_2'],
-      'adresa_vs_id_2': row['adresa_vs_id_2'],
+      'adresa_bc_id': row['adresa_primary_bc_id'],
+      'adresa_vs_id': row['adresa_primary_vs_id'],
+      'adresa_bc_id_2': row['adresa_secondary_bc_id'],
+      'adresa_vs_id_2': row['adresa_secondary_vs_id'],
       'cena_po_danu': row['cena_po_danu'],
       'cena_po_pokupljenju': row['cena_po_pokupljenju'],
       'push_token': row['push_token'],

@@ -271,16 +271,6 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
                         style: const TextStyle(color: Colors.white38, fontSize: 12),
                       ),
                     ),
-                  if (zahtev.napomena?.isNotEmpty == true)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        '💬 ${zahtev.napomena}',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
                   _buildTimelapse(zahtev),
                 ],
               ),

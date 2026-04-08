@@ -26,7 +26,7 @@ class V3FinansijeRepository {
         .select(selectColumns)
         .eq('tip', tip)
         .eq('kategorija', kategorija)
-        .eq('naplatio_vozac_id', vozacId)
+        .eq('naplaceno_by', vozacId)
         .gte('created_at', dayStartIso)
         .lt('created_at', dayEndIso)
         .order('created_at', ascending: false)

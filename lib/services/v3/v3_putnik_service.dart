@@ -161,7 +161,7 @@ class V3PutnikService {
       final isDanas = z['datum'] == nowIso;
       final statusAllowed = !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
       final isGrad = z['grad'] == grad;
-      final isVreme = z['zeljeno_vreme'] == vreme;
+      final isVreme = z['trazeni_polazak_at'] == vreme;
       return isDanas && statusAllowed && isGrad && isVreme;
     }).toList();
 
@@ -234,7 +234,7 @@ class V3PutnikService {
       final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
       return rDatum == datumIso &&
           z['grad'] == grad &&
-          z['zeljeno_vreme'] == vreme &&
+          z['trazeni_polazak_at'] == vreme &&
           z['status'] != 'otkazano' &&
           z['status'] != 'odbijeno';
     });

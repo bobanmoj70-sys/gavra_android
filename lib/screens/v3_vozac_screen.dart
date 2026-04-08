@@ -143,13 +143,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isGpsRowEligible(Map<String, dynamic> row) {
-    final status = (row['status_final'] as String?) ?? (row['status'] as String?);
+    final status = V3StatusFilters.deriveOperativnaStatus(row);
     return !V3StatusFilters.isCanceledOrRejected(status);
   }
 
   bool _isGpsRowActiveForCount(Map<String, dynamic> row) {
-    final status = (row['status_final'] as String?) ?? (row['status'] as String?);
-    final pokupljen = row['pokupljen'] == true;
+    final status = V3StatusFilters.deriveOperativnaStatus(row);
+    final pokupljen = row['pokupljen_at'] != null;
     return V3StatusFilters.isVisibleForDisplay(
       status: status,
       pokupljen: pokupljen,
@@ -257,7 +257,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   bool _isExcludedFromOptimization(_PutnikEntry entry) {
     final status = entry.entry?.statusFinal;
-    final isPokupljen = entry.entry?.pokupljen ?? false;
+    final isPokupljen = entry.entry?.pokupljenAt != null;
     return V3StatusFilters.isExcludedFromOptimization(
       status: status,
       pokupljen: isPokupljen,
@@ -270,7 +270,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       int sortRank(_PutnikEntry entry) {
         final status = entry.entry?.statusFinal;
         if (V3StatusFilters.isCanceledOrRejected(status)) return 3;
-        if (entry.entry?.pokupljen == true) return 2;
+        if (entry.entry?.pokupljenAt != null) return 2;
         return 1;
       }
 
@@ -344,7 +344,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final rm = V3MasterRealtimeManager.instance;
 
     String operativnaVreme(Map<String, dynamic> row) {
-      return ((row['dodeljeno_vreme'] as String?) ?? '');
+      return ((row['polazak_at'] as String?) ?? '');
     }
 
     String rowGrad(Map<String, dynamic> row) => (row['grad']?.toString().toUpperCase() ?? '');
@@ -419,7 +419,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (matchedEntryData == null && putnikId != null && putnikId.isNotEmpty) {
         DateTime? bestUpdatedAt;
         for (final r in rm.operativnaNedeljaCache.values) {
-          if (V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString())) continue;
+          if (V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r))) continue;
           if (r['created_by']?.toString() != putnikId) continue;
           if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
           if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;

@@ -9,7 +9,7 @@ class V3DateUtils {
   V3DateUtils._();
 
   /// Parsira timestamptz string iz baze → lokalno vrijeme uređaja.
-  /// Koristiti za: created_at, updated_at, vreme_pokupljen, vreme_placen, itd.
+  /// Koristiti za: created_at, updated_at, pokupljen_at, naplacen_at, itd.
   static DateTime? parseTs(String? s) {
     if (s == null || s.isEmpty) return null;
     return DateTime.tryParse(s)?.toLocal();

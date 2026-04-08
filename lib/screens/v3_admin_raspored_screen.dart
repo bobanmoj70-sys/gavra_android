@@ -210,7 +210,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       final putnikId = row['created_by']?.toString() ?? '';
       if (!_putnikPostoji(putnikId)) continue;
       if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
-      final statusFinal = row['status_final']?.toString();
+      final statusFinal = V3StatusFilters.deriveOperativnaStatus(row);
       if (V3StatusFilters.isCanceledOrRejected(statusFinal) ||
           V3StatusFilters.normalizeStatus(statusFinal) == 'obrada') {
         continue;
@@ -255,7 +255,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   // ─── Cache helpers ────────────────────────────────────────────────────────
 
   String _effectiveTime(Map<String, dynamic> row) {
-    return ((row['dodeljeno_vreme'] as String?) ?? '').trim();
+    return ((row['polazak_at'] as String?) ?? '').trim();
   }
 
   bool _putnikPostoji(String putnikId) {
@@ -271,7 +271,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
     final terminRows = rm.operativnaNedeljaCache.values.where((row) {
       final rowVreme = _effectiveTime(row);
-      final statusFinal = row['status_final']?.toString();
+      final statusFinal = V3StatusFilters.deriveOperativnaStatus(row);
       final putnikId = row['created_by']?.toString() ?? '';
       return V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum &&
           row['grad'] == grad &&
@@ -307,7 +307,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
     for (final row in rm.operativnaNedeljaCache.values) {
       final rowVreme = _effectiveTime(row);
-      final statusFinal = row['status_final']?.toString();
+      final statusFinal = V3StatusFilters.deriveOperativnaStatus(row);
       if (row['created_by'] == putnikId &&
           row['grad'] == grad &&
           !V3StatusFilters.isCanceledOrRejected(statusFinal) &&
@@ -332,11 +332,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       final datumStr = r['datum'] as String?;
       if (datumStr == null) return false;
       final d = V3DanHelper.parseIsoDatePart(datumStr);
-      final statusFinal = r['status_final']?.toString();
+      final statusFinal = V3StatusFilters.deriveOperativnaStatus(r);
       final putnikId = r['created_by']?.toString() ?? '';
       return d == targetDatum &&
           r['grad'] == grad &&
-          V3ValidationUtils.normalizeVreme((r['dodeljeno_vreme']) as String? ?? '') == normV &&
+          V3ValidationUtils.normalizeVreme((r['polazak_at']) as String? ?? '') == normV &&
           _putnikPostoji(putnikId) &&
           !V3StatusFilters.isCanceledOrRejected(statusFinal) &&
           V3StatusFilters.normalizeStatus(statusFinal) != 'obrada';
@@ -376,7 +376,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             r['grad'] == grad &&
             V3ValidationUtils.normalizeVreme(rowVreme) == V3ValidationUtils.normalizeVreme(vreme) &&
             _putnikPostoji(putnikId) &&
-            !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString());
+            !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r));
       }).toList();
 
       final operativnaIds = putnici
@@ -428,7 +428,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                 r['grad'] == grad &&
                 V3ValidationUtils.normalizeVreme(rowVreme) == normVreme &&
                 _putnikPostoji(putnikId) &&
-                !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString());
+                !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r));
           })
           .map((r) => r['id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
@@ -457,7 +457,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == datum &&
             r['grad'] == grad &&
             V3ValidationUtils.normalizeVreme(_effectiveTime(r)) == normVreme &&
-            !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString()),
+            !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r)),
         orElse: () => <String, dynamic>{},
       );
 
@@ -494,7 +494,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             r['grad'] == grad &&
             V3ValidationUtils.normalizeVreme(_effectiveTime(r)) == normVreme &&
-            !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString()),
+            !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r)),
         orElse: () => <String, dynamic>{},
       );
 
@@ -595,8 +595,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     );
   }
 
-  Future<void> _showPutnikAssignDialog(V3OperativnaNedeljaEntry zahtev) async {
-    final trenutni = _getVozacZaPutnika(zahtev.putnikId, _selectedGrad, _selectedVreme);
+  Future<void> _showPutnikAssignDialog(V3OperativnaNedeljaEntry termin) async {
+    final trenutni = _getVozacZaPutnika(termin.putnikId, _selectedGrad, _selectedVreme);
     V3Vozac? odabran = trenutni;
     final vozaci = V3VozacService.getAllVozaci();
     if (vozaci.isEmpty) {
@@ -628,7 +628,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     BoxDecoration(color: Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
               )),
               const SizedBox(height: 16),
-              Text('👤 ${(V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Putnik').toUpperCase()}',
+              Text('👤 ${(V3PutnikService.getPutnikById(termin.putnikId)?.imePrezime ?? 'Putnik').toUpperCase()}',
                   style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1)),
               Text('$_selectedGrad $_selectedVreme — $_selectedDatumIso',
                   style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1)),
@@ -647,7 +647,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                 TextButton.icon(
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    await _ukloniPutnikDodjelu(zahtev.putnikId, _selectedGrad, _selectedVreme);
+                    await _ukloniPutnikDodjelu(termin.putnikId, _selectedGrad, _selectedVreme);
                   },
                   icon: const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 18),
                   label: const Text('Ukloni individualnu dodjelu', style: TextStyle(color: Colors.redAccent)),
@@ -660,7 +660,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                       ? null
                       : () async {
                           Navigator.pop(ctx);
-                          await _dodelijPutniku(zahtev.putnikId, odabran!, _selectedGrad, _selectedVreme);
+                          await _dodelijPutniku(termin.putnikId, odabran!, _selectedGrad, _selectedVreme);
                         },
                   text: 'Potvrdi',
                   backgroundColor: Colors.white.withValues(alpha: 0.15),
@@ -693,7 +693,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       builder: (context, snapshot) {
         final sviZapisi = snapshot.data ?? [];
         final vozacTermin = _getVozacZaTermin(_selectedGrad, _selectedVreme);
-        String slotVreme(V3OperativnaNedeljaEntry z) => z.dodeljivoVreme ?? '';
+        String slotVreme(V3OperativnaNedeljaEntry z) => z.polazakAt ?? '';
 
         // Zapisi iz operativna_nedelja za selektovani grad+vreme (datum već filtriran streamom)
         final zapisi = _selectedVreme.isNotEmpty
@@ -792,7 +792,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                       onTap: () => _showTerminAssignDialog(_selectedGrad, _selectedVreme),
                     ),
 
-                  // ── Lista zahteva ──────────────────────────────────────
+                  // ── Lista termina ──────────────────────────────────────
                   Expanded(
                     child: Stack(
                       children: [
@@ -1050,4 +1050,4 @@ class _NavBarProps {
   });
 }
 
-// ─── Zahtev tile ──────────────────────────────────────────────────────────────
+// ─── Termin tile ──────────────────────────────────────────────────────────────

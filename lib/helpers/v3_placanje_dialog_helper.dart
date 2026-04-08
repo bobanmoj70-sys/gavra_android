@@ -28,26 +28,25 @@ class V3PlacanjeDialogHelper {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     final placenoRows = cache.where((row) {
       if (row['putnik_id']?.toString() != putnikId) return false;
-      if ((row['naplata_status']?.toString() ?? '') != 'placeno') return false;
-      final vremePlacen = row['vreme_placen']?.toString();
+      final vremePlacen = row['naplacen_at']?.toString();
       return vremePlacen != null && vremePlacen.isNotEmpty;
     }).toList();
 
     if (placenoRows.isEmpty) return null;
 
     placenoRows.sort((a, b) {
-      final aDt = DateTime.tryParse(a['vreme_placen']?.toString() ?? '') ?? DateTime(2000);
-      final bDt = DateTime.tryParse(b['vreme_placen']?.toString() ?? '') ?? DateTime(2000);
+      final aDt = DateTime.tryParse(a['naplacen_at']?.toString() ?? '') ?? DateTime(2000);
+      final bDt = DateTime.tryParse(b['naplacen_at']?.toString() ?? '') ?? DateTime(2000);
       return bDt.compareTo(aDt);
     });
 
     final last = placenoRows.first;
-    final vozacId = last['naplatio_vozac_id']?.toString();
+    final vozacId = last['naplacen_by']?.toString();
     final vozacIme = vozacId == null ? null : V3VozacService.getVozacById(vozacId)?.imePrezime;
 
     return {
-      'vreme_placen': last['vreme_placen'],
-      'iznos_naplacen': (last['iznos_naplacen'] as num?)?.toDouble() ?? 0.0,
+      'naplacen_at': last['naplacen_at'],
+      'naplacen_iznos': (last['naplacen_iznos'] as num?)?.toDouble() ?? 0.0,
       'naplatio_ime': vozacIme ?? 'Nepoznato',
     };
   }
@@ -69,8 +68,8 @@ class V3PlacanjeDialogHelper {
     int _selectedMonth = DateTime.now().month;
     int _selectedYear = DateTime.now().year;
     final zadnjaNaplata = _getZadnjaNaplata(putnikId);
-    final vremePlacen = DateTime.tryParse(zadnjaNaplata?['vreme_placen']?.toString() ?? '');
-    final zadnjiIznos = (zadnjaNaplata?['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
+    final vremePlacen = DateTime.tryParse(zadnjaNaplata?['naplacen_at']?.toString() ?? '');
+    final zadnjiIznos = (zadnjaNaplata?['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
     final naplatioIme = (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
 
     return showDialog<V3PlacanjeRezultat>(

@@ -45,11 +45,11 @@ class V3UplateArhivaService {
         'ponavljaj_mesecno': false,
         'mesec': zapis.zaMesec,
         'godina': zapis.zaGodinu,
-        'naplatio_vozac_id': zapis.vozacId.isEmpty ? null : zapis.vozacId,
+        'naplaceno_by': zapis.vozacId.isEmpty ? null : zapis.vozacId,
         'tip': 'prihod',
         'created_by': (zapis.createdBy != null && zapis.createdBy!.isNotEmpty) ? zapis.createdBy : zapis.putnikId,
-        'putnik_ime': zapis.putnikImePrezime,
-        'vozac_ime': zapis.vozacImePrezime,
+        'putnik_auth_id': zapis.putnikId.isEmpty ? null : zapis.putnikId,
+        'vozac_auth_id': zapis.vozacId.isEmpty ? null : zapis.vozacId,
         'updated_by': zapis.updatedBy,
       });
     } catch (e) {

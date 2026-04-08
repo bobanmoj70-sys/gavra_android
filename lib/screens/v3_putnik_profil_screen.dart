@@ -44,8 +44,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   late Map<String, dynamic> _putnikData;
   Map<String, String> _activeVozacByTerminId = const {};
   PermissionStatus _notifStatus = PermissionStatus.granted;
-  // Zahtevi po danu
-  // key = dan kratica npr 'pon', value = lista zahteva (BC i VS)
+  // Operativni termini po danu
+  // key = dan kratica npr 'pon', value = lista termina (BC i VS)
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
   Map<String, V3WeatherSnapshot> _weatherByGrad = const {};
   Timer? _weatherTimer;
@@ -157,7 +157,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
       for (final grad in const ['BC', 'VS']) {
         final opRows = rm.operativnaNedeljaCache.values.where((e) {
-          final status = V3StatusFilters.normalizeStatus(e['status_final']?.toString() ?? 'obrada');
+          final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(e));
           return (e['created_by']?.toString() ?? '') == putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               (e['grad']?.toString().toUpperCase() ?? '') == grad &&
@@ -169,9 +169,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         Map<String, dynamic>? selected;
         int selectedRank = -1;
         for (final row in opRows) {
-          final status = V3StatusFilters.normalizeStatus(row['status_final']?.toString() ?? 'obrada');
+          final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(row));
           if (V3StatusFilters.isRejected(status)) continue;
-          final rank = _statusPriorityForCell(status) + ((row['pokupljen'] as bool? ?? false) ? 10 : 0);
+          final rank = _statusPriorityForCell(status) + ((row['pokupljen_at'] != null) ? 10 : 0);
           if (rank > selectedRank) {
             selected = row;
             selectedRank = rank;
@@ -180,17 +180,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
         if (selected == null) continue;
 
-        final status = V3StatusFilters.normalizeStatus(selected['status_final']?.toString() ?? 'obrada');
-        final opDodeljeno = _normalizeValidTime(selected['dodeljeno_vreme']?.toString());
-        final opZeljeno = _normalizeValidTime(selected['zeljeno_vreme']?.toString());
-        final displayVreme =
-            V3StatusFilters.isApproved(status) ? (opDodeljeno ?? opZeljeno ?? '—') : (opZeljeno ?? opDodeljeno ?? '—');
+        final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(selected));
+        final opDodeljeno = _normalizeValidTime(selected['polazak_at']?.toString());
+        final displayVreme = opDodeljeno ?? '—';
 
         infos.add(_ZahtevInfo(
           grad: grad,
           vreme: displayVreme,
           status: status,
-          pokupljen: selected['pokupljen'] as bool? ?? false,
+          pokupljen: selected['pokupljen_at'] != null,
           koristiSekundarnu: selected['koristi_sekundarnu'] as bool? ?? false,
         ));
       }
@@ -621,9 +619,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final rm = V3MasterRealtimeManager.instance;
     final operativniTermini = rm.operativnaAssignedCache.values
         .where((r) => (r['created_by']?.toString() ?? '') == putnikId)
-        .where((r) => !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString()))
+        .where((r) => !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r)))
         .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
-        .where((r) => V3StatusFilters.isApproved(r['status_final']?.toString()))
+        .where((r) => V3StatusFilters.isApproved(V3StatusFilters.deriveOperativnaStatus(r)))
         .toList();
 
     final now = DateTime.now();
@@ -635,7 +633,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final vozacId = _activeVozacByTerminId[terminId];
       if (vozacId == null || vozacId.isEmpty) continue;
 
-      final vreme = V3StringUtils.safeSubstringTime((row['dodeljeno_vreme'] as String?) ?? '');
+      final vreme = V3StringUtils.safeSubstringTime((row['polazak_at'] as String?) ?? '');
       if (vreme.isEmpty) continue;
 
       final datum = DateTime.tryParse(row['datum'] as String? ?? '');
@@ -681,7 +679,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final grad = (row['grad'] as String? ?? '').toUpperCase();
     final vozacId = selected['vozacId'] as String;
     final koristiSekundarnu = row['koristi_sekundarnu'] as bool? ?? false;
-    final adresaOverride = row['adresa_id_override'] as String?;
+    final adresaOverride = row['adresa_override_id'] as String?;
     final mojRouteOrder = (row['route_order'] as num?)?.toInt();
 
     // Resolvi adresu ovog putnika
@@ -723,7 +721,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
       for (final r in prethodnici) {
         final pPutnikId = r['created_by']?.toString();
-        final pOverride = r['adresa_id_override'] as String?;
+        final pOverride = r['adresa_override_id'] as String?;
         final pGrad = (r['grad'] as String? ?? '').toUpperCase();
         final pKoristiSek = r['koristi_sekundarnu'] as bool? ?? false;
 
@@ -833,7 +831,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         tipPutnika: tip,
                       ),
                       const SizedBox(height: 16),
-                      // ── RASPORED ZAHTEVA ─────────────────────────────────
+                      // ── RASPORED TERMINA ─────────────────────────────────
                       _buildRasporedCard(nedeljaInfo: nedeljaInfo),
                       const SizedBox(height: 16),
                     ],

@@ -42,7 +42,7 @@ class V3Trosak {
       ponavljajMesecno: json['ponavljaj_mesecno'] as bool? ?? true,
       mesec: json['mesec'] as int? ?? now.month,
       godina: json['godina'] as int? ?? now.year,
-      vozacId: json['naplatio_vozac_id']?.toString(),
+      vozacId: (json['naplaceno_by'] ?? json['vozac_auth_id'])?.toString(),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
@@ -58,7 +58,7 @@ class V3Trosak {
         'ponavljaj_mesecno': ponavljajMesecno,
         'mesec': mesec,
         'godina': godina,
-        'naplatio_vozac_id': vozacId,
+        'naplaceno_by': vozacId,
       };
 }
 
@@ -99,7 +99,7 @@ class V3FinansijskiUnos {
       opis: json['naziv'] as String? ?? json['opis'] as String? ?? '',
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
       datum: V3DateUtils.parseTs(json['created_at'] as String?) ?? now,
-      vozacId: json['naplatio_vozac_id']?.toString(),
+      vozacId: (json['naplaceno_by'] ?? json['vozac_auth_id'])?.toString(),
       voziloId: null,
       putnikId: null,
       createdAt: now,
@@ -110,7 +110,7 @@ class V3FinansijskiUnos {
         'naziv': opis,
         'kategorija': kategorija,
         'iznos': iznos,
-        'naplatio_vozac_id': vozacId,
+        'naplaceno_by': vozacId,
       };
 }
 

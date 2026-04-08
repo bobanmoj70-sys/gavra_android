@@ -24,8 +24,8 @@ class V3ZahtevDomainService {
     String? updatedBy,
   }) {
     return _repository.updateRaw(id, {
-      'zeljeno_vreme': vreme,
-      'dodeljeno_vreme': vreme,
+      'trazeni_polazak_at': vreme,
+      'polazak_at': vreme,
       if (status != null) 'status': status,
       if (updatedBy != null) 'updated_by': updatedBy,
     });
@@ -40,12 +40,11 @@ class V3ZahtevDomainService {
   }) async {
     final updateData = <String, dynamic>{
       'status': V3ZahtevStatus.obrada.name,
-      'zeljeno_vreme': novoVreme,
-      'dodeljeno_vreme': null,
+      'trazeni_polazak_at': novoVreme,
+      'polazak_at': null,
       'scheduled_at': null,
-      'alt_vreme_pre': null,
-      'alt_vreme_posle': null,
-      'alt_napomena': null,
+      'alternativa_pre_at': null,
+      'alternativa_posle_at': null,
       if (createdAtIso != null) 'created_at': createdAtIso,
       if (updatedBy != null) 'updated_by': updatedBy,
     };
@@ -60,14 +59,12 @@ class V3ZahtevDomainService {
     required String id,
     String? vremePre,
     String? vremePosle,
-    String? napomena,
     String? updatedBy,
   }) async {
     await _repository.updateRaw(id, {
       'status': V3ZahtevStatus.alternativa.name,
-      'alt_vreme_pre': vremePre,
-      'alt_vreme_posle': vremePosle,
-      'alt_napomena': napomena,
+      'alternativa_pre_at': vremePre,
+      'alternativa_posle_at': vremePosle,
       if (updatedBy != null) 'updated_by': updatedBy,
     });
   }

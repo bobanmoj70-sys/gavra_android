@@ -217,8 +217,7 @@ class _DugCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
     final datumStr = DateFormat('dd.MM.yyyy  HH:mm').format(dug.datum);
-    final pickupStr =
-        dug.vremePokupljen != null ? DateFormat('dd.MM.yyyy  HH:mm').format(dug.vremePokupljen!) : 'Nepoznato';
+    final pickupStr = dug.pokupljenAt != null ? DateFormat('dd.MM.yyyy  HH:mm').format(dug.pokupljenAt!) : 'Nepoznato';
     final vozacStr = dug.vozacIme.isNotEmpty ? dug.vozacIme : 'Nepoznato';
 
     return Container(

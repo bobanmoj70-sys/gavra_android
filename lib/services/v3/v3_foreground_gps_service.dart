@@ -470,13 +470,13 @@ class V3ForegroundGpsService {
       final rows = (rowsRaw).cast<Map<String, dynamic>>();
 
       String? rowTime(Map<String, dynamic> row) {
-        final raw = row['dodeljeno_vreme']?.toString();
+        final raw = row['polazak_at']?.toString();
         return _extractTimeToken(raw);
       }
 
       final relevantRows = rows.where((row) {
         if (row['created_by'] == null) return false;
-        final status = row['status_final']?.toString() ?? '';
+        final status = V3StatusFilters.deriveOperativnaStatus(row);
         if (V3StatusFilters.isCanceledOrRejected(status)) return false;
         final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
         if (rowGrad != grad) return false;
@@ -486,7 +486,7 @@ class V3ForegroundGpsService {
 
       if (relevantRows.isEmpty) return;
 
-      final allPickedUp = relevantRows.every((row) => row['pokupljen'] == true);
+      final allPickedUp = relevantRows.every((row) => row['pokupljen_at'] != null);
       if (!allPickedUp) return;
 
       debugPrint('[V3ForegroundGpsService] Auto-stop: svi putnici su pokupljeni, gasim tracking');

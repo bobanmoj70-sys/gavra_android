@@ -527,8 +527,8 @@ Future<void> _showAlternativaActionsNotification(
 }) async {
   final rawZahtevId = data['zahtev_id']?.toString() ?? data['id']?.toString() ?? '';
   final zahtevId = rawZahtevId.trim();
-  final altPre = _extractNormalizedTime(data['alt_pre']?.toString() ?? data['alt_vreme_pre']?.toString());
-  final altPosle = _extractNormalizedTime(data['alt_posle']?.toString() ?? data['alt_vreme_posle']?.toString());
+  final altPre = _extractNormalizedTime(data['alt_pre']?.toString() ?? data['alternativa_pre_at']?.toString());
+  final altPosle = _extractNormalizedTime(data['alt_posle']?.toString() ?? data['alternativa_posle_at']?.toString());
 
   if (zahtevId.isEmpty) {
     final safeTitle = title.isNotEmpty ? title : 'Informacija o dostupnosti termina';

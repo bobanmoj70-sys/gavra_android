@@ -82,7 +82,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
 
-      - name: Install Codemagic CLI Tools
+      - name: Install iOS signing CLI tools
         run: pip install codemagic-cli-tools
 
       - name: Create .env file

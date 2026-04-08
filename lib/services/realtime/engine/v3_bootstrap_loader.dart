@@ -62,7 +62,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_auth')
             .select(
-                'auth_id, ime, telefon, telefon_2, tip, adresa_bc_id, adresa_vs_id, adresa_bc_id_2, adresa_vs_id_2, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at')
+                'auth_id, ime, telefon, telefon_2, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at')
             .neq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
@@ -70,7 +70,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_zahtevi')
             .select(
-                'id, putnik_id:created_by, datum, grad, zeljeno_vreme, broj_mesta, status, napomena:alt_napomena, dodeljeno_vreme, koristi_sekundarnu, adresa_id_override, alt_vreme_pre, alt_vreme_posle, alt_napomena, created_at, updated_at, created_by, scheduled_at')
+                'id, putnik_id:created_by, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at')
             .gte('updated_at', iso);
         break;
       case 'v3_gorivo_promene':
@@ -116,10 +116,10 @@ class V3BootstrapLoader {
       'telefon_1': row['telefon'],
       'telefon_2': row['telefon_2'],
       'tip_putnika': row['tip'],
-      'adresa_bc_id': row['adresa_bc_id'],
-      'adresa_vs_id': row['adresa_vs_id'],
-      'adresa_bc_id_2': row['adresa_bc_id_2'],
-      'adresa_vs_id_2': row['adresa_vs_id_2'],
+      'adresa_bc_id': row['adresa_primary_bc_id'],
+      'adresa_vs_id': row['adresa_primary_vs_id'],
+      'adresa_bc_id_2': row['adresa_secondary_bc_id'],
+      'adresa_vs_id_2': row['adresa_secondary_vs_id'],
       'cena_po_danu': row['cena_po_danu'],
       'cena_po_pokupljenju': row['cena_po_pokupljenju'],
       'push_token': row['push_token'],

@@ -59,7 +59,6 @@ class V3TextUtils {
   /// Контролери за временске захтеве
   static TextEditingController get preController => getController('pre');
   static TextEditingController get posleController => getController('posle');
-  static TextEditingController get napomenaController => getController('napomena');
 
   /// МАСОВНО ОЧИШЋАВАЊЕ СВИХ КОНТРОЛЕРА
   static void clearAllControllers() {

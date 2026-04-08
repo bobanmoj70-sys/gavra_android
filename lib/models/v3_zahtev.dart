@@ -9,13 +9,11 @@ class V3Zahtev {
   final String zeljenoVreme;
   final int brojMesta;
   final String status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
-  final String? napomena;
   final String? dodeljenoVreme;
   final bool koristiSekundarnu;
   final String? adresaIdOverride;
   final String? altVremePre;
   final String? altVremePosle;
-  final String? altNapomena;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? createdBy;
@@ -28,13 +26,11 @@ class V3Zahtev {
     required this.zeljenoVreme,
     this.brojMesta = 1,
     this.status = 'obrada',
-    this.napomena,
     this.dodeljenoVreme,
     this.koristiSekundarnu = false,
     this.adresaIdOverride,
     this.altVremePre,
     this.altVremePosle,
-    this.altNapomena,
     this.createdAt,
     this.updatedAt,
     this.createdBy,
@@ -48,16 +44,14 @@ class V3Zahtev {
       putnikId: putnikId,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String? ?? '',
-      zeljenoVreme: json['zeljeno_vreme'] as String? ?? '',
+      zeljenoVreme: json['trazeni_polazak_at'] as String? ?? '',
       brojMesta: json['broj_mesta'] as int? ?? 1,
       status: json['status'] as String? ?? 'obrada',
-      napomena: (json['napomena'] as String?) ?? (json['alt_napomena'] as String?),
-      dodeljenoVreme: json['dodeljeno_vreme'] as String?,
+      dodeljenoVreme: json['polazak_at'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
-      adresaIdOverride: json['adresa_id_override'] as String?,
-      altVremePre: json['alt_vreme_pre'] as String?,
-      altVremePosle: json['alt_vreme_posle'] as String?,
-      altNapomena: json['alt_napomena'] as String?,
+      adresaIdOverride: json['adresa_override_id'] as String?,
+      altVremePre: json['alternativa_pre_at'] as String?,
+      altVremePosle: json['alternativa_posle_at'] as String?,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       createdBy: json['created_by'] as String?,
@@ -72,15 +66,14 @@ class V3Zahtev {
       if (id.isNotEmpty) 'id': id,
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
-      'zeljeno_vreme': zeljenoVreme.isEmpty ? null : zeljenoVreme,
+      'trazeni_polazak_at': zeljenoVreme.isEmpty ? null : zeljenoVreme,
       'broj_mesta': brojMesta,
       'status': status,
-      'dodeljeno_vreme': dodeljenoVreme,
+      'polazak_at': dodeljenoVreme,
       'koristi_sekundarnu': koristiSekundarnu,
-      'adresa_id_override': adresaIdOverride,
-      'alt_vreme_pre': altVremePre,
-      'alt_vreme_posle': altVremePosle,
-      'alt_napomena': altNapomena,
+      'adresa_override_id': adresaIdOverride,
+      'alternativa_pre_at': altVremePre,
+      'alternativa_posle_at': altVremePosle,
       if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
     };
   }
@@ -93,13 +86,11 @@ class V3Zahtev {
     String? zeljenoVreme,
     int? brojMesta,
     String? status,
-    String? napomena,
     String? dodeljenoVreme,
     bool? koristiSekundarnu,
     String? adresaIdOverride,
     String? altVremePre,
     String? altVremePosle,
-    String? altNapomena,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -111,13 +102,11 @@ class V3Zahtev {
       zeljenoVreme: zeljenoVreme ?? this.zeljenoVreme,
       brojMesta: brojMesta ?? this.brojMesta,
       status: status ?? this.status,
-      napomena: napomena ?? this.napomena,
       dodeljenoVreme: dodeljenoVreme ?? this.dodeljenoVreme,
       koristiSekundarnu: koristiSekundarnu ?? this.koristiSekundarnu,
       adresaIdOverride: adresaIdOverride ?? this.adresaIdOverride,
       altVremePre: altVremePre ?? this.altVremePre,
       altVremePosle: altVremePosle ?? this.altVremePosle,
-      altNapomena: altNapomena ?? this.altNapomena,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

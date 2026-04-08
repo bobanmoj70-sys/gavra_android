@@ -13,23 +13,20 @@ class V3OperativnaNedeljaEntry {
   final String putnikId;
   final DateTime datum;
   final String? grad;
-  final String? vreme;
+  final String? polazakAt;
   final String? statusFinal;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final int brojMesta;
-  final String? zeljenoVreme;
-  final String? dodeljivoVreme;
-  final DateTime? vremePokupljen;
+  final DateTime? pokupljenAt;
   final double iznosNaplacen;
-  final DateTime? vremePlacen;
+  final DateTime? naplacenAt;
   final String naplataStatus;
-  final String? pokupljenVozacId;
-  final String? naplatioVozacId;
-  final String? otkazaoVozacId;
-  final String? otkazaoPutnikId;
+  final String? pokupljenBy;
+  final String? naplacenBy;
+  final String? otkazanoBy;
+  final DateTime? otkazanoAt;
   final int? maxMesta;
-  final bool pokupljen;
   final String? altVremePre;
   final String? altVremePosle;
   final bool koristiSekundarnu;
@@ -41,23 +38,20 @@ class V3OperativnaNedeljaEntry {
     required this.putnikId,
     required this.datum,
     this.grad,
-    this.vreme,
+    this.polazakAt,
     this.statusFinal,
     this.createdAt,
     this.updatedAt,
     this.brojMesta = 1,
-    this.zeljenoVreme,
-    this.dodeljivoVreme,
-    this.vremePokupljen,
+    this.pokupljenAt,
     this.iznosNaplacen = 0,
-    this.vremePlacen,
+    this.naplacenAt,
     this.naplataStatus = 'nije_placeno',
-    this.pokupljenVozacId,
-    this.naplatioVozacId,
-    this.otkazaoVozacId,
-    this.otkazaoPutnikId,
+    this.pokupljenBy,
+    this.naplacenBy,
+    this.otkazanoBy,
+    this.otkazanoAt,
     this.maxMesta,
-    this.pokupljen = false,
     this.altVremePre,
     this.altVremePosle,
     this.koristiSekundarnu = false,
@@ -73,27 +67,24 @@ class V3OperativnaNedeljaEntry {
       putnikId: effectivePutnikId,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String?,
-      vreme: json['dodeljeno_vreme'] as String?,
-      statusFinal: json['status_final'] as String?,
+      polazakAt: json['polazak_at'] as String?,
+      statusFinal: V3StatusFilters.deriveOperativnaStatus(json),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
-      zeljenoVreme: json['zeljeno_vreme'] as String?,
-      dodeljivoVreme: json['dodeljeno_vreme'] as String?,
-      vremePokupljen: V3DateUtils.parseTs(json['vreme_pokupljen'] as String?),
-      iznosNaplacen: (json['iznos_naplacen'] as num?)?.toDouble() ?? 0,
-      vremePlacen: V3DateUtils.parseTs(json['vreme_placen'] as String?),
-      naplataStatus: json['naplata_status'] as String? ?? 'nije_placeno',
-      pokupljenVozacId: json['pokupljen_vozac_id'] as String?,
-      naplatioVozacId: json['naplatio_vozac_id'] as String?,
-      otkazaoVozacId: json['otkazao_vozac_id'] as String?,
-      otkazaoPutnikId: json['otkazao_putnik_id'] as String?,
+      pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
+      iznosNaplacen: (json['naplacen_iznos'] as num?)?.toDouble() ?? 0,
+      naplacenAt: V3DateUtils.parseTs(json['naplacen_at'] as String?),
+      naplataStatus: V3DateUtils.parseTs(json['naplacen_at'] as String?) != null ? 'placeno' : 'nije_placeno',
+      pokupljenBy: json['pokupljen_by'] as String?,
+      naplacenBy: json['naplacen_by'] as String?,
+      otkazanoBy: json['otkazano_by'] as String?,
+      otkazanoAt: V3DateUtils.parseTs(json['otkazano_at'] as String?),
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
-      pokupljen: json['pokupljen'] as bool? ?? false,
-      altVremePre: json['alt_vreme_pre'] as String?,
-      altVremePosle: json['alt_vreme_posle'] as String?,
+      altVremePre: json['alternativa_pre_at'] as String?,
+      altVremePosle: json['alternativa_posle_at'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
-      adresaIdOverride: json['adresa_id_override'] as String?,
+      adresaIdOverride: json['adresa_override_id'] as String?,
       createdBy: json['created_by'] as String?,
     );
   }
@@ -105,23 +96,20 @@ class V3OperativnaNedeljaEntry {
       if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
-      'status_final': statusFinal,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
-      if (zeljenoVreme != null) 'zeljeno_vreme': zeljenoVreme,
-      if (dodeljivoVreme != null) 'dodeljeno_vreme': dodeljivoVreme,
-      if (vremePokupljen != null) 'vreme_pokupljen': vremePokupljen!.toIso8601String(),
-      'iznos_naplacen': iznosNaplacen,
-      if (vremePlacen != null) 'vreme_placen': vremePlacen!.toIso8601String(),
-      'naplata_status': naplataStatus,
-      if (pokupljenVozacId != null) 'pokupljen_vozac_id': pokupljenVozacId,
-      if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
-      if (otkazaoVozacId != null) 'otkazao_vozac_id': otkazaoVozacId,
-      if (otkazaoPutnikId != null) 'otkazao_putnik_id': otkazaoPutnikId,
+      if (polazakAt != null) 'polazak_at': polazakAt,
+      if (pokupljenAt != null) 'pokupljen_at': pokupljenAt!.toIso8601String(),
+      'naplacen_iznos': iznosNaplacen,
+      if (naplacenAt != null) 'naplacen_at': naplacenAt!.toIso8601String(),
+      if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
+      if (naplacenBy != null) 'naplacen_by': naplacenBy,
+      if (otkazanoBy != null) 'otkazano_by': otkazanoBy,
+      if (otkazanoAt != null) 'otkazano_at': otkazanoAt!.toIso8601String(),
       if (maxMesta != null) 'max_mesta': maxMesta,
-      if (altVremePre != null) 'alt_vreme_pre': altVremePre,
-      if (altVremePosle != null) 'alt_vreme_posle': altVremePosle,
+      if (altVremePre != null) 'alternativa_pre_at': altVremePre,
+      if (altVremePosle != null) 'alternativa_posle_at': altVremePosle,
       'koristi_sekundarnu': koristiSekundarnu,
-      if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
+      if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
     };
   }
 }
@@ -130,7 +118,8 @@ class V3OperativnaNedeljaService {
   V3OperativnaNedeljaService._();
   static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
 
-  static bool _isOperativnaAktivnaPoStatusu(String? status) {
+  static bool _isOperativnaAktivna(Map<String, dynamic> row) {
+    final status = V3StatusFilters.deriveOperativnaStatus(row);
     return !V3StatusFilters.isCanceledOrRejected(status);
   }
 
@@ -155,13 +144,13 @@ class V3OperativnaNedeljaService {
     return cache
         .where((r) {
           return r['grad'] == grad &&
-              r['dodeljeno_vreme'] == vreme &&
+              r['polazak_at'] == vreme &&
               r['datum'].toString() == datumStr &&
-              _isOperativnaAktivnaPoStatusu(r['status_final']?.toString());
+              _isOperativnaAktivna(r);
         })
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
         .toList()
-      ..sort((a, b) => a.id.compareTo(b.id)); // Default sort
+      ..sort((a, b) => a.id.compareTo(b.id));
   }
 
   static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByFilter({
@@ -229,32 +218,16 @@ class V3OperativnaNedeljaService {
     );
   }
 
-  static Future<void> updateStatus({
-    required String id,
-    required String status,
-  }) async {
-    try {
-      // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
-      await _repo.updateById(id, {
-        'status_final': status,
-      });
-    } catch (e) {
-      debugPrint('[V3OperativnaNedeljaService] Update status error: $e');
-      rethrow;
-    }
-  }
-
   static Future<void> updateNaplata({
     required String id,
     required double iznos,
-    String? naplatioVozacId,
+    String? naplacenBy,
   }) async {
     try {
       final row = await _repo.updateByIdReturningSingle(id, {
-        'naplata_status': 'placeno',
-        'iznos_naplacen': iznos,
-        'vreme_placen': DateTime.now().toIso8601String(),
-        if (naplatioVozacId != null) 'naplatio_vozac_id': naplatioVozacId,
+        'naplacen_iznos': iznos,
+        'naplacen_at': DateTime.now().toIso8601String(),
+        if (naplacenBy != null) 'naplacen_by': naplacenBy,
       });
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
     } catch (e) {
@@ -278,9 +251,8 @@ class V3OperativnaNedeljaService {
     return null;
   }
 
-  /// Čita broj zauzetih mesta — suma broj_mesta zapisa sa statusom koji zauzima mjesto.
-  /// Filtrira: status_final IN (obrada, odobreno, alternativa).
-  /// Napomena: pokupljeni putnici imaju status_final='odobreno' + pokupljen=true, pa su već u skupu.
+  /// Čita broj zauzetih mesta — suma broj_mesta aktivnih operativnih zapisa.
+  /// Aktivni status je izveden iz operativnih kolona (`otkazano_at`, `alternativa_*`, `polazak_at`).
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
     const aktivniStatusi = {'obrada', 'odobreno', 'alternativa'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
@@ -315,14 +287,13 @@ class V3OperativnaNedeljaService {
   }
 
   /// Direktan INSERT u v3_operativna_nedelja — za vozača koji dodaje putnika.
-  /// Upisuje: zeljeno_vreme, dodeljeno_vreme, status_final='odobreno', created_by UUID (ako je dostupan).
-  /// Ako već postoji zapis za isti putnik+datum+grad → UPDATE vreme+status.
+  /// Upisuje: polazak_at, created_by UUID (ako je dostupan).
+  /// Ako već postoji zapis za isti putnik+datum+grad → UPDATE `polazak_at`.
   static Future<void> createOrUpdateByVozac({
     required String putnikId,
     required String datum, // yyyy-MM-dd
     required String grad,
-    required String zeljenoVreme, // HH:mm
-    required String dodeljivoVreme, // HH:mm
+    required String polazakAt, // HH:mm
     required int brojMesta,
     String? createdBy,
     bool? koristiSekundarnu,
@@ -336,21 +307,16 @@ class V3OperativnaNedeljaService {
       final postojeci = cache.where((r) {
         final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
         final rowPutnikId = r['created_by']?.toString();
-        return rowPutnikId == putnikId &&
-            rDatum == datum &&
-            r['grad'] == grad &&
-            _isOperativnaAktivnaPoStatusu(r['status_final']?.toString());
+        return rowPutnikId == putnikId && rDatum == datum && r['grad'] == grad && _isOperativnaAktivna(r);
       }).toList();
 
       if (postojeci.isNotEmpty) {
-        // UPDATE: prepiši vreme i status
+        // UPDATE: prepiši polazak_at
         await _repo.updateById(postojeci.first['id'] as String, {
-          'zeljeno_vreme': zeljenoVreme,
-          'dodeljeno_vreme': dodeljivoVreme,
-          'status_final': 'odobreno',
+          'polazak_at': polazakAt,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
-          'adresa_id_override': adresaIdOverride, // null = briše override
+          'adresa_override_id': adresaIdOverride, // null = briše override
         });
       } else {
         // INSERT direktno u operativna_nedelja
@@ -358,14 +324,11 @@ class V3OperativnaNedeljaService {
           'created_by': putnikId,
           'datum': datum,
           'grad': grad,
-          'zeljeno_vreme': zeljenoVreme,
-          'dodeljeno_vreme': dodeljivoVreme,
+          'polazak_at': polazakAt,
           'broj_mesta': brojMesta,
-          'status_final': 'odobreno',
-          'pokupljen': false,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
-          if (adresaIdOverride != null) 'adresa_id_override': adresaIdOverride,
+          if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
         });
       }
     } catch (e) {
@@ -385,7 +348,7 @@ class V3OperativnaNedeljaService {
 
     for (final id in operativnaIds) {
       await _updateById(id, {
-        'pokupljen_vozac_id': vozacId,
+        'pokupljen_by': vozacId,
         'nav_bar_type': navBarType,
         if (actor != null) 'updated_by': actor,
       });
@@ -404,7 +367,7 @@ class V3OperativnaNedeljaService {
       grad: grad,
       dodeljenoVreme: dodeljenoVreme,
       payload: {
-        'pokupljen_vozac_id': null,
+        'pokupljen_by': null,
         'route_order': null,
         if (actor != null) 'updated_by': actor,
       },
@@ -423,7 +386,7 @@ class V3OperativnaNedeljaService {
   }) async {
     final actor = V3AuditKorisnik.normalize(updatedBy);
     await _updateById(operativnaId, {
-      'pokupljen_vozac_id': vozacId,
+      'pokupljen_by': vozacId,
       'nav_bar_type': navBarType,
       if (actor != null) 'updated_by': actor,
     });
@@ -443,7 +406,7 @@ class V3OperativnaNedeljaService {
       dodeljenoVreme: dodeljenoVreme,
       datumIso: datumIso,
       payload: {
-        'pokupljen_vozac_id': null,
+        'pokupljen_by': null,
         'route_order': null,
         if (actor != null) 'updated_by': actor,
       },

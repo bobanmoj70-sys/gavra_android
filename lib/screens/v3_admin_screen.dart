@@ -880,16 +880,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     );
   }
 
-  /// Računa pazar po vozaču iz operativnaNedeljaCache — samo danas, akter = naplatio_vozac_id
+  /// Računa pazar po vozaču iz operativnaNedeljaCache — samo danas, akter = naplacen_by
   Map<String, double> _getPazarPoVozacu() {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
     final danas = DateTime.now();
     final result = <String, double>{};
     for (final row in cache.values) {
-      final status = row['naplata_status'] as String? ?? '';
-      if (status != 'placeno') continue;
+      if (row['naplacen_at'] == null) continue;
       // Datum plaćanja
-      final vremeStr = row['vreme_placen'] as String? ?? row['updated_at'] as String?;
+      final vremeStr = row['naplacen_at'] as String? ?? row['updated_at'] as String?;
       if (vremeStr != null) {
         final dt = DateTime.tryParse(vremeStr);
         if (dt == null) continue;
@@ -898,9 +897,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         continue; // nema datuma — preskači
       }
       // Akter: ko je naplatio
-      final akterId = row['naplatio_vozac_id']?.toString();
+      final akterId = row['naplacen_by']?.toString();
       if (akterId == null || akterId.isEmpty) continue;
-      final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0.0;
+      final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
       result[akterId] = (result[akterId] ?? 0.0) + iznos;
     }
     return result;
@@ -946,7 +945,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['created_by']?.toString();
       if (putnikId == null || !uceniciIds.contains(putnikId)) continue;
-      if (V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString())) continue;
+      final status = V3StatusFilters.deriveOperativnaStatus(r);
+      if (V3StatusFilters.isCanceledOrRejected(status)) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
@@ -965,8 +965,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       if (grad == 'BC') {
-        if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
-        final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
+        if (status != 'odobreno') continue;
+        final dodeljenoVreme = (r['polazak_at']?.toString() ?? '').trim();
         if (dodeljenoVreme.isEmpty) continue;
         bcNames.add(ime);
       }
@@ -1066,7 +1066,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['created_by']?.toString();
       if (putnikId == null || !dnevniIds.contains(putnikId)) continue;
-      if (V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString())) continue;
+      final status = V3StatusFilters.deriveOperativnaStatus(r);
+      if (V3StatusFilters.isCanceledOrRejected(status)) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
@@ -1085,8 +1086,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       if (grad == 'BC') {
-        if ((r['status_final']?.toString() ?? '') != 'odobreno') continue;
-        final dodeljenoVreme = (r['dodeljeno_vreme']?.toString() ?? '').trim();
+        if (status != 'odobreno') continue;
+        final dodeljenoVreme = (r['polazak_at']?.toString() ?? '').trim();
         if (dodeljenoVreme.isEmpty) continue;
         bcNames.add(ime);
       }

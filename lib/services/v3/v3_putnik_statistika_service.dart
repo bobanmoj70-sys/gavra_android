@@ -1,4 +1,5 @@
 import '../../utils/v3_dan_helper.dart';
+import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
 class V3PutnikMesecnaStatistika {
@@ -240,18 +241,17 @@ class V3PutnikStatistikaService {
     );
   }
 
-  static bool _isPokupljen(Map<String, dynamic> row) => row['pokupljen'] == true;
+  static bool _isPokupljen(Map<String, dynamic> row) => row['pokupljen_at'] != null;
 
-  static bool _isPlaceno(Map<String, dynamic> row) =>
-      (row['naplata_status']?.toString().toLowerCase() ?? 'nije_placeno') == 'placeno';
+  static bool _isPlaceno(Map<String, dynamic> row) => row['naplacen_at'] != null;
 
   static bool _isOtkazano(Map<String, dynamic> row) {
-    final status = (row['status_final']?.toString() ?? row['status']?.toString() ?? '').toLowerCase();
+    final status = V3StatusFilters.deriveOperativnaStatus(row);
     return status == 'otkazano';
   }
 
   static double _placeniIznosIliFallback(Map<String, dynamic> row, double fallback) {
-    final iznos = (row['iznos_naplacen'] as num?)?.toDouble() ?? 0;
+    final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0;
     return iznos > 0 ? iznos : fallback;
   }
 

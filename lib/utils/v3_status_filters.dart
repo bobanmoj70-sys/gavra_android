@@ -1,6 +1,20 @@
 class V3StatusFilters {
   V3StatusFilters._();
 
+  static String deriveOperativnaStatus(Map<String, dynamic> row) {
+    final otkazanoAt = (row['otkazano_at']?.toString() ?? '').trim();
+    if (otkazanoAt.isNotEmpty) return 'otkazano';
+
+    final altPre = (row['alternativa_pre_at']?.toString() ?? '').trim();
+    final altPosle = (row['alternativa_posle_at']?.toString() ?? '').trim();
+    if (altPre.isNotEmpty || altPosle.isNotEmpty) return 'alternativa';
+
+    final polazakAt = (row['polazak_at']?.toString() ?? '').trim();
+    if (polazakAt.isNotEmpty) return 'odobreno';
+
+    return 'obrada';
+  }
+
   static String normalizeStatus(String? status) {
     return (status ?? '').trim().toLowerCase();
   }

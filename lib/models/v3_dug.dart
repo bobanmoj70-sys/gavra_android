@@ -8,7 +8,7 @@ class V3Dug {
   final String vozacId;
   final String vozacIme;
   final DateTime datum;
-  final DateTime? vremePokupljen;
+  final DateTime? pokupljenAt;
   final double iznos;
   final bool placeno;
   final DateTime? createdAt;
@@ -21,7 +21,7 @@ class V3Dug {
     required this.vozacId,
     this.vozacIme = '',
     required this.datum,
-    this.vremePokupljen,
+    this.pokupljenAt,
     required this.iznos,
     this.placeno = false,
     this.createdAt,
@@ -33,10 +33,10 @@ class V3Dug {
       putnikId: (json['created_by'] as String?) ?? '',
       imePrezime: json['ime_prezime'] as String? ?? json['putnik_ime'] as String? ?? 'Nepoznato',
       tipPutnika: json['tip_putnika'] as String? ?? 'dnevni',
-      vozacId: json['pokupljen_vozac_id'] as String? ?? '',
+      vozacId: json['pokupljen_by'] as String? ?? '',
       vozacIme: json['vozac_ime'] as String? ?? '',
       datum: V3DateUtils.parseDatumOr(json['datum'] as String?, DateTime.now()),
-      vremePokupljen: V3DateUtils.parseTs(json['vreme_pokupljen'] as String?),
+      pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
       placeno: json['placeno'] as bool? ?? false,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
@@ -49,10 +49,10 @@ class V3Dug {
       'putnik_id': putnikId,
       'ime_prezime': imePrezime,
       'tip_putnika': tipPutnika,
-      'pokupljen_vozac_id': vozacId,
+      'pokupljen_by': vozacId,
       'vozac_ime': vozacIme,
       'datum': datum.toIso8601String(),
-      'vreme_pokupljen': vremePokupljen?.toIso8601String(),
+      'pokupljen_at': pokupljenAt?.toIso8601String(),
       'iznos': iznos,
       'placeno': placeno,
     };
@@ -75,12 +75,12 @@ class V3Dug {
           json['putnik_ime'] as String? ??
           'Nepoznato',
       tipPutnika: tip,
-      vozacId: json['pokupljen_vozac_id']?.toString() ?? '',
+      vozacId: json['pokupljen_by']?.toString() ?? '',
       vozacIme: json['vozac_ime']?.toString() ?? '',
       datum: V3DateUtils.parseDatumOr(json['datum'] as String?, DateTime.now()),
-      vremePokupljen: V3DateUtils.parseTs(json['vreme_pokupljen'] as String?),
+      pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
       iznos: iznos,
-      placeno: (json['naplata_status'] as String?) == 'placeno',
+      placeno: json['naplacen_at'] != null,
       createdAt: null,
     );
   }

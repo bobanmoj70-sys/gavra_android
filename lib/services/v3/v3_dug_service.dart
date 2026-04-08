@@ -5,7 +5,7 @@ import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
 
 /// V3DugService - Upravljanje dugovima/naplatama iz v3_operativna_nedelja.
-/// Tabela v3_dugovi ne postoji - dugovi se prate kroz naplata_status u v3_operativna_nedelja.
+/// Tabela v3_dugovi ne postoji - dugovi se prate kroz naplacen_at u v3_operativna_nedelja.
 class V3DugService {
   V3DugService._();
   static final V3OperativnaNedeljaRepository _operativnaRepo = V3OperativnaNedeljaRepository();
@@ -18,9 +18,9 @@ class V3DugService {
     final cache = rm.operativnaNedeljaCache;
     final dugovi = <V3Dug>[];
     for (final row in cache.values) {
-      final naplataSt = row['naplata_status'] as String? ?? 'nije_placeno';
-      if (naplataSt != 'nije_placeno') continue;
-      final isPokupljen = row['pokupljen'] == true;
+      final isPlaceno = row['naplacen_at'] != null;
+      if (isPlaceno) continue;
+      final isPokupljen = row['pokupljen_at'] != null;
       if (!isPokupljen) continue;
       final putnikId = row['created_by'] as String? ?? '';
       final putnikData = rm.putniciCache[putnikId];
@@ -29,10 +29,10 @@ class V3DugService {
       // Samo dnevni i posiljka imaju dugovanje po pokupljenju
       if (tip != 'dnevni' && tip != 'posiljka') continue;
       try {
-        final pickupVozacId = row['pokupljen_vozac_id'] as String? ?? '';
+        final pickupVozacId = row['pokupljen_by'] as String? ?? '';
         final vozacData = pickupVozacId.isNotEmpty ? rm.vozaciCache[pickupVozacId] : null;
         final rowWithDriver = Map<String, dynamic>.from(row);
-        rowWithDriver['pokupljen_vozac_id'] = pickupVozacId;
+        rowWithDriver['pokupljen_by'] = pickupVozacId;
         rowWithDriver['vozac_ime'] = vozacData?['ime_prezime'] as String? ?? '';
         dugovi.add(V3Dug.fromOperacija(rowWithDriver, putnikData: putnikData));
       } catch (_) {}
@@ -50,9 +50,8 @@ class V3DugService {
     try {
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
       await _operativnaRepo.updateById(operacijaId, {
-        'naplata_status': 'placeno',
-        'iznos_naplacen': iznos,
-        'vreme_placen': DateTime.now().toIso8601String(),
+        'naplacen_iznos': iznos,
+        'naplacen_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       debugPrint('[V3DugService] markAsPaid error: $e');

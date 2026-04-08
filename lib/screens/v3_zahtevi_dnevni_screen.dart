@@ -126,11 +126,6 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
             _timeInput('Prvi termin (obično pre)', V3TextUtils.preController),
             const SizedBox(height: 12),
             _timeInput('Drugi termin (obično posle)', V3TextUtils.posleController),
-            const SizedBox(height: 12),
-            V3InputUtils.textField(
-              controller: V3TextUtils.napomenaController,
-              label: 'Napomena (opciono)',
-            ),
           ],
         ),
       ),
@@ -156,7 +151,6 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
           id: zahtev.id,
           vremePre: V3TextUtils.isEmpty('pre') ? null : V3TextUtils.getControllerText('pre'),
           vremePosle: V3TextUtils.isEmpty('posle') ? null : V3TextUtils.getControllerText('posle'),
-          napomena: V3TextUtils.isEmpty('napomena') ? null : V3TextUtils.getControllerText('napomena'),
         );
         if (mounted) V3AppSnackBar.success(context, 'Ponuđena alternativa putniku');
       } catch (e) {
@@ -563,19 +557,6 @@ class _ZahtevCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  if (zahtev.napomena != null && zahtev.napomena!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '💬 ${zahtev.napomena}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 11,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
                   _buildTimelapse(zahtev),
                 ],
               ),

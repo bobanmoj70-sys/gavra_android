@@ -30,7 +30,7 @@ class V3DnevnaPredaja {
   factory V3DnevnaPredaja.fromJson(Map<String, dynamic> json) {
     return V3DnevnaPredaja(
       id: json['id'] as String,
-      vozacId: json['naplatio_vozac_id'] as String?,
+      vozacId: json['naplaceno_by'] as String?,
       vozacImePrezime: (json['vozac_ime'] as String?) ?? (json['vozac_ime_prezime'] as String?),
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       predaoIznos: (json['predao_iznos'] as num?)?.toDouble() ?? 0,
@@ -44,7 +44,7 @@ class V3DnevnaPredaja {
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'naplatio_vozac_id': vozacId,
+        'naplaceno_by': vozacId,
         'vozac_ime': vozacImePrezime,
         'datum': V3DanHelper.toIsoDate(datum),
         'predao_iznos': predaoIznos,

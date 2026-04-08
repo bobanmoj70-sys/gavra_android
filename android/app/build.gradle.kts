@@ -86,7 +86,10 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
+
+    // Add Firebase Authentication
+    implementation("com.google.firebase:firebase-auth")
 
     // Add Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging")
