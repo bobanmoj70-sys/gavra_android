@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_push_token_sync_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -110,6 +111,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _stopAudio();
       if (!mounted) return false;
 
+      unawaited(
+        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:auto_login_putnik')
+            .catchError((Object e) => debugPrint('[V3WelcomeScreen] auto-login push sync error: $e')),
+      );
+
       V3NavigationUtils.pushReplacement(
         context,
         V3PutnikProfilScreen(putnikData: Map<String, dynamic>.from(restored)),
@@ -182,6 +188,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     if (vozac != null) {
       V3VozacService.currentVozac = vozac;
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
+      unawaited(
+        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_vozac')
+            .catchError((Object e) => debugPrint('[V3WelcomeScreen] vozac push sync error: $e')),
+      );
       if (!mounted) return;
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
       V3NavigationUtils.pushReplacement(
@@ -198,6 +208,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     V3PutnikService.currentPutnik = putnik;
     await V3ClosedAuthService.saveFirebasePutnikPhone(phone);
     await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
+    unawaited(
+      V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_putnik')
+          .catchError((Object e) => debugPrint('[V3WelcomeScreen] putnik push sync error: $e')),
+    );
     if (!mounted) return;
     V3NavigationUtils.pushReplacement(
       context,

@@ -91,11 +91,13 @@ class V3VozacService {
   static Future<void> updatePushToken({
     required String vozacId,
     String? pushToken,
+    String provider = 'fcm',
   }) async {
     try {
       final payload = <String, dynamic>{};
       if (pushToken != null && pushToken.isNotEmpty) {
         payload['push_token'] = pushToken;
+        payload['push_provider'] = provider;
       }
       if (payload.isEmpty) return;
 

@@ -93,22 +93,23 @@ class V3PutnikService {
     required String token,
     String? existingToken1,
     String? existingToken2,
+    String provider = 'fcm',
   }) async {
     try {
       if (token.isEmpty) return const {};
 
       if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
-        await _repo.updateById(putnikId, {'push_token': token});
-        return {'push_token': token};
+        await _repo.updateById(putnikId, {'push_token': token, 'push_provider': provider});
+        return {'push_token': token, 'push_provider': provider};
       }
 
       if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
-        await _repo.updateById(putnikId, {'push_token_2': token});
-        return {'push_token_2': token};
+        await _repo.updateById(putnikId, {'push_token_2': token, 'push_provider_2': provider});
+        return {'push_token_2': token, 'push_provider_2': provider};
       }
 
-      await _repo.updateById(putnikId, {'push_token_2': token});
-      return {'push_token_2': token};
+      await _repo.updateById(putnikId, {'push_token_2': token, 'push_provider_2': provider});
+      return {'push_token_2': token, 'push_provider_2': provider};
     } catch (e) {
       debugPrint('[V3PutnikService] updatePushTokensOnLogin error: $e');
       rethrow;

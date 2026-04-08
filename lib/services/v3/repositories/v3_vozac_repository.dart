@@ -41,6 +41,7 @@ class V3VozacRepository {
       'telefon_2': payload['telefon_2'],
       'boja': payload['boja'],
       'push_token': payload['push_token'],
+      'push_provider': payload['push_provider'],
       'tip': 'vozac',
     };
     return supabase.from('v3_auth').insert(mapped);
@@ -54,6 +55,7 @@ class V3VozacRepository {
     if (payload.containsKey('telefon_2')) out['telefon_2'] = payload['telefon_2'];
     if (payload.containsKey('boja')) out['boja'] = payload['boja'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
+    if (payload.containsKey('push_provider')) out['push_provider'] = payload['push_provider'];
 
     return out;
   }

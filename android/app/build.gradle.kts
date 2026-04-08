@@ -94,6 +94,9 @@ dependencies {
     // Add Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging")
 
+    // Huawei Mobile Services Push (AppGallery devices / no GMS)
+    implementation("com.huawei.hms:push:6.12.0.300")
+
     // 🚀 Google Play Core - NEW MODULAR LIBRARIES (Android 14+ compatible)
     implementation("com.google.android.play:app-update:2.1.0") {
         because("Replaces deprecated play:core for in-app updates")

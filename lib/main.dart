@@ -19,6 +19,7 @@ import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
+import 'services/v3/v3_push_token_sync_service.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
@@ -242,34 +243,7 @@ Future<void> _initNotificationHandlers() async {
 Future<void> _syncPushTokenToCurrentUser(String token) async {
   final safeToken = token.trim();
   if (safeToken.isEmpty) return;
-
-  try {
-    final currentVozac = V3VozacService.currentVozac;
-    if (currentVozac != null) {
-      await V3VozacService.updatePushToken(vozacId: currentVozac.id, pushToken: safeToken);
-      debugPrint('✅ [Push] Token sync: v3_auth (vozac)');
-      return;
-    }
-
-    final currentPutnik = V3PutnikService.currentPutnik;
-    final putnikId = currentPutnik?['id']?.toString();
-    if (putnikId != null && putnikId.isNotEmpty) {
-      final token1 = currentPutnik?['push_token']?.toString();
-      final token2 = currentPutnik?['push_token_2']?.toString();
-
-      final updated = await V3PutnikService.updatePushTokensOnLogin(
-        putnikId: putnikId,
-        token: safeToken,
-        existingToken1: token1,
-        existingToken2: token2,
-      );
-      currentPutnik?.addAll(updated);
-
-      debugPrint('✅ [Push] Token sync: v3_auth (putnik)');
-    }
-  } catch (e) {
-    debugPrint('⚠️ [Push] Token sync greška: $e');
-  }
+  await V3PushTokenSyncService.syncCurrentUser(token: safeToken, reason: 'main:_syncPushTokenToCurrentUser');
 }
 
 Future<void> _handleNotificationOpenedFromData(Map<String, dynamic> data) async {

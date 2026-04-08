@@ -7,15 +7,22 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.WindowManager
+import com.huawei.agconnect.config.AGConnectServicesConfig
+import com.huawei.hms.aaid.HmsInstanceId
+import com.huawei.hms.api.ConnectionResult
+import com.huawei.hms.api.HuaweiApiAvailability
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterFragmentActivity() {
     private val VIBRATION_CHANNEL = "com.gavra013.gavra_android/vibration"
     private val WAKELOCK_CHANNEL = "com.gavra013.gavra_android/wakelock"
+    private val PUSH_TOKEN_CHANNEL = "com.gavra013.gavra_android/push_token"
     private val TAG = "GavraMainActivity"
     private var wakeLock: PowerManager.WakeLock? = null
+    private val ioExecutor = Executors.newSingleThreadExecutor()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -32,6 +39,30 @@ class MainActivity : FlutterFragmentActivity() {
                 "releaseWakeLock" -> {
                     releaseWakeLock()
                     result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Push token bridge (HMS fallback)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PUSH_TOKEN_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isHmsAvailable" -> {
+                    result.success(isHmsAvailable())
+                }
+                "getHmsToken" -> {
+                    ioExecutor.execute {
+                        try {
+                            val token = getHmsToken()
+                            runOnUiThread {
+                                result.success(token)
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("HMS_TOKEN_ERROR", e.message ?: "Unknown HMS token error", null)
+                            }
+                        }
+                    }
                 }
                 else -> result.notImplemented()
             }
@@ -189,6 +220,31 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onDestroy() {
         releaseWakeLock()
+        ioExecutor.shutdown()
         super.onDestroy()
+    }
+
+    private fun isHmsAvailable(): Boolean {
+        return try {
+            val status = HuaweiApiAvailability.getInstance().isHuaweiMobileServicesAvailable(this)
+            status == ConnectionResult.SUCCESS
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "isHmsAvailable failed: ${e.message}")
+            false
+        }
+    }
+
+    private fun getHmsToken(): String {
+        val appId = AGConnectServicesConfig.fromContext(this).getString("client/app_id")
+        if (appId.isNullOrBlank()) {
+            throw IllegalStateException("Missing AGConnect client/app_id")
+        }
+
+        val token = HmsInstanceId.getInstance(this).getToken(appId, "HCM")
+        if (token.isNullOrBlank()) {
+            throw IllegalStateException("HMS token is empty")
+        }
+        android.util.Log.d(TAG, "✅ HMS token fetched: ${token.take(16)}…")
+        return token
     }
 }
