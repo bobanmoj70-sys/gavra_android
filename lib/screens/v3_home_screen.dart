@@ -1,6 +1,7 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v3_adresa.dart';
@@ -51,6 +52,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String _selectedGrad = 'BC';
   String _selectedVreme = '05:00';
   late Stream<List<V3OperativnaNedeljaEntry>> _operativnaStream;
+  Map<String, String> _activeVozacByTerminId = const {};
+  RealtimeChannel? _trenutnaDodelaChannel;
 
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u aktivnoj sedmici.
   String get _selectedDatumIso =>
@@ -62,8 +65,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
       tables: const [
         'v3_operativna_nedelja',
-        'v3_putnici',
-        'v3_vozaci',
+        'v3_auth',
         'v3_adrese',
         'v3_kapacitet_slots',
       ],
@@ -91,6 +93,81 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final minute = int.tryParse(parts[1]) ?? -1;
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1;
     return hour * 60 + minute;
+  }
+
+  bool _isDodelaStatusAktivan(String status) {
+    final normalized = status.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    const inactiveStatuses = {
+      'inactive',
+      'neaktivan',
+      'otkazan',
+      'cancelled',
+      'deleted',
+    };
+    return !inactiveStatuses.contains(normalized);
+  }
+
+  Future<void> _reloadTrenutnaDodelaMap() async {
+    try {
+      final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_auth_id, status');
+      final next = <String, String>{};
+      for (final row in (rows as List<dynamic>)) {
+        final mapped = row as Map<String, dynamic>;
+        final status = mapped['status']?.toString() ?? '';
+        if (!_isDodelaStatusAktivan(status)) continue;
+        final terminId = mapped['termin_id']?.toString().trim() ?? '';
+        final vozacId = mapped['vozac_auth_id']?.toString().trim() ?? '';
+        if (terminId.isEmpty || vozacId.isEmpty) continue;
+        next[terminId] = vozacId;
+      }
+      _activeVozacByTerminId = next;
+    } catch (e) {
+      debugPrint('[V3HomeScreen] _reloadTrenutnaDodelaMap error: $e');
+      _activeVozacByTerminId = const {};
+    }
+  }
+
+  String _vozacIdForOperativnaRow(Map<String, dynamic> row) {
+    final terminId = row['id']?.toString().trim() ?? '';
+    if (terminId.isEmpty) return '';
+    return _activeVozacByTerminId[terminId] ?? '';
+  }
+
+  void _startTrenutnaDodelaRealtime() {
+    final existing = _trenutnaDodelaChannel;
+    if (existing != null) {
+      supabase.removeChannel(existing);
+      _trenutnaDodelaChannel = null;
+    }
+
+    final channel = supabase.channel('v3_trenutna_dodela_home');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'v3_trenutna_dodela',
+      callback: (_) {
+        _refreshDodelaFromRealtime();
+      },
+    );
+
+    channel.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.channelError && error != null) {
+        debugPrint('[V3HomeScreen] dodela realtime channelError: $error');
+      }
+      if (status == RealtimeSubscribeStatus.timedOut) {
+        debugPrint('[V3HomeScreen] dodela realtime timedOut');
+      }
+    });
+
+    _trenutnaDodelaChannel = channel;
+  }
+
+  Future<void> _refreshDodelaFromRealtime() async {
+    if (!mounted) return;
+    await _reloadTrenutnaDodelaMap();
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _syncSelectedSlotForDatum(String datumIso) {
@@ -134,7 +211,18 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     super.initState();
     _selectedDay = V3DanHelper.defaultWorkdayFullName();
     _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
+    _startTrenutnaDodelaRealtime();
     _initData();
+  }
+
+  @override
+  void dispose() {
+    final channel = _trenutnaDodelaChannel;
+    _trenutnaDodelaChannel = null;
+    if (channel != null) {
+      supabase.removeChannel(channel);
+    }
+    super.dispose();
   }
 
   Future<void> _initData() async {
@@ -148,6 +236,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       return;
     }
     if (mounted) {
+      await _reloadTrenutnaDodelaMap();
       _selectClosestDeparture();
       _syncSelectedSlotForDatum(_selectedDatumIso);
       setState(() => _isLoading = false);
@@ -202,7 +291,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V3ValidationUtils.normalizeVreme(vreme);
-    for (final row in rm.v3GpsRasporedCache.values) {
+    for (final row in rm.operativnaAssignedCache.values) {
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '');
       final rowDatum = V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
@@ -212,8 +301,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           !V3StatusFilters.isCanceledOrRejected(rowStatus) &&
           rowVreme == normV &&
           rowDatum == datum) {
-        final vozacId = (row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString();
-        if (vozacId != null && vozacId.isNotEmpty) {
+        final vozacId = _vozacIdForOperativnaRow(row);
+        if (vozacId.isNotEmpty) {
           return V3VozacService.getVozacById(vozacId);
         }
       }
@@ -980,13 +1069,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           Color? getVozacColorForTermin(String grad, String vreme) {
             final vremeNorm = V3ValidationUtils.normalizeVreme(vreme);
             final rm = V3MasterRealtimeManager.instance;
-            for (final row in rm.v3GpsRasporedCache.values) {
+            for (final row in rm.operativnaAssignedCache.values) {
               if (row['grad'] != grad) continue;
               if (V3StatusFilters.isCanceledOrRejected(row['status_final']?.toString())) continue;
               if (V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') != _selectedDatumIso) continue;
               if (V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '') != vremeNorm) continue;
-              final vozacId = (row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString();
-              if (vozacId == null || vozacId.isEmpty) continue;
+              final vozacId = _vozacIdForOperativnaRow(row);
+              if (vozacId.isEmpty) continue;
               final vozac = V3VozacService.getVozacById(vozacId);
               if (vozac != null) {
                 return _parseVozacColor(vozac.boja);

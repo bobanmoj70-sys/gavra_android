@@ -10,14 +10,14 @@ class V3RealtimeBootstrapRepository {
     final results = await Future.wait([
       _withTimeout('v3_adrese', supabase.from('v3_adrese').select()),
       _withTimeout(
-        'v3_vozaci',
+        'v3_auth_vozaci',
         supabase
             .from('v3_auth')
             .select('auth_id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
             .eq('tip', 'vozac'),
       ),
       _withTimeout(
-        'v3_putnici',
+        'v3_auth_putnici',
         supabase
             .from('v3_auth')
             .select(

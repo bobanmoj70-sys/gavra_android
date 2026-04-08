@@ -46,12 +46,21 @@ class V3FirebaseSmsService {
   V3FirebaseSmsService._();
 
   static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static const bool _appVerificationTestingMode = bool.fromEnvironment(
+    'FIREBASE_APP_VERIFICATION_DISABLED_FOR_TESTING',
+    defaultValue: false,
+  );
 
-  static Future<void> _disableCaptchaFlow() async {
+  static Future<void> _configureAppVerification() async {
     try {
-      await _auth.setSettings(appVerificationDisabledForTesting: true);
+      await _auth.setSettings(
+        appVerificationDisabledForTesting: _appVerificationTestingMode,
+      );
+      if (_appVerificationTestingMode) {
+        debugPrint('[SMS] UPOZORENJE: app verification testing mode je UKLJUČEN.');
+      }
     } catch (e) {
-      debugPrint('[SMS] Ne mogu da isključim app verification: $e');
+      debugPrint('[SMS] Ne mogu da primenim app verification podešavanje: $e');
     }
   }
 
@@ -71,7 +80,7 @@ class V3FirebaseSmsService {
         return SmsSendResult.fail('Firebase nije inicijalizovan. Pokušaj ponovo za par sekundi.');
       }
 
-      await _disableCaptchaFlow();
+      await _configureAppVerification();
 
       onStatusUpdate('📨 Šaljem SMS kod...');
 
@@ -146,7 +155,7 @@ class V3FirebaseSmsService {
         return OtpVerifyResult.fail('Firebase nije inicijalizovan. Pokušaj ponovo za par sekundi.');
       }
 
-      await _disableCaptchaFlow();
+      await _configureAppVerification();
 
       final credential = PhoneAuthProvider.credential(
         verificationId: verificationId,

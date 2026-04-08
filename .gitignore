@@ -109,6 +109,7 @@ mcp.json
 
 # Backup folders
 .env.backup
+.env.backup.from_broken
 
 # Workspace temp/debug artifacts
 temp_index.ts

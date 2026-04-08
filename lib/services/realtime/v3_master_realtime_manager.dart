@@ -33,6 +33,7 @@ class V3MasterRealtimeManager {
 
   // --- IN-MEMORY CACHE ---
   final Map<String, Map<String, dynamic>> adreseCache = {};
+  final Map<String, Map<String, dynamic>> authCache = {};
   final Map<String, Map<String, dynamic>> vozaciCache = {};
   final Map<String, Map<String, dynamic>> vozilaCache = {};
   final Map<String, Map<String, dynamic>> putniciCache = {};
@@ -49,12 +50,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
   final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
-  // Legacy naziv: istorijski se zove "v3GpsRasporedCache", ali izvor podataka je
-  // isključivo v3_operativna_nedelja (nema DB tabele v3_gps_raspored).
-  final Map<String, Map<String, dynamic>> v3GpsRasporedCache = {};
-
-  // Preferirani alias za novi kod (isti objekat kao legacy naziv).
-  Map<String, Map<String, dynamic>> get operativnaAssignedCache => v3GpsRasporedCache;
+  final Map<String, Map<String, dynamic>> operativnaAssignedCache = {};
 
   String? _extractTimeToken(String? value) {
     return V3TimeUtils.extractHHmmToken(value);
@@ -65,7 +61,7 @@ class V3MasterRealtimeManager {
   }
 
   void _rebuildGpsCacheFromOperativna() {
-    v3GpsRasporedCache.clear();
+    operativnaAssignedCache.clear();
     for (final entry in operativnaNedeljaCache.values) {
       final id = entry['id']?.toString();
       if (id == null) continue;
@@ -80,7 +76,7 @@ class V3MasterRealtimeManager {
       row['nav_bar_type'] = row['nav_bar_type'] ?? 'zimski';
       row['gps_status'] = row['gps_status'] ?? 'pending';
       row['notification_sent'] = row['notification_sent'] ?? false;
-      v3GpsRasporedCache[id] = row;
+      operativnaAssignedCache[id] = row;
     }
   }
 
@@ -223,8 +219,9 @@ class V3MasterRealtimeManager {
     if (_cacheStoreRegistered) return;
 
     _cacheStore.registerTable('v3_adrese', adreseCache);
-    _cacheStore.registerTable('v3_vozaci', vozaciCache);
-    _cacheStore.registerTable('v3_putnici', putniciCache);
+    _cacheStore.registerTable('v3_auth', authCache);
+    _cacheStore.registerTable('v3_auth_vozaci', vozaciCache);
+    _cacheStore.registerTable('v3_auth_putnici', putniciCache);
     _cacheStore.registerTable('v3_vozila', vozilaCache);
     _cacheStore.registerTable('v3_zahtevi', zahteviCache);
     _cacheStore.registerTable('v3_gorivo', gorivoCache);
@@ -236,7 +233,7 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
     _cacheStore.registerTable('v3_kapacitet_slots', kapacitetSlotsCache);
     _cacheStore.registerTable('v3_app_settings', appSettingsCache);
-    _cacheStore.registerTable('v3_gps_raspored', v3GpsRasporedCache);
+    _cacheStore.registerTable('v3_operativna_assigned', operativnaAssignedCache);
 
     _cacheStoreRegistered = true;
   }
@@ -300,13 +297,14 @@ class V3MasterRealtimeManager {
 
     final channel = supabase.channel('v3_realtime_all');
     for (final config in V3RealtimeTableRegistry.defaults) {
-      final sourceTable = (config.name == 'v3_vozaci' || config.name == 'v3_putnici') ? 'v3_auth' : config.name;
+      final sourceTable =
+          (config.name == 'v3_auth_vozaci' || config.name == 'v3_auth_putnici') ? 'v3_auth' : config.name;
       channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: sourceTable,
         callback: (payload) {
-          if (config.name == 'v3_vozaci' || config.name == 'v3_putnici') {
+          if (config.name == 'v3_auth_vozaci' || config.name == 'v3_auth_putnici') {
             _onAuthBackedPayload(config: config, payload: payload);
             return;
           }
@@ -408,6 +406,16 @@ class V3MasterRealtimeManager {
     required V3RealtimeTableConfig config,
     required PostgresChangePayload payload,
   }) {
+    _cacheStore.applyRealtimeMutation(
+      table: 'v3_auth',
+      newRecord: payload.newRecord,
+      oldRecord: payload.oldRecord,
+      isDelete: payload.eventType == PostgresChangeEvent.delete,
+      activeKey: 'is_active',
+      hasActiveKey: false,
+      keepInactive: false,
+    );
+
     final mappedNew = _mapAuthToLegacyRow(payload.newRecord, config.name);
     final mappedOld = _mapAuthToLegacyRow(payload.oldRecord, config.name);
 
@@ -424,15 +432,15 @@ class V3MasterRealtimeManager {
     );
 
     if (!changed) return;
-    final affected = <String>{config.name, ...config.dependsOn};
+    final affected = <String>{'v3_auth', config.name, ...config.dependsOn};
     _scheduleEmit(tables: affected);
   }
 
   Map<String, dynamic> _mapAuthToLegacyRow(Map<String, dynamic> row, String logicalTable) {
-    if (logicalTable == 'v3_vozaci') {
+    if (logicalTable == 'v3_auth_vozaci') {
       return _mapAuthToLegacyVozac(row);
     }
-    if (logicalTable == 'v3_putnici') {
+    if (logicalTable == 'v3_auth_putnici') {
       return _mapAuthToLegacyPutnik(row);
     }
     return <String, dynamic>{};
@@ -536,11 +544,13 @@ class V3MasterRealtimeManager {
     switch (table) {
       case 'v3_adrese':
         break;
-      case 'v3_vozaci':
+      case 'v3_auth':
+        break;
+      case 'v3_auth_vozaci':
         break;
       case 'v3_vozila':
         break;
-      case 'v3_putnici':
+      case 'v3_auth_putnici':
         break;
       case 'v3_zahtevi':
         break;
@@ -623,13 +633,13 @@ class V3MasterRealtimeManager {
     }).toList(growable: false);
   }
 
-  /// Osvježi v3GpsRasporedCache - gradi se lokalno iz v3_operativna_nedelja.
+  /// Osvježi operativnaAssignedCache - gradi se lokalno iz v3_operativna_nedelja.
   Future<void> refreshV3GpsRaspored() async {
     try {
       _rebuildGpsCacheFromOperativna();
       _scheduleEmit(tables: {'v3_operativna_nedelja'});
       debugPrint(
-          '[V3MasterRealtimeManager] v3GpsRasporedCache rebuilt: ${v3GpsRasporedCache.length} records from operativna_nedelja');
+          '[V3MasterRealtimeManager] operativnaAssignedCache rebuilt: ${operativnaAssignedCache.length} records from operativna_nedelja');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] Error refreshing assigned operativna cache: $e');
     }
@@ -644,11 +654,13 @@ class V3MasterRealtimeManager {
     switch (table) {
       case 'v3_adrese':
         return adreseCache;
-      case 'v3_vozaci':
+      case 'v3_auth':
+        return authCache;
+      case 'v3_auth_vozaci':
         return vozaciCache;
       case 'v3_vozila':
         return vozilaCache;
-      case 'v3_putnici':
+      case 'v3_auth_putnici':
         return putniciCache;
       case 'v3_zahtevi':
         return zahteviCache;
@@ -670,9 +682,8 @@ class V3MasterRealtimeManager {
         return kapacitetSlotsCache;
       case 'v3_app_settings':
         return appSettingsCache;
-      case 'v3_gps_raspored':
-        // Backward compatibility key: nema DB tabele, cache se gradi iz v3_operativna_nedelja.
-        return v3GpsRasporedCache;
+      case 'v3_operativna_assigned':
+        return operativnaAssignedCache;
       default:
         return {};
     }

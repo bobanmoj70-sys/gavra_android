@@ -81,7 +81,7 @@ class V3ZahtevService {
 
   static Stream<List<V3Zahtev>> streamZahteviByTip(String tip) =>
       V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_zahtevi', 'v3_putnici'],
+        tables: ['v3_zahtevi', 'v3_auth'],
         build: () => getZahteviByTip(tip),
       );
 

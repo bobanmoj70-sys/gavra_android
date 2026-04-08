@@ -4,21 +4,22 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_animation_utils.dart';
-import '../utils/v3_button_utils.dart';
+import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
-import '../utils/v3_stream_utils.dart';
+import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
-import 'v3_putnik_auth_screen.dart';
 import 'v3_putnik_profil_screen.dart';
-import 'v3_vozac_sms_login_screen.dart';
+import 'v3_sms_login_screen.dart';
+import 'v3_vozac_screen.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
   const V3WelcomeScreen({super.key});
@@ -38,38 +39,17 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   late final Animation<double> _fadeAnimation;
 
   String _appVersion = '';
-  bool _isLoading = true;
-  List<V3Vozac> _vozaci = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _subscribeToVozaciRealtime();
     _setupAnimations();
     _loadAppVersion();
     unawaited(
       Future<void>.delayed(const Duration(milliseconds: 300))
           .then((_) => _init())
           .catchError((Object e) => debugPrint('[V3WelcomeScreen] delayed init error: $e')),
-    );
-  }
-
-  List<V3Vozac> _sortedActiveVozaci() {
-    return V3VozacService.getAllVozaci().where((v) => v.imePrezime.isNotEmpty).toList()
-      ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
-  }
-
-  void _subscribeToVozaciRealtime() {
-    V3StreamUtils.subscribe<int>(
-      key: 'welcome_vozaci_realtime',
-      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozaci'),
-      onData: (_) {
-        if (!mounted) return;
-        V3StateUtils.safeSetState(this, () {
-          _vozaci = _sortedActiveVozaci();
-        });
-      },
     );
   }
 
@@ -109,8 +89,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   Future<void> _init() async {
-    V3StateUtils.safeSetState(this, () => _isLoading = true);
-
     try {
       await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
     } on TimeoutException catch (e) {
@@ -119,47 +97,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       debugPrint('[V3WelcomeScreen] initV3 error: $e');
     }
 
-    final autoLoginDone = await _tryAutoLoginPutnik();
-    if (autoLoginDone) {
-      return;
-    }
-
-    debugPrint('[V3WelcomeScreen] _init() started - waiting for vozaciCache...');
-
-    int retries = 0;
-    while (V3MasterRealtimeManager.instance.vozaciCache.isEmpty && retries < 40) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      retries++;
-
-      if (retries % 10 == 0) {
-        debugPrint(
-            '[V3WelcomeScreen] Retry ${retries}/40 - vozaciCache still empty. Cache size: ${V3MasterRealtimeManager.instance.vozaciCache.length}');
-      }
-    }
-
-    if (V3MasterRealtimeManager.instance.vozaciCache.isEmpty) {
-      debugPrint('[V3WelcomeScreen] TIMEOUT! vozaciCache is still empty after ${retries} retries');
-    }
-
-    final vozaci = _sortedActiveVozaci();
-
-    debugPrint('[V3WelcomeScreen] Loaded ${vozaci.length} active vozaci');
-
-    if (mounted) {
-      setState(() {
-        _vozaci = vozaci;
-        _isLoading = false;
-      });
-    }
+    await _tryAutoLoginPutnik();
   }
 
   Future<bool> _tryAutoLoginPutnik() async {
     try {
-      // Pokušaj 1: Supabase sesija (vozači koji su putnici)
-      Map<String, dynamic>? restored = await V3ClosedAuthService.restorePutnikFromCurrentSession();
-
-      // Pokušaj 2: Firebase Phone Auth sesija (SMS putnici)
-      restored ??= await V3ClosedAuthService.restorePutnikFromFirebaseSession();
+      // Auto-login: Firebase sesija + sačuvan telefon u SecureStorage
+      final restored = await V3ClosedAuthService.restorePutnikFromFirebaseSession();
 
       if (!mounted || restored == null) return false;
 
@@ -180,7 +124,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    V3StreamUtils.cancelSubscription('welcome_vozaci_realtime');
     V3AnimationUtils.disposeController('fade');
     V3AnimationUtils.disposeController('slide');
     V3AnimationUtils.disposeController('welcome_pulse');
@@ -208,14 +151,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _refreshOnResume() async {
     if (_isResumeRefreshing || !mounted) return;
     _isResumeRefreshing = true;
-    try {
-      if (!mounted) return;
-      V3StateUtils.safeSetState(this, () {
-        _vozaci = _sortedActiveVozaci();
-      });
-    } finally {
-      _isResumeRefreshing = false;
-    }
+    _isResumeRefreshing = false;
   }
 
   Future<void> _stopAudio() async {
@@ -229,131 +165,43 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
   }
 
-  Future<void> _loginAsVozac(V3Vozac vozac) async {
-    await _stopAudio();
-    if (!mounted) return;
-    V3NavigationUtils.pushScreen(context, V3VozacSmsLoginScreen(vozac: vozac));
-  }
+  Future<void> _onLoginVerified(String phone) async {
+    final vozac = V3VozacService.getVozacByPhone(phone);
+    final putnik = await V3PutnikService.getByPhoneOrCache(phone);
 
-  Future<void> _showVozacDialog() async {
     if (!mounted) return;
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: V3ContainerUtils.gradientContainer(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          padding: const EdgeInsets.all(20),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.2),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Izaberi vozača',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              if (_isLoading)
-                const CircularProgressIndicator(color: Colors.white)
-              else if (_vozaci.isEmpty)
-                Text(
-                  'Nema dostupnih vozača.\nPovežite se na internet.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 14,
-                  ),
-                )
-              else
-                ..._vozaci.map((vozac) {
-                  final color = vozac.boja != null
-                      ? Color(
-                          int.tryParse(
-                                vozac.boja!.replaceFirst('#', '0xFF'),
-                              ) ??
-                              0xFF2196F3,
-                        )
-                      : Colors.blue;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        unawaited(_loginAsVozac(vozac));
-                      },
-                      child: V3ContainerUtils.gradientContainer(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                          horizontal: 20,
-                        ),
-                        gradient: LinearGradient(
-                          colors: [
-                            color.withValues(alpha: 0.8),
-                            Colors.white.withValues(alpha: 0.1),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: color.withValues(alpha: 0.6),
-                          width: 1.5,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.local_taxi,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              vozac.imePrezime,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              const SizedBox(height: 16),
-              V3ButtonUtils.textButton(
-                onPressed: () => Navigator.pop(ctx),
-                text: 'Otkaži',
-                foregroundColor: Colors.white.withValues(alpha: 0.7),
-                fontSize: 16,
-              ),
-            ],
-          ),
-        ),
-      ),
+
+    if (vozac != null && putnik != null) {
+      V3AppSnackBar.error(
+        context,
+        '❌ Broj je vezan za više profila. Kontaktirajte administraciju.',
+      );
+      return;
+    }
+
+    if (vozac != null) {
+      V3VozacService.currentVozac = vozac;
+      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
+      if (!mounted) return;
+      final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
+      V3NavigationUtils.pushReplacement(
+        context,
+        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
+      );
+      return;
+    }
+
+    if (putnik == null) {
+      V3AppSnackBar.error(context, '❌ Profil nije pronađen za ovaj broj.');
+      return;
+    }
+    V3PutnikService.currentPutnik = putnik;
+    await V3ClosedAuthService.saveFirebasePutnikPhone(phone);
+    await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
+    if (!mounted) return;
+    V3NavigationUtils.pushReplacement(
+      context,
+      V3PutnikProfilScreen(putnikData: putnik),
     );
   }
 
@@ -475,68 +323,75 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     ),
                   ),
 
-                  SizedBox(height: screenHeight * 0.05),
+                  SizedBox(height: screenHeight * 0.06),
 
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: V3ContainerUtils.styledContainer(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      backgroundColor: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                      child: Text(
-                        '🍎 Apple Review hint: Za test vozača kliknite "🍎 Vozači" (donje desno dugme).\nPutnički login je odvojeno dugme "Putnici • Prijavi se".',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // PRIJAVI SE dugme (amber) — za putnike
+                  // JEDNO dugme za sve — shimmer pulsing
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: GestureDetector(
-                      onTap: () {
+                      onTap: () async {
+                        await _stopAudio();
+                        if (!mounted) return;
                         V3NavigationUtils.pushScreen(
                           context,
-                          const V3PutnikAuthScreen(),
+                          V3SmsLoginScreen(
+                            title: 'Prijava',
+                            onVerified: _onLoginVerified,
+                          ),
                         );
                       },
-                      child: V3ContainerUtils.gradientContainer(
-                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                        gradient: LinearGradient(
-                          colors: [Colors.amber, Colors.amber.shade700],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.withValues(alpha: 0.4),
-                            blurRadius: 15,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                      child: AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, child) {
+                          final shimmerPos = _pulseController.value;
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              gradient: LinearGradient(
+                                begin: Alignment(
+                                  -2.0 + shimmerPos * 4.0,
+                                  -0.5,
+                                ),
+                                end: Alignment(
+                                  -1.0 + shimmerPos * 4.0,
+                                  0.5,
+                                ),
+                                colors: const [
+                                  Color(0xFFFFB300),
+                                  Color(0xFFFFE082),
+                                  Color(0xFFFFD54F),
+                                  Color(0xFFFFB300),
+                                ],
+                                stops: const [0.0, 0.4, 0.6, 1.0],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.withValues(
+                                    alpha: 0.35 + 0.25 * shimmerPos,
+                                  ),
+                                  blurRadius: 20 + 10 * shimmerPos,
+                                  spreadRadius: 1 + 2 * shimmerPos,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: child,
+                          );
+                        },
                         child: const Row(
-                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.login, color: Colors.white, size: 22),
-                            SizedBox(width: 10),
+                            Icon(Icons.phone_android_rounded, color: Colors.black87, size: 26),
+                            SizedBox(width: 12),
                             Text(
-                              'Putnici • Prijavi se',
+                              'Prijavi se',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
+                                color: Colors.black87,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
                               ),
                             ),
                           ],
@@ -545,78 +400,43 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // O NAMA + VOZAČI row
+                  // O NAMA dugme
                   FadeTransition(
                     opacity: _fadeAnimation,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              V3NavigationUtils.pushScreen(
-                                context,
-                                const V3ONamaScreen(),
-                              );
-                            },
-                            child: V3ContainerUtils.styledContainer(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                width: 1.5,
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.9), size: 28),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'O nama',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ],
+                    child: GestureDetector(
+                      onTap: () {
+                        V3NavigationUtils.pushScreen(
+                          context,
+                          const V3ONamaScreen(),
+                        );
+                      },
+                      child: V3ContainerUtils.styledContainer(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1.5,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.9), size: 22),
+                            const SizedBox(width: 10),
+                            Text(
+                              'O nama',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1,
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => unawaited(_showVozacDialog()),
-                            child: V3ContainerUtils.styledContainer(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                width: 1.5,
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(Icons.local_taxi, color: Colors.white.withValues(alpha: 0.9), size: 28),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '🍎 Vozači',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
 

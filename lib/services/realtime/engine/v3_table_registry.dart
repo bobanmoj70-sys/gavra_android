@@ -24,8 +24,8 @@ class V3RealtimeTableConfig {
 class V3RealtimeTableRegistry {
   static const List<V3RealtimeTableConfig> defaults = <V3RealtimeTableConfig>[
     V3RealtimeTableConfig(name: 'v3_adrese', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_vozaci', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_putnici', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_auth_vozaci', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_auth_putnici', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_vozila', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_zahtevi', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_gorivo', hasActiveKey: false),

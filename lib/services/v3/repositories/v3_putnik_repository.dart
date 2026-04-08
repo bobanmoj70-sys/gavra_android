@@ -9,11 +9,12 @@ class V3PutnikRepository {
         .from('v3_auth')
         .select(_legacyPutnikSelect)
         .or('telefon.eq.$normalizedPhone,telefon_2.eq.$normalizedPhone')
+        .neq('tip', 'vozac')
         .limit(1);
   }
 
   Future<Map<String, dynamic>?> getActiveById(String id) {
-    return supabase.from('v3_auth').select(_legacyPutnikSelect).eq('auth_id', id).maybeSingle();
+    return supabase.from('v3_auth').select(_legacyPutnikSelect).eq('auth_id', id).neq('tip', 'vozac').maybeSingle();
   }
 
   Future<Map<String, dynamic>?> getActiveByPushToken(String token) {
@@ -21,6 +22,7 @@ class V3PutnikRepository {
         .from('v3_auth')
         .select(_legacyPutnikSelect)
         .or('push_token.eq.$token,push_token_2.eq.$token')
+        .neq('tip', 'vozac')
         .maybeSingle();
   }
 

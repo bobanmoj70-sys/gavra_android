@@ -24,7 +24,7 @@ class V3PutnikService {
   }
 
   static Stream<List<V3Putnik>> streamPutniciByTip(String tip) =>
-      V3MasterRealtimeManager.instance.v3StreamFromRevisions(tables: ['v3_putnici'], build: () => getPutniciByTip(tip));
+      V3MasterRealtimeManager.instance.v3StreamFromRevisions(tables: ['v3_auth'], build: () => getPutniciByTip(tip));
 
   static V3Putnik? getPutnikById(String id) {
     final data = V3MasterRealtimeManager.instance.putniciCache[id];
@@ -144,7 +144,7 @@ class V3PutnikService {
 
   static Stream<List<Map<String, dynamic>>> streamKombinovaniPutniciDanas() {
     return V3MasterRealtimeManager.instance
-        .v3StreamFromRevisions(tables: ['v3_putnici', 'v3_zahtevi'], build: () => getKombinovaniPutniciDanas());
+        .v3StreamFromRevisions(tables: ['v3_auth', 'v3_zahtevi'], build: () => getKombinovaniPutniciDanas());
   }
 
   /// Get active v3 passengers + their requests for today, filtered by city and time
@@ -184,13 +184,13 @@ class V3PutnikService {
     required String vreme,
   }) {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_putnici', 'v3_zahtevi'], build: () => getKombinovaniPutniciFiltrirano(grad: grad, vreme: vreme));
+        tables: ['v3_auth', 'v3_zahtevi'], build: () => getKombinovaniPutniciFiltrirano(grad: grad, vreme: vreme));
   }
 
   /// Streams V3 passengers who have an active request for a specific date.
   static Stream<List<V3Putnik>> streamPutniciByDatum({required String datumIso}) {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-      tables: ['v3_putnici', 'v3_zahtevi'],
+      tables: ['v3_auth', 'v3_zahtevi'],
       build: () {
         final rm = V3MasterRealtimeManager.instance;
         final matchingZahtevi = rm.zahteviCache.values.where((z) {

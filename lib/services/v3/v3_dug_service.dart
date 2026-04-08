@@ -42,7 +42,7 @@ class V3DugService {
   }
 
   static Stream<List<V3Dug>> streamDugovi() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_operativna_nedelja', 'v3_putnici', 'v3_vozaci'],
+        tables: ['v3_operativna_nedelja', 'v3_auth'],
         build: () => getDugovi(),
       );
 

@@ -18,8 +18,8 @@ class V3BootstrapLoader {
     final results = await _repository.fetchInitialData();
     return <String, List<dynamic>>{
       'v3_adrese': (results[0] as List).cast<dynamic>(),
-      'v3_vozaci': (results[1] as List).cast<dynamic>(),
-      'v3_putnici': (results[2] as List).cast<dynamic>(),
+      'v3_auth_vozaci': (results[1] as List).cast<dynamic>(),
+      'v3_auth_putnici': (results[2] as List).cast<dynamic>(),
       'v3_vozila': (results[3] as List).cast<dynamic>(),
       'v3_zahtevi': (results[4] as List).cast<dynamic>(),
       'v3_gorivo': (results[5] as List).cast<dynamic>(),
@@ -51,14 +51,14 @@ class V3BootstrapLoader {
       case 'v3_kapacitet_slots':
         response = await _client.from(table).select().gte('updated_at', iso);
         break;
-      case 'v3_vozaci':
+      case 'v3_auth_vozaci':
         response = await _client
             .from('v3_auth')
             .select('auth_id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
             .eq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
-      case 'v3_putnici':
+      case 'v3_auth_putnici':
         response = await _client
             .from('v3_auth')
             .select(
@@ -86,10 +86,10 @@ class V3BootstrapLoader {
     if (response is! List) return <Map<String, dynamic>>[];
 
     final rows = response.whereType<Map<String, dynamic>>().map(Map<String, dynamic>.from).toList(growable: false);
-    if (table == 'v3_vozaci') {
+    if (table == 'v3_auth_vozaci') {
       return rows.map(_mapAuthToLegacyVozac).toList(growable: false);
     }
-    if (table == 'v3_putnici') {
+    if (table == 'v3_auth_putnici') {
       return rows.map(_mapAuthToLegacyPutnik).toList(growable: false);
     }
 

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../globals.dart';
 import '../../models/v3_vozac.dart';
 import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_phone_utils.dart';
-import '../../utils/v3_status_filters.dart';
-import '../../utils/v3_validation_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozac_repository.dart';
 
@@ -22,7 +19,7 @@ class V3VozacService {
   }
 
   static Stream<List<V3Vozac>> streamVozaci() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_vozaci'],
+        tables: ['v3_auth'],
         build: () => getAllVozaci(),
       );
 
@@ -119,95 +116,5 @@ class V3VozacService {
 
     final row = await _repo.getActiveByIdAndPushToken(vozacId: id, pushToken: token);
     return row != null;
-  }
-
-  /// Vraća boju vozača raspoređenog za dati dan/grad/vreme.
-  /// [danPuni] — puni naziv dana (npr. 'Ponedeljak'), konvertuje se u ISO datum aktivne sedmice.
-  static Color? getVozacColorForTermin(String danPuni, String grad, String vreme) {
-    final datumIso = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(danPuni, anchor: V3DanHelper.schedulingWeekAnchor());
-    if (datumIso.isEmpty) return null;
-
-    String normV(String? v) {
-      if (v == null || v.isEmpty) return '';
-      final p = v.split(':');
-      if (p.length >= 2) {
-        final hour = V3ValidationUtils.safeParseInt(p[0]);
-        final minute = V3ValidationUtils.safeParseInt(p[1]);
-        return V3DanHelper.formatVreme(hour, minute);
-      }
-      return v;
-    }
-
-    final vremeNorm = normV(vreme);
-    final rm = V3MasterRealtimeManager.instance;
-
-    // DEBUG: print search parameters
-    print(
-        '🔍 VOZAC COLOR SEARCH: danPuni=$danPuni → datumIso=$datumIso, grad=$grad, vreme=$vreme → vremeNorm=$vremeNorm');
-
-    try {
-      final matchingTermini = rm.v3GpsRasporedCache.values.where(
-        (r) {
-          final datumMatch = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == datumIso;
-          final gradMatch = r['grad']?.toString().toUpperCase() == grad.toUpperCase();
-          final vremeMatch = normV(r['vreme']?.toString()) == vremeNorm;
-          final status = r['status_final']?.toString();
-          final statusMatch = !V3StatusFilters.isCanceledOrRejected(status);
-
-          if (datumMatch && gradMatch && vremeMatch) {
-            print(
-                '🎯 MATCH: ${r['id']} datum=${r['datum']} grad=${r['grad']} vreme=${r['vreme']} status=${r['status_final']} pokupljen_vozac_id=${r['pokupljen_vozac_id']}');
-          }
-
-          return datumMatch && gradMatch && vremeMatch && statusMatch;
-        },
-      );
-
-      if (matchingTermini.isEmpty) {
-        print('❌ NO MATCH FOUND in cache for $datumIso $grad $vremeNorm - cache size: ${rm.v3GpsRasporedCache.length}');
-        // Print first few cache items for debug
-        final cacheItems = rm.v3GpsRasporedCache.values.take(3).toList();
-        for (final item in cacheItems) {
-          print(
-              '   Cache sample: datum=${item['datum']} grad=${item['grad']} vreme=${item['vreme']} status=${item['status_final']}');
-        }
-        return null;
-      }
-
-      final vozacIds = matchingTermini
-          .map((row) => (row['pokupljen_vozac_id'] ?? row['naplatio_vozac_id'])?.toString() ?? '')
-          .where((id) => id.trim().isNotEmpty)
-          .map((id) => id.trim())
-          .toSet();
-
-      if (vozacIds.isEmpty) {
-        print('❌ NO VOZAC found for $datumIso $grad $vremeNorm');
-        return null;
-      }
-
-      if (vozacIds.length > 1) {
-        print('❌ AMBIGUOUS VOZAC set for $datumIso $grad $vremeNorm: $vozacIds');
-        return null;
-      }
-
-      final vozacId = vozacIds.first;
-      final vozac = rm.vozaciCache[vozacId];
-      if (vozac == null) {
-        print('❌ VOZAC not found in cache for vozac $vozacId');
-        return null;
-      }
-      final hex = vozac['boja']?.toString();
-      if (hex == null || hex.isEmpty) {
-        print('❌ VOZAC BOJA is null/empty for vozac $vozacId');
-        return null;
-      }
-      final clean = hex.replaceFirst('#', '');
-      final color = Color(int.parse('FF$clean', radix: 16));
-      print('✅ VOZAC COLOR FOUND: $hex → $color for vozac $vozacId');
-      return color;
-    } catch (e) {
-      print('❌ ERROR in getVozacColorForTermin: $e');
-      return null;
-    }
   }
 }

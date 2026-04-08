@@ -23,29 +23,6 @@ class V3ClosedAuthService {
     return res == true;
   }
 
-  static Future<String?> getPhoneForCurrentUser() async {
-    final user = _client.auth.currentUser;
-    if (user == null) return null;
-
-    final row = await _client.from('v3_auth').select('telefon').eq('auth_id', user.id).maybeSingle();
-    if (row == null) return null;
-
-    final telefon = row['telefon']?.toString() ?? '';
-    if (telefon.trim().isEmpty) return null;
-    return normalizePhone(telefon);
-  }
-
-  static Future<Map<String, dynamic>?> restorePutnikFromCurrentSession() async {
-    final phone = await getPhoneForCurrentUser();
-    if (phone == null || phone.isEmpty) return null;
-
-    final putnik = await V3PutnikService.getByPhoneOrCache(phone);
-    if (putnik == null) return null;
-
-    V3PutnikService.currentPutnik = putnik;
-    return putnik;
-  }
-
   // ─── Firebase Phone Auth sesija ─────────────────────────────────
 
   /// Sačuvaj normalizovani telefon nakon uspešne Firebase SMS verifikacije.
@@ -58,74 +35,17 @@ class V3ClosedAuthService {
     await _storage.delete(key: _firebasePhoneKey);
   }
 
-  static Future<Map<String, dynamic>> bridgeFirebaseSessionToV3Auth() async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser == null) {
-      throw Exception('Firebase sesija ne postoji.');
-    }
-
-    final firebaseIdToken = (await firebaseUser.getIdToken(true)) ?? '';
-    if (firebaseIdToken.isEmpty) {
-      throw Exception('Ne mogu da preuzmem Firebase ID token.');
-    }
-
-    final response = await _client.functions.invoke(
-      'firebase-auth-bridge',
-      body: {
-        'firebase_id_token': firebaseIdToken,
-      },
-    );
-
-    final data = response.data;
-    if (data is! Map) {
-      throw Exception('Neispravan odgovor bridge funkcije.');
-    }
-
-    final payload = Map<String, dynamic>.from(data);
-    if (payload['ok'] != true) {
-      final code = payload['error']?.toString() ?? 'Bridge funkcija je odbila pristup.';
-      final reason = payload['reason']?.toString();
-      if (reason != null && reason.trim().isNotEmpty) {
-        throw Exception('$code: $reason');
-      }
-      throw Exception(code);
-    }
-
-    final v3Auth = payload['v3_auth'];
-    if (v3Auth is! Map) {
-      throw Exception('Bridge funkcija nije vratila v3_auth payload.');
-    }
-
-    // Garantovano: auth_id je uvek popunjen nakon bridge poziva
-    final result = Map<String, dynamic>.from(v3Auth);
-    if (result['auth_id'] == null || result['auth_id'].toString().isEmpty) {
-      throw Exception('Bridge nije vratio auth_id - auth.users kreiranje nije uspelo.');
-    }
-
-    return result;
-  }
-
-  /// Vraća auth_id (= auth.users UUID) iz keširane bridge sesije.
-  /// Ovo je kanonski UUID korisnika za created_by/updated_by kolone.
-  static String? extractAuthId(Map<String, dynamic> bridgeRow) {
-    return bridgeRow['auth_id']?.toString();
-  }
-
-  /// Pokušaj auto-login via Firebase sesije + sačuvanog telefona.
-  /// Vraća putnika ako Firebase currentUser postoji i telefon je u bazi.
+  /// Auto-login: Firebase sesija postoji + telefon je sačuvan u SecureStorage.
+  /// Direktno čita v3_auth tabelu.
   static Future<Map<String, dynamic>?> restorePutnikFromFirebaseSession() async {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser == null) return null;
 
-    final gateRow = await bridgeFirebaseSessionToV3Auth();
-
-    final phone = normalizePhone(gateRow['telefon']?.toString() ?? '');
-    if (phone.isEmpty) return null;
-
     final storedPhone = await _storage.read(key: _firebasePhoneKey);
-    if (storedPhone == null || storedPhone != phone) {
-      await saveFirebasePutnikPhone(phone);
-    }
+    if (storedPhone == null || storedPhone.isEmpty) return null;
+
+    final phone = normalizePhone(storedPhone);
+    if (phone.isEmpty) return null;
 
     final putnik = await V3PutnikService.getByPhoneOrCache(phone);
     if (putnik == null) return null;

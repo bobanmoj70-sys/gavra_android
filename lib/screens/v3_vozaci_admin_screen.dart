@@ -250,7 +250,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozaci'),
+      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_auth'),
       builder: (context, _) {
         final svi = V3VozacService.getAllVozaci();
         final aktivni = svi;

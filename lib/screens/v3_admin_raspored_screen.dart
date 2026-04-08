@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v3_vozac.dart';
@@ -20,7 +21,7 @@ import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
 
 /// V3 ekran za upravljanje rasporedom vozača.
-/// Admin dodeljuje vozača kroz operativnu tabelu (cache layer ima legacy naziv v3GpsRasporedCache).
+/// Admin dodeljuje vozača kroz `v3_trenutna_dodela` (operativna ostaje izvor stanja vožnje).
 class V3AdminRasporedScreen extends StatefulWidget {
   const V3AdminRasporedScreen({super.key});
 
@@ -32,6 +33,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
   String _selectedDay = 'Ponedeljak';
+  Map<String, String> _activeVozacByTerminId = const {};
+  RealtimeChannel? _trenutnaDodelaChannel;
 
   /// ISO datum za izabrani dan u tekućoj nedelji.
   String get _selectedDatumIso =>
@@ -64,11 +67,104 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     return v;
   }
 
+  bool _isDodelaStatusAktivan(String status) {
+    final normalized = status.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    const inactiveStatuses = {
+      'inactive',
+      'neaktivan',
+      'otkazan',
+      'cancelled',
+      'deleted',
+    };
+    return !inactiveStatuses.contains(normalized);
+  }
+
+  Future<void> _reloadTrenutnaDodelaMap() async {
+    try {
+      final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_auth_id, status');
+      final next = <String, String>{};
+      for (final row in (rows as List<dynamic>)) {
+        final mapped = row as Map<String, dynamic>;
+        final status = mapped['status']?.toString() ?? '';
+        if (!_isDodelaStatusAktivan(status)) continue;
+        final terminId = mapped['termin_id']?.toString().trim() ?? '';
+        final vozacId = mapped['vozac_auth_id']?.toString().trim() ?? '';
+        if (terminId.isEmpty || vozacId.isEmpty) continue;
+        next[terminId] = vozacId;
+      }
+      _activeVozacByTerminId = next;
+    } catch (e) {
+      debugPrint('[V3AdminRasporedScreen] _reloadTrenutnaDodelaMap error: $e');
+      _activeVozacByTerminId = const {};
+    }
+  }
+
+  String _vozacIdForOperativnaRow(Map<String, dynamic> row) {
+    final terminId = row['id']?.toString().trim() ?? '';
+    if (terminId.isEmpty) return '';
+    return _activeVozacByTerminId[terminId] ?? '';
+  }
+
+  void _startTrenutnaDodelaRealtime() {
+    final existing = _trenutnaDodelaChannel;
+    if (existing != null) {
+      supabase.removeChannel(existing);
+      _trenutnaDodelaChannel = null;
+    }
+
+    final channel = supabase.channel('v3_trenutna_dodela_admin_raspored');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'v3_trenutna_dodela',
+      callback: (_) {
+        _refreshDodelaFromRealtime();
+      },
+    );
+    channel.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.channelError && error != null) {
+        debugPrint('[V3AdminRasporedScreen] dodela realtime channelError: $error');
+      }
+      if (status == RealtimeSubscribeStatus.timedOut) {
+        debugPrint('[V3AdminRasporedScreen] dodela realtime timedOut');
+      }
+    });
+
+    _trenutnaDodelaChannel = channel;
+  }
+
+  Future<void> _refreshDodelaFromRealtime() async {
+    if (!mounted) return;
+    await _reloadTrenutnaDodelaMap();
+    if (!mounted) return;
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     _selectedDay = V3DanHelper.defaultWorkdayFullName();
-    _syncSelectedSlotForDay();
+    _startTrenutnaDodelaRealtime();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await _reloadTrenutnaDodelaMap();
+    if (!mounted) return;
+    setState(() {
+      _syncSelectedSlotForDay();
+    });
+  }
+
+  @override
+  void dispose() {
+    final channel = _trenutnaDodelaChannel;
+    _trenutnaDodelaChannel = null;
+    if (channel != null) {
+      supabase.removeChannel(channel);
+    }
+    super.dispose();
   }
 
   void _autoSelectNajblizeVreme() {
@@ -167,7 +263,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     return putnik != null;
   }
 
-  /// Vozač za termin iz GPS rasporeda (bez fallback-a).
+  /// Vozač za termin iz trenutne dodele (bez fallback-a).
   V3Vozac? _getVozacZaTermin(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V3ValidationUtils.normalizeVreme(vreme);
@@ -188,8 +284,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
     String? zajednickiVozacId;
     for (final row in terminRows) {
-      final vozacId = (row['pokupljen_vozac_id'] as String?)?.trim();
-      if (vozacId == null || vozacId.isEmpty) {
+      final vozacId = _vozacIdForOperativnaRow(row).trim();
+      if (vozacId.isEmpty) {
         return null;
       }
       if (zajednickiVozacId == null) {
@@ -203,7 +299,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     return V3VozacService.getVozacById(zajednickiVozacId);
   }
 
-  /// Vozač za putnika iz GPS rasporeda (bez fallback-a).
+  /// Vozač za putnika iz trenutne dodele (bez fallback-a).
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V3ValidationUtils.normalizeVreme(vreme);
@@ -217,8 +313,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           !V3StatusFilters.isCanceledOrRejected(statusFinal) &&
           V3ValidationUtils.normalizeVreme(rowVreme) == normV &&
           V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum) {
-        final vozacId = row['pokupljen_vozac_id'] as String?;
-        if (vozacId != null && vozacId.isNotEmpty) {
+        final vozacId = _vozacIdForOperativnaRow(row);
+        if (vozacId.isNotEmpty) {
           final vozac = V3VozacService.getVozacById(vozacId);
           if (vozac != null) return vozac;
         }
@@ -289,18 +385,29 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           .where((value) => value.isNotEmpty)
           .toList();
 
-      await V3OperativnaNedeljaService.assignVozacBulkByIds(
-        operativnaIds: operativnaIds,
-        vozacId: vozac.id,
-        navBarType: navBarTypeNotifier.value,
-        updatedBy: V3AuditKorisnik.normalize('admin_termin_bulk'),
-      );
+      for (final row in putnici) {
+        final operativnaId = row['id']?.toString() ?? '';
+        final putnikId = row['created_by']?.toString() ?? '';
+        if (operativnaId.isEmpty || putnikId.isEmpty) continue;
+
+        await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
+        await supabase.from('v3_trenutna_dodela').insert({
+          'termin_id': operativnaId,
+          'putnik_auth_id': putnikId,
+          'vozac_auth_id': vozac.id,
+          'status': 'aktivan',
+          'updated_by': V3AuditKorisnik.normalize('admin_termin_bulk'),
+        });
+      }
+
+      await _reloadTrenutnaDodelaMap();
+      if (mounted) setState(() {});
 
       if (mounted) {
         V3AppSnackBar.success(
             context,
             '✅ ${vozac.imePrezime} → $grad $vreme ($datum)\n'
-            '📋 ${putnici.length} putnika dodeljeno');
+            '📋 ${operativnaIds.length} putnika dodeljeno');
       }
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
@@ -310,12 +417,29 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Future<void> _ukloniTermin(String grad, String vreme) async {
     try {
       final normVreme = V3ValidationUtils.normalizeVreme(vreme);
-      await V3OperativnaNedeljaService.removeVozacByTermin(
-        datumIso: _selectedDatumIso,
-        grad: grad,
-        dodeljenoVreme: normVreme,
-        updatedBy: V3AuditKorisnik.normalize('admin_termin_remove'),
-      );
+      final operativnaIds = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values
+          .where((r) {
+            final datumStr = r['datum'] as String?;
+            if (datumStr == null) return false;
+            final d = V3DanHelper.parseIsoDatePart(datumStr);
+            final rowVreme = _effectiveTime(r);
+            final putnikId = r['created_by']?.toString() ?? '';
+            return d == _selectedDatumIso &&
+                r['grad'] == grad &&
+                V3ValidationUtils.normalizeVreme(rowVreme) == normVreme &&
+                _putnikPostoji(putnikId) &&
+                !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString());
+          })
+          .map((r) => r['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      for (final operativnaId in operativnaIds) {
+        await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
+      }
+
+      await _reloadTrenutnaDodelaMap();
+      if (mounted) setState(() {});
 
       if (mounted) V3AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($_selectedDatumIso)');
     } catch (e) {
@@ -342,18 +466,18 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         return;
       }
 
-      final data = <String, dynamic>{
-        'pokupljen_vozac_id': vozac.id,
-        'nav_bar_type': navBarTypeNotifier.value,
+      final operativnaId = operativna['id'] as String;
+      await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
+      await supabase.from('v3_trenutna_dodela').insert({
+        'termin_id': operativnaId,
+        'putnik_auth_id': putnikId,
+        'vozac_auth_id': vozac.id,
+        'status': 'aktivan',
         'updated_by': V3AuditKorisnik.normalize('admin_individual'),
-      };
-      print('🔍 DODELI PUTNIKA DEBUG: $data');
-      await V3OperativnaNedeljaService.assignVozacByOperativnaId(
-        operativnaId: operativna['id'] as String,
-        vozacId: vozac.id,
-        navBarType: navBarTypeNotifier.value,
-        updatedBy: V3AuditKorisnik.normalize('admin_individual'),
-      );
+      });
+
+      await _reloadTrenutnaDodelaMap();
+      if (mounted) setState(() {});
 
       if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
     } catch (e) {
@@ -364,13 +488,25 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Future<void> _ukloniPutnikDodjelu(String putnikId, String grad, String vreme) async {
     try {
       final normVreme = V3ValidationUtils.normalizeVreme(vreme);
-      await V3OperativnaNedeljaService.removeVozacByPutnikAndTermin(
-        putnikId: putnikId,
-        grad: grad,
-        dodeljenoVreme: normVreme,
-        datumIso: _selectedDatumIso,
-        updatedBy: V3AuditKorisnik.normalize('admin_individual_remove'),
+      final operativna = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
+        (r) =>
+            r['created_by'] == putnikId &&
+            V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
+            r['grad'] == grad &&
+            V3ValidationUtils.normalizeVreme(_effectiveTime(r)) == normVreme &&
+            !V3StatusFilters.isCanceledOrRejected(r['status_final']?.toString()),
+        orElse: () => <String, dynamic>{},
       );
+
+      if (operativna.isNotEmpty) {
+        final operativnaId = operativna['id']?.toString() ?? '';
+        if (operativnaId.isNotEmpty) {
+          await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
+        }
+      }
+
+      await _reloadTrenutnaDodelaMap();
+      if (mounted) setState(() {});
 
       if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
     } catch (e) {
@@ -548,8 +684,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       stream: V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
         tables: const [
           'v3_operativna_nedelja',
-          'v3_putnici',
-          'v3_vozaci',
+          'v3_auth',
           'v3_adrese',
           'v3_kapacitet_slots',
         ],
