@@ -8,9 +8,9 @@
       "program": "lib/main.dart",
       "args": [
         "--dart-define=DEBUG=true",
-        "--dart-define=SUPABASE_URL=https://gjtabtwudbrmfeyjiicu.supabase.co",
-        "--dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdGFidHd1ZGJybWZleWppaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MzYyOTIsImV4cCI6MjA2MzAxMjI5Mn0.TwAfvlyLIpnVf-WOixvApaQr6NpK9u-VHpRkmbkAKYk",
-        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdGFidHd1ZGJybWZleWppaWN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzQzNjI5MiwiZXhwIjoyMDYzMDEyMjkyfQ.BrwnYQ6TWGB1BrmwaE0YnhMC5wMlBRdZUs1xv2dY5r4"
+        "--dart-define=SUPABASE_URL=${env:SUPABASE_URL}",
+        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}",
+        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=${env:SUPABASE_SERVICE_ROLE_KEY}"
       ],
       "console": "debugConsole",
       "cwd": "${workspaceFolder}"
@@ -22,9 +22,9 @@
       "program": "lib/main.dart",
       "flutterMode": "release",
       "args": [
-        "--dart-define=SUPABASE_URL=https://gjtabtwudbrmfeyjiicu.supabase.co",
-        "--dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdGFidHd1ZGJybWZleWppaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MzYyOTIsImV4cCI6MjA2MzAxMjI5Mn0.TwAfvlyLIpnVf-WOixvApaQr6NpK9u-VHpRkmbkAKYk",
-        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdGFidHd1ZGJybWZleWppaWN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzQzNjI5MiwiZXhwIjoyMDYzMDEyMjkyfQ.BrwnYQ6TWGB1BrmwaE0YnhMC5wMlBRdZUs1xv2dY5r4"
+        "--dart-define=SUPABASE_URL=${env:SUPABASE_URL}",
+        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}",
+        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=${env:SUPABASE_SERVICE_ROLE_KEY}"
       ],
       "console": "debugConsole",
       "cwd": "${workspaceFolder}"
@@ -36,9 +36,9 @@
       "program": "lib/main.dart",
       "flutterMode": "profile",
       "args": [
-        "--dart-define=SUPABASE_URL=https://gjtabtwudbrmfeyjiicu.supabase.co",
-        "--dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdGFidHd1ZGJybWZleWppaWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MzYyOTIsImV4cCI6MjA2MzAxMjI5Mn0.TwAfvlyLIpnVf-WOixvApaQr6NpK9u-VHpRkmbkAKYk",
-        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdGFidHd1ZGJybWZleWppaWN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzQzNjI5MiwiZXhwIjoyMDYzMDEyMjkyfQ.BrwnYQ6TWGB1BrmwaE0YnhMC5wMlBRdZUs1xv2dY5r4"
+        "--dart-define=SUPABASE_URL=${env:SUPABASE_URL}",
+        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}",
+        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=${env:SUPABASE_SERVICE_ROLE_KEY}"
       ],
       "console": "debugConsole",
       "cwd": "${workspaceFolder}"
