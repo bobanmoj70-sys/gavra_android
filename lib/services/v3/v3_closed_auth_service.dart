@@ -59,7 +59,7 @@ class V3ClosedAuthService {
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return null;
 
-    final putnik = await V3PutnikService.getByPhoneOrCache(phone);
+    final putnik = await V3PutnikService.getByPhoneDirect(phone);
     if (putnik == null) return null;
 
     V3PutnikService.currentPutnik = putnik;
@@ -77,7 +77,7 @@ class V3ClosedAuthService {
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return;
 
-    final vozac = V3VozacService.getVozacByPhone(phone);
+    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
     if (vozac == null) return;
 
     V3VozacService.currentVozac = vozac;

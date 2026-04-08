@@ -14,6 +14,7 @@ import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
+import '../utils/v3_app_messages.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_audit_korisnik.dart';
 import '../utils/v3_button_utils.dart';
@@ -268,7 +269,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
 
     if (novoVreme != null && validNovoVreme == null) {
-      if (mounted) V3AppSnackBar.warning(context, '⚠️ Neispravno vreme termina. Pokušajte ponovo.');
+      if (mounted) V3AppSnackBar.warning(context, V3PutnikProfilMessages.invalidTermTime);
       return;
     }
 
@@ -282,7 +283,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           grad: grad,
           otkazaoPutnikId: putnikId,
         );
-        if (mounted) V3AppSnackBar.success(context, '✅ Polazak otkazan: $dan $grad');
+        if (mounted) V3AppSnackBar.success(context, V3PutnikProfilMessages.tripCanceled(dan, grad));
       } else {
         // Sačuvaj izmenu po kontekstu (putnik + dan + grad)
         final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
@@ -298,8 +299,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           updatedBy: V3AuditKorisnik.normalize(putnikId),
         );
         if (mounted) {
-          V3AppSnackBar.success(context,
-              '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.');
+          V3AppSnackBar.success(context, V3PutnikProfilMessages.requestReceived);
         }
       }
     } catch (e) {
@@ -310,12 +310,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
     // Scenario 2: zahtev u obradi — blokirati sve akcije
     if (V3StatusFilters.isPending(info?.status)) {
-      if (mounted) V3AppSnackBar.info(ctx, 'Vaš zahtev je u obradi kod dispečera.');
+      if (mounted) V3AppSnackBar.info(ctx, V3PutnikProfilMessages.requestPendingDispatcher);
       return;
     }
     // Scenario 6: putnik je već pokupljen — ne može da otkazuje
     if (V3StatusFilters.isActionLocked(status: info?.status, pokupljen: info?.pokupljen ?? false)) {
-      if (mounted) V3AppSnackBar.info(ctx, '🚗 Već ste pokupljeni — nije moguće otkazati.');
+      if (mounted) V3AppSnackBar.info(ctx, V3PutnikProfilMessages.alreadyPickedUp);
       return;
     }
     // Scenario 5: zaključavanje 15 min pre polaska
@@ -327,7 +327,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final neradanRazlog = getNeradanDanRazlog(datumIso: datumIso, grad: grad.toLowerCase());
     if (neradanRazlog != null) {
       if (mounted) {
-        V3AppSnackBar.info(ctx, '⛔ Neradan dan (${datumIso}). Razlog: $neradanRazlog');
+        V3AppSnackBar.info(ctx, V3PutnikProfilMessages.nonWorkingDay(datumIso, neradanRazlog));
       }
       return;
     }
@@ -503,8 +503,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                           '${unlockAt.day}.${unlockAt.month}.${unlockAt.year}. ${unlockAt.hour.toString().padLeft(2, '0')}:${unlockAt.minute.toString().padLeft(2, '0')}';
                                       await Future<void>.delayed(const Duration(milliseconds: 120));
                                       if (!mounted) return;
-                                      V3AppSnackBar.info(ctx,
-                                          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu od 03:00 ($unlockStr).');
+                                      V3AppSnackBar.info(
+                                          ctx, V3PutnikProfilMessages.schedulingLocked(vreme, unlockStr));
                                     }
                                   : () async {
                                       Navigator.of(dialogCtx).pop();
@@ -603,7 +603,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     await V3ClosedAuthService.clearFirebasePutnikPhone();
     await V3ClosedAuthService.clearFirebaseVozacPhone();
     if (!mounted) return;
-    V3AppSnackBar.success(context, '✅ Uspešno odjavljeni');
+    V3AppSnackBar.success(context, V3PutnikProfilMessages.logoutSuccess);
     await Future<void>.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -909,7 +909,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   await V3ThemeManager().nextTheme();
                   V3StateUtils.safeSetState(this, () {});
                   if (!mounted) return;
-                  V3AppSnackBar.info(context, '🎨 Tema promenjena');
+                  V3AppSnackBar.info(context, V3PutnikProfilMessages.themeChanged);
                 },
               ),
               Expanded(

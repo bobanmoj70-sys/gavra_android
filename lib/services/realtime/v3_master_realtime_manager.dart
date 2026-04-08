@@ -293,8 +293,6 @@ class V3MasterRealtimeManager {
       }
     }
 
-    _syncRealtimeAuth();
-
     final channel = supabase.channel('v3_realtime_all');
     for (final config in V3RealtimeTableRegistry.defaults) {
       final sourceTable =
@@ -337,16 +335,6 @@ class V3MasterRealtimeManager {
           break;
       }
     });
-  }
-
-  void _syncRealtimeAuth() {
-    final token = supabase.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty) return;
-    try {
-      supabase.realtime.setAuth(token);
-    } catch (e) {
-      debugPrint('[RT] setAuth warning: $e');
-    }
   }
 
   Future<void> _scheduleReconnect() async {

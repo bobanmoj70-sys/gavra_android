@@ -5,6 +5,8 @@ import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_phone_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozac_repository.dart';
+import 'v3_auth_lookup_service.dart';
+import 'v3_push_token_edge_service.dart';
 
 /// Service for V3 drivers (`v3_vozaci`).
 class V3VozacService {
@@ -55,6 +57,15 @@ class V3VozacService {
     }
   }
 
+  static Future<V3Vozac?> getVozacByPhoneDirect(String normalizedPhone) async {
+    final phone = normalizedPhone.trim();
+    if (phone.isEmpty) return null;
+
+    final row = await V3AuthLookupService.getVozacByPhone(phone);
+    if (row == null) return null;
+    return V3Vozac.fromJson(row);
+  }
+
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
       final actorUuid = V3AuditKorisnik.normalize(currentVozac?.id);
@@ -100,8 +111,13 @@ class V3VozacService {
         payload['push_provider'] = provider;
       }
       if (payload.isEmpty) return;
-
-      await _repo.updateById(vozacId, payload);
+      await V3PushTokenEdgeService.syncPushToken(
+        pushToken: payload['push_token']?.toString() ?? '',
+        provider: payload['push_provider']?.toString() ?? provider,
+        slot: 'primary',
+        expectedTip: 'vozac',
+        expectedAuthId: vozacId,
+      );
     } catch (e) {
       debugPrint('[V3VozacService] updatePushToken error: $e');
       rethrow;

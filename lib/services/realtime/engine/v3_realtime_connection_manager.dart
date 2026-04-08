@@ -41,8 +41,6 @@ class V3RealtimeConnectionManager {
   }) async {
     _setState(V3RealtimeConnectionState.connecting, onState: onState);
 
-    _syncRealtimeAuthTokenIfAvailable();
-
     final existingChannel = _channel;
     _channel = null;
     if (existingChannel != null) {
@@ -94,17 +92,6 @@ class V3RealtimeConnectionManager {
       await connect(configure: configure, onState: onState);
     } catch (e) {
       _setState(V3RealtimeConnectionState.error, onState: onState, error: e);
-    }
-  }
-
-  void _syncRealtimeAuthTokenIfAvailable() {
-    final token = _client.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty) return;
-
-    try {
-      _client.realtime.setAuth(token);
-    } catch (e) {
-      debugPrint('[V3RealtimeConnectionManager] setAuth warning: $e');
     }
   }
 

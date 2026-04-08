@@ -8,6 +8,8 @@ import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
+import 'v3_auth_lookup_service.dart';
+import 'v3_push_token_edge_service.dart';
 
 /// Service for V3 passengers (logical `v3_putnici` cache backed by `v3_auth`).
 class V3PutnikService {
@@ -49,6 +51,13 @@ class V3PutnikService {
       return Map<String, dynamic>.from(rows.first as Map);
     }
     return null;
+  }
+
+  static Future<Map<String, dynamic>?> getByPhoneDirect(String normalizedPhone) async {
+    final needle = normalizedPhone.trim();
+    if (needle.isEmpty) return null;
+
+    return V3AuthLookupService.getPutnikByPhone(needle);
   }
 
   static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
@@ -99,16 +108,31 @@ class V3PutnikService {
       if (token.isEmpty) return const {};
 
       if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
-        await _repo.updateById(putnikId, {'push_token': token, 'push_provider': provider});
+        await V3PushTokenEdgeService.syncPushToken(
+          pushToken: token,
+          provider: provider,
+          slot: 'primary',
+          expectedAuthId: putnikId,
+        );
         return {'push_token': token, 'push_provider': provider};
       }
 
       if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
-        await _repo.updateById(putnikId, {'push_token_2': token, 'push_provider_2': provider});
+        await V3PushTokenEdgeService.syncPushToken(
+          pushToken: token,
+          provider: provider,
+          slot: 'secondary',
+          expectedAuthId: putnikId,
+        );
         return {'push_token_2': token, 'push_provider_2': provider};
       }
 
-      await _repo.updateById(putnikId, {'push_token_2': token, 'push_provider_2': provider});
+      await V3PushTokenEdgeService.syncPushToken(
+        pushToken: token,
+        provider: provider,
+        slot: 'secondary',
+        expectedAuthId: putnikId,
+      );
       return {'push_token_2': token, 'push_provider_2': provider};
     } catch (e) {
       debugPrint('[V3PutnikService] updatePushTokensOnLogin error: $e');

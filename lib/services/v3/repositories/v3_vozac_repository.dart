@@ -3,6 +3,9 @@ import 'package:uuid/uuid.dart';
 import '../../../globals.dart';
 
 class V3VozacRepository {
+  static const String _authVozacSelect =
+      'auth_id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip';
+
   Future<void> deleteById(String id) {
     return supabase.from('v3_auth').delete().eq('auth_id', id).eq('tip', 'vozac');
   }
@@ -25,6 +28,19 @@ class V3VozacRepository {
         .eq('tip', 'vozac')
         .eq('push_token', pushToken)
         .maybeSingle();
+  }
+
+  Future<Map<String, dynamic>?> getByPhone(String normalizedPhone) async {
+    final row = await supabase
+        .from('v3_auth')
+        .select(_authVozacSelect)
+        .or('telefon.eq.$normalizedPhone,telefon_2.eq.$normalizedPhone')
+        .eq('tip', 'vozac')
+        .limit(1)
+        .maybeSingle();
+
+    if (row == null) return null;
+    return _mapAuthRowToLegacyVozac(row);
   }
 
   Future<void> insert(Map<String, dynamic> payload) {
@@ -58,5 +74,18 @@ class V3VozacRepository {
     if (payload.containsKey('push_provider')) out['push_provider'] = payload['push_provider'];
 
     return out;
+  }
+
+  Map<String, dynamic> _mapAuthRowToLegacyVozac(Map<String, dynamic> row) {
+    return <String, dynamic>{
+      'id': row['auth_id'],
+      'ime_prezime': row['ime'],
+      'telefon_1': row['telefon'],
+      'telefon_2': row['telefon_2'],
+      'boja': row['boja'],
+      'push_token': row['push_token'],
+      'created_at': row['created_at'],
+      'updated_at': row['updated_at'],
+    };
   }
 }

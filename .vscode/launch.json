@@ -9,8 +9,7 @@
       "args": [
         "--dart-define=DEBUG=true",
         "--dart-define=SUPABASE_URL=${env:SUPABASE_URL}",
-        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}",
-        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=${env:SUPABASE_SERVICE_ROLE_KEY}"
+        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}"
       ],
       "console": "debugConsole",
       "cwd": "${workspaceFolder}"
@@ -23,8 +22,7 @@
       "flutterMode": "release",
       "args": [
         "--dart-define=SUPABASE_URL=${env:SUPABASE_URL}",
-        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}",
-        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=${env:SUPABASE_SERVICE_ROLE_KEY}"
+        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}"
       ],
       "console": "debugConsole",
       "cwd": "${workspaceFolder}"
@@ -37,8 +35,7 @@
       "flutterMode": "profile",
       "args": [
         "--dart-define=SUPABASE_URL=${env:SUPABASE_URL}",
-        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}",
-        "--dart-define=SUPABASE_SERVICE_ROLE_KEY=${env:SUPABASE_SERVICE_ROLE_KEY}"
+        "--dart-define=SUPABASE_ANON_KEY=${env:SUPABASE_ANON_KEY}"
       ],
       "console": "debugConsole",
       "cwd": "${workspaceFolder}"

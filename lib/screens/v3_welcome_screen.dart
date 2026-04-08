@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_push_token_sync_service.dart';
@@ -12,6 +13,7 @@ import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_animation_utils.dart';
+import '../utils/v3_app_messages.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -204,16 +206,22 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   Future<void> _onLoginVerified(String phone) async {
-    final vozac = V3VozacService.getVozacByPhone(phone);
-    final putnik = await V3PutnikService.getByPhoneOrCache(phone);
+    V3Vozac? vozac;
+    Map<String, dynamic>? putnik;
+
+    try {
+      vozac = await V3VozacService.getVozacByPhoneDirect(phone);
+      putnik = await V3PutnikService.getByPhoneDirect(phone);
+    } on StateError {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, V3WelcomeMessages.securityConflict);
+      return;
+    }
 
     if (!mounted) return;
 
     if (vozac != null && putnik != null) {
-      V3AppSnackBar.error(
-        context,
-        '❌ Broj je vezan za više profila. Kontaktirajte administraciju.',
-      );
+      V3AppSnackBar.error(context, V3WelcomeMessages.securityConflict);
       return;
     }
 
@@ -236,7 +244,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
 
     if (putnik == null) {
-      V3AppSnackBar.error(context, '❌ Profil nije pronađen za ovaj broj.');
+      V3AppSnackBar.error(context, V3WelcomeMessages.profileNotFoundForPhone);
       return;
     }
     V3PutnikService.currentPutnik = putnik;
