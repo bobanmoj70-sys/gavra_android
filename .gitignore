@@ -122,4 +122,5 @@ temp_screenshots/
 
 # Local secret/placeholder files
 ios/APPSTORE_ISSUER_ID.txt
+ios/Runner/GoogleService-Info.plist
 supabase/empty.env

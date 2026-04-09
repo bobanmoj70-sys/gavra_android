@@ -6,7 +6,7 @@ platform :ios do
     match(
       type: "appstore",
       readonly: true,
-      app_identifier: "com.gavra013.gavra_android"
+      app_identifier: "com.gavra013.gavra013ios"
     )
   end
 end
