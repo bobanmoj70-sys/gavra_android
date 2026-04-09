@@ -165,7 +165,35 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               !V3StatusFilters.isCanceledOrRejected(status);
         }).toList();
 
-        if (opRows.isEmpty) continue;
+        if (opRows.isEmpty) {
+          final pendingRows = rm.zahteviCache.values.where((z) {
+            final status = V3StatusFilters.normalizeStatus(z['status']?.toString());
+            return (z['created_by']?.toString() ?? '') == putnikId &&
+                (z['datum'] as String? ?? '').startsWith(datumIso) &&
+                (z['grad']?.toString().toUpperCase() ?? '') == grad &&
+                V3StatusFilters.isPending(status);
+          }).toList();
+
+          if (pendingRows.isEmpty) continue;
+
+          pendingRows.sort((a, b) {
+            final aTs = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final bTs = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return bTs.compareTo(aTs);
+          });
+
+          final pending = pendingRows.first;
+          final trazeniVreme = _normalizeValidTime(pending['trazeni_polazak_at']?.toString()) ?? '—';
+
+          infos.add(_ZahtevInfo(
+            grad: grad,
+            vreme: trazeniVreme,
+            status: 'obrada',
+            pokupljen: false,
+            koristiSekundarnu: pending['koristi_sekundarnu'] as bool? ?? false,
+          ));
+          continue;
+        }
 
         Map<String, dynamic>? selected;
         int selectedRank = -1;

@@ -1,6 +1,23 @@
 class V3StatusFilters {
   V3StatusFilters._();
 
+  static String normalizeStatus(String? status) {
+    final normalized = (status ?? '').trim().toLowerCase();
+    switch (normalized) {
+      case 'otkazan':
+      case 'cancelled':
+        return 'otkazano';
+      case 'rejected':
+        return 'odbijeno';
+      case 'approved':
+        return 'odobreno';
+      case 'pending':
+        return 'obrada';
+      default:
+        return normalized;
+    }
+  }
+
   static String deriveOperativnaStatus(Map<String, dynamic> row) {
     final otkazanoAt = (row['otkazano_at']?.toString() ?? '').trim();
     if (otkazanoAt.isNotEmpty) return 'otkazano';
@@ -13,10 +30,6 @@ class V3StatusFilters {
     if (polazakAt.isNotEmpty) return 'odobreno';
 
     return 'obrada';
-  }
-
-  static String normalizeStatus(String? status) {
-    return (status ?? '').trim().toLowerCase();
   }
 
   static bool isCanceledOrRejected(String? status) {

@@ -108,6 +108,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return !inactiveStatuses.contains(normalized);
   }
 
+  bool _isVisibleOperativnaEntry(V3OperativnaNedeljaEntry entry) {
+    return !V3StatusFilters.isCanceledOrRejected(entry.statusFinal);
+  }
+
+  bool _isVisibleOperativnaRow(Map<String, dynamic> row) {
+    final status = V3StatusFilters.deriveOperativnaStatus(row);
+    return !V3StatusFilters.isCanceledOrRejected(status);
+  }
+
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
       final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_auth_id, status');
@@ -173,7 +182,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   void _syncSelectedSlotForDatum(String datumIso) {
     final entries = V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso);
     final validEntries = entries.where((e) {
-      if (V3StatusFilters.isCanceledOrRejected(e.statusFinal)) return false;
+      if (!_isVisibleOperativnaEntry(e)) return false;
       final grad = (e.grad ?? '').trim();
       final vreme = _normalizeVreme(e.polazakAt);
       return grad.isNotEmpty && vreme.isNotEmpty;
@@ -295,10 +304,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '');
       final rowDatum = V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
-      final rowStatus = V3StatusFilters.deriveOperativnaStatus(row);
       if (row['created_by'] == putnikId &&
           rowGrad == grad &&
-          !V3StatusFilters.isCanceledOrRejected(rowStatus) &&
+          _isVisibleOperativnaRow(row) &&
           rowVreme == normV &&
           rowDatum == datum) {
         final vozacId = _vozacIdForOperativnaRow(row);
@@ -1012,7 +1020,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           // Lista: datum dolazi iz stream-a, filtriraj samo po gradu i vremenu
           final currentVozacId = V3VozacService.currentVozac?.id;
           final prikazaniZapisi = sviZapisi.where((z) {
-            if (V3StatusFilters.isCanceledOrRejected(z.statusFinal)) return false;
+            if (!_isVisibleOperativnaEntry(z)) return false;
             if (z.grad != _selectedGrad) return false;
             if (_normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
             return true;
@@ -1052,7 +1060,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           int getPutnikCount(String grad, String vreme) {
             final targetVremeNorm = _normalizeVreme(vreme);
             return sviZapisi.where((z) {
-              if (V3StatusFilters.isCanceledOrRejected(z.statusFinal)) return false;
+              if (!_isVisibleOperativnaEntry(z)) return false;
               if (z.grad != grad) return false;
               if (_normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
               return true;
@@ -1070,7 +1078,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             final rm = V3MasterRealtimeManager.instance;
             for (final row in rm.operativnaAssignedCache.values) {
               if (row['grad'] != grad) continue;
-              if (V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(row))) {
+              if (!_isVisibleOperativnaRow(row)) {
                 continue;
               }
               if (V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') != _selectedDatumIso) continue;
