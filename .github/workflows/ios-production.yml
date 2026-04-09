@@ -185,21 +185,33 @@ jobs:
 
       - name: Prepare App Store Connect API key JSON
         run: |
-          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+          ASC_KEY_IDENTIFIER_CLEAN=$(printf '%s' "$APP_STORE_CONNECT_KEY_IDENTIFIER" | tr -d '\r\n')
+          ASC_ISSUER_ID_CLEAN=$(printf '%s' "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '\r\n')
+
+          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${ASC_KEY_IDENTIFIER_CLEAN}.p8"
           if [ ! -f "$ASC_KEY_PATH" ]; then
             echo "❌ ASC private key not found at $ASC_KEY_PATH"
             exit 1
           fi
-          KEY_CONTENT=$(cat "$ASC_KEY_PATH" | python3 -c "import sys; print(sys.stdin.read().replace('\n', '\\n'))")
 
-          cat > /tmp/asc_api_key.json <<EOF
-          {
-            "key_id": "${APP_STORE_CONNECT_KEY_IDENTIFIER}",
-            "issuer_id": "${APP_STORE_CONNECT_ISSUER_ID}",
-            "key": "${KEY_CONTENT}",
-            "in_house": false
-          }
-          EOF
+          export ASC_KEY_IDENTIFIER_CLEAN ASC_ISSUER_ID_CLEAN ASC_KEY_PATH
+          python3 - <<'PY'
+import json
+import os
+
+with open(os.environ["ASC_KEY_PATH"], "r", encoding="utf-8") as file:
+    key_content = file.read()
+
+payload = {
+    "key_id": os.environ["ASC_KEY_IDENTIFIER_CLEAN"],
+    "issuer_id": os.environ["ASC_ISSUER_ID_CLEAN"],
+    "key": key_content,
+    "in_house": False,
+}
+
+with open("/tmp/asc_api_key.json", "w", encoding="utf-8") as output:
+    json.dump(payload, output)
+PY
 
           echo "ASC_API_KEY_JSON=/tmp/asc_api_key.json" >> $GITHUB_ENV
 
