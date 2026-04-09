@@ -27,6 +27,7 @@ env:
   FLUTTER_VERSION: '3.35.0'
   BUNDLE_ID: 'com.gavra013.gavra013ios'
   APP_ID: '6757114361'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   build-and-submit:
