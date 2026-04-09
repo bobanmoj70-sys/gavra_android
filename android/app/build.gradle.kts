@@ -20,7 +20,26 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.gavra013.gavra_android"
-    // ...existing code...
+    compileSdk = 35
+    ndkVersion = flutter.ndkVersion
+
+    defaultConfig {
+        applicationId = "com.gavra013.gavra_android"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
     // 🔐 PRODUCTION SIGNING CONFIGURATION
     signingConfigs {
         create("release") {
