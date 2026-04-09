@@ -120,6 +120,10 @@ tail_debug.txt
 tail_debug_vozac.txt
 temp_screenshots/
 
+# Distribution artifacts (keep release notes in distribution/whatsnew)
+distribution/Racun_*.pdf
+distribution/Racun_*.txt
+
 # Local secret/placeholder files
 ios/APPSTORE_ISSUER_ID.txt
 ios/Runner/GoogleService-Info.plist
