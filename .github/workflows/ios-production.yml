@@ -229,21 +229,16 @@ jobs:
 
           echo "ASC_API_KEY_JSON=/tmp/asc_api_key.json" >> $GITHUB_ENV
 
-      - name: Upload to TestFlight (and optional auto-submit)
-        env:
-          AUTO_SUBMIT: "true"
-          TESTFLIGHT_GROUPS: ${{ inputs.testflight_groups || 'External' }}
+      - name: Upload to TestFlight (Simple Upload)
         run: |
           cd ios
-
-          echo "🚀 Upload + auto-submit/distribute to TestFlight groups: $TESTFLIGHT_GROUPS"
+          echo "🚀 Uploading build to TestFlight..."
           bundle exec fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$ASC_API_KEY_JSON" \
             --skip_waiting_for_build_processing false \
-            --distribute_external true \
-            --groups "$TESTFLIGHT_GROUPS" \
-            --changelog "Automated production build and submission."
+            --distribute_external false \
+            --changelog "Automated production build."
 
       - name: Summary
         if: always()
