@@ -1,0 +1,195 @@
+name: 🚀 Google Play Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_version:
+        description: 'Auto-bump version in pubspec.yaml?'
+        required: true
+        default: true
+        type: boolean
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'Git Ref to checkout (optional)'
+        required: false
+        type: string
+      bump_version:
+        description: 'Auto-bump version in pubspec.yaml?'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.35.0'
+  PRIVACY_POLICY_URL: 'https://lakisa-code.github.io/gavra_android/privacy-policy.html'
+  ACCOUNT_DELETION_URL: 'https://lakisa-code.github.io/gavra_android/delete-account.html'
+
+jobs:
+  build-and-upload:
+    name: 🚀 Build & Upload to Google Play
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION_NAME: ${{ steps.version_bump.outputs.VERSION_NAME }}
+      VERSION_CODE: ${{ steps.version_bump.outputs.VERSION_CODE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Deploy policy docs to GitHub Pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
+          force_orphan: false
+          commit_message: "docs: sync privacy/delete-account pages [skip ci]"
+
+      - name: Validate policy URLs
+        run: |
+          echo "Checking Privacy Policy URL: $PRIVACY_POLICY_URL"
+          if ! curl -fsSL "$PRIVACY_POLICY_URL" | grep -qiE "Politika privatnosti|Privacy Policy"; then
+            echo "❌ Privacy Policy URL is UNREACHABLE or invalid content!"
+            exit 1
+          fi
+          echo "✅ Privacy Policy URL is reachable"
+
+          echo "Checking Account Deletion URL: $ACCOUNT_DELETION_URL"
+          if ! curl -fsSL "$ACCOUNT_DELETION_URL" | grep -qiE "Brisanje naloga|Account Deletion"; then
+            echo "❌ Account Deletion URL is UNREACHABLE or invalid content!"
+            exit 1
+          fi
+          echo "✅ Account Deletion URL is reachable"
+
+      - name: Auto-Bump Version
+        id: version_bump
+        run: |
+          CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
+          VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
+          VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
+          SHOULD_BUMP="${{ inputs.bump_version }}"
+          if [ -z "$SHOULD_BUMP" ]; then
+            SHOULD_BUMP="true"
+          fi
+
+          if [ "$SHOULD_BUMP" = "true" ]; then
+            NEW_CODE=$((VERSION_CODE + 1))
+            MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
+            MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
+            PATCH=$(echo "$VERSION_NAME" | cut -d'.' -f3)
+            NEW_PATCH=$((PATCH + 1))
+            NEW_NAME="${MAJOR}.${MINOR}.${NEW_PATCH}"
+            NEW_VERSION="${NEW_NAME}+${NEW_CODE}"
+
+            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+
+            echo "VERSION_NAME=$NEW_NAME" >> $GITHUB_OUTPUT
+            echo "VERSION_CODE=$NEW_CODE" >> $GITHUB_OUTPUT
+            echo "📌 Bumped: $CURRENT → $NEW_VERSION"
+
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pubspec.yaml
+            if git diff --staged --quiet; then
+              echo "No changes to commit."
+            else
+              git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
+              git push origin HEAD:${{ github.ref_name }}
+            fi
+          else
+            echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+            echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+            echo "Skipping version bump."
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Prepare secrets (Linux)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          GOOGLE_PLAY_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+          GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/gavra-release-key-production.keystore
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=gavra-release-key-production.keystore\n' "$KEYSTORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
+          printf '%s' "$GOOGLE_PLAY_JSON_BASE64" | base64 --decode --ignore-garbage > android/google-service-account.json
+          printf '%s' "$ENV_FILE_CONTENT" > .env
+          printf '%s' "$GOOGLE_SERVICES_BASE64" | base64 --decode --ignore-garbage > android/app/google-services.json
+
+      - name: 🛡️ Verify Keystore (Fail Fast)
+        env:
+           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          echo "Verifying Keystore integrity..."
+          KEYSTORE_PATH="android/app/gavra-release-key-production.keystore"
+          if [ -f "$KEYSTORE_PATH" ]; then
+            # Verify with keytool
+            keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" || exit 1
+            echo "✅ Keystore verification PASSED."
+          else
+             echo "❌ Keystore file not found!"
+             exit 1
+          fi
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build AAB
+        run: |
+          flutter build appbundle --release --build-name=${{ steps.version_bump.outputs.VERSION_NAME }} --build-number=${{ steps.version_bump.outputs.VERSION_CODE }}
+
+      - name: Upload to Google Play (Production)
+        uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJson: android/google-service-account.json
+          packageName: com.gavra013.gavra_android
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: production
+          status: completed
+          releaseName: "v${{ steps.version_bump.outputs.VERSION_NAME }}"
+          whatsNewDirectory: distribution/whatsnew
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-play-aab-${{ steps.version_bump.outputs.VERSION_CODE }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          echo "## ✅ Google Play Upload Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version_bump.outputs.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build:** ${{ steps.version_bump.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Track:** Production" >> $GITHUB_STEP_SUMMARY
+          echo "**Privacy Policy:** $PRIVACY_POLICY_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Account Deletion:** $ACCOUNT_DELETION_URL" >> $GITHUB_STEP_SUMMARY
+

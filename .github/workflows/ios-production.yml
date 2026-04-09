@@ -8,16 +8,6 @@ on:
         required: false
         default: true
         type: boolean
-      auto_submit:
-        description: 'Automatically distribute/submit build to TestFlight external testers?'
-        required: false
-        default: true
-        type: boolean
-      testflight_groups:
-        description: 'Comma-separated TestFlight groups for distribution when auto_submit=true'
-        required: false
-        default: 'External'
-        type: string
   workflow_call:
     inputs:
       bump_version:
@@ -25,16 +15,6 @@ on:
         required: false
         default: true
         type: boolean
-      auto_submit:
-        description: 'Automatically distribute/submit build to TestFlight external testers?'
-        required: false
-        default: true
-        type: boolean
-      testflight_groups:
-        description: 'Comma-separated TestFlight groups for distribution when auto_submit=true'
-        required: false
-        default: 'External'
-        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -93,7 +73,7 @@ jobs:
               echo "No changes to commit."
             else
               git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
-              git push
+              git push origin HEAD:${{ github.ref_name }}
             fi
           else
             echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
@@ -145,10 +125,6 @@ jobs:
             echo "❌ Missing APP_STORE_CONNECT_PRIVATE_KEY or APP_STORE_CONNECT_PRIVATE_KEY_BASE64"
             exit 1
           fi
-
-          echo "Cert key first line: $(head -1 /tmp/certificate_private_key.pem)"
-          echo "Cert key size: $(wc -c < /tmp/certificate_private_key.pem)"
-          # Export env vars via GITHUB_ENV so all subsequent steps use file paths
           echo "CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem" >> $GITHUB_ENV
           echo "APP_STORE_CONNECT_PRIVATE_KEY=@file:${ASC_KEY_PATH}" >> $GITHUB_ENV
 
@@ -188,11 +164,17 @@ jobs:
       - name: Resolve IPA path
         run: |
           IPA_REL_PATH=$(find build -name '*.ipa' | head -1)
-          IPA_PATH="$(pwd)/${IPA_REL_PATH}"
-          if [ -z "$IPA_PATH" ]; then
+          if [ -z "$IPA_REL_PATH" ]; then
             echo "❌ IPA file not found"
             exit 1
           fi
+
+          IPA_PATH="$(pwd)/${IPA_REL_PATH}"
+          if [ ! -f "$IPA_PATH" ]; then
+            echo "❌ IPA path resolved but file does not exist: $IPA_PATH"
+            exit 1
+          fi
+
           echo "IPA_PATH=$IPA_PATH" >> $GITHUB_ENV
           echo "✅ IPA: $IPA_PATH"
 
@@ -208,8 +190,6 @@ jobs:
             echo "❌ ASC private key not found at $ASC_KEY_PATH"
             exit 1
           fi
-
-          # Ispravno pakovanje ključa u JSON (zamenjujemo nove redove sa \n)
           KEY_CONTENT=$(cat "$ASC_KEY_PATH" | python3 -c "import sys; print(sys.stdin.read().replace('\n', '\\n'))")
 
           cat > /tmp/asc_api_key.json <<EOF
@@ -223,10 +203,11 @@ jobs:
 
           echo "ASC_API_KEY_JSON=/tmp/asc_api_key.json" >> $GITHUB_ENV
 
-      - name: Upload to TestFlight (Simple Upload)
+      - name: Upload to TestFlight (Production Flow)
         run: |
           cd ios
           echo "🚀 Uploading build to TestFlight..."
+          echo "📦 Production upload without TestFlight group distribution"
           bundle exec fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$ASC_API_KEY_JSON" \
@@ -239,6 +220,5 @@ jobs:
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
-          echo "auto_submit: ${{ inputs.auto_submit }}" >> $GITHUB_STEP_SUMMARY
-          echo "groups: ${{ inputs.testflight_groups }}" >> $GITHUB_STEP_SUMMARY
+          echo "distribution: production flow (no external TestFlight groups)" >> $GITHUB_STEP_SUMMARY
 
