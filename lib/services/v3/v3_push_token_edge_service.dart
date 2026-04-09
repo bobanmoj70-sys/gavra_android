@@ -10,7 +10,7 @@ class V3PushTokenEdgeService {
     required String provider,
     required String slot,
     String? expectedTip,
-    String? expectedAuthId,
+    String? expectedId,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -30,7 +30,7 @@ class V3PushTokenEdgeService {
         'push_provider': provider,
         'slot': slot,
         if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
-        if (expectedAuthId != null && expectedAuthId.isNotEmpty) 'expected_auth_id': expectedAuthId,
+        if (expectedId != null && expectedId.isNotEmpty) 'expected_id': expectedId,
       },
     );
 

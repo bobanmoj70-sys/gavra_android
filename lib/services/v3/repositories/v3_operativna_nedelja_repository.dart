@@ -20,7 +20,7 @@ class V3OperativnaNedeljaRepository {
   Future<List<dynamic>> updateByTerminReturningList({
     required String datumIso,
     required String grad,
-    required String dodeljenoVreme,
+    required String polazakAt,
     required Map<String, dynamic> payload,
   }) {
     return supabase
@@ -28,7 +28,7 @@ class V3OperativnaNedeljaRepository {
         .update(payload)
         .eq('datum', datumIso)
         .eq('grad', grad)
-        .eq('polazak_at', dodeljenoVreme)
+        .eq('polazak_at', polazakAt)
         .select();
   }
 
@@ -48,10 +48,10 @@ class V3OperativnaNedeljaRepository {
         .select();
   }
 
-  Future<List<dynamic>> updateByPutnikGradDodeljenoDatumReturningList({
+  Future<List<dynamic>> updateByPutnikGradPolazakAtDatumReturningList({
     required String putnikId,
     required String grad,
-    required String dodeljenoVreme,
+    required String polazakAt,
     required String datumIso,
     required Map<String, dynamic> payload,
   }) {
@@ -60,7 +60,7 @@ class V3OperativnaNedeljaRepository {
         .update(payload)
         .eq('created_by', putnikId)
         .eq('grad', grad)
-        .eq('polazak_at', dodeljenoVreme)
+        .eq('polazak_at', polazakAt)
         .eq('datum', datumIso)
         .select();
   }

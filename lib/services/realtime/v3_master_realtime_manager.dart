@@ -438,7 +438,7 @@ class V3MasterRealtimeManager {
     final tip = row['tip']?.toString().trim().toLowerCase();
     if (tip != 'vozac') return <String, dynamic>{};
 
-    final id = row['auth_id']?.toString();
+    final id = row['id']?.toString();
     if (id == null || id.isEmpty) return <String, dynamic>{};
 
     return <String, dynamic>{
@@ -457,7 +457,7 @@ class V3MasterRealtimeManager {
     final tip = row['tip']?.toString().trim().toLowerCase();
     if (tip == null || tip.isEmpty || tip == 'vozac') return <String, dynamic>{};
 
-    final id = row['auth_id']?.toString();
+    final id = row['id']?.toString();
     if (id == null || id.isEmpty) return <String, dynamic>{};
 
     return <String, dynamic>{
@@ -567,37 +567,13 @@ class V3MasterRealtimeManager {
   Map<String, dynamic> _normalizeZahtevRow(Map<String, dynamic> row) {
     if (row.isEmpty) return row;
 
-    final normalized = Map<String, dynamic>.from(row);
-    final putnikId = normalized['putnik_id']?.toString().trim();
-    final createdBy = normalized['created_by']?.toString().trim();
-
-    if ((putnikId == null || putnikId.isEmpty) && createdBy != null && createdBy.isNotEmpty) {
-      normalized['putnik_id'] = createdBy;
-    }
-
-    if ((createdBy == null || createdBy.isEmpty) && putnikId != null && putnikId.isNotEmpty) {
-      normalized['created_by'] = putnikId;
-    }
-
-    return normalized;
+    return Map<String, dynamic>.from(row);
   }
 
   Map<String, dynamic> _normalizeOperativnaRow(Map<String, dynamic> row) {
     if (row.isEmpty) return row;
 
-    final normalized = Map<String, dynamic>.from(row);
-    final putnikId = normalized['putnik_id']?.toString().trim();
-    final createdBy = normalized['created_by']?.toString().trim();
-
-    if ((putnikId == null || putnikId.isEmpty) && createdBy != null && createdBy.isNotEmpty) {
-      normalized['putnik_id'] = createdBy;
-    }
-
-    if ((createdBy == null || createdBy.isEmpty) && putnikId != null && putnikId.isNotEmpty) {
-      normalized['created_by'] = putnikId;
-    }
-
-    return normalized;
+    return Map<String, dynamic>.from(row);
   }
 
   Map<String, dynamic> _normalizeRowForTable(String table, Map<String, dynamic> row) {

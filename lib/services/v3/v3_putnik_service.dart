@@ -112,7 +112,7 @@ class V3PutnikService {
           pushToken: token,
           provider: provider,
           slot: 'primary',
-          expectedAuthId: putnikId,
+          expectedId: putnikId,
         );
         return {'push_token': token, 'push_provider': provider};
       }
@@ -122,7 +122,7 @@ class V3PutnikService {
           pushToken: token,
           provider: provider,
           slot: 'secondary',
-          expectedAuthId: putnikId,
+          expectedId: putnikId,
         );
         return {'push_token_2': token, 'push_provider_2': provider};
       }
@@ -131,7 +131,7 @@ class V3PutnikService {
         pushToken: token,
         provider: provider,
         slot: 'secondary',
-        expectedAuthId: putnikId,
+        expectedId: putnikId,
       );
       return {'push_token_2': token, 'push_provider_2': provider};
     } catch (e) {
@@ -154,7 +154,7 @@ class V3PutnikService {
 
     // 2. Za svaki zahtev nađi putnika
     for (final z in danasnjiZahtevi) {
-      final pid = z['putnik_id'];
+      final pid = z['created_by'];
       final pData = rm.putniciCache[pid];
       if (pData != null) {
         rez.add({
@@ -191,7 +191,7 @@ class V3PutnikService {
     }).toList();
 
     for (final z in filtriraniZahtevi) {
-      final pid = z['putnik_id'];
+      final pid = z['created_by'];
       final pData = rm.putniciCache[pid];
       if (pData != null) {
         rez.add({
@@ -223,7 +223,7 @@ class V3PutnikService {
           return rDatum == datumIso && !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
         });
 
-        final Set<String> uniquePutnikIds = matchingZahtevi.map((z) => z['putnik_id'] as String).toSet();
+        final Set<String> uniquePutnikIds = matchingZahtevi.map((z) => z['created_by'] as String).toSet();
 
         return uniquePutnikIds
             .map((id) {
@@ -265,7 +265,7 @@ class V3PutnikService {
     });
 
     for (final z in zahtevi) {
-      final pid = z['putnik_id']?.toString() ?? '';
+      final pid = z['created_by']?.toString() ?? '';
       if (rez.containsKey(pid)) continue;
       final pData = rm.putniciCache[pid];
       if (pData != null) {

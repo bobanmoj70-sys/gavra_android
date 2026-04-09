@@ -116,7 +116,7 @@ class V3VozacService {
         provider: payload['push_provider']?.toString() ?? provider,
         slot: 'primary',
         expectedTip: 'vozac',
-        expectedAuthId: vozacId,
+        expectedId: vozacId,
       );
     } catch (e) {
       debugPrint('[V3VozacService] updatePushToken error: $e');

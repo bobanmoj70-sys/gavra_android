@@ -3,18 +3,17 @@ import 'package:uuid/uuid.dart';
 import '../../../globals.dart';
 
 class V3VozacRepository {
-  static const String _authVozacSelect =
-      'auth_id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip';
+  static const String _authVozacSelect = 'id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip';
 
   Future<void> deleteById(String id) {
-    return supabase.from('v3_auth').delete().eq('auth_id', id).eq('tip', 'vozac');
+    return supabase.from('v3_auth').delete().eq('id', id).eq('tip', 'vozac');
   }
 
   Future<void> updateById(String id, Map<String, dynamic> payload) {
     final mapped = _mapLegacyPayloadToAuthUpdate(payload);
     if (mapped.isEmpty) return Future.value();
 
-    return supabase.from('v3_auth').update(mapped).eq('auth_id', id).eq('tip', 'vozac');
+    return supabase.from('v3_auth').update(mapped).eq('id', id).eq('tip', 'vozac');
   }
 
   Future<Map<String, dynamic>?> getActiveByIdAndPushToken({
@@ -23,8 +22,8 @@ class V3VozacRepository {
   }) {
     return supabase
         .from('v3_auth')
-        .select('auth_id')
-        .eq('auth_id', vozacId)
+        .select('id')
+        .eq('id', vozacId)
         .eq('tip', 'vozac')
         .eq('push_token', pushToken)
         .maybeSingle();
@@ -51,7 +50,7 @@ class V3VozacRepository {
 
     final authId = payload['id']?.toString().trim();
     final mapped = <String, dynamic>{
-      'auth_id': authId != null && authId.isNotEmpty ? authId : const Uuid().v4(),
+      'id': authId != null && authId.isNotEmpty ? authId : const Uuid().v4(),
       'ime': payload['ime_prezime'],
       'telefon': telefon,
       'telefon_2': payload['telefon_2'],
@@ -78,7 +77,7 @@ class V3VozacRepository {
 
   Map<String, dynamic> _mapAuthRowToLegacyVozac(Map<String, dynamic> row) {
     return <String, dynamic>{
-      'id': row['auth_id'],
+      'id': row['id'],
       'ime_prezime': row['ime'],
       'telefon_1': row['telefon'],
       'telefon_2': row['telefon_2'],

@@ -5,7 +5,7 @@ class V3AuthLookupService {
   V3AuthLookupService._();
 
   static const String _authLookupSelect =
-      'auth_id, ime, telefon, telefon_2, boja, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_provider, push_token_2, push_provider_2, created_at, updated_at';
+      'id, ime, telefon, telefon_2, boja, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_provider, push_token_2, push_provider_2, created_at, updated_at';
 
   static Future<Map<String, dynamic>?> getVozacByPhone(String normalizedPhone) async {
     final candidates = _phoneCandidates(normalizedPhone);
@@ -41,7 +41,7 @@ class V3AuthLookupService {
 
   static Map<String, dynamic> _mapAuthToLegacyVozac(Map<String, dynamic> row) {
     return <String, dynamic>{
-      'id': row['auth_id'],
+      'id': row['id'],
       'ime_prezime': row['ime'],
       'telefon_1': row['telefon'],
       'telefon_2': row['telefon_2'],
@@ -54,7 +54,7 @@ class V3AuthLookupService {
 
   static Map<String, dynamic> _mapAuthToLegacyPutnik(Map<String, dynamic> row) {
     return <String, dynamic>{
-      'id': row['auth_id'],
+      'id': row['id'],
       'ime_prezime': row['ime'],
       'telefon_1': row['telefon'],
       'telefon_2': row['telefon_2'],

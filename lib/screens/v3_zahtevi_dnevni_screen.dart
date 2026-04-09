@@ -64,7 +64,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
 
         final danOrd = b.datum.compareTo(a.datum);
         if (danOrd != 0) return danOrd;
-        return b.zeljenoVreme.compareTo(a.zeljenoVreme);
+        return b.trazeniPolazakAt.compareTo(a.trazeniPolazakAt);
       });
   }
 
@@ -92,7 +92,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
 
   Future<void> _showAlternativaDialog(V3Zahtev zahtev) async {
     // Inicijalno popunjavanje sugerisanim terminima (npr. +- 15 ili 30 min)
-    final zVreme = zahtev.zeljenoVreme; // HH:mm
+    final zVreme = zahtev.trazeniPolazakAt; // HH:mm
     if (zVreme.length == 5) {
       final hh = int.tryParse(zVreme.substring(0, 2)) ?? 0;
       final mm = int.tryParse(zVreme.substring(3, 5)) ?? 0;
@@ -119,7 +119,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Termin ${zahtev.zeljenoVreme} je pun. Ponudite putniku druga vremena:',
+              'Termin ${zahtev.trazeniPolazakAt} je pun. Ponudite putniku druga vremena:',
               style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
             ),
             const SizedBox(height: 16),
@@ -468,7 +468,7 @@ class _ZahtevCard extends StatelessWidget {
     final tipColor = _tipColor(tip);
     final statusColor = _statusColor(zahtev.status);
     final danLabel = V3DanHelper.label(zahtev.datum);
-    final vreme = V3StringUtils.safeSubstringTime(zahtev.zeljenoVreme);
+    final vreme = V3StringUtils.safeSubstringTime(zahtev.trazeniPolazakAt);
 
     return V3ContainerUtils.iconContainer(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),

@@ -349,7 +349,6 @@ class V3OperativnaNedeljaService {
     for (final id in operativnaIds) {
       await _updateById(id, {
         'pokupljen_by': vozacId,
-        'nav_bar_type': navBarType,
         if (actor != null) 'updated_by': actor,
       });
     }
@@ -358,17 +357,16 @@ class V3OperativnaNedeljaService {
   static Future<void> removeVozacByTermin({
     required String datumIso,
     required String grad,
-    required String dodeljenoVreme,
+    required String polazakAt,
     String? updatedBy,
   }) async {
     final actor = V3AuditKorisnik.normalize(updatedBy);
     final updatedRows = await _repo.updateByTerminReturningList(
       datumIso: datumIso,
       grad: grad,
-      dodeljenoVreme: dodeljenoVreme,
+      polazakAt: polazakAt,
       payload: {
         'pokupljen_by': null,
-        'route_order': null,
         if (actor != null) 'updated_by': actor,
       },
     );
@@ -387,7 +385,6 @@ class V3OperativnaNedeljaService {
     final actor = V3AuditKorisnik.normalize(updatedBy);
     await _updateById(operativnaId, {
       'pokupljen_by': vozacId,
-      'nav_bar_type': navBarType,
       if (actor != null) 'updated_by': actor,
     });
   }
@@ -395,19 +392,18 @@ class V3OperativnaNedeljaService {
   static Future<void> removeVozacByPutnikAndTermin({
     required String putnikId,
     required String grad,
-    required String dodeljenoVreme,
+    required String polazakAt,
     required String datumIso,
     String? updatedBy,
   }) async {
     final actor = V3AuditKorisnik.normalize(updatedBy);
-    final updatedRows = await _repo.updateByPutnikGradDodeljenoDatumReturningList(
+    final updatedRows = await _repo.updateByPutnikGradPolazakAtDatumReturningList(
       putnikId: putnikId,
       grad: grad,
-      dodeljenoVreme: dodeljenoVreme,
+      polazakAt: polazakAt,
       datumIso: datumIso,
       payload: {
         'pokupljen_by': null,
-        'route_order': null,
         if (actor != null) 'updated_by': actor,
       },
     );
@@ -421,8 +417,8 @@ class V3OperativnaNedeljaService {
     required String operativnaId,
     int? routeOrder,
   }) async {
-    await _updateById(operativnaId, {
-      'route_order': routeOrder,
-    });
+    debugPrint(
+      '[V3OperativnaNedeljaService] updateRouteOrderById skipped: column route_order ne postoji u v3_operativna_nedelja',
+    );
   }
 }

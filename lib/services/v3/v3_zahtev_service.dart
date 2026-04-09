@@ -40,7 +40,7 @@ class V3ZahtevService {
     final rows = V3MasterRealtimeManager.instance.zahteviCache.values.where((row) {
       final rowDatum = V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
-      return (row['putnik_id']?.toString() ?? '') == putnikId &&
+      return (row['created_by']?.toString() ?? '') == putnikId &&
           rowDatum == datumIso &&
           rowGrad == targetGrad &&
           V3StatusFilters.isVisibleForDisplay(
@@ -75,7 +75,7 @@ class V3ZahtevService {
         .map((p) => p['id'] as String)
         .toSet();
 
-    return cache.where((r) => putnici.contains(r['putnik_id'])).map((r) => V3Zahtev.fromJson(r)).toList()
+    return cache.where((r) => putnici.contains(r['created_by'])).map((r) => V3Zahtev.fromJson(r)).toList()
       ..sort((a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime(2000)) ?? 0);
   }
 
@@ -142,7 +142,7 @@ class V3ZahtevService {
         if (status == 'alternativa') {
           await updateStatus(rowKey, 'obrada', updatedBy: updatedBy);
         }
-        await updateZeljenoVreme(
+        await updateTrazeniPolazakAt(
           rowKey,
           novoVreme,
           koristiSekundarnu: koristiSekundarnu,
@@ -157,7 +157,7 @@ class V3ZahtevService {
       putnikId: putnikId,
       datum: datum,
       grad: grad,
-      zeljenoVreme: novoVreme,
+      trazeniPolazakAt: novoVreme,
       brojMesta: brojMesta,
       status: 'obrada',
       koristiSekundarnu: koristiSekundarnu,
@@ -250,7 +250,7 @@ class V3ZahtevService {
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()
-      ..sort((a, b) => (a.zeljenoVreme).compareTo(b.zeljenoVreme));
+      ..sort((a, b) => (a.trazeniPolazakAt).compareTo(b.trazeniPolazakAt));
   }
 
   /// Dohvata operativne zapise za određeni datum i grad.
@@ -263,18 +263,18 @@ class V3ZahtevService {
     // Mapiramo operativne zapise direktno u V3Zahtev objekte.
     // v3_zahtevi služi samo za obradu zahteva, ne za prikaz operativne liste.
     return opFiltered.map((op) {
-      final efektivnoDodeljeno = (op['polazak_at'] as String?) ?? '00:00';
+      final efektivniPolazakAt = (op['polazak_at'] as String?) ?? '00:00';
       return V3Zahtev(
         id: op['id'] as String? ?? 'temp',
         putnikId: op['created_by'] as String? ?? '',
         grad: grad,
         datum: DateTime.tryParse(datum) ?? DateTime.now(),
-        zeljenoVreme: efektivnoDodeljeno,
-        dodeljenoVreme: efektivnoDodeljeno,
+        trazeniPolazakAt: efektivniPolazakAt,
+        polazakAt: efektivniPolazakAt,
         status: V3StatusFilters.deriveOperativnaStatus(op),
       );
     }).toList()
-      ..sort((a, b) => (a.dodeljenoVreme ?? '').compareTo(b.dodeljenoVreme ?? ''));
+      ..sort((a, b) => (a.polazakAt ?? '').compareTo(b.polazakAt ?? ''));
   }
 
   static Stream<List<V3Zahtev>> streamOperativniZahteviByDatumAndGrad(String datum, String grad) =>
@@ -360,7 +360,7 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> updateDodeljenoVreme(String id, String? vreme) async {
+  static Future<void> updatePolazakAt(String id, String? vreme) async {
     try {
       final row = await _repository.updateRaw(
         id,
@@ -373,7 +373,7 @@ class V3ZahtevService {
     }
   }
 
-  static Future<void> updateZeljenoVreme(
+  static Future<void> updateTrazeniPolazakAt(
     String id,
     String novoVreme, {
     bool? koristiSekundarnu,
@@ -389,7 +389,7 @@ class V3ZahtevService {
         createdAtIso: nowIso,
       );
     } catch (e) {
-      debugPrint('[V3ZahtevService] ZeljenoVreme update error: $e');
+      debugPrint('[V3ZahtevService] TrazeniPolazakAt update error: $e');
       rethrow;
     }
   }

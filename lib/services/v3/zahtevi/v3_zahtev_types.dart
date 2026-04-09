@@ -9,8 +9,8 @@ enum V3ZahtevStatus {
 class V3ZahtevPatch {
   final String id;
   final V3ZahtevStatus? status;
-  final String? zeljenoVreme;
-  final String? dodeljenoVreme;
+  final String? trazeniPolazakAt;
+  final String? polazakAt;
   final String? altVremePre;
   final String? altVremePosle;
   final bool? koristiSekundarnu;
@@ -19,8 +19,8 @@ class V3ZahtevPatch {
   const V3ZahtevPatch({
     required this.id,
     this.status,
-    this.zeljenoVreme,
-    this.dodeljenoVreme,
+    this.trazeniPolazakAt,
+    this.polazakAt,
     this.altVremePre,
     this.altVremePosle,
     this.koristiSekundarnu,

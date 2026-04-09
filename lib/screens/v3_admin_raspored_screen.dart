@@ -407,7 +407,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         V3AppSnackBar.success(
             context,
             '✅ ${vozac.imePrezime} → $grad $vreme ($datum)\n'
-            '📋 ${operativnaIds.length} putnika dodeljeno');
+            '📋 ${operativnaIds.length} putnika raspoređeno');
       }
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);

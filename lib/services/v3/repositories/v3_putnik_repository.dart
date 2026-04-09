@@ -1,8 +1,10 @@
+import 'package:uuid/uuid.dart';
+
 import '../../../globals.dart';
 
 class V3PutnikRepository {
   static const String _legacyPutnikSelect =
-      'id:auth_id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_provider, push_token_2, push_provider_2, created_at, updated_at';
+      'id:id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_provider, push_token_2, push_provider_2, created_at, updated_at';
 
   Future<List<dynamic>> listByPhone(String normalizedPhone) {
     return supabase
@@ -14,7 +16,7 @@ class V3PutnikRepository {
   }
 
   Future<Map<String, dynamic>?> getActiveById(String id) {
-    return supabase.from('v3_auth').select(_legacyPutnikSelect).eq('auth_id', id).neq('tip', 'vozac').maybeSingle();
+    return supabase.from('v3_auth').select(_legacyPutnikSelect).eq('id', id).neq('tip', 'vozac').maybeSingle();
   }
 
   Future<Map<String, dynamic>?> getActiveByPushToken(String token) {
@@ -27,24 +29,30 @@ class V3PutnikRepository {
   }
 
   Future<void> upsert(Map<String, dynamic> data) {
-    final mapped = _mapPayload(data);
-    return supabase.from('v3_auth').upsert(mapped, onConflict: 'auth_id');
+    final payload = Map<String, dynamic>.from(data);
+    final id = payload['id']?.toString().trim() ?? '';
+    if (id.isEmpty) {
+      payload['id'] = const Uuid().v4();
+    }
+
+    final mapped = _mapPayload(payload);
+    return supabase.from('v3_auth').upsert(mapped, onConflict: 'id');
   }
 
   Future<void> updateById(String id, Map<String, dynamic> payload) {
     final mapped = _mapPayload(payload);
     if (mapped.isEmpty) return Future.value();
-    return supabase.from('v3_auth').update(mapped).eq('auth_id', id);
+    return supabase.from('v3_auth').update(mapped).eq('id', id);
   }
 
   Future<void> deleteById(String id) {
-    return supabase.from('v3_auth').delete().eq('auth_id', id);
+    return supabase.from('v3_auth').delete().eq('id', id);
   }
 
   Map<String, dynamic> _mapPayload(Map<String, dynamic> payload) {
     final out = <String, dynamic>{};
 
-    if (payload.containsKey('id')) out['auth_id'] = payload['id'];
+    if (payload.containsKey('id')) out['id'] = payload['id'];
     if (payload.containsKey('ime_prezime')) out['ime'] = payload['ime_prezime'];
     if (payload.containsKey('telefon_1')) out['telefon'] = payload['telefon_1'];
     if (payload.containsKey('telefon_2')) out['telefon_2'] = payload['telefon_2'];

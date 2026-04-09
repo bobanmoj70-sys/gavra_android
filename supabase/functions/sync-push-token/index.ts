@@ -8,7 +8,7 @@ type SyncPayload = {
   push_provider?: string;
   slot?: "primary" | "secondary";
   expected_tip?: string;
-  expected_auth_id?: string;
+  expected_id?: string;
 };
 
 type FirebasePayload = {
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     const pushProvider = String(payload.push_provider ?? "fcm").trim().toLowerCase();
     const slot = payload.slot === "secondary" ? "secondary" : "primary";
     const expectedTip = String(payload.expected_tip ?? "").trim();
-    const expectedAuthId = String(payload.expected_auth_id ?? "").trim();
+    const expectedId = String(payload.expected_id ?? "").trim();
 
     if (!firebaseIdToken) return badRequest("firebase_id_token is required");
     if (!pushToken) return badRequest("push_token is required");
@@ -138,24 +138,24 @@ Deno.serve(async (req) => {
 
     let target: Record<string, unknown> | null = null;
 
-    if (expectedAuthId) {
-      const { data: byAuthId, error: byAuthIdError } = await admin
+    if (expectedId) {
+      const { data: byId, error: byIdError } = await admin
         .from("v3_auth")
-        .select("auth_id, telefon, tip, firebase_uid")
-        .eq("auth_id", expectedAuthId)
+        .select("id, telefon, tip, firebase_uid")
+        .eq("id", expectedId)
         .maybeSingle();
 
-      if (byAuthIdError) {
-        return badRequest(`v3_auth read error: ${byAuthIdError.message}`, 500);
+      if (byIdError) {
+        return badRequest(`v3_auth read error: ${byIdError.message}`, 500);
       }
 
-      target = byAuthId as Record<string, unknown> | null;
+      target = byId as Record<string, unknown> | null;
     }
 
     if (!target) {
       const { data: byUidRows, error: byUidError } = await admin
         .from("v3_auth")
-        .select("auth_id, telefon, tip, firebase_uid")
+        .select("id, telefon, tip, firebase_uid")
         .eq("firebase_uid", firebaseUid)
         .limit(1);
 
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
 
       const { data: phoneRows, error: phoneRowsError } = await admin
         .from("v3_auth")
-        .select("auth_id, telefon, tip, firebase_uid")
+        .select("id, telefon, tip, firebase_uid")
         .not("telefon", "is", null);
 
       if (phoneRowsError) {
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
         const rowPhone = normalizePhone(String(row.telefon ?? ""));
         if (!rowPhone || rowPhone != normalizedPhone) return false;
         if (expectedTip && String(row.tip ?? "") != expectedTip) return false;
-        if (expectedAuthId && String(row.auth_id ?? "") != expectedAuthId) return false;
+        if (expectedId && String(row.id ?? "") != expectedId) return false;
         return true;
       });
 
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
         return badRequest("No matching v3_auth row for Firebase identity", 403);
       }
       if (matches.length > 1) {
-        return badRequest("Multiple v3_auth rows matched phone. Provide expected_auth_id.", 409);
+        return badRequest("Multiple v3_auth rows matched phone. Provide expected_id.", 409);
       }
 
       target = matches[0];
@@ -223,9 +223,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    const targetAuthId = String(target.auth_id ?? "").trim();
-    if (!targetAuthId) {
-      return badRequest("Matched row missing auth_id", 500);
+    const targetId = String(target.id ?? "").trim();
+    if (!targetId) {
+      return badRequest("Matched row missing id", 500);
     }
 
     const updatePayload: Record<string, unknown> =
@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
     const { error: updateError } = await admin
       .from("v3_auth")
       .update(updatePayload)
-      .eq("auth_id", targetAuthId);
+      .eq("id", targetId);
 
     if (updateError) {
       return badRequest(`v3_auth update error: ${updateError.message}`, 500);
@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: true,
-        auth_id: targetAuthId,
+        id: targetId,
         tip: rowTip,
         slot,
         provider: pushProvider,

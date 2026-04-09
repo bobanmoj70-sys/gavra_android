@@ -182,8 +182,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         if (selected == null) continue;
 
         final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(selected));
-        final opDodeljeno = _normalizeValidTime(selected['polazak_at']?.toString());
-        final displayVreme = opDodeljeno ?? '—';
+        final opPolazakAt = _normalizeValidTime(selected['polazak_at']?.toString());
+        final displayVreme = opPolazakAt ?? '—';
 
         infos.add(_ZahtevInfo(
           grad: grad,

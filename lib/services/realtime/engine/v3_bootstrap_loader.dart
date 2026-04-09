@@ -54,7 +54,7 @@ class V3BootstrapLoader {
       case 'v3_auth_vozaci':
         response = await _client
             .from('v3_auth')
-            .select('auth_id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
+            .select('id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
             .eq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
@@ -62,7 +62,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_auth')
             .select(
-                'auth_id, ime, telefon, telefon_2, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at')
+                'id, ime, telefon, telefon_2, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at')
             .neq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
@@ -70,7 +70,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_zahtevi')
             .select(
-                'id, putnik_id:created_by, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at')
+                'id, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at')
             .gte('updated_at', iso);
         break;
       case 'v3_gorivo_promene':
@@ -98,7 +98,7 @@ class V3BootstrapLoader {
 
   Map<String, dynamic> _mapAuthToLegacyVozac(Map<String, dynamic> row) {
     return <String, dynamic>{
-      'id': row['auth_id'],
+      'id': row['id'],
       'ime_prezime': row['ime'],
       'telefon_1': row['telefon'],
       'telefon_2': row['telefon_2'],
@@ -111,7 +111,7 @@ class V3BootstrapLoader {
 
   Map<String, dynamic> _mapAuthToLegacyPutnik(Map<String, dynamic> row) {
     return <String, dynamic>{
-      'id': row['auth_id'],
+      'id': row['id'],
       'ime_prezime': row['ime'],
       'telefon_1': row['telefon'],
       'telefon_2': row['telefon_2'],

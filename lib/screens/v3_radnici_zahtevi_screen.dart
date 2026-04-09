@@ -29,7 +29,7 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
 
     return rm.zahteviCache.values
         .where((r) {
-          final putnikId = (r['putnik_id']?.toString() ?? '').trim();
+          final putnikId = (r['created_by']?.toString() ?? '').trim();
           if (putnikId.isEmpty) return false;
           if (!radniciIds.contains(putnikId)) return false;
           // Samo zahtevi koje je radnik sam poslao
@@ -259,7 +259,7 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${zahtev.grad} · ${zahtev.zeljenoVreme} · '
+                    '${zahtev.grad} · ${zahtev.trazeniPolazakAt} · '
                     '${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),

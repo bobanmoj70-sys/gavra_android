@@ -30,7 +30,7 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
 
     final zahtevi = rm.zahteviCache.values
         .where((r) {
-          final putnikId = (r['putnik_id']?.toString() ?? '').trim();
+          final putnikId = (r['created_by']?.toString() ?? '').trim();
           if (putnikId.isEmpty) return false;
           if (!posiljkaPutnici.contains(putnikId)) return false;
           // Samo zahtevi koje je pošiljatelj sam poslao
@@ -279,7 +279,7 @@ class _ZahtevKartica extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${zahtev.grad} · ${zahtev.zeljenoVreme} · '
+                    '${zahtev.grad} · ${zahtev.trazeniPolazakAt} · '
                     '${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
@@ -294,7 +294,7 @@ class _ZahtevKartica extends StatelessWidget {
                       ),
                     ),
                   _buildTimelapse(zahtev),
-                  if (zahtev.dodeljenoVreme != null)
+                  if (zahtev.polazakAt != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: V3ContainerUtils.iconContainer(
@@ -303,7 +303,7 @@ class _ZahtevKartica extends StatelessWidget {
                         borderRadiusGeometry: BorderRadius.circular(8),
                         border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.4)),
                         child: Text(
-                          '🕐 Vreme: ${zahtev.dodeljenoVreme}',
+                          '🕐 Vreme: ${zahtev.polazakAt}',
                           style: const TextStyle(color: Colors.purpleAccent, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       ),

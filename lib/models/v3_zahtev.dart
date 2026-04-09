@@ -6,10 +6,10 @@ class V3Zahtev {
   final String putnikId;
   final DateTime datum;
   final String grad;
-  final String zeljenoVreme;
+  final String trazeniPolazakAt;
   final int brojMesta;
   final String status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
-  final String? dodeljenoVreme;
+  final String? polazakAt;
   final bool koristiSekundarnu;
   final String? adresaIdOverride;
   final String? altVremePre;
@@ -23,10 +23,10 @@ class V3Zahtev {
     required this.putnikId,
     required this.datum,
     required this.grad,
-    required this.zeljenoVreme,
+    required this.trazeniPolazakAt,
     this.brojMesta = 1,
     this.status = 'obrada',
-    this.dodeljenoVreme,
+    this.polazakAt,
     this.koristiSekundarnu = false,
     this.adresaIdOverride,
     this.altVremePre,
@@ -37,17 +37,17 @@ class V3Zahtev {
   });
 
   factory V3Zahtev.fromJson(Map<String, dynamic> json) {
-    final putnikId = (json['putnik_id'] as String?) ?? (json['created_by'] as String?) ?? '';
+    final putnikId = (json['created_by'] as String?) ?? '';
 
     return V3Zahtev(
       id: json['id'] as String? ?? '',
       putnikId: putnikId,
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String? ?? '',
-      zeljenoVreme: json['trazeni_polazak_at'] as String? ?? '',
+      trazeniPolazakAt: json['trazeni_polazak_at'] as String? ?? '',
       brojMesta: json['broj_mesta'] as int? ?? 1,
       status: json['status'] as String? ?? 'obrada',
-      dodeljenoVreme: json['polazak_at'] as String?,
+      polazakAt: json['polazak_at'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
       adresaIdOverride: json['adresa_override_id'] as String?,
       altVremePre: json['alternativa_pre_at'] as String?,
@@ -66,10 +66,10 @@ class V3Zahtev {
       if (id.isNotEmpty) 'id': id,
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
-      'trazeni_polazak_at': zeljenoVreme.isEmpty ? null : zeljenoVreme,
+      'trazeni_polazak_at': trazeniPolazakAt.isEmpty ? null : trazeniPolazakAt,
       'broj_mesta': brojMesta,
       'status': status,
-      'polazak_at': dodeljenoVreme,
+      'polazak_at': polazakAt,
       'koristi_sekundarnu': koristiSekundarnu,
       'adresa_override_id': adresaIdOverride,
       'alternativa_pre_at': altVremePre,
@@ -83,10 +83,10 @@ class V3Zahtev {
     String? putnikId,
     DateTime? datum,
     String? grad,
-    String? zeljenoVreme,
+    String? trazeniPolazakAt,
     int? brojMesta,
     String? status,
-    String? dodeljenoVreme,
+    String? polazakAt,
     bool? koristiSekundarnu,
     String? adresaIdOverride,
     String? altVremePre,
@@ -99,10 +99,10 @@ class V3Zahtev {
       putnikId: putnikId ?? this.putnikId,
       datum: datum ?? this.datum,
       grad: grad ?? this.grad,
-      zeljenoVreme: zeljenoVreme ?? this.zeljenoVreme,
+      trazeniPolazakAt: trazeniPolazakAt ?? this.trazeniPolazakAt,
       brojMesta: brojMesta ?? this.brojMesta,
       status: status ?? this.status,
-      dodeljenoVreme: dodeljenoVreme ?? this.dodeljenoVreme,
+      polazakAt: polazakAt ?? this.polazakAt,
       koristiSekundarnu: koristiSekundarnu ?? this.koristiSekundarnu,
       adresaIdOverride: adresaIdOverride ?? this.adresaIdOverride,
       altVremePre: altVremePre ?? this.altVremePre,

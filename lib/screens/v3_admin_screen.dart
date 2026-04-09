@@ -966,8 +966,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
       if (grad == 'BC') {
         if (status != 'odobreno') continue;
-        final dodeljenoVreme = (r['polazak_at']?.toString() ?? '').trim();
-        if (dodeljenoVreme.isEmpty) continue;
+        final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
+        if (polazakAt.isEmpty) continue;
         bcNames.add(ime);
       }
     }
@@ -1087,8 +1087,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
       if (grad == 'BC') {
         if (status != 'odobreno') continue;
-        final dodeljenoVreme = (r['polazak_at']?.toString() ?? '').trim();
-        if (dodeljenoVreme.isEmpty) continue;
+        final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
+        if (polazakAt.isEmpty) continue;
         bcNames.add(ime);
       }
     }
@@ -1169,7 +1169,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     return rm.zahteviCache.values.where((row) {
       if ((row['status']?.toString() ?? '') != 'obrada') return false;
 
-      final putnikId = row['putnik_id']?.toString();
+      final putnikId = row['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
       if (!uceniciIds.contains(putnikId)) return false;
 
@@ -1188,7 +1188,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     return rm.zahteviCache.values.where((row) {
       if ((row['status']?.toString() ?? '') != 'obrada') return false;
 
-      final putnikId = row['putnik_id']?.toString();
+      final putnikId = row['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
       if (!radniciIds.contains(putnikId)) return false;
 
@@ -1201,7 +1201,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final rm = V3MasterRealtimeManager.instance;
     return rm.zahteviCache.values.where((row) {
       if ((row['status']?.toString() ?? '') != 'obrada') return false;
-      final putnikId = row['putnik_id']?.toString();
+      final putnikId = row['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
 
       final putnik = rm.putniciCache[putnikId];
@@ -1221,7 +1221,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .toSet();
     return rm.zahteviCache.values.where((r) {
       if ((r['status']?.toString() ?? '') != 'obrada') return false;
-      final putnikId = r['putnik_id']?.toString();
+      final putnikId = r['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
       if (!posiljkaPutnici.contains(putnikId)) return false;
 
