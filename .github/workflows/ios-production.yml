@@ -2,7 +2,22 @@ name: 🍎 iOS Production Release
 
 on:
   workflow_dispatch:
-    inputs: {}
+    inputs:
+      bump_version:
+        description: 'Auto-bump version in pubspec.yaml?'
+        required: false
+        default: true
+        type: boolean
+      auto_submit:
+        description: 'Automatically distribute/submit build to TestFlight external testers?'
+        required: false
+        default: true
+        type: boolean
+      testflight_groups:
+        description: 'Comma-separated TestFlight groups for distribution when auto_submit=true'
+        required: false
+        default: 'External'
+        type: string
   workflow_call:
     inputs:
       bump_version:
@@ -10,6 +25,16 @@ on:
         required: false
         default: true
         type: boolean
+      auto_submit:
+        description: 'Automatically distribute/submit build to TestFlight external testers?'
+        required: false
+        default: true
+        type: boolean
+      testflight_groups:
+        description: 'Comma-separated TestFlight groups for distribution when auto_submit=true'
+        required: false
+        default: 'External'
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -166,9 +191,74 @@ jobs:
           echo "Searching for any .ipa files"
           find build -name '*.ipa' -print || true
 
+      - name: Resolve IPA path
+        run: |
+          IPA_PATH=$(find build -name '*.ipa' | head -1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "❌ IPA file not found"
+            exit 1
+          fi
+          echo "IPA_PATH=$IPA_PATH" >> $GITHUB_ENV
+          echo "✅ IPA: $IPA_PATH"
+
+      - name: Install Fastlane dependencies
+        run: |
+          cd ios
+          bundle install
+
+      - name: Prepare App Store Connect API key JSON
+        run: |
+          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+          if [ ! -f "$ASC_KEY_PATH" ]; then
+            echo "❌ ASC private key not found at $ASC_KEY_PATH"
+            exit 1
+          fi
+
+          cat > /tmp/asc_api_key.json <<EOF
+          {
+            "key_id": "${APP_STORE_CONNECT_KEY_IDENTIFIER}",
+            "issuer_id": "${APP_STORE_CONNECT_ISSUER_ID}",
+            "key_filepath": "${ASC_KEY_PATH}",
+            "in_house": false
+          }
+          EOF
+
+          echo "ASC_API_KEY_JSON=/tmp/asc_api_key.json" >> $GITHUB_ENV
+
+      - name: Upload to TestFlight (and optional auto-submit)
+        env:
+          AUTO_SUBMIT: ${{ inputs.auto_submit }}
+          TESTFLIGHT_GROUPS: ${{ inputs.testflight_groups }}
+        run: |
+          cd ios
+
+          SHOULD_DISTRIBUTE="$AUTO_SUBMIT"
+          if [ -z "$SHOULD_DISTRIBUTE" ]; then
+            SHOULD_DISTRIBUTE="true"
+          fi
+
+          if [ "$SHOULD_DISTRIBUTE" = "true" ]; then
+            echo "🚀 Upload + auto-submit/distribute to TestFlight groups: $TESTFLIGHT_GROUPS"
+            bundle exec fastlane pilot upload \
+              --ipa "$IPA_PATH" \
+              --api_key_path "$ASC_API_KEY_JSON" \
+              --skip_waiting_for_build_processing false \
+              --distribute_external true \
+              --groups "$TESTFLIGHT_GROUPS"
+          else
+            echo "📦 Upload only (no auto-submit/distribution)"
+            bundle exec fastlane pilot upload \
+              --ipa "$IPA_PATH" \
+              --api_key_path "$ASC_API_KEY_JSON" \
+              --skip_waiting_for_build_processing false \
+              --distribute_external false
+          fi
+
       - name: Summary
         if: always()
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
+          echo "auto_submit: ${{ inputs.auto_submit }}" >> $GITHUB_STEP_SUMMARY
+          echo "groups: ${{ inputs.testflight_groups }}" >> $GITHUB_STEP_SUMMARY
 
