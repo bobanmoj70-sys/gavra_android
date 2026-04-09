@@ -215,13 +215,14 @@ jobs:
             exit 1
           fi
 
-          ASC_KEY_CONTENT_JSON=$(python3 -c 'import json,sys; print(json.dumps(open(sys.argv[1]).read()))' "$ASC_KEY_PATH")
+          # Ispravno pakovanje ključa u JSON (zamenjujemo nove redove sa \n)
+          KEY_CONTENT=$(cat "$ASC_KEY_PATH" | python3 -c "import sys; print(sys.stdin.read().replace('\n', '\\n'))")
 
           cat > /tmp/asc_api_key.json <<EOF
           {
             "key_id": "${APP_STORE_CONNECT_KEY_IDENTIFIER}",
             "issuer_id": "${APP_STORE_CONNECT_ISSUER_ID}",
-            "key": ${ASC_KEY_CONTENT_JSON},
+            "key": "${KEY_CONTENT}",
             "in_house": false
           }
           EOF
@@ -230,32 +231,19 @@ jobs:
 
       - name: Upload to TestFlight (and optional auto-submit)
         env:
-          AUTO_SUBMIT: ${{ inputs.auto_submit }}
-          TESTFLIGHT_GROUPS: ${{ inputs.testflight_groups }}
+          AUTO_SUBMIT: "true"
+          TESTFLIGHT_GROUPS: ${{ inputs.testflight_groups || 'External' }}
         run: |
           cd ios
 
-          SHOULD_DISTRIBUTE="$AUTO_SUBMIT"
-          if [ -z "$SHOULD_DISTRIBUTE" ]; then
-            SHOULD_DISTRIBUTE="true"
-          fi
-
-          if [ "$SHOULD_DISTRIBUTE" = "true" ]; then
-            echo "🚀 Upload + auto-submit/distribute to TestFlight groups: $TESTFLIGHT_GROUPS"
-            bundle exec fastlane pilot upload \
-              --ipa "$IPA_PATH" \
-              --api_key_path "$ASC_API_KEY_JSON" \
-              --skip_waiting_for_build_processing false \
-              --distribute_external true \
-              --groups "$TESTFLIGHT_GROUPS"
-          else
-            echo "📦 Upload only (no auto-submit/distribution)"
-            bundle exec fastlane pilot upload \
-              --ipa "$IPA_PATH" \
-              --api_key_path "$ASC_API_KEY_JSON" \
-              --skip_waiting_for_build_processing false \
-              --distribute_external false
-          fi
+          echo "🚀 Upload + auto-submit/distribute to TestFlight groups: $TESTFLIGHT_GROUPS"
+          bundle exec fastlane pilot upload \
+            --ipa "$IPA_PATH" \
+            --api_key_path "$ASC_API_KEY_JSON" \
+            --skip_waiting_for_build_processing false \
+            --distribute_external true \
+            --groups "$TESTFLIGHT_GROUPS" \
+            --changelog "Automated production build and submission."
 
       - name: Summary
         if: always()
