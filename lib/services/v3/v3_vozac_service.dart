@@ -99,27 +99,48 @@ class V3VozacService {
     await _repo.deleteById(id);
   }
 
-  static Future<void> updatePushToken({
+  static Future<Map<String, String>> updatePushTokensOnLogin({
     required String vozacId,
-    String? pushToken,
+    required String token,
+    String? existingToken1,
+    String? existingToken2,
     String provider = 'fcm',
   }) async {
     try {
-      final payload = <String, dynamic>{};
-      if (pushToken != null && pushToken.isNotEmpty) {
-        payload['push_token'] = pushToken;
-        payload['push_provider'] = provider;
+      if (token.isEmpty) return const {};
+
+      if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
+        await V3PushTokenEdgeService.syncPushToken(
+          pushToken: token,
+          provider: provider,
+          slot: 'primary',
+          expectedTip: 'vozac',
+          expectedId: vozacId,
+        );
+        return {'push_token': token, 'push_provider': provider};
       }
-      if (payload.isEmpty) return;
+
+      if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
+        await V3PushTokenEdgeService.syncPushToken(
+          pushToken: token,
+          provider: provider,
+          slot: 'secondary',
+          expectedTip: 'vozac',
+          expectedId: vozacId,
+        );
+        return {'push_token_2': token, 'push_provider_2': provider};
+      }
+
       await V3PushTokenEdgeService.syncPushToken(
-        pushToken: payload['push_token']?.toString() ?? '',
-        provider: payload['push_provider']?.toString() ?? provider,
-        slot: 'primary',
+        pushToken: token,
+        provider: provider,
+        slot: 'secondary',
         expectedTip: 'vozac',
         expectedId: vozacId,
       );
+      return {'push_token_2': token, 'push_provider_2': provider};
     } catch (e) {
-      debugPrint('[V3VozacService] updatePushToken error: $e');
+      debugPrint('[V3VozacService] updatePushTokensOnLogin error: $e');
       rethrow;
     }
   }

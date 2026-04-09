@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     if (expectedId) {
       const { data: byId, error: byIdError } = await admin
         .from("v3_auth")
-        .select("id, telefon, tip, firebase_uid")
+        .select("id, telefon, telefon_2, tip, firebase_uid")
         .eq("id", expectedId)
         .maybeSingle();
 
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     if (!target) {
       const { data: byUidRows, error: byUidError } = await admin
         .from("v3_auth")
-        .select("id, telefon, tip, firebase_uid")
+        .select("id, telefon, telefon_2, tip, firebase_uid")
         .eq("firebase_uid", firebaseUid)
         .limit(1);
 
@@ -175,16 +175,17 @@ Deno.serve(async (req) => {
 
       const { data: phoneRows, error: phoneRowsError } = await admin
         .from("v3_auth")
-        .select("id, telefon, tip, firebase_uid")
-        .not("telefon", "is", null);
+        .select("id, telefon, telefon_2, tip, firebase_uid");
 
       if (phoneRowsError) {
         return badRequest(`v3_auth phone lookup error: ${phoneRowsError.message}`, 500);
       }
 
       const matches = (phoneRows ?? []).filter((row: Record<string, unknown>) => {
-        const rowPhone = normalizePhone(String(row.telefon ?? ""));
-        if (!rowPhone || rowPhone != normalizedPhone) return false;
+        const rowPhone1 = normalizePhone(String(row.telefon ?? ""));
+        const rowPhone2 = normalizePhone(String(row.telefon_2 ?? ""));
+        const phoneMatches = (!!rowPhone1 && rowPhone1 === normalizedPhone) || (!!rowPhone2 && rowPhone2 === normalizedPhone);
+        if (!phoneMatches) return false;
         if (expectedTip && String(row.tip ?? "") != expectedTip) return false;
         if (expectedId && String(row.id ?? "") != expectedId) return false;
         return true;
@@ -210,15 +211,17 @@ Deno.serve(async (req) => {
     }
 
     const rowFirebaseUid = String(target.firebase_uid ?? "").trim();
-    const rowPhone = normalizePhone(String(target.telefon ?? ""));
-    const isFirstBind = rowFirebaseUid.isEmpty;
+    const rowPhone1 = normalizePhone(String(target.telefon ?? ""));
+    const rowPhone2 = normalizePhone(String(target.telefon_2 ?? ""));
+    const isFirstBind = rowFirebaseUid === "";
 
     if (!isFirstBind && rowFirebaseUid !== firebaseUid) {
       return badRequest("Firebase uid mismatch for target v3_auth row", 403);
     }
 
     if (isFirstBind) {
-      if (!normalizedPhone || !rowPhone || rowPhone !== normalizedPhone) {
+      const rowPhoneMatches = (!!rowPhone1 && rowPhone1 === normalizedPhone) || (!!rowPhone2 && rowPhone2 === normalizedPhone);
+      if (!normalizedPhone || !rowPhoneMatches) {
         return badRequest("First bind requires matching phone_number", 403);
       }
     }

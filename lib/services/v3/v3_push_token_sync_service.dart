@@ -64,7 +64,21 @@ class V3PushTokenSyncService {
     try {
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac != null) {
-        await V3VozacService.updatePushToken(vozacId: currentVozac.id, pushToken: token, provider: provider);
+        final updated = await V3VozacService.updatePushTokensOnLogin(
+          vozacId: currentVozac.id,
+          token: token,
+          existingToken1: currentVozac.pushToken,
+          existingToken2: currentVozac.pushToken2,
+          provider: provider,
+        );
+        if (updated.isNotEmpty) {
+          V3VozacService.currentVozac = V3VozacService.currentVozac?.copyWith(
+            pushToken: updated['push_token'] ?? currentVozac.pushToken,
+            pushProvider: updated['push_provider'] ?? currentVozac.pushProvider,
+            pushToken2: updated['push_token_2'] ?? currentVozac.pushToken2,
+            pushProvider2: updated['push_provider_2'] ?? currentVozac.pushProvider2,
+          );
+        }
         debugPrint('✅ [PushSync] Token sync: v3_auth (vozac) provider=$provider reason=$reason');
         return true;
       }

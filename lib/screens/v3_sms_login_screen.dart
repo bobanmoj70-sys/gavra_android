@@ -4,9 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/v3_putnik.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_firebase_sms_service.dart';
+import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -14,7 +18,7 @@ import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_phone_utils.dart';
 
-enum _SmsStep { unosTelefona, unosKoda }
+enum _SmsStep { unosTelefona, unosKoda, unosProfila }
 
 /// Unified SMS login screen za putnike i vozače.
 ///
@@ -46,6 +50,8 @@ class V3SmsLoginScreen extends StatefulWidget {
 class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
+  final _imeController = TextEditingController();
+  final _prezimeController = TextEditingController();
   static const _secureStorage = FlutterSecureStorage();
   static const int _smsCooldownSeconds = 30;
 
@@ -54,6 +60,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   String _statusMessage = '';
   String? _verificationId;
   String? _normalizedPhone;
+  String _selectedTip = 'radnik';
   DateTime? _nextSmsAllowedAt;
   Timer? _cooldownTimer;
 
@@ -78,6 +85,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     _cooldownTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
+    _imeController.dispose();
+    _prezimeController.dispose();
     super.dispose();
   }
 
@@ -221,7 +230,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           _normalizedPhone = phone;
           _statusMessage = '✅ Auto-verifikacija uspešna!';
         });
-        await _finalize();
+        await _advanceAfterVerifiedOtp();
         return;
       }
 
@@ -277,14 +286,147 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         return;
       }
 
-      setState(() => _statusMessage = '✅ Kod tačan! Prijavljivanje...');
-      await _finalize();
+      setState(() => _statusMessage = '✅ Kod tačan!');
+      await _advanceAfterVerifiedOtp();
     } catch (e) {
       if (!mounted) return;
       V3AppSnackBar.error(context, 'Greška: $e');
       setState(() => _statusMessage = '');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _advanceAfterVerifiedOtp() async {
+    final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
+    if (phone.isEmpty) {
+      if (mounted) {
+        V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+        _resetToStep1();
+      }
+      return;
+    }
+
+    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
+    if (vozac != null) {
+      await _syncFirebaseUidForAuthorizedPhone(phone);
+      if (!mounted) return;
+      await _finalize();
+      return;
+    }
+
+    final putnik = await V3PutnikService.getByPhoneDirect(phone);
+    if (putnik == null) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, '❌ Broj nije autorizovan za pristup.');
+      _resetToStep1();
+      return;
+    }
+
+    await _syncFirebaseUidForAuthorizedPhone(phone);
+
+    final hasName = (putnik['ime_prezime']?.toString().trim().isNotEmpty ?? false);
+    final hasTip = (putnik['tip_putnika']?.toString().trim().isNotEmpty ?? false);
+
+    if (hasName && hasTip) {
+      if (!mounted) return;
+      await _finalize();
+      return;
+    }
+
+    final existingName = putnik['ime_prezime']?.toString().trim() ?? '';
+    if (existingName.isNotEmpty) {
+      final parts = existingName.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+      if (parts.isNotEmpty) {
+        _imeController.text = parts.first;
+        _prezimeController.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      }
+    }
+
+    final existingTip = putnik['tip_putnika']?.toString().trim() ?? '';
+    if (existingTip == 'radnik' || existingTip == 'ucenik' || existingTip == 'dnevni') {
+      _selectedTip = existingTip;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _step = _SmsStep.unosProfila;
+      _statusMessage = '';
+    });
+  }
+
+  Future<void> _saveOnboarding() async {
+    final ime = _imeController.text.trim();
+    final prezime = _prezimeController.text.trim();
+    final fullName = '$ime $prezime'.trim();
+    final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
+
+    if (ime.isEmpty || prezime.isEmpty) {
+      V3AppSnackBar.warning(context, 'Unesite ime i prezime.');
+      return;
+    }
+
+    if (phone.isEmpty) {
+      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      _resetToStep1();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _statusMessage = '💾 Čuvam profil...';
+    });
+
+    try {
+      final existing = await V3PutnikService.getByPhoneDirect(phone);
+      if (existing == null) {
+        if (!mounted) return;
+        V3AppSnackBar.error(context, '❌ Broj nije autorizovan za unos profila.');
+        _resetToStep1();
+        return;
+      }
+
+      final putnik = V3Putnik(
+        id: (existing['id'] as String?) ?? '',
+        imePrezime: fullName,
+        telefon1: phone,
+        tipPutnika: _selectedTip,
+      );
+
+      await V3PutnikService.addUpdatePutnik(putnik);
+      if (!mounted) return;
+
+      V3AppSnackBar.success(context, '✅ Profil sačuvan.');
+      await _finalize();
+    } catch (e) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, '❌ Čuvanje profila nije uspelo: $e');
+      setState(() => _statusMessage = '');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _syncFirebaseUidForAuthorizedPhone(String phone) async {
+    final normalizedPhone = V3ClosedAuthService.normalizePhone(phone);
+    if (normalizedPhone.isEmpty) return;
+
+    final uid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    if (uid.isEmpty) return;
+
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'v3_auth_bind_firebase_uid',
+        params: {
+          'p_telefon': normalizedPhone,
+          'p_firebase_uid': uid,
+        },
+      );
+      if (result != true) {
+        debugPrint('[V3SmsLoginScreen] firebase_uid sync skipped for phone=$normalizedPhone');
+      }
+    } catch (e) {
+      debugPrint('[V3SmsLoginScreen] firebase_uid sync error: $e');
     }
   }
 
@@ -320,6 +462,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _step = _SmsStep.unosTelefona;
       _verificationId = null;
       _normalizedPhone = null;
+      _imeController.clear();
+      _prezimeController.clear();
+      _selectedTip = 'radnik';
       _otpController.clear();
       _statusMessage = '';
     });
@@ -361,7 +506,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
               ],
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
-                child: _step == _SmsStep.unosTelefona ? _buildPhoneStep() : _buildOtpStep(),
+                child: switch (_step) {
+                  _SmsStep.unosTelefona => _buildPhoneStep(),
+                  _SmsStep.unosKoda => _buildOtpStep(),
+                  _SmsStep.unosProfila => _buildProfileStep(),
+                },
               ),
               if (_biometricEnabled && _biometricAvailable && _hasSavedCredentials) ...[
                 const SizedBox(height: 16),
@@ -500,6 +649,118 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           icon: Icons.verified_user_outlined,
           isLoading: _isLoading,
           onPressed: _verifyOtp,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileStep() {
+    return Column(
+      key: const ValueKey('profile'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildInfoBox(
+          icon: Icons.person_outline,
+          text: 'Unesite podatke za nalog ($_normalizedPhone).',
+        ),
+        const SizedBox(height: 24),
+        TextField(
+          controller: _imeController,
+          enabled: !_isLoading,
+          textCapitalization: TextCapitalization.words,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Ime',
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.1),
+            prefixIcon: const Icon(Icons.badge_outlined, color: Colors.amber),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.amber, width: 2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _prezimeController,
+          enabled: !_isLoading,
+          textCapitalization: TextCapitalization.words,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Prezime',
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.1),
+            prefixIcon: const Icon(Icons.account_circle_outlined, color: Colors.amber),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.amber, width: 2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _selectedTip,
+          dropdownColor: const Color(0xFF1E1E1E),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Kategorija',
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.1),
+            prefixIcon: const Icon(Icons.category_outlined, color: Colors.amber),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.amber, width: 2),
+            ),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'radnik', child: Text('👷 Radnik')),
+            DropdownMenuItem(value: 'ucenik', child: Text('🎒 Učenik')),
+            DropdownMenuItem(value: 'dnevni', child: Text('📅 Dnevni')),
+          ],
+          onChanged: _isLoading
+              ? null
+              : (value) {
+                  if (value == null) return;
+                  setState(() => _selectedTip = value);
+                },
+        ),
+        if (_statusMessage.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildStatusMessage(_statusMessage),
+        ],
+        const SizedBox(height: 24),
+        V3ButtonUtils.primaryButton(
+          text: 'Sačuvaj i nastavi',
+          icon: Icons.check_circle_outline,
+          isLoading: _isLoading,
+          onPressed: _saveOnboarding,
         ),
       ],
     );
