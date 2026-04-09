@@ -215,11 +215,13 @@ jobs:
             exit 1
           fi
 
+          ASC_KEY_CONTENT_JSON=$(python3 -c 'import json,sys; print(json.dumps(open(sys.argv[1]).read()))' "$ASC_KEY_PATH")
+
           cat > /tmp/asc_api_key.json <<EOF
           {
             "key_id": "${APP_STORE_CONNECT_KEY_IDENTIFIER}",
             "issuer_id": "${APP_STORE_CONNECT_ISSUER_ID}",
-            "key_filepath": "${ASC_KEY_PATH}",
+            "key": ${ASC_KEY_CONTENT_JSON},
             "in_house": false
           }
           EOF

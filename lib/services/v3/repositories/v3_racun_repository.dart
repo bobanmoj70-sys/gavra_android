@@ -16,4 +16,10 @@ class V3RacunRepository {
         .select('putnik_id, firma_naziv, firma_adresa, firma_pib, firma_mb, firma_ziro')
         .inFilter('putnik_id', putnikIds);
   }
+
+  /// Dohvata kompletan račun iz baze na osnovu unutrašnjeg ID-a.
+  Future<Map<String, dynamic>?> getRacunById(String id) async {
+    final response = await supabase.from('v3_racuni').select('*').eq('id', id).maybeSingle();
+    return response;
+  }
 }

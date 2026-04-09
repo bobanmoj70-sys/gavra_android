@@ -1,0 +1,35 @@
+Ovo je simulirani sadr\u017eaj ra\u010duna br. 1/2026.
+U realnoj aplikaciji ovde bi bio generisan PDF fajl.
+
+--------------------------------------------------
+PRODAVAC: PR Limo Servis Gavra 013 (Bojan Gavrilovi\u0107)
+PIB: 102853497 | MB: 55572178
+\u017diro ra\u010dun: 340-11436537-92
+--------------------------------------------------
+KUPAC: Sportsko dru\u0161tvo Radni\u010dki Kovin
+Adresa: Cara Lazara 85, Kovin
+PIB: 105096547
+--------------------------------------------------
+RA\u010cUN br. 1/2026
+Datum prometa: 29.03.2026.
+Mesto izdavanja: Bela Crkva
+--------------------------------------------------
+STAVKE:
+1. Prevoz putnika na relacijama:
+   - Gaj - \u010cardak - Gaj
+   - Plo\u010dica - \u010cardak - Plo\u010dica
+   - Deliblato - \u010cardak - Deliblato
+   - Dubovac - \u010cardak - Dubovac
+   - Bavani\u0161te - \u010cardak - Bavani\u0161te
+
+Jedinica mere: usluga
+Koli\u010dina: 1
+Cena: 48.600,00 RSD
+--------------------------------------------------
+UKUPNO ZA UPLATU: 48.600,00 RSD
+--------------------------------------------------
+Napomene:
+Poreski obveznik nije u sistemu PDV-a.
+Ra\u010dun je punova\u017ean bez pe\u010data i potpisa.
+\u017diro ra\u010dun za uplatu: 340-11436537-92
+Poziv na broj: 1/2026

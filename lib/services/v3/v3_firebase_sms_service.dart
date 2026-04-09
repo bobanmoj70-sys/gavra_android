@@ -218,6 +218,8 @@ class V3FirebaseSmsService {
         return '❌ Greška sa mrežom. Proveri internet vezu.';
       case 'missing-phone-number':
         return '❌ Unesite broj telefona.';
+      case 'app-not-authorized':
+        return '❌ Aplikacija nije autorizovana za SMS prijavu. Ažuriraj aplikaciju ili kontaktiraj podršku.';
       default:
         return '❌ Greška: $code';
     }
