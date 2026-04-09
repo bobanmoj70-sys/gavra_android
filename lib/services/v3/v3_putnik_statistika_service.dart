@@ -306,14 +306,16 @@ class V3PutnikStatistikaService {
 
     return arhiva.where((row) {
       if (row['tip'] != 'prihod') return false;
-      if (row['putnik_id']?.toString() != putnikId) return false;
+      if (row['putnik_auth_id']?.toString() != putnikId) return false;
       if ((row['godina'] as int?) != godina) return false;
       if ((row['mesec'] as int?) != mesec) return false;
-      final tip = (row['tip_akcije']?.toString() ?? '').toLowerCase();
+      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+      final isplataIz = (row['isplata_iz']?.toString() ?? '').toLowerCase();
+      if (isplataIz == 'putnici_arhiva') return false;
       if (isPoDanu) {
-        return tip == 'uplata_mesecna' || tip == 'uplata';
+        return kategorija == 'operativna_naplata';
       }
-      return tip == 'uplata_voznja' || tip == 'uplata';
+      return kategorija == 'operativna_naplata';
     }).fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
   }
 }

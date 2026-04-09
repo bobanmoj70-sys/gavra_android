@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/v3_finansije.dart';
-import '../models/v3_uplata_arhiva.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3/v3_finansije_service.dart';
-import '../services/v3/v3_putnik_service.dart';
-import '../services/v3/v3_uplate_arhiva_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_korisnik.dart';
 
 class V3PlacanjeRezultat {
   final double iznos;
@@ -27,7 +21,7 @@ class V3PlacanjeDialogHelper {
   static Map<String, dynamic>? _getZadnjaNaplata(String putnikId) {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     final placenoRows = cache.where((row) {
-      if (row['putnik_id']?.toString() != putnikId) return false;
+      if (row['created_by']?.toString() != putnikId) return false;
       final vremePlacen = row['naplacen_at']?.toString();
       return vremePlacen != null && vremePlacen.isNotEmpty;
     }).toList();
@@ -253,39 +247,6 @@ class V3PlacanjeDialogHelper {
     try {
       final vozac = V3VozacService.currentVozac;
       if (vozac == null) throw 'Vozač nije ulogovan u V3';
-      final putnik = V3PutnikService.getPutnikById(putnikId);
-      final tipPutnika = putnik?.tipPutnika ?? '';
-      final isMesecnaUplata = tipPutnika == 'radnik' || tipPutnika == 'ucenik';
-
-      final unos = V3FinansijskiUnos(
-        id: '', // Baza će generisati UUID
-        tip: 'prihod',
-        kategorija: 'voznja',
-        opis: 'Uplata: $imePrezime (${rezultat.mesec}/${rezultat.godina})',
-        iznos: rezultat.iznos,
-        datum: DateTime(rezultat.godina, rezultat.mesec, 1),
-        vozacId: vozac.id,
-        putnikId: putnikId,
-        createdAt: DateTime.now(),
-      );
-
-      await V3FinansijeService.addUnos(unos);
-
-      await V3UplateArhivaService.addZapis(
-        V3UplataArhiva(
-          id: '',
-          putnikId: putnikId,
-          putnikImePrezime: imePrezime,
-          iznos: rezultat.iznos,
-          tipAkcije: isMesecnaUplata ? 'uplata_mesecna' : 'uplata_voznja',
-          zaMesec: rezultat.mesec,
-          zaGodinu: rezultat.godina,
-          vozacId: vozac.id,
-          vozacImePrezime: vozac.imePrezime,
-          createdBy: V3AuditKorisnik.normalize(vozac.id),
-          updatedBy: V3AuditKorisnik.normalize(vozac.id),
-        ),
-      );
 
       if (context.mounted) {
         V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za $imePrezime');
