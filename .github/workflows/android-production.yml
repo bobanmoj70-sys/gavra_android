@@ -2,23 +2,12 @@ name: 🚀 Google Play Production Release
 
 on:
   workflow_dispatch:
-    inputs:
-      bump_version:
-        description: 'Auto-bump version in pubspec.yaml?'
-        required: true
-        default: true
-        type: boolean
   workflow_call:
     inputs:
       git_ref:
         description: 'Git Ref to checkout (optional)'
         required: false
         type: string
-      bump_version:
-        description: 'Auto-bump version in pubspec.yaml?'
-        required: false
-        default: true
-        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,8 +27,8 @@ jobs:
     name: 🚀 Build & Upload to Google Play
     runs-on: ubuntu-latest
     outputs:
-      VERSION_NAME: ${{ steps.version_bump.outputs.VERSION_NAME }}
-      VERSION_CODE: ${{ steps.version_bump.outputs.VERSION_CODE }}
+      VERSION_NAME: ${{ steps.version_info.outputs.VERSION_NAME }}
+      VERSION_CODE: ${{ steps.version_info.outputs.VERSION_CODE }}
 
     steps:
       - name: Checkout
@@ -74,46 +63,15 @@ jobs:
           fi
           echo "✅ Account Deletion URL is reachable"
 
-      - name: Auto-Bump Version
-        id: version_bump
+      - name: Read Version
+        id: version_info
         run: |
           CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
           VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
           VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
-          SHOULD_BUMP="${{ inputs.bump_version }}"
-          if [ -z "$SHOULD_BUMP" ]; then
-            SHOULD_BUMP="true"
-          fi
-
-          if [ "$SHOULD_BUMP" = "true" ]; then
-            NEW_CODE=$((VERSION_CODE + 1))
-            MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
-            MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
-            PATCH=$(echo "$VERSION_NAME" | cut -d'.' -f3)
-            NEW_PATCH=$((PATCH + 1))
-            NEW_NAME="${MAJOR}.${MINOR}.${NEW_PATCH}"
-            NEW_VERSION="${NEW_NAME}+${NEW_CODE}"
-
-            sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-
-            echo "VERSION_NAME=$NEW_NAME" >> $GITHUB_OUTPUT
-            echo "VERSION_CODE=$NEW_CODE" >> $GITHUB_OUTPUT
-            echo "📌 Bumped: $CURRENT → $NEW_VERSION"
-
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pubspec.yaml
-            if git diff --staged --quiet; then
-              echo "No changes to commit."
-            else
-              git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
-              git push origin HEAD:${{ github.ref_name }}
-            fi
-          else
-            echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-            echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
-            echo "Skipping version bump."
-          fi
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "📌 Using version from pubspec.yaml: $CURRENT"
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -164,7 +122,7 @@ jobs:
 
       - name: Build AAB
         run: |
-          flutter build appbundle --release --build-name=${{ steps.version_bump.outputs.VERSION_NAME }} --build-number=${{ steps.version_bump.outputs.VERSION_CODE }}
+          flutter build appbundle --release --build-name=${{ steps.version_info.outputs.VERSION_NAME }} --build-number=${{ steps.version_info.outputs.VERSION_CODE }}
 
       - name: Upload to Google Play (Production)
         uses: r0adkll/upload-google-play@v1.1.3
@@ -174,13 +132,13 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: production
           status: completed
-          releaseName: "v${{ steps.version_bump.outputs.VERSION_NAME }}"
+          releaseName: "v${{ steps.version_info.outputs.VERSION_NAME }}"
           whatsNewDirectory: distribution/whatsnew
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: google-play-aab-${{ steps.version_bump.outputs.VERSION_CODE }}
+          name: google-play-aab-${{ steps.version_info.outputs.VERSION_CODE }}
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
@@ -188,8 +146,8 @@ jobs:
         run: |
           echo "## ✅ Google Play Upload Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version_bump.outputs.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Build:** ${{ steps.version_bump.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version_info.outputs.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build:** ${{ steps.version_info.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
           echo "**Track:** Production" >> $GITHUB_STEP_SUMMARY
           echo "**Privacy Policy:** $PRIVACY_POLICY_URL" >> $GITHUB_STEP_SUMMARY
           echo "**Account Deletion:** $ACCOUNT_DELETION_URL" >> $GITHUB_STEP_SUMMARY

@@ -2,19 +2,8 @@ name: 🍎 iOS Production Release
 
 on:
   workflow_dispatch:
-    inputs:
-      bump_version:
-        description: 'Auto-bump version in pubspec.yaml?'
-        required: false
-        default: true
-        type: boolean
   workflow_call:
-    inputs:
-      bump_version:
-        description: 'Auto-bump version in pubspec.yaml?'
-        required: false
-        default: true
-        type: boolean
+    inputs: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,43 +33,15 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Auto-Bump Version
-        id: version_bump
+      - name: Read Version
+        id: version_info
         run: |
           CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
           VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
           VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
-          SHOULD_BUMP="${{ inputs.bump_version }}"
-          if [ -z "$SHOULD_BUMP" ]; then
-            SHOULD_BUMP="true"
-          fi
-
-          if [ "$SHOULD_BUMP" = "true" ]; then
-            NEW_CODE=$((VERSION_CODE + 1))
-            MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
-            MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
-            PATCH=$(echo "$VERSION_NAME" | cut -d'.' -f3)
-            NEW_PATCH=$((PATCH + 1))
-            NEW_NAME="${MAJOR}.${MINOR}.${NEW_PATCH}"
-            NEW_VERSION="${NEW_NAME}+${NEW_CODE}"
-            sed -i '' "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-            echo "VERSION_NAME=$NEW_NAME" >> $GITHUB_OUTPUT
-            echo "VERSION_CODE=$NEW_CODE" >> $GITHUB_OUTPUT
-            echo "📌 Bumped: $CURRENT → $NEW_VERSION"
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pubspec.yaml
-            if git diff --staged --quiet; then
-              echo "No changes to commit."
-            else
-              git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
-              git push origin HEAD:${{ github.ref_name }}
-            fi
-          else
-            echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-            echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
-            echo "📌 Bump disabled, using existing version: $CURRENT"
-          fi
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "📌 Using version from pubspec.yaml: $CURRENT"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -147,8 +108,8 @@ jobs:
       - name: Build iOS App
         run: |
           flutter build ipa --release \
-            --build-name=${{ steps.version_bump.outputs.VERSION_NAME }} \
-            --build-number=${{ steps.version_bump.outputs.VERSION_CODE }} \
+            --build-name=${{ steps.version_info.outputs.VERSION_NAME }} \
+            --build-number=${{ steps.version_info.outputs.VERSION_CODE }} \
             --export-options-plist=$HOME/export_options.plist
 
       - name: List build outputs (for debugging)
@@ -216,6 +177,6 @@ jobs:
         if: always()
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
-          echo "ver: ${{ steps.version_bump.outputs.VERSION_NAME }} (${{ steps.version_bump.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
+          echo "ver: ${{ steps.version_info.outputs.VERSION_NAME }} (${{ steps.version_info.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
           echo "distribution: production flow (no external TestFlight groups)" >> $GITHUB_STEP_SUMMARY
 
