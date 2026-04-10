@@ -47,7 +47,9 @@ class V3HomeScreen extends StatefulWidget {
 }
 
 class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMixin {
-  static const Set<String> _adminUserIds = <String>{};
+  static const Set<String> _adminUserIds = <String>{
+    '824f7bd7-e19c-4471-b7a2-d6031d810242',
+  };
 
   bool _isLoading = true;
   String _selectedDay = 'Ponedeljak';
@@ -284,9 +286,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final vozac = V3VozacService.currentVozac;
     final vozacId = vozac?.id.trim() ?? '';
     if (vozacId.isNotEmpty && _adminUserIds.contains(vozacId)) return true;
-
-    final lowIme = (vozac?.imePrezime ?? '').toLowerCase();
-    return lowIme.contains('admin');
+    return false;
   }
 
   // ─── Dodjela vozača putniku (admin only) ──────────────────────

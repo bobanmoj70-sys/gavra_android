@@ -12,7 +12,9 @@ class V3AppUpdateService {
   V3AppUpdateService._();
 
   static final V3AppSettingsRepository _repository = V3AppSettingsRepository();
-  static const Set<String> _maintenanceBypassUserIds = <String>{};
+  static const Set<String> _maintenanceBypassUserIds = <String>{
+    '824f7bd7-e19c-4471-b7a2-d6031d810242',
+  };
 
   static Future<void> refreshUpdateInfo({Map<String, dynamic>? appSettingsRow}) async {
     try {
