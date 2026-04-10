@@ -301,6 +301,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
 
+    final tipPutnika = (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
+    if (validNovoVreme != null && tipPutnika == 'dnevni' && !_isDnevniDatumAllowed(datumPolaska)) {
+      final allowedLabel = _allowedDnevniDateLabel();
+      if (mounted) {
+        V3AppSnackBar.info(context, V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
+      }
+      return;
+    }
+
     try {
       if (validNovoVreme == null) {
         // Otkaži postojeći zahtev
@@ -336,6 +345,20 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
+    final tipPutnika = (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
+    final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
+      dan,
+      anchor: V3DanHelper.schedulingWeekAnchor(),
+    );
+
+    if (tipPutnika == 'dnevni' && !_isDnevniDatumAllowed(datumPolaska)) {
+      final allowedLabel = _allowedDnevniDateLabel();
+      if (mounted) {
+        V3AppSnackBar.info(ctx, V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
+      }
+      return;
+    }
+
     // Scenario 2: zahtev u obradi — blokirati sve akcije
     if (V3StatusFilters.isPending(info?.status)) {
       if (mounted) V3AppSnackBar.info(ctx, V3PutnikProfilMessages.requestPendingDispatcher);
@@ -347,10 +370,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
     // Scenario 5: zaključavanje 15 min pre polaska
-    final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
-      dan,
-      anchor: V3DanHelper.schedulingWeekAnchor(),
-    );
     final datumIso = V3DanHelper.toIsoDate(datumPolaska);
     final neradanRazlog = getNeradanDanRazlog(datumIso: datumIso, grad: grad.toLowerCase());
     if (neradanRazlog != null) {
@@ -596,6 +615,23 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         ),
       ),
     );
+  }
+
+  bool _isDnevniDatumAllowed(DateTime datumPolaska, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final today = DateTime(current.year, current.month, current.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final target = DateTime(datumPolaska.year, datumPolaska.month, datumPolaska.day);
+
+    if (current.hour < 16) {
+      return target == today;
+    }
+    return target == tomorrow;
+  }
+
+  String _allowedDnevniDateLabel({DateTime? now}) {
+    final current = now ?? DateTime.now();
+    return current.hour < 16 ? 'danas' : 'sutra';
   }
 
   /// Helper za konverziju kratice dana u puni naziv koristeći V3DanHelper.

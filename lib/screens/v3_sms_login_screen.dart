@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
+import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_firebase_sms_service.dart';
 import '../services/v3/v3_putnik_service.dart';
@@ -61,6 +63,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   String? _verificationId;
   String? _normalizedPhone;
   String _selectedTip = 'radnik';
+  V3Adresa? _selectedBcAdresa;
+  V3Adresa? _selectedVsAdresa;
   DateTime? _nextSmsAllowedAt;
   Timer? _cooldownTimer;
 
@@ -348,6 +352,24 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _selectedTip = existingTip;
     }
 
+    final adreseBc = V3AdresaService.getAdreseZaGrad('BC');
+    final adreseVs = V3AdresaService.getAdreseZaGrad('VS');
+    final existingBcId = putnik['adresa_bc_id']?.toString().trim() ?? '';
+    final existingVsId = putnik['adresa_vs_id']?.toString().trim() ?? '';
+
+    _selectedBcAdresa = existingBcId.isEmpty
+        ? null
+        : adreseBc
+            .where((a) => a.id == existingBcId)
+            .cast<V3Adresa?>()
+            .firstWhere((a) => a != null, orElse: () => null);
+    _selectedVsAdresa = existingVsId.isEmpty
+        ? null
+        : adreseVs
+            .where((a) => a.id == existingVsId)
+            .cast<V3Adresa?>()
+            .firstWhere((a) => a != null, orElse: () => null);
+
     if (!mounted) return;
     setState(() {
       _step = _SmsStep.unosProfila;
@@ -363,6 +385,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     if (ime.isEmpty || prezime.isEmpty) {
       V3AppSnackBar.warning(context, 'Unesite ime i prezime.');
+      return;
+    }
+
+    if (_selectedBcAdresa == null || _selectedVsAdresa == null) {
+      V3AppSnackBar.warning(context, 'Izaberite po jednu adresu za BC i VS.');
       return;
     }
 
@@ -391,6 +418,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         imePrezime: fullName,
         telefon1: phone,
         tipPutnika: _selectedTip,
+        adresaBcId: _selectedBcAdresa?.id,
+        adresaVsId: _selectedVsAdresa?.id,
       );
 
       await V3PutnikService.addUpdatePutnik(putnik);
@@ -465,6 +494,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _imeController.clear();
       _prezimeController.clear();
       _selectedTip = 'radnik';
+      _selectedBcAdresa = null;
+      _selectedVsAdresa = null;
       _otpController.clear();
       _statusMessage = '';
     });
@@ -655,6 +686,22 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   }
 
   Widget _buildProfileStep() {
+    final adreseBc = V3AdresaService.getAdreseZaGrad('BC');
+    final adreseVs = V3AdresaService.getAdreseZaGrad('VS');
+
+    if (_selectedBcAdresa != null) {
+      _selectedBcAdresa = adreseBc
+          .where((a) => a.id == _selectedBcAdresa!.id)
+          .cast<V3Adresa?>()
+          .firstWhere((a) => a != null, orElse: () => null);
+    }
+    if (_selectedVsAdresa != null) {
+      _selectedVsAdresa = adreseVs
+          .where((a) => a.id == _selectedVsAdresa!.id)
+          .cast<V3Adresa?>()
+          .firstWhere((a) => a != null, orElse: () => null);
+    }
+
     return Column(
       key: const ValueKey('profile'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -750,6 +797,80 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
               : (value) {
                   if (value == null) return;
                   setState(() => _selectedTip = value);
+                },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<V3Adresa>(
+          value: _selectedBcAdresa,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF1E1E1E),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Adresa BC *',
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.1),
+            prefixIcon: const Icon(Icons.location_city_outlined, color: Colors.amber),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.amber, width: 2),
+            ),
+          ),
+          items: adreseBc
+              .map((a) => DropdownMenuItem<V3Adresa>(
+                    value: a,
+                    child: Text(a.naziv),
+                  ))
+              .toList(),
+          onChanged: _isLoading
+              ? null
+              : (value) {
+                  setState(() => _selectedBcAdresa = value);
+                },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<V3Adresa>(
+          value: _selectedVsAdresa,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF1E1E1E),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Adresa VS *',
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.1),
+            prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.amber),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white30),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.amber, width: 2),
+            ),
+          ),
+          items: adreseVs
+              .map((a) => DropdownMenuItem<V3Adresa>(
+                    value: a,
+                    child: Text(a.naziv),
+                  ))
+              .toList(),
+          onChanged: _isLoading
+              ? null
+              : (value) {
+                  setState(() => _selectedVsAdresa = value);
                 },
         ),
         if (_statusMessage.isNotEmpty) ...[

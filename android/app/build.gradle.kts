@@ -91,7 +91,7 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
 
     // Add Firebase Authentication
     implementation("com.google.firebase:firebase-auth")
@@ -99,10 +99,14 @@ dependencies {
     // Add Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging")
 
+    // Add Firebase App Check (Play Integrity)
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+
     // Huawei Mobile Services Push (AppGallery devices / no GMS)
     implementation("com.huawei.hms:push:6.12.0.300")
 
     // 🚀 Google Play Core - NEW MODULAR LIBRARIES (Android 14+ compatible)
+    implementation("com.google.android.play:integrity:1.6.0")
     implementation("com.google.android.play:app-update:2.1.0") {
         because("Replaces deprecated play:core for in-app updates")
     }
