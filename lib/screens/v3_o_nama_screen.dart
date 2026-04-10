@@ -54,8 +54,11 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
+          automaticallyImplyLeading: false,
+          centerTitle: true,
           title: const Text(
             '📖 O nama',
+            textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
@@ -204,32 +207,24 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
   static Widget _buildHeader(BuildContext context) {
     return Column(
       children: [
-        V3ContainerUtils.gradientContainer(
-          width: V3ContainerUtils.responsiveHeight(context, 100),
-          height: V3ContainerUtils.responsiveHeight(context, 100),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withValues(alpha: 0.3),
-              Colors.white.withValues(alpha: 0.1),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(50), // Circle effect
-          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
+        V3ContainerUtils.iconContainer(
+          width: V3ContainerUtils.responsiveHeight(context, 120),
+          height: V3ContainerUtils.responsiveHeight(context, 120),
+          backgroundColor: Colors.black,
+          borderRadiusGeometry: BorderRadius.circular(26),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 20,
-              spreadRadius: 2,
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
-          child: ClipOval(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(26),
             child: Image.asset(
               'assets/logo_transparent.png',
-              width: 90,
-              height: V3ContainerUtils.responsiveHeight(context, 90),
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
             ),
           ),
         ),

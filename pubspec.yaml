@@ -98,11 +98,7 @@ flutter:
 
   assets:
     - .env # 🔐 Environment varijable (Supabase kredencijali)
-    - assets/gavra.mp3
     - assets/kasno_je.mp3 # 🎵 GAVRA 013 pesma "Beogradski sindikat - Kasno je"
-    - assets/bruda.mp3 # 🎵 Brudina specijalna pesma
-    - assets/bilevski.mp3 # 🎵 Bilevskijeva specijalna pesma
-    - assets/logo_gavra.jpg # 🎨 Logo firme Gavra 013
     - assets/logo_transparent.png # 🎨 Logo sa transparentnom pozadinom
     - assets/weather/ # 🌤️ Vremenske ikone
     - assets/tablica_066.png # 🚐 Tablice vozila

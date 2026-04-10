@@ -105,6 +105,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               // ── Filter icons with badges ──────────────────────
+                              _filterBtn(
+                                  'vozac', Icons.directions_car, const Color(0xFF7A7DFF), const Color(0xFF5A5DE8)),
                               _filterBtn('radnik', Icons.engineering, const Color(0xFF5C9CE6), const Color(0xFF3B7DD8)),
                               _filterBtn('ucenik', Icons.school, const Color(0xFF4ECDC4), const Color(0xFF44A08D)),
                               _filterBtn('dnevni', Icons.today, const Color(0xFFFF6B6B), const Color(0xFFFF8E53)),
@@ -340,6 +342,7 @@ class _PutnikCard extends StatelessWidget {
   final VoidCallback onDetaljneStatistike;
 
   Color get _tipColor => switch (putnik.tipPutnika) {
+        'vozac' => const Color(0xFF5A5DE8),
         'radnik' => const Color(0xFF3B7DD8),
         'ucenik' => const Color(0xFF44A08D),
         'dnevni' => const Color(0xFFFF6B6B),
@@ -348,6 +351,7 @@ class _PutnikCard extends StatelessWidget {
       };
 
   IconData get _tipIcon => switch (putnik.tipPutnika) {
+        'vozac' => Icons.directions_car,
         'radnik' => Icons.engineering,
         'ucenik' => Icons.school,
         'dnevni' => Icons.today,
@@ -356,6 +360,7 @@ class _PutnikCard extends StatelessWidget {
       };
 
   String get _tipLabel => switch (putnik.tipPutnika) {
+        'vozac' => 'VOZAC',
         'radnik' => 'RADNIK',
         'ucenik' => 'UCENIK',
         'dnevni' => 'DNEVNI',
@@ -812,12 +817,16 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         prefixIcon: const Icon(Icons.category_outlined),
                       ),
                       items: const [
+                        DropdownMenuItem(value: 'vozac', child: Text('🚕 Vozač')),
                         DropdownMenuItem(value: 'radnik', child: Text('👷 Radnik')),
                         DropdownMenuItem(value: 'ucenik', child: Text('🎒 Učenik')),
                         DropdownMenuItem(value: 'dnevni', child: Text('🚶 Dnevni')),
                         DropdownMenuItem(value: 'posiljka', child: Text('📦 Pošiljka')),
                       ],
-                      onChanged: isEdit ? null : (v) => V3StateUtils.safeSetState(this, () => _tip = v!),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        V3StateUtils.safeSetState(this, () => _tip = v);
+                      },
                     ),
                     const SizedBox(height: 10),
                     // Ime

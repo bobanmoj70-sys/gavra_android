@@ -123,7 +123,7 @@ class V3PutnikStatistikaService {
       rows.add(row);
     }
 
-    final isPoDanu = tip == 'radnik' || tip == 'ucenik';
+    final isPoDanu = tip == 'radnik' || tip == 'ucenik' || tip == 'vozac';
     if (isPoDanu) {
       return _computePoDanu(
         putnikId: putnikId,

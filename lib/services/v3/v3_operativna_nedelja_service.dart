@@ -239,16 +239,37 @@ class V3OperativnaNedeljaService {
   /// Čita max_mesta za dati grad/vreme/datum iz v3_kapacitet_slots cache-a.
   /// Vraća null ako slot nije pronađen.
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
+    final datumIso = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
+
+    // 1) Ako je neradan dan, kapacitet je automatski 0 za taj datum
+    if (isNeradanDan(datumIso: datumIso, grad: grad.toLowerCase())) {
+      return 0;
+    }
+
     final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
-    final datumStr = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
+
+    // 2) Koji je to dan u nedelji za tekuću aktivnu nedelju
+    final dayAbbr = V3DanHelper.abbr(datum);
+    final activeWeekDatumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(
+      dayAbbr,
+      anchor: V3DanHelper.schedulingWeekAnchor(),
+    );
+
+    int? fallbackCapacity;
     for (final r in cache) {
-      if (r['grad'] == grad &&
-          V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
-          r['datum'].toString().startsWith(datumStr)) {
-        return (r['max_mesta'] as num?)?.toInt();
+      if (r['grad'] == grad && V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme) {
+        final rDatum = r['datum'].toString();
+        // Primarno: tačan match za traženi datum
+        if (rDatum.startsWith(datumIso)) {
+          return (r['max_mesta'] as num?)?.toInt();
+        }
+        // Sekundarno: match za isti dan (pon-pet) u trenutno aktivnoj nedelji
+        if (rDatum.startsWith(activeWeekDatumIso)) {
+          fallbackCapacity = (r['max_mesta'] as num?)?.toInt();
+        }
       }
     }
-    return null;
+    return fallbackCapacity;
   }
 
   /// Čita broj zauzetih mesta — suma broj_mesta aktivnih operativnih zapisa.

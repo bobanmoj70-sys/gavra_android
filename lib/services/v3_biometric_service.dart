@@ -97,7 +97,7 @@ class V3BiometricService {
       return await _auth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
-          biometricOnly: false,
+          biometricOnly: true,
           stickyAuth: true,
           sensitiveTransaction: false,
           useErrorDialogs: true,

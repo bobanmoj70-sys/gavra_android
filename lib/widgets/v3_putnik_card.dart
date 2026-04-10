@@ -291,6 +291,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   Color _getTipColor() {
     switch (widget.putnik.tipPutnika.toLowerCase()) {
+      case 'vozac':
+        return const Color(0xFF5A5DE8);
       case 'radnik':
         return const Color(0xFF3B7DD8);
       case 'ucenik':
@@ -306,6 +308,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   String _getTipLabel() {
     switch (widget.putnik.tipPutnika.toLowerCase()) {
+      case 'vozac':
+        return 'VOZAC';
       case 'radnik':
         return 'RADNIK';
       case 'ucenik':
