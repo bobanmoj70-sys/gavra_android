@@ -7,8 +7,6 @@ type SyncPayload = {
   push_token?: string;
   push_provider?: string;
   slot?: "primary" | "secondary";
-  expected_tip?: string;
-  expected_id?: string;
 };
 
 type FirebasePayload = {
@@ -101,10 +99,10 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "";
     const firebaseProjectId = parseServiceAccountProjectId();
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !anonKey) {
       return badRequest("Missing Supabase server credentials", 500);
     }
     if (!firebaseProjectId) {
@@ -116,8 +114,6 @@ Deno.serve(async (req) => {
     const pushToken = String(payload.push_token ?? "").trim();
     const pushProvider = String(payload.push_provider ?? "fcm").trim().toLowerCase();
     const slot = payload.slot === "secondary" ? "secondary" : "primary";
-    const expectedTip = String(payload.expected_tip ?? "").trim();
-    const expectedId = String(payload.expected_id ?? "").trim();
 
     if (!firebaseIdToken) return badRequest("firebase_id_token is required");
     if (!pushToken) return badRequest("push_token is required");
@@ -132,100 +128,44 @@ Deno.serve(async (req) => {
     const phoneNumber = String(verified.phone_number ?? "").trim();
     const normalizedPhone = normalizePhone(phoneNumber);
 
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
+    const client = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    let target: Record<string, unknown> | null = null;
-
-    if (expectedId) {
-      const { data: byId, error: byIdError } = await admin
-        .from("v3_auth")
-        .select("id, telefon, telefon_2, tip, firebase_uid")
-        .eq("id", expectedId)
-        .maybeSingle();
-
-      if (byIdError) {
-        return badRequest(`v3_auth read error: ${byIdError.message}`, 500);
-      }
-
-      target = byId as Record<string, unknown> | null;
+    if (!normalizedPhone) {
+      return badRequest("Firebase token has no phone_number", 403);
     }
 
-    if (!target) {
-      const { data: byUidRows, error: byUidError } = await admin
-        .from("v3_auth")
-        .select("id, telefon, telefon_2, tip, firebase_uid")
-        .eq("firebase_uid", firebaseUid)
-        .limit(1);
+    const { data: phoneRows, error: phoneRowsError } = await client
+      .from("v3_auth")
+      .select("id, telefon, telefon_2, tip, firebase_uid");
 
-      if (byUidError) {
-        return badRequest(`v3_auth uid lookup error: ${byUidError.message}`, 500);
-      }
-
-      if (Array.isArray(byUidRows) && byUidRows.length > 0) {
-        target = byUidRows[0] as Record<string, unknown>;
-      }
+    if (phoneRowsError) {
+      return badRequest(`v3_auth phone lookup error: ${phoneRowsError.message}`, 500);
     }
 
-    if (!target) {
-      if (!normalizedPhone) {
-        return badRequest("No match by firebase_uid and token has no phone_number for first bind", 403);
-      }
+    const matches = (phoneRows ?? []).filter((row: Record<string, unknown>) => {
+      const rowPhone1 = normalizePhone(String(row.telefon ?? ""));
+      const rowPhone2 = normalizePhone(String(row.telefon_2 ?? ""));
+      return (!!rowPhone1 && rowPhone1 === normalizedPhone) || (!!rowPhone2 && rowPhone2 === normalizedPhone);
+    });
 
-      const { data: phoneRows, error: phoneRowsError } = await admin
-        .from("v3_auth")
-        .select("id, telefon, telefon_2, tip, firebase_uid");
-
-      if (phoneRowsError) {
-        return badRequest(`v3_auth phone lookup error: ${phoneRowsError.message}`, 500);
-      }
-
-      const matches = (phoneRows ?? []).filter((row: Record<string, unknown>) => {
-        const rowPhone1 = normalizePhone(String(row.telefon ?? ""));
-        const rowPhone2 = normalizePhone(String(row.telefon_2 ?? ""));
-        const phoneMatches = (!!rowPhone1 && rowPhone1 === normalizedPhone) || (!!rowPhone2 && rowPhone2 === normalizedPhone);
-        if (!phoneMatches) return false;
-        if (expectedTip && String(row.tip ?? "") != expectedTip) return false;
-        if (expectedId && String(row.id ?? "") != expectedId) return false;
-        return true;
-      });
-
-      if (matches.length === 0) {
-        return badRequest("No matching v3_auth row for Firebase identity", 403);
-      }
-      if (matches.length > 1) {
-        return badRequest("Multiple v3_auth rows matched phone. Provide expected_id.", 409);
-      }
-
-      target = matches[0];
+    if ((matches?.length ?? 0) === 0) {
+      return badRequest("No matching v3_auth row for phone_number", 403);
+    }
+    if ((matches?.length ?? 0) > 1) {
+      return badRequest("Multiple v3_auth rows matched phone_number", 409);
     }
 
-    if (!target) {
-      return badRequest("No matching v3_auth row for Firebase identity", 403);
-    }
+    const target = matches?.[0] as Record<string, unknown>;
 
     const rowTip = String(target.tip ?? "");
-    if (expectedTip && rowTip !== expectedTip) {
-      return badRequest("Matched v3_auth row has different tip", 403);
-    }
 
     const rowFirebaseUid = String(target.firebase_uid ?? "").trim();
-    const rowPhone1 = normalizePhone(String(target.telefon ?? ""));
-    const rowPhone2 = normalizePhone(String(target.telefon_2 ?? ""));
     const isFirstBind = rowFirebaseUid === "";
 
-    if (!isFirstBind && rowFirebaseUid !== firebaseUid) {
-      return badRequest("Firebase uid mismatch for target v3_auth row", 403);
-    }
-
-    if (isFirstBind) {
-      const rowPhoneMatches = (!!rowPhone1 && rowPhone1 === normalizedPhone) || (!!rowPhone2 && rowPhone2 === normalizedPhone);
-      if (!normalizedPhone || !rowPhoneMatches) {
-        return badRequest("First bind requires matching phone_number", 403);
-      }
-    }
-
+    // Autorizacija i vezivanje rade isključivo po phone_number iz verifikovanog Firebase tokena.
+    
     const targetId = String(target.id ?? "").trim();
     if (!targetId) {
       return badRequest("Matched row missing id", 500);
@@ -236,11 +176,9 @@ Deno.serve(async (req) => {
         ? { push_token_2: pushToken, push_provider_2: pushProvider }
         : { push_token: pushToken, push_provider: pushProvider };
 
-    if (isFirstBind) {
-      updatePayload.firebase_uid = firebaseUid;
-    }
+    updatePayload.firebase_uid = firebaseUid;
 
-    const { error: updateError } = await admin
+    const { error: updateError } = await client
       .from("v3_auth")
       .update(updatePayload)
       .eq("id", targetId);

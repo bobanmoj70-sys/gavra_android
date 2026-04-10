@@ -4,43 +4,82 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
 import * as dotenv from "dotenv";
 import * as fs from "fs";
+import * as path from "path";
 import { google } from "googleapis";
+import { fileURLToPath } from "url";
 import { Logger } from "./logger.js";
 // Load environment variables from .env file
-dotenv.config();
+dotenv.config({ quiet: true });
 const logger = new Logger('google-play-mcp');
 const PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.gavra013.gavra_android';
-// Support both: direct JSON string OR path to JSON file
+function tryReadFile(candidatePath) {
+    if (!candidatePath) {
+        return null;
+    }
+    const resolvedPath = path.resolve(candidatePath);
+    if (!fs.existsSync(resolvedPath)) {
+        return null;
+    }
+    try {
+        const content = fs.readFileSync(resolvedPath, "utf8");
+        logger.info(`Loaded service account key from file: ${resolvedPath}`);
+        return content;
+    }
+    catch {
+        logger.error(`Failed to read service account key from file: ${resolvedPath}`);
+        return null;
+    }
+}
+function normalizeServiceAccountKey(rawValue) {
+    const trimmedValue = rawValue.trim();
+    if (!trimmedValue) {
+        return null;
+    }
+    if (trimmedValue.startsWith('{')) {
+        return trimmedValue;
+    }
+    const fromPath = tryReadFile(trimmedValue);
+    if (fromPath) {
+        return fromPath;
+    }
+    try {
+        const decoded = Buffer.from(trimmedValue, 'base64').toString('utf8').trim();
+        if (decoded.startsWith('{')) {
+            logger.info('Decoded service account key from Base64');
+            return decoded;
+        }
+    }
+    catch {
+        logger.error('Failed to decode SERVICE_ACCOUNT_KEY from Base64');
+    }
+    return trimmedValue;
+}
+const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+const projectDirectory = path.resolve(moduleDirectory, '..');
+const workspaceDirectory = path.resolve(projectDirectory, '..');
+// Support JSON string, Base64 string, or file path in env var
 let SERVICE_ACCOUNT_KEY = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY;
-// Fallback search paths for service account key
+if (SERVICE_ACCOUNT_KEY) {
+    SERVICE_ACCOUNT_KEY = normalizeServiceAccountKey(SERVICE_ACCOUNT_KEY) ?? undefined;
+}
+// Fallback search paths for service account key file
 const fallbackPaths = [
     process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-    'C:/Users/Bojan/Desktop/Lakisa-code/google/play-store-key.json',
-    './play-store-key.json',
-    '../play-store-key.json'
+    path.join(projectDirectory, 'play-store-key.json'),
+    path.join(workspaceDirectory, 'google-play-mcp', 'play-store-key.json'),
+    path.join(process.cwd(), 'play-store-key.json'),
+    path.join(process.cwd(), 'google-play-mcp', 'play-store-key.json'),
 ];
 if (!SERVICE_ACCOUNT_KEY) {
     for (const p of fallbackPaths) {
-        if (p && fs.existsSync(p)) {
-            try {
-                SERVICE_ACCOUNT_KEY = fs.readFileSync(p, "utf8");
-                logger.info(`Loaded service account key from file: ${p}`);
-                break;
-            }
-            catch (err) {
-                logger.error(`Failed to read service account key from file: ${p}`);
-            }
+        if (!p) {
+            continue;
         }
-    }
-}
-// Handle Base64 encoded key (common in CI/CD)
-if (SERVICE_ACCOUNT_KEY && !SERVICE_ACCOUNT_KEY.trim().startsWith('{')) {
-    try {
-        SERVICE_ACCOUNT_KEY = Buffer.from(SERVICE_ACCOUNT_KEY, 'base64').toString('utf8');
-        logger.info('Decoded service account key from Base64');
-    }
-    catch (err) {
-        logger.error('Failed to decode SERVICE_ACCOUNT_KEY from Base64');
+        const fileContents = tryReadFile(p);
+        if (fileContents) {
+            SERVICE_ACCOUNT_KEY = fileContents;
+            break;
+        }
     }
 }
 // Validate required environment variables
@@ -67,7 +106,8 @@ async function getAndroidPublisher() {
         credentials,
         scopes: ["https://www.googleapis.com/auth/androidpublisher"],
     });
-    return google.androidpublisher({ version: "v3", auth });
+    const androidPublisher = google.androidpublisher({ version: "v3", auth });
+    return androidPublisher;
 }
 async function getPlayDeveloperReporting() {
     const credentials = JSON.parse(SERVICE_ACCOUNT_KEY);
@@ -2093,11 +2133,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         requestBody: {
                             track,
                             releases: [{
-                                versionCodes: activeRelease.versionCodes,
-                                status: 'halted',
-                                userFraction: activeRelease.userFraction,
-                                releaseNotes: activeRelease.releaseNotes,
-                            }],
+                                    versionCodes: activeRelease.versionCodes,
+                                    status: 'halted',
+                                    userFraction: activeRelease.userFraction,
+                                    releaseNotes: activeRelease.releaseNotes,
+                                }],
                         },
                     });
                     await androidPublisher.edits.commit({
@@ -2149,11 +2189,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         requestBody: {
                             track,
                             releases: [{
-                                versionCodes: haltedRelease.versionCodes,
-                                status: 'inProgress',
-                                userFraction,
-                                releaseNotes: haltedRelease.releaseNotes,
-                            }],
+                                    versionCodes: haltedRelease.versionCodes,
+                                    status: 'inProgress',
+                                    userFraction,
+                                    releaseNotes: haltedRelease.releaseNotes,
+                                }],
                         },
                     });
                     await androidPublisher.edits.commit({
@@ -2205,10 +2245,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         requestBody: {
                             track,
                             releases: [{
-                                versionCodes: activeRelease.versionCodes,
-                                status: 'completed',
-                                releaseNotes: activeRelease.releaseNotes,
-                            }],
+                                    versionCodes: activeRelease.versionCodes,
+                                    status: 'completed',
+                                    releaseNotes: activeRelease.releaseNotes,
+                                }],
                         },
                     });
                     await androidPublisher.edits.commit({

@@ -13,14 +13,16 @@ class V3AuthLookupService {
 
     final orClause = _buildPhoneOrClause(candidates);
 
-    final rows = await supabase.from('v3_auth').select(_authLookupSelect).eq('tip', 'vozac').or(orClause).limit(2);
+    final rows = await supabase.from('v3_auth').select(_authLookupSelect).or(orClause).limit(2);
 
     if (rows.length > 1) {
       throw StateError('Pronađeno više vozača za isti broj telefona.');
     }
 
     if (rows.isEmpty) return null;
-    return _mapAuthToLegacyVozac(Map<String, dynamic>.from(rows.first as Map));
+    final row = Map<String, dynamic>.from(rows.first as Map);
+    if (row['tip'] != 'vozac') return null;
+    return _mapAuthToLegacyVozac(row);
   }
 
   static Future<Map<String, dynamic>?> getPutnikByPhone(String normalizedPhone) async {
@@ -29,14 +31,16 @@ class V3AuthLookupService {
 
     final orClause = _buildPhoneOrClause(candidates);
 
-    final rows = await supabase.from('v3_auth').select(_authLookupSelect).neq('tip', 'vozac').or(orClause).limit(2);
+    final rows = await supabase.from('v3_auth').select(_authLookupSelect).or(orClause).limit(2);
 
     if (rows.length > 1) {
       throw StateError('Pronađeno više putnika za isti broj telefona.');
     }
 
     if (rows.isEmpty) return null;
-    return _mapAuthToLegacyPutnik(Map<String, dynamic>.from(rows.first as Map));
+    final row = Map<String, dynamic>.from(rows.first as Map);
+    if (row['tip'] == 'vozac') return null;
+    return _mapAuthToLegacyPutnik(row);
   }
 
   static Map<String, dynamic> _mapAuthToLegacyVozac(Map<String, dynamic> row) {

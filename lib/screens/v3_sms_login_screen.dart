@@ -331,8 +331,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     final hasName = (putnik['ime_prezime']?.toString().trim().isNotEmpty ?? false);
     final hasTip = (putnik['tip_putnika']?.toString().trim().isNotEmpty ?? false);
+    final hasBcAdresa = (putnik['adresa_bc_id']?.toString().trim().isNotEmpty ?? false);
+    final hasVsAdresa = (putnik['adresa_vs_id']?.toString().trim().isNotEmpty ?? false);
 
-    if (hasName && hasTip) {
+    if (hasName && hasTip && hasBcAdresa && hasVsAdresa) {
       if (!mounted) return;
       await _finalize();
       return;

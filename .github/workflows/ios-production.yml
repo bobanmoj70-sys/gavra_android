@@ -3,7 +3,11 @@ name: 🍎 iOS Production Release
 on:
   workflow_dispatch:
   workflow_call:
-    inputs: {}
+    inputs:
+      git_ref:
+        description: 'Git Ref to checkout (optional)'
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,8 +23,15 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
+  versioning:
+    name: 🔢 Shared Autobump
+    uses: ./.github/workflows/version-bump.yml
+    with:
+      git_ref: ${{ inputs.git_ref || github.ref }}
+
   build-and-submit:
     name: 🚀 Build & Submit to App Store
+    needs: versioning
     runs-on: macos-latest
     env:
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -30,18 +41,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.git_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
-      - name: Read Version
-        id: version_info
-        run: |
-          CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
-          VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
-          VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "📌 Using version from pubspec.yaml: $CURRENT"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -113,8 +115,8 @@ jobs:
       - name: Build iOS App
         run: |
           flutter build ipa --release \
-            --build-name=${{ steps.version_info.outputs.VERSION_NAME }} \
-            --build-number=${{ steps.version_info.outputs.VERSION_CODE }} \
+            --build-name=${{ needs.versioning.outputs.version_name }} \
+            --build-number=${{ needs.versioning.outputs.version_code }} \
             --export-options-plist=$HOME/export_options.plist
 
       - name: List build outputs (for debugging)
@@ -182,6 +184,6 @@ jobs:
         if: always()
         run: |
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
-          echo "ver: ${{ steps.version_info.outputs.VERSION_NAME }} (${{ steps.version_info.outputs.VERSION_CODE }})" >> $GITHUB_STEP_SUMMARY
+          echo "ver: ${{ needs.versioning.outputs.version_name }} (${{ needs.versioning.outputs.version_code }})" >> $GITHUB_STEP_SUMMARY
           echo "distribution: production flow (no external TestFlight groups)" >> $GITHUB_STEP_SUMMARY
 
