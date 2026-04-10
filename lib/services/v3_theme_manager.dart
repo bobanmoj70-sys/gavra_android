@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'v3_theme_registry.dart';
 
@@ -12,6 +13,8 @@ class V3ThemeManager extends ChangeNotifier {
     _themeNotifier = ValueNotifier(_currentTheme.themeData);
   }
   static final V3ThemeManager _instance = V3ThemeManager._internal();
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const String _themeStorageKey = 'v3_theme_id';
 
   late String _currentThemeId;
   late V3ThemeDefinition _currentTheme;
@@ -40,9 +43,31 @@ class V3ThemeManager extends ChangeNotifier {
     if (!V3ThemeRegistry.hasTheme(themeId)) return;
     _currentThemeId = themeId;
     _currentTheme = V3ThemeRegistry.getTheme(themeId)!;
+    await _persistThemeId(themeId);
     _themeNotifier.value = _currentTheme.themeData;
     _themeNotifier.notifyListeners();
     notifyListeners();
+  }
+
+  /// Učitaj temu iz secure storage (pozvati pre MaterialApp kada je moguće).
+  Future<void> loadThemeFromStorage() async {
+    try {
+      final storedThemeId = await _secureStorage.read(key: _themeStorageKey);
+      if (storedThemeId == null || storedThemeId.isEmpty) return;
+      if (!V3ThemeRegistry.hasTheme(storedThemeId)) return;
+
+      _currentThemeId = storedThemeId;
+      _currentTheme = V3ThemeRegistry.getTheme(storedThemeId)!;
+      _themeNotifier.value = _currentTheme.themeData;
+      _themeNotifier.notifyListeners();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _persistThemeId(String themeId) async {
+    try {
+      await _secureStorage.write(key: _themeStorageKey, value: themeId);
+    } catch (_) {}
   }
 
   /// Sledeća tema u listi (cycling)

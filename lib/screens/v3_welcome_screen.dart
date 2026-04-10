@@ -32,6 +32,8 @@ class V3WelcomeScreen extends StatefulWidget {
 }
 
 class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+  static const String _biometricPhoneKey = 'v3_biometric_login_phone';
+
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
   bool _isResumeRefreshing = false;
@@ -393,6 +395,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                           context,
                           V3SmsLoginScreen(
                             title: 'Prijava',
+                            biometricKey: _biometricPhoneKey,
                             onVerified: _onLoginVerified,
                           ),
                         );
