@@ -37,7 +37,14 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
 
   void _handleUpdateInfoChange() {
     final info = updateInfoNotifier.value;
-    if (info == null || !info.isForced || !mounted) return;
+    if (!mounted) return;
+
+    if (info == null || !info.isForced) {
+      if (_forceDialogOpen) {
+        Navigator.of(context, rootNavigator: true).maybePop();
+      }
+      return;
+    }
 
     final signature = [
       info.isMaintenance,
