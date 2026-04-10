@@ -344,7 +344,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
 
     final existingTip = putnik['tip_putnika']?.toString().trim() ?? '';
-    if (existingTip == 'radnik' || existingTip == 'ucenik' || existingTip == 'dnevni') {
+    if (existingTip == 'radnik' || existingTip == 'ucenik' || existingTip == 'dnevni' || existingTip == 'posiljka') {
       _selectedTip = existingTip;
     }
 
@@ -743,6 +743,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             DropdownMenuItem(value: 'radnik', child: Text('👷 Radnik')),
             DropdownMenuItem(value: 'ucenik', child: Text('🎒 Učenik')),
             DropdownMenuItem(value: 'dnevni', child: Text('📅 Dnevni')),
+            DropdownMenuItem(value: 'posiljka', child: Text('📦 Pošiljka')),
           ],
           onChanged: _isLoading
               ? null
