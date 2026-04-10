@@ -61,6 +61,11 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Install iOS pods
+        run: |
+          cd ios
+          pod install --repo-update
+
       - name: Setup keychain
         run: keychain initialize
 

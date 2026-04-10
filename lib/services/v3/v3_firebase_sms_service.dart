@@ -107,7 +107,7 @@ class V3FirebaseSmsService {
         // ❌ Greška pri slanju
         verificationFailed: (FirebaseAuthException e) {
           debugPrint('[SMS] Greška pri slanju: ${e.code} - ${e.message}');
-          final msg = _mapFirebaseError(e.code);
+          final msg = '❌ [${e.code}] ${e.message}';
           completer.complete(SmsSendResult.fail(msg));
         },
 

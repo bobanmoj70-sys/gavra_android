@@ -25,7 +25,7 @@ android {
 
     defaultConfig {
         applicationId = "com.gavra013.gavra_android"
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -85,11 +85,6 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
-}
-
-configurations.configureEach {
-    exclude(group = "com.google.firebase", module = "firebase-appcheck-safetynet")
-    exclude(group = "com.google.android.gms", module = "play-services-safetynet")
 }
 
 dependencies {
