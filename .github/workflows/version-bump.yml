@@ -1,0 +1,69 @@
+name: 🔢 Shared Version Bump
+
+on:
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'Git ref to checkout (optional)'
+        required: false
+        type: string
+    outputs:
+      version_name:
+        description: 'Bumped semantic version (without build number)'
+        value: ${{ jobs.bump.outputs.version_name }}
+      version_code:
+        description: 'Bumped build number'
+        value: ${{ jobs.bump.outputs.version_code }}
+      full_version:
+        description: 'Bumped full version from pubspec.yaml (name+code)'
+        value: ${{ jobs.bump.outputs.full_version }}
+
+jobs:
+  bump:
+    name: Bump pubspec version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version_name: ${{ steps.bump.outputs.VERSION_NAME }}
+      version_code: ${{ steps.bump.outputs.VERSION_CODE }}
+      full_version: ${{ steps.bump.outputs.FULL_VERSION }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Autobump pubspec version
+        id: bump
+        run: |
+          CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
+          VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
+          VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NAME"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_CODE=$((VERSION_CODE + 1))
+          NEW_VERSION_NAME="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          NEW_FULL_VERSION="${NEW_VERSION_NAME}+${NEW_CODE}"
+
+          sed -i -E "s/^version: .*/version: ${NEW_FULL_VERSION}/" pubspec.yaml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- pubspec.yaml; then
+            echo "ℹ️ No version changes detected"
+          else
+            git add pubspec.yaml
+            git commit -m "chore: autobump version to ${NEW_FULL_VERSION} [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+          echo "VERSION_NAME=${NEW_VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_CODE=${NEW_CODE}" >> "$GITHUB_OUTPUT"
+          echo "FULL_VERSION=${NEW_FULL_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "✅ Autobump set version: ${NEW_FULL_VERSION}"

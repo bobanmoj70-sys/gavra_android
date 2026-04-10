@@ -23,12 +23,16 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
+  versioning:
+    name: 🔢 Shared Autobump
+    uses: ./.github/workflows/version-bump.yml
+    with:
+      git_ref: ${{ inputs.git_ref || github.ref }}
+
   build-and-upload:
     name: 🚀 Build & Upload to Google Play
+    needs: versioning
     runs-on: ubuntu-latest
-    outputs:
-      VERSION_NAME: ${{ steps.version_info.outputs.VERSION_NAME }}
-      VERSION_CODE: ${{ steps.version_info.outputs.VERSION_CODE }}
 
     steps:
       - name: Checkout
@@ -37,15 +41,6 @@ jobs:
           ref: ${{ inputs.git_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
-      - name: Deploy policy docs to GitHub Pages branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          publish_branch: gh-pages
-          force_orphan: false
-          commit_message: "docs: sync privacy/delete-account pages [skip ci]"
 
       - name: Validate policy URLs
         run: |
@@ -62,16 +57,6 @@ jobs:
             exit 1
           fi
           echo "✅ Account Deletion URL is reachable"
-
-      - name: Read Version
-        id: version_info
-        run: |
-          CURRENT=$(grep "^version:" pubspec.yaml | sed 's/version: //')
-          VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
-          VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "📌 Using version from pubspec.yaml: $CURRENT"
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -122,7 +107,7 @@ jobs:
 
       - name: Build AAB
         run: |
-          flutter build appbundle --release --build-name=${{ steps.version_info.outputs.VERSION_NAME }} --build-number=${{ steps.version_info.outputs.VERSION_CODE }}
+          flutter build appbundle --release --build-name=${{ needs.versioning.outputs.version_name }} --build-number=${{ needs.versioning.outputs.version_code }}
 
       - name: Upload to Google Play (Production)
         uses: r0adkll/upload-google-play@v1.1.3
@@ -132,13 +117,13 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: production
           status: completed
-          releaseName: "v${{ steps.version_info.outputs.VERSION_NAME }}"
+          releaseName: "v${{ needs.versioning.outputs.version_name }}"
           whatsNewDirectory: distribution/whatsnew
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: google-play-aab-${{ steps.version_info.outputs.VERSION_CODE }}
+          name: google-play-aab-${{ needs.versioning.outputs.version_code }}
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
@@ -146,8 +131,8 @@ jobs:
         run: |
           echo "## ✅ Google Play Upload Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version_info.outputs.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Build:** ${{ steps.version_info.outputs.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.versioning.outputs.version_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build:** ${{ needs.versioning.outputs.version_code }}" >> $GITHUB_STEP_SUMMARY
           echo "**Track:** Production" >> $GITHUB_STEP_SUMMARY
           echo "**Privacy Policy:** $PRIVACY_POLICY_URL" >> $GITHUB_STEP_SUMMARY
           echo "**Account Deletion:** $ACCOUNT_DELETION_URL" >> $GITHUB_STEP_SUMMARY
