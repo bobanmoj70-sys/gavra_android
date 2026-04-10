@@ -57,8 +57,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     try {
       return await V3AppSettingsService.loadGlobal(
         selectColumns:
-            'latest_version_android, min_supported_version_android, force_update_android, store_url_android, '
-            'latest_version_ios, min_supported_version_ios, force_update_ios, store_url_ios',
+            'latest_version_android, min_supported_version_android, force_update_android, store_url_android, maintenance_mode_android, maintenance_title_android, maintenance_message_android, '
+            'latest_version_ios, min_supported_version_ios, force_update_ios, store_url_ios, maintenance_mode_ios, maintenance_title_ios, maintenance_message_ios',
       );
     } catch (e) {
       debugPrint('[AdminScreen] Greška pri učitavanju update settings: $e');
@@ -473,13 +473,21 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final latestAndroidCtrl = TextEditingController(text: (row['latest_version_android'] ?? '').toString());
     final minAndroidCtrl = TextEditingController(text: (row['min_supported_version_android'] ?? '').toString());
     final urlAndroidCtrl = TextEditingController(text: (row['store_url_android'] ?? '').toString());
+    final maintenanceTitleAndroidCtrl =
+        TextEditingController(text: (row['maintenance_title_android'] ?? '').toString());
+    final maintenanceMessageAndroidCtrl =
+        TextEditingController(text: (row['maintenance_message_android'] ?? '').toString());
 
     final latestIosCtrl = TextEditingController(text: (row['latest_version_ios'] ?? '').toString());
     final minIosCtrl = TextEditingController(text: (row['min_supported_version_ios'] ?? '').toString());
     final urlIosCtrl = TextEditingController(text: (row['store_url_ios'] ?? '').toString());
+    final maintenanceTitleIosCtrl = TextEditingController(text: (row['maintenance_title_ios'] ?? '').toString());
+    final maintenanceMessageIosCtrl = TextEditingController(text: (row['maintenance_message_ios'] ?? '').toString());
 
     var forceAndroid = row['force_update_android'] == true;
     var forceIos = row['force_update_ios'] == true;
+    var maintenanceAndroid = row['maintenance_mode_android'] == true;
+    var maintenanceIos = row['maintenance_mode_ios'] == true;
     var isSaving = false;
     final quickVersionCtrl = TextEditingController();
 
@@ -522,10 +530,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           'min_supported_version_android': minAndroid,
           'force_update_android': forceAndroid,
           'store_url_android': storeAndroid,
+          'maintenance_mode_android': maintenanceAndroid,
+          'maintenance_title_android': maintenanceTitleAndroidCtrl.text.trim(),
+          'maintenance_message_android': maintenanceMessageAndroidCtrl.text.trim(),
           'latest_version_ios': latestIos,
           'min_supported_version_ios': minIos,
           'force_update_ios': forceIos,
           'store_url_ios': storeIos,
+          'maintenance_mode_ios': maintenanceIos,
+          'maintenance_title_ios': maintenanceTitleIosCtrl.text.trim(),
+          'maintenance_message_ios': maintenanceMessageIosCtrl.text.trim(),
         });
 
         if (!mounted) return;
@@ -599,8 +613,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               required TextEditingController latest,
               required TextEditingController min,
               required TextEditingController store,
+              required TextEditingController maintenanceTitle,
+              required TextEditingController maintenanceMessage,
               required bool force,
+              required bool maintenance,
               required ValueChanged<bool> onForceChanged,
+              required ValueChanged<bool> onMaintenanceChanged,
             }) {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -662,6 +680,33 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       title: const Text('Force update', style: TextStyle(fontWeight: FontWeight.w700)),
                       value: force,
                       onChanged: onForceChanged,
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: maintenanceTitle,
+                      decoration: const InputDecoration(
+                        labelText: 'Maintenance naslov',
+                        prefixIcon: Icon(Icons.build_circle_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: maintenanceMessage,
+                      minLines: 2,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Maintenance poruka',
+                        prefixIcon: Icon(Icons.warning_amber_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      activeColor: Colors.amber,
+                      title: const Text('Maintenance mode', style: TextStyle(fontWeight: FontWeight.w700)),
+                      value: maintenance,
+                      onChanged: onMaintenanceChanged,
                     ),
                   ],
                 ),
@@ -764,8 +809,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                     latest: latestAndroidCtrl,
                                     min: minAndroidCtrl,
                                     store: urlAndroidCtrl,
+                                    maintenanceTitle: maintenanceTitleAndroidCtrl,
+                                    maintenanceMessage: maintenanceMessageAndroidCtrl,
                                     force: forceAndroid,
+                                    maintenance: maintenanceAndroid,
                                     onForceChanged: (v) => setModalState(() => forceAndroid = v),
+                                    onMaintenanceChanged: (v) => setModalState(() => maintenanceAndroid = v),
                                   ),
                                   section(
                                     title: 'iOS (App Store)',
@@ -774,8 +823,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                     latest: latestIosCtrl,
                                     min: minIosCtrl,
                                     store: urlIosCtrl,
+                                    maintenanceTitle: maintenanceTitleIosCtrl,
+                                    maintenanceMessage: maintenanceMessageIosCtrl,
                                     force: forceIos,
+                                    maintenance: maintenanceIos,
                                     onForceChanged: (v) => setModalState(() => forceIos = v),
+                                    onMaintenanceChanged: (v) => setModalState(() => maintenanceIos = v),
                                   ),
                                 ],
                               ),

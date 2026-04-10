@@ -248,11 +248,17 @@ class V2UpdateInfo {
   final String latestVersion;
   final String storeUrl;
   final bool isForced; // true = korisnik mora da ažurira (u forced-only toku očekivano true)
+  final bool isMaintenance;
+  final String maintenanceTitle;
+  final String maintenanceMessage;
 
   const V2UpdateInfo({
     required this.latestVersion,
     required this.storeUrl,
     required this.isForced,
+    this.isMaintenance = false,
+    this.maintenanceTitle = '',
+    this.maintenanceMessage = '',
   });
 }
 

@@ -49,8 +49,8 @@ class V3NeradniDaniBanner extends StatelessWidget {
         return V3ShimmerBanner(
           margin: margin ?? EdgeInsets.zero,
           borderRadius: 12,
-          backgroundColor: const Color(0xFFB71C1C),
-          borderColor: const Color(0xFFFF6B6B),
+          backgroundColor: const Color(0xFFEF6C00),
+          borderColor: const Color(0xFFFFB74D),
           child: Material(
             type: MaterialType.transparency,
             child: Column(
