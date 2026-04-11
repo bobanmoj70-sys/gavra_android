@@ -51,6 +51,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
 
+      - name: Prepare secrets (macOS)
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
+        run: |
+          printf '%s' "$ENV_FILE_CONTENT" > .env
+
       - name: Install iOS signing CLI tools
         run: pip install codemagic-cli-tools
 
@@ -58,7 +64,7 @@ jobs:
         run: |
           export $(grep -v '^#' .env | xargs)
           if [ -n "$IOS_GOOGLE_SERVICES_PLIST_BASE64" ]; then
-            printf '%s' "$IOS_GOOGLE_SERVICES_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+            printf '%s' "$IOS_GOOGLE_SERVICES_PLIST_BASE64" | base64 -D > ios/Runner/GoogleService-Info.plist
           else
             echo "❌ Missing IOS_GOOGLE_SERVICES_PLIST_BASE64 in .env"
             exit 1
@@ -83,15 +89,18 @@ jobs:
             exit 1
           fi
 
-          mkdir -p ~/.private_keys
-          
-          # We assume the certificate private key is still in secrets or added to .env later
-          CERT_KEY_CONTENT="${{ secrets.CERTIFICATE_PRIVATE_KEY }}"
-          printf '%s' "$CERT_KEY_CONTENT" > /tmp/certificate_private_key.pem
+            mkdir -p ~/.private_keys
 
-          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APPSTORE_ISSUER_ID}.p8"
+            if [ -n "$IOS_CERT_PRIVATE_KEY_BASE64" ]; then
+              printf '%s' "$IOS_CERT_PRIVATE_KEY_BASE64" | base64 -D > /tmp/certificate_private_key.pem
+            else
+              echo "❌ Missing IOS_CERT_PRIVATE_KEY_BASE64 in .env"
+              exit 1
+            fi
+
+            ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APPSTORE_ISSUER_ID}.p8"
           if [ -n "$AUTH_KEY_P8_BASE64" ]; then
-            printf '%s' "$AUTH_KEY_P8_BASE64" | base64 --decode > "$ASC_KEY_PATH"
+            printf '%s' "$AUTH_KEY_P8_BASE64" | base64 -D > "$ASC_KEY_PATH"
           else
             echo "❌ Missing AUTH_KEY_P8_BASE64 in .env"
             exit 1
@@ -188,4 +197,5 @@ jobs:
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "ver: ${{ needs.versioning.outputs.version_name }} (${{ needs.versioning.outputs.version_code }})" >> $GITHUB_STEP_SUMMARY
           echo "distribution: production flow (no external TestFlight groups)" >> $GITHUB_STEP_SUMMARY
+
 
