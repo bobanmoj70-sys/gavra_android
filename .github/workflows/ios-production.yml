@@ -34,8 +34,8 @@ jobs:
     needs: versioning
     runs-on: macos-latest
     env:
-      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID || secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ vars.APP_STORE_CONNECT_KEY_IDENTIFIER || secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
     
     steps:
       - name: Checkout
@@ -53,7 +53,7 @@ jobs:
 
       - name: Prepare secrets (macOS)
         env:
-          IOS_ENV: ${{ secrets.IOS_ENV }}
+          IOS_ENV: ${{ vars.IOS_ENV || secrets.IOS_ENV }}
         run: |
           mkdir -p secrets
           printf '%s' "$IOS_ENV" > secrets/.env.ios
@@ -85,8 +85,8 @@ jobs:
       - name: Prepare signing keys
         run: |
           while IFS= read -r line || [ -n "$line" ]; do if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then export "$line"; fi; done < secrets/.env.ios
-          if [ -z "$APPSTORE_ISSUER_ID" ]; then
-            echo "❌ Missing APPSTORE_ISSUER_ID in .env"
+          if [ -z "$APP_STORE_CONNECT_KEY_IDENTIFIER" ]; then
+            echo "❌ Missing APP_STORE_CONNECT_KEY_IDENTIFIER (vars/secrets)"
             exit 1
           fi
 
@@ -99,7 +99,7 @@ jobs:
               exit 1
             fi
 
-            ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APPSTORE_ISSUER_ID}.p8"
+            ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
           if [ -n "$AUTH_KEY_P8_BASE64" ]; then
             printf '%s' "$AUTH_KEY_P8_BASE64" | base64 -D > "$ASC_KEY_PATH"
           else

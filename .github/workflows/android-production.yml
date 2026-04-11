@@ -44,27 +44,27 @@ jobs:
 
       - name: 🔐 Prepare secrets & Verify Keystore (Fail Fast)
         env:
-          ANDROID_ENV: ${{ secrets.ANDROID_ENV }}
+          ANDROID_ENV: ${{ vars.ANDROID_ENV || secrets.ANDROID_ENV }}
         run: |
+          set -euo pipefail
           mkdir -p secrets
           printf '%s' "$ANDROID_ENV" | tr -d '\r' > secrets/.env.android
-          
-          while IFS='=' read -r key val || [ -n "$key" ]; do
-            if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then continue; fi
-            
-            # Ukoliko vrednost ima navodnike oko sebe (npr. "mojasifra" ili 'mojasifra'), sklanjamo ih
-            val="${val%\"}"
-            val="${val#\"}"
-            val="${val%\'}"
-            val="${val#\'}"
-            
-            export "$key"="$val"
-          done < secrets/.env.android
-          
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/gavra-release-key-production.keystore
+
+          set -a
+          . secrets/.env.android
+          set +a
+
+          : "${ANDROID_KEYSTORE_BASE64:?Missing ANDROID_KEYSTORE_BASE64}"
+          : "${ANDROID_STORE_PASSWORD:?Missing ANDROID_STORE_PASSWORD}"
+          : "${ANDROID_KEY_PASSWORD:?Missing ANDROID_KEY_PASSWORD}"
+          : "${ANDROID_KEY_ALIAS:?Missing ANDROID_KEY_ALIAS}"
+          : "${PLAY_STORE_KEY_JSON_BASE64:?Missing PLAY_STORE_KEY_JSON_BASE64}"
+          : "${GOOGLE_SERVICES_JSON_BASE64:?Missing GOOGLE_SERVICES_JSON_BASE64}"
+
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/gavra-release-key-production.keystore
           printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=gavra-release-key-production.keystore\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" > android/key.properties
-          printf '%s' "$PLAY_STORE_KEY_JSON_BASE64" | base64 --decode --ignore-garbage > android/google-service-account.json
-          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode --ignore-garbage > android/app/google-services.json
+          printf '%s' "$PLAY_STORE_KEY_JSON_BASE64" | base64 --decode > android/google-service-account.json
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
 
           echo "Verifying Keystore integrity..."
           KEYSTORE_PATH="android/app/gavra-release-key-production.keystore"
