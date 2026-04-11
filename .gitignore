@@ -121,7 +121,7 @@ tail_debug.txt
 tail_debug_vozac.txt
 temp_screenshots/
 
-# Distribution artifacts (keep release notes in distribution/whatsnew)
+# Distribution artifacts (keep release notes in distribution/whatsnew)  
 distribution/Racun_*.pdf
 distribution/Racun_*.txt
 
@@ -129,5 +129,9 @@ distribution/Racun_*.txt
 ios/APPSTORE_ISSUER_ID.txt
 ios/Runner/GoogleService-Info.plist
 supabase/empty.env
+
+# Additions for newly created temp/secret files
+temp_secrets/
+ios/ios_cert_key_pkcs8.pem
 
 /secrets/
