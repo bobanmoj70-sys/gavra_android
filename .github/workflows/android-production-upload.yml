@@ -78,6 +78,16 @@ jobs:
             exit 1
           fi
 
+          AGC_B64="${{ secrets.AGC_BASE64 }}"
+          AGC_JSON_RAW="${{ secrets.AGCONNECT_SERVICES_JSON }}"
+          if [ -n "$AGC_B64" ]; then
+            if ! printf "%s" "$AGC_B64" | base64 -d > android/app/agconnect-services.json 2>/dev/null; then
+              printf "%s" "$AGC_B64" > android/app/agconnect-services.json
+            fi
+          elif [ -n "$AGC_JSON_RAW" ]; then
+            printf "%s" "$AGC_JSON_RAW" > android/app/agconnect-services.json
+          fi
+
           cat > android/key.properties <<EOF
           storePassword=$STORE_PASSWORD
           keyPassword=$KEY_PASSWORD
