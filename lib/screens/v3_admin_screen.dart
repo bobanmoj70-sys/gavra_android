@@ -294,10 +294,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }
   }
 
-  Map<String, List<String>> _parseByDaySchedule(dynamic raw, List<String> fallback) {
-    final fallbackNorm = _normalizeTimes(fallback);
+  Map<String, List<String>> _parseByDaySchedule(dynamic raw) {
     final result = {
-      for (final day in V3DanHelper.workdayNames) day: List<String>.from(fallbackNorm),
+      for (final day in V3DanHelper.workdayNames) day: <String>[],
     };
 
     if (raw is! Map) return result;
@@ -313,27 +312,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     return result;
   }
 
-  List<String> _flattenByDaySchedule(Map<String, List<String>> byDay) {
-    final merged = <String>{};
-    for (final day in V3DanHelper.workdayNames) {
-      merged.addAll(byDay[day] ?? const <String>[]);
-    }
-    final out = merged.toList();
-    out.sort();
-    return out;
-  }
-
   Future<void> _openCustomScheduleEditor() async {
     try {
       final row = await V3AppSettingsService.loadGlobal(
-        selectColumns: 'bc_custom, vs_custom, bc_custom_by_day, vs_custom_by_day',
+        selectColumns: 'bc_custom_by_day, vs_custom_by_day',
       );
       if (!mounted) return;
 
-      final bcCurrent = (row['bc_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
-      final vsCurrent = (row['vs_custom'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
-      final bcByDayCurrent = _parseByDaySchedule(row['bc_custom_by_day'], bcCurrent);
-      final vsByDayCurrent = _parseByDaySchedule(row['vs_custom_by_day'], vsCurrent);
+      final bcByDayCurrent = _parseByDaySchedule(row['bc_custom_by_day']);
+      final vsByDayCurrent = _parseByDaySchedule(row['vs_custom_by_day']);
 
       final bcCtrls = {
         for (final day in V3DanHelper.workdayNames)
@@ -420,14 +407,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             return;
                           }
 
-                          final bcNorm = _flattenByDaySchedule(bcByDayNorm);
-                          final vsNorm = _flattenByDaySchedule(vsByDayNorm);
-
                           setModalState(() => isSaving = true);
                           try {
                             await V3AppSettingsService.updateGlobal({
-                              'bc_custom': bcNorm,
-                              'vs_custom': vsNorm,
                               'bc_custom_by_day': bcByDayNorm,
                               'vs_custom_by_day': vsByDayNorm,
                             });

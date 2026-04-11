@@ -131,24 +131,12 @@ class V3MasterRealtimeManager {
       return result;
     }
 
-    List<String> _flattenByDay(Map<String, List<String>> byDay) {
-      final merged = <String>{};
-      for (final day in V3DanHelper.workdayNames) {
-        merged.addAll(byDay[day] ?? const <String>[]);
-      }
-      final out = merged.toList();
-      out.sort();
-      return out;
-    }
-
     final updated = Map<String, List<String>>.from(rasporedNotifier.value);
     bool changed = false;
 
     for (final key in [
       'bc_zimski',
       'vs_zimski',
-      'bc_custom',
-      'vs_custom',
     ]) {
       if (row.containsKey(key)) {
         updated[key] = _toList(row[key]);
@@ -175,10 +163,6 @@ class V3MasterRealtimeManager {
 
     if (customByDayChanged) {
       customRasporedByDayNotifier.value = customByDayUpdated;
-
-      updated['bc_custom'] = _flattenByDay(customByDayUpdated['bc'] ?? const <String, List<String>>{});
-      updated['vs_custom'] = _flattenByDay(customByDayUpdated['vs'] ?? const <String, List<String>>{});
-      changed = true;
     }
 
     if (row.containsKey('neradni_dani')) {

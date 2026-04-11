@@ -80,13 +80,11 @@ String? resolveEffectiveNavBarType({
 }
 
 /// RASPORED NOTIFIER - vremena polazaka iz baze (v3_app_settings)
-/// Ključevi: 'bc_zimski', 'vs_zimski', 'bc_custom', 'vs_custom'
+/// Ključevi: 'bc_zimski', 'vs_zimski'
 /// Puni se pri startu i ažurira realtime kad admin promeni rasporede u bazi
 final ValueNotifier<Map<String, List<String>>> rasporedNotifier = ValueNotifier<Map<String, List<String>>>({
   'bc_zimski': ['05:00', '06:00', '07:00', '08:00', '09:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
   'vs_zimski': ['06:00', '07:00', '08:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:30', '17:00', '19:00'],
-  'bc_custom': [],
-  'vs_custom': [],
 });
 
 const List<String> _customWorkdayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak'];
