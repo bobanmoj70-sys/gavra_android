@@ -26,6 +26,7 @@ play-store-key.json
 key.properties
 appstore-api-key.*
 AuthKey_*.p8
+APPSTORE_ISSUER_ID.txt
 
 # Android build outputs
 android/app/*.apk

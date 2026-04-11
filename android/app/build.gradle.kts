@@ -1,6 +1,52 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.Base64
 import org.gradle.api.GradleException
+
+// 🔐 AUTOMATSKO PARSIRANJE .ENV TAJNI PRE INICIJALIZACIJE PLUGINA
+val envFile = rootProject.file("../.env")
+if (envFile.exists()) {
+    val envProps = Properties()
+    envProps.load(FileInputStream(envFile))
+    
+    // Obnavljanje Google Services JSON-a
+    val googleServicesB64 = envProps.getProperty("GOOGLE_SERVICES_JSON_BASE64")
+    if (!googleServicesB64.isNullOrEmpty()) {
+        val bytes = Base64.getDecoder().decode(googleServicesB64.replace("\n", "").trim())
+        val outFile = file("google-services.json")
+        FileOutputStream(outFile).use { it.write(bytes) }
+    }
+    
+    // Obnavljanje AGConnect Services JSON-a
+    val agconnectServicesB64 = envProps.getProperty("AGCONNECT_SERVICES_JSON_BASE64")
+    if (!agconnectServicesB64.isNullOrEmpty()) {
+        val bytes = Base64.getDecoder().decode(agconnectServicesB64.replace("\n", "").trim())
+        val outFile = file("agconnect-services.json")
+        FileOutputStream(outFile).use { it.write(bytes) }
+    }
+    
+    // Obnavljanje Play Store Key JSON-a
+    val playStoreB64 = envProps.getProperty("PLAY_STORE_KEY_JSON_BASE64")
+    if (!playStoreB64.isNullOrEmpty()) {
+        val bytes = Base64.getDecoder().decode(playStoreB64.replace("\n", "").trim())
+        val outFile = rootProject.file("../google-play-mcp/play-store-key.json")
+        outFile.parentFile.mkdirs()
+        FileOutputStream(outFile).use { it.write(bytes) }
+    }
+
+    // Automatsko kreiranje key.properties fajla iz .env zapisa (Lokalno okruženje)
+    val keystorePropsFile = rootProject.file("key.properties")
+    val storePass = envProps.getProperty("ANDROID_STORE_PASSWORD")
+    if (!storePass.isNullOrEmpty() && !keystorePropsFile.exists()) {
+        val keyProps = Properties()
+        keyProps.setProperty("storePassword", storePass)
+        keyProps.setProperty("keyPassword", envProps.getProperty("ANDROID_KEY_PASSWORD", ""))
+        keyProps.setProperty("keyAlias", envProps.getProperty("ANDROID_KEY_ALIAS", ""))
+        keyProps.setProperty("storeFile", envProps.getProperty("ANDROID_STORE_FILE", ""))
+        FileOutputStream(keystorePropsFile).use { keyProps.store(it, "Auto-generated from .env") }
+    }
+}
 
 plugins {
     id("com.android.application")

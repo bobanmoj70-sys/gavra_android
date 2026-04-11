@@ -13,12 +13,15 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 import { Logger } from "./logger.js";
 
-// Load environment variables from .env file
-dotenv.config({ quiet: true });
+// Load environment variables from ROOT .env file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../../../.env'), quiet: true });
 
 const logger = new Logger('google-play-mcp');
 
 const PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.gavra013.gavra_android';
+const PLAY_STORE_JSON_B64 = process.env.PLAY_STORE_KEY_JSON_BASE64;
 
 function tryReadFile(candidatePath: string): string | null {
     if (!candidatePath) {

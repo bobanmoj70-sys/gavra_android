@@ -73,29 +73,25 @@ jobs:
 
       - name: Prepare secrets (Linux)
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          GOOGLE_PLAY_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
-          GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
           ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/gavra-release-key-production.keystore
-          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=gavra-release-key-production.keystore\n' "$KEYSTORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
-          printf '%s' "$GOOGLE_PLAY_JSON_BASE64" | base64 --decode --ignore-garbage > android/google-service-account.json
           printf '%s' "$ENV_FILE_CONTENT" > .env
-          printf '%s' "$GOOGLE_SERVICES_BASE64" | base64 --decode --ignore-garbage > android/app/google-services.json
+          
+          export $(grep -v '^#' .env | xargs)
+          
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/gavra-release-key-production.keystore
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=gavra-release-key-production.keystore\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" > android/key.properties
+          printf '%s' "$PLAY_STORE_KEY_JSON_BASE64" | base64 --decode --ignore-garbage > android/google-service-account.json
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode --ignore-garbage > android/app/google-services.json
 
       - name: 🛡️ Verify Keystore (Fail Fast)
-        env:
-           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
+          export $(grep -v '^#' .env | xargs)
           echo "Verifying Keystore integrity..."
           KEYSTORE_PATH="android/app/gavra-release-key-production.keystore"
           if [ -f "$KEYSTORE_PATH" ]; then
             # Verify with keytool
-            keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" || exit 1
+            keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$ANDROID_STORE_PASSWORD" || exit 1
             echo "✅ Keystore verification PASSED."
           else
              echo "❌ Keystore file not found!"

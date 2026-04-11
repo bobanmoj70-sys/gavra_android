@@ -6,13 +6,20 @@ import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import 'dotenv/config.js';
+import * as dotenv from 'dotenv';
 import * as fs from "fs";
+import * as path from 'path';
+
+// Load from root .env
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 
-const ISSUER_ID = process.env.APP_STORE_ISSUER_ID;
+const ISSUER_ID = process.env.APPSTORE_ISSUER_ID;
 const KEY_ID = process.env.APP_STORE_KEY_ID;
+const P8_BASE64 = process.env.AUTH_KEY_P8_BASE64;
+const APP_ID = process.env.APP_STORE_APP_ID;
 
 // Podrška za ključ iz fajla ILI direktno iz env varijable
 let PRIVATE_KEY: string | undefined;

@@ -54,11 +54,15 @@ jobs:
       - name: Install iOS signing CLI tools
         run: pip install codemagic-cli-tools
 
-      - name: Create .env file
-        run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-
       - name: Create GoogleService-Info.plist
-        run: echo "${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}" > ios/Runner/GoogleService-Info.plist
+        run: |
+          export $(grep -v '^#' .env | xargs)
+          if [ -n "$IOS_GOOGLE_SERVICES_PLIST_BASE64" ]; then
+            printf '%s' "$IOS_GOOGLE_SERVICES_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          else
+            echo "❌ Missing IOS_GOOGLE_SERVICES_PLIST_BASE64 in .env"
+            exit 1
+          fi
 
       - name: Get dependencies
         run: flutter pub get
@@ -72,26 +76,24 @@ jobs:
         run: keychain initialize
 
       - name: Prepare signing keys
-        env:
-          CERT_KEY_CONTENT: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
-          ASC_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
-          ASC_KEY_B64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
         run: |
-          if [ -z "$APP_STORE_CONNECT_KEY_IDENTIFIER" ]; then
-            echo "❌ Missing APP_STORE_CONNECT_KEY_IDENTIFIER"
+          export $(grep -v '^#' .env | xargs)
+          if [ -z "$APPSTORE_ISSUER_ID" ]; then
+            echo "❌ Missing APPSTORE_ISSUER_ID in .env"
             exit 1
           fi
 
           mkdir -p ~/.private_keys
+          
+          # We assume the certificate private key is still in secrets or added to .env later
+          CERT_KEY_CONTENT="${{ secrets.CERTIFICATE_PRIVATE_KEY }}"
           printf '%s' "$CERT_KEY_CONTENT" > /tmp/certificate_private_key.pem
 
-          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
-          if [ -n "$ASC_KEY_CONTENT" ]; then
-            printf '%s' "$ASC_KEY_CONTENT" > "$ASC_KEY_PATH"
-          elif [ -n "$ASC_KEY_B64" ]; then
-            printf '%s' "$ASC_KEY_B64" | base64 --decode > "$ASC_KEY_PATH"
+          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APPSTORE_ISSUER_ID}.p8"
+          if [ -n "$AUTH_KEY_P8_BASE64" ]; then
+            printf '%s' "$AUTH_KEY_P8_BASE64" | base64 --decode > "$ASC_KEY_PATH"
           else
-            echo "❌ Missing APP_STORE_CONNECT_PRIVATE_KEY or APP_STORE_CONNECT_PRIVATE_KEY_BASE64"
+            echo "❌ Missing AUTH_KEY_P8_BASE64 in .env"
             exit 1
           fi
           echo "CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem" >> $GITHUB_ENV
