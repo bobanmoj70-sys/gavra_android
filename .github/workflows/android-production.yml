@@ -47,7 +47,7 @@ jobs:
           ANDROID_ENV: ${{ vars.ANDROID_ENV || secrets.ANDROID_ENV }}
         run: |
           echo "$ANDROID_ENV" > .env
-          python -c '
+          python - <<'PY'
           import os, base64
           env_text = open(".env").read()
           env_dict = {}
@@ -57,7 +57,7 @@ jobs:
               if line.startswith("export "): line = line[7:]
               if "=" in line:
                   k, v = line.split("=", 1)
-                  env_dict[k.strip()] = v.strip("\"'\ ")
+                  env_dict[k.strip()] = v.strip("\"' ")
 
           ks_b64 = env_dict.get("ANDROID_KEYSTORE_BASE64", "")
           if ks_b64:
@@ -80,7 +80,7 @@ jobs:
           ps_b64 = env_dict.get("PLAY_STORE_KEY_JSON_BASE64", "")
           if ps_b64:
               open("android/google-service-account.json", "wb").write(base64.b64decode(ps_b64))
-          '
+          PY
 
       - name: Setup Java
         uses: actions/setup-java@v3
