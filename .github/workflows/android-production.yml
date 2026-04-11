@@ -73,13 +73,12 @@ jobs:
 
       - name: Prepare secrets (Linux)
         env:
-          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
+          ANDROID_ENV: ${{ secrets.ANDROID_ENV }}
         run: |
-          printf '%s' "$ENV_FILE_CONTENT" > .env
-          
-          export $(grep -v '^#' .env | xargs)
-          
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/gavra-release-key-production.keystore
+          mkdir -p secrets
+          printf '%s' "$ANDROID_ENV" > secrets/.env.android
+
+          export $(grep -v '^#' secrets/.env.android | xargs)          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/gavra-release-key-production.keystore
           printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=gavra-release-key-production.keystore\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" > android/key.properties
           printf '%s' "$PLAY_STORE_KEY_JSON_BASE64" | base64 --decode --ignore-garbage > android/google-service-account.json
           printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode --ignore-garbage > android/app/google-services.json

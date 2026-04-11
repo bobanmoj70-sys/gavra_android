@@ -4,8 +4,8 @@ import java.io.FileOutputStream
 import java.util.Base64
 import org.gradle.api.GradleException
 
-// 🔐 AUTOMATSKO PARSIRANJE .ENV TAJNI PRE INICIJALIZACIJE PLUGINA
-val envFile = rootProject.file("../.env")
+// 🛠 Automatsko parsiranje .env tajni pre inicijalizacije plugina
+val envFile = rootProject.file("../secrets/.env.android")
 if (envFile.exists()) {
     val envProps = Properties()
     envProps.load(FileInputStream(envFile))

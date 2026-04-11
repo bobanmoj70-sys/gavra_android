@@ -53,16 +53,17 @@ jobs:
 
       - name: Prepare secrets (macOS)
         env:
-          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
+          IOS_ENV: ${{ secrets.IOS_ENV }}
         run: |
-          printf '%s' "$ENV_FILE_CONTENT" > .env
+          mkdir -p secrets
+          printf '%s' "$IOS_ENV" > secrets/.env.ios
 
       - name: Install iOS signing CLI tools
         run: pip install codemagic-cli-tools
 
       - name: Create GoogleService-Info.plist
         run: |
-          export $(grep -v '^#' .env | xargs)
+          export $(grep -v '^#' secrets/.env.ios | xargs)
           if [ -n "$IOS_GOOGLE_SERVICES_PLIST_BASE64" ]; then
             printf '%s' "$IOS_GOOGLE_SERVICES_PLIST_BASE64" | base64 -D > ios/Runner/GoogleService-Info.plist
           else
@@ -83,7 +84,7 @@ jobs:
 
       - name: Prepare signing keys
         run: |
-          export $(grep -v '^#' .env | xargs)
+          export $(grep -v '^#' secrets/.env.ios | xargs)
           if [ -z "$APPSTORE_ISSUER_ID" ]; then
             echo "❌ Missing APPSTORE_ISSUER_ID in .env"
             exit 1
@@ -197,5 +198,6 @@ jobs:
           echo "## 🎉 iOS Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "ver: ${{ needs.versioning.outputs.version_name }} (${{ needs.versioning.outputs.version_code }})" >> $GITHUB_STEP_SUMMARY
           echo "distribution: production flow (no external TestFlight groups)" >> $GITHUB_STEP_SUMMARY
+
 
 
