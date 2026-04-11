@@ -63,7 +63,7 @@ jobs:
 
       - name: Create GoogleService-Info.plist
         run: |
-          export $(grep -v '^#' secrets/.env.ios | xargs)
+          while IFS= read -r line || [ -n "$line" ]; do if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then export "$line"; fi; done < secrets/.env.ios
           if [ -n "$IOS_GOOGLE_SERVICES_PLIST_BASE64" ]; then
             printf '%s' "$IOS_GOOGLE_SERVICES_PLIST_BASE64" | base64 -D > ios/Runner/GoogleService-Info.plist
           else
@@ -84,7 +84,7 @@ jobs:
 
       - name: Prepare signing keys
         run: |
-          export $(grep -v '^#' secrets/.env.ios | xargs)
+          while IFS= read -r line || [ -n "$line" ]; do if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then export "$line"; fi; done < secrets/.env.ios
           if [ -z "$APPSTORE_ISSUER_ID" ]; then
             echo "❌ Missing APPSTORE_ISSUER_ID in .env"
             exit 1
