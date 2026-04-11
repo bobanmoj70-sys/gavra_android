@@ -6,6 +6,10 @@ import 'utils/v3_dan_helper.dart';
 
 export 'utils/v3_dan_helper.dart';
 
+void initDanHelperGlobals() {
+  V3DanHelper.getGlobalActiveWeekStart = () => aktivnaSedmicaStartNotifier.value;
+}
+
 /// Globalne varijable za Gavra Android
 ///
 /// Ovaj fajl sadrzi globalne varijable koje se koriste kroz celu aplikaciju.
@@ -34,13 +38,11 @@ bool get isSupabaseReady {
 }
 
 /// NAV BAR TYPE - tip bottom navigation bara
-/// 'zimski' = zimski raspored
-/// 'letnji' = letnji raspored
-/// 'praznici' = praznični raspored
-/// 'custom' = ručno podešen raspored
+/// 'zimski' = zimski raspored (podrazumevani/osnovni raspored)
+/// 'custom' = ručno podešen raspored (npr. letnji ili praznični koji se uređuju po danima)
 final ValueNotifier<String> navBarTypeNotifier = ValueNotifier<String>('');
 
-const Set<String> _allowedNavBarTypes = {'zimski', 'letnji', 'praznici', 'custom'};
+const Set<String> _allowedNavBarTypes = {'zimski', 'custom'};
 
 DateTime? _parseSettingsDateTime(dynamic value) {
   if (value == null) return null;
@@ -78,15 +80,11 @@ String? resolveEffectiveNavBarType({
 }
 
 /// RASPORED NOTIFIER - vremena polazaka iz baze (v3_app_settings)
-/// Ključevi: 'bc_zimski', 'vs_zimski', 'bc_letnji', 'vs_letnji', 'bc_praznici', 'vs_praznici', 'bc_custom', 'vs_custom'
+/// Ključevi: 'bc_zimski', 'vs_zimski', 'bc_custom', 'vs_custom'
 /// Puni se pri startu i ažurira realtime kad admin promeni rasporede u bazi
 final ValueNotifier<Map<String, List<String>>> rasporedNotifier = ValueNotifier<Map<String, List<String>>>({
   'bc_zimski': ['05:00', '06:00', '07:00', '08:00', '09:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
   'vs_zimski': ['06:00', '07:00', '08:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:30', '17:00', '19:00'],
-  'bc_letnji': ['05:00', '06:00', '07:00', '08:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
-  'vs_letnji': ['06:00', '07:00', '08:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
-  'bc_praznici': ['05:00', '06:00', '12:00', '13:00', '15:00'],
-  'vs_praznici': ['06:00', '07:00', '13:00', '14:00', '15:30'],
   'bc_custom': [],
   'vs_custom': [],
 });
@@ -226,17 +224,6 @@ List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
 /// ZIMSKI MOD - Proverava da li je zimski red voznje aktivan SADA
 bool get isWinter => navBarTypeNotifier.value == 'zimski';
 
-/// PRAZNICNI MOD - specijalni red voznje (DEPRECATED - koristi navBarTypeNotifier)
-/// Kada je true, koristi se V2BottomNavBarPraznici sa smanjenim brojem polazaka
-/// BC: 5:00, 6:00, 12:00, 13:00, 15:00
-/// VS: 6:00, 7:00, 13:00, 14:00, 15:30
-@Deprecated('Koristi navBarTypeNotifier umesto praznicniModNotifier')
-final ValueNotifier<bool> praznicniModNotifier = ValueNotifier<bool>(false);
-
-/// Helper za proveru prazničnog moda
-@Deprecated('Koristi navBarTypeNotifier.value == "praznici" umesto isPraznicniMod')
-bool get isPraznicniMod => praznicniModNotifier.value;
-
 /// Globalna instanca Config Service
 /// Centralizovano upravljanje svim kredencijalima i konfiguracijom
 /// Koristi se u celoj aplikaciji za pristup kredencijalima
@@ -264,3 +251,8 @@ class V2UpdateInfo {
 
 /// Notifier koji se puni nakon provere verzije samo kada postoji obavezni update
 final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateInfo?>(null);
+
+/// AKTIVNA SEDMICA NOTIFIER - globalni izvor istine iz v3_app_settings
+/// Sadrži početak (Ponedeljak) aktivne sedmice (kako je zadato u bazi)
+/// Ako je null, pada se nazad na lokalnu logiku uređaja iz V3DanHelper.
+final ValueNotifier<DateTime?> aktivnaSedmicaStartNotifier = ValueNotifier<DateTime?>(null);

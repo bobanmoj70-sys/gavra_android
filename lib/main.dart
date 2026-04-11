@@ -73,6 +73,7 @@ Future<void> _ensureLocalNotificationsInitialized() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  initDanHelperGlobals();
 
   // KONFIGURACIJA - Inicijalizuj osnovne kredencijale (bez Supabase)
   try {

@@ -117,6 +117,10 @@ class V3DanHelper {
 
   // ─── Aktivna sedmica za zakazivanje ────────────────────────────
 
+  /// Funkcija koja dobavlja globalni override za početak aktivne sedmice (kako je podešeno u bazi).
+  /// Koristimo callback da izbegnemo kružne importe sa globals.dart.
+  static DateTime? Function()? getGlobalActiveWeekStart;
+
   /// Anchor datum za aktivnu sedmicu zakazivanja.
   ///
   /// Pravilo:
@@ -124,6 +128,13 @@ class V3DanHelper {
   /// - Subota od 03:00: aktivna je sledeća sedmica.
   /// - Nedelja: aktivna je sledeća sedmica.
   static DateTime schedulingWeekAnchor({DateTime? now}) {
+    if (getGlobalActiveWeekStart != null) {
+      final overrideStart = getGlobalActiveWeekStart!();
+      if (overrideStart != null) {
+        return dateOnly(overrideStart);
+      }
+    }
+
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
     final saturdayUnlock = DateTime(base.year, base.month, base.day, 3, 0);

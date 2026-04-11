@@ -24,8 +24,6 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_telefon_helper.dart';
-import '../widgets/v3_bottom_nav_bar_letnji.dart';
-import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
@@ -1047,30 +1045,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                     return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
                   }
 
-                  if (navType == 'zimski') {
-                    return V3BottomNavBarZimski(
-                      sviPolasci: _sviPolasci,
-                      selectedGrad: _selectedGrad,
-                      selectedVreme: _selectedVreme,
-                      onPolazakChanged: _onPolazakChanged,
-                      getPutnikCount: _getPutnikCount,
-                      getKapacitet: getKapacitet,
-                      bcVremena: bcVremenaToShow,
-                      vsVremena: vsVremenaToShow,
-                    );
-                  } else if (navType == 'praznici') {
-                    return V3BottomNavBarPraznici(
-                      sviPolasci: _sviPolasci,
-                      selectedGrad: _selectedGrad,
-                      selectedVreme: _selectedVreme,
-                      onPolazakChanged: _onPolazakChanged,
-                      getPutnikCount: _getPutnikCount,
-                      getKapacitet: getKapacitet,
-                      bcVremena: bcVremenaToShow,
-                      vsVremena: vsVremenaToShow,
-                    );
-                  }
-                  return V3BottomNavBarLetnji(
+                  return V3BottomNavBarZimski(
                     sviPolasci: _sviPolasci,
                     selectedGrad: _selectedGrad,
                     selectedVreme: _selectedVreme,

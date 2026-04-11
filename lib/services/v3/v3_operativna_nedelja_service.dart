@@ -240,36 +240,27 @@ class V3OperativnaNedeljaService {
   /// Vraća null ako slot nije pronađen.
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
     final datumIso = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
+    final trazeniGrad = grad.trim().toUpperCase();
+    final trazenoVreme = V3StringUtils.trimTimeToHhMm(vreme);
 
-    // 1) Ako je neradan dan, kapacitet je automatski 0 za taj datum
-    if (isNeradanDan(datumIso: datumIso, grad: grad.toLowerCase())) {
+    if (isNeradanDan(datumIso: datumIso, grad: trazeniGrad.toLowerCase())) {
       return 0;
     }
 
     final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
-
-    // 2) Koji je to dan u nedelji za tekuću aktivnu nedelju
-    final dayAbbr = V3DanHelper.abbr(datum);
-    final activeWeekDatumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(
-      dayAbbr,
-      anchor: V3DanHelper.schedulingWeekAnchor(),
-    );
-
-    int? fallbackCapacity;
     for (final r in cache) {
-      if (r['grad'] == grad && V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme) {
-        final rDatum = r['datum'].toString();
-        // Primarno: tačan match za traženi datum
-        if (rDatum.startsWith(datumIso)) {
-          return (r['max_mesta'] as num?)?.toInt();
-        }
-        // Sekundarno: match za isti dan (pon-pet) u trenutno aktivnoj nedelji
-        if (rDatum.startsWith(activeWeekDatumIso)) {
-          fallbackCapacity = (r['max_mesta'] as num?)?.toInt();
-        }
+      final rGrad = (r['grad']?.toString() ?? '').trim().toUpperCase();
+      if (rGrad != trazeniGrad) continue;
+
+      final rVreme = V3StringUtils.trimTimeToHhMm(r['vreme']?.toString() ?? '');
+      if (rVreme != trazenoVreme) continue;
+
+      final rDatum = r['datum']?.toString() ?? '';
+      if (rDatum.startsWith(datumIso)) {
+        return (r['max_mesta'] as num?)?.toInt();
       }
     }
-    return fallbackCapacity;
+    return null;
   }
 
   /// Čita broj zauzetih mesta — suma broj_mesta aktivnih operativnih zapisa.
@@ -288,23 +279,6 @@ class V3OperativnaNedeljaService {
     if (kapacitet == null) return null;
     final zauzeto = getZauzetaMesta(grad, vreme, datum);
     return (kapacitet - zauzeto).clamp(0, kapacitet);
-  }
-
-  /// Stream koji emituje [kapacitet, zauzeto, slobodna] za dati termin.
-  static Stream<({int? kapacitet, int zauzeto, int? slobodna})> streamMesta({
-    required String grad,
-    required String vreme,
-    required DateTime datum,
-  }) {
-    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-      tables: ['v3_operativna_nedelja'],
-      build: () {
-        final kapacitet = getKapacitetVozila(grad, vreme, datum);
-        final zauzeto = getZauzetaMesta(grad, vreme, datum);
-        final slobodna = kapacitet != null ? (kapacitet - zauzeto).clamp(0, kapacitet) : null;
-        return (kapacitet: kapacitet, zauzeto: zauzeto, slobodna: slobodna);
-      },
-    );
   }
 
   /// Direktan INSERT u v3_operativna_nedelja — za vozača koji dodaje putnika.

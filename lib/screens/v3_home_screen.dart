@@ -28,8 +28,6 @@ import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_validation_utils.dart';
-import '../widgets/v3_bottom_nav_bar_letnji.dart';
-import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
@@ -1489,62 +1487,24 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           );
         }
 
-        if (navType == 'zimski') {
-          return V3BottomNavBarZimski(
-            sviPolasci: _sviPolasci,
-            selectedGrad: _selectedGrad,
-            selectedVreme: _selectedVreme,
-            onPolazakChanged: (grad, vreme) {
-              setState(() {
-                _selectedGrad = grad;
-                _selectedVreme = vreme;
-              });
-            },
-            getPutnikCount: getPutnikCount,
-            getKapacitet: getKapacitet,
-            showVozacBoja: true,
-            getVozacColor: getVozacColor,
-            bcVremena: _bcVremena,
-            vsVremena: _vsVremena,
-          );
-        } else if (navType == 'praznici') {
-          return V3BottomNavBarPraznici(
-            sviPolasci: _sviPolasci,
-            selectedGrad: _selectedGrad,
-            selectedVreme: _selectedVreme,
-            onPolazakChanged: (grad, vreme) {
-              setState(() {
-                _selectedGrad = grad;
-                _selectedVreme = vreme;
-              });
-            },
-            getPutnikCount: getPutnikCount,
-            getKapacitet: getKapacitet,
-            showVozacBoja: true,
-            getVozacColor: getVozacColor,
-            bcVremena: _bcVremena,
-            vsVremena: _vsVremena,
-          );
-        } else {
-          // Default: letnji
-          return V3BottomNavBarLetnji(
-            sviPolasci: _sviPolasci,
-            selectedGrad: _selectedGrad,
-            selectedVreme: _selectedVreme,
-            onPolazakChanged: (grad, vreme) {
-              setState(() {
-                _selectedGrad = grad;
-                _selectedVreme = vreme;
-              });
-            },
-            getPutnikCount: getPutnikCount,
-            getKapacitet: getKapacitet,
-            showVozacBoja: true,
-            getVozacColor: getVozacColor,
-            bcVremena: _bcVremena,
-            vsVremena: _vsVremena,
-          );
-        }
+        // Svi rasporedi (zimski, custom) se prosleđuju jedinstvenom layout widgetu
+        return V3BottomNavBarZimski(
+          sviPolasci: _sviPolasci,
+          selectedGrad: _selectedGrad,
+          selectedVreme: _selectedVreme,
+          onPolazakChanged: (grad, vreme) {
+            setState(() {
+              _selectedGrad = grad;
+              _selectedVreme = vreme;
+            });
+          },
+          getPutnikCount: getPutnikCount,
+          getKapacitet: getKapacitet,
+          showVozacBoja: true,
+          getVozacColor: getVozacColor,
+          bcVremena: _bcVremena,
+          vsVremena: _vsVremena,
+        );
       },
     );
   }

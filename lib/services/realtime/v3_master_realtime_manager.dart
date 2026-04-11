@@ -100,7 +100,7 @@ class V3MasterRealtimeManager {
 
     final nextType = row['nav_bar_type_next']?.toString().toLowerCase();
     final effectiveAt = _tryParseDateTime(row['nav_bar_type_effective_at']);
-    if (nextType != null && ['zimski', 'letnji', 'praznici', 'custom'].contains(nextType) && effectiveAt != null) {
+    if (nextType != null && ['zimski', 'custom'].contains(nextType) && effectiveAt != null) {
       final delay = effectiveAt.difference(now);
       if (!delay.isNegative && delay > Duration.zero) {
         _navTypeSwitchTimer = Timer(delay, () {
@@ -147,10 +147,6 @@ class V3MasterRealtimeManager {
     for (final key in [
       'bc_zimski',
       'vs_zimski',
-      'bc_letnji',
-      'vs_letnji',
-      'bc_praznici',
-      'vs_praznici',
       'bc_custom',
       'vs_custom',
     ]) {
@@ -187,6 +183,15 @@ class V3MasterRealtimeManager {
 
     if (row.containsKey('neradni_dani')) {
       applyNeradniDaniFromSettings(row['neradni_dani']);
+    }
+
+    if (row.containsKey('active_week_start')) {
+      final awsParsed = _tryParseDateTime(row['active_week_start']);
+      if (awsParsed != null) {
+        aktivnaSedmicaStartNotifier.value = DateTime(awsParsed.year, awsParsed.month, awsParsed.day);
+      } else {
+        aktivnaSedmicaStartNotifier.value = null;
+      }
     }
 
     unawaited(

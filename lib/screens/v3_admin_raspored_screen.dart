@@ -15,8 +15,6 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_validation_utils.dart';
-import '../widgets/v3_bottom_nav_bar_letnji.dart';
-import '../widgets/v3_bottom_nav_bar_praznici.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
 
@@ -875,46 +873,19 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             valueListenable: navBarTypeNotifier,
             builder: (context, navType, _) {
               final commonProps = _buildNavBarProps();
-              if (navType == 'zimski') {
-                return V3BottomNavBarZimski(
-                  sviPolasci: commonProps.sviPolasci,
-                  selectedGrad: commonProps.selectedGrad,
-                  selectedVreme: commonProps.selectedVreme,
-                  onPolazakChanged: commonProps.onChanged,
-                  getPutnikCount: commonProps.getCount,
-                  getKapacitet: commonProps.getKapacitet,
-                  showVozacBoja: true,
-                  getVozacColor: _getVozacBoja,
-                  bcVremena: _bcVremena,
-                  vsVremena: _vsVremena,
-                );
-              } else if (navType == 'praznici') {
-                return V3BottomNavBarPraznici(
-                  sviPolasci: commonProps.sviPolasci,
-                  selectedGrad: commonProps.selectedGrad,
-                  selectedVreme: commonProps.selectedVreme,
-                  onPolazakChanged: commonProps.onChanged,
-                  getPutnikCount: commonProps.getCount,
-                  getKapacitet: commonProps.getKapacitet,
-                  showVozacBoja: true,
-                  getVozacColor: _getVozacBoja,
-                  bcVremena: _bcVremena,
-                  vsVremena: _vsVremena,
-                );
-              } else {
-                return V3BottomNavBarLetnji(
-                  sviPolasci: commonProps.sviPolasci,
-                  selectedGrad: commonProps.selectedGrad,
-                  selectedVreme: commonProps.selectedVreme,
-                  onPolazakChanged: commonProps.onChanged,
-                  getPutnikCount: commonProps.getCount,
-                  getKapacitet: commonProps.getKapacitet,
-                  showVozacBoja: true,
-                  getVozacColor: _getVozacBoja,
-                  bcVremena: _bcVremena,
-                  vsVremena: _vsVremena,
-                );
-              }
+              // Zimski raspored widget generički hendluje i zimsku i custom varijantu
+              return V3BottomNavBarZimski(
+                sviPolasci: commonProps.sviPolasci,
+                selectedGrad: commonProps.selectedGrad,
+                selectedVreme: commonProps.selectedVreme,
+                onPolazakChanged: commonProps.onChanged,
+                getPutnikCount: commonProps.getCount,
+                getKapacitet: commonProps.getKapacitet,
+                showVozacBoja: true,
+                getVozacColor: _getVozacBoja,
+                bcVremena: _bcVremena,
+                vsVremena: _vsVremena,
+              );
             },
           ),
         );
