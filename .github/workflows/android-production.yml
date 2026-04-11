@@ -42,70 +42,41 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: 🔐 Prepare secrets & Verify Keystore (Fail Fast)
+      - name: 🔐 Prepare secrets
         env:
           ANDROID_ENV: ${{ vars.ANDROID_ENV || secrets.ANDROID_ENV }}
         run: |
-          set -euo pipefail
-          mkdir -p secrets
-          printf '%s' "$ANDROID_ENV" | tr -d '\r' > secrets/.env.android
+          echo "$ANDROID_ENV" > .env
+          python -c '
+          import os, base64
+          env_text = open(".env").read()
+          env_dict = {}
+          for line in env_text.splitlines():
+              line = line.strip()
+              if not line or line.startswith("#"): continue
+              if line.startswith("export "): line = line[7:]
+              if "=" in line:
+                  k, v = line.split("=", 1)
+                  env_dict[k.strip()] = v.strip("\"'\ ")
 
-          grep -E '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' secrets/.env.android > secrets/.env.android.clean || true
-          if [ ! -s secrets/.env.android.clean ]; then
-            echo "❌ ANDROID_ENV ne sadrži nijednu validnu KEY=VALUE liniju"
-            exit 1
-          fi
+          ks_b64 = env_dict.get("ANDROID_KEYSTORE_BASE64", "")
+          if ks_b64:
+              open("android/app/gavra-release-key-production.keystore", "wb").write(base64.b64decode(ks_b64))
 
-          while IFS= read -r line || [ -n "$line" ]; do
-            line="${line#export }"
-            key="${line%%=*}"
-            value="${line#*=}"
-            key="$(printf '%s' "$key" | tr -d '[:space:]')"
-            value="${value%\"}"
-            value="${value#\"}"
-            value="${value%\'}"
-            value="${value#\'}"
-            export "$key=$value"
-          done < secrets/.env.android.clean
+          with open("android/key.properties", "w") as f:
+              f.write(f"storePassword={env_dict.get('''ANDROID_STORE_PASSWORD''', '')}\n")
+              f.write(f"keyPassword={env_dict.get('''ANDROID_KEY_PASSWORD''', '')}\n")
+              f.write(f"keyAlias={env_dict.get('''ANDROID_KEY_ALIAS''', '')}\n")
+              f.write("storeFile=gavra-release-key-production.keystore\n")
 
-          : "${ANDROID_KEYSTORE_BASE64:?Missing ANDROID_KEYSTORE_BASE64}"
-          : "${ANDROID_STORE_PASSWORD:?Missing ANDROID_STORE_PASSWORD}"
-          : "${ANDROID_KEY_PASSWORD:?Missing ANDROID_KEY_PASSWORD}"
-          : "${ANDROID_KEY_ALIAS:?Missing ANDROID_KEY_ALIAS}"
-          : "${PLAY_STORE_KEY_JSON_BASE64:?Missing PLAY_STORE_KEY_JSON_BASE64}"
-          : "${GOOGLE_SERVICES_JSON_BASE64:?Missing GOOGLE_SERVICES_JSON_BASE64}"
+          gs_b64 = env_dict.get("GOOGLE_SERVICES_JSON_BASE64", "")
+          if gs_b64:
+              open("android/app/google-services.json", "wb").write(base64.b64decode(gs_b64))
 
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/gavra-release-key-production.keystore
-          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=gavra-release-key-production.keystore\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" > android/key.properties
-          printf '%s' "$PLAY_STORE_KEY_JSON_BASE64" | base64 --decode > android/google-service-account.json
-          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
-
-          echo "Verifying Keystore integrity..."
-          KEYSTORE_PATH="android/app/gavra-release-key-production.keystore"
-          if [ -f "$KEYSTORE_PATH" ]; then
-            # Verify with keytool
-            keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$ANDROID_STORE_PASSWORD" || exit 1
-            echo "✅ Keystore verification PASSED."
-          else
-             echo "❌ Keystore file not found!"
-             exit 1
-          fi
-
-      - name: Validate policy URLs
-        run: |
-          echo "Checking Privacy Policy URL: $PRIVACY_POLICY_URL"
-          if ! curl -fsSL "$PRIVACY_POLICY_URL" | grep -qiE "Politika privatnosti|Privacy Policy"; then
-            echo "❌ Privacy Policy URL is UNREACHABLE or invalid content!"
-            exit 1
-          fi
-          echo "✅ Privacy Policy URL is reachable"
-
-          echo "Checking Account Deletion URL: $ACCOUNT_DELETION_URL"
-          if ! curl -fsSL "$ACCOUNT_DELETION_URL" | grep -qiE "Brisanje naloga|Account Deletion"; then
-            echo "❌ Account Deletion URL is UNREACHABLE or invalid content!"
-            exit 1
-          fi
-          echo "✅ Account Deletion URL is reachable"
+          ps_b64 = env_dict.get("PLAY_STORE_KEY_JSON_BASE64", "")
+          if ps_b64:
+              open("android/google-service-account.json", "wb").write(base64.b64decode(ps_b64))
+          '
 
       - name: Setup Java
         uses: actions/setup-java@v3

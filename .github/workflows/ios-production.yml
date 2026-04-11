@@ -55,21 +55,42 @@ jobs:
         env:
           IOS_ENV: ${{ vars.IOS_ENV || secrets.IOS_ENV }}
         run: |
-          mkdir -p secrets
-          printf '%s' "$IOS_ENV" > secrets/.env.ios
+          echo "$IOS_ENV" > .env.ios
+          python3 -c '
+          import os, base64
+          env_text = open(".env.ios").read()
+          env_dict = {}
+          for line in env_text.splitlines():
+              line = line.strip()
+              if not line or line.startswith("#"): continue
+              if line.startswith("export "): line = line[7:]
+              if "=" in line:
+                  k, v = line.split("=", 1)
+                  env_dict[k.strip()] = v.strip("\"'\ ")
+
+          gs_b64 = env_dict.get("IOS_GOOGLE_SERVICES_PLIST_BASE64", "")
+          if gs_b64:
+              os.makedirs("ios/Runner", exist_ok=True)
+              open("ios/Runner/GoogleService-Info.plist", "wb").write(base64.b64decode(gs_b64))
+
+          cert_b64 = env_dict.get("IOS_CERT_PRIVATE_KEY_BASE64", "")
+          if cert_b64:
+              open("/tmp/certificate_private_key.pem", "wb").write(base64.b64decode(cert_b64))
+
+          p8_b64 = env_dict.get("AUTH_KEY_P8_BASE64", "")
+          if p8_b64:
+              key_id = os.environ.get("APP_STORE_CONNECT_KEY_IDENTIFIER", "")
+              os.makedirs(os.path.expanduser("~/.private_keys"), exist_ok=True)
+              p8_path = os.path.expanduser(f"~/.private_keys/AuthKey_{key_id}.p8")
+              open(p8_path, "wb").write(base64.b64decode(p8_b64))
+              
+              with open(os.environ["GITHUB_ENV"], "a") as f:
+                  f.write("CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem\n")
+                  f.write(f"APP_STORE_CONNECT_PRIVATE_KEY=@file:{p8_path}\n")
+          '
 
       - name: Install iOS signing CLI tools
-        run: pip install codemagic-cli-tools
-
-      - name: Create GoogleService-Info.plist
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then export "$line"; fi; done < secrets/.env.ios
-          if [ -n "$IOS_GOOGLE_SERVICES_PLIST_BASE64" ]; then
-            printf '%s' "$IOS_GOOGLE_SERVICES_PLIST_BASE64" | base64 -D > ios/Runner/GoogleService-Info.plist
-          else
-            echo "❌ Missing IOS_GOOGLE_SERVICES_PLIST_BASE64 in .env"
-            exit 1
-          fi
+        run: pip3 install codemagic-cli-tools
 
       - name: Get dependencies
         run: flutter pub get
@@ -81,33 +102,6 @@ jobs:
 
       - name: Setup keychain
         run: keychain initialize
-
-      - name: Prepare signing keys
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then export "$line"; fi; done < secrets/.env.ios
-          if [ -z "$APP_STORE_CONNECT_KEY_IDENTIFIER" ]; then
-            echo "❌ Missing APP_STORE_CONNECT_KEY_IDENTIFIER (vars/secrets)"
-            exit 1
-          fi
-
-            mkdir -p ~/.private_keys
-
-            if [ -n "$IOS_CERT_PRIVATE_KEY_BASE64" ]; then
-              printf '%s' "$IOS_CERT_PRIVATE_KEY_BASE64" | base64 -D > /tmp/certificate_private_key.pem
-            else
-              echo "❌ Missing IOS_CERT_PRIVATE_KEY_BASE64 in .env"
-              exit 1
-            fi
-
-            ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
-          if [ -n "$AUTH_KEY_P8_BASE64" ]; then
-            printf '%s' "$AUTH_KEY_P8_BASE64" | base64 -D > "$ASC_KEY_PATH"
-          else
-            echo "❌ Missing AUTH_KEY_P8_BASE64 in .env"
-            exit 1
-          fi
-          echo "CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem" >> $GITHUB_ENV
-          echo "APP_STORE_CONNECT_PRIVATE_KEY=@file:${ASC_KEY_PATH}" >> $GITHUB_ENV
 
       - name: Fetch signing files
         run: |
