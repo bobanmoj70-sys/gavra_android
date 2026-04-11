@@ -18,8 +18,8 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.35.0'
-  PRIVACY_POLICY_URL: 'https://lakisa-code.github.io/gavra_android/privacy-policy.html'
-  ACCOUNT_DELETION_URL: 'https://lakisa-code.github.io/gavra_android/delete-account.html'
+  PRIVACY_POLICY_URL: 'https://gavra-notif-20250920162521.web.app/privacy-policy.html'
+  ACCOUNT_DELETION_URL: 'https://gavra-notif-20250920162521.web.app/delete-account.html'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
@@ -85,7 +85,7 @@ jobs:
 
       - name: 🛡️ Verify Keystore (Fail Fast)
         run: |
-          export $(grep -v '^#' .env | xargs)
+          export $(grep -v '^#' secrets/.env.android | xargs)
           echo "Verifying Keystore integrity..."
           KEYSTORE_PATH="android/app/gavra-release-key-production.keystore"
           if [ -f "$KEYSTORE_PATH" ]; then
