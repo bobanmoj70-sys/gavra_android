@@ -178,6 +178,15 @@ class V3MasterRealtimeManager {
       }
     }
 
+    if (row.containsKey('active_week_end')) {
+      final aweParsed = _tryParseDateTime(row['active_week_end']);
+      if (aweParsed != null) {
+        aktivnaSedmicaEndNotifier.value = DateTime(aweParsed.year, aweParsed.month, aweParsed.day);
+      } else {
+        aktivnaSedmicaEndNotifier.value = null;
+      }
+    }
+
     unawaited(
       V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row)
           .catchError((Object e) => debugPrint('[V3MasterRealtimeManager] app update info error: $e')),

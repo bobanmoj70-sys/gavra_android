@@ -120,13 +120,9 @@ class V3DanHelper {
   /// Funkcija koja dobavlja globalni override za početak aktivne sedmice (kako je podešeno u bazi).
   /// Koristimo callback da izbegnemo kružne importe sa globals.dart.
   static DateTime? Function()? getGlobalActiveWeekStart;
+  static DateTime? Function()? getGlobalActiveWeekEnd;
 
   /// Anchor datum za aktivnu sedmicu zakazivanja.
-  ///
-  /// Pravilo:
-  /// - Ponedeljak–petak: aktivna je tekuća sedmica.
-  /// - Subota od 03:00: aktivna je sledeća sedmica.
-  /// - Nedelja: aktivna je sledeća sedmica.
   static DateTime schedulingWeekAnchor({DateTime? now}) {
     if (getGlobalActiveWeekStart != null) {
       final overrideStart = getGlobalActiveWeekStart!();
@@ -135,15 +131,7 @@ class V3DanHelper {
       }
     }
 
-    final current = now ?? DateTime.now();
-    final base = dateOnly(current);
-    final saturdayUnlock = DateTime(base.year, base.month, base.day, 3, 0);
-    final saturdayAfterUnlock = base.weekday == DateTime.saturday && !current.isBefore(saturdayUnlock);
-
-    if (base.weekday == DateTime.sunday || saturdayAfterUnlock) {
-      return dateOnly(base.add(const Duration(days: 7)));
-    }
-    return base;
+    return dateOnly(now ?? DateTime.now());
   }
 
   /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 03:00).
@@ -160,6 +148,17 @@ class V3DanHelper {
   /// Da li je datum unutar aktivne sedmice zakazivanja.
   static bool isInSchedulingWeek(DateTime datum, {DateTime? now}) {
     final target = dateOnly(datum);
+
+    final overrideStart = getGlobalActiveWeekStart?.call();
+    if (overrideStart != null) {
+      final start = dateOnly(overrideStart);
+      final overrideEnd = getGlobalActiveWeekEnd?.call();
+      final end = (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
+          ? dateOnly(overrideEnd)
+          : start.add(const Duration(days: 6));
+      return !target.isBefore(start) && !target.isAfter(end);
+    }
+
     final anchor = dateOnly(schedulingWeekAnchor(now: now));
     final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
     final sunday = monday.add(const Duration(days: 6));

@@ -129,16 +129,34 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Format datuma: YYYY-MM-DD',
+                        'Datum se bira iz kalendara.',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: dateCtrl,
+                        readOnly: true,
+                        onTap: () async {
+                          final now = DateTime.now();
+                          final parsed = DateTime.tryParse(dateCtrl.text.trim());
+                          final initial = parsed ?? DateTime(now.year, now.month, now.day);
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: initial,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            final iso =
+                                '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                            setModalState(() => dateCtrl.text = iso);
+                          }
+                        },
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
                           labelText: 'Datum',
-                          hintText: '2026-04-10',
+                          hintText: 'Izaberi datum',
+                          prefixIcon: Icon(Icons.calendar_today, color: Colors.white70),
                           labelStyle: TextStyle(color: Colors.white70),
                         ),
                       ),
@@ -179,7 +197,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                       final date = dateCtrl.text.trim();
                                       if (!_dateIsoPattern.hasMatch(date)) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Neispravan datum. Koristi YYYY-MM-DD.')),
+                                          const SnackBar(content: Text('Izaberi datum iz kalendara.')),
                                         );
                                         return;
                                       }
@@ -322,13 +340,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final bcByDayCurrent = _parseByDaySchedule(row['bc_custom_by_day']);
       final vsByDayCurrent = _parseByDaySchedule(row['vs_custom_by_day']);
 
-      final bcCtrls = {
-        for (final day in V3DanHelper.workdayNames)
-          day: TextEditingController(text: (bcByDayCurrent[day] ?? const <String>[]).join(', ')),
+      final bcInputs = {
+        for (final day in V3DanHelper.workdayNames) day: (bcByDayCurrent[day] ?? const <String>[]).join(', '),
       };
-      final vsCtrls = {
-        for (final day in V3DanHelper.workdayNames)
-          day: TextEditingController(text: (vsByDayCurrent[day] ?? const <String>[]).join(', ')),
+      final vsInputs = {
+        for (final day in V3DanHelper.workdayNames) day: (vsByDayCurrent[day] ?? const <String>[]).join(', '),
       };
 
       await showDialog<void>(
@@ -351,18 +367,20 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       for (final day in V3DanHelper.workdayNames) ...[
                         Text(day, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
-                        TextField(
-                          controller: bcCtrls[day],
+                        TextFormField(
+                          initialValue: bcInputs[day] ?? '',
                           style: const TextStyle(color: Colors.white),
+                          onChanged: (value) => bcInputs[day] = value,
                           decoration: InputDecoration(
                             labelText: 'BC custom - $day',
                             labelStyle: const TextStyle(color: Colors.white70),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        TextField(
-                          controller: vsCtrls[day],
+                        TextFormField(
+                          initialValue: vsInputs[day] ?? '',
                           style: const TextStyle(color: Colors.white),
+                          onChanged: (value) => vsInputs[day] = value,
                           decoration: InputDecoration(
                             labelText: 'VS custom - $day',
                             labelStyle: const TextStyle(color: Colors.white70),
@@ -388,8 +406,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           final invalidTokens = <String>[];
 
                           for (final day in V3DanHelper.workdayNames) {
-                            final bcRaw = _parseTimesCsv(bcCtrls[day]?.text ?? '');
-                            final vsRaw = _parseTimesCsv(vsCtrls[day]?.text ?? '');
+                            final bcRaw = _parseTimesCsv(bcInputs[day] ?? '');
+                            final vsRaw = _parseTimesCsv(vsInputs[day] ?? '');
 
                             invalidTokens
                                 .addAll(bcRaw.where((t) => !_timePattern.hasMatch(t)).map((t) => '$day BC:$t'));
@@ -433,13 +451,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           );
         },
       );
-
-      for (final controller in bcCtrls.values) {
-        controller.dispose();
-      }
-      for (final controller in vsCtrls.values) {
-        controller.dispose();
-      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1313,7 +1324,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       child: ValueListenableBuilder<String>(
                         valueListenable: navBarTypeNotifier,
                         builder: (context, navType, _) {
-                          const labels = {'zimski': '⚙️', 'letnji': '☀️', 'praznici': '🎉', 'custom': '🛠️'};
+                          const labels = {'zimski': '⚙️', 'custom': '🛠️'};
+                          const allowedNavTypes = {'zimski', 'custom'};
                           return _NavBtn(
                             color: Colors.blueGrey,
                             onTap: () async {
@@ -1340,12 +1352,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   const PopupMenuItem(
                                       value: 'zimski',
                                       child: Text('⚙️  Zimski', style: TextStyle(color: Colors.white))),
-                                  const PopupMenuItem(
-                                      value: 'letnji',
-                                      child: Text('☀️  Ljetnji', style: TextStyle(color: Colors.white))),
-                                  const PopupMenuItem(
-                                      value: 'praznici',
-                                      child: Text('🎉  Praznici', style: TextStyle(color: Colors.white))),
                                   const PopupMenuItem(
                                       value: 'custom',
                                       child: Text('🛠️  Custom', style: TextStyle(color: Colors.white))),
@@ -1374,6 +1380,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                 if (context.mounted) {
                                   V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
                                 }
+                                return;
+                              }
+                              if (!allowedNavTypes.contains(val)) {
                                 return;
                               }
                               final action = await showDialog<String>(

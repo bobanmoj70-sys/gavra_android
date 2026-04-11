@@ -8,6 +8,7 @@ export 'utils/v3_dan_helper.dart';
 
 void initDanHelperGlobals() {
   V3DanHelper.getGlobalActiveWeekStart = () => aktivnaSedmicaStartNotifier.value;
+  V3DanHelper.getGlobalActiveWeekEnd = () => aktivnaSedmicaEndNotifier.value;
 }
 
 /// Globalne varijable za Gavra Android
@@ -39,7 +40,7 @@ bool get isSupabaseReady {
 
 /// NAV BAR TYPE - tip bottom navigation bara
 /// 'zimski' = zimski raspored (podrazumevani/osnovni raspored)
-/// 'custom' = ručno podešen raspored (npr. letnji ili praznični koji se uređuju po danima)
+/// 'custom' = ručno podešen raspored koji se uređuje po danima
 final ValueNotifier<String> navBarTypeNotifier = ValueNotifier<String>('');
 
 const Set<String> _allowedNavBarTypes = {'zimski', 'custom'};
@@ -254,3 +255,7 @@ final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateIn
 /// Sadrži početak (Ponedeljak) aktivne sedmice (kako je zadato u bazi)
 /// Ako je null, pada se nazad na lokalnu logiku uređaja iz V3DanHelper.
 final ValueNotifier<DateTime?> aktivnaSedmicaStartNotifier = ValueNotifier<DateTime?>(null);
+
+/// AKTIVNA SEDMICA END NOTIFIER - globalni kraj aktivne sedmice iz v3_app_settings
+/// Ako je null, kraj se računa lokalno iz anchor-a (ponedeljak + 6 dana).
+final ValueNotifier<DateTime?> aktivnaSedmicaEndNotifier = ValueNotifier<DateTime?>(null);
