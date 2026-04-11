@@ -45,12 +45,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
       - name: Prepare secrets (macOS)
         env:
           IOS_ENV: ${{ vars.IOS_ENV || secrets.IOS_ENV }}
@@ -83,13 +77,17 @@ jobs:
               os.makedirs(os.path.expanduser("~/.private_keys"), exist_ok=True)
               p8_path = os.path.expanduser(f"~/.private_keys/AuthKey_{key_id}.p8")
               open(p8_path, "wb").write(base64.b64decode(p8_b64))
-              
+
               with open(os.environ["GITHUB_ENV"], "a") as f:
                   f.write("CERTIFICATE_PRIVATE_KEY=@file:/tmp/certificate_private_key.pem\n")
                   f.write(f"APP_STORE_CONNECT_PRIVATE_KEY=@file:{p8_path}\n")
           '
 
-      - name: Install iOS signing CLI tools
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'      - name: Install iOS signing CLI tools
         run: pip3 install codemagic-cli-tools
 
       - name: Get dependencies
