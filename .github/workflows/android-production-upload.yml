@@ -40,10 +40,30 @@ jobs:
         shell: bash
         run: |
           mkdir -p android/app
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release-keystore.jks
+          KEYSTORE_B64="${{ secrets.ANDROID_KEYSTORE_BASE64 }}"
+          [ -z "$KEYSTORE_B64" ] && KEYSTORE_B64="${{ secrets.ANDROID_KEYSTORE_B64 }}"
+          [ -z "$KEYSTORE_B64" ] && KEYSTORE_B64="${{ secrets.KEYSTORE_BASE64 }}"
+
+          STORE_PASSWORD="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+          [ -z "$STORE_PASSWORD" ] && STORE_PASSWORD="${{ secrets.STORE_PASSWORD }}"
+
+          KEY_PASSWORD="${{ secrets.ANDROID_KEY_PASSWORD }}"
+          [ -z "$KEY_PASSWORD" ] && KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+
+          KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}"
+          [ -z "$KEY_ALIAS" ] && KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
+
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "Missing Android signing secrets. Required: keystore base64, store password, key password, key alias."
+            exit 1
+          fi
+
+          printf "%s" "$KEYSTORE_B64" | base64 -d > android/app/release-keystore.jks
 
           if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
-            echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+            printf "%s" "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+          elif [ -n "${{ secrets.GOOGLE_SERVICES_BASE64 }}" ]; then
+            printf "%s" "${{ secrets.GOOGLE_SERVICES_BASE64 }}" | base64 -d > android/app/google-services.json
           elif [ -n "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
             printf "%s" "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
           else
@@ -52,9 +72,9 @@ jobs:
           fi
 
           cat > android/key.properties <<EOF
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
           storeFile=release-keystore.jks
           EOF
 
@@ -75,9 +95,18 @@ jobs:
       - name: Write Google Play service account
         shell: bash
         run: |
-          cat > android/play-service-account.json <<EOF
-          ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          EOF
+          PLAY_JSON="${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}"
+          PLAY_B64="${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}"
+          [ -z "$PLAY_B64" ] && PLAY_B64="${{ secrets.GOOGLE_PLAY_KEY_B64 }}"
+
+          if [ -n "$PLAY_JSON" ]; then
+            printf "%s" "$PLAY_JSON" > android/play-service-account.json
+          elif [ -n "$PLAY_B64" ]; then
+            printf "%s" "$PLAY_B64" | base64 -d > android/play-service-account.json
+          else
+            echo "Missing Play service account secret (PLAY_SERVICE_ACCOUNT_JSON or GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64/GOOGLE_PLAY_KEY_B64)."
+            exit 1
+          fi
 
       - name: Upload to Google Play Production
         uses: r0adkll/upload-google-play@v1
