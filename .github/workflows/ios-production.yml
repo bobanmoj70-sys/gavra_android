@@ -87,7 +87,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'      - name: Install iOS signing CLI tools
+          channel: 'stable'
+
+      - name: Install iOS signing CLI tools
         run: pip3 install codemagic-cli-tools
 
       - name: Get dependencies
