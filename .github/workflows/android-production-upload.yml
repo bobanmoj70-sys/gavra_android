@@ -27,6 +27,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Ensure .env exists for Flutter assets
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.DOTENV_FILE_CONTENTS }}" ]; then
+            printf "%s" "${{ secrets.DOTENV_FILE_CONTENTS }}" > .env
+          else
+            touch .env
+          fi
+
       - name: Create Android signing files
         shell: bash
         run: |
