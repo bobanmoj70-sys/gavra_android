@@ -63,10 +63,14 @@ jobs:
           if ks_b64:
               open("android/app/gavra-release-key-production.keystore", "wb").write(base64.b64decode(ks_b64))
 
+          store_pass = env_dict.get("ANDROID_STORE_PASSWORD", "")
+          key_pass = env_dict.get("ANDROID_KEY_PASSWORD", "")
+          key_alias = env_dict.get("ANDROID_KEY_ALIAS", "")
+
           with open("android/key.properties", "w") as f:
-              f.write(f"storePassword={env_dict.get('''ANDROID_STORE_PASSWORD''', '')}\n")
-              f.write(f"keyPassword={env_dict.get('''ANDROID_KEY_PASSWORD''', '')}\n")
-              f.write(f"keyAlias={env_dict.get('''ANDROID_KEY_ALIAS''', '')}\n")
+              f.write(f"storePassword={store_pass}\n")
+              f.write(f"keyPassword={key_pass}\n")
+              f.write(f"keyAlias={key_alias}\n")
               f.write("storeFile=gavra-release-key-production.keystore\n")
 
           gs_b64 = env_dict.get("GOOGLE_SERVICES_JSON_BASE64", "")
