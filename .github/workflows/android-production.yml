@@ -44,50 +44,35 @@ jobs:
 
       - name: 🔐 Prepare secrets
         env:
-          ANDROID_ENV: ${{ vars.ANDROID_ENV || secrets.ANDROID_ENV }}
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 || secrets.KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || secrets.STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || secrets.KEY_ALIAS }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 || secrets.GOOGLE_SERVICES_BASE64 }}
+          GOOGLE_PLAY_KEY_B64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 || secrets.GOOGLE_PLAY_KEY_B64 }}
         run: |
-          echo "$ANDROID_ENV" > .env
-          python - <<'PY'
-          import base64
+          mkdir -p android/app
+          
+          # Write Keystore
+          echo "$ANDROID_KEYSTORE_B64" | base64 -d > android/app/gavra-release-key-production.keystore
 
-          def clean_value(raw: str) -> str:
-              value = raw.strip()
-              if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
-                  value = value[1:-1]
-              return value.strip()
+          # Write key.properties
+          cat <<EOF > android/key.properties
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=gavra-release-key-production.keystore
+          EOF
 
-          env_text = open(".env").read()
-          env_dict = {}
-          for line in env_text.splitlines():
-              line = line.strip()
-              if not line or line.startswith("#"): continue
-              if line.startswith("export "): line = line[7:]
-              if "=" in line:
-                  k, v = line.split("=", 1)
-                  env_dict[k.strip()] = clean_value(v)
+          # Write google-services.json
+          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > android/app/google-services.json
+          fi
 
-          ks_b64 = env_dict.get("ANDROID_KEYSTORE_BASE64", "")
-          if ks_b64:
-              open("android/app/gavra-release-key-production.keystore", "wb").write(base64.b64decode(ks_b64))
-
-          store_pass = env_dict.get("ANDROID_STORE_PASSWORD", "")
-          key_pass = env_dict.get("ANDROID_KEY_PASSWORD", "")
-          key_alias = env_dict.get("ANDROID_KEY_ALIAS", "")
-
-          with open("android/key.properties", "w") as f:
-              f.write(f"storePassword={store_pass}\n")
-              f.write(f"keyPassword={key_pass}\n")
-              f.write(f"keyAlias={key_alias}\n")
-              f.write("storeFile=gavra-release-key-production.keystore\n")
-
-          gs_b64 = env_dict.get("GOOGLE_SERVICES_JSON_BASE64", "")
-          if gs_b64:
-              open("android/app/google-services.json", "wb").write(base64.b64decode(gs_b64))
-
-          ps_b64 = env_dict.get("PLAY_STORE_KEY_JSON_BASE64", "")
-          if ps_b64:
-              open("android/google-service-account.json", "wb").write(base64.b64decode(ps_b64))
-          PY
+          # Write Play Store Key
+          if [ -n "$GOOGLE_PLAY_KEY_B64" ]; then
+            echo "$GOOGLE_PLAY_KEY_B64" | base64 -d > android/google-service-account.json
+          fi
 
       - name: Setup Java
         uses: actions/setup-java@v3
