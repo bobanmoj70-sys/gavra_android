@@ -56,9 +56,17 @@ jobs:
             exit 1
           fi
 
-          set -a
-          . secrets/.env.android.clean
-          set +a
+          while IFS= read -r line || [ -n "$line" ]; do
+            line="${line#export }"
+            key="${line%%=*}"
+            value="${line#*=}"
+            key="$(printf '%s' "$key" | tr -d '[:space:]')"
+            value="${value%\"}"
+            value="${value#\"}"
+            value="${value%\'}"
+            value="${value#\'}"
+            export "$key=$value"
+          done < secrets/.env.android.clean
 
           : "${ANDROID_KEYSTORE_BASE64:?Missing ANDROID_KEYSTORE_BASE64}"
           : "${ANDROID_STORE_PASSWORD:?Missing ANDROID_STORE_PASSWORD}"
