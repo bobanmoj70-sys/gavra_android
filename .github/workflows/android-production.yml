@@ -50,8 +50,14 @@ jobs:
           mkdir -p secrets
           printf '%s' "$ANDROID_ENV" | tr -d '\r' > secrets/.env.android
 
+          grep -E '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' secrets/.env.android > secrets/.env.android.clean || true
+          if [ ! -s secrets/.env.android.clean ]; then
+            echo "❌ ANDROID_ENV ne sadrži nijednu validnu KEY=VALUE liniju"
+            exit 1
+          fi
+
           set -a
-          . secrets/.env.android
+          . secrets/.env.android.clean
           set +a
 
           : "${ANDROID_KEYSTORE_BASE64:?Missing ANDROID_KEYSTORE_BASE64}"
