@@ -48,7 +48,14 @@ jobs:
         run: |
           echo "$ANDROID_ENV" > .env
           python - <<'PY'
-          import os, base64
+          import base64
+
+          def clean_value(raw: str) -> str:
+              value = raw.strip()
+              if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                  value = value[1:-1]
+              return value.strip()
+
           env_text = open(".env").read()
           env_dict = {}
           for line in env_text.splitlines():
@@ -57,7 +64,7 @@ jobs:
               if line.startswith("export "): line = line[7:]
               if "=" in line:
                   k, v = line.split("=", 1)
-                  env_dict[k.strip()] = v.strip("\"' ")
+                  env_dict[k.strip()] = clean_value(v)
 
           ks_b64 = env_dict.get("ANDROID_KEYSTORE_BASE64", "")
           if ks_b64:
