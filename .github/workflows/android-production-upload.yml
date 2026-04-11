@@ -58,14 +58,21 @@ jobs:
             exit 1
           fi
 
-          printf "%s" "$KEYSTORE_B64" | base64 -d > android/app/release-keystore.jks
+          if ! printf "%s" "$KEYSTORE_B64" | base64 -d > android/app/release-keystore.jks 2>/dev/null; then
+            echo "Invalid Android keystore base64 secret."
+            exit 1
+          fi
 
-          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
-            printf "%s" "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
-          elif [ -n "${{ secrets.GOOGLE_SERVICES_BASE64 }}" ]; then
-            printf "%s" "${{ secrets.GOOGLE_SERVICES_BASE64 }}" | base64 -d > android/app/google-services.json
-          elif [ -n "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
-            printf "%s" "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+          GOOGLE_SERVICES_B64="${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}"
+          [ -z "$GOOGLE_SERVICES_B64" ] && GOOGLE_SERVICES_B64="${{ secrets.GOOGLE_SERVICES_BASE64 }}"
+          GOOGLE_SERVICES_JSON_RAW="${{ secrets.GOOGLE_SERVICES_JSON }}"
+
+          if [ -n "$GOOGLE_SERVICES_B64" ]; then
+            if ! printf "%s" "$GOOGLE_SERVICES_B64" | base64 -d > android/app/google-services.json 2>/dev/null; then
+              printf "%s" "$GOOGLE_SERVICES_B64" > android/app/google-services.json
+            fi
+          elif [ -n "$GOOGLE_SERVICES_JSON_RAW" ]; then
+            printf "%s" "$GOOGLE_SERVICES_JSON_RAW" > android/app/google-services.json
           else
             echo "Missing Google services secret (GOOGLE_SERVICES_JSON_BASE64 or GOOGLE_SERVICES_JSON)."
             exit 1
