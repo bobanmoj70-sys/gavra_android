@@ -1,0 +1,78 @@
+name: Android Production Upload
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Create Android signing files
+        shell: bash
+        run: |
+          mkdir -p android/app
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release-keystore.jks
+
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=app/release-keystore.jks
+          EOF
+
+      - name: Autobump Android build number
+        shell: bash
+        run: |
+          VERSION_LINE=$(grep '^version:' pubspec.yaml | tr -d ' ')
+          VERSION_NAME=${VERSION_LINE#version:}
+          VERSION_BASE=${VERSION_NAME%+*}
+          VERSION_BUILD=${VERSION_NAME#*+}
+          NEW_BUILD_NUMBER=$((VERSION_BUILD + GITHUB_RUN_NUMBER))
+          sed -i "s/^version: .*/version: ${VERSION_BASE}+${NEW_BUILD_NUMBER}/" pubspec.yaml
+          echo "Android version synced: ${VERSION_BASE}+${NEW_BUILD_NUMBER}"
+
+      - name: Build release AAB
+        run: flutter build appbundle --release
+
+      - name: Write Google Play service account
+        shell: bash
+        run: |
+          cat > android/play-service-account.json <<EOF
+          ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          EOF
+
+      - name: Upload to Google Play Production
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: android/play-service-account.json
+          packageName: com.gavra013.gavra_android
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: production
+          status: completed
+
+      - name: Upload build artifact (AAB)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
