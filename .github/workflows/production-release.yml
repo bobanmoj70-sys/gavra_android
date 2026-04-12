@@ -121,26 +121,7 @@ jobs:
               printf "%s" "$secret_value" > "$temp_file"
             fi
 
-            if ! python3 - "$temp_file" "$output_file" <<'PY'
-            import json
-            import pathlib
-            import sys
-
-            source_path = pathlib.Path(sys.argv[1])
-            output_path = pathlib.Path(sys.argv[2])
-
-            raw_bytes = source_path.read_bytes()
-            text = raw_bytes.decode('utf-8-sig')
-            parsed = json.loads(text)
-
-            if isinstance(parsed, str):
-              parsed = json.loads(parsed)
-
-            if not isinstance(parsed, dict):
-              raise SystemExit('JSON root must be an object')
-
-            output_path.write_text(json.dumps(parsed, separators=(',', ':')), encoding='utf-8')
-            PY
+            if ! python3 -c "import json,pathlib,sys; src=pathlib.Path(sys.argv[1]); dst=pathlib.Path(sys.argv[2]); txt=src.read_bytes().decode('utf-8-sig'); parsed=json.loads(txt); parsed=json.loads(parsed) if isinstance(parsed,str) else parsed; assert isinstance(parsed,dict), 'JSON root must be an object'; dst.write_text(json.dumps(parsed,separators=(',',':')),encoding='utf-8')" "$temp_file" "$output_file"
             then
               rm -f "$temp_file"
               echo "Invalid JSON secret payload for $output_file"
