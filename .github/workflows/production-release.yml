@@ -82,32 +82,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p android/app/src/main/assets
-          
-          # Validate all required secrets exist
-          REQUIRED_SECRETS=(
-            "ANDROID_KEYSTORE_BASE64"
-            "ANDROID_KEYSTORE_PASSWORD"
-            "ANDROID_KEY_PASSWORD"
-            "ANDROID_KEY_ALIAS"
-            "ANDROID_GOOGLE_SERVICES_JSON_BASE64"
-          )
-          
-          MISSING_SECRETS=()
-          for secret in "${REQUIRED_SECRETS[@]}"; do
-            secret_value=$(eval echo "\${{ secrets.$secret }}")
-            if [ -z "$(printf '%s' "$secret_value" | tr -d '[:space:]')" ]; then
-              MISSING_SECRETS+=("$secret")
-            fi
-          done
-          
-          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
-            echo "ERROR: Missing required GitHub secrets:"
-            printf '%s\n' "${MISSING_SECRETS[@]}"
-            echo ""
-            echo "Please add the following secrets to GitHub:"
-            echo "  https://github.com/${{ github.repository }}/settings/secrets/actions"
-            exit 1
-          fi
 
           trim_ws() {
             printf "%s" "$1" | tr -d '\r\n\t '
@@ -121,16 +95,14 @@ jobs:
 
             normalized="$(trim_ws "$secret_value")"
             if [ -z "$normalized" ]; then
-              echo "ERROR: Missing required secret: $secret_name"
+              echo "Missing required secret: $secret_name"
               exit 1
             fi
 
             if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
-              echo "ERROR: Invalid base64 in required secret: $secret_name"
+              echo "Invalid base64 in required secret: $secret_name"
               exit 1
             fi
-            
-            echo "[OK] Decoded $secret_name to $output_file"
           }
 
           decode_json_or_base64() {
@@ -157,41 +129,32 @@ jobs:
             if ! python3 -c "import json,pathlib,sys; src=pathlib.Path(sys.argv[1]); dst=pathlib.Path(sys.argv[2]); txt=src.read_bytes().decode('utf-8-sig').strip(); assert txt, 'empty secret payload'; parsed=json.loads(txt); parsed=json.loads(parsed.strip()) if isinstance(parsed,str) else parsed; assert isinstance(parsed,dict), 'JSON root must be an object'; dst.write_text(json.dumps(parsed,separators=(',',':')),encoding='utf-8')" "$temp_file" "$output_file"
             then
               rm -f "$temp_file"
-              echo "ERROR: Invalid JSON secret payload for $output_file"
+              echo "Invalid JSON secret payload for $output_file"
               exit 1
             fi
 
             rm -f "$temp_file"
           }
 
-          echo "[*] Restoring Android signing credentials..."
           decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "android/app/release-keystore.jks"
 
           cat > android/key.properties <<EOF
-storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-storeFile=app/release-keystore.jks
-EOF
-          echo "[OK] Created android/key.properties"
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release-keystore.jks
+          EOF
 
-          echo "[*] Restoring google-services.json..."
           decode_json_or_base64 "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
 
           if [ ! -s android/app/google-services.json ]; then
-            echo "ERROR: Missing or empty ANDROID_GOOGLE_SERVICES_JSON_BASE64 secret"
+            echo "Missing or empty ANDROID_GOOGLE_SERVICES_JSON_BASE64 secret"
             exit 1
           fi
-          echo "[OK] Restored google-services.json"
 
           if [ -n "$(printf "%s" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" | tr -d '[:space:]')" ]; then
-            echo "[*] Restoring agconnect-services.json..."
             decode_json_or_base64 "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" "android/app/src/main/assets/agconnect-services.json"
-            echo "[OK] Restored agconnect-services.json"
           fi
-          
-          echo ""
-          echo "[SUCCESS] All credentials restored successfully"
 
       - name: Build release AAB
         run: flutter build appbundle --release -v -- --stacktrace --info
