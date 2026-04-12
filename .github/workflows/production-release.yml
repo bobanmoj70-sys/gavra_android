@@ -130,7 +130,7 @@ jobs:
               exit 1
             fi
             
-            echo "✓ Decoded $secret_name to $output_file ($(wc -c < "$output_file") bytes)"
+            echo "[OK] Decoded $secret_name to $output_file"
           }
 
           decode_json_or_base64() {
@@ -164,7 +164,7 @@ jobs:
             rm -f "$temp_file"
           }
 
-          echo "📦 Restoring Android signing credentials..."
+          echo "[*] Restoring Android signing credentials..."
           decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "android/app/release-keystore.jks"
 
           cat > android/key.properties <<EOF
@@ -173,25 +173,25 @@ jobs:
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
           storeFile=release-keystore.jks
           EOF
-          echo "✓ Created android/key.properties"
+          echo "[OK] Created android/key.properties"
 
-          echo "📄 Restoring google-services.json..."
+          echo "[*] Restoring google-services.json..."
           decode_json_or_base64 "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
 
           if [ ! -s android/app/google-services.json ]; then
             echo "ERROR: Missing or empty ANDROID_GOOGLE_SERVICES_JSON_BASE64 secret"
             exit 1
           fi
-          echo "✓ Restored google-services.json"
+          echo "[OK] Restored google-services.json"
 
           if [ -n "$(printf "%s" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" | tr -d '[:space:]')" ]; then
-            echo "📄 Restoring agconnect-services.json..."
+            echo "[*] Restoring agconnect-services.json..."
             decode_json_or_base64 "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" "android/app/src/main/assets/agconnect-services.json"
-            echo "✓ Restored agconnect-services.json"
+            echo "[OK] Restored agconnect-services.json"
           fi
           
           echo ""
-          echo "✅ All credentials restored successfully"
+          echo "[SUCCESS] All credentials restored successfully"
 
       - name: Build release AAB
         run: flutter build appbundle --release -v -- --stacktrace --info
