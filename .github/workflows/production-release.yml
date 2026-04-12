@@ -83,73 +83,41 @@ jobs:
         run: |
           mkdir -p android/app/src/main/assets
 
+          trim_ws() {
+            printf "%s" "$1" | tr -d '\r\n\t '
+          }
+
           decode_required_base64() {
             local secret_name="$1"
             local secret_value="$2"
             local output_file="$3"
+            local normalized
 
-            SECRET_VALUE="$secret_value" OUTPUT_FILE="$output_file" python3 - <<'PY'
-import base64
-import os
-import sys
-
-secret_value = os.environ.get("SECRET_VALUE", "")
-output_file = os.environ["OUTPUT_FILE"]
-
-normalized = "".join(secret_value.split())
-if not normalized:
-    sys.exit(2)
-
-try:
-    decoded = base64.b64decode(normalized, validate=True)
-except Exception:
-    sys.exit(1)
-
-with open(output_file, "wb") as file:
-    file.write(decoded)
-PY
-
-            status=$?
-            if [ "$status" -eq 2 ]; then
+            normalized="$(trim_ws "$secret_value")"
+            if [ -z "$normalized" ]; then
               echo "Missing required secret: $secret_name"
               exit 1
             fi
-            if [ "$status" -ne 0 ]; then
+
+            if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
               echo "Invalid base64 in required secret: $secret_name"
               exit 1
             fi
           }
 
           decode_json_or_base64() {
-            local secret_name="$1"
-            local secret_value="$2"
-            local output_file="$3"
+            local secret_value="$1"
+            local output_file="$2"
+            local normalized
 
-            if [ -z "$(printf "%s" "$secret_value" | tr -d '[:space:]')" ]; then
+            normalized="$(trim_ws "$secret_value")"
+            if [ -z "$normalized" ]; then
               return 0
             fi
 
-            SECRET_VALUE="$secret_value" OUTPUT_FILE="$output_file" python3 - <<'PY'
-import base64
-import os
-
-secret_value = os.environ.get("SECRET_VALUE", "")
-output_file = os.environ["OUTPUT_FILE"]
-normalized = "".join(secret_value.split())
-
-decoded = None
-try:
-    decoded = base64.b64decode(normalized, validate=True)
-except Exception:
-    decoded = None
-
-if decoded is None:
-    with open(output_file, "w", encoding="utf-8") as file:
-        file.write(secret_value)
-else:
-    with open(output_file, "wb") as file:
-        file.write(decoded)
-PY
+            if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
+              printf "%s" "$secret_value" > "$output_file"
+            fi
           }
 
           decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "android/app/release-keystore.jks"
@@ -161,7 +129,7 @@ PY
           storeFile=release-keystore.jks
           EOF
 
-          decode_json_or_base64 "ANDROID_GOOGLE_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
+          decode_json_or_base64 "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
 
           if [ ! -s android/app/google-services.json ]; then
             echo "Missing or empty ANDROID_GOOGLE_SERVICES_JSON_BASE64 secret"
@@ -169,7 +137,7 @@ PY
           fi
 
           if [ -n "$(printf "%s" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" | tr -d '[:space:]')" ]; then
-            decode_json_or_base64 "ANDROID_AGCONNECT_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" "android/app/src/main/assets/agconnect-services.json"
+            decode_json_or_base64 "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" "android/app/src/main/assets/agconnect-services.json"
           fi
 
       - name: Build release AAB
