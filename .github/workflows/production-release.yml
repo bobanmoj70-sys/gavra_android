@@ -83,7 +83,76 @@ jobs:
         run: |
           mkdir -p android/app/src/main/assets
 
-          printf "%s" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release-keystore.jks
+          decode_required_base64() {
+            local secret_name="$1"
+            local secret_value="$2"
+            local output_file="$3"
+
+            SECRET_VALUE="$secret_value" OUTPUT_FILE="$output_file" python3 - <<'PY'
+import base64
+import os
+import sys
+
+secret_value = os.environ.get("SECRET_VALUE", "")
+output_file = os.environ["OUTPUT_FILE"]
+
+normalized = "".join(secret_value.split())
+if not normalized:
+    sys.exit(2)
+
+try:
+    decoded = base64.b64decode(normalized, validate=True)
+except Exception:
+    sys.exit(1)
+
+with open(output_file, "wb") as file:
+    file.write(decoded)
+PY
+
+            status=$?
+            if [ "$status" -eq 2 ]; then
+              echo "Missing required secret: $secret_name"
+              exit 1
+            fi
+            if [ "$status" -ne 0 ]; then
+              echo "Invalid base64 in required secret: $secret_name"
+              exit 1
+            fi
+          }
+
+          decode_json_or_base64() {
+            local secret_name="$1"
+            local secret_value="$2"
+            local output_file="$3"
+
+            if [ -z "$(printf "%s" "$secret_value" | tr -d '[:space:]')" ]; then
+              return 0
+            fi
+
+            SECRET_VALUE="$secret_value" OUTPUT_FILE="$output_file" python3 - <<'PY'
+import base64
+import os
+
+secret_value = os.environ.get("SECRET_VALUE", "")
+output_file = os.environ["OUTPUT_FILE"]
+normalized = "".join(secret_value.split())
+
+decoded = None
+try:
+    decoded = base64.b64decode(normalized, validate=True)
+except Exception:
+    decoded = None
+
+if decoded is None:
+    with open(output_file, "w", encoding="utf-8") as file:
+        file.write(secret_value)
+else:
+    with open(output_file, "wb") as file:
+        file.write(decoded)
+PY
+          }
+
+          decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "android/app/release-keystore.jks"
 
           cat > android/key.properties <<EOF
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -92,10 +161,15 @@ jobs:
           storeFile=release-keystore.jks
           EOF
 
-          printf "%s" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+          decode_json_or_base64 "ANDROID_GOOGLE_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
 
-          if [ -n "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" ]; then
-            printf "%s" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/src/main/assets/agconnect-services.json
+          if [ ! -s android/app/google-services.json ]; then
+            echo "Missing or empty ANDROID_GOOGLE_SERVICES_JSON_BASE64 secret"
+            exit 1
+          fi
+
+          if [ -n "$(printf "%s" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" | tr -d '[:space:]')" ]; then
+            decode_json_or_base64 "ANDROID_AGCONNECT_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" "android/app/src/main/assets/agconnect-services.json"
           fi
 
       - name: Build release AAB
