@@ -110,6 +110,7 @@ jobs:
             local output_file="$2"
             local normalized
             local temp_file
+            local first_char
 
             normalized="$(trim_ws "$secret_value")"
             if [ -z "$normalized" ]; then
@@ -117,11 +118,15 @@ jobs:
             fi
 
             temp_file="$(mktemp)"
-            if ! printf "%s" "$normalized" | base64 -d > "$temp_file" 2>/dev/null; then
+            first_char="$(printf "%s" "$secret_value" | sed -e 's/^[[:space:]]*//' -e 's/\(.\).*/\1/')"
+
+            if [ "$first_char" = "{" ] || [ "$first_char" = "[" ] || [ "$first_char" = '"' ]; then
+              printf "%s" "$secret_value" > "$temp_file"
+            elif ! printf "%s" "$normalized" | base64 -d > "$temp_file" 2>/dev/null; then
               printf "%s" "$secret_value" > "$temp_file"
             fi
 
-            if ! python3 -c "import json,pathlib,sys; src=pathlib.Path(sys.argv[1]); dst=pathlib.Path(sys.argv[2]); txt=src.read_bytes().decode('utf-8-sig'); parsed=json.loads(txt); parsed=json.loads(parsed) if isinstance(parsed,str) else parsed; assert isinstance(parsed,dict), 'JSON root must be an object'; dst.write_text(json.dumps(parsed,separators=(',',':')),encoding='utf-8')" "$temp_file" "$output_file"
+            if ! python3 -c "import json,pathlib,sys; src=pathlib.Path(sys.argv[1]); dst=pathlib.Path(sys.argv[2]); txt=src.read_bytes().decode('utf-8-sig').strip(); assert txt, 'empty secret payload'; parsed=json.loads(txt); parsed=json.loads(parsed.strip()) if isinstance(parsed,str) else parsed; assert isinstance(parsed,dict), 'JSON root must be an object'; dst.write_text(json.dumps(parsed,separators=(',',':')),encoding='utf-8')" "$temp_file" "$output_file"
             then
               rm -f "$temp_file"
               echo "Invalid JSON secret payload for $output_file"
