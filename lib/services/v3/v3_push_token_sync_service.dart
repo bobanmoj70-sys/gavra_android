@@ -11,7 +11,7 @@ class V3PushTokenSyncService {
 
   static Future<bool> syncCurrentUser({
     String? token,
-    String provider = 'fcm',
+    String provider = 'hms',
     String reason = 'unspecified',
   }) async {
     final safeToken = (token ?? '').trim();

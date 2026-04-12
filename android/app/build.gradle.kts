@@ -8,6 +8,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
     id("com.huawei.agconnect")
 }
 
@@ -90,6 +91,10 @@ android {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
+    // Google Play Services + Firebase Cloud Messaging (GMS devices)
+    implementation("com.google.android.gms:play-services-base:18.5.0")
+    implementation("com.google.firebase:firebase-messaging:24.1.1")
+
     // Huawei Mobile Services Push (AppGallery devices / no GMS)
     implementation("com.huawei.hms:push:6.12.0.300")
 
@@ -100,6 +105,10 @@ dependencies {
     }
     implementation("com.google.android.play:review:2.0.2") {
         because("Replaces deprecated play:core for in-app reviews")
+    }
+
+    implementation("com.google.android.recaptcha:recaptcha:18.8.0") {
+        because("Required by RecaptchaBridge.java imports")
     }
 }
 

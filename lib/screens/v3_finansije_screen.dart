@@ -79,9 +79,10 @@ _V3IzvestajData _buildIzvestaj() {
   final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
   final sutra = danas.add(const Duration(days: 1));
 
-  // Nedelja (ponedeljak-nedelja)
-  final nedeljaStart = danas.subtract(Duration(days: danas.weekday - 1));
-  final nedeljaEnd = nedeljaStart.add(const Duration(days: 6));
+  // Aktivna nedelja iz app settings (active_week_start/end) ili fallback pon-ned
+  final aktivnaNedelja = V3DanHelper.schedulingWeekRange(now: now);
+  final nedeljaStart = aktivnaNedelja.start;
+  final nedeljaEnd = aktivnaNedelja.end;
   final nedeljaEndExclusive = nedeljaEnd.add(const Duration(days: 1));
 
   // Mesec
@@ -211,7 +212,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
       stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_finansije', 'v3_auth']),
+          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_finansije', 'v3_auth', 'v3_app_settings']),
       builder: (context, _) {
         final iz = _buildIzvestaj();
         return Scaffold(

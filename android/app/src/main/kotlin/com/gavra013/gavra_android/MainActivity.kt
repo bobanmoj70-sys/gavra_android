@@ -7,6 +7,10 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.WindowManager
+import com.google.android.gms.common.ConnectionResult as GmsConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
+import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.FirebaseMessaging
 import com.huawei.agconnect.config.AGConnectServicesConfig
 import com.huawei.hms.aaid.HmsInstanceId
 import com.huawei.hms.api.ConnectionResult
@@ -50,6 +54,9 @@ class MainActivity : FlutterFragmentActivity() {
                 "isHmsAvailable" -> {
                     result.success(isHmsAvailable())
                 }
+                "isGmsAvailable" -> {
+                    result.success(isGmsAvailable())
+                }
                 "getHmsToken" -> {
                     ioExecutor.execute {
                         try {
@@ -60,6 +67,20 @@ class MainActivity : FlutterFragmentActivity() {
                         } catch (e: Exception) {
                             runOnUiThread {
                                 result.error("HMS_TOKEN_ERROR", e.message ?: "Unknown HMS token error", null)
+                            }
+                        }
+                    }
+                }
+                "getFcmToken" -> {
+                    ioExecutor.execute {
+                        try {
+                            val token = getFcmToken()
+                            runOnUiThread {
+                                result.success(token)
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("FCM_TOKEN_ERROR", e.message ?: "Unknown FCM token error", null)
                             }
                         }
                     }
@@ -234,6 +255,16 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun isGmsAvailable(): Boolean {
+        return try {
+            val status = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)
+            status == GmsConnectionResult.SUCCESS
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "isGmsAvailable failed: ${e.message}")
+            false
+        }
+    }
+
     private fun getHmsToken(): String {
         val appId = AGConnectServicesConfig.fromContext(this).getString("client/app_id")
         if (appId.isNullOrBlank()) {
@@ -245,6 +276,24 @@ class MainActivity : FlutterFragmentActivity() {
             throw IllegalStateException("HMS token is empty")
         }
         android.util.Log.d(TAG, "✅ HMS token fetched: ${token.take(16)}…")
+        return token
+    }
+
+    private fun getFcmToken(): String {
+        if (!isGmsAvailable()) {
+            throw IllegalStateException("Google Play Services not available")
+        }
+
+        if (FirebaseApp.getApps(this).isEmpty()) {
+            FirebaseApp.initializeApp(this) ?: throw IllegalStateException("FirebaseApp is not initialized")
+        }
+
+        val task = FirebaseMessaging.getInstance().token
+        val token = com.google.android.gms.tasks.Tasks.await(task)
+        if (token.isNullOrBlank()) {
+            throw IllegalStateException("FCM token is empty")
+        }
+        android.util.Log.d(TAG, "✅ FCM token fetched: ${token.take(16)}…")
         return token
     }
 }

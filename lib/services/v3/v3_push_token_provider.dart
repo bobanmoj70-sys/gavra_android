@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-enum V3PushProvider { hms }
+enum V3PushProvider { hms, fcm }
 
 class V3PushTokenResult {
   final String token;
@@ -26,6 +26,11 @@ class V3PushTokenProvider {
       return V3PushTokenResult(token: hmsToken, provider: V3PushProvider.hms);
     }
 
+    final fcmToken = await _tryGetFcmToken();
+    if (fcmToken != null) {
+      return V3PushTokenResult(token: fcmToken, provider: V3PushProvider.fcm);
+    }
+
     return null;
   }
 
@@ -45,10 +50,28 @@ class V3PushTokenProvider {
     }
   }
 
+  static Future<String?> _tryGetFcmToken() async {
+    if (!Platform.isAndroid) return null;
+
+    try {
+      final available = await _channel.invokeMethod<bool>('isGmsAvailable');
+      if (available != true) return null;
+
+      final token = await _channel.invokeMethod<String>('getFcmToken');
+      final safeToken = (token ?? '').trim();
+      return safeToken.isEmpty ? null : safeToken;
+    } catch (e) {
+      debugPrint('[PushTokenProvider] FCM token unavailable: $e');
+      return null;
+    }
+  }
+
   static String providerAsString(V3PushProvider provider) {
     switch (provider) {
       case V3PushProvider.hms:
         return 'hms';
+      case V3PushProvider.fcm:
+        return 'fcm';
     }
   }
 }

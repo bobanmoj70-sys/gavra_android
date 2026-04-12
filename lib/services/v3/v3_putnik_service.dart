@@ -102,7 +102,7 @@ class V3PutnikService {
     required String token,
     String? existingToken1,
     String? existingToken2,
-    String provider = 'fcm',
+    String provider = 'hms',
   }) async {
     try {
       if (token.isEmpty) return const {};

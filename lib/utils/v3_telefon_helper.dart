@@ -88,9 +88,16 @@ class V3TelefonHelper {
   ///
   /// **Koristi umjesto:** duplikata smsUri launch koda
   /// **Primjer:** V3TelefonHelper.posaljiSms(this, context, '064123456', 'Poruka');
-  static Future<void> posaljiSms(State state, BuildContext context, String broj, String poruka) async {
-    if (broj.isEmpty) {
-      V3ErrorUtils.validationError(state, context, 'Telefon broj nije dostupan');
+  static Future<void> otvoriSms({
+    required BuildContext context,
+    required State state,
+    required String broj,
+    required String poruka,
+  }) async {
+    if (!state.mounted) return;
+
+    if (!V3PhoneUtils.isValid(broj)) {
+      V3AppSnackBar.error(context, '❌ Nevažeći broj telefona');
       return;
     }
 
@@ -102,14 +109,13 @@ class V3TelefonHelper {
     );
 
     try {
-      if (!state.mounted) return;
       if (await canLaunchUrl(smsUri)) {
         await launchUrl(smsUri, mode: LaunchMode.externalApplication);
       } else {
-        if (!state.mounted) return;
-        V3AppSnackBar.warning(context, 'Ne mogu da otvorim SMS aplikaciju');
+        throw 'Ne mogu pokrenuti SMS aplikaciju';
       }
     } catch (e) {
+      if (!state.mounted) return;
       V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju SMS: $e');
     }
   }

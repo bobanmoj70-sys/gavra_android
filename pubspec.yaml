@@ -38,7 +38,7 @@ dependencies:
   shimmer: ^3.0.0
   device_info_plus: ^10.0.0
   android_intent_plus: ^5.1.0
-  # flutter_sms: ^2.3.3 # Problematičan namespace - zamijenjen sa url_launcher SMS pozivima
+  # flutter_sms uklonjen: SMS ide preko `url_launcher` (`sms:` intent)
   # sms_advanced: ^1.0.1 # Alternativa sa automatskim slanjem - isto ima namespace problem
   # Vraćam se na URL launcher pristup - jedini koji radi
   # printing: ^5.14.2  # removed for Android-only build to avoid web dependency conflicts

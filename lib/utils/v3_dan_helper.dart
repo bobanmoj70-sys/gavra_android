@@ -91,7 +91,7 @@ class V3DanHelper {
     if (base.weekday >= DateTime.monday && base.weekday <= DateTime.friday) {
       return base;
     }
-    return datumZaDanAbbrUTekucojSedmici('pon', anchor: schedulingWeekAnchor(now: current));
+    return schedulingWeekRange(now: current).start;
   }
 
   /// Normalizuje puni naziv dana na radni dan (vikend/invalid -> fallback).
@@ -134,6 +134,25 @@ class V3DanHelper {
     return dateOnly(now ?? DateTime.now());
   }
 
+  /// Početak i kraj aktivne sedmice zakazivanja.
+  /// Ako je globalni override postavljen u app settings, koristi njega.
+  static ({DateTime start, DateTime end}) schedulingWeekRange({DateTime? now}) {
+    final overrideStart = getGlobalActiveWeekStart?.call();
+    if (overrideStart != null) {
+      final start = dateOnly(overrideStart);
+      final overrideEnd = getGlobalActiveWeekEnd?.call();
+      final end = (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
+          ? dateOnly(overrideEnd)
+          : start.add(const Duration(days: 6));
+      return (start: start, end: end);
+    }
+
+    final anchor = dateOnly(schedulingWeekAnchor(now: now));
+    final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
+    return (start: monday, end: sunday);
+  }
+
   /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 03:00).
   static DateTime nextSchedulingUnlock({DateTime? now}) {
     final current = now ?? DateTime.now();
@@ -148,21 +167,8 @@ class V3DanHelper {
   /// Da li je datum unutar aktivne sedmice zakazivanja.
   static bool isInSchedulingWeek(DateTime datum, {DateTime? now}) {
     final target = dateOnly(datum);
-
-    final overrideStart = getGlobalActiveWeekStart?.call();
-    if (overrideStart != null) {
-      final start = dateOnly(overrideStart);
-      final overrideEnd = getGlobalActiveWeekEnd?.call();
-      final end = (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
-          ? dateOnly(overrideEnd)
-          : start.add(const Duration(days: 6));
-      return !target.isBefore(start) && !target.isAfter(end);
-    }
-
-    final anchor = dateOnly(schedulingWeekAnchor(now: now));
-    final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-    return !target.isBefore(monday) && !target.isAfter(sunday);
+    final range = schedulingWeekRange(now: now);
+    return !target.isBefore(range.start) && !target.isAfter(range.end);
   }
 
   /// Da li je datum unutar aktivne RADNE sedmice zakazivanja (ponedeljak–petak).
@@ -177,22 +183,20 @@ class V3DanHelper {
   /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.
   /// Ne gura automatski u sledeću sedmicu ako je dan već prošao.
   static String datumIsoZaDanPuniUTekucojSedmici(String danPuni, {DateTime? anchor}) {
-    final base = dateOnly(anchor ?? DateTime.now());
     final targetIndex = _indexForFullDayName(danPuni);
     if (targetIndex == -1) return '';
-    final monday = base.subtract(Duration(days: base.weekday - 1));
-    final targetDate = monday.add(Duration(days: targetIndex));
+    final range = schedulingWeekRange(now: anchor ?? DateTime.now());
+    final targetDate = range.start.add(Duration(days: targetIndex));
     return toIsoDate(targetDate);
   }
 
   /// DateTime za izabrani dan u TEKUĆOJ sedmici.
   /// Sedmica se računa od [anchor] datuma (ili danas ako nije prosleđen).
   static DateTime datumZaDanAbbrUTekucojSedmici(String danAbbr, {DateTime? anchor}) {
-    final base = dateOnly(anchor ?? DateTime.now());
     final targetIndex = _indexForDayAbbr(danAbbr);
-    if (targetIndex == -1) return base;
-    final monday = base.subtract(Duration(days: base.weekday - 1));
-    return monday.add(Duration(days: targetIndex));
+    final range = schedulingWeekRange(now: anchor ?? DateTime.now());
+    if (targetIndex == -1) return range.start;
+    return range.start.add(Duration(days: targetIndex));
   }
 
   /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.

@@ -557,6 +557,11 @@ class V3MasterRealtimeManager {
         break;
       case 'v3_kapacitet_slots':
         break;
+      case 'v3_app_settings':
+        if (id == 'global') {
+          _applyAppSettings(normalizedRow);
+        }
+        break;
     }
 
     _scheduleEmit(tables: {table});

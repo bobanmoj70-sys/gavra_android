@@ -70,6 +70,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         'v3_auth',
         'v3_adrese',
         'v3_kapacitet_slots',
+        'v3_app_settings',
       ],
       build: () => V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso),
     );
@@ -1100,9 +1101,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
           final appBarHeight = 106 + (headerScaleExtra * 20);
           final headerControlHeight = 33 + (headerScaleExtra * 8);
-          final aktivnaNedeljaAnchor = V3DanHelper.schedulingWeekAnchor();
-          final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon', anchor: aktivnaNedeljaAnchor);
-          final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet', anchor: aktivnaNedeljaAnchor);
+          final weekRange = V3DanHelper.schedulingWeekRange();
+          final ponedeljak = weekRange.start;
+          final petak = weekRange.end;
           final aktivnaNedelja =
               'Aktivna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 

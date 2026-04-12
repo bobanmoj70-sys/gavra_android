@@ -21,6 +21,7 @@ import 'v3_odrzavanje_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
+import 'v3_sms_sifre_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
 import 'v3_vozaci_admin_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
@@ -213,15 +214,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                       final normalizedDate =
                                           '${normalized.year.toString().padLeft(4, '0')}-${normalized.month.toString().padLeft(2, '0')}-${normalized.day.toString().padLeft(2, '0')}';
 
-                                      items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
-                                      items.add({
-                                        'date': normalizedDate,
-                                        'scope': scope,
-                                        'reason': reasonCtrl.text.trim(),
-                                      });
-                                      items.sort((a, b) => (a['date'] ?? '').compareTo(b['date'] ?? ''));
-
                                       setModalState(() {
+                                        items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
+                                        items.add({
+                                          'date': normalizedDate,
+                                          'scope': scope,
+                                          'reason': reasonCtrl.text.trim(),
+                                        });
+                                        items.sort((a, b) => (a['date'] ?? '').compareTo(b['date'] ?? ''));
                                         dateCtrl.clear();
                                         reasonCtrl.clear();
                                         scope = 'all';
@@ -285,6 +285,45 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       : () async {
                           setModalState(() => isSaving = true);
                           try {
+                            final draftDate = dateCtrl.text.trim();
+                            if (draftDate.isNotEmpty) {
+                              if (!_dateIsoPattern.hasMatch(draftDate)) {
+                                setModalState(() => isSaving = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Izaberi datum iz kalendara.')),
+                                );
+                                return;
+                              }
+
+                              final normalized = DateTime.tryParse(draftDate);
+                              if (normalized == null) {
+                                setModalState(() => isSaving = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Datum nije validan kalendarski.')),
+                                );
+                                return;
+                              }
+
+                              final normalizedDate =
+                                  '${normalized.year.toString().padLeft(4, '0')}-${normalized.month.toString().padLeft(2, '0')}-${normalized.day.toString().padLeft(2, '0')}';
+
+                              items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
+                              items.add({
+                                'date': normalizedDate,
+                                'scope': scope,
+                                'reason': reasonCtrl.text.trim(),
+                              });
+                              items.sort((a, b) => (a['date'] ?? '').compareTo(b['date'] ?? ''));
+                            }
+
+                            if (items.isEmpty) {
+                              setModalState(() => isSaving = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Dodaj bar jedan neradan dan pre čuvanja.')),
+                              );
+                              return;
+                            }
+
                             await V3AppSettingsService.updateGlobal({'neradni_dani': items});
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
@@ -1180,6 +1219,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }).length;
   }
 
+  int _getSmsSifreCount() {
+    final rm = V3MasterRealtimeManager.instance;
+    return rm.authCache.values.where((row) {
+      final sifra = (row['sifra'] ?? '').toString().trim();
+      return sifra.isNotEmpty;
+    }).length;
+  }
+
   /// Učenici brojač: broj učenika bez VS termina danas.
   Widget _buildSaVsWidget(BuildContext context) {
     final stats = _getUceniciBcVsSummary();
@@ -1586,7 +1633,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 ),
               ),
 
-              // ─── RED 4: Badge gumbi — Učenici, Radnici, Pošiljke, Zahtevi ───
+              // ─── RED 4: Badge gumbi — Učenici, Radnici, Pošiljke, Zahtevi, Šifre ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
@@ -1639,6 +1686,19 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
                           const V3PosiljkeZahteviScreen(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // 🔐 SMS šifre
+                    Expanded(
+                      child: _BadgeBtn(
+                        emoji: '🔐',
+                        color: Colors.amber,
+                        badgeCount: _getSmsSifreCount(),
+                        onTap: () => V3NavigationUtils.pushScreen<void>(
+                          context,
+                          const V3SmsSifreScreen(),
                         ),
                       ),
                     ),

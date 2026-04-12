@@ -4,7 +4,7 @@ import '../globals.dart';
 import 'v3_shimmer_banner.dart';
 
 /// Inline baner koji prikazuje neradne dane iz aktivne nedelje.
-/// Koristi [neradniDaniNotifier] i filtrira samo dane pon–pet tekuće sedmice.
+/// Koristi [neradniDaniNotifier] i filtrira dane iz aktivne sedmice.
 /// Ako nema neradnih dana, ne prikazuje ništa (SizedBox.shrink).
 class V3NeradniDaniBanner extends StatelessWidget {
   const V3NeradniDaniBanner({super.key, this.margin});
@@ -16,11 +16,10 @@ class V3NeradniDaniBanner extends StatelessWidget {
     return ValueListenableBuilder<List<Map<String, String>>>(
       valueListenable: neradniDaniNotifier,
       builder: (context, rules, _) {
-        final weekAnchor = V3DanHelper.schedulingWeekAnchor();
-        final monday = V3DanHelper.dateOnly(
-          weekAnchor.subtract(Duration(days: weekAnchor.weekday - 1)),
-        );
-        final friday = monday.add(const Duration(days: 4));
+        final weekRange = V3DanHelper.schedulingWeekRange();
+        final start = weekRange.start;
+        final end = weekRange.end;
+        final today = V3DanHelper.dateOnly(DateTime.now());
 
         final lines = <String>[];
         for (final rule in rules) {
@@ -29,7 +28,8 @@ class V3NeradniDaniBanner extends StatelessWidget {
           if (date == null) continue;
 
           final onlyDate = V3DanHelper.dateOnly(date);
-          if (onlyDate.isBefore(monday) || onlyDate.isAfter(friday)) continue;
+          if (onlyDate.isBefore(start) || onlyDate.isAfter(end)) continue;
+          if (onlyDate.isBefore(today)) continue;
 
           final dayName = V3DanHelper.fullName(onlyDate);
           final scope = (rule['scope'] ?? 'all').toLowerCase();

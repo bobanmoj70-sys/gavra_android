@@ -76,9 +76,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   String _formatNedeljaOpsegLabel() {
-    final anchor = V3DanHelper.schedulingWeekAnchor();
-    final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon', anchor: anchor);
-    final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet', anchor: anchor);
+    final weekRange = V3DanHelper.schedulingWeekRange();
+    final ponedeljak = weekRange.start;
+    final petak = weekRange.end;
     final od = '${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')}.';
     final doDatuma = '${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}.';
     return '$od - $doDatuma';
@@ -99,7 +99,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     V3StreamUtils.subscribe<int>(
       key: 'putnik_profil_cache',
       stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_auth', 'v3_zahtevi', 'v3_operativna_nedelja']),
+          .tablesRevisionStream(const ['v3_auth', 'v3_zahtevi', 'v3_operativna_nedelja', 'v3_app_settings']),
       onData: (_) {
         if (mounted) _refresh();
       },

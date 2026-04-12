@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'globals.dart';
@@ -228,6 +229,18 @@ void onNotificationTap(NotificationResponse response) async {
     return;
   }
 
+  if (payload.startsWith('sms_auth_request|')) {
+    if (actionId == null || actionId == 'approve_sms') {
+      final opened = await _openSmsComposerFromAuthPayload(payload);
+      if (opened) {
+        await _showActionFeedback('✅ SMS odobren', 'Otvorena je SMS aplikacija sa pripremljenom šifrom.');
+      } else {
+        await _showActionFeedback('⚠️ Greška', 'Ne mogu da otvorim SMS aplikaciju za ovaj zahtev.');
+      }
+      return;
+    }
+  }
+
   if (actionId == null) {
     final parts = payload.split('|');
     if (parts.length == 3 && parts[0].trim().isNotEmpty) {
@@ -299,6 +312,29 @@ Future<void> _showActionFeedback(String title, String body) async {
     body,
     NotificationDetails(android: androidDetails),
   );
+}
+
+Future<bool> _openSmsComposerFromAuthPayload(String payload) async {
+  final parts = payload.split('|');
+  if (parts.length < 3) return false;
+
+  final phone = parts[1].trim();
+  final otp = parts[2].trim();
+  if (phone.isEmpty || otp.isEmpty) return false;
+
+  final smsUri = Uri(
+    scheme: 'sms',
+    path: phone,
+    queryParameters: {
+      'body': 'Vaš verifikacioni kod je: $otp',
+    },
+  );
+
+  if (await canLaunchUrl(smsUri)) {
+    await launchUrl(smsUri, mode: LaunchMode.externalApplication);
+    return true;
+  }
+  return false;
 }
 
 Future<void> _openPutnikProfilFromNotification(String payload) async {

@@ -29,6 +29,7 @@ class V3AppSettingsService {
   static Future<void> updateGlobal(Map<String, dynamic> payload) async {
     try {
       final row = await _repo.updateGlobal(payload);
+
       if (row != null) {
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_app_settings', row);
       }

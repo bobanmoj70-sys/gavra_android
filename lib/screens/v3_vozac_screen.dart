@@ -703,10 +703,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return true;
     }
 
+    final requested = await Permission.location.request();
+    if (requested.isGranted) {
+      return true;
+    }
+
     if (mounted) {
       V3AppSnackBar.warning(
         context,
-        '⚠️ GPS dozvola nije odobrena. Ulogujte se ponovo kao vozač ili uključite dozvolu u Settings.',
+        '⚠️ GPS dozvola nije odobrena. Uključite dozvolu u Settings.',
       );
     }
     return false;
@@ -876,15 +881,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.7).toDouble();
     final appBarHeight = 104 + (headerScaleExtra * 18);
     final appBarButtonHeight = 30 + (headerScaleExtra * 6);
-    final aktivnaSedmicaAnchor = V3DanHelper.schedulingWeekAnchor();
-    final ponedeljak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pon', anchor: aktivnaSedmicaAnchor);
-    final petak = V3DanHelper.datumZaDanAbbrUTekucojSedmici('pet', anchor: aktivnaSedmicaAnchor);
+    final weekRange = V3DanHelper.schedulingWeekRange();
+    final ponedeljak = weekRange.start;
+    final petak = weekRange.end;
     final aktivnaSedmica =
         'Aktivna sedmica: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
     return StreamBuilder<int>(
       stream: rm.v3StreamFromCache<int>(
-        tables: const ['v3_operativna_nedelja', 'v3_auth', 'v3_adrese', 'v3_kapacitet_slots'],
+        tables: const ['v3_operativna_nedelja', 'v3_auth', 'v3_adrese', 'v3_kapacitet_slots', 'v3_app_settings'],
         build: () => DateTime.now().microsecondsSinceEpoch,
       ),
       builder: (context, snapshot) {
@@ -1078,15 +1083,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           child: ValueListenableBuilder<List<Map<String, String>>>(
             valueListenable: neradniDaniNotifier,
             builder: (context, rules, _) {
+              final weekRange = V3DanHelper.schedulingWeekRange();
+              final today = V3DanHelper.dateOnly(DateTime.now());
               final hasNeradni = rules.any((rule) {
                 final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
                 final date = DateTime.tryParse(dateIso);
                 if (date == null) return false;
-                final weekAnchor = V3DanHelper.schedulingWeekAnchor();
-                final monday = V3DanHelper.dateOnly(weekAnchor.subtract(Duration(days: weekAnchor.weekday - 1)));
-                final friday = monday.add(const Duration(days: 4));
                 final onlyDate = V3DanHelper.dateOnly(date);
-                return !onlyDate.isBefore(monday) && !onlyDate.isAfter(friday);
+                if (onlyDate.isBefore(today)) return false;
+                return !onlyDate.isBefore(weekRange.start) && !onlyDate.isAfter(weekRange.end);
               });
 
               return Column(
