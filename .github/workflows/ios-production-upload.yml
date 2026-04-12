@@ -20,10 +20,8 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install iOS signing CLI tools
-        run: pip3 install codemagic-cli-tools
-
-      - name: Ensure .env exists for Flutter assets
+    - name: Install iOS signing CLI tools
+      run: pip3 install codemagic-cli-tools --break-system-packages      - name: Ensure .env exists for Flutter assets
         shell: bash
         run: |
           if [ -n "${{ secrets.ENV_FILE_CONTENT }}" ]; then
