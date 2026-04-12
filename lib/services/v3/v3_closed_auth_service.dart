@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../globals.dart';
 import '../../utils/v3_phone_utils.dart';
 import 'v3_putnik_service.dart';
 import 'v3_vozac_service.dart';
@@ -15,7 +16,12 @@ class V3ClosedAuthService {
 
   static String normalizePhone(String rawPhone) => V3PhoneUtils.normalize(rawPhone.trim());
 
+  static Future<bool> ensureClientReady() => ensureSupabaseReady();
+
   static Future<bool> phoneExists(String rawPhone) async {
+    final ready = await ensureClientReady();
+    if (!ready) return false;
+
     final phone = normalizePhone(rawPhone);
     if (phone.isEmpty) return false;
 

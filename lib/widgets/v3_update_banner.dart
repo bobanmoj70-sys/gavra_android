@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
@@ -41,7 +42,12 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
 
     if (info == null || !info.isForced) {
       if (_forceDialogOpen) {
-        Navigator.of(context, rootNavigator: true).maybePop();
+        final nav = Navigator.of(context, rootNavigator: true);
+        if (nav.canPop()) {
+          nav.pop();
+        }
+        _forceDialogOpen = false;
+        _dialogSignature = null;
       }
       return;
     }
@@ -105,9 +111,10 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTicke
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = V3AnimationUtils.createPulseController(
+    _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
+      debugLabel: 'Maintenance Pulse Animation',
     )..repeat(reverse: true);
     _pulseAnim = V3AnimationUtils.createTween(
       controller: _pulseCtrl,
@@ -240,13 +247,15 @@ class _ForceUpdateDialog extends StatefulWidget {
 class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
+  String _installedVersion = '';
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = V3AnimationUtils.createPulseController(
+    _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
+      debugLabel: 'Force Update Pulse Animation',
     )..repeat(reverse: true);
     _pulseAnim = V3AnimationUtils.createTween(
       controller: _pulseCtrl,
@@ -254,6 +263,17 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
       end: 1.1,
       curve: Curves.easeInOut,
     );
+    _loadInstalledVersion();
+  }
+
+  Future<void> _loadInstalledVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() => _installedVersion = info.version.trim());
+    } catch (_) {
+      return;
+    }
   }
 
   @override
@@ -353,7 +373,7 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: Colors.redAccent.withValues(alpha: 0.38)),
                         child: Text(
-                          'verzija ${widget.info.latestVersion}',
+                          'verzija ${_installedVersion.isNotEmpty ? _installedVersion : widget.info.latestVersion}',
                           style: const TextStyle(
                             color: Colors.redAccent,
                             fontSize: 12,

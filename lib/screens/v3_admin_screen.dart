@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -523,6 +524,25 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     var isSaving = false;
     final quickVersionCtrl = TextEditingController();
 
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final installedVersion = packageInfo.version.trim();
+      if (installedVersion.isNotEmpty) {
+        quickVersionCtrl.text = installedVersion;
+        if (latestAndroidCtrl.text.trim().isEmpty) {
+          latestAndroidCtrl.text = installedVersion;
+        }
+        if (latestIosCtrl.text.trim().isEmpty) {
+          latestIosCtrl.text = installedVersion;
+        }
+        if (minAndroidCtrl.text.trim().isEmpty) {
+          minAndroidCtrl.text = installedVersion;
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+
     Future<void> save(StateSetter setModalState, BuildContext modalContext) async {
       final latestAndroid = latestAndroidCtrl.text.trim();
       final minAndroidRaw = minAndroidCtrl.text.trim();
@@ -733,6 +753,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             'Upravljanje release i force update pravilima',
                             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
+                          if (quickVersionCtrl.text.isNotEmpty)
+                            Text(
+                              'Lokalna verzija: v${quickVersionCtrl.text}',
+                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                            ),
                           const SizedBox(height: 12),
                           Expanded(
                             child: SingleChildScrollView(

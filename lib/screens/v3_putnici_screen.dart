@@ -6,7 +6,6 @@ import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
-import '../services/v3/v3_sms_auth_request_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_audit_korisnik.dart';
@@ -20,7 +19,6 @@ import '../utils/v3_phone_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
-import '../utils/v3_telefon_helper.dart';
 import '../utils/v3_text_utils.dart';
 import 'v3_putnik_statistika_screen.dart';
 
@@ -74,86 +72,6 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
 
     lista.sort((a, b) => V3StringUtils.compareForSort(a.imePrezime, b.imePrezime));
     return lista;
-  }
-
-  Future<void> _odobriSmsZahtev(Map<String, dynamic> row) async {
-    final broj = ((row['telefon'] ?? '').toString().trim().isNotEmpty)
-        ? (row['telefon'] ?? '').toString().trim()
-        : (row['telefon_2'] ?? '').toString().trim();
-    final sifra = (row['sifra'] ?? '').toString().trim();
-
-    if (broj.isEmpty || sifra.isEmpty) {
-      if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Nedostaje broj ili šifra za SMS.');
-      return;
-    }
-
-    await V3TelefonHelper.otvoriSms(
-      context: context,
-      state: this,
-      broj: broj,
-      poruka: 'Vaš verifikacioni kod je: $sifra',
-    );
-  }
-
-  Widget _buildPendingSmsPanel() {
-    return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_auth'),
-      builder: (context, _) {
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          future: V3SmsAuthRequestService.fetchPendingSmsRequests(limit: 6),
-          builder: (context, snapshot) {
-            final pending = snapshot.data ?? const <Map<String, dynamic>>[];
-            if (pending.isEmpty) return const SizedBox.shrink();
-
-            return Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.amber.withValues(alpha: 0.45)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'SMS zahtevi (${pending.length})',
-                    style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  for (final row in pending)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${(row['ime'] ?? 'Nepoznat').toString().trim()} • ${((row['telefon'] ?? '').toString().trim().isNotEmpty) ? (row['telefon'] ?? '').toString().trim() : (row['telefon_2'] ?? '').toString().trim()}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            height: 30,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _odobriSmsZahtev(row),
-                              icon: const Icon(Icons.sms, size: 14),
-                              label: const Text('Odobri', style: TextStyle(fontSize: 11)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   // ─── Build ────────────────────────────────────────────────────────────────
@@ -247,8 +165,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                   ),
                 ),
               ),
-              _buildPendingSmsPanel(),
-              // ── List ────────────────────────────────────────────────────
+              // ── List ──────────────────────────────────────────────────
               Expanded(
                 child: StreamBuilder<int>(
                   stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_auth'),

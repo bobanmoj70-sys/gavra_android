@@ -58,7 +58,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   final _imeController = TextEditingController();
   final _prezimeController = TextEditingController();
   static const _secureStorage = FlutterSecureStorage();
-  static const int _smsCooldownSeconds = 30;
+  static const int _smsCooldownSeconds = 60;
 
   _SmsStep _step = _SmsStep.unosTelefona;
   bool _isLoading = false;
@@ -226,6 +226,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
+    final ready = await V3ClosedAuthService.ensureClientReady();
+    if (!ready) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, '❌ Servis trenutno nije dostupan. Pokušajte ponovo.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _statusMessage = '🔍 Proveravam broj...';
@@ -279,6 +286,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   Future<void> _verifyOtp() async {
     final code = _otpController.text.trim();
+
+    final ready = await V3ClosedAuthService.ensureClientReady();
+    if (!ready) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, '❌ Servis trenutno nije dostupan. Pokušajte ponovo.');
+      return;
+    }
 
     if (code.length != 6) {
       V3AppSnackBar.warning(context, 'Unesite 6-cifreni kod iz SMS-a.');

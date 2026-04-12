@@ -38,6 +38,24 @@ bool get isSupabaseReady {
   }
 }
 
+Future<bool> ensureSupabaseReady() async {
+  if (isSupabaseReady) return true;
+
+  try {
+    await configService.initializeBasic();
+    if (isSupabaseReady) return true;
+
+    final url = configService.getSupabaseUrl().trim();
+    final anonKey = configService.getSupabaseAnonKey().trim();
+    if (url.isEmpty || anonKey.isEmpty) return false;
+
+    await Supabase.initialize(url: url, anonKey: anonKey);
+    return isSupabaseReady;
+  } catch (_) {
+    return isSupabaseReady;
+  }
+}
+
 /// NAV BAR TYPE - tip bottom navigation bara
 /// 'zimski' = zimski raspored (podrazumevani/osnovni raspored)
 /// 'custom' = ručno podešen raspored koji se uređuje po danima

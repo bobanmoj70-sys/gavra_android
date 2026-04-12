@@ -65,9 +65,19 @@ Future<void> _ensureLocalNotificationsInitialized() async {
       enableVibration: true,
     );
 
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    const AndroidNotificationChannel alternativaChannel = AndroidNotificationChannel(
+      'gavra_alternativa',
+      'Alternativa termina',
+      description: 'Klikabilna obaveštenja za alternativne termine',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    final androidImpl =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidImpl?.createNotificationChannel(channel);
+    await androidImpl?.createNotificationChannel(alternativaChannel);
 
     _localNotificationsInitialized = true;
   }();
@@ -142,10 +152,22 @@ void main() async {
 /// Pokretanje servisa u pozadini kako UI ne bi čekao i pravio deadlock
 Future<void> _postRunAppInitialization() async {
   // 1. Pokreni V3 Realtime Manager (background)
-  debugPrint('🚀 [main] 6. V3MasterRealtimeManager.initV3 start (background)');
-  unawaited(V3MasterRealtimeManager.instance
-      .initV3()
-      .catchError((Object e) => debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
+  if (!isSupabaseReady) {
+    try {
+      await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('⚠️ [main] Preskačem initV3 (Supabase nije spreman): $e');
+    }
+  }
+
+  if (isSupabaseReady) {
+    debugPrint('🚀 [main] 6. V3MasterRealtimeManager.initV3 start (background)');
+    unawaited(V3MasterRealtimeManager.instance
+        .initV3()
+        .catchError((Object e) => debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
+  } else {
+    debugPrint('⚠️ [main] Preskačem initV3: Supabase nije inicijalizovan.');
+  }
 
   // 2. 🎨 Tema - učitaj iz secure storage (ui će automatski reagovati na promenu teme)
   try {
@@ -203,14 +225,101 @@ Future<void> _initNotificationHandlers() async {
     // Inicijalizuj Local Notifications (za interaktivne gumbe)
     try {
       await _ensureLocalNotificationsInitialized();
-
       debugPrint('✅ [Push] Notification handlers konfigurisani');
     } catch (e) {
       debugPrint('⚠️ [Push] Notification handlers greška: $e');
     }
+
+    // HMS push data handler — prima data poruke iz native strane
+    const MethodChannel hmsPushChannel = MethodChannel('com.gavra013.gavra_android/hms_push_data');
+    hmsPushChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onPushData') {
+        final data = Map<String, String>.from(call.arguments as Map);
+        await _handleIncomingPushData(data);
+      }
+    });
   } catch (e) {
     debugPrint('⚠️ [Push] Opšta greška: $e');
   }
+}
+
+/// Obrađuje dolazni push data (HMS i FCM data-only poruke).
+Future<void> _handleIncomingPushData(Map<String, String> data) async {
+  final type = data['type'] ?? '';
+  debugPrint('[Push] handleIncomingPushData type=$type');
+
+  if (type == 'v3_alternativa') {
+    final zahtevId = data['zahtev_id'] ?? data['entity_id'] ?? data['id'] ?? '';
+    final altPre = data['alt_pre'] ?? '';
+    final altPosle = data['alt_posle'] ?? '';
+    if (zahtevId.isEmpty) return;
+
+    await showAlternativaNotification(
+      zahtevId: zahtevId,
+      altPre: altPre,
+      altPosle: altPosle,
+    );
+  }
+}
+
+/// Prikazuje lokalnu klikabilnu notifikaciju za alternativu.
+/// [zahtevId] — id zahteva, [altPre] — HH:mm ili '', [altPosle] — HH:mm ili ''
+Future<void> showAlternativaNotification({
+  required String zahtevId,
+  required String altPre,
+  required String altPosle,
+  String title = 'Alternativa termina',
+  String body = 'Trenutno nema slobodnih mesta. Izaberite dostupni termin.',
+}) async {
+  await _ensureLocalNotificationsInitialized();
+
+  final payload = '$zahtevId|$altPre|$altPosle';
+
+  final actions = <AndroidNotificationAction>[
+    if (altPre.isNotEmpty)
+      AndroidNotificationAction(
+        'accept_pre',
+        altPre,
+        showsUserInterface: false,
+        cancelNotification: true,
+      ),
+    if (altPosle.isNotEmpty)
+      AndroidNotificationAction(
+        'accept_posle',
+        altPosle,
+        showsUserInterface: false,
+        cancelNotification: true,
+      ),
+    const AndroidNotificationAction(
+      'reject',
+      'Odbij',
+      showsUserInterface: false,
+      cancelNotification: true,
+    ),
+  ];
+
+  final androidDetails = AndroidNotificationDetails(
+    'gavra_alternativa',
+    'Alternativa termina',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
+    actions: actions,
+    styleInformation: BigTextStyleInformation(
+      body,
+      contentTitle: title,
+      summaryText: 'Gavra',
+    ),
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    NotificationDetails(android: androidDetails),
+    payload: payload,
+  );
 }
 
 // Hendler za klik na interaktivne gumbe (actions)
@@ -244,7 +353,12 @@ void onNotificationTap(NotificationResponse response) async {
   if (actionId == null) {
     final parts = payload.split('|');
     if (parts.length == 3 && parts[0].trim().isNotEmpty) {
-      await _showActionFeedback('ℹ️ Alternativa', 'Izaberi: Vreme pre, Vreme posle ili Odbij.');
+      // Korisnik tapnuo na body notifikacije — ponovo prikaži sa akcijama
+      await showAlternativaNotification(
+        zahtevId: parts[0].trim(),
+        altPre: parts[1].trim(),
+        altPosle: parts[2].trim(),
+      );
     }
     return;
   }

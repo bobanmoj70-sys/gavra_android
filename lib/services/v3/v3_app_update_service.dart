@@ -12,7 +12,7 @@ class V3AppUpdateService {
   V3AppUpdateService._();
 
   static final V3AppSettingsRepository _repository = V3AppSettingsRepository();
-  static const Set<String> _maintenanceBypassUserIds = <String>{
+  static const Set<String> _updateGateBypassUserIds = <String>{
     '824f7bd7-e19c-4471-b7a2-d6031d810242',
   };
 
@@ -53,7 +53,12 @@ class V3AppUpdateService {
       }
       final forceFlag = selected['force'] == true;
 
-      if (maintenanceMode && !_isMaintenanceBypassedForOperator()) {
+      if (_isUpdateGateBypassedForOperator()) {
+        updateInfoNotifier.value = null;
+        return;
+      }
+
+      if (maintenanceMode) {
         updateInfoNotifier.value = V2UpdateInfo(
           latestVersion: latest.isNotEmpty ? latest : currentVersion,
           storeUrl: storeUrl,
@@ -129,12 +134,12 @@ class V3AppUpdateService {
     return _compareVersions(current, required) < 0;
   }
 
-  static bool _isMaintenanceBypassedForOperator() {
+  static bool _isUpdateGateBypassedForOperator() {
     final putnikId = (V3PutnikService.currentPutnik?['id'] ?? '').toString().trim();
-    if (putnikId.isNotEmpty && _maintenanceBypassUserIds.contains(putnikId)) return true;
+    if (putnikId.isNotEmpty && _updateGateBypassUserIds.contains(putnikId)) return true;
 
     final vozacId = V3VozacService.currentVozac?.id.trim() ?? '';
-    if (vozacId.isNotEmpty && _maintenanceBypassUserIds.contains(vozacId)) return true;
+    if (vozacId.isNotEmpty && _updateGateBypassUserIds.contains(vozacId)) return true;
 
     return false;
   }

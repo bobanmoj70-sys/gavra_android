@@ -253,6 +253,10 @@ class V3MasterRealtimeManager {
 
   Future<void> _initV3Internal() async {
     debugPrint('[V3MasterRealtimeManager] ⚡ STARTED initV3()');
+    if (!isSupabaseReady) {
+      debugPrint('[V3MasterRealtimeManager] Supabase nije spreman, preskačem initV3.');
+      return;
+    }
     try {
       _registerCacheStoreIfNeeded();
       final results = await _bootstrapLoader.loadFull();
@@ -279,6 +283,11 @@ class V3MasterRealtimeManager {
   }
 
   Future<void> _setupRealtime() async {
+    if (!isSupabaseReady) {
+      debugPrint('[RT] Supabase nije spreman, preskačem setupRealtime.');
+      return;
+    }
+
     _registerCacheStoreIfNeeded();
 
     final existing = _channel;
