@@ -109,15 +109,45 @@ jobs:
             local secret_value="$1"
             local output_file="$2"
             local normalized
+            local temp_file
 
             normalized="$(trim_ws "$secret_value")"
             if [ -z "$normalized" ]; then
               return 0
             fi
 
-            if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
-              printf "%s" "$secret_value" > "$output_file"
+            temp_file="$(mktemp)"
+            if ! printf "%s" "$normalized" | base64 -d > "$temp_file" 2>/dev/null; then
+              printf "%s" "$secret_value" > "$temp_file"
             fi
+
+            if ! python3 - "$temp_file" "$output_file" <<'PY'
+            import json
+            import pathlib
+            import sys
+
+            source_path = pathlib.Path(sys.argv[1])
+            output_path = pathlib.Path(sys.argv[2])
+
+            raw_bytes = source_path.read_bytes()
+            text = raw_bytes.decode('utf-8-sig')
+            parsed = json.loads(text)
+
+            if isinstance(parsed, str):
+              parsed = json.loads(parsed)
+
+            if not isinstance(parsed, dict):
+              raise SystemExit('JSON root must be an object')
+
+            output_path.write_text(json.dumps(parsed, separators=(',', ':')), encoding='utf-8')
+            PY
+            then
+              rm -f "$temp_file"
+              echo "Invalid JSON secret payload for $output_file"
+              exit 1
+            fi
+
+            rm -f "$temp_file"
           }
 
           decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "android/app/release-keystore.jks"
