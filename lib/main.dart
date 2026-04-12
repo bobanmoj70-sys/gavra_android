@@ -30,53 +30,100 @@ import 'utils/v3_time_utils.dart';
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 bool _localNotificationsInitialized = false;
+Future<void>? _localNotificationsInitInFlight;
 // Rezultat Firebase inicijalizacije - keširano da se izbegne dupli GMS check
 bool _firebaseInitialized = false;
+Future<void>? _supabaseInitInFlight;
 
 Future<void> _ensureLocalNotificationsInitialized() async {
   if (_localNotificationsInitialized) return;
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-  );
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsIOS,
-  );
+  final inFlight = _localNotificationsInitInFlight;
+  if (inFlight != null) {
+    await inFlight;
+    return;
+  }
 
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: onNotificationTap,
-    onDidReceiveBackgroundNotificationResponse: onNotificationTap,
-  );
+  final initFuture = () async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
 
-  const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    description: 'Obaveštenja o statusu zahteva',
-    importance: Importance.max,
-    playSound: true,
-    enableVibration: true,
-  );
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: onNotificationTap,
+      onDidReceiveBackgroundNotificationResponse: onNotificationTap,
+    );
 
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'gavra_push_v2',
+      'Gavra obaveštenja',
+      description: 'Obaveštenja o statusu zahteva',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
 
-  _localNotificationsInitialized = true;
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    _localNotificationsInitialized = true;
+  }();
+
+  _localNotificationsInitInFlight = initFuture;
+  try {
+    await initFuture;
+  } finally {
+    _localNotificationsInitInFlight = null;
+  }
+}
+
+Future<void> _ensureSupabaseInitialized() async {
+  if (isSupabaseReady) return;
+
+  final inFlight = _supabaseInitInFlight;
+  if (inFlight != null) {
+    await inFlight;
+    return;
+  }
+
+  final initFuture = () async {
+    await configService.initializeBasic();
+    if (isSupabaseReady) return;
+    await Supabase.initialize(
+      url: configService.getSupabaseUrl(),
+      anonKey: configService.getSupabaseAnonKey(),
+    );
+  }();
+
+  _supabaseInitInFlight = initFuture;
+  try {
+    await initFuture;
+  } finally {
+    _supabaseInitInFlight = null;
+  }
 }
 
 void main() async {
+  debugPrint('🚀 [main] 1. START');
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('🚀 [main] 2. WidgetsFlutterBinding DONE');
   initDanHelperGlobals();
 
   // KONFIGURACIJA - Inicijalizuj osnovne kredencijale (bez Supabase)
   try {
-    await configService.initializeBasic();
+    debugPrint('🚀 [main] 3. configService start');
+    await configService.initializeBasic().timeout(const Duration(seconds: 3));
+    debugPrint('🚀 [main] 3. configService completed');
   } catch (e) {
     // Critical error - cannot continue without credentials
     throw Exception('Ne mogu da inicijalizujem osnovne kredencijale: $e');
@@ -84,30 +131,48 @@ void main() async {
 
   // SUPABASE - Inicijalizuj sa osnovnim kredencijalima
   try {
-    await Supabase.initialize(
-      url: configService.getSupabaseUrl(),
-      anonKey: configService.getSupabaseAnonKey(),
-    );
+    debugPrint('🚀 [main] 4. Supabase init start');
+    await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
+    debugPrint('🚀 [main] 4. Supabase init completed');
   } catch (e) {
-    debugPrint('âŒ [main] Supabase.initialize greška: $e');
-    throw Exception('Ne mogu da inicijalizujem Supabase: $e');
+    debugPrint('❌ [main] Supabase.initialize greška/timeout: $e');
   }
 
-  // 1. Pokreni V3 Realtime Manager ODMAH (prije UI-a, da ima max vremena za fetch)
+  // ODMAH POKREĆEMO UI KAKO BI IZBEGLI CRN OS EKRAN
+  debugPrint('🚀 [main] 5. runApp start (Native non-blocking UI)');
+  runApp(const MyApp());
+
+  // SVE OSTALE ZADATKE GURAMO U POZADINU
+  unawaited(_postRunAppInitialization());
+}
+
+/// Pokretanje servisa u pozadini kako UI ne bi čekao i pravio deadlock
+Future<void> _postRunAppInitialization() async {
+  // 1. Pokreni V3 Realtime Manager (background)
+  debugPrint('🚀 [main] 6. V3MasterRealtimeManager.initV3 start (background)');
   unawaited(V3MasterRealtimeManager.instance
       .initV3()
       .catchError((Object e) => debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
 
-  // 2. ✨ FIREBASE - Inicijalizuj SINHRONO pre UI-ja (rešava FCM token grešku)
-  await _initFirebaseSync();
+  // 2. ✨ FIREBASE - Inicijalizuj asinhrono (bez blokiranja UI thread-a)
+  debugPrint('🚀 [main] 7. _initFirebaseSync start');
+  try {
+    await _initFirebaseSync().timeout(const Duration(seconds: 8));
+    debugPrint('🚀 [main] 7. _initFirebaseSync completed');
+  } catch (e) {
+    debugPrint('❌ [main] _initFirebaseSync timeout/greška: $e');
+  }
 
-  // 2.1 🎨 Tema - učitaj iz secure storage pre MaterialApp
-  await V3ThemeManager().loadThemeFromStorage();
+  // 3. 🎨 Tema - učitaj iz secure storage (ui će automatski reagovati na promenu teme)
+  try {
+    debugPrint('🚀 [main] 8. loadThemeFromStorage start');
+    await V3ThemeManager().loadThemeFromStorage().timeout(const Duration(seconds: 3));
+    debugPrint('🚀 [main] 8. loadThemeFromStorage completed');
+  } catch (e) {
+    debugPrint('⚠️ [main] Theme load timeout/greška: $e');
+  }
 
-  // 3. Pokreni UI tek kad je Firebase spreman
-  runApp(const MyApp());
-
-  // 4. Čekaj malo da se UI renderira, pa tek onda inicijalizuj ostale servise
+  // 4. Pokreni sve ostale servise sa malom pauzom
   unawaited(
     Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks)
         .catchError((Object e) => debugPrint('⚠️ [main] Startup tasks greška: $e')),
@@ -142,24 +207,28 @@ Future<void> _doStartupTasks() async {
 /// FCM push inicijalizacija u main() funkciji
 Future<void> _initFirebaseSync() async {
   try {
+    debugPrint('⏳ [_initFirebaseSync] 6.1. Start_Firebase_Init');
     bool firebaseCoreReady = false;
     bool fcmReady = false;
 
     try {
       if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp().timeout(const Duration(seconds: 5));
+        await Firebase.initializeApp().timeout(const Duration(seconds: 4));
       }
       firebaseCoreReady = true;
-      debugPrint('✅ [Firebase] Core inicijalizovan');
+      debugPrint('✅ [Firebase] 6.2. Core inicijalizovan');
 
       try {
-        await FirebaseAppCheck.instance.activate(
-          androidProvider: AndroidProvider.playIntegrity,
-          appleProvider: AppleProvider.appAttest,
-        );
-        debugPrint('✅ [Firebase] App Check aktiviran');
+        debugPrint('⏳ [_initFirebaseSync] 6.3. Start_AppCheck');
+        await FirebaseAppCheck.instance
+            .activate(
+              androidProvider: AndroidProvider.playIntegrity,
+              appleProvider: AppleProvider.appAttest,
+            )
+            .timeout(const Duration(seconds: 3));
+        debugPrint('✅ [Firebase] 6.4. App Check aktiviran');
       } catch (e) {
-        debugPrint('⚠️ [Firebase] App Check init greška: $e');
+        debugPrint('⚠️ [Firebase] App Check init greška/timeout: $e');
       }
     } catch (e) {
       debugPrint('⚠️ [Firebase] Core init greška: $e');
@@ -457,11 +526,7 @@ void onNotificationTap(NotificationResponse response) async {
   // Cold start — Supabase možda nije inicijalizovan
   if (!isSupabaseReady) {
     try {
-      await configService.initializeBasic();
-      await Supabase.initialize(
-        url: configService.getSupabaseUrl(),
-        anonKey: configService.getSupabaseAnonKey(),
-      );
+      await _ensureSupabaseInitialized();
     } catch (e) {
       debugPrint('[onNotificationTap] Supabase init greška: $e');
       await _showActionFeedback('⚠️ Greška', 'Akcija nije uspela (init): $e');
@@ -604,11 +669,7 @@ Future<void> _showActionFeedback(String title, String body) async {
 Future<void> _openPutnikProfilFromNotification(String payload) async {
   try {
     if (!isSupabaseReady) {
-      await configService.initializeBasic();
-      await Supabase.initialize(
-        url: configService.getSupabaseUrl(),
-        anonKey: configService.getSupabaseAnonKey(),
-      );
+      await _ensureSupabaseInitialized();
     }
 
     final nav = navigatorKey.currentState;

@@ -10,7 +10,7 @@ class V3ClosedAuthService {
   V3ClosedAuthService._();
 
   static SupabaseClient get _client => Supabase.instance.client;
-  static final _storage = const FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   static const _firebasePhoneKey = 'v3_firebase_putnik_phone';
   static const _firebaseVozacPhoneKey = 'v3_firebase_vozac_phone';
 

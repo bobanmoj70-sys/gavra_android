@@ -13,7 +13,8 @@ class V3ThemeManager extends ChangeNotifier {
     _themeNotifier = ValueNotifier(_currentTheme.themeData);
   }
   static final V3ThemeManager _instance = V3ThemeManager._internal();
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const FlutterSecureStorage _secureStorage =
+      FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   static const String _themeStorageKey = 'v3_theme_id';
 
   late String _currentThemeId;

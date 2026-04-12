@@ -94,13 +94,15 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   Future<void> _init() async {
-    try {
-      await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
-    } on TimeoutException catch (e) {
-      debugPrint('[V3WelcomeScreen] initV3 timeout: $e');
-    } catch (e) {
-      debugPrint('[V3WelcomeScreen] initV3 error: $e');
-    }
+    unawaited(() async {
+      try {
+        await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
+      } on TimeoutException catch (e) {
+        debugPrint('[V3WelcomeScreen] initV3 timeout: $e');
+      } catch (e) {
+        debugPrint('[V3WelcomeScreen] initV3 error: $e');
+      }
+    }());
 
     final vozacRestored = await _tryAutoLoginVozac();
     if (vozacRestored) return;
