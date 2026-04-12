@@ -1,14 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart' as fcm;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_api_availability/google_api_availability.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -20,19 +15,16 @@ import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
+import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_push_token_sync_service.dart';
 import 'services/v3/v3_putnik_service.dart';
-import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 import 'services/v3_theme_manager.dart';
-import 'utils/v3_time_utils.dart';
 
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 bool _localNotificationsInitialized = false;
 Future<void>? _localNotificationsInitInFlight;
-// Rezultat Firebase inicijalizacije - keširano da se izbegne dupli GMS check
-bool _firebaseInitialized = false;
 Future<void>? _supabaseInitInFlight;
 
 Future<void> _ensureLocalNotificationsInitialized() async {
@@ -154,25 +146,16 @@ Future<void> _postRunAppInitialization() async {
       .initV3()
       .catchError((Object e) => debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
 
-  // 2. ✨ FIREBASE - Inicijalizuj asinhrono (bez blokiranja UI thread-a)
-  debugPrint('🚀 [main] 7. _initFirebaseSync start');
+  // 2. 🎨 Tema - učitaj iz secure storage (ui će automatski reagovati na promenu teme)
   try {
-    await _initFirebaseSync().timeout(const Duration(seconds: 8));
-    debugPrint('🚀 [main] 7. _initFirebaseSync completed');
-  } catch (e) {
-    debugPrint('❌ [main] _initFirebaseSync timeout/greška: $e');
-  }
-
-  // 3. 🎨 Tema - učitaj iz secure storage (ui će automatski reagovati na promenu teme)
-  try {
-    debugPrint('🚀 [main] 8. loadThemeFromStorage start');
+    debugPrint('🚀 [main] 7. loadThemeFromStorage start');
     await V3ThemeManager().loadThemeFromStorage().timeout(const Duration(seconds: 3));
-    debugPrint('🚀 [main] 8. loadThemeFromStorage completed');
+    debugPrint('🚀 [main] 7. loadThemeFromStorage completed');
   } catch (e) {
     debugPrint('⚠️ [main] Theme load timeout/greška: $e');
   }
 
-  // 4. Pokreni sve ostale servise sa malom pauzom
+  // 3. Pokreni sve ostale servise sa malom pauzom
   unawaited(
     Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks)
         .catchError((Object e) => debugPrint('⚠️ [main] Startup tasks greška: $e')),
@@ -198,120 +181,25 @@ Future<void> _doStartupTasks() async {
   // Sve ostalo pokreni istovremeno (paralelno)
   unawaited(
     _initNotificationHandlers().catchError((Object e) => debugPrint('⚠️ [main] Notification handlers greška: $e')),
-  ); // Samo notification handlers, Firebase je već inicijalizovan
+  );
   unawaited(
     _initAppServices().catchError((Object e) => debugPrint('⚠️ [main] App services greška: $e')),
   );
 }
 
-/// FCM push inicijalizacija u main() funkciji
-Future<void> _initFirebaseSync() async {
-  try {
-    debugPrint('⏳ [_initFirebaseSync] 6.1. Start_Firebase_Init');
-    bool firebaseCoreReady = false;
-    bool fcmReady = false;
-
-    try {
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp().timeout(const Duration(seconds: 4));
-      }
-      firebaseCoreReady = true;
-      debugPrint('✅ [Firebase] 6.2. Core inicijalizovan');
-
-      try {
-        debugPrint('⏳ [_initFirebaseSync] 6.3. Start_AppCheck');
-        await FirebaseAppCheck.instance
-            .activate(
-              androidProvider: AndroidProvider.playIntegrity,
-              appleProvider: AppleProvider.appAttest,
-            )
-            .timeout(const Duration(seconds: 3));
-        debugPrint('✅ [Firebase] 6.4. App Check aktiviran');
-      } catch (e) {
-        debugPrint('⚠️ [Firebase] App Check init greška/timeout: $e');
-      }
-    } catch (e) {
-      debugPrint('⚠️ [Firebase] Core init greška: $e');
-    }
-
-    if (firebaseCoreReady) {
-      if (Platform.isIOS) {
-        fcmReady = true;
-      } else {
-        final gmsAvailability = await GoogleApiAvailability.instance
-            .checkGooglePlayServicesAvailability()
-            .timeout(const Duration(seconds: 2));
-
-        if (gmsAvailability == GooglePlayServicesAvailability.success) {
-          fcmReady = true;
-          debugPrint('✅ [FCM] GMS dostupan');
-        } else {
-          debugPrint('⚠️ [FCM] Google Play Services nedostupan: $gmsAvailability');
-        }
-      }
-    }
-
-    _firebaseInitialized = firebaseCoreReady && fcmReady;
-    if (_firebaseInitialized) {
-      debugPrint('🟢 [Push] FCM dostupan');
-    } else {
-      debugPrint('🔴 [Push] FCM nije dostupan!');
-    }
-  } catch (e) {
-    debugPrint('⚠️ [Push] Greška u FCM inicijalizaciji: $e');
-  }
-}
-
-/// Inicijalizacija Notification handlers (FCM)
+/// Inicijalizacija notification handlers + push token sync (manual SMS tok)
 Future<void> _initNotificationHandlers() async {
   try {
-    // 1. FCM Handlers (ako je Firebase inicijalizovan)
-    try {
-      // Koristimo keširani rezultat iz _initFirebaseSync - nema potrebe za ponovnim GMS pozivom
-      if (_firebaseInitialized) {
-        if (Platform.isIOS) {
-          await fcm.FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-        }
-
-        // Postavi FCM background handler
-        fcm.FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-        // FCM Foreground handler
-        fcm.FirebaseMessaging.onMessage.listen(_handleIncomingMessage);
-
-        // FCM tap na sistemsku notifikaciju (app u background-u)
-        fcm.FirebaseMessaging.onMessageOpenedApp.listen((message) async {
-          await _handleNotificationOpenedFromData(message.data);
-        });
-
-        // FCM token refresh → sync u bazu
-        fcm.FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
-          await _syncPushTokenToCurrentUser(token);
-        });
-
-        // FCM tap na sistemsku notifikaciju (cold start)
-        final initialMessage = await fcm.FirebaseMessaging.instance.getInitialMessage();
-        if (initialMessage != null) {
-          await _handleNotificationOpenedFromData(initialMessage.data);
-        }
-
-        // Initial token sync nakon starta
-        final initialToken = await fcm.FirebaseMessaging.instance.getToken();
-        if (initialToken != null && initialToken.isNotEmpty) {
-          await _syncPushTokenToCurrentUser(initialToken);
-        }
-
-        debugPrint('✅ [FCM] Handlers konfigurisani');
-      }
-    } catch (e) {
-      debugPrint('⚠️ [FCM] Handler setup greška: $e');
+    final tokenResult = await V3PushTokenProvider.getBestToken();
+    if (tokenResult != null && tokenResult.token.trim().isNotEmpty) {
+      await V3PushTokenSyncService.syncCurrentUser(
+        token: tokenResult.token,
+        provider: V3PushTokenProvider.providerAsString(tokenResult.provider),
+        reason: 'main:init_notification_handlers',
+      );
     }
 
-    // 2. Inicijalizuj Local Notifications (za interaktivne gumbe)
+    // Inicijalizuj Local Notifications (za interaktivne gumbe)
     try {
       await _ensureLocalNotificationsInitialized();
 
@@ -322,179 +210,6 @@ Future<void> _initNotificationHandlers() async {
   } catch (e) {
     debugPrint('⚠️ [Push] Opšta greška: $e');
   }
-}
-
-Future<void> _syncPushTokenToCurrentUser(String token) async {
-  final safeToken = token.trim();
-  if (safeToken.isEmpty) return;
-  await V3PushTokenSyncService.syncCurrentUser(token: safeToken, reason: 'main:_syncPushTokenToCurrentUser');
-}
-
-Future<void> _handleNotificationOpenedFromData(Map<String, dynamic> data) async {
-  try {
-    final type = data['type']?.toString().trim();
-    if (type == 'v3_putnik_eta_start') {
-      final putnikId = data['putnik_id']?.toString().trim() ?? '';
-      await _openPutnikProfilFromNotification('putnik_eta_start:$putnikId');
-    }
-  } catch (e) {
-    debugPrint('⚠️ [Push] open-from-data handler greška: $e');
-  }
-}
-
-/// Pozadinski hendler za Firebase poruke (MORA BITI TOP-LEVEL FUNKCIJA)
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(fcm.RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint("🔔 [FCM] Background poruka primljena: ${message.messageId}");
-  debugPrint("🔔 [FCM] Title: ${message.notification?.title}");
-  debugPrint("🔔 [FCM] Body: ${message.notification?.body}");
-  debugPrint("🔔 [FCM] Data: ${message.data}");
-  final type = message.data['type']?.toString().trim() ?? '';
-  if (type == 'v3_alternativa') {
-    try {
-      await _ensureLocalNotificationsInitialized();
-      final title = (message.notification?.title ?? message.data['title']?.toString() ?? '').trim();
-      final body = (message.notification?.body ?? message.data['body']?.toString() ?? '').trim();
-      await _showAlternativaActionsNotification(
-        message.data,
-        title: title,
-        body: body,
-      );
-      debugPrint('✅ [Push] Background alternativa akcije prikazane');
-    } catch (e) {
-      debugPrint('⚠️ [Push] Background alternativa fallback greška: $e');
-    }
-    return;
-  }
-  if (type.startsWith('v3_')) {
-    debugPrint('⏭️ [Push] Edge-only: background lokalni fallback isključen za type=$type');
-  }
-}
-
-/// Foreground handler za FCM
-Future<void> _handleIncomingMessage(fcm.RemoteMessage message) async {
-  debugPrint("📱 [FCM] Foreground poruka: ${message.messageId}");
-  debugPrint("📱 [FCM] Title: ${message.notification?.title}");
-  debugPrint("📱 [FCM] Body: ${message.notification?.body}");
-  debugPrint("📱 [FCM] Data: ${message.data}");
-
-  // Provjeri tip notifikacije
-  final type = message.data['type']?.toString().trim();
-  final title = (message.notification?.title ?? message.data['title']?.toString() ?? '').trim();
-  final body = (message.notification?.body ?? message.data['body']?.toString() ?? '').trim();
-  if (type == 'gps_tracking_start') {
-    await _handleGpsTrackingStart(message.data);
-  } else if (type == 'gps_tracking_complete') {
-    await _handleGpsTrackingComplete(message.data);
-  } else if (type == 'v3_alternativa') {
-    await _showAlternativaActionsNotification(
-      message.data,
-      title: title,
-      body: body,
-    );
-    debugPrint('✅ [Push] Foreground alternativa akcije prikazane');
-  } else if ((type ?? '').startsWith('v3_')) {
-    final safeTitle = title.isNotEmpty ? title : '🔔 Gavra obaveštenje';
-    final safeBody = body.isNotEmpty ? body : 'Imate novo obaveštenje.';
-    await _showActionFeedback(safeTitle, safeBody);
-    debugPrint('✅ [Push] Foreground lokalni fallback prikazan za type=$type');
-  } else {
-    debugPrint('⏭️ [Push] Edge-only: nepoznat tip bez lokalnog fallback-a: $type');
-  }
-}
-
-/// Rukovanje GPS tracking start notifikacijom
-Future<void> _handleGpsTrackingStart(Map<String, dynamic> data) async {
-  final vozacId = data['vozac_auth_id']?.toString().trim();
-  final polazakVreme = data['polazak_vreme']?.toString().trim();
-  final putniciBroj = int.tryParse('${data['putnici_count'] ?? 0}') ?? 0;
-
-  if (vozacId == null || vozacId.isEmpty || polazakVreme == null || polazakVreme.isEmpty) {
-    debugPrint('⚠️ [GPS] Nedostaju podaci u notification: vozacId=$vozacId, polazak=$polazakVreme');
-    return;
-  }
-
-  final isDriverDevice = await _isCurrentDeviceDriverForGps(vozacId);
-  if (!isDriverDevice) {
-    debugPrint('⏭️ [GPS] Preskačem reminder: uređaj nije vozačev (vozacId=$vozacId)');
-    return;
-  }
-
-  // Prikaži informativnu notifikaciju (auto-start je ugašen)
-  final gpsStartBody = 'Kreće za 15 min ($putniciBroj putnika). Pokreni START ručno u vozač ekranu.';
-  final androidDetails = AndroidNotificationDetails(
-    'gavra_gps_auto',
-    'GPS Podsetnik',
-    channelDescription: 'Podsetnik vozaču za ručno pokretanje GPS trackinga',
-    importance: Importance.max,
-    priority: Priority.high,
-    styleInformation: BigTextStyleInformation(
-      gpsStartBody,
-      contentTitle: '🚗 GPS Tracking',
-      summaryText: 'Gavra GPS',
-    ),
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    999, // Fixed ID za GPS tracking
-    '🚗 GPS Tracking',
-    gpsStartBody,
-    NotificationDetails(android: androidDetails),
-  );
-
-  debugPrint('📍 [GPS] Podsetnik prikazan za vozača $vozacId');
-}
-
-Future<bool> _isCurrentDeviceDriverForGps(String vozacId) async {
-  final targetVozacId = vozacId.trim();
-  if (targetVozacId.isEmpty) return false;
-
-  final currentVozacId = V3VozacService.currentVozac?.id;
-  if (currentVozacId != null && currentVozacId == targetVozacId) {
-    return true;
-  }
-
-  try {
-    final token = await fcm.FirebaseMessaging.instance.getToken();
-    if (token == null || token.isEmpty) return false;
-    return await V3VozacService.hasActiveVozacWithPushToken(
-      vozacId: targetVozacId,
-      pushToken: token,
-    );
-  } catch (e) {
-    debugPrint('⚠️ [GPS] Driver-device check greška: $e');
-    return false;
-  }
-}
-
-/// Vozač: svi pokupljeni → ugasi foreground GPS tracking
-Future<void> _handleGpsTrackingComplete(Map<String, dynamic> data) async {
-  final shouldStop = '${data['action_stop_foreground'] ?? ''}'.toLowerCase() == 'true';
-
-  if (!shouldStop) return;
-
-  await V3ForegroundGpsService.stopTracking();
-
-  const gpsCompleteBody = 'Svi putnici su pokupljeni. Tracking je automatski zaustavljen.';
-  final androidDetails = AndroidNotificationDetails(
-    'gavra_gps_success',
-    'GPS Success',
-    importance: Importance.high,
-    priority: Priority.high,
-    styleInformation: BigTextStyleInformation(
-      gpsCompleteBody,
-      contentTitle: '✅ GPS tracking završen',
-      summaryText: 'Gavra GPS',
-    ),
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    890,
-    '✅ GPS tracking završen',
-    gpsCompleteBody,
-    NotificationDetails(android: androidDetails),
-  );
 }
 
 // Hendler za klik na interaktivne gumbe (actions)
@@ -565,86 +280,6 @@ void onNotificationTap(NotificationResponse response) async {
   }
 }
 
-String? _extractNormalizedTime(String? rawValue) {
-  if (rawValue == null) return null;
-  final value = rawValue.trim();
-  if (value.isEmpty) return null;
-  final token = V3TimeUtils.extractHHmmToken(value);
-  if (token == null || token.isEmpty) return null;
-  return V3TimeUtils.normalizeToHHmm(token);
-}
-
-Future<void> _showAlternativaActionsNotification(
-  Map<String, dynamic> data, {
-  required String title,
-  required String body,
-}) async {
-  final rawZahtevId = data['zahtev_id']?.toString() ?? data['id']?.toString() ?? '';
-  final zahtevId = rawZahtevId.trim();
-  final altPre = _extractNormalizedTime(data['alt_pre']?.toString() ?? data['alternativa_pre_at']?.toString());
-  final altPosle = _extractNormalizedTime(data['alt_posle']?.toString() ?? data['alternativa_posle_at']?.toString());
-
-  if (zahtevId.isEmpty) {
-    final safeTitle = title.isNotEmpty ? title : 'Informacija o dostupnosti termina';
-    final safeBody = body.isNotEmpty ? body : 'Imate novo obaveštenje.';
-    await _showActionFeedback(safeTitle, safeBody);
-    return;
-  }
-
-  final actions = <AndroidNotificationAction>[];
-  if (altPre != null) {
-    actions.add(
-      AndroidNotificationAction(
-        'accept_pre',
-        'Vreme pre $altPre',
-        showsUserInterface: false,
-      ),
-    );
-  }
-  if (altPosle != null) {
-    actions.add(
-      AndroidNotificationAction(
-        'accept_posle',
-        'Vreme posle $altPosle',
-        showsUserInterface: false,
-      ),
-    );
-  }
-  actions.add(
-    const AndroidNotificationAction(
-      'reject',
-      'Odbij',
-      showsUserInterface: false,
-    ),
-  );
-
-  final safeTitle = title.isNotEmpty ? title : 'Informacija o dostupnosti termina';
-  final safeBody = body.isNotEmpty
-      ? body
-      : 'Trenutno nema slobodnih mesta u željenom terminu. Pripremili smo najbliže dostupne alternative za Vas.';
-
-  final androidDetails = AndroidNotificationDetails(
-    'gavra_push_v2',
-    'Gavra obaveštenja',
-    importance: Importance.max,
-    priority: Priority.high,
-    styleInformation: BigTextStyleInformation(
-      safeBody,
-      contentTitle: safeTitle,
-      summaryText: 'Gavra',
-    ),
-    actions: actions,
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
-    safeTitle,
-    safeBody,
-    NotificationDetails(android: androidDetails),
-    payload: '$zahtevId|${altPre ?? ''}|${altPosle ?? ''}',
-  );
-}
-
 Future<void> _showActionFeedback(String title, String body) async {
   final androidDetails = AndroidNotificationDetails(
     'gavra_push_v2',
@@ -688,10 +323,11 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
       putnikData ??= await V3PutnikService.getActiveById(payloadPutnikId);
     }
 
-    // 2) FCM token fallback: nađi putnika po push_token ili push_token_2
+    // 2) Push token fallback: nađi putnika po push_token ili push_token_2
     if (putnikData == null) {
-      final token = await fcm.FirebaseMessaging.instance.getToken();
-      if (token != null && token.isNotEmpty) {
+      final tokenResult = await V3PushTokenProvider.getBestToken();
+      final token = tokenResult?.token.trim() ?? '';
+      if (token.isNotEmpty) {
         putnikData = await V3PutnikService.getActiveByPushToken(token);
       }
     }
@@ -699,8 +335,9 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
     // 3) Cache refresh fallback
     if (putnikData == null) {
       await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
-      final token = await fcm.FirebaseMessaging.instance.getToken();
-      if (token != null && token.isNotEmpty) {
+      final tokenResult = await V3PushTokenProvider.getBestToken();
+      final token = tokenResult?.token.trim() ?? '';
+      if (token.isNotEmpty) {
         putnikData = V3MasterRealtimeManager.instance.putniciCache.values.cast<Map<String, dynamic>?>().firstWhere(
               (p) => p != null && (p['push_token'] == token || p['push_token_2'] == token),
               orElse: () => null,

@@ -112,7 +112,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
   Future<bool> _tryAutoLoginVozac() async {
     try {
-      await V3ClosedAuthService.restoreVozacFromFirebaseSession();
+      await V3ClosedAuthService.restoreVozacFromManualSmsSession();
       final restoredVozac = V3VozacService.currentVozac;
 
       if (!mounted || restoredVozac == null) return false;
@@ -141,8 +141,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
   Future<bool> _tryAutoLoginPutnik() async {
     try {
-      // Auto-login: Firebase sesija + sačuvan telefon u SecureStorage
-      final restored = await V3ClosedAuthService.restorePutnikFromFirebaseSession();
+      // Auto-login: manual SMS sesija + sačuvan telefon u SecureStorage
+      final restored = await V3ClosedAuthService.restorePutnikFromManualSmsSession();
 
       if (!mounted || restored == null) return false;
 
@@ -231,8 +231,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
     if (vozac != null) {
       V3VozacService.currentVozac = vozac;
-      await V3ClosedAuthService.saveFirebaseVozacPhone(phone);
-      await V3ClosedAuthService.clearFirebasePutnikPhone();
+      await V3ClosedAuthService.saveManualSmsVozacPhone(phone);
+      await V3ClosedAuthService.clearManualSmsPutnikPhone();
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(
         V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_vozac')
@@ -252,8 +252,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       return;
     }
     V3PutnikService.currentPutnik = putnik;
-    await V3ClosedAuthService.saveFirebasePutnikPhone(phone);
-    await V3ClosedAuthService.clearFirebaseVozacPhone();
+    await V3ClosedAuthService.saveManualSmsPutnikPhone(phone);
+    await V3ClosedAuthService.clearManualSmsVozacPhone();
     await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
     unawaited(
       V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_putnik')

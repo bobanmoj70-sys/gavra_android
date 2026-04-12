@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -61,16 +60,8 @@ class _V3PermissionScreenState extends State<V3PermissionScreen> with SingleTick
 
     try {
       // Notifikacije (vozači + putnici)
-      if (Platform.isAndroid) {
-        final notifStatus = await Permission.notification.request();
-        debugPrint('Notification permission: $notifStatus');
-      } else if (Platform.isIOS) {
-        await FirebaseMessaging.instance.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-      }
+      final notifStatus = await Permission.notification.request();
+      debugPrint('Notification permission: $notifStatus');
     } catch (e) {
       debugPrint('Greška pri proveri: $e');
     } finally {

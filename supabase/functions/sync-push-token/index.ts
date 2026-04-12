@@ -1,89 +1,16 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { decodeProtectedHeader, importX509, jwtVerify } from "npm:jose@5.9.6";
 
 type SyncPayload = {
-  firebase_id_token?: string;
+  v3_auth_id?: string;
+  sifra?: string;
   push_token?: string;
   push_provider?: string;
   slot?: "primary" | "secondary";
-};
-
-type FirebasePayload = {
-  phone_number?: string;
-  sub?: string;
-  [key: string]: unknown;
+  expected_tip?: string;
 };
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
-
-let certCache: { certs: Record<string, string>; expiresAt: number } | null = null;
-
-function normalizePhone(input: string): string {
-  const digits = input.replace(/\D+/g, "");
-  if (!digits) return "";
-
-  if (digits.startsWith("381")) return digits;
-  if (digits.startsWith("00") && digits.slice(2).startsWith("381")) return digits.slice(2);
-  if (digits.startsWith("0") && digits.length >= 7) return `381${digits.slice(1)}`;
-  return digits;
-}
-
-function parseServiceAccountProjectId(): string | null {
-  const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT") ?? "";
-  if (!raw.trim()) return null;
-
-  try {
-    const parsed = JSON.parse(raw);
-    const projectId = String(parsed?.project_id ?? "").trim();
-    return projectId || null;
-  } catch {
-    return null;
-  }
-}
-
-async function getGoogleCerts(): Promise<Record<string, string>> {
-  const now = Date.now();
-  if (certCache && certCache.expiresAt > now) {
-    return certCache.certs;
-  }
-
-  const res = await fetch("https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com");
-  if (!res.ok) {
-    throw new Error(`Cannot fetch Firebase certs: ${res.status}`);
-  }
-
-  const certs = (await res.json()) as Record<string, string>;
-  const cacheControl = res.headers.get("cache-control") ?? "";
-  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
-  const ttlMs = maxAgeMatch ? Number(maxAgeMatch[1]) * 1000 : 60 * 60 * 1000;
-
-  certCache = {
-    certs,
-    expiresAt: now + Math.max(ttlMs, 60_000),
-  };
-
-  return certs;
-}
-
-async function verifyFirebaseToken(idToken: string, projectId: string): Promise<FirebasePayload> {
-  const protectedHeader = decodeProtectedHeader(idToken);
-  const kid = String(protectedHeader.kid ?? "").trim();
-  if (!kid) throw new Error("Firebase token missing kid");
-
-  const certs = await getGoogleCerts();
-  const certPem = certs[kid];
-  if (!certPem) throw new Error("Firebase cert not found for token kid");
-
-  const key = await importX509(certPem, "RS256");
-  const { payload } = await jwtVerify(idToken, key, {
-    algorithms: ["RS256"],
-    issuer: `https://securetoken.google.com/${projectId}`,
-    audience: projectId,
-  });
-
-  return payload as FirebasePayload;
-}
 
 function badRequest(message: string, status = 400): Response {
   return new Response(JSON.stringify({ ok: false, error: message }), {
@@ -100,75 +27,48 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "";
-    const firebaseProjectId = parseServiceAccountProjectId();
 
     if (!supabaseUrl || !anonKey) {
       return badRequest("Missing Supabase server credentials", 500);
     }
-    if (!firebaseProjectId) {
-      return badRequest("Missing FIREBASE_SERVICE_ACCOUNT project_id", 500);
-    }
 
     const payload = (await req.json()) as SyncPayload;
-    const firebaseIdToken = String(payload.firebase_id_token ?? "").trim();
+    const userId = String(payload.v3_auth_id ?? "").trim();
+    const sifra = String(payload.sifra ?? "").trim();
     const pushToken = String(payload.push_token ?? "").trim();
     const pushProvider = String(payload.push_provider ?? "fcm").trim().toLowerCase();
     const slot = payload.slot === "secondary" ? "secondary" : "primary";
+    const expectedTip = String(payload.expected_tip ?? "").trim();
 
-    if (!firebaseIdToken) return badRequest("firebase_id_token is required");
+    if (!userId) return badRequest("v3_auth_id is required");
     if (!pushToken) return badRequest("push_token is required");
     if (!pushProvider) return badRequest("push_provider is required");
-
-    const verified = await verifyFirebaseToken(firebaseIdToken, firebaseProjectId);
-    const firebaseUid = String(verified.sub ?? "").trim();
-    if (!firebaseUid) {
-      return badRequest("Firebase token has no uid (sub)", 403);
-    }
-
-    const phoneNumber = String(verified.phone_number ?? "").trim();
-    const normalizedPhone = normalizePhone(phoneNumber);
 
     const client = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    if (!normalizedPhone) {
-      return badRequest("Firebase token has no phone_number", 403);
-    }
-
-    const { data: phoneRows, error: phoneRowsError } = await client
+    const { data: row, error: rowError } = await client
       .from("v3_auth")
-      .select("id, telefon, telefon_2, tip, firebase_uid");
+      .select("id, tip, sifra")
+      .eq("id", userId)
+      .maybeSingle();
 
-    if (phoneRowsError) {
-      return badRequest(`v3_auth phone lookup error: ${phoneRowsError.message}`, 500);
+    if (rowError) {
+      return badRequest(`v3_auth lookup error: ${rowError.message}`, 500);
+    }
+    if (!row) {
+      return badRequest("v3_auth row not found", 404);
     }
 
-    const matches = (phoneRows ?? []).filter((row: Record<string, unknown>) => {
-      const rowPhone1 = normalizePhone(String(row.telefon ?? ""));
-      const rowPhone2 = normalizePhone(String(row.telefon_2 ?? ""));
-      return (!!rowPhone1 && rowPhone1 === normalizedPhone) || (!!rowPhone2 && rowPhone2 === normalizedPhone);
-    });
-
-    if ((matches?.length ?? 0) === 0) {
-      return badRequest("No matching v3_auth row for phone_number", 403);
-    }
-    if ((matches?.length ?? 0) > 1) {
-      return badRequest("Multiple v3_auth rows matched phone_number", 409);
+    const rowTip = String(row.tip ?? "").trim();
+    if (expectedTip && rowTip && expectedTip !== rowTip) {
+      return badRequest("expected_tip mismatch", 403);
     }
 
-    const target = matches?.[0] as Record<string, unknown>;
-
-    const rowTip = String(target.tip ?? "");
-
-    const rowFirebaseUid = String(target.firebase_uid ?? "").trim();
-    const isFirstBind = rowFirebaseUid === "";
-
-    // Autorizacija i vezivanje rade isključivo po phone_number iz verifikovanog Firebase tokena.
-    
-    const targetId = String(target.id ?? "").trim();
-    if (!targetId) {
-      return badRequest("Matched row missing id", 500);
+    const rowSifra = String(row.sifra ?? "").trim();
+    if (sifra && rowSifra && sifra !== rowSifra) {
+      return badRequest("sifra mismatch", 403);
     }
 
     const updatePayload: Record<string, unknown> =
@@ -176,12 +76,10 @@ Deno.serve(async (req) => {
         ? { push_token_2: pushToken, push_provider_2: pushProvider }
         : { push_token: pushToken, push_provider: pushProvider };
 
-    updatePayload.firebase_uid = firebaseUid;
-
     const { error: updateError } = await client
       .from("v3_auth")
       .update(updatePayload)
-      .eq("id", targetId);
+      .eq("id", userId);
 
     if (updateError) {
       return badRequest(`v3_auth update error: ${updateError.message}`, 500);
@@ -190,12 +88,10 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: true,
-        id: targetId,
+        v3_auth_id: userId,
         tip: rowTip,
         slot,
         provider: pushProvider,
-        firebase_uid: firebaseUid,
-        first_bind: isFirstBind,
       }),
       { status: 200, headers: jsonHeaders },
     );

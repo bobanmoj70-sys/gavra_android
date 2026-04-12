@@ -8,7 +8,6 @@ import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_firebase_sms_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
@@ -184,7 +183,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     _loadingDodela = true;
     try {
       final rows =
-          await supabase.from('v3_trenutna_dodela').select('termin_id, status').eq('vozac_auth_id', vozacAuthId);
+          await supabase.from('v3_trenutna_dodela').select('termin_id, status').eq('vozac_v3_auth_id', vozacAuthId);
 
       final assigned = <String>{};
       for (final row in (rows as List<dynamic>)) {
@@ -222,8 +221,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       schema: 'public',
       table: 'v3_trenutna_dodela',
       callback: (payload) {
-        final newVozacId = payload.newRecord['vozac_auth_id']?.toString().trim() ?? '';
-        final oldVozacId = payload.oldRecord['vozac_auth_id']?.toString().trim() ?? '';
+        final newVozacId = payload.newRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
+        final oldVozacId = payload.oldRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
         if (newVozacId != vozacAuthId && oldVozacId != vozacAuthId) return;
         _refreshDodelaFromRealtime();
       },
@@ -583,8 +582,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
     if (ok == true && mounted) {
       V3VozacService.currentVozac = null;
-      await V3FirebaseSmsService.signOut();
-      await V3ClosedAuthService.clearFirebaseVozacPhone();
+      await V3ClosedAuthService.clearManualSmsVozacPhone();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),

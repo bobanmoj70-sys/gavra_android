@@ -7,7 +7,6 @@ import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_firebase_sms_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
@@ -257,8 +256,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     try {
       final rows = await supabase
           .from('v3_trenutna_dodela')
-          .select('termin_id, vozac_auth_id, status')
-          .eq('putnik_auth_id', putnikId);
+          .select('termin_id, vozac_v3_auth_id, status')
+          .eq('putnik_v3_auth_id', putnikId);
 
       final next = <String, String>{};
       for (final row in (rows as List<dynamic>)) {
@@ -267,7 +266,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         if (!_isDodelaStatusAktivan(status)) continue;
 
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
-        final vozacId = mapped['vozac_auth_id']?.toString().trim() ?? '';
+        final vozacId = mapped['vozac_v3_auth_id']?.toString().trim() ?? '';
         if (terminId.isEmpty || vozacId.isEmpty) continue;
 
         next[terminId] = vozacId;
@@ -663,9 +662,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
     await V3BiometricService().clearCredentials();
-    await V3FirebaseSmsService.signOut();
-    await V3ClosedAuthService.clearFirebasePutnikPhone();
-    await V3ClosedAuthService.clearFirebaseVozacPhone();
+    await V3ClosedAuthService.clearManualSmsPutnikPhone();
+    await V3ClosedAuthService.clearManualSmsVozacPhone();
     if (!mounted) return;
     V3AppSnackBar.success(context, V3PutnikProfilMessages.logoutSuccess);
     await Future<void>.delayed(const Duration(milliseconds: 350));

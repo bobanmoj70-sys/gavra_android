@@ -306,7 +306,7 @@ class V3PutnikStatistikaService {
 
     return arhiva.where((row) {
       if (row['tip'] != 'prihod') return false;
-      if (row['putnik_auth_id']?.toString() != putnikId) return false;
+      if (row['putnik_v3_auth_id']?.toString() != putnikId) return false;
       if ((row['godina'] as int?) != godina) return false;
       if ((row['mesec'] as int?) != mesec) return false;
       final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();

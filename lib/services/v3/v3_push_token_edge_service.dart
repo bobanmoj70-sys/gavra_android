@@ -1,5 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
-
 import '../../globals.dart';
 
 class V3PushTokenEdgeService {
@@ -10,27 +8,21 @@ class V3PushTokenEdgeService {
     required String provider,
     required String slot,
     String? expectedTip,
-    String? expectedId,
+    String? expectedV3AuthId,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('Firebase korisnik nije ulogovan.');
-    }
-
-    final firebaseIdToken = await user.getIdToken();
-    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
-      throw Exception('Firebase ID token je prazan.');
+    final targetId = (expectedV3AuthId ?? '').trim();
+    if (targetId.isEmpty) {
+      throw Exception('Nedostaje expectedV3AuthId za sync push tokena.');
     }
 
     final response = await supabase.functions.invoke(
       'sync-push-token',
       body: {
-        'firebase_id_token': firebaseIdToken,
+        'v3_auth_id': targetId,
         'push_token': pushToken,
         'push_provider': provider,
         'slot': slot,
         if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
-        if (expectedId != null && expectedId.isNotEmpty) 'expected_id': expectedId,
       },
     );
 

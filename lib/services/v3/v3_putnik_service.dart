@@ -112,7 +112,7 @@ class V3PutnikService {
           pushToken: token,
           provider: provider,
           slot: 'primary',
-          expectedId: putnikId,
+          expectedV3AuthId: putnikId,
         );
         return {'push_token': token, 'push_provider': provider};
       }
@@ -122,7 +122,7 @@ class V3PutnikService {
           pushToken: token,
           provider: provider,
           slot: 'secondary',
-          expectedId: putnikId,
+          expectedV3AuthId: putnikId,
         );
         return {'push_token_2': token, 'push_provider_2': provider};
       }
@@ -131,7 +131,7 @@ class V3PutnikService {
         pushToken: token,
         provider: provider,
         slot: 'secondary',
-        expectedId: putnikId,
+        expectedV3AuthId: putnikId,
       );
       return {'push_token_2': token, 'push_provider_2': provider};
     } catch (e) {

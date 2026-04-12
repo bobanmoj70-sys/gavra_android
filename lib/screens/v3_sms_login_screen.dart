@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:math';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,7 +10,6 @@ import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_firebase_sms_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
@@ -142,16 +141,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    if (FirebaseAuth.instance.currentUser == null) {
-      await _secureStorage.delete(key: widget.biometricKey!);
-      if (mounted) {
-        setState(() => _hasSavedCredentials = false);
-        V3AppSnackBar.info(context, 'ℹ️ Sesija je istekla. Prijavi se SMS-om.');
-        _resetToStep1();
-      }
-      return;
-    }
-
     final authenticated = await V3BiometricService().authenticate(
       reason: 'Potvrdi identitet za prijavu',
     );
@@ -210,42 +199,25 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         return;
       }
 
-      setState(() => _statusMessage = '📨 Pripremam verifikaciju...');
+      setState(() => _statusMessage = '📨 Pripremam zahtev...');
 
-      final result = await V3FirebaseSmsService.sendSmsCode(
-        phoneNumber: phone,
-        onStatusUpdate: (msg) {
-          if (mounted) setState(() => _statusMessage = msg);
-        },
-      );
+      final r = Random();
+      final otp = (100000 + r.nextInt(900000)).toString();
+
+      await Supabase.instance.client.from('v3_auth').update({'sifra': otp}).or('telefon.eq.$phone,telefon_2.eq.$phone');
 
       if (!mounted) return;
 
       _startSmsCooldown();
 
-      if (!result.success) {
-        V3AppSnackBar.error(context, result.errorMessage ?? '❌ Greška pri slanju SMS-a.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      if (result.autoVerified) {
-        setState(() {
-          _normalizedPhone = phone;
-          _statusMessage = '✅ Auto-verifikacija uspešna!';
-        });
-        await _advanceAfterVerifiedOtp();
-        return;
-      }
-
       setState(() {
-        _verificationId = result.verificationId;
+        _verificationId = 'custom_sms';
         _normalizedPhone = phone;
         _step = _SmsStep.unosKoda;
         _statusMessage = '';
       });
 
-      V3AppSnackBar.info(context, '📨 SMS kod je poslat na $phone');
+      V3AppSnackBar.success(context, '✅ Kod je poslat dežurnom vozaču. Očekujte SMS!');
     } catch (e) {
       if (!mounted) return;
       V3AppSnackBar.error(context, 'Greška: $e');
@@ -277,18 +249,23 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final otpResult = await V3FirebaseSmsService.verifySmsCode(
-        verificationId: _verificationId!,
-        smsCode: code,
-      );
+      final storedRaw = await Supabase.instance.client
+          .from('v3_auth')
+          .select('sifra')
+          .or('telefon.eq.$_normalizedPhone,telefon_2.eq.$_normalizedPhone')
+          .maybeSingle();
 
       if (!mounted) return;
 
-      if (!otpResult.success) {
-        V3AppSnackBar.error(context, otpResult.errorMessage ?? '❌ Pogrešan kod.');
+      if (storedRaw == null || storedRaw['sifra']?.toString() != code) {
+        V3AppSnackBar.error(context, '❌ Pogrešan kod.');
         setState(() => _statusMessage = '');
         return;
       }
+
+      await Supabase.instance.client
+          .from('v3_auth')
+          .update({'sifra': null}).or('telefon.eq.$_normalizedPhone,telefon_2.eq.$_normalizedPhone');
 
       setState(() => _statusMessage = '✅ Kod tačan!');
       await _advanceAfterVerifiedOtp();
@@ -313,7 +290,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
     if (vozac != null) {
-      await _syncFirebaseUidForAuthorizedPhone(phone);
       if (!mounted) return;
       await _finalize();
       return;
@@ -326,8 +302,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _resetToStep1();
       return;
     }
-
-    await _syncFirebaseUidForAuthorizedPhone(phone);
 
     final hasName = (putnik['ime_prezime']?.toString().trim().isNotEmpty ?? false);
     final hasTip = (putnik['tip_putnika']?.toString().trim().isNotEmpty ?? false);
@@ -435,29 +409,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       setState(() => _statusMessage = '');
     } finally {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _syncFirebaseUidForAuthorizedPhone(String phone) async {
-    final normalizedPhone = V3ClosedAuthService.normalizePhone(phone);
-    if (normalizedPhone.isEmpty) return;
-
-    final uid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
-    if (uid.isEmpty) return;
-
-    try {
-      final result = await Supabase.instance.client.rpc(
-        'v3_auth_bind_firebase_uid',
-        params: {
-          'p_telefon': normalizedPhone,
-          'p_firebase_uid': uid,
-        },
-      );
-      if (result != true) {
-        debugPrint('[V3SmsLoginScreen] firebase_uid sync skipped for phone=$normalizedPhone');
-      }
-    } catch (e) {
-      debugPrint('[V3SmsLoginScreen] firebase_uid sync error: $e');
     }
   }
 
@@ -629,7 +580,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       children: [
         _buildInfoBox(
           icon: Icons.sms_outlined,
-          text: 'SMS kod je poslat na $_normalizedPhone\n\nUnesite 6-cifreni kod:',
+          text: 'Zahtev je poslat! Sačekajte prijem SMS-a na $_normalizedPhone\n\nUnesite 6-cifreni kod:',
         ),
         const SizedBox(height: 24),
         TextField(

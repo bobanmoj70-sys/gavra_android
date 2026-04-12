@@ -115,7 +115,7 @@ class V3VozacService {
           provider: provider,
           slot: 'primary',
           expectedTip: 'vozac',
-          expectedId: vozacId,
+          expectedV3AuthId: vozacId,
         );
         return {'push_token': token, 'push_provider': provider};
       }
@@ -126,7 +126,7 @@ class V3VozacService {
           provider: provider,
           slot: 'secondary',
           expectedTip: 'vozac',
-          expectedId: vozacId,
+          expectedV3AuthId: vozacId,
         );
         return {'push_token_2': token, 'push_provider_2': provider};
       }
@@ -136,7 +136,7 @@ class V3VozacService {
         provider: provider,
         slot: 'secondary',
         expectedTip: 'vozac',
-        expectedId: vozacId,
+        expectedV3AuthId: vozacId,
       );
       return {'push_token_2': token, 'push_provider_2': provider};
     } catch (e) {

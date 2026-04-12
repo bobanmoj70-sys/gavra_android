@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -28,15 +27,9 @@ class V3RolePermissionService {
     if (alreadyPrompted) return;
 
     try {
+      final notifStatus = await Permission.notification.request();
       if (Platform.isIOS) {
-        final settings = await FirebaseMessaging.instance.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-        debugPrint('[Permissions] iOS push status: ${settings.authorizationStatus}');
-      } else {
-        await Permission.notification.request();
+        debugPrint('[Permissions] iOS push status: $notifStatus');
       }
     } catch (e) {
       debugPrint('[Permissions] Push dozvola greška: $e');

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,8 +10,8 @@ class V3ClosedAuthService {
 
   static SupabaseClient get _client => Supabase.instance.client;
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
-  static const _firebasePhoneKey = 'v3_firebase_putnik_phone';
-  static const _firebaseVozacPhoneKey = 'v3_firebase_vozac_phone';
+  static const _manualSmsPutnikPhoneKey = 'v3_manual_sms_putnik_phone';
+  static const _manualSmsVozacPhoneKey = 'v3_manual_sms_vozac_phone';
 
   static String normalizePhone(String rawPhone) => V3PhoneUtils.normalize(rawPhone.trim());
 
@@ -25,35 +24,32 @@ class V3ClosedAuthService {
     return res == true;
   }
 
-  // ─── Firebase Phone Auth sesija ─────────────────────────────────
+  // ─── Manual SMS sesija ──────────────────────────────────────────
 
-  /// Sačuvaj normalizovani telefon nakon uspešne Firebase SMS verifikacije.
-  static Future<void> saveFirebasePutnikPhone(String normalizedPhone) async {
-    await _storage.write(key: _firebasePhoneKey, value: normalizedPhone);
+  /// Sačuvaj normalizovani telefon nakon uspešne manual SMS verifikacije.
+  static Future<void> saveManualSmsPutnikPhone(String normalizedPhone) async {
+    await _storage.write(key: _manualSmsPutnikPhoneKey, value: normalizedPhone);
   }
 
-  /// Sačuvaj normalizovani telefon vozača nakon uspešne Firebase SMS verifikacije.
-  static Future<void> saveFirebaseVozacPhone(String normalizedPhone) async {
-    await _storage.write(key: _firebaseVozacPhoneKey, value: normalizedPhone);
+  /// Sačuvaj normalizovani telefon vozača nakon uspešne manual SMS verifikacije.
+  static Future<void> saveManualSmsVozacPhone(String normalizedPhone) async {
+    await _storage.write(key: _manualSmsVozacPhoneKey, value: normalizedPhone);
   }
 
-  /// Obrisi sačuvani Firebase phone (pri odjavi).
-  static Future<void> clearFirebasePutnikPhone() async {
-    await _storage.delete(key: _firebasePhoneKey);
+  /// Obriši sačuvani putnik telefon (pri odjavi).
+  static Future<void> clearManualSmsPutnikPhone() async {
+    await _storage.delete(key: _manualSmsPutnikPhoneKey);
   }
 
-  /// Obrisi sačuvani Firebase phone vozača (pri odjavi).
-  static Future<void> clearFirebaseVozacPhone() async {
-    await _storage.delete(key: _firebaseVozacPhoneKey);
+  /// Obriši sačuvani vozač telefon (pri odjavi).
+  static Future<void> clearManualSmsVozacPhone() async {
+    await _storage.delete(key: _manualSmsVozacPhoneKey);
   }
 
-  /// Auto-login: Firebase sesija postoji + telefon je sačuvan u SecureStorage.
+  /// Auto-login: telefon je sačuvan u SecureStorage.
   /// Direktno čita v3_auth tabelu.
-  static Future<Map<String, dynamic>?> restorePutnikFromFirebaseSession() async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser == null) return null;
-
-    final storedPhone = await _storage.read(key: _firebasePhoneKey);
+  static Future<Map<String, dynamic>?> restorePutnikFromManualSmsSession() async {
+    final storedPhone = await _storage.read(key: _manualSmsPutnikPhoneKey);
     if (storedPhone == null || storedPhone.isEmpty) return null;
 
     final phone = normalizePhone(storedPhone);
@@ -66,12 +62,9 @@ class V3ClosedAuthService {
     return putnik;
   }
 
-  /// Auto-login: Firebase sesija postoji + sačuvan telefon vozača u SecureStorage.
-  static Future<void> restoreVozacFromFirebaseSession() async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser == null) return;
-
-    final storedPhone = await _storage.read(key: _firebaseVozacPhoneKey);
+  /// Auto-login: sačuvan telefon vozača u SecureStorage.
+  static Future<void> restoreVozacFromManualSmsSession() async {
+    final storedPhone = await _storage.read(key: _manualSmsVozacPhoneKey);
     if (storedPhone == null || storedPhone.isEmpty) return;
 
     final phone = normalizePhone(storedPhone);

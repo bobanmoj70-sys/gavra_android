@@ -80,14 +80,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
-      final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_auth_id, status');
+      final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_v3_auth_id, status');
       final next = <String, String>{};
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
         final status = mapped['status']?.toString() ?? '';
         if (!_isDodelaStatusAktivan(status)) continue;
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
-        final vozacId = mapped['vozac_auth_id']?.toString().trim() ?? '';
+        final vozacId = mapped['vozac_v3_auth_id']?.toString().trim() ?? '';
         if (terminId.isEmpty || vozacId.isEmpty) continue;
         next[terminId] = vozacId;
       }
@@ -391,8 +391,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
         await supabase.from('v3_trenutna_dodela').insert({
           'termin_id': operativnaId,
-          'putnik_auth_id': putnikId,
-          'vozac_auth_id': vozac.id,
+          'putnik_v3_auth_id': putnikId,
+          'vozac_v3_auth_id': vozac.id,
           'status': 'aktivan',
           'updated_by': V3AuditKorisnik.normalize('admin_termin_bulk'),
         });
@@ -468,8 +468,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
       await supabase.from('v3_trenutna_dodela').insert({
         'termin_id': operativnaId,
-        'putnik_auth_id': putnikId,
-        'vozac_auth_id': vozac.id,
+        'putnik_v3_auth_id': putnikId,
+        'vozac_v3_auth_id': vozac.id,
         'status': 'aktivan',
         'updated_by': V3AuditKorisnik.normalize('admin_individual'),
       });

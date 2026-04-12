@@ -1,10 +1,9 @@
 import 'dart:io';
 
-import 'package:firebase_messaging/firebase_messaging.dart' as fcm;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-enum V3PushProvider { fcm, hms }
+enum V3PushProvider { hms }
 
 class V3PushTokenResult {
   final String token;
@@ -22,28 +21,12 @@ class V3PushTokenProvider {
   static const MethodChannel _channel = MethodChannel('com.gavra013.gavra_android/push_token');
 
   static Future<V3PushTokenResult?> getBestToken() async {
-    final fcmToken = await _tryGetFcmToken();
-    if (fcmToken != null) {
-      return V3PushTokenResult(token: fcmToken, provider: V3PushProvider.fcm);
-    }
-
     final hmsToken = await _tryGetHmsToken();
     if (hmsToken != null) {
       return V3PushTokenResult(token: hmsToken, provider: V3PushProvider.hms);
     }
 
     return null;
-  }
-
-  static Future<String?> _tryGetFcmToken() async {
-    try {
-      final token = await fcm.FirebaseMessaging.instance.getToken();
-      final safeToken = (token ?? '').trim();
-      return safeToken.isEmpty ? null : safeToken;
-    } catch (e) {
-      debugPrint('[PushTokenProvider] FCM token unavailable: $e');
-      return null;
-    }
   }
 
   static Future<String?> _tryGetHmsToken() async {
@@ -64,8 +47,6 @@ class V3PushTokenProvider {
 
   static String providerAsString(V3PushProvider provider) {
     switch (provider) {
-      case V3PushProvider.fcm:
-        return 'fcm';
       case V3PushProvider.hms:
         return 'hms';
     }
