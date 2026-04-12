@@ -42,7 +42,7 @@ jobs:
           mkdir -p ~/.private_keys
 
           if [ -n "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}" ]; then
-            printf "%s" "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}" | base64 -d > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8
+            printf "%s" "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}" | tr -d '\n\r ' | base64 -d > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8
           elif [ -n "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" ]; then
             printf "%s" "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8
           else
@@ -51,7 +51,7 @@ jobs:
           fi
 
           if [ -n "${{ secrets.CERTIFICATE_PRIVATE_KEY_BASE64 }}" ]; then
-            printf "%s" "${{ secrets.CERTIFICATE_PRIVATE_KEY_BASE64 }}" | base64 -d > /tmp/certificate_private_key.pem
+            printf "%s" "${{ secrets.CERTIFICATE_PRIVATE_KEY_BASE64 }}" | tr -d '\n\r ' | base64 -d > /tmp/certificate_private_key.pem
           elif [ -n "${{ secrets.CERTIFICATE_PRIVATE_KEY }}" ]; then
             printf "%s" "${{ secrets.CERTIFICATE_PRIVATE_KEY }}" > /tmp/certificate_private_key.pem
           fi
@@ -120,3 +120,4 @@ jobs:
             --skip_waiting_for_build_processing false \
             --distribute_external false \
             --changelog "Automated production build."
+
