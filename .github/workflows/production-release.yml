@@ -157,7 +157,7 @@ jobs:
           fi
 
       - name: Build release AAB
-        run: flutter build appbundle --release -v -- --stacktrace --info
+        run: flutter build appbundle --release
 
       - name: Restore Google Play service account
         shell: bash

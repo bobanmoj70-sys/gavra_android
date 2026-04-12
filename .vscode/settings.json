@@ -12,6 +12,8 @@
   "dart.enableSdkFormatter": true,
   "dart.lineLength": 120,
   "dart.insertArgumentPlaceholders": false,
+  "dart.previewFlutterUiGuides": false,
+  "dart.openDevTools": "never",
   // Auto-fix on save
   "editor.formatOnSave": true,
   "editor.formatOnType": true,
