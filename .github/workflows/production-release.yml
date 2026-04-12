@@ -1,0 +1,194 @@
+name: Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Release target"
+        required: true
+        default: "android"
+        type: choice
+        options:
+          - android
+          - ios
+          - both
+
+jobs:
+  android-release:
+    if: ${{ github.event.inputs.target == 'android' || github.event.inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+      - name: Prepare env file
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.DOTENV_FILE_CONTENTS }}" ]; then
+            printf "%s" "${{ secrets.DOTENV_FILE_CONTENTS }}" > .env
+          else
+            touch .env
+          fi
+
+      - name: Restore Android credentials from secrets
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/assets
+
+          printf "%s" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release-keystore.jks
+
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release-keystore.jks
+          EOF
+
+          printf "%s" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+
+          if [ -n "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" ]; then
+            printf "%s" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/src/main/assets/agconnect-services.json
+          fi
+
+      - name: Build release AAB
+        run: flutter build appbundle --release
+
+      - name: Restore Google Play service account
+        shell: bash
+        run: |
+          printf "%s" "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 -d > android/play-service-account.json
+
+      - name: Upload to Google Play Production
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: android/play-service-account.json
+          packageName: com.gavra013.gavra_android
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: production
+          status: completed
+
+      - name: Upload AAB artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
+  ios-release:
+    if: ${{ github.event.inputs.target == 'ios' || github.event.inputs.target == 'both' }}
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      BUNDLE_ID: com.gavra013.gavra013ios
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install iOS signing tools
+        run: pip3 install codemagic-cli-tools --break-system-packages
+
+      - name: Prepare env file
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.IOS_ENV }}" ]; then
+            printf "%s" "${{ secrets.IOS_ENV }}" > .env
+          else
+            touch .env
+          fi
+
+      - name: Restore App Store Connect key
+        shell: bash
+        run: |
+          mkdir -p ~/.private_keys
+          printf "%s" "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}" | tr -d '\n\r ' | base64 -d > ~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}.p8
+
+      - name: Restore certificate private key
+        shell: bash
+        run: |
+          printf "%s" "${{ secrets.CERTIFICATE_PRIVATE_KEY_BASE64 }}" | tr -d '\n\r ' | base64 -d > /tmp/certificate_private_key.pem
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+      - name: Install iOS pods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Setup keychain
+        run: keychain initialize
+
+      - name: Fetch signing files
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+          APP_STORE_CONNECT_PRIVATE_KEY: "@file:${HOME}/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}.p8"
+          CERTIFICATE_PRIVATE_KEY: "@file:/tmp/certificate_private_key.pem"
+        run: app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+
+      - name: Setup certificates
+        run: keychain add-certificates
+
+      - name: Setup code signing
+        run: xcode-project use-profiles
+
+      - name: Build iOS IPA
+        run: flutter build ipa --release --export-options-plist=$HOME/export_options.plist
+
+      - name: Install Fastlane dependencies
+        run: |
+          cd ios
+          bundle install
+
+      - name: Resolve IPA path
+        run: |
+          IPA_REL_PATH=$(find build -name '*.ipa' | head -1)
+          if [ -z "$IPA_REL_PATH" ]; then
+            echo "IPA file not found"
+            exit 1
+          fi
+          IPA_PATH="$(pwd)/${IPA_REL_PATH}"
+          echo "IPA_PATH=$IPA_PATH" >> $GITHUB_ENV
+
+      - name: Prepare App Store Connect API key JSON
+        run: |
+          ASC_KEY_IDENTIFIER_CLEAN=$(printf '%s' "${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}" | tr -d '\r\n')
+          ASC_ISSUER_ID_CLEAN=$(printf '%s' "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" | tr -d '\r\n')
+          ASC_KEY_PATH="${HOME}/.private_keys/AuthKey_${ASC_KEY_IDENTIFIER_CLEAN}.p8"
+          export ASC_KEY_IDENTIFIER_CLEAN ASC_ISSUER_ID_CLEAN ASC_KEY_PATH
+          python3 -c "import json,os; payload={'key_id': os.environ['ASC_KEY_IDENTIFIER_CLEAN'], 'issuer_id': os.environ['ASC_ISSUER_ID_CLEAN'], 'key': open(os.environ['ASC_KEY_PATH'], 'r', encoding='utf-8').read(), 'in_house': False}; open('/tmp/asc_api_key.json', 'w', encoding='utf-8').write(json.dumps(payload))"
+          echo "ASC_API_KEY_JSON=/tmp/asc_api_key.json" >> $GITHUB_ENV
+
+      - name: Upload to TestFlight
+        run: |
+          cd ios
+          bundle exec fastlane pilot upload \
+            --ipa "$IPA_PATH" \
+            --api_key_path "$ASC_API_KEY_JSON" \
+            --skip_waiting_for_build_processing false \
+            --distribute_external false \
+            --changelog "Automated production build."
