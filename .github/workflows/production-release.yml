@@ -168,11 +168,11 @@ jobs:
           decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "android/app/release-keystore.jks"
 
           cat > android/key.properties <<EOF
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=release-keystore.jks
-          EOF
+storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+storeFile=release-keystore.jks
+EOF
           echo "[OK] Created android/key.properties"
 
           echo "[*] Restoring google-services.json..."
