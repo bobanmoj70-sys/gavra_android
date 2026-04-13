@@ -76,13 +76,19 @@ Deno.serve(async (req) => {
         ? { push_token_2: pushToken, push_provider_2: pushProvider }
         : { push_token: pushToken, push_provider: pushProvider };
 
-    const { error: updateError } = await client
+    const { data: updatedRow, error: updateError } = await client
       .from("v3_auth")
       .update(updatePayload)
-      .eq("id", userId);
+      .eq("id", userId)
+      .select("id,push_token,push_provider,push_token_2,push_provider_2")
+      .maybeSingle();
 
     if (updateError) {
       return badRequest(`v3_auth update error: ${updateError.message}`, 500);
+    }
+
+    if (!updatedRow) {
+      return badRequest("v3_auth update affected 0 rows (check RLS/policies)", 403);
     }
 
     return new Response(
@@ -92,6 +98,7 @@ Deno.serve(async (req) => {
         tip: rowTip,
         slot,
         provider: pushProvider,
+        persisted_provider: slot === "secondary" ? updatedRow.push_provider_2 : updatedRow.push_provider,
       }),
       { status: 200, headers: jsonHeaders },
     );

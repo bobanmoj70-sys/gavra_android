@@ -61,9 +61,10 @@ $totalCount++; if (Add-Secret -Name "ANDROID_KEY_ALIAS" -Value "gavra-release-ke
 
 $totalCount++; if (Add-Secret -Name "ANDROID_GOOGLE_SERVICES_JSON_BASE64" -FilePath "temp_secrets/ANDROID_GOOGLE_SERVICES_JSON_BASE64.txt") { $successCount++ }
 
-$totalCount++; if (Add-Secret -Name "ANDROID_AGCONNECT_SERVICES_JSON_BASE64" -FilePath "temp_secrets/ANDROID_AGCONNECT_SERVICES_JSON_BASE64.txt") { $successCount++ }
-
 $totalCount++; if (Add-Secret -Name "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64" -FilePath "temp_secrets/GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64.txt") { $successCount++ }
+
+$androidEnvBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content ".env" -Raw)))
+$totalCount++; if (Add-Secret -Name "ANDROID_ENV_BASE64" -Value $androidEnvBase64) { $successCount++ }
 
 Write-Host ""
 Write-Host "🍎 iOS Secrets..." -ForegroundColor Cyan
@@ -76,7 +77,8 @@ $totalCount++; if (Add-Secret -Name "APP_STORE_CONNECT_PRIVATE_KEY_BASE64" -File
 
 $totalCount++; if (Add-Secret -Name "CERTIFICATE_PRIVATE_KEY_BASE64" -FilePath "temp_secrets/CERTIFICATE_PRIVATE_KEY_BASE64.txt") { $successCount++ }
 
-$totalCount++; if (Add-Secret -Name "IOS_ENV" -FilePath "temp_secrets/IOS_ENV.txt") { $successCount++ }
+$iosEnvBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content "temp_secrets/IOS_ENV.txt" -Raw)))
+$totalCount++; if (Add-Secret -Name "IOS_ENV_BASE64" -Value $iosEnvBase64) { $successCount++ }
 
 Write-Host ""
 $color = if ($successCount -eq $totalCount) { "Green" } else { "Yellow" }

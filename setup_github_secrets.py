@@ -42,17 +42,17 @@ SECRETS_CONFIG = {
         "required": True,
         "description": "Google Services JSON (Base64)"
     },
-    "ANDROID_AGCONNECT_SERVICES_JSON_BASE64": {
-        "file": "temp_secrets/ANDROID_AGCONNECT_SERVICES_JSON_BASE64.txt",
-        "type": "base64",
-        "required": False,
-        "description": "HMS agconnect JSON (Base64)"
-    },
     "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64": {
         "file": "temp_secrets/GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64.txt",
         "type": "base64",
         "required": True,
         "description": "Google Play service account JSON (Base64)"
+    },
+    "ANDROID_ENV_BASE64": {
+        "file": ".env",
+        "type": "text_to_base64",
+        "required": True,
+        "description": "Android okruženje konfiguracija (.env) kao Base64"
     },
     
     # iOS
@@ -80,11 +80,11 @@ SECRETS_CONFIG = {
         "required": True,
         "description": "iOS certificate privatni ključ (Base64)"
     },
-    "IOS_ENV": {
+    "IOS_ENV_BASE64": {
         "file": "temp_secrets/IOS_ENV.txt",
-        "type": "text",
+        "type": "text_to_base64",
         "required": True,
-        "description": "iOS okruženje konfiguracija"
+        "description": "iOS okruženje konfiguracija kao Base64"
     },
 }
 
@@ -99,7 +99,10 @@ def get_secret_value(secret_name, config):
             filepath = Path(__file__).parent / config["file"]
         
         if filepath.exists():
-            return filepath.read_text(encoding="utf-8").strip()
+            content = filepath.read_text(encoding="utf-8")
+            if config.get("type") == "text_to_base64":
+                return base64.b64encode(content.encode("utf-8")).decode("utf-8")
+            return content.strip()
         else:
             return None
     return None
@@ -119,7 +122,7 @@ def validate_secrets():
             missing.append((secret_name, config["description"]))
         elif value:
             print(f"✅ {secret_name}")
-            if config["type"] == "base64":
+            if config["type"] in ("base64", "text_to_base64"):
                 try:
                     # Testira da li je valid base64
                     base64.b64decode(value)

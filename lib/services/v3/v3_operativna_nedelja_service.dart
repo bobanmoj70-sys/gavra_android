@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
@@ -117,6 +119,73 @@ class V3OperativnaNedeljaEntry {
 class V3OperativnaNedeljaService {
   V3OperativnaNedeljaService._();
   static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
+
+  static Future<void> _notifyPutnikTerminOdobren({
+    required String putnikId,
+    required String datumIso,
+    required String grad,
+    required String polazakAt,
+  }) async {
+    try {
+      final pid = putnikId.trim();
+      if (pid.isEmpty) return;
+
+      final putnikRow = await supabase
+          .from('v3_auth')
+          .select('id,push_token,push_provider,push_token_2,push_provider_2')
+          .eq('id', pid)
+          .maybeSingle();
+      if (putnikRow == null) return;
+
+      final tokens = <Map<String, String>>[];
+      final seen = <String>{};
+
+      final token1 = (putnikRow['push_token'] ?? '').toString().trim();
+      final provider1 = (putnikRow['push_provider'] ?? 'hms').toString().trim().toLowerCase();
+      if (token1.isNotEmpty && seen.add(token1)) {
+        tokens.add({'token': token1, 'provider': provider1 == 'fcm' ? 'fcm' : 'hms'});
+      }
+
+      final token2 = (putnikRow['push_token_2'] ?? '').toString().trim();
+      final provider2 = (putnikRow['push_provider_2'] ?? 'hms').toString().trim().toLowerCase();
+      if (token2.isNotEmpty && seen.add(token2)) {
+        tokens.add({'token': token2, 'provider': provider2 == 'fcm' ? 'fcm' : 'hms'});
+      }
+
+      if (tokens.isEmpty) return;
+
+      final safeGrad = grad.trim().toUpperCase();
+      final safeDatum = V3DanHelper.parseIsoDatePart(datumIso);
+      final safeVreme = V3StringUtils.trimTimeToHhMm(polazakAt);
+
+      final details = <String>[];
+      if (safeDatum.isNotEmpty) details.add(safeDatum);
+      if (safeGrad.isNotEmpty) details.add(safeGrad);
+      if (safeVreme.isNotEmpty) details.add(safeVreme);
+
+      final body = details.isEmpty ? 'Vaš termin je odobren.' : 'Vaš termin je odobren: ${details.join(' • ')}';
+
+      await supabase.functions.invoke(
+        'send-push-notification',
+        body: {
+          'tokens': tokens,
+          'title': '✅ Termin odobren',
+          'body': body,
+          'data': {
+            'type': 'zahtev_status',
+            'status': 'odobreno',
+            'request_id': '',
+            'grad': safeGrad,
+            'datum': safeDatum,
+            'vreme': safeVreme,
+          },
+          'data_only': false,
+        },
+      );
+    } catch (e) {
+      debugPrint('[V3OperativnaNedeljaService] approved notify error: $e');
+    }
+  }
 
   static bool _isOperativnaAktivna(Map<String, dynamic> row) {
     final status = V3StatusFilters.deriveOperativnaStatus(row);
@@ -326,6 +395,15 @@ class V3OperativnaNedeljaService {
           if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
         });
       }
+
+      unawaited(
+        _notifyPutnikTerminOdobren(
+          putnikId: putnikId,
+          datumIso: datum,
+          grad: grad,
+          polazakAt: polazakAt,
+        ),
+      );
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] createOrUpdateByVozac error: $e');
       rethrow;

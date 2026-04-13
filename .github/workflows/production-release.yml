@@ -41,10 +41,38 @@ jobs:
       - name: Prepare env file
         shell: bash
         run: |
-          if [ -n "${{ secrets.DOTENV_FILE_CONTENTS }}" ]; then
-            printf "%s" "${{ secrets.DOTENV_FILE_CONTENTS }}" > .env
-          else
-            touch .env
+          normalize() {
+            printf "%s" "$1" | tr -d '\r\n\t '
+          }
+
+          decode_required_base64() {
+            local secret_name="$1"
+            local secret_value="$2"
+            local output_file="$3"
+            local normalized
+
+            normalized="$(normalize "$secret_value")"
+            if [ -z "$normalized" ]; then
+              echo "Missing required secret: $secret_name"
+              exit 1
+            fi
+
+            if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
+              echo "Invalid base64 in required secret: $secret_name"
+              exit 1
+            fi
+          }
+
+          decode_required_base64 "ANDROID_ENV_BASE64" "${{ secrets.ANDROID_ENV_BASE64 }}" ".env"
+
+          if ! grep -q '^SUPABASE_URL=' .env; then
+            echo "ANDROID_ENV_BASE64 must contain SUPABASE_URL"
+            exit 1
+          fi
+
+          if ! grep -q '^SUPABASE_ANON_KEY=' .env; then
+            echo "ANDROID_ENV_BASE64 must contain SUPABASE_ANON_KEY"
+            exit 1
           fi
 
       - name: Autobump app version and build
@@ -105,37 +133,6 @@ jobs:
             fi
           }
 
-          decode_json_or_base64() {
-            local secret_value="$1"
-            local output_file="$2"
-            local normalized
-            local temp_file
-            local first_char
-
-            normalized="$(trim_ws "$secret_value")"
-            if [ -z "$normalized" ]; then
-              return 0
-            fi
-
-            temp_file="$(mktemp)"
-            first_char="$(printf "%s" "$secret_value" | sed -e 's/^[[:space:]]*//' -e 's/\(.\).*/\1/')"
-
-            if [ "$first_char" = "{" ] || [ "$first_char" = "[" ] || [ "$first_char" = '"' ]; then
-              printf "%s" "$secret_value" > "$temp_file"
-            elif ! printf "%s" "$normalized" | base64 -d > "$temp_file" 2>/dev/null; then
-              printf "%s" "$secret_value" > "$temp_file"
-            fi
-
-            if ! python3 -c "import json,pathlib,sys; src=pathlib.Path(sys.argv[1]); dst=pathlib.Path(sys.argv[2]); txt=src.read_bytes().decode('utf-8-sig').strip(); assert txt, 'empty secret payload'; parsed=json.loads(txt); parsed=json.loads(parsed.strip()) if isinstance(parsed,str) else parsed; assert isinstance(parsed,dict), 'JSON root must be an object'; dst.write_text(json.dumps(parsed,separators=(',',':')),encoding='utf-8')" "$temp_file" "$output_file"
-            then
-              rm -f "$temp_file"
-              echo "Invalid JSON secret payload for $output_file"
-              exit 1
-            fi
-
-            rm -f "$temp_file"
-          }
-
           decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "android/app/release-keystore.jks"
 
           cat > android/key.properties <<EOF
@@ -145,16 +142,7 @@ jobs:
           storeFile=release-keystore.jks
           EOF
 
-          decode_json_or_base64 "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
-
-          if [ ! -s android/app/google-services.json ]; then
-            echo "Missing or empty ANDROID_GOOGLE_SERVICES_JSON_BASE64 secret"
-            exit 1
-          fi
-
-          if [ -n "$(printf "%s" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" | tr -d '[:space:]')" ]; then
-            decode_json_or_base64 "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" "android/app/src/main/assets/agconnect-services.json"
-          fi
+          decode_required_base64 "ANDROID_GOOGLE_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
 
       - name: Build release AAB
         run: flutter build appbundle --release
@@ -162,7 +150,15 @@ jobs:
       - name: Restore Google Play service account
         shell: bash
         run: |
-          printf "%s" "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 -d > android/play-service-account.json
+          normalized="$(printf "%s" "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | tr -d '\r\n\t ')"
+          if [ -z "$normalized" ]; then
+            echo "Missing required secret: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64"
+            exit 1
+          fi
+          if ! printf "%s" "$normalized" | base64 -d > android/play-service-account.json 2>/dev/null; then
+            echo "Invalid base64 in required secret: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64"
+            exit 1
+          fi
 
       - name: Upload to Google Play Production
         uses: r0adkll/upload-google-play@v1
@@ -203,10 +199,38 @@ jobs:
       - name: Prepare env file
         shell: bash
         run: |
-          if [ -n "${{ secrets.IOS_ENV }}" ]; then
-            printf "%s" "${{ secrets.IOS_ENV }}" > .env
-          else
-            touch .env
+          normalize() {
+            printf "%s" "$1" | tr -d '\r\n\t '
+          }
+
+          decode_required_base64() {
+            local secret_name="$1"
+            local secret_value="$2"
+            local output_file="$3"
+            local normalized
+
+            normalized="$(normalize "$secret_value")"
+            if [ -z "$normalized" ]; then
+              echo "Missing required secret: $secret_name"
+              exit 1
+            fi
+
+            if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
+              echo "Invalid base64 in required secret: $secret_name"
+              exit 1
+            fi
+          }
+
+          decode_required_base64 "IOS_ENV_BASE64" "${{ secrets.IOS_ENV_BASE64 }}" ".env"
+
+          if ! grep -q '^SUPABASE_URL=' .env; then
+            echo "IOS_ENV_BASE64 must contain SUPABASE_URL"
+            exit 1
+          fi
+
+          if ! grep -q '^SUPABASE_ANON_KEY=' .env; then
+            echo "IOS_ENV_BASE64 must contain SUPABASE_ANON_KEY"
+            exit 1
           fi
 
       - name: Autobump app version and build
@@ -244,12 +268,28 @@ jobs:
         shell: bash
         run: |
           mkdir -p ~/.private_keys
-          printf "%s" "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}" | tr -d '\n\r ' | base64 -d > ~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}.p8
+          normalized="$(printf "%s" "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}" | tr -d '\r\n\t ')"
+          if [ -z "$normalized" ]; then
+            echo "Missing required secret: APP_STORE_CONNECT_PRIVATE_KEY_BASE64"
+            exit 1
+          fi
+          if ! printf "%s" "$normalized" | base64 -d > ~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}.p8 2>/dev/null; then
+            echo "Invalid base64 in required secret: APP_STORE_CONNECT_PRIVATE_KEY_BASE64"
+            exit 1
+          fi
 
       - name: Restore certificate private key
         shell: bash
         run: |
-          printf "%s" "${{ secrets.CERTIFICATE_PRIVATE_KEY_BASE64 }}" | tr -d '\n\r ' | base64 -d > /tmp/certificate_private_key.pem
+          normalized="$(printf "%s" "${{ secrets.CERTIFICATE_PRIVATE_KEY_BASE64 }}" | tr -d '\r\n\t ')"
+          if [ -z "$normalized" ]; then
+            echo "Missing required secret: CERTIFICATE_PRIVATE_KEY_BASE64"
+            exit 1
+          fi
+          if ! printf "%s" "$normalized" | base64 -d > /tmp/certificate_private_key.pem 2>/dev/null; then
+            echo "Invalid base64 in required secret: CERTIFICATE_PRIVATE_KEY_BASE64"
+            exit 1
+          fi
 
       - name: Flutter dependencies
         run: flutter pub get

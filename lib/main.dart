@@ -15,10 +15,12 @@ import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
+import 'services/v3/v3_closed_auth_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_push_token_sync_service.dart';
 import 'services/v3/v3_putnik_service.dart';
+import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 import 'services/v3_theme_manager.dart';
 
@@ -222,27 +224,34 @@ Future<void> _doStartupTasks() async {
   );
 }
 
+Future<void> _restoreSessionForPushSync() async {
+  if (V3VozacService.currentVozac != null || V3PutnikService.currentPutnik != null) return;
+
+  try {
+    await V3ClosedAuthService.restoreVozacFromManualSmsSession();
+  } catch (e) {
+    debugPrint('⚠️ [Push] restoreVozacFromManualSmsSession greška: $e');
+  }
+
+  if (V3VozacService.currentVozac != null || V3PutnikService.currentPutnik != null) return;
+
+  try {
+    await V3ClosedAuthService.restorePutnikFromManualSmsSession();
+  } catch (e) {
+    debugPrint('⚠️ [Push] restorePutnikFromManualSmsSession greška: $e');
+  }
+}
+
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)
 Future<void> _initNotificationHandlers() async {
   try {
-    final tokenResult = await V3PushTokenProvider.getBestToken();
-    if (tokenResult != null && tokenResult.token.trim().isNotEmpty) {
-      await V3PushTokenSyncService.syncCurrentUser(
-        token: tokenResult.token,
-        provider: V3PushTokenProvider.providerAsString(tokenResult.provider),
-        reason: 'main:init_notification_handlers',
-      );
-    }
+    await _ensureLocalNotificationsInitialized();
+    debugPrint('✅ [Push] Notification handlers konfigurisani');
+  } catch (e) {
+    debugPrint('⚠️ [Push] Notification handlers greška: $e');
+  }
 
-    // Inicijalizuj Local Notifications (za interaktivne gumbe)
-    try {
-      await _ensureLocalNotificationsInitialized();
-      debugPrint('✅ [Push] Notification handlers konfigurisani');
-    } catch (e) {
-      debugPrint('⚠️ [Push] Notification handlers greška: $e');
-    }
-
-    // HMS push data handler — prima data poruke iz native strane
+  try {
     const MethodChannel hmsPushChannel = MethodChannel('com.gavra013.gavra_android/hms_push_data');
     hmsPushChannel.setMethodCallHandler((call) async {
       if (call.method == 'onPushData') {
@@ -251,7 +260,31 @@ Future<void> _initNotificationHandlers() async {
       }
     });
   } catch (e) {
-    debugPrint('⚠️ [Push] Opšta greška: $e');
+    debugPrint('⚠️ [Push] HMS channel bind greška: $e');
+  }
+
+  if (!isSupabaseReady) {
+    try {
+      await _ensureSupabaseInitialized().timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ [Push] Preskačem token sync (Supabase nije spreman): $e');
+      return;
+    }
+  }
+
+  try {
+    await _restoreSessionForPushSync();
+
+    final tokenResult = await V3PushTokenProvider.getBestToken();
+    if (tokenResult != null && tokenResult.token.trim().isNotEmpty) {
+      await V3PushTokenSyncService.syncCurrentUser(
+        token: tokenResult.token,
+        provider: V3PushTokenProvider.providerAsString(tokenResult.provider),
+        reason: 'main:init_notification_handlers',
+      );
+    }
+  } catch (e) {
+    debugPrint('⚠️ [Push] Token sync init greška: $e');
   }
 }
 
@@ -537,6 +570,15 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
 
 /// Inicijalizacija ostalih servisa
 Future<void> _initAppServices() async {
+  if (!isSupabaseReady) {
+    try {
+      await _ensureSupabaseInitialized().timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ [main] Preskačem app services init (Supabase nije spreman): $e');
+      return;
+    }
+  }
+
   // Inicijalizuj V3 Foreground GPS Service
   try {
     await V3ForegroundGpsService.initialize();

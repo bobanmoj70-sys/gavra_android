@@ -51,14 +51,14 @@ gh secret set ANDROID_GOOGLE_SERVICES_JSON_BASE64 --body $content
 if ($?) { Write-Host "OK: ANDROID_GOOGLE_SERVICES_JSON_BASE64"; $successCount++ } else { Write-Host "FAIL: ANDROID_GOOGLE_SERVICES_JSON_BASE64" }
 
 $totalCount++
-$content = Get-Content "temp_secrets/ANDROID_AGCONNECT_SERVICES_JSON_BASE64.txt" -Raw
-gh secret set ANDROID_AGCONNECT_SERVICES_JSON_BASE64 --body $content
-if ($?) { Write-Host "OK: ANDROID_AGCONNECT_SERVICES_JSON_BASE64"; $successCount++ } else { Write-Host "FAIL: ANDROID_AGCONNECT_SERVICES_JSON_BASE64" }
-
-$totalCount++
 $content = Get-Content "temp_secrets/GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64.txt" -Raw
 gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 --body $content
 if ($?) { Write-Host "OK: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64"; $successCount++ } else { Write-Host "FAIL: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64" }
+
+$totalCount++
+$content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content ".env" -Raw)))
+gh secret set ANDROID_ENV_BASE64 --body $content
+if ($?) { Write-Host "OK: ANDROID_ENV_BASE64"; $successCount++ } else { Write-Host "FAIL: ANDROID_ENV_BASE64" }
 
 Write-Host ""
 Write-Host "iOS Secrets:" -ForegroundColor Yellow
@@ -82,9 +82,9 @@ gh secret set CERTIFICATE_PRIVATE_KEY_BASE64 --body $content
 if ($?) { Write-Host "OK: CERTIFICATE_PRIVATE_KEY_BASE64"; $successCount++ } else { Write-Host "FAIL: CERTIFICATE_PRIVATE_KEY_BASE64" }
 
 $totalCount++
-$content = Get-Content "temp_secrets/IOS_ENV.txt" -Raw
-gh secret set IOS_ENV --body $content
-if ($?) { Write-Host "OK: IOS_ENV"; $successCount++ } else { Write-Host "FAIL: IOS_ENV" }
+$content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content "temp_secrets/IOS_ENV.txt" -Raw)))
+gh secret set IOS_ENV_BASE64 --body $content
+if ($?) { Write-Host "OK: IOS_ENV_BASE64"; $successCount++ } else { Write-Host "FAIL: IOS_ENV_BASE64" }
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan

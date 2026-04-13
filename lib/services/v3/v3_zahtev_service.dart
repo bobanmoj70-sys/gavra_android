@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -28,6 +30,72 @@ class V3ZahtevService {
   static DateTime _parseTs(String? value) {
     if (value == null || value.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
     return DateTime.tryParse(value) ?? DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static Future<void> _notifyPutnikStatusApproved(Map<String, dynamic> row) async {
+    try {
+      final putnikId = (row['created_by']?.toString() ?? '').trim();
+      if (putnikId.isEmpty) return;
+
+      final putnikRow = await supabase
+          .from('v3_auth')
+          .select('id,ime,push_token,push_provider,push_token_2,push_provider_2')
+          .eq('id', putnikId)
+          .maybeSingle();
+
+      if (putnikRow == null) return;
+
+      final tokens = <Map<String, String>>[];
+      final seen = <String>{};
+
+      final token1 = (putnikRow['push_token'] ?? '').toString().trim();
+      final provider1 = (putnikRow['push_provider'] ?? 'hms').toString().trim().toLowerCase();
+      if (token1.isNotEmpty && seen.add(token1)) {
+        tokens.add({'token': token1, 'provider': provider1 == 'fcm' ? 'fcm' : 'hms'});
+      }
+
+      final token2 = (putnikRow['push_token_2'] ?? '').toString().trim();
+      final provider2 = (putnikRow['push_provider_2'] ?? 'hms').toString().trim().toLowerCase();
+      if (token2.isNotEmpty && seen.add(token2)) {
+        tokens.add({'token': token2, 'provider': provider2 == 'fcm' ? 'fcm' : 'hms'});
+      }
+
+      if (tokens.isEmpty) return;
+
+      final grad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+      final datumIso = V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
+      final trazeni = V3TimeUtils.normalizeToHHmm(row['trazeni_polazak_at']?.toString() ?? '');
+      final odobreni = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString() ?? '');
+      final vreme = odobreni.isNotEmpty ? odobreni : trazeni;
+
+      final details = <String>[];
+      if (datumIso.isNotEmpty) details.add(datumIso);
+      if (grad.isNotEmpty) details.add(grad);
+      if (vreme.isNotEmpty) details.add(vreme);
+
+      final body =
+          details.isEmpty ? 'Vaš zahtev za termin je odobren.' : 'Vaš zahtev je odobren: ${details.join(' • ')}';
+
+      await supabase.functions.invoke(
+        'send-push-notification',
+        body: {
+          'tokens': tokens,
+          'title': '✅ Termin odobren',
+          'body': body,
+          'data': {
+            'type': 'zahtev_status',
+            'status': 'odobreno',
+            'request_id': (row['id'] ?? '').toString(),
+            'grad': grad,
+            'datum': datumIso,
+            'vreme': vreme,
+          },
+          'data_only': false,
+        },
+      );
+    } catch (e) {
+      debugPrint('[V3ZahtevService] approved push notify error: $e');
+    }
   }
 
   static List<Map<String, dynamic>> _vidljiviRedoviPoKontekstu({
@@ -216,6 +284,10 @@ class V3ZahtevService {
       final row = await _domain.setStatus(id: id, status: status, updatedBy: updByUuid);
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+
+      if (V3StatusFilters.isApproved(newStatus)) {
+        unawaited(_notifyPutnikStatusApproved(row));
+      }
     } catch (e) {
       debugPrint('[V3ZahtevService] Status update error: $e');
       rethrow;
