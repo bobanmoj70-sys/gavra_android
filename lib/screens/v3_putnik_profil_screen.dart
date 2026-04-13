@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../globals.dart';
@@ -41,6 +42,9 @@ class V3PutnikProfilScreen extends StatefulWidget {
 }
 
 class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with WidgetsBindingObserver {
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
+
   late Map<String, dynamic> _putnikData;
   Map<String, String> _activeVozacByTerminId = const {};
   PermissionStatus _notifStatus = PermissionStatus.granted;
@@ -661,6 +665,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
+
+    final phoneRaw = (_putnikData['telefon_1'] ?? _putnikData['telefon'] ?? '').toString();
+    final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
+    if (normalizedPhone.isNotEmpty) {
+      await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
+    }
+
     await V3BiometricService().clearCredentials();
     await V3ClosedAuthService.clearManualSmsPutnikPhone();
     await V3ClosedAuthService.clearManualSmsVozacPhone();

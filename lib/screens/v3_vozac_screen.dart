@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +14,7 @@ import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -48,6 +50,9 @@ class V3VozacScreen extends StatefulWidget {
 }
 
 class _V3VozacScreenState extends State<V3VozacScreen> {
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
+
   // 🎯 SISTEM OPTIMIZOVAN ZA FIKSNE ADRESE PUTNIKA:
   //
   // 1. GPS OPTIMIZACIJA:
@@ -581,8 +586,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       isDangerous: true,
     );
     if (ok == true && mounted) {
+      final phoneRaw = V3VozacService.currentVozac?.telefon1 ?? '';
+      final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
+      if (normalizedPhone.isNotEmpty) {
+        await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
+      }
+
+      await V3BiometricService().clearCredentials();
       V3VozacService.currentVozac = null;
       await V3ClosedAuthService.clearManualSmsVozacPhone();
+      await V3ClosedAuthService.clearManualSmsPutnikPhone();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const V3WelcomeScreen()),

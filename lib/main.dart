@@ -90,21 +90,27 @@ Future<void> _ensureLocalNotificationsInitialized() async {
   }
 }
 
-Future<void> _ensureSupabaseInitialized() async {
-  if (isSupabaseReady) return;
+Future<bool> _ensureSupabaseInitialized() async {
+  if (isSupabaseReady) return true;
 
   final inFlight = _supabaseInitInFlight;
   if (inFlight != null) {
     await inFlight;
-    return;
+    return isSupabaseReady;
   }
 
   final initFuture = () async {
     await configService.initializeBasic();
     if (isSupabaseReady) return;
+    final url = configService.getSupabaseUrl().trim();
+    final anonKey = configService.getSupabaseAnonKey().trim();
+    if (url.isEmpty || anonKey.isEmpty) {
+      debugPrint('⚠️ [main] Supabase kredencijali nisu dostupni.');
+      return;
+    }
     await Supabase.initialize(
-      url: configService.getSupabaseUrl(),
-      anonKey: configService.getSupabaseAnonKey(),
+      url: url,
+      anonKey: anonKey,
     );
   }();
 
@@ -114,6 +120,8 @@ Future<void> _ensureSupabaseInitialized() async {
   } finally {
     _supabaseInitInFlight = null;
   }
+
+  return isSupabaseReady;
 }
 
 void main() async {
@@ -135,8 +143,12 @@ void main() async {
   // SUPABASE - Inicijalizuj sa osnovnim kredencijalima
   try {
     debugPrint('🚀 [main] 4. Supabase init start');
-    await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
-    debugPrint('🚀 [main] 4. Supabase init completed');
+    final supabaseReady = await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
+    if (supabaseReady) {
+      debugPrint('🚀 [main] 4. Supabase init completed');
+    } else {
+      debugPrint('⚠️ [main] Supabase init incomplete, nastavljam sa fallback tokom.');
+    }
   } catch (e) {
     debugPrint('❌ [main] Supabase.initialize greška/timeout: $e');
   }
@@ -368,7 +380,11 @@ void onNotificationTap(NotificationResponse response) async {
   // Cold start — Supabase možda nije inicijalizovan
   if (!isSupabaseReady) {
     try {
-      await _ensureSupabaseInitialized();
+      final ready = await _ensureSupabaseInitialized();
+      if (!ready) {
+        await _showActionFeedback('⚠️ Greška', 'Servis trenutno nije dostupan. Pokušajte ponovo.');
+        return;
+      }
     } catch (e) {
       debugPrint('[onNotificationTap] Supabase init greška: $e');
       await _showActionFeedback('⚠️ Greška', 'Akcija nije uspela (init): $e');
@@ -454,7 +470,11 @@ Future<bool> _openSmsComposerFromAuthPayload(String payload) async {
 Future<void> _openPutnikProfilFromNotification(String payload) async {
   try {
     if (!isSupabaseReady) {
-      await _ensureSupabaseInitialized();
+      final ready = await _ensureSupabaseInitialized();
+      if (!ready) {
+        debugPrint('⚠️ [Push] Ne mogu da otvorim putnik profil (Supabase nije spreman).');
+        return;
+      }
     }
 
     final nav = navigatorKey.currentState;

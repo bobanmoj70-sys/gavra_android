@@ -15,6 +15,7 @@ class V3BiometricService {
   static const String _keyRememberMe = 'remember_me_enabled';
   static const String _keySavedPhone = 'biometric_saved_phone';
   static const String _keySavedSecret = 'biometric_saved_secret';
+  static const String _keySmsLoginPhone = 'v3_biometric_login_phone';
 
   // Provjeri da li uređaj podržava biometriju
   Future<bool> isDeviceSupported() async {
@@ -87,6 +88,7 @@ class V3BiometricService {
   Future<void> clearCredentials() async {
     await _secureStorage.delete(key: _keySavedPhone);
     await _secureStorage.delete(key: _keySavedSecret);
+    await _secureStorage.delete(key: _keySmsLoginPhone);
     await setBiometricEnabled(false);
     await setRememberMeEnabled(false);
   }

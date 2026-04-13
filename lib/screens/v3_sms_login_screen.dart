@@ -272,10 +272,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         _statusMessage = '';
       });
 
-      V3AppSnackBar.success(context, '✅ Verifikacioni kod je poslat. Molimo Vas da proverite SMS poruke.');
+      V3AppSnackBar.success(context, '✅ Zahtev za verifikacioni kod je prosleđen administratoru.');
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, 'Greška: $e');
+      debugPrint('[V3SmsLogin] _sendSms error: $e');
+      V3AppSnackBar.error(context, '❌ Trenutno ne možemo da obradimo zahtev. Pokušajte ponovo.');
       setState(() => _statusMessage = '');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -331,7 +332,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       await _advanceAfterVerifiedOtp();
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, 'Greška: $e');
+      debugPrint('[V3SmsLogin] _verifyOtp error: $e');
+      V3AppSnackBar.error(context, '❌ Trenutno ne možemo da proverimo kod. Pokušajte ponovo.');
       setState(() => _statusMessage = '');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -465,7 +467,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       await _finalize(isPutnikLogin: true);
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Čuvanje profila nije uspelo: $e');
+      debugPrint('[V3SmsLogin] _saveOnboarding error: $e');
+      V3AppSnackBar.error(context, '❌ Čuvanje profila trenutno nije moguće. Pokušajte ponovo.');
       setState(() => _statusMessage = '');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -512,7 +515,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       await widget.onVerified(phone);
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Prijava nije uspela: $e');
+      debugPrint('[V3SmsLogin] _finalize error: $e');
+      V3AppSnackBar.error(context, '❌ Prijava trenutno nije moguća. Pokušajte ponovo.');
       setState(() => _statusMessage = '');
     }
   }
@@ -676,7 +680,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       children: [
         _buildInfoBox(
           icon: Icons.sms_outlined,
-          text: 'Unesite broj telefona. Poslaćemo vam SMS kod za potvrdu identiteta.',
+          text: 'Unesite broj telefona. Zahtev za SMS kod biće prosleđen administratoru.',
         ),
         const SizedBox(height: 24),
         TextField(
@@ -731,7 +735,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       children: [
         _buildInfoBox(
           icon: Icons.sms_outlined,
-          text: 'Zahtev je poslat! Sačekajte prijem SMS-a na $_normalizedPhone\n\nUnesite 6-cifreni kod:',
+          text: 'Zahtev je prosleđen administratoru. Sačekajte SMS kod na $_normalizedPhone\n\nUnesite 6-cifreni kod:',
         ),
         const SizedBox(height: 24),
         TextField(
