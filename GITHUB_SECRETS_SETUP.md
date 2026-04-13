@@ -22,7 +22,7 @@ Trebate dodati sljedeće GitHub Secretse:
 6. **GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64**
    - Vrijednost: Vidi `temp_secrets/GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64.txt`
 
-7. **ANDROID_ENV_BASE64**
+7. **APP_ENV_BASE64**
    - Vrijednost: Base64 sadržaj lokalnog `.env` fajla (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, itd.)
 
 ## iOS Secrets
@@ -38,9 +38,6 @@ Trebate dodati sljedeće GitHub Secretse:
 
 11. **CERTIFICATE_PRIVATE_KEY_BASE64**
     - Vrijednost: Vidi `temp_secrets/CERTIFICATE_PRIVATE_KEY_BASE64.txt`
-
-12. **IOS_ENV_BASE64**
-    - Vrijednost: Base64 sadržaj `temp_secrets/IOS_ENV.txt`
 
 ## Kako dodati secretse
 

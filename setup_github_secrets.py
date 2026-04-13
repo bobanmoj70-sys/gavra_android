@@ -48,11 +48,11 @@ SECRETS_CONFIG = {
         "required": True,
         "description": "Google Play service account JSON (Base64)"
     },
-    "ANDROID_ENV_BASE64": {
+    "APP_ENV_BASE64": {
         "file": ".env",
         "type": "text_to_base64",
         "required": True,
-        "description": "Android okruženje konfiguracija (.env) kao Base64"
+        "description": "Glavno app okruženje konfiguracija (.env) kao Base64"
     },
     
     # iOS
@@ -79,12 +79,6 @@ SECRETS_CONFIG = {
         "type": "base64",
         "required": True,
         "description": "iOS certificate privatni ključ (Base64)"
-    },
-    "IOS_ENV_BASE64": {
-        "file": "temp_secrets/IOS_ENV.txt",
-        "type": "text_to_base64",
-        "required": True,
-        "description": "iOS okruženje konfiguracija kao Base64"
     },
 }
 

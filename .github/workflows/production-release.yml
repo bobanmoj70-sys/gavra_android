@@ -63,15 +63,15 @@ jobs:
             fi
           }
 
-          decode_required_base64 "ANDROID_ENV_BASE64" "${{ secrets.ANDROID_ENV_BASE64 }}" ".env"
+          decode_required_base64 "APP_ENV_BASE64" "${{ secrets.APP_ENV_BASE64 }}" ".env"
 
           if ! grep -q '^SUPABASE_URL=' .env; then
-            echo "ANDROID_ENV_BASE64 must contain SUPABASE_URL"
+            echo "APP_ENV_BASE64 must contain SUPABASE_URL"
             exit 1
           fi
 
           if ! grep -q '^SUPABASE_ANON_KEY=' .env; then
-            echo "ANDROID_ENV_BASE64 must contain SUPABASE_ANON_KEY"
+            echo "APP_ENV_BASE64 must contain SUPABASE_ANON_KEY"
             exit 1
           fi
 
@@ -221,15 +221,15 @@ jobs:
             fi
           }
 
-          decode_required_base64 "IOS_ENV_BASE64" "${{ secrets.IOS_ENV_BASE64 }}" ".env"
+          decode_required_base64 "APP_ENV_BASE64" "${{ secrets.APP_ENV_BASE64 }}" ".env"
 
           if ! grep -q '^SUPABASE_URL=' .env; then
-            echo "IOS_ENV_BASE64 must contain SUPABASE_URL"
+            echo "APP_ENV_BASE64 must contain SUPABASE_URL"
             exit 1
           fi
 
           if ! grep -q '^SUPABASE_ANON_KEY=' .env; then
-            echo "IOS_ENV_BASE64 must contain SUPABASE_ANON_KEY"
+            echo "APP_ENV_BASE64 must contain SUPABASE_ANON_KEY"
             exit 1
           fi
 
