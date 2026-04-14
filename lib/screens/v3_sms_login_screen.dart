@@ -209,26 +209,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   // ─── Korak 1: Proveri telefon + pošalji SMS ────────────────────
 
-  Future<Map<String, dynamic>?> _resolveAuthTargetByPhone(String phone) async {
-    final rows = await Supabase.instance.client
-        .from('v3_auth')
-        .select('id,sifra,updated_at')
-        .or(_buildPhoneOrClause(phone))
-        .order('updated_at', ascending: false)
-        .limit(10);
-
-    if (rows.isEmpty) return null;
-
-    if (_targetAuthId != null) {
-      final existing = rows.where((row) => row['id']?.toString() == _targetAuthId);
-      if (existing.isNotEmpty) {
-        return Map<String, dynamic>.from(existing.first);
-      }
-    }
-
-    return Map<String, dynamic>.from(rows.first);
-  }
-
   Future<void> _sendSms() async {
     if (_isSmsCooldownActive) {
       final sec = _cooldownRemainingSeconds;
@@ -261,58 +241,36 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final exists = await V3ClosedAuthService.phoneExists(phone);
+      // Nađi red po telefonu
+      final rows = await Supabase.instance.client
+          .from('v3_auth')
+          .select('id')
+          .or(_buildPhoneOrClause(phone))
+          .limit(1);
+
       if (!mounted) return;
-      if (!exists) {
+      if (rows.isEmpty) {
         V3AppSnackBar.error(context, '❌ Broj nije registrovan u sistemu.');
         setState(() => _statusMessage = '');
         return;
       }
+
+      final authId = rows.first['id'].toString().trim();
 
       setState(() => _statusMessage = '📨 Pripremam zahtev...');
 
-      final targetAuth = await _resolveAuthTargetByPhone(phone);
-      if (targetAuth == null) {
-        V3AppSnackBar.error(context, '❌ Broj nije registrovan u sistemu.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      final targetAuthId = (targetAuth['id'] ?? '').toString().trim();
-      if (targetAuthId.isEmpty) {
-        V3AppSnackBar.error(context, '❌ Ne mogu da pronađem nalog za ovaj broj.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      final existingOtp = (targetAuth['sifra'] ?? '').toString().trim();
-
-      if (existingOtp.isNotEmpty) {
-        setState(() {
-          _verificationId = 'custom_sms';
-          _targetAuthId = targetAuthId;
-          _normalizedPhone = phone;
-          _step = _SmsStep.unosKoda;
-          _statusMessage = '';
-        });
-        V3AppSnackBar.info(context, 'ℹ️ Šifra je već kreirana. Unesite postojeći kod.');
-        return;
-      }
-
       final otp = (100000 + Random().nextInt(900000)).toString();
 
+      // Upiši šifru direktno po ID
       await Supabase.instance.client
           .from('v3_auth')
-          .update({'sifra': null})
-          .or(_buildPhoneOrClause(phone))
-          .neq('id', targetAuthId);
-
-      await Supabase.instance.client.from('v3_auth').update({'sifra': otp}).eq('id', targetAuthId);
+          .update({'sifra': otp})
+          .eq('id', authId);
 
       await V3SmsAuthRequestService.notifyTargetForSmsAuthRequest(
         phone: phone,
         otp: otp,
-        requesterV3AuthId: targetAuthId,
+        requesterV3AuthId: authId,
         targetV3AuthId: _smsApprovalTargetV3AuthId,
       );
 
@@ -322,7 +280,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       setState(() {
         _verificationId = 'custom_sms';
-        _targetAuthId = targetAuthId;
         _normalizedPhone = phone;
         _step = _SmsStep.unosKoda;
         _statusMessage = '';
@@ -341,15 +298,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   // ─── Korak 2: Verifikuj OTP ────────────────────────────────────
 
-  Future<String?> _readStoredOtpForAuthId(String authId) async {
-    final rows = await Supabase.instance.client.from('v3_auth').select('sifra').eq('id', authId).limit(1);
-
-    if (rows.isEmpty) return null;
-    final first = rows.first;
-    final code = (first['sifra'] ?? '').toString().trim();
-    return code.isEmpty ? null : code;
-  }
-
   Future<void> _verifyOtp() async {
     final code = _otpController.text.trim().replaceAll(RegExp(r'\D'), '');
 
@@ -365,7 +313,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    if (_verificationId == null || _normalizedPhone == null || _targetAuthId == null) {
+    if (_normalizedPhone == null) {
       V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
       _resetToStep1();
       return;
@@ -377,11 +325,25 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final storedCode = await _readStoredOtpForAuthId(_targetAuthId!);
+      // Čitaj šifru i ID direktno po telefonu iz baze
+      final rows = await Supabase.instance.client
+          .from('v3_auth')
+          .select('id,sifra')
+          .or(_buildPhoneOrClause(_normalizedPhone!))
+          .limit(1);
 
       if (!mounted) return;
 
-      if (storedCode == null) {
+      if (rows.isEmpty) {
+        V3AppSnackBar.error(context, '❌ Broj nije pronađen. Počni ponovo.');
+        _resetToStep1();
+        return;
+      }
+
+      final authId = rows.first['id'].toString().trim();
+      final storedCode = (rows.first['sifra'] ?? '').toString().trim();
+
+      if (storedCode.isEmpty) {
         V3AppSnackBar.error(context, '❌ Kod nije pronađen ili je istekao. Zatražite novi kod.');
         setState(() => _statusMessage = '');
         return;
@@ -394,9 +356,16 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         return;
       }
 
-      await Supabase.instance.client.from('v3_auth').update({'sifra': null}).eq('id', _targetAuthId!);
+      // Obrisi šifru
+      await Supabase.instance.client
+          .from('v3_auth')
+          .update({'sifra': null})
+          .eq('id', authId);
 
-      setState(() => _statusMessage = '✅ Kod tačan!');
+      setState(() {
+        _targetAuthId = authId;
+        _statusMessage = '✅ Kod tačan!';
+      });
       await _advanceAfterVerifiedOtp();
     } catch (e) {
       if (!mounted) return;
