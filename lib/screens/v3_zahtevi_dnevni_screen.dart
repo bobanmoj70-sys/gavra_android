@@ -11,7 +11,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_dialog_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -110,7 +110,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       V3TextUtils.setControllerText('posle', V3DanHelper.formatVreme(dPosle.hour, dPosle.minute));
     }
 
-    final result = await V3DialogUtils.showCustomDialog<bool>(
+    final result = await V3DialogHelper.showCustomDialog<bool>(
       context: context,
       title: 'Ponudi alternativu',
       titleIcon: Icons.sync_alt,
