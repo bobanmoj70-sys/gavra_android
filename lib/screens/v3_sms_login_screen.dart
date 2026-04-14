@@ -781,7 +781,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                 'Poštovani korisnici, zbog dodatnih bezbednosnih usklađivanja sa zahtevima platformi (Google Play i '
                 'iOS), kao i završetka sertifikacionih procedura radi veće zaštite vaših podataka, produžen je period '
                 'ograničene dostupnosti aplikacije. Ove mere su uvedene kako bi se smanjio rizik od zloupotreba, '
-                'uključujući pokušaje phishing napada i neovlašćenog oglašavanja. Hvala vam na strpljenju i razumevanju.',
+                'uključujući pokušaje phishing napada, krađe vaših podataka i neovlašćenog oglašavanja. Hvala vam na strpljenju i razumevanju.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.92),
