@@ -64,6 +64,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   bool _isLoading = false;
   String _statusMessage = '';
   String? _verificationId;
+  String? _targetAuthId;
   String? _normalizedPhone;
   String _selectedTip = '';
   V3Adresa? _selectedBcAdresa;
@@ -208,6 +209,26 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   // ─── Korak 1: Proveri telefon + pošalji SMS ────────────────────
 
+  Future<Map<String, dynamic>?> _resolveAuthTargetByPhone(String phone) async {
+    final rows = await Supabase.instance.client
+        .from('v3_auth')
+        .select('id,sifra,updated_at')
+        .or(_buildPhoneOrClause(phone))
+        .order('updated_at', ascending: false)
+        .limit(10);
+
+    if (rows.isEmpty) return null;
+
+    if (_targetAuthId != null) {
+      final existing = rows.where((row) => row['id']?.toString() == _targetAuthId);
+      if (existing.isNotEmpty) {
+        return Map<String, dynamic>.from(existing.first);
+      }
+    }
+
+    return Map<String, dynamic>.from(rows.first);
+  }
+
   Future<void> _sendSms() async {
     if (_isSmsCooldownActive) {
       final sec = _cooldownRemainingSeconds;
@@ -250,17 +271,48 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       setState(() => _statusMessage = '📨 Pripremam zahtev...');
 
-      final existingOtp = await _readStoredOtpForPhone(phone);
-      final otp = existingOtp ?? (100000 + Random().nextInt(900000)).toString();
-
-      if (existingOtp == null) {
-        final phoneOrClause = _buildPhoneOrClause(phone);
-        await Supabase.instance.client.from('v3_auth').update({'sifra': otp}).or(phoneOrClause);
+      final targetAuth = await _resolveAuthTargetByPhone(phone);
+      if (targetAuth == null) {
+        V3AppSnackBar.error(context, '❌ Broj nije registrovan u sistemu.');
+        setState(() => _statusMessage = '');
+        return;
       }
+
+      final targetAuthId = (targetAuth['id'] ?? '').toString().trim();
+      if (targetAuthId.isEmpty) {
+        V3AppSnackBar.error(context, '❌ Ne mogu da pronađem nalog za ovaj broj.');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
+      final existingOtp = (targetAuth['sifra'] ?? '').toString().trim();
+
+      if (existingOtp.isNotEmpty) {
+        setState(() {
+          _verificationId = 'custom_sms';
+          _targetAuthId = targetAuthId;
+          _normalizedPhone = phone;
+          _step = _SmsStep.unosKoda;
+          _statusMessage = '';
+        });
+        V3AppSnackBar.info(context, 'ℹ️ Šifra je već kreirana. Unesite postojeći kod.');
+        return;
+      }
+
+      final otp = (100000 + Random().nextInt(900000)).toString();
+
+      await Supabase.instance.client
+          .from('v3_auth')
+          .update({'sifra': null})
+          .or(_buildPhoneOrClause(phone))
+          .neq('id', targetAuthId);
+
+      await Supabase.instance.client.from('v3_auth').update({'sifra': otp}).eq('id', targetAuthId);
 
       await V3SmsAuthRequestService.notifyTargetForSmsAuthRequest(
         phone: phone,
         otp: otp,
+        requesterV3AuthId: targetAuthId,
         targetV3AuthId: _smsApprovalTargetV3AuthId,
       );
 
@@ -270,6 +322,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       setState(() {
         _verificationId = 'custom_sms';
+        _targetAuthId = targetAuthId;
         _normalizedPhone = phone;
         _step = _SmsStep.unosKoda;
         _statusMessage = '';
@@ -288,8 +341,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   // ─── Korak 2: Verifikuj OTP ────────────────────────────────────
 
-  Future<String?> _readStoredOtpForPhone(String phone) async {
-    final rows = await Supabase.instance.client.from('v3_auth').select('sifra').or(_buildPhoneOrClause(phone)).limit(1);
+  Future<String?> _readStoredOtpForAuthId(String authId) async {
+    final rows = await Supabase.instance.client.from('v3_auth').select('sifra').eq('id', authId).limit(1);
 
     if (rows.isEmpty) return null;
     final first = rows.first;
@@ -312,7 +365,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    if (_verificationId == null || _normalizedPhone == null) {
+    if (_verificationId == null || _normalizedPhone == null || _targetAuthId == null) {
       V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
       _resetToStep1();
       return;
@@ -324,7 +377,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final storedCode = await _readStoredOtpForPhone(_normalizedPhone!);
+      final storedCode = await _readStoredOtpForAuthId(_targetAuthId!);
 
       if (!mounted) return;
 
@@ -341,7 +394,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         return;
       }
 
-      await Supabase.instance.client.from('v3_auth').update({'sifra': null}).or(_buildPhoneOrClause(_normalizedPhone!));
+      await Supabase.instance.client.from('v3_auth').update({'sifra': null}).eq('id', _targetAuthId!);
 
       setState(() => _statusMessage = '✅ Kod tačan!');
       await _advanceAfterVerifiedOtp();
@@ -598,6 +651,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     setState(() {
       _step = _SmsStep.unosTelefona;
       _verificationId = null;
+      _targetAuthId = null;
       _normalizedPhone = null;
       _imeController.clear();
       _prezimeController.clear();
