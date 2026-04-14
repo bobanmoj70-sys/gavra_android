@@ -70,6 +70,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   V3Adresa? _selectedBcAdresa;
   V3Adresa? _selectedVsAdresa;
   String _missingProfileMessage = '';
+  String _generatedOtp = '';
   DateTime? _nextSmsAllowedAt;
   Timer? _cooldownTimer;
 
@@ -256,11 +257,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       setState(() => _statusMessage = '📨 Pripremam zahtev...');
 
       // Ako već postoji šifra — koristi je, ne prepisuj
-      final existing = await Supabase.instance.client
-          .from('v3_auth')
-          .select('sifra')
-          .eq('id', authId)
-          .limit(1);
+      final existing = await Supabase.instance.client.from('v3_auth').select('sifra').eq('id', authId).limit(1);
       final existingSifra = (existing.isNotEmpty ? existing.first['sifra'] : null)?.toString().trim() ?? '';
 
       final otp = existingSifra.isNotEmpty ? existingSifra : (100000 + Random().nextInt(900000)).toString();
@@ -284,11 +281,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       setState(() {
         _verificationId = 'custom_sms';
         _normalizedPhone = phone;
+        _generatedOtp = otp;
         _step = _SmsStep.unosKoda;
         _statusMessage = '';
       });
-
-      V3AppSnackBar.success(context, '✅ Zahtev za verifikacioni kod je prosleđen administratoru.');
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _sendSms error: $e');
@@ -839,8 +835,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildInfoBox(
-          icon: Icons.sms_outlined,
-          text: 'Zahtev je prosleđen administratoru. Sačekajte SMS kod na $_normalizedPhone\n\nUnesite 6-cifreni kod:',
+          icon: Icons.lock_outlined,
+          text: 'Vaš verifikacioni kod je:\n\n$_generatedOtp\n\nUnesite kod u polje ispod:',
         ),
         const SizedBox(height: 24),
         TextField(
