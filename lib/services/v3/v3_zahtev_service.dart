@@ -37,11 +37,8 @@ class V3ZahtevService {
       final putnikId = (row['created_by']?.toString() ?? '').trim();
       if (putnikId.isEmpty) return;
 
-      final putnikRow = await supabase
-          .from('v3_auth')
-          .select('id,ime,push_token,push_provider,push_token_2,push_provider_2')
-          .eq('id', putnikId)
-          .maybeSingle();
+      final putnikRow =
+          await supabase.from('v3_auth').select('id,ime,push_token,push_token_2').eq('id', putnikId).maybeSingle();
 
       if (putnikRow == null) return;
 
@@ -49,15 +46,13 @@ class V3ZahtevService {
       final seen = <String>{};
 
       final token1 = (putnikRow['push_token'] ?? '').toString().trim();
-      final provider1 = (putnikRow['push_provider'] ?? 'hms').toString().trim().toLowerCase();
       if (token1.isNotEmpty && seen.add(token1)) {
-        tokens.add({'token': token1, 'provider': provider1 == 'fcm' ? 'fcm' : 'hms'});
+        tokens.add({'token': token1, 'provider': 'fcm'});
       }
 
       final token2 = (putnikRow['push_token_2'] ?? '').toString().trim();
-      final provider2 = (putnikRow['push_provider_2'] ?? 'hms').toString().trim().toLowerCase();
       if (token2.isNotEmpty && seen.add(token2)) {
-        tokens.add({'token': token2, 'provider': provider2 == 'fcm' ? 'fcm' : 'hms'});
+        tokens.add({'token': token2, 'provider': 'fcm'});
       }
 
       if (tokens.isEmpty) return;

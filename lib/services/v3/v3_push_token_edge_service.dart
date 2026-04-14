@@ -5,7 +5,7 @@ class V3PushTokenEdgeService {
 
   static Future<void> syncPushToken({
     required String pushToken,
-    required String provider,
+    required String deviceId,
     required String slot,
     String? expectedTip,
     String? expectedV3AuthId,
@@ -20,7 +20,7 @@ class V3PushTokenEdgeService {
       body: {
         'v3_auth_id': targetId,
         'push_token': pushToken,
-        'push_provider': provider,
+        'device_id': deviceId,
         'slot': slot,
         if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
       },
@@ -32,6 +32,35 @@ class V3PushTokenEdgeService {
 
     if (status < 200 || status >= 300 || !isOk) {
       throw Exception('Edge sync-push-token failed (status=$status, data=$data)');
+    }
+  }
+
+  static Future<void> clearPushTokenByDevice({
+    required String deviceId,
+    String? expectedTip,
+    String? expectedV3AuthId,
+  }) async {
+    final targetId = (expectedV3AuthId ?? '').trim();
+    if (targetId.isEmpty) {
+      throw Exception('Nedostaje expectedV3AuthId za clear push tokena.');
+    }
+
+    final response = await supabase.functions.invoke(
+      'sync-push-token',
+      body: {
+        'v3_auth_id': targetId,
+        'device_id': deviceId,
+        'clear': true,
+        if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
+      },
+    );
+
+    final status = response.status;
+    final data = response.data;
+    final isOk = data is Map && data['ok'] == true;
+
+    if (status < 200 || status >= 300 || !isOk) {
+      throw Exception('Edge clear sync-push-token failed (status=$status, data=$data)');
     }
   }
 }

@@ -4,7 +4,7 @@ import '../../../globals.dart';
 
 class V3VozacRepository {
   static const String _authVozacSelect =
-      'id, ime, telefon, telefon_2, boja, push_token, push_provider, push_token_2, push_provider_2, created_at, updated_at, tip';
+      'id, ime, telefon, telefon_2, boja, push_token, push_token_2, created_at, updated_at, tip';
 
   Future<void> deleteById(String id) {
     return supabase.from('v3_auth').delete().eq('id', id).eq('tip', 'vozac');
@@ -57,7 +57,6 @@ class V3VozacRepository {
       'telefon_2': payload['telefon_2'],
       'boja': payload['boja'],
       'push_token': payload['push_token'],
-      'push_provider': payload['push_provider'],
       'tip': 'vozac',
     };
     return supabase.from('v3_auth').insert(mapped);
@@ -71,9 +70,7 @@ class V3VozacRepository {
     if (payload.containsKey('telefon_2')) out['telefon_2'] = payload['telefon_2'];
     if (payload.containsKey('boja')) out['boja'] = payload['boja'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
-    if (payload.containsKey('push_provider')) out['push_provider'] = payload['push_provider'];
     if (payload.containsKey('push_token_2')) out['push_token_2'] = payload['push_token_2'];
-    if (payload.containsKey('push_provider_2')) out['push_provider_2'] = payload['push_provider_2'];
 
     return out;
   }
@@ -86,9 +83,7 @@ class V3VozacRepository {
       'telefon_2': row['telefon_2'],
       'boja': row['boja'],
       'push_token': row['push_token'],
-      'push_provider': row['push_provider'],
       'push_token_2': row['push_token_2'],
-      'push_provider_2': row['push_provider_2'],
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };

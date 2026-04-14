@@ -13,8 +13,6 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        // Huawei plugin repository - required to resolve com.huawei.agconnect Gradle plugin
-        maven { url = uri("https://developer.huawei.com/repo/") }
         gradlePluginPortal()
     }
 }

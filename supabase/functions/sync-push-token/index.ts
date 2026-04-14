@@ -5,9 +5,10 @@ type SyncPayload = {
   v3_auth_id?: string;
   sifra?: string;
   push_token?: string;
-  push_provider?: string;
+  device_id?: string;
   slot?: "primary" | "secondary";
   expected_tip?: string;
+  clear?: boolean;
 };
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
@@ -36,13 +37,14 @@ Deno.serve(async (req) => {
     const userId = String(payload.v3_auth_id ?? "").trim();
     const sifra = String(payload.sifra ?? "").trim();
     const pushToken = String(payload.push_token ?? "").trim();
-    const pushProvider = String(payload.push_provider ?? "fcm").trim().toLowerCase();
-    const slot = payload.slot === "secondary" ? "secondary" : "primary";
+    const deviceId = String(payload.device_id ?? "").trim();
+    const requestedSlot = payload.slot === "secondary" ? "secondary" : "primary";
     const expectedTip = String(payload.expected_tip ?? "").trim();
+    const clear = payload.clear === true;
 
     if (!userId) return badRequest("v3_auth_id is required");
-    if (!pushToken) return badRequest("push_token is required");
-    if (!pushProvider) return badRequest("push_provider is required");
+    if (!deviceId) return badRequest("device_id is required");
+    if (!clear && !pushToken) return badRequest("push_token is required");
 
     const client = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data: row, error: rowError } = await client
       .from("v3_auth")
-      .select("id, tip, sifra")
+      .select("id, tip, sifra, push_token, push_token_2, push_device_id, push_device_id_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -71,16 +73,77 @@ Deno.serve(async (req) => {
       return badRequest("sifra mismatch", 403);
     }
 
+    const rowDevicePrimary = String(row.push_device_id ?? "").trim();
+    const rowDeviceSecondary = String(row.push_device_id_2 ?? "").trim();
+    const rowTokenPrimary = String(row.push_token ?? "").trim();
+    const rowTokenSecondary = String(row.push_token_2 ?? "").trim();
+
+    if (clear) {
+      const clearPayload: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (rowDevicePrimary && rowDevicePrimary === deviceId) {
+        clearPayload.push_token = null;
+        clearPayload.push_device_id = null;
+      }
+
+      if (rowDeviceSecondary && rowDeviceSecondary === deviceId) {
+        clearPayload.push_token_2 = null;
+        clearPayload.push_device_id_2 = null;
+      }
+
+      if (Object.keys(clearPayload).length > 1) {
+        const { error: clearError } = await client.from("v3_auth").update(clearPayload).eq("id", userId);
+        if (clearError) {
+          return badRequest(`v3_auth clear error: ${clearError.message}`, 500);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          v3_auth_id: userId,
+          tip: rowTip,
+          cleared: true,
+          device_id: deviceId,
+        }),
+        { status: 200, headers: jsonHeaders },
+      );
+    }
+
+    let slot: "primary" | "secondary" = "primary";
+    if (rowDevicePrimary && rowDevicePrimary === deviceId) {
+      slot = "primary";
+    } else if (rowDeviceSecondary && rowDeviceSecondary === deviceId) {
+      slot = "secondary";
+    } else if (!rowDevicePrimary || !rowTokenPrimary) {
+      slot = "primary";
+    } else if (!rowDeviceSecondary || !rowTokenSecondary) {
+      slot = "secondary";
+    } else {
+      slot = requestedSlot;
+    }
+
     const updatePayload: Record<string, unknown> =
       slot === "secondary"
-        ? { push_token_2: pushToken, push_provider_2: pushProvider }
-        : { push_token: pushToken, push_provider: pushProvider };
+        ? { push_token_2: pushToken, push_device_id_2: deviceId }
+        : { push_token: pushToken, push_device_id: deviceId };
+
+    if (slot === "primary" && rowDeviceSecondary === deviceId) {
+      updatePayload.push_token_2 = null;
+      updatePayload.push_device_id_2 = null;
+    }
+    if (slot === "secondary" && rowDevicePrimary === deviceId) {
+      updatePayload.push_token = null;
+      updatePayload.push_device_id = null;
+    }
 
     const { data: updatedRow, error: updateError } = await client
       .from("v3_auth")
       .update(updatePayload)
       .eq("id", userId)
-      .select("id,push_token,push_provider,push_token_2,push_provider_2")
+      .select("id,push_token,push_device_id,push_token_2,push_device_id_2")
       .maybeSingle();
 
     if (updateError) {
@@ -97,8 +160,8 @@ Deno.serve(async (req) => {
         v3_auth_id: userId,
         tip: rowTip,
         slot,
-        provider: pushProvider,
-        persisted_provider: slot === "secondary" ? updatedRow.push_provider_2 : updatedRow.push_provider,
+        device_id: deviceId,
+        persisted_device_id: slot === "secondary" ? updatedRow.push_device_id_2 : updatedRow.push_device_id,
       }),
       { status: 200, headers: jsonHeaders },
     );

@@ -25,9 +25,35 @@ class V3ClosedAuthService {
     final phone = normalizePhone(rawPhone);
     if (phone.isEmpty) return false;
 
-    final res = await _client.rpc('v3_auth_phone_exists', params: {'p_telefon': phone});
-    if (res is bool) return res;
-    return res == true;
+    final candidates = <String>{};
+
+    void addCandidate(String? value) {
+      final safe = (value ?? '').trim();
+      if (safe.isNotEmpty) candidates.add(safe);
+    }
+
+    addCandidate(rawPhone);
+    addCandidate(phone);
+
+    final digits = phone.replaceAll('+', '');
+    addCandidate(digits);
+    if (digits.isNotEmpty) {
+      addCandidate('+$digits');
+    }
+    if (digits.startsWith('381') && digits.length > 3) {
+      addCandidate('0${digits.substring(3)}');
+    }
+
+    if (candidates.isEmpty) return false;
+
+    final clauses = <String>[];
+    for (final candidate in candidates) {
+      clauses.add('telefon.eq.$candidate');
+      clauses.add('telefon_2.eq.$candidate');
+    }
+
+    final row = await _client.from('v3_auth').select('id').or(clauses.join(',')).limit(1).maybeSingle();
+    return row != null;
   }
 
   // ─── Manual SMS sesija ──────────────────────────────────────────

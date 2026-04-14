@@ -1,6 +1,9 @@
 // @ts-nocheck
-type PushProvider = 'fcm' | 'hms';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+type PushProvider = 'fcm';
 type TokenInput = { token: string; provider: PushProvider };
+type PushResult = { ok: boolean; provider: PushProvider; token: string; status?: number; error?: string };
 
 type PushPayload = {
   tokens?: Array<{ token?: string; provider?: string }>;
@@ -19,7 +22,6 @@ type PushPayload = {
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
 
 let cachedFcmToken: { token: string; exp: number; projectId: string } | null = null;
-let cachedHmsToken: { token: string; exp: number } | null = null;
 
 function envOrPayload(name: string, payload?: PushPayload): string | null {
   const fromEnv = Deno.env.get(name);
@@ -57,8 +59,7 @@ function normalizeTokens(tokens: PushPayload['tokens']): TokenInput[] {
     .filter((item) => typeof item === 'object' && item !== null)
     .map((item) => {
       const token = String(item?.token ?? '').trim();
-      const rawProvider = String(item?.provider ?? 'fcm').trim().toLowerCase();
-      const provider: PushProvider = rawProvider === 'hms' ? 'hms' : 'fcm';
+      const provider: PushProvider = 'fcm';
       return { token, provider };
     })
     .filter((item) => item.token.length > 0);
@@ -72,10 +73,6 @@ function toStringData(input: Record<string, unknown> | undefined): Record<string
     output[key] = typeof value === 'string' ? value : JSON.stringify(value);
   }
   return output;
-}
-
-function pickString(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
 }
 
 async function getFcmAccessToken(payload: PushPayload): Promise<string> {
@@ -170,42 +167,6 @@ async function getFcmAccessToken(payload: PushPayload): Promise<string> {
   throw new Error(lastError);
 }
 
-async function getHmsAccessToken(payload: PushPayload): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  if (cachedHmsToken && cachedHmsToken.exp > now + 30) {
-    return cachedHmsToken.token;
-  }
-
-  const clientId = envOrPayload('huawei_client_id', payload);
-  const clientSecret = envOrPayload('huawei_client_secret', payload);
-
-  if (!clientId || !clientSecret) {
-    throw new Error('Missing Huawei credentials: huawei_client_id / huawei_client_secret');
-  }
-
-  const oauthRes = await fetch('https://oauth-login.cloud.huawei.com/oauth2/v3/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  const oauthJson = await oauthRes.json();
-  if (!oauthRes.ok || !oauthJson?.access_token) {
-    throw new Error(`HMS OAuth failed: ${oauthRes.status} ${JSON.stringify(oauthJson)}`);
-  }
-
-  const expiresIn = Number(oauthJson.expires_in ?? 3600);
-  cachedHmsToken = {
-    token: String(oauthJson.access_token),
-    exp: now + Math.max(60, expiresIn - 30),
-  };
-
-  return cachedHmsToken.token;
-}
 
 async function sendFcm(
   token: string,
@@ -214,7 +175,7 @@ async function sendFcm(
   dataOnly: boolean,
   data: Record<string, string>,
   payload: PushPayload,
-): Promise<{ ok: boolean; provider: PushProvider; token: string; status?: number; error?: string }> {
+): Promise<PushResult> {
   try {
     const accessToken = await getFcmAccessToken(payload);
     const projectId = cachedFcmToken?.projectId;
@@ -259,69 +220,42 @@ async function sendFcm(
   }
 }
 
-async function sendHms(
-  token: string,
-  title: string,
-  body: string,
-  dataOnly: boolean,
-  data: Record<string, string>,
-  payload: PushPayload,
-): Promise<{ ok: boolean; provider: PushProvider; token: string; status?: number; error?: string }> {
-  try {
-    const appId = envOrPayload('huawei_app_id', payload);
-    if (!appId) {
-      throw new Error('Missing Huawei app id: huawei_app_id');
-    }
+function isUnrecoverableTokenError(result: PushResult): boolean {
+  if (result.ok) return false;
+  const text = String(result.error ?? '').toUpperCase();
+  return (
+    text.includes('UNREGISTERED') ||
+    text.includes('NOT A VALID FCM REGISTRATION TOKEN') ||
+    text.includes('INVALID REGISTRATION TOKEN')
+  );
+}
 
-    const accessToken = await getHmsAccessToken(payload);
+async function cleanupStaleToken(token: string): Promise<boolean> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  if (!supabaseUrl || !serviceRoleKey) return false;
 
-    const hmsMessage: Record<string, unknown> = {
-      token: [token],
-      android: {
-        data: JSON.stringify(data),
-      },
-    };
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
-    if (!dataOnly) {
-      hmsMessage.notification = { title, body };
-      hmsMessage.android = {
-        ...hmsMessage.android,
-        notification: {
-          title,
-          body,
-          click_action: {
-            type: 3,
-          },
-        },
-      };
-    }
+  const primary = await admin
+    .from('v3_auth')
+    .update({ push_token: null, push_device_id: null, updated_at: new Date().toISOString() })
+    .eq('push_token', token)
+    .select('id')
+    .limit(1);
 
-    const res = await fetch(`https://push-api.cloud.huawei.com/v1/${appId}/messages:send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        validate_only: false,
-        message: hmsMessage,
-      }),
-    });
+  const secondary = await admin
+    .from('v3_auth')
+    .update({ push_token_2: null, push_device_id_2: null, updated_at: new Date().toISOString() })
+    .eq('push_token_2', token)
+    .select('id')
+    .limit(1);
 
-    if (res.ok) {
-      return { ok: true, provider: 'hms', token, status: res.status };
-    }
-
-    const errorText = await res.text();
-    return { ok: false, provider: 'hms', token, status: res.status, error: errorText.slice(0, 400) };
-  } catch (error) {
-    return {
-      ok: false,
-      provider: 'hms',
-      token,
-      error: error instanceof Error ? error.message : 'Unknown HMS error',
-    };
-  }
+  const changedPrimary = Array.isArray(primary.data) && primary.data.length > 0;
+  const changedSecondary = Array.isArray(secondary.data) && secondary.data.length > 0;
+  return changedPrimary || changedSecondary;
 }
 
 Deno.serve(async (req) => {
@@ -347,14 +281,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const results: Array<{ ok: boolean; provider: PushProvider; token: string; status?: number; error?: string }> = [];
+    const results: PushResult[] = [];
 
     for (const tokenItem of normalizedTokens) {
-      if (tokenItem.provider === 'hms') {
-        results.push(await sendHms(tokenItem.token, title, body, dataOnly, data, payload));
-      } else {
-        results.push(await sendFcm(tokenItem.token, title, body, dataOnly, data, payload));
-      }
+      results.push(await sendFcm(tokenItem.token, title, body, dataOnly, data, payload));
     }
 
     const sent = results.filter((entry) => entry.ok).length;
@@ -364,11 +294,17 @@ Deno.serve(async (req) => {
         sent: results.filter((entry) => entry.provider === 'fcm' && entry.ok).length,
         failed: results.filter((entry) => entry.provider === 'fcm' && !entry.ok).length,
       },
-      hms: {
-        sent: results.filter((entry) => entry.provider === 'hms' && entry.ok).length,
-        failed: results.filter((entry) => entry.provider === 'hms' && !entry.ok).length,
-      },
     };
+
+    const staleTokens = Array.from(
+      new Set(results.filter((entry) => isUnrecoverableTokenError(entry)).map((entry) => entry.token)),
+    );
+    let cleanedTokens = 0;
+    for (const staleToken of staleTokens) {
+      if (await cleanupStaleToken(staleToken)) {
+        cleanedTokens += 1;
+      }
+    }
 
     console.log(
       JSON.stringify({
@@ -376,6 +312,7 @@ Deno.serve(async (req) => {
         requested: normalizedTokens.length,
         sent,
         failed,
+        cleaned_tokens: cleanedTokens,
         by_provider: byProvider,
       }),
     );
@@ -386,6 +323,7 @@ Deno.serve(async (req) => {
         accepted: normalizedTokens.length,
         sent,
         failed,
+        cleaned_tokens: cleanedTokens,
         by_provider: byProvider,
         errors: results.filter((entry) => !entry.ok).slice(0, 20),
       }),

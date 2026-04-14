@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 
+import 'v3_push_token_edge_service.dart';
 import 'v3_push_token_provider.dart';
 import 'v3_putnik_service.dart';
 import 'v3_vozac_service.dart';
@@ -9,14 +12,16 @@ import 'v3_vozac_service.dart';
 class V3PushTokenSyncService {
   V3PushTokenSyncService._();
 
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const String _deviceIdKey = 'v3_push_device_id';
+
   static Future<bool> syncCurrentUser({
     String? token,
-    String provider = 'hms',
     String reason = 'unspecified',
   }) async {
     final safeToken = (token ?? '').trim();
     if (safeToken.isNotEmpty) {
-      return _syncWithToken(safeToken, provider: provider, reason: reason);
+      return _syncWithToken(safeToken, reason: reason);
     }
 
     try {
@@ -27,7 +32,6 @@ class V3PushTokenSyncService {
       }
       return _syncWithToken(
         tokenResult.token,
-        provider: V3PushTokenProvider.providerAsString(tokenResult.provider),
         reason: reason,
       );
     } catch (e) {
@@ -56,12 +60,52 @@ class V3PushTokenSyncService {
     }
   }
 
+  static Future<bool> clearCurrentUserDeviceTokenOnLogout({
+    String reason = 'logout',
+  }) async {
+    try {
+      final deviceId = await _readDeviceId();
+      if (deviceId == null || deviceId.isEmpty) {
+        debugPrint('[PushSync] Nema device_id za clear (reason=$reason).');
+        return false;
+      }
+
+      final currentVozac = V3VozacService.currentVozac;
+      if (currentVozac != null) {
+        await V3PushTokenEdgeService.clearPushTokenByDevice(
+          deviceId: deviceId,
+          expectedTip: 'vozac',
+          expectedV3AuthId: currentVozac.id,
+        );
+        debugPrint('✅ [PushSync] Device token cleared: v3_auth (vozac) reason=$reason');
+        return true;
+      }
+
+      final currentPutnik = V3PutnikService.currentPutnik;
+      final putnikId = currentPutnik?['id']?.toString().trim() ?? '';
+      if (putnikId.isNotEmpty) {
+        await V3PushTokenEdgeService.clearPushTokenByDevice(
+          deviceId: deviceId,
+          expectedV3AuthId: putnikId,
+        );
+        debugPrint('✅ [PushSync] Device token cleared: v3_auth (putnik) reason=$reason');
+        return true;
+      }
+
+      debugPrint('[PushSync] Nema trenutno ulogovanog korisnika za clear (reason=$reason).');
+      return false;
+    } catch (e) {
+      debugPrint('⚠️ [PushSync] Device clear greška (reason=$reason): $e');
+      return false;
+    }
+  }
+
   static Future<bool> _syncWithToken(
     String token, {
-    required String provider,
     required String reason,
   }) async {
     try {
+      final deviceId = await _getOrCreateDeviceId();
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac != null) {
         final updated = await V3VozacService.updatePushTokensOnLogin(
@@ -69,17 +113,15 @@ class V3PushTokenSyncService {
           token: token,
           existingToken1: currentVozac.pushToken,
           existingToken2: currentVozac.pushToken2,
-          provider: provider,
+          deviceId: deviceId,
         );
         if (updated.isNotEmpty) {
           V3VozacService.currentVozac = V3VozacService.currentVozac?.copyWith(
             pushToken: updated['push_token'] ?? currentVozac.pushToken,
-            pushProvider: updated['push_provider'] ?? currentVozac.pushProvider,
             pushToken2: updated['push_token_2'] ?? currentVozac.pushToken2,
-            pushProvider2: updated['push_provider_2'] ?? currentVozac.pushProvider2,
           );
         }
-        debugPrint('✅ [PushSync] Token sync: v3_auth (vozac) provider=$provider reason=$reason');
+        debugPrint('✅ [PushSync] Token sync: v3_auth (vozac) provider=fcm reason=$reason');
         return true;
       }
 
@@ -94,10 +136,10 @@ class V3PushTokenSyncService {
           token: token,
           existingToken1: token1,
           existingToken2: token2,
-          provider: provider,
+          deviceId: deviceId,
         );
         currentPutnik?.addAll(updated);
-        debugPrint('✅ [PushSync] Token sync: v3_auth (putnik) provider=$provider reason=$reason');
+        debugPrint('✅ [PushSync] Token sync: v3_auth (putnik) provider=fcm reason=$reason');
         return true;
       }
 
@@ -107,5 +149,19 @@ class V3PushTokenSyncService {
       debugPrint('⚠️ [PushSync] Token sync greška (reason=$reason): $e');
       return false;
     }
+  }
+
+  static Future<String> _getOrCreateDeviceId() async {
+    final existing = (await _storage.read(key: _deviceIdKey) ?? '').trim();
+    if (existing.isNotEmpty) return existing;
+
+    final generated = const Uuid().v4();
+    await _storage.write(key: _deviceIdKey, value: generated);
+    return generated;
+  }
+
+  static Future<String?> _readDeviceId() async {
+    final existing = (await _storage.read(key: _deviceIdKey) ?? '').trim();
+    return existing.isEmpty ? null : existing;
   }
 }

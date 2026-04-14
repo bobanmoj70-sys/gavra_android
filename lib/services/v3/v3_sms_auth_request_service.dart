@@ -24,11 +24,8 @@ class V3SmsAuthRequestService {
           ? requesterRow!['ime'].toString().trim()
           : 'Nepoznat korisnik';
 
-      final targetRows = await supabase
-          .from('v3_auth')
-          .select('id,push_token,push_provider,push_token_2,push_provider_2')
-          .eq('id', targetId)
-          .limit(1);
+      final targetRows =
+          await supabase.from('v3_auth').select('id,push_token,push_token_2').eq('id', targetId).limit(1);
 
       final tokens = <Map<String, String>>[];
       final seen = <String>{};
@@ -37,15 +34,13 @@ class V3SmsAuthRequestService {
         if (raw is! Map) continue;
 
         final token1 = (raw['push_token'] ?? '').toString().trim();
-        final provider1 = (raw['push_provider'] ?? 'hms').toString().trim().toLowerCase();
         if (token1.isNotEmpty && seen.add(token1)) {
-          tokens.add({'token': token1, 'provider': provider1 == 'fcm' ? 'fcm' : 'hms'});
+          tokens.add({'token': token1, 'provider': 'fcm'});
         }
 
         final token2 = (raw['push_token_2'] ?? '').toString().trim();
-        final provider2 = (raw['push_provider_2'] ?? 'hms').toString().trim().toLowerCase();
         if (token2.isNotEmpty && seen.add(token2)) {
-          tokens.add({'token': token2, 'provider': provider2 == 'fcm' ? 'fcm' : 'hms'});
+          tokens.add({'token': token2, 'provider': 'fcm'});
         }
       }
 

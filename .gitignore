@@ -75,9 +75,7 @@ temp_secrets.env
 *.keystore
 !android/gavra-release-key-production.keystore
 key.properties
-android/app/agconnect-services.json
 android/app/google-services.json
-agc-apiclient-*.json
 
 # Debug files
 debug_*.sql

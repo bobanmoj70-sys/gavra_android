@@ -5,7 +5,7 @@ class V3AuthLookupService {
   V3AuthLookupService._();
 
   static const String _authLookupSelect =
-      'id, ime, telefon, telefon_2, boja, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_provider, push_token_2, push_provider_2, created_at, updated_at';
+      'id, ime, telefon, telefon_2, boja, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at';
 
   static Future<Map<String, dynamic>?> getVozacByPhone(String normalizedPhone) async {
     final ready = await ensureSupabaseReady();
@@ -57,9 +57,7 @@ class V3AuthLookupService {
       'telefon_2': row['telefon_2'],
       'boja': row['boja'],
       'push_token': row['push_token'],
-      'push_provider': row['push_provider'],
       'push_token_2': row['push_token_2'],
-      'push_provider_2': row['push_provider_2'],
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };
@@ -79,9 +77,7 @@ class V3AuthLookupService {
       'cena_po_danu': row['cena_po_danu'],
       'cena_po_pokupljenju': row['cena_po_pokupljenju'],
       'push_token': row['push_token'],
-      'push_provider': row['push_provider'],
       'push_token_2': row['push_token_2'],
-      'push_provider_2': row['push_provider_2'],
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };

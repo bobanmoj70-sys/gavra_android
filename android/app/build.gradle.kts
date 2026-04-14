@@ -9,7 +9,6 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
-    id("com.huawei.agconnect")
 }
 
 // 🔐 PRODUCTION KEYSTORE CONFIGURATION
@@ -94,9 +93,6 @@ dependencies {
     // Google Play Services + Firebase Cloud Messaging (GMS devices)
     implementation("com.google.android.gms:play-services-base:18.5.0")
     implementation("com.google.firebase:firebase-messaging:24.1.1")
-
-    // Huawei Mobile Services Push (AppGallery devices / no GMS)
-    implementation("com.huawei.hms:push:6.12.0.300")
 
     // 🚀 Google Play Core - NEW MODULAR LIBRARIES (Android 14+ compatible)
     implementation("com.google.android.play:integrity:1.6.0")

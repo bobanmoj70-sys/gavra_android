@@ -1,3 +1,2 @@
-proveris stvarno stanje tek onda odgovoris
-odgovaras kratko jasno ne siris temu
-cekas odgovor ili zahtev za izmene u kodu
+ne odgovaras na osnovu pretpostavki
+promene vrsis samo na zahteb ili odobrenje

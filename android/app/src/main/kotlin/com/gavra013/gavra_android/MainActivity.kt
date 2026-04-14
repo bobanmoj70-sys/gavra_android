@@ -11,10 +11,6 @@ import com.google.android.gms.common.ConnectionResult as GmsConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
-import com.huawei.agconnect.config.AGConnectServicesConfig
-import com.huawei.hms.aaid.HmsInstanceId
-import com.huawei.hms.api.ConnectionResult
-import com.huawei.hms.api.HuaweiApiAvailability
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -31,7 +27,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        // Registruj engine u cache da HMS service može da ga koristi
+        // Registruj engine u cache
         FlutterEngineCache.getInstance().put("main_engine", flutterEngine)
         
         // WakeLock Channel - za paljenje ekrana na notifikaciju
@@ -51,28 +47,11 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
 
-        // Push token bridge (HMS fallback)
+        // Push token bridge (FCM)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PUSH_TOKEN_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "isHmsAvailable" -> {
-                    result.success(isHmsAvailable())
-                }
                 "isGmsAvailable" -> {
                     result.success(isGmsAvailable())
-                }
-                "getHmsToken" -> {
-                    ioExecutor.execute {
-                        try {
-                            val token = getHmsToken()
-                            runOnUiThread {
-                                result.success(token)
-                            }
-                        } catch (e: Exception) {
-                            runOnUiThread {
-                                result.error("HMS_TOKEN_ERROR", e.message ?: "Unknown HMS token error", null)
-                            }
-                        }
-                    }
                 }
                 "getFcmToken" -> {
                     ioExecutor.execute {
@@ -248,16 +227,6 @@ class MainActivity : FlutterFragmentActivity() {
         super.onDestroy()
     }
 
-    private fun isHmsAvailable(): Boolean {
-        return try {
-            val status = HuaweiApiAvailability.getInstance().isHuaweiMobileServicesAvailable(this)
-            status == ConnectionResult.SUCCESS
-        } catch (e: Exception) {
-            android.util.Log.w(TAG, "isHmsAvailable failed: ${e.message}")
-            false
-        }
-    }
-
     private fun isGmsAvailable(): Boolean {
         return try {
             val status = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)
@@ -266,20 +235,6 @@ class MainActivity : FlutterFragmentActivity() {
             android.util.Log.w(TAG, "isGmsAvailable failed: ${e.message}")
             false
         }
-    }
-
-    private fun getHmsToken(): String {
-        val appId = AGConnectServicesConfig.fromContext(this).getString("client/app_id")
-        if (appId.isNullOrBlank()) {
-            throw IllegalStateException("Missing AGConnect client/app_id")
-        }
-
-        val token = HmsInstanceId.getInstance(this).getToken(appId, "HCM")
-        if (token.isNullOrBlank()) {
-            throw IllegalStateException("HMS token is empty")
-        }
-        android.util.Log.d(TAG, "✅ HMS token fetched: ${token.take(16)}…")
-        return token
     }
 
     private fun getFcmToken(): String {

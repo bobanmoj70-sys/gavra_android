@@ -100,9 +100,9 @@ class V3PutnikService {
   static Future<Map<String, String>> updatePushTokensOnLogin({
     required String putnikId,
     required String token,
+    required String deviceId,
     String? existingToken1,
     String? existingToken2,
-    String provider = 'hms',
   }) async {
     try {
       if (token.isEmpty) return const {};
@@ -110,30 +110,30 @@ class V3PutnikService {
       if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
-          provider: provider,
+          deviceId: deviceId,
           slot: 'primary',
           expectedV3AuthId: putnikId,
         );
-        return {'push_token': token, 'push_provider': provider};
+        return {'push_token': token};
       }
 
       if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
-          provider: provider,
+          deviceId: deviceId,
           slot: 'secondary',
           expectedV3AuthId: putnikId,
         );
-        return {'push_token_2': token, 'push_provider_2': provider};
+        return {'push_token_2': token};
       }
 
       await V3PushTokenEdgeService.syncPushToken(
         pushToken: token,
-        provider: provider,
+        deviceId: deviceId,
         slot: 'secondary',
         expectedV3AuthId: putnikId,
       );
-      return {'push_token_2': token, 'push_provider_2': provider};
+      return {'push_token_2': token};
     } catch (e) {
       debugPrint('[V3PutnikService] updatePushTokensOnLogin error: $e');
       rethrow;

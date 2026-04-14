@@ -17,9 +17,6 @@
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-  <!-- 🔋 Huawei specific permissions -->
-  <uses-permission android:name="com.huawei.permission.external_app_settings.USE_COMPONENT" />
-
   <!-- 📱 Other required permissions -->
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -96,14 +93,6 @@
       </intent-filter>
     </activity>
 
-    <!-- 📱 HUAWEI HMS BridgeActivity override for Android 16+ large screen support -->
-    <!-- Removes screenOrientation="BEHIND" restriction from HMS SDK -->
-    <activity 
-      android:name="com.huawei.hms.activity.BridgeActivity"
-      android:screenOrientation="unspecified"
-      android:resizeableActivity="true"
-      tools:replace="android:screenOrientation,android:resizeableActivity" />
-
     <!-- 🔔 Notification Listener Service - sluša notifikacije i pali ekran -->
     <!-- NAPOMENA: Korisnik mora odobriti pristup u Settings > Apps > Special Access -->
     <service
@@ -121,15 +110,6 @@
       android:foregroundServiceType="location"
       android:exported="false"
       tools:replace="android:foregroundServiceType,android:exported" />
-
-    <!-- 📩 HMS Push messaging service (Huawei/AppGallery devices) -->
-    <service
-      android:name=".HmsPushService"
-      android:exported="false">
-      <intent-filter>
-        <action android:name="com.huawei.push.action.MESSAGING_EVENT" />
-      </intent-filter>
-    </service>
 
     <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

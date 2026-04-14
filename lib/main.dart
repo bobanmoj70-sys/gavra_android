@@ -251,18 +251,6 @@ Future<void> _initNotificationHandlers() async {
     debugPrint('⚠️ [Push] Notification handlers greška: $e');
   }
 
-  try {
-    const MethodChannel hmsPushChannel = MethodChannel('com.gavra013.gavra_android/hms_push_data');
-    hmsPushChannel.setMethodCallHandler((call) async {
-      if (call.method == 'onPushData') {
-        final data = Map<String, String>.from(call.arguments as Map);
-        await _handleIncomingPushData(data);
-      }
-    });
-  } catch (e) {
-    debugPrint('⚠️ [Push] HMS channel bind greška: $e');
-  }
-
   if (!isSupabaseReady) {
     try {
       await _ensureSupabaseInitialized().timeout(const Duration(seconds: 3));
@@ -279,31 +267,11 @@ Future<void> _initNotificationHandlers() async {
     if (tokenResult != null && tokenResult.token.trim().isNotEmpty) {
       await V3PushTokenSyncService.syncCurrentUser(
         token: tokenResult.token,
-        provider: V3PushTokenProvider.providerAsString(tokenResult.provider),
         reason: 'main:init_notification_handlers',
       );
     }
   } catch (e) {
     debugPrint('⚠️ [Push] Token sync init greška: $e');
-  }
-}
-
-/// Obrađuje dolazni push data (HMS i FCM data-only poruke).
-Future<void> _handleIncomingPushData(Map<String, String> data) async {
-  final type = data['type'] ?? '';
-  debugPrint('[Push] handleIncomingPushData type=$type');
-
-  if (type == 'v3_alternativa') {
-    final zahtevId = data['zahtev_id'] ?? data['entity_id'] ?? data['id'] ?? '';
-    final altPre = data['alt_pre'] ?? '';
-    final altPosle = data['alt_posle'] ?? '';
-    if (zahtevId.isEmpty) return;
-
-    await showAlternativaNotification(
-      zahtevId: zahtevId,
-      altPre: altPre,
-      altPosle: altPosle,
-    );
   }
 }
 

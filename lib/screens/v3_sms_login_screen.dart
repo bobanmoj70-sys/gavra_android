@@ -65,9 +65,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   String _statusMessage = '';
   String? _verificationId;
   String? _normalizedPhone;
-  String _selectedTip = 'radnik';
+  String _selectedTip = '';
   V3Adresa? _selectedBcAdresa;
   V3Adresa? _selectedVsAdresa;
+  String _missingProfileMessage = '';
   DateTime? _nextSmsAllowedAt;
   Timer? _cooldownTimer;
 
@@ -365,10 +366,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    final hasName = (putnik['ime_prezime']?.toString().trim().isNotEmpty ?? false);
-    final hasTip = (putnik['tip_putnika']?.toString().trim().isNotEmpty ?? false);
-    final hasBcAdresa = (putnik['adresa_bc_id']?.toString().trim().isNotEmpty ?? false);
-    final hasVsAdresa = (putnik['adresa_vs_id']?.toString().trim().isNotEmpty ?? false);
+    final missingNow = _missingRequiredProfileFields(putnik);
+    final hasName = !missingNow.contains('ime');
+    final hasTip = !missingNow.contains('tip');
+    final hasBcAdresa = !missingNow.contains('adresa BC');
+    final hasVsAdresa = !missingNow.contains('adresa VS');
 
     if (hasName && hasTip && hasBcAdresa && hasVsAdresa) {
       if (!mounted) return;
@@ -388,6 +390,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final existingTip = putnik['tip_putnika']?.toString().trim() ?? '';
     if (existingTip == 'radnik' || existingTip == 'ucenik' || existingTip == 'dnevni' || existingTip == 'posiljka') {
       _selectedTip = existingTip;
+    } else {
+      _selectedTip = '';
     }
 
     final adreseBc = V3AdresaService.getAdreseZaGrad('BC');
@@ -412,6 +416,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     setState(() {
       _step = _SmsStep.unosProfila;
       _statusMessage = '';
+      _missingProfileMessage = missingNow.isEmpty ? '' : 'Dopunite obavezna polja: ${missingNow.join(', ')}.';
     });
   }
 
@@ -423,6 +428,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     if (ime.isEmpty || prezime.isEmpty) {
       V3AppSnackBar.warning(context, 'Unesite ime i prezime.');
+      return;
+    }
+
+    if (_selectedTip.isEmpty) {
+      V3AppSnackBar.warning(context, 'Izaberite tip putnika.');
       return;
     }
 
@@ -461,6 +471,19 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       );
 
       await V3PutnikService.addUpdatePutnik(putnik);
+
+      final refreshed = await V3PutnikService.getByPhoneDirect(phone);
+      final missingAfterSave = _missingRequiredProfileFields(refreshed);
+      if (missingAfterSave.isNotEmpty) {
+        if (!mounted) return;
+        V3AppSnackBar.error(context, '❌ Upis nije kompletan. Nedostaje: ${missingAfterSave.join(', ')}.');
+        setState(() {
+          _missingProfileMessage = 'Dopunite obavezna polja: ${missingAfterSave.join(', ')}.';
+          _statusMessage = '';
+        });
+        return;
+      }
+
       if (!mounted) return;
 
       V3AppSnackBar.success(context, '✅ Profil sačuvan.');
@@ -564,12 +587,31 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _normalizedPhone = null;
       _imeController.clear();
       _prezimeController.clear();
-      _selectedTip = 'radnik';
+      _selectedTip = '';
       _selectedBcAdresa = null;
       _selectedVsAdresa = null;
+      _missingProfileMessage = '';
       _otpController.clear();
       _statusMessage = '';
     });
+  }
+
+  List<String> _missingRequiredProfileFields(Map<String, dynamic>? putnik) {
+    if (putnik == null) {
+      return const ['ime', 'tip', 'adresa BC', 'adresa VS'];
+    }
+
+    final missing = <String>[];
+    final ime = putnik['ime_prezime']?.toString().trim() ?? '';
+    final tip = putnik['tip_putnika']?.toString().trim() ?? '';
+    final bc = putnik['adresa_bc_id']?.toString().trim() ?? '';
+    final vs = putnik['adresa_vs_id']?.toString().trim() ?? '';
+
+    if (ime.isEmpty) missing.add('ime');
+    if (tip.isEmpty) missing.add('tip');
+    if (bc.isEmpty) missing.add('adresa BC');
+    if (vs.isEmpty) missing.add('adresa VS');
+    return missing;
   }
 
   // ─── Build ─────────────────────────────────────────────────────
@@ -597,7 +639,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             24,
             MediaQuery.of(context).padding.top + kToolbarHeight + 24,
             24,
-            24,
+            24 + MediaQuery.of(context).padding.bottom,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -724,6 +766,32 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           isLoading: _isLoading || _isSmsCooldownActive,
           onPressed: _isSmsCooldownActive ? null : _sendSms,
         ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Poštovani korisnici, zbog dodatnih bezbednosnih usklađivanja sa zahtevima platformi (Google Play i '
+                'iOS), kao i završetka sertifikacionih procedura radi veće zaštite vaših podataka, produžen je period '
+                'ograničene dostupnosti aplikacije. Ove mere su uvedene kako bi se smanjio rizik od zloupotreba, '
+                'uključujući pokušaje phishing napada i neovlašćenog oglašavanja. Hvala vam na strpljenju i razumevanju.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  fontSize: 15.5,
+                  height: 1.6,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -816,7 +884,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       children: [
         _buildInfoBox(
           icon: Icons.person_outline,
-          text: 'Unesite podatke za nalog ($_normalizedPhone).',
+          text:
+              _missingProfileMessage.isEmpty ? 'Unesite podatke za nalog ($_normalizedPhone).' : _missingProfileMessage,
         ),
         const SizedBox(height: 24),
         TextField(
@@ -895,6 +964,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             ),
           ),
           items: const [
+            DropdownMenuItem(value: '', child: Text('Izaberite kategoriju')),
             DropdownMenuItem(value: 'radnik', child: Text('👷 Radnik')),
             DropdownMenuItem(value: 'ucenik', child: Text('🎒 Učenik')),
             DropdownMenuItem(value: 'dnevni', child: Text('📅 Dnevni')),

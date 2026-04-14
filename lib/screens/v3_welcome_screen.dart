@@ -33,6 +33,9 @@ class V3WelcomeScreen extends StatefulWidget {
 
 class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   static const String _biometricPhoneKey = 'v3_biometric_login_phone';
+  static const String _fadeAnimationKey = 'welcome_fade';
+  static const String _slideAnimationKey = 'welcome_slide';
+  static const String _pulseAnimationKey = 'welcome_pulse';
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
@@ -42,6 +45,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   late final AnimationController _slideController;
   late final AnimationController _pulseController;
   late final Animation<double> _fadeAnimation;
+  Timer? _slideStartTimer;
 
   String _appVersion = '';
 
@@ -59,16 +63,18 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   void _setupAnimations() {
-    _fadeController = V3AnimationUtils.createFadeController(
+    _fadeController = V3AnimationUtils.getController(
+      key: _fadeAnimationKey,
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _slideController = V3AnimationUtils.createSlideController(
+    _slideController = V3AnimationUtils.getController(
+      key: _slideAnimationKey,
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
     _pulseController = V3AnimationUtils.getController(
-      key: 'welcome_pulse',
+      key: _pulseAnimationKey,
       vsync: this,
       duration: const Duration(milliseconds: 2500),
     )..repeat();
@@ -79,8 +85,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       curve: Curves.easeInOut,
     );
     _fadeController.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) _slideController.forward();
+    _slideStartTimer?.cancel();
+    _slideStartTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _slideController.forward();
     });
   }
 
@@ -168,9 +176,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    V3AnimationUtils.disposeController('fade');
-    V3AnimationUtils.disposeController('slide');
-    V3AnimationUtils.disposeController('welcome_pulse');
+    _slideStartTimer?.cancel();
+    V3AnimationUtils.disposeController(_fadeAnimationKey);
+    V3AnimationUtils.disposeController(_slideAnimationKey);
+    V3AnimationUtils.disposeController(_pulseAnimationKey);
     _audioPlayer.stop();
     _audioPlayer.dispose();
     super.dispose();
