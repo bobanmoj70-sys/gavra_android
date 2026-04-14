@@ -26,11 +26,6 @@
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <!-- SMS dozvole NISU potrebne - koristimo url_launcher (sms: URI) koji otvara SMS app -->
 
-  <!-- 📞 Phone/Call permissions -->
-  <uses-permission android:name="android.permission.CALL_PHONE" />
-  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-  <!-- READ_PHONE_STATE potreban za Permission.phone -->
-
   <!-- 🔐 BIOMETRIC AUTHENTICATION (otisak prsta) -->
   <uses-permission android:name="android.permission.USE_BIOMETRIC" />
   <uses-permission android:name="android.permission.USE_FINGERPRINT" />
@@ -92,17 +87,6 @@
         <data android:scheme="gavra" />
       </intent-filter>
     </activity>
-
-    <!-- 🔔 Notification Listener Service - sluša notifikacije i pali ekran -->
-    <!-- NAPOMENA: Korisnik mora odobriti pristup u Settings > Apps > Special Access -->
-    <service
-      android:name=".GavraNotificationListener"
-      android:exported="false"
-      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-      <intent-filter>
-        <action android:name="android.service.notification.NotificationListenerService" />
-      </intent-filter>
-    </service>
 
     <!-- 🔥 FCM Service - prima push notifikacije u foreground/background, prosleđuje Flutteru -->
     <service

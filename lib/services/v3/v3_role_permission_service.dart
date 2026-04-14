@@ -11,11 +11,9 @@ class V3RolePermissionService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   static const String _pushPromptedKey = 'v3_perm_push_prompted_v1';
-  static const String _notifListenerPromptedKey =
-      'v3_perm_notif_listener_prompted_v1';
+  static const String _notifListenerPromptedKey = 'v3_perm_notif_listener_prompted_v1';
 
-  static const MethodChannel _wakelockChannel =
-      MethodChannel('com.gavra013.gavra_android/wakelock');
+  static const MethodChannel _wakelockChannel = MethodChannel('com.gavra013.gavra_android/wakelock');
 
   // ─────────────────────────────────────────────────────────────────────
   // Javni API
@@ -37,7 +35,7 @@ class V3RolePermissionService {
     await _requestNotifListenerOnce();
   }
 
-  /// Poziva se iz GavraNotificationListener (native) ili bilo kog push handlera
+  /// Poziva se pretežno iz FCM / Firebase push handlera
   /// da probudi ekran na dolaznu notifikaciju (8 sekundi).
   static Future<void> wakeScreenOnPush({int durationMs = 8000}) async {
     if (!Platform.isAndroid) return;
@@ -78,8 +76,7 @@ class V3RolePermissionService {
   static Future<void> _requestNotifListenerOnce() async {
     if (!Platform.isAndroid) return;
 
-    final alreadyPrompted =
-        await _storage.read(key: _notifListenerPromptedKey) == 'true';
+    final alreadyPrompted = await _storage.read(key: _notifListenerPromptedKey) == 'true';
     if (alreadyPrompted) return;
 
     try {
@@ -87,9 +84,7 @@ class V3RolePermissionService {
       final granted = await _isNotifListenerGranted();
       if (!granted) {
         // Otvori Settings ekran za Notification Access
-        await _wakelockChannel
-            .invokeMethod<void>('openNotifListenerSettings')
-            .catchError((_) async {
+        await _wakelockChannel.invokeMethod<void>('openNotifListenerSettings').catchError((_) async {
           // Fallback: permission_handler openAppSettings ako native metoda ne postoji
           await openAppSettings();
         });
@@ -106,8 +101,7 @@ class V3RolePermissionService {
 
   static Future<bool> _isNotifListenerGranted() async {
     try {
-      final result =
-          await _wakelockChannel.invokeMethod<bool>('isNotifListenerGranted');
+      final result = await _wakelockChannel.invokeMethod<bool>('isNotifListenerGranted');
       return result == true;
     } catch (_) {
       return false;
