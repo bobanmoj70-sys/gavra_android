@@ -37,6 +37,22 @@ class V3StatusFilters {
     return normalized == 'otkazano' || normalized == 'odbijeno';
   }
 
+  static bool isCanceled(String? status) {
+    return normalizeStatus(status) == 'otkazano';
+  }
+
+  static bool isPokupljenAt(Object? pokupljenAt) {
+    if (pokupljenAt == null) return false;
+    if (pokupljenAt is String) return pokupljenAt.trim().isNotEmpty;
+    return true;
+  }
+
+  static bool isNaplacenAt(Object? naplacenAt) {
+    if (naplacenAt == null) return false;
+    if (naplacenAt is String) return naplacenAt.trim().isNotEmpty;
+    return true;
+  }
+
   static bool isRejected(String? status) {
     return normalizeStatus(status) == 'odbijeno';
   }
@@ -74,5 +90,17 @@ class V3StatusFilters {
   }) {
     if (isCanceledOrRejected(status)) return false;
     return true;
+  }
+
+  static bool isDodelaAktivna(String? status) {
+    final normalized = normalizeStatus(status);
+    if (normalized.isEmpty) return false;
+    if (normalized == 'otkazano') return false;
+    const inactiveStatuses = {
+      'inactive',
+      'neaktivan',
+      'deleted',
+    };
+    return !inactiveStatuses.contains(normalized);
   }
 }

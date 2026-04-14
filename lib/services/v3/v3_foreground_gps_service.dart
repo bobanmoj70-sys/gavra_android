@@ -34,8 +34,7 @@ class V3ForegroundGpsService {
   static DateTime? _lastHeartbeatSentAt;
   static DateTime? _lastAutoStopCheckAt;
   static bool _autoStopInProgress = false;
-  static final V3OperativnaNedeljaRepository _operativnaRepository =
-      V3OperativnaNedeljaRepository();
+  static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
 
   static String _normalizePolazakTime(String? value) {
     return V3TimeUtils.normalizeToHHmm(value);
@@ -72,8 +71,7 @@ class V3ForegroundGpsService {
       );
 
       await _notifications!
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(androidChannel);
     }
 
@@ -349,8 +347,7 @@ class V3ForegroundGpsService {
 
       debugPrint('[V3ForegroundGpsService] GPS stream pokrenut');
     } catch (e) {
-      debugPrint(
-          '[V3ForegroundGpsService] Greška pri pokretanju GPS stream-a: $e');
+      debugPrint('[V3ForegroundGpsService] Greška pri pokretanju GPS stream-a: $e');
     }
   }
 
@@ -358,15 +355,13 @@ class V3ForegroundGpsService {
     if (!_isRunning || _currentVozacId == null) return;
 
     final now = DateTime.now();
-    if (_lastHeartbeatSentAt != null &&
-        now.difference(_lastHeartbeatSentAt!) < const Duration(seconds: 20)) {
+    if (_lastHeartbeatSentAt != null && now.difference(_lastHeartbeatSentAt!) < const Duration(seconds: 20)) {
       return;
     }
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
 
       _lastHeartbeatSentAt = now;
@@ -389,8 +384,7 @@ class V3ForegroundGpsService {
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       ).timeout(const Duration(seconds: 12));
 
       _lastHeartbeatSentAt = DateTime.now();
@@ -420,14 +414,10 @@ class V3ForegroundGpsService {
     if (!_isRunning) return;
 
     final putniciBroj = _currentPutnici.length;
-    final brzinaText =
-        brzina > 1.0 ? ' • ${brzina.toStringAsFixed(0)} km/h' : '';
+    final brzinaText = brzina > 1.0 ? ' • ${brzina.toStringAsFixed(0)} km/h' : '';
     final gradLabel = (_currentGrad ?? '').trim();
-    final timeLabel =
-        (_currentPolazakTime ?? _currentPolazakVreme ?? '').trim();
-    final title = gradLabel.isNotEmpty
-        ? 'Gavra GPS - $gradLabel $timeLabel'
-        : 'Gavra GPS - $timeLabel';
+    final timeLabel = (_currentPolazakTime ?? _currentPolazakVreme ?? '').trim();
+    final title = gradLabel.isNotEmpty ? 'Gavra GPS - $gradLabel $timeLabel' : 'Gavra GPS - $timeLabel';
     final body = '$putniciBroj putnika • Tracking aktivan$brzinaText';
 
     const androidDetails = AndroidNotificationDetails(
@@ -460,23 +450,16 @@ class V3ForegroundGpsService {
     if (vozacId == null || grad.isEmpty || vreme.isEmpty) return;
 
     final now = DateTime.now();
-    if (_lastAutoStopCheckAt != null &&
-        now.difference(_lastAutoStopCheckAt!) < const Duration(seconds: 20)) {
+    if (_lastAutoStopCheckAt != null && now.difference(_lastAutoStopCheckAt!) < const Duration(seconds: 20)) {
       return;
     }
     _lastAutoStopCheckAt = now;
 
     _autoStopInProgress = true;
     try {
-      final fromDate = DateTime(now.year, now.month, now.day)
-          .toIso8601String()
-          .split('T')
-          .first;
-      final toDate = DateTime(now.year, now.month, now.day)
-          .add(const Duration(days: 1))
-          .toIso8601String()
-          .split('T')
-          .first;
+      final fromDate = DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
+      final toDate =
+          DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
 
       final rowsRaw = await _operativnaRepository.listByVozacAndDateRange(
         vozacId: vozacId,
@@ -503,12 +486,10 @@ class V3ForegroundGpsService {
 
       if (relevantRows.isEmpty) return;
 
-      final allPickedUp =
-          relevantRows.every((row) => row['pokupljen_at'] != null);
+      final allPickedUp = relevantRows.every((row) => V3StatusFilters.isPokupljenAt(row['pokupljen_at']));
       if (!allPickedUp) return;
 
-      debugPrint(
-          '[V3ForegroundGpsService] Auto-stop: svi putnici su pokupljeni, gasim tracking');
+      debugPrint('[V3ForegroundGpsService] Auto-stop: svi putnici su pokupljeni, gasim tracking');
       await stopTracking();
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] checkAutoStop error: $e');
@@ -518,8 +499,7 @@ class V3ForegroundGpsService {
   }
 
   /// Javni interfejs za notification action handling
-  static Future<void> handleNotificationAction(
-      String action, String? payload) async {
+  static Future<void> handleNotificationAction(String action, String? payload) async {
     if (action == 'stop_tracking') {
       await stopTracking();
     }

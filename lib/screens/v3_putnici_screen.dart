@@ -20,6 +20,7 @@ import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
+import '../utils/v3_tip_putnika_utils.dart';
 import 'v3_putnik_statistika_screen.dart';
 
 class V3PutniciScreen extends StatefulWidget {
@@ -341,33 +342,6 @@ class _PutnikCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onDetaljneStatistike;
 
-  Color get _tipColor => switch (putnik.tipPutnika) {
-        'vozac' => const Color(0xFF5A5DE8),
-        'radnik' => const Color(0xFF3B7DD8),
-        'ucenik' => const Color(0xFF44A08D),
-        'dnevni' => const Color(0xFFFF6B6B),
-        'posiljka' => const Color(0xFFE65C00),
-        _ => Colors.grey,
-      };
-
-  IconData get _tipIcon => switch (putnik.tipPutnika) {
-        'vozac' => Icons.directions_car,
-        'radnik' => Icons.engineering,
-        'ucenik' => Icons.school,
-        'dnevni' => Icons.today,
-        'posiljka' => Icons.local_shipping,
-        _ => Icons.person,
-      };
-
-  String get _tipLabel => switch (putnik.tipPutnika) {
-        'vozac' => 'VOZAC',
-        'radnik' => 'RADNIK',
-        'ucenik' => 'UCENIK',
-        'dnevni' => 'DNEVNI',
-        'posiljka' => 'POSILJKA',
-        _ => putnik.tipPutnika.toUpperCase(),
-      };
-
   @override
   Widget build(BuildContext context) {
     final String? adresa;
@@ -389,7 +363,7 @@ class _PutnikCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: _tipColor.withValues(alpha: 0.35), width: 1.5),
+        border: Border.all(color: V3TipPutnikaUtils.color(putnik.tipPutnika).withValues(alpha: 0.35), width: 1.5),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -408,9 +382,14 @@ class _PutnikCard extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(_tipIcon, size: 13, color: _tipColor),
+                      Icon(V3TipPutnikaUtils.icon(putnik.tipPutnika),
+                          size: 13, color: V3TipPutnikaUtils.color(putnik.tipPutnika)),
                       const SizedBox(width: 4),
-                      Text(_tipLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _tipColor)),
+                      Text(V3TipPutnikaUtils.badgeLabel(putnik.tipPutnika),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: V3TipPutnikaUtils.color(putnik.tipPutnika))),
                     ],
                   ),
                 ],

@@ -104,17 +104,14 @@ class V3PutnikStatistikaService {
   }) {
     final mesecNaziv = _mesecNaziv(mesec);
     if (putnikId.isEmpty) {
-      return V3PutnikMesecnaStatistika(
-          godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
+      return V3PutnikMesecnaStatistika(godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
     }
 
     final rm = V3MasterRealtimeManager.instance;
     final putnikData = rm.putniciCache[putnikId] ?? const <String, dynamic>{};
-    final tip =
-        (putnikData['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
+    final tip = (putnikData['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
     final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0;
-    final cenaPoPokupljenju =
-        (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0;
+    final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0;
 
     final rows = <Map<String, dynamic>>[];
     for (final row in rm.operativnaNedeljaCache.values) {
@@ -227,8 +224,8 @@ class V3PutnikStatistikaService {
     final pokupljeniRows = aktivne.where(_isPokupljen).toList();
     final dugRows = pokupljeniRows.where((r) => !_isPlaceno(r)).toList();
 
-    final naplacenoIznos = placeniRows.fold<double>(
-        0, (sum, r) => sum + _placeniIznosIliFallback(r, cenaPoPokupljenju));
+    final naplacenoIznos =
+        placeniRows.fold<double>(0, (sum, r) => sum + _placeniIznosIliFallback(r, cenaPoPokupljenju));
 
     return V3PutnikMesecnaStatistika(
       godina: godina,
@@ -244,19 +241,16 @@ class V3PutnikStatistikaService {
     );
   }
 
-  static bool _isPokupljen(Map<String, dynamic> row) =>
-      row['pokupljen_at'] != null;
+  static bool _isPokupljen(Map<String, dynamic> row) => V3StatusFilters.isPokupljenAt(row['pokupljen_at']);
 
-  static bool _isPlaceno(Map<String, dynamic> row) =>
-      row['naplacen_at'] != null;
+  static bool _isPlaceno(Map<String, dynamic> row) => V3StatusFilters.isNaplacenAt(row['naplacen_at']);
 
   static bool _isOtkazano(Map<String, dynamic> row) {
     final status = V3StatusFilters.deriveOperativnaStatus(row);
-    return status == 'otkazano';
+    return V3StatusFilters.isCanceled(status);
   }
 
-  static double _placeniIznosIliFallback(
-      Map<String, dynamic> row, double fallback) {
+  static double _placeniIznosIliFallback(Map<String, dynamic> row, double fallback) {
     final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0;
     return iznos > 0 ? iznos : fallback;
   }
@@ -308,8 +302,7 @@ class V3PutnikStatistikaService {
     required int mesec,
     required bool isPoDanu,
   }) {
-    final arhiva =
-        V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    final arhiva = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
 
     return arhiva.where((row) {
       if (row['tip'] != 'prihod') return false;
@@ -321,7 +314,6 @@ class V3PutnikStatistikaService {
         return kategorija == 'operativna_naplata';
       }
       return kategorija == 'operativna_naplata';
-    }).fold<double>(
-        0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
+    }).fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
   }
 }

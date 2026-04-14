@@ -142,8 +142,8 @@ class V3ZahtevService {
       final row = aktivni.first;
       final rowKey = (row['id']?.toString() ?? '').trim();
       if (rowKey.isNotEmpty) {
-        final status = (row['status']?.toString() ?? '').trim().toLowerCase();
-        if (status == 'alternativa') {
+        final status = row['status']?.toString();
+        if (V3StatusFilters.isOfferLike(status)) {
           await updateStatus(rowKey, 'obrada', updatedBy: updatedBy);
         }
         await updateTrazeniPolazakAt(
@@ -441,8 +441,8 @@ class V3ZahtevService {
       throw Exception('Zahtev nije pronađen.');
     }
 
-    final status = (zahtev['status'] as String? ?? '').trim();
-    if (status != 'alternativa') {
+    final status = zahtev['status']?.toString();
+    if (!V3StatusFilters.isOfferLike(status)) {
       throw Exception('Zahtev više nije u statusu alternativa.');
     }
 

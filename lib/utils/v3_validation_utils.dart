@@ -1,5 +1,3 @@
-import 'v3_string_utils.dart';
-
 /// Centralizovane validation i parsing utility funkcije.
 /// Eliminiše duplikate string/number validacije kroz aplikaciju.
 class V3ValidationUtils {
@@ -10,8 +8,7 @@ class V3ValidationUtils {
   /// Normalizuje naziv grada u uppercase kraticu ('BC' ili 'VS')
   static String normalizeGrad(String grad) {
     final upper = grad.trim().toUpperCase();
-    if (upper == 'BC' || upper == 'BANJA LUKA' || upper == 'BANJALUKA')
-      return 'BC';
+    if (upper == 'BC' || upper == 'BANJA LUKA' || upper == 'BANJALUKA') return 'BC';
     if (upper == 'VS' || upper == 'ČELINAC' || upper == 'CELINAC') return 'VS';
     return upper;
   }
@@ -20,68 +17,6 @@ class V3ValidationUtils {
   static bool isValidGrad(String grad) {
     final normalized = normalizeGrad(grad);
     return normalized == 'BC' || normalized == 'VS';
-  }
-
-  // ─── TELEFON NORMALIZACIJA ────────────────────────────────────────────
-
-  /// Normalizuje telefon broj - uklanja razmake, crtice, zagrade
-  static String normalizePhone(String phone) {
-    var p = phone.replaceAll(RegExp(r'[\s\-\(\).]'), '').trim();
-
-    // Standardizuj srpske prefikse
-    if (p.startsWith('00381')) p = p.substring(5);
-    if (p.startsWith('+381')) p = p.substring(4);
-    if (p.startsWith('381')) p = p.substring(3);
-    if (p.startsWith('0')) p = p.substring(1);
-
-    return p;
-  }
-
-  /// Vraća normalizovan telefon ili null ako je prazan
-  static String? normalizePhoneOrNull(String? phone) {
-    if (phone == null || phone.trim().isEmpty) return null;
-    final normalized = normalizePhone(phone.trim());
-    return normalized.isEmpty ? null : normalized;
-  }
-
-  // ─── VREME NORMALIZACIJA ──────────────────────────────────────────────
-
-  /// Normalizuje vreme string u HH:mm format
-  static String normalizeVreme(String vreme) {
-    final trimmed = vreme.trim();
-
-    // HH:mm:ss → HH:mm
-    final withSecondsMatch =
-        RegExp(r'^(\d{1,2}):(\d{2}):\d{2}$').firstMatch(trimmed);
-    if (withSecondsMatch != null) {
-      final h = int.parse(withSecondsMatch.group(1)!);
-      final m = int.parse(withSecondsMatch.group(2)!);
-      if (!_isValidHourMinute(h, m)) return trimmed;
-      return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
-    }
-
-    // Već u ispravnom formatu HH:mm
-    final fullMatch = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(trimmed);
-    if (fullMatch != null) {
-      final h = int.parse(fullMatch.group(1)!);
-      final m = int.parse(fullMatch.group(2)!);
-      if (!_isValidHourMinute(h, m)) return trimmed;
-      return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
-    }
-
-    // Samo sati bez minuta
-    final hourOnly = RegExp(r'^(\d{1,2})$').firstMatch(trimmed);
-    if (hourOnly != null) {
-      final h = int.parse(hourOnly.group(1)!);
-      if (h < 0 || h > 23) return trimmed;
-      return '${h.toString().padLeft(2, '0')}:00';
-    }
-
-    return trimmed;
-  }
-
-  static bool _isValidHourMinute(int hour, int minute) {
-    return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
   }
 
   // ─── NUMBER PARSING ───────────────────────────────────────────────────
@@ -111,11 +46,6 @@ class V3ValidationUtils {
   static String cleanStringWithDefault(String? input, String defaultValue) {
     final clean = cleanString(input);
     return clean.isEmpty ? defaultValue : clean;
-  }
-
-  /// Normalizuje string za search (lowercase + bez dijakritika)
-  static String normalizeForSearch(String input) {
-    return V3StringUtils.forSearch(input.trim());
   }
 
   // ─── VALIDATION CHECKS ────────────────────────────────────────────────

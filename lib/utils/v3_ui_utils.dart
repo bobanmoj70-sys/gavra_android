@@ -41,8 +41,7 @@ class V3UIUtils {
 
   /// Standardna "Greška pri čuvanju" poruka
   static void showSaveError(BuildContext context, [Object? error]) {
-    final msg =
-        error != null ? '❌ Greška pri čuvanju: $error' : '❌ Greška pri čuvanju';
+    final msg = error != null ? '❌ Greška pri čuvanju: $error' : '❌ Greška pri čuvanju';
     showError(context, msg);
   }
 
@@ -52,19 +51,7 @@ class V3UIUtils {
   }
 
   /// Standardna greška za catch blokove
-  static void showCatchError(
-      BuildContext context, String action, Object error) {
+  static void showCatchError(BuildContext context, String action, Object error) {
     showError(context, '❌ Greška pri $action: $error');
-  }
-
-  // ─── SAFE SETSTATE WRAPPER ─────────────────────────────────────────
-
-  /// Sigurno izvršava setState samo ako je widget mounted
-  /// Koristiti kao: V3UIUtils.safeSetState(this, () { _loading = true; });
-  static void safeSetState(State<StatefulWidget> widget, VoidCallback fn) {
-    if (widget.mounted) {
-      // ignore: invalid_use_of_protected_member
-      widget.setState(fn);
-    }
   }
 }

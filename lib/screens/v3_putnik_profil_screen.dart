@@ -55,24 +55,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
 
-  int _statusPriorityForCell(String status) {
-    switch (status) {
-      case 'odobreno':
-        return 4;
-      case 'obrada':
-        return 3;
-      case 'alternativa':
-        return 2;
-      case 'otkazano':
-        return 1;
-      default:
-        return 0;
-    }
-  }
-
   String? _normalizeValidTime(String? value) {
     if (value == null) return null;
-    final normalized = V3StringUtils.safeSubstringTime(value).trim();
+    final normalized = V3StringUtils.trimTimeToHhMm(value).trim();
     if (normalized.isEmpty) return null;
     if (!_timeFormat.hasMatch(normalized)) return null;
     return normalized;
@@ -189,7 +174,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         for (final row in opRows) {
           final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(row));
           if (V3StatusFilters.isRejected(status)) continue;
-          final rank = _statusPriorityForCell(status) + ((row['pokupljen_at'] != null) ? 10 : 0);
+          final rank = V3StatusPresentation.statusPriority(status) +
+              (V3StatusFilters.isPokupljenAt(row['pokupljen_at']) ? 10 : 0);
           if (rank > selectedRank) {
             selected = row;
             selectedRank = rank;
@@ -206,7 +192,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           grad: grad,
           vreme: displayVreme,
           status: status,
-          pokupljen: selected['pokupljen_at'] != null,
+          pokupljen: V3StatusFilters.isPokupljenAt(selected['pokupljen_at']),
           koristiSekundarnu: selected['koristi_sekundarnu'] as bool? ?? false,
         ));
       }
@@ -214,7 +200,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final bestByGrad = <String, _ZahtevInfo>{};
       for (final info in infos) {
         final current = bestByGrad[info.grad];
-        if (current == null || _statusPriorityForCell(info.status) > _statusPriorityForCell(current.status)) {
+        if (current == null ||
+            V3StatusPresentation.statusPriority(info.status) > V3StatusPresentation.statusPriority(current.status)) {
           bestByGrad[info.grad] = info;
         }
       }
@@ -229,19 +216,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     }
   }
 
-  bool _isDodelaStatusAktivan(String status) {
-    final normalized = status.trim().toLowerCase();
-    if (normalized.isEmpty) return false;
-    const inactiveStatuses = {
-      'inactive',
-      'neaktivan',
-      'otkazan',
-      'cancelled',
-      'deleted',
-    };
-    return !inactiveStatuses.contains(normalized);
-  }
-
   Future<void> _reloadTrenutnaDodelaForPutnik(String putnikId) async {
     try {
       final rows = await supabase
@@ -253,7 +227,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
         final status = mapped['status']?.toString() ?? '';
-        if (!_isDodelaStatusAktivan(status)) continue;
+        if (!V3StatusFilters.isDodelaAktivna(status)) continue;
 
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
         final vozacId = mapped['vozac_v3_auth_id']?.toString().trim() ?? '';
@@ -517,7 +491,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         runSpacing: 8,
                         children: vremena.map((vreme) {
                           final isSelected =
-                              currentVreme != null && V3StringUtils.safeSubstringTime(currentVreme) == vreme;
+                              currentVreme != null && V3StringUtils.trimTimeToHhMm(currentVreme) == vreme;
                           // Scenario 5: zaključaj dugme 15 min pre polaska
                           final parts = vreme.split(':');
                           final polazak = DateTime(
@@ -696,7 +670,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final vozacId = _activeVozacByTerminId[terminId];
       if (vozacId == null || vozacId.isEmpty) continue;
 
-      final vreme = V3StringUtils.safeSubstringTime((row['polazak_at'] as String?) ?? '');
+      final vreme = V3StringUtils.trimTimeToHhMm((row['polazak_at'] as String?) ?? '');
       if (vreme.isEmpty) continue;
 
       final datum = DateTime.tryParse(row['datum'] as String? ?? '');
@@ -1586,7 +1560,7 @@ class _ZahtevCell extends StatelessWidget {
     );
     final statusColor = badgeStyle.color;
     final statusIcon = badgeStyle.icon;
-    final vreme = V3StringUtils.safeSubstringTime(info!.vreme);
+    final vreme = V3StringUtils.trimTimeToHhMm(info!.vreme);
     return GestureDetector(
       onTap: onTap,
       child: V3ContainerUtils.styledContainer(

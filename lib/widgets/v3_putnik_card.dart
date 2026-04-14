@@ -25,6 +25,7 @@ import '../utils/v3_status_filters.dart';
 import '../utils/v3_status_presentation.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_style_helper.dart';
+import '../utils/v3_tip_putnika_utils.dart';
 import '../utils/v3_validation_utils.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
@@ -80,8 +81,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         onLongPress: () {
           if (_isLongPressActive && mounted) {
             final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
-            final isPokupljen = widget.entry?.pokupljenAt != null;
-            if (status != 'otkazano' && !isPokupljen) {
+            final isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+            if (!V3StatusFilters.isCanceled(status) && !isPokupljen) {
               _handlePickup();
             }
           }
@@ -266,8 +267,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   BoxDecoration _getCardDecoration() {
     final status = V3StatusFilters.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
-    final bool isPokupljen = widget.entry?.pokupljenAt != null;
-    final bool isPlacen = widget.entry?.naplacenAt != null;
+    final bool isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+    final bool isPlacen = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
 
     return V3StyleHelper.putnikCard(
       status: status,
@@ -279,8 +280,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   V3StatusTextStyle _getStatusTextStyle() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status;
-    final pokupljen = widget.entry?.pokupljenAt != null;
-    final placen = widget.entry?.naplacenAt != null;
+    final pokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+    final placen = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
     return V3StatusPresentation.forCardText(
       status: status,
       pokupljen: pokupljen,
@@ -289,40 +290,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   // ─── Tip badge ─────────────────────────────────────────────────
-
-  Color _getTipColor() {
-    switch (widget.putnik.tipPutnika.toLowerCase()) {
-      case 'vozac':
-        return const Color(0xFF5A5DE8);
-      case 'radnik':
-        return const Color(0xFF3B7DD8);
-      case 'ucenik':
-        return const Color(0xFF44A08D);
-      case 'posiljka':
-        return const Color(0xFFE65C00);
-      case 'dnevni':
-        return const Color(0xFFFF6B6B);
-      default:
-        return Colors.green;
-    }
-  }
-
-  String _getTipLabel() {
-    switch (widget.putnik.tipPutnika.toLowerCase()) {
-      case 'vozac':
-        return 'VOZAC';
-      case 'radnik':
-        return 'RADNIK';
-      case 'ucenik':
-        return 'UCENIK';
-      case 'posiljka':
-        return 'POSILJKA';
-      case 'dnevni':
-        return 'DNEVNI';
-      default:
-        return 'PUTNIK';
-    }
-  }
 
   // ─── Adresa helper ─────────────────────────────────────────────
 
@@ -366,9 +333,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   @override
   Widget build(BuildContext context) {
     final status = V3StatusFilters.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
-    final bool isPokupljen = widget.entry?.pokupljenAt != null;
-    final bool isOtkazan = status == 'otkazano';
-    final bool isPlacen = widget.entry?.naplacenAt != null;
+    final bool isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+    final bool isOtkazan = V3StatusFilters.isCanceled(status);
+    final bool isPlacen = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
     final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
@@ -469,14 +436,14 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                 child: V3ContainerUtils.styledContainer(
                                   margin: const EdgeInsets.only(bottom: 6),
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  backgroundColor: _getTipColor().withOpacity(0.20),
+                                  backgroundColor: V3TipPutnikaUtils.color(widget.putnik.tipPutnika).withOpacity(0.20),
                                   borderRadius: BorderRadius.circular(8),
                                   child: Text(
-                                    _getTipLabel(),
+                                    V3TipPutnikaUtils.badgeLabel(widget.putnik.tipPutnika),
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: _getTipColor(),
+                                      color: V3TipPutnikaUtils.color(widget.putnik.tipPutnika),
                                       letterSpacing: 0.3,
                                     ),
                                   ),

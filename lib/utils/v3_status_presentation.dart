@@ -81,6 +81,40 @@ class V3StatusPresentation {
       secondary: Colors.grey.shade700,
     );
   }
+
+  /// Boja za status u UI (chip, text, border).
+  static Color statusColor(String? status) {
+    if (V3StatusFilters.isApproved(status)) return Colors.green;
+    if (V3StatusFilters.isPending(status)) return Colors.orange;
+    if (V3StatusFilters.isOfferLike(status)) return Colors.orangeAccent;
+    if (V3StatusFilters.isCanceledOrRejected(status)) return Colors.red.shade300;
+    return Colors.grey;
+  }
+
+  /// Border boja i label za karticu zahteva.
+  static ({Color borderColor, String label}) statusCardStyle(String? status) {
+    final s = V3StatusFilters.normalizeStatus(status);
+    return switch (s) {
+      'obrada' => (borderColor: Colors.amber, label: '🟡 obrada'),
+      'odobreno' => (borderColor: Colors.greenAccent, label: '🟢 odobreno'),
+      'alternativa' => (borderColor: Colors.orange, label: '🕒 alternativa'),
+      'odbijeno' => (borderColor: Colors.redAccent, label: '🔴 odbijeno'),
+      'otkazano' => (borderColor: Colors.orange, label: '⛔ otkazano'),
+      _ => (borderColor: Colors.white24, label: s),
+    };
+  }
+
+  /// Prioritet statusa za sortiranje/rangiranje ćelija.
+  static int statusPriority(String? status) {
+    final s = V3StatusFilters.normalizeStatus(status);
+    return switch (s) {
+      'odobreno' => 4,
+      'obrada' => 3,
+      'alternativa' => 2,
+      'otkazano' => 1,
+      _ => 0,
+    };
+  }
 }
 
 class V3StatusBadgeStyle {

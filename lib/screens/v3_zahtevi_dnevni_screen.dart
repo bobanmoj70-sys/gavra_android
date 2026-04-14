@@ -15,8 +15,12 @@ import '../utils/v3_dialog_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_safe_text.dart';
+import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_presentation.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
+import '../utils/v3_tip_putnika_utils.dart';
+import '../widgets/v3_zahtev_timelapse_widget.dart';
 
 class V3ZahteviDnevniScreen extends StatefulWidget {
   const V3ZahteviDnevniScreen({super.key});
@@ -31,19 +35,17 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
   List<V3Zahtev> _getZahtevi(String status) {
     final rm = V3MasterRealtimeManager.instance;
     final today = DateTime.now();
-    final todayOnly =
-        V3DanHelper.dateOnlyFrom(today.year, today.month, today.day);
+    final todayOnly = V3DanHelper.dateOnlyFrom(today.year, today.month, today.day);
     final windowEnd = todayOnly.add(const Duration(days: 14));
     return rm.zahteviCache.values.map((v) => V3Zahtev.fromJson(v)).where((z) {
       // Ako tražimo 'obrada', prikaži i one koji su u statusu 'alternativa' (jer ih dispečer i dalje vidi kao nešto na čemu radi)
-      if (status == 'obrada') {
-        if (z.status != 'obrada' && z.status != 'alternativa') return false;
+      if (V3StatusFilters.isPending(status)) {
+        if (!V3StatusFilters.isPending(z.status) && !V3StatusFilters.isOfferLike(z.status)) return false;
       } else {
         if (z.status != status) return false;
       }
 
-      final d =
-          V3DanHelper.dateOnlyFrom(z.datum.year, z.datum.month, z.datum.day);
+      final d = V3DanHelper.dateOnlyFrom(z.datum.year, z.datum.month, z.datum.day);
       if (d.isBefore(todayOnly) || d.isAfter(windowEnd)) return false;
       final p = rm.putniciCache[z.putnikId];
       final tip = (p?['tip_putnika'] as String? ?? '').toLowerCase();
@@ -81,7 +83,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
           label = '✅ Odobreno';
         else if (status == 'alternativa')
           label = '🔄 Ponuđena alternativa';
-        else if (status == 'otkazano')
+        else if (V3StatusFilters.isCanceled(status))
           label = '🚫 Otkazano';
         else if (status == 'odbijeno') label = '❌ Odbijeno';
 
@@ -104,10 +106,8 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       final dPre = d.subtract(const Duration(minutes: 15));
       final dPosle = d.add(const Duration(minutes: 15));
 
-      V3TextUtils.setControllerText(
-          'pre', V3DanHelper.formatVreme(dPre.hour, dPre.minute));
-      V3TextUtils.setControllerText(
-          'posle', V3DanHelper.formatVreme(dPosle.hour, dPosle.minute));
+      V3TextUtils.setControllerText('pre', V3DanHelper.formatVreme(dPre.hour, dPre.minute));
+      V3TextUtils.setControllerText('posle', V3DanHelper.formatVreme(dPosle.hour, dPosle.minute));
     }
 
     final result = await V3DialogUtils.showCustomDialog<bool>(
@@ -124,14 +124,12 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
           children: [
             Text(
               'Termin ${zahtev.trazeniPolazakAt} je pun. Ponudite putniku druga vremena:',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
             ),
             const SizedBox(height: 16),
             _timeInput('Prvi termin (obično pre)', V3TextUtils.preController),
             const SizedBox(height: 12),
-            _timeInput(
-                'Drugi termin (obično posle)', V3TextUtils.posleController),
+            _timeInput('Drugi termin (obično posle)', V3TextUtils.posleController),
           ],
         ),
       ),
@@ -155,18 +153,12 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       try {
         await V3ZahtevService.ponudiAlternativu(
           id: zahtev.id,
-          vremePre: V3TextUtils.isEmpty('pre')
-              ? null
-              : V3TextUtils.getControllerText('pre'),
-          vremePosle: V3TextUtils.isEmpty('posle')
-              ? null
-              : V3TextUtils.getControllerText('posle'),
+          vremePre: V3TextUtils.isEmpty('pre') ? null : V3TextUtils.getControllerText('pre'),
+          vremePosle: V3TextUtils.isEmpty('posle') ? null : V3TextUtils.getControllerText('posle'),
         );
-        if (mounted)
-          V3AppSnackBar.success(context, 'Ponuđena alternativa putniku');
+        if (mounted) V3AppSnackBar.success(context, 'Ponuđena alternativa putniku');
       } catch (e) {
-        V3ErrorUtils.safeError(
-            this, context, 'Greška pri slanju alternative: $e');
+        V3ErrorUtils.safeError(this, context, 'Greška pri slanju alternative: $e');
       }
     }
   }
@@ -189,8 +181,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: StreamBuilder<int>(
-          stream: V3MasterRealtimeManager.instance
-              .tablesRevisionStream(const ['v3_zahtevi', 'v3_auth']),
+          stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_zahtevi', 'v3_auth']),
           builder: (context, __) {
             final obrada = _getZahtevi('obrada');
             final odobreno = _getZahtevi('odobreno');
@@ -202,8 +193,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                 // ── AppBar ────────────────────────────────────────
                 SliverAppBar(
                   backgroundColor: Colors.transparent,
-                  expandedHeight:
-                      V3ContainerUtils.responsiveHeight(context, 110),
+                  expandedHeight: V3ContainerUtils.responsiveHeight(context, 110),
                   floating: true,
                   snap: true,
                   automaticallyImplyLeading: false,
@@ -238,27 +228,16 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                               alignment: WrapAlignment.center,
                               spacing: 6,
                               children: [
-                                if (obrada.isNotEmpty)
-                                  _StatusBadge('⏰ ${obrada.length} obrada',
-                                      Colors.orange),
-                                if (odobreno.isNotEmpty)
-                                  _StatusBadge('✅ ${odobreno.length} odobreno',
-                                      Colors.green),
-                                if (odbijeno.isNotEmpty)
-                                  _StatusBadge('❌ ${odbijeno.length} odbijeno',
-                                      Colors.red),
+                                if (obrada.isNotEmpty) _StatusBadge('⏰ ${obrada.length} obrada', Colors.orange),
+                                if (odobreno.isNotEmpty) _StatusBadge('✅ ${odobreno.length} odobreno', Colors.green),
+                                if (odbijeno.isNotEmpty) _StatusBadge('❌ ${odbijeno.length} odbijeno', Colors.red),
                                 if (otkazano.isNotEmpty)
-                                  _StatusBadge('🚫 ${otkazano.length} otkazano',
-                                      Colors.red.shade300),
-                                if (obrada.isEmpty &&
-                                    odobreno.isEmpty &&
-                                    odbijeno.isEmpty &&
-                                    otkazano.isEmpty)
+                                  _StatusBadge('🚫 ${otkazano.length} otkazano', Colors.red.shade300),
+                                if (obrada.isEmpty && odobreno.isEmpty && odbijeno.isEmpty && otkazano.isEmpty)
                                   Text(
                                     'Nema zahteva',
                                     style: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.5),
+                                      color: Colors.white.withValues(alpha: 0.5),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -278,8 +257,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (ctx, i) => _ZahtevCard(
                         zahtev: obrada[i],
-                        putnik:
-                            V3PutnikService.getPutnikById(obrada[i].putnikId),
+                        putnik: V3PutnikService.getPutnikById(obrada[i].putnikId),
                         onOdobri: () => _updateStatus(obrada[i].id, 'odobreno'),
                         onAlternativa: () => _showAlternativaDialog(obrada[i]),
                         onOdbij: () => _updateStatus(obrada[i].id, 'otkazano'),
@@ -296,11 +274,9 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (ctx, i) => _ZahtevCard(
                         zahtev: odobreno[i],
-                        putnik:
-                            V3PutnikService.getPutnikById(odobreno[i].putnikId),
+                        putnik: V3PutnikService.getPutnikById(odobreno[i].putnikId),
                         onOdobri: null,
-                        onOdbij: () =>
-                            _updateStatus(odobreno[i].id, 'otkazano'),
+                        onOdbij: () => _updateStatus(odobreno[i].id, 'otkazano'),
                       ),
                       childCount: odobreno.length,
                     ),
@@ -320,8 +296,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                         final all = [...odbijeno, ...otkazano];
                         return _ZahtevCard(
                           zahtev: all[i],
-                          putnik:
-                              V3PutnikService.getPutnikById(all[i].putnikId),
+                          putnik: V3PutnikService.getPutnikById(all[i].putnikId),
                           onOdobri: () => _updateStatus(all[i].id, 'odobreno'),
                           onOdbij: null,
                         );
@@ -332,10 +307,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                 ],
 
                 // ── Prazan state ──────────────────────────────────
-                if (obrada.isEmpty &&
-                    odobreno.isEmpty &&
-                    odbijeno.isEmpty &&
-                    otkazano.isEmpty)
+                if (obrada.isEmpty && odobreno.isEmpty && odbijeno.isEmpty && otkazano.isEmpty)
                   SliverFillRemaining(
                     child: Center(
                       child: Column(
@@ -398,8 +370,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: Text(
                 '$count',
-                style: TextStyle(
-                    color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -427,8 +398,7 @@ class _StatusBadge extends StatelessWidget {
       border: Border.all(color: color.withValues(alpha: 0.5)),
       child: Text(
         label,
-        style:
-            TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -449,65 +419,13 @@ class _ZahtevCard extends StatelessWidget {
     required this.onOdbij,
   });
 
-  Widget _buildTimelapse(V3Zahtev z) {
-    final created = z.createdAt;
-    final updated = z.updatedAt;
-    if (created == null) return const SizedBox.shrink();
-
-    String fmt(DateTime dt) {
-      return V3DanHelper.formatVreme(dt.hour, dt.minute);
-    }
-
-    String odgovorInfo;
-    if (updated != null &&
-        updated.isAfter(created.add(const Duration(seconds: 5)))) {
-      final diff = updated.difference(created);
-      final mins = diff.inMinutes;
-      final secs = diff.inSeconds % 60;
-      final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
-
-      String odgovorLabel;
-      if (z.status == 'alternativa' &&
-          (z.altVremePre != null || z.altVremePosle != null)) {
-        final alts = [
-          if (z.altVremePre != null)
-            V3StringUtils.formatAlternativeTime(z.altVremePre),
-          if (z.altVremePosle != null)
-            V3StringUtils.formatAlternativeTime(z.altVremePosle),
-        ].join(' / ');
-        odgovorLabel = '⚠️ alt: $alts';
-      } else {
-        odgovorLabel = switch (z.status) {
-          'odobreno' => '✅',
-          'alternativa' => '⚠️',
-          'odbijeno' => '❌',
-          'otkazano' => '⛔',
-          _ => '🕒',
-        };
-      }
-
-      odgovorInfo =
-          '${fmt(created)} → ${fmt(updated)} ($diffStr) $odgovorLabel';
-    } else {
-      odgovorInfo = '${fmt(created)} · čeka odgovor...';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(
-        '⏱ $odgovorInfo',
-        style: const TextStyle(color: Colors.white24, fontSize: 11),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final tip = putnik?.tipPutnika ?? '';
-    final tipColor = _tipColor(tip);
-    final statusColor = _statusColor(zahtev.status);
+    final tipColor = V3TipPutnikaUtils.color(tip);
+    final statusColor = V3StatusPresentation.statusColor(zahtev.status);
     final danLabel = V3DanHelper.label(zahtev.datum);
-    final vreme = V3StringUtils.safeSubstringTime(zahtev.trazeniPolazakAt);
+    final vreme = V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt);
 
     return V3ContainerUtils.iconContainer(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -556,12 +474,10 @@ class _ZahtevCard extends StatelessWidget {
                       ),
                       // Status chip
                       V3ContainerUtils.badgeContainer(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         backgroundColor: statusColor.withValues(alpha: 0.2),
                         borderRadiusGeometry: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: statusColor.withValues(alpha: 0.5)),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.5)),
                         child: Text(
                           zahtev.status.toUpperCase(),
                           style: TextStyle(
@@ -580,21 +496,13 @@ class _ZahtevCard extends StatelessWidget {
                       _InfoChip(
                         icon: zahtev.grad == 'BC' ? Icons.home : Icons.work,
                         label: zahtev.grad,
-                        color: zahtev.grad == 'BC'
-                            ? Colors.cyan
-                            : Colors.tealAccent,
+                        color: zahtev.grad == 'BC' ? Colors.cyan : Colors.tealAccent,
                       ),
                       const SizedBox(width: 6),
-                      _InfoChip(
-                          icon: Icons.access_time,
-                          label: vreme,
-                          color: Colors.amber),
+                      _InfoChip(icon: Icons.access_time, label: vreme, color: Colors.amber),
                       if (danLabel.isNotEmpty) ...[
                         const SizedBox(width: 6),
-                        _InfoChip(
-                            icon: Icons.calendar_today,
-                            label: danLabel,
-                            color: Colors.white54),
+                        _InfoChip(icon: Icons.calendar_today, label: danLabel, color: Colors.white54),
                       ],
                       if (zahtev.brojMesta > 1) ...[
                         const SizedBox(width: 6),
@@ -606,15 +514,13 @@ class _ZahtevCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  _buildTimelapse(zahtev),
+                  V3ZahtevTimelapseWidget(zahtev: zahtev, cekaTekst: 'čeka odgovor...'),
                 ],
               ),
             ),
 
             // Akcije
-            if (onOdobri != null ||
-                onAlternativa != null ||
-                onOdbij != null) ...[
+            if (onOdobri != null || onAlternativa != null || onOdbij != null) ...[
               const SizedBox(width: 8),
               Column(
                 mainAxisSize: MainAxisSize.min,
@@ -653,38 +559,8 @@ class _ZahtevCard extends StatelessWidget {
   String _initials(String name) {
     final parts = name.trim().split(' ');
     if (parts.isEmpty) return '?';
-    if (parts.length == 1)
-      return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
+    if (parts.length == 1) return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
     return '${parts[0][0]}${parts.last[0]}'.toUpperCase();
-  }
-
-  Color _tipColor(String tip) {
-    switch (tip.toLowerCase()) {
-      case 'ucenik':
-        return Colors.blue;
-      case 'dnevni':
-        return Colors.green;
-      case 'posiljka':
-        return Colors.purple;
-      default:
-        return Colors.orange;
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'odobreno':
-        return Colors.green;
-      case 'obrada':
-        return Colors.orange;
-      case 'alternativa':
-        return Colors.orangeAccent;
-      case 'otkazano':
-      case 'odbijeno':
-        return Colors.red.shade300;
-      default:
-        return Colors.grey;
-    }
   }
 }
 
@@ -692,8 +568,7 @@ class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _InfoChip(
-      {required this.icon, required this.label, required this.color});
+  const _InfoChip({required this.icon, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -702,9 +577,7 @@ class _InfoChip extends StatelessWidget {
       children: [
         Icon(icon, size: 11, color: color),
         const SizedBox(width: 3),
-        Text(label,
-            style: TextStyle(
-                color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -714,8 +587,7 @@ class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _ActionBtn(
-      {required this.icon, required this.color, required this.onTap});
+  const _ActionBtn({required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

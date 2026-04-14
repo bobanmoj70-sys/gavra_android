@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/v3_dug.dart';
+import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
 
@@ -18,9 +19,9 @@ class V3DugService {
     final cache = rm.operativnaNedeljaCache;
     final dugovi = <V3Dug>[];
     for (final row in cache.values) {
-      final isPlaceno = row['naplacen_at'] != null;
+      final isPlaceno = V3StatusFilters.isNaplacenAt(row['naplacen_at']);
       if (isPlaceno) continue;
-      final isPokupljen = row['pokupljen_at'] != null;
+      final isPokupljen = V3StatusFilters.isPokupljenAt(row['pokupljen_at']);
       if (!isPokupljen) continue;
       final putnikId = row['created_by'] as String? ?? '';
       final putnikData = rm.putniciCache[putnikId];

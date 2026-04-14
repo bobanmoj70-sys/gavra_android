@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'v3_status_filters.dart';
+
 /// V3StyleHelper - centralizovane style konstante i dekoracije.
 class V3StyleHelper {
   V3StyleHelper._();
@@ -40,13 +42,10 @@ class V3StyleHelper {
   // ─── COMMON BORDERS ────────────────────────────────────────────────────────
 
   static final Border whiteAlpha13Border = Border.all(color: whiteAlpha13);
-  static final Border whiteAlpha15Border =
-      Border.all(color: whiteAlpha15, width: 1.2);
+  static final Border whiteAlpha15Border = Border.all(color: whiteAlpha15, width: 1.2);
   static final Border whiteAlpha2Border = Border.all(color: whiteAlpha2);
-  static final Border whiteAlpha3Border =
-      Border.all(color: whiteAlpha3, width: 1.2);
-  static final Border whiteAlpha5Border =
-      Border.all(color: whiteAlpha5, width: 1.5);
+  static final Border whiteAlpha3Border = Border.all(color: whiteAlpha3, width: 1.2);
+  static final Border whiteAlpha5Border = Border.all(color: whiteAlpha5, width: 1.5);
 
   // ─── COMMON BOXSHADOWS ─────────────────────────────────────────────────────
 
@@ -125,7 +124,7 @@ class V3StyleHelper {
     bool isPlacen = false,
     Color? vozacBoja,
   }) {
-    if (status == 'otkazano') {
+    if (V3StatusFilters.isCanceled(status)) {
       return BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,

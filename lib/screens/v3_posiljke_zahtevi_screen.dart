@@ -5,8 +5,9 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_dan_helper.dart';
-import '../utils/v3_string_utils.dart';
+import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_presentation.dart';
+import '../widgets/v3_zahtev_timelapse_widget.dart';
 
 /// V3 ekran za prikaz i upravljanje zahtevima tipa "pošiljka".
 /// Admin odobrava / odbija / otkazuje pošiljke.
@@ -54,10 +55,10 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
       builder: (context, _) {
         final zahtevi = _getPosiljkeZahtevi();
 
-        final brObrada = zahtevi.where((z) => z.status == 'obrada').length;
-        final brOdobreno = zahtevi.where((z) => z.status == 'odobreno').length;
-        final brOdbijeno = zahtevi.where((z) => z.status == 'odbijeno').length;
-        final brOtkazano = zahtevi.where((z) => z.status == 'otkazano').length;
+        final brObrada = zahtevi.where((z) => V3StatusFilters.isPending(z.status)).length;
+        final brOdobreno = zahtevi.where((z) => V3StatusFilters.isApproved(z.status)).length;
+        final brOdbijeno = zahtevi.where((z) => V3StatusFilters.isRejected(z.status)).length;
+        final brOtkazano = zahtevi.where((z) => V3StatusFilters.isCanceled(z.status)).length;
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -169,63 +170,11 @@ class _ZahtevKartica extends StatelessWidget {
 
   final V3Zahtev zahtev;
 
-  Widget _buildTimelapse(V3Zahtev z) {
-    final created = z.createdAt;
-    final updated = z.updatedAt;
-    if (created == null) return const SizedBox.shrink();
-
-    String fmt(DateTime dt) {
-      return V3DanHelper.formatVreme(dt.hour, dt.minute);
-    }
-
-    String odgovorInfo;
-    if (updated != null && updated.isAfter(created.add(const Duration(seconds: 5)))) {
-      final diff = updated.difference(created);
-      final mins = diff.inMinutes;
-      final secs = diff.inSeconds % 60;
-      final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
-
-      String odgovorLabel;
-      if (z.status == 'alternativa' && (z.altVremePre != null || z.altVremePosle != null)) {
-        final alts = [
-          if (z.altVremePre != null) V3StringUtils.formatAlternativeTime(z.altVremePre),
-          if (z.altVremePosle != null) V3StringUtils.formatAlternativeTime(z.altVremePosle),
-        ].join(' / ');
-        odgovorLabel = '⚠️ alt: $alts';
-      } else {
-        odgovorLabel = switch (z.status) {
-          'odobreno' => '✅',
-          'alternativa' => '⚠️',
-          'odbijeno' => '❌',
-          'otkazano' => '⛔',
-          _ => '🕒',
-        };
-      }
-
-      odgovorInfo = '${fmt(created)} → ${fmt(updated)} ($diffStr) $odgovorLabel';
-    } else {
-      odgovorInfo = '${fmt(created)} · čeka kron...';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(
-        '⏱ $odgovorInfo',
-        style: const TextStyle(color: Colors.white24, fontSize: 11),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final (borderColor, statusLabel) = switch (zahtev.status) {
-      'obrada' => (Colors.amber, '🟡 obrada'),
-      'odobreno' => (Colors.greenAccent, '🟢 odobreno'),
-      'alternativa' => (Colors.orange, '🕒 alternativa'),
-      'odbijeno' => (Colors.redAccent, '🔴 odbijeno'),
-      'otkazano' => (Colors.orange, '⛔ otkazano'),
-      _ => (Colors.white24, zahtev.status),
-    };
+    final style = V3StatusPresentation.statusCardStyle(zahtev.status);
+    final borderColor = style.borderColor;
+    final statusLabel = style.label;
 
     return V3ContainerUtils.styledContainer(
       margin: const EdgeInsets.only(bottom: 8),
@@ -275,7 +224,7 @@ class _ZahtevKartica extends StatelessWidget {
                     '${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
-                  _buildTimelapse(zahtev),
+                  V3ZahtevTimelapseWidget(zahtev: zahtev),
                   if (zahtev.polazakAt != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),

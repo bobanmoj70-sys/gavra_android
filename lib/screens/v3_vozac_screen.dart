@@ -52,8 +52,7 @@ class V3VozacScreen extends StatefulWidget {
 
 class _V3VozacScreenState extends State<V3VozacScreen> {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  static const String _biometricPromptChoicePrefix =
-      'v3_biometric_prompt_choice_';
+  static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
 
   // 🎯 SISTEM OPTIMIZOVAN ZA FIKSNE ADRESE PUTNIKA:
   //
@@ -97,11 +96,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Set<String> _assignedOperativnaIds = <String>{};
 
   List<String> get _bcVremena =>
-      getRasporedVremena('bc', navBarTypeNotifier.value,
-          day: V3DanHelper.fullName(_selectedDate));
+      getRasporedVremena('bc', navBarTypeNotifier.value, day: V3DanHelper.fullName(_selectedDate));
   List<String> get _vsVremena =>
-      getRasporedVremena('vs', navBarTypeNotifier.value,
-          day: V3DanHelper.fullName(_selectedDate));
+      getRasporedVremena('vs', navBarTypeNotifier.value, day: V3DanHelper.fullName(_selectedDate));
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),
@@ -156,24 +153,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   bool _isGpsRowActiveForCount(Map<String, dynamic> row) {
     final status = V3StatusFilters.deriveOperativnaStatus(row);
-    final pokupljen = row['pokupljen_at'] != null;
+    final pokupljen = V3StatusFilters.isPokupljenAt(row['pokupljen_at']);
     return V3StatusFilters.isVisibleForDisplay(
       status: status,
       pokupljen: pokupljen,
     );
-  }
-
-  bool _isDodelaStatusAktivan(String status) {
-    final normalized = status.trim().toLowerCase();
-    if (normalized.isEmpty) return false;
-    const inactiveStatuses = {
-      'inactive',
-      'neaktivan',
-      'otkazan',
-      'cancelled',
-      'deleted',
-    };
-    return !inactiveStatuses.contains(normalized);
   }
 
   Future<void> _reloadTrenutnaDodelaForVozac() async {
@@ -191,16 +175,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     _loadingDodela = true;
     try {
-      final rows = await supabase
-          .from('v3_trenutna_dodela')
-          .select('termin_id, status')
-          .eq('vozac_v3_auth_id', vozacAuthId);
+      final rows =
+          await supabase.from('v3_trenutna_dodela').select('termin_id, status').eq('vozac_v3_auth_id', vozacAuthId);
 
       final assigned = <String>{};
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
         final status = mapped['status']?.toString() ?? '';
-        if (!_isDodelaStatusAktivan(status)) continue;
+        if (!V3StatusFilters.isDodelaAktivna(status)) continue;
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
         if (terminId.isEmpty) continue;
         assigned.add(terminId);
@@ -232,10 +214,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       schema: 'public',
       table: 'v3_trenutna_dodela',
       callback: (payload) {
-        final newVozacId =
-            payload.newRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
-        final oldVozacId =
-            payload.oldRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
+        final newVozacId = payload.newRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
+        final oldVozacId = payload.oldRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
         if (newVozacId != vozacAuthId && oldVozacId != vozacAuthId) return;
         _refreshDodelaFromRealtime();
       },
@@ -268,7 +248,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   bool _isExcludedFromOptimization(_PutnikEntry entry) {
     final status = entry.entry?.statusFinal;
-    final isPokupljen = entry.entry?.pokupljenAt != null;
+    final isPokupljen = V3StatusFilters.isPokupljenAt(entry.entry?.pokupljenAt);
     return V3StatusFilters.isExcludedFromOptimization(
       status: status,
       pokupljen: isPokupljen,
@@ -281,7 +261,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       int sortRank(_PutnikEntry entry) {
         final status = entry.entry?.statusFinal;
         if (V3StatusFilters.isCanceledOrRejected(status)) return 3;
-        if (entry.entry?.pokupljenAt != null) return 2;
+        if (V3StatusFilters.isPokupljenAt(entry.entry?.pokupljenAt)) return 2;
         return 1;
       }
 
@@ -298,9 +278,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   List<_PutnikEntry> _optimizacijaPutnici() {
-    return _mojiPutnici
-        .where((entry) => !_isExcludedFromOptimization(entry))
-        .toList();
+    return _mojiPutnici.where((entry) => !_isExcludedFromOptimization(entry)).toList();
   }
 
   @override
@@ -360,35 +338,28 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return ((row['polazak_at'] as String?) ?? '');
     }
 
-    String rowGrad(Map<String, dynamic> row) =>
-        (row['grad']?.toString().toUpperCase() ?? '');
+    String rowGrad(Map<String, dynamic> row) => (row['grad']?.toString().toUpperCase() ?? '');
 
-    String rowDatum(Map<String, dynamic> row) =>
-        V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
+    String rowDatum(Map<String, dynamic> row) => V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
 
     final selectedVNorm = _normV(_selectedVreme);
 
     // 1. Moji termini za ovaj datum (iz izvedenog operativna cache-a)
     _mojiTermini = rm.operativnaAssignedCache.values
         .where(
-          (r) =>
-              _isRowAssignedToCurrentVozac(r) &&
-              rowDatum(r) == _selectedDatumIso &&
-              _isGpsRowEligible(r),
+          (r) => _isRowAssignedToCurrentVozac(r) && rowDatum(r) == _selectedDatumIso && _isGpsRowEligible(r),
         )
         .toList();
 
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
-    final terminPostoji = _mojiTermini.any((t) =>
-        t['grad']?.toString().toUpperCase() == _selectedGrad &&
-        _normV(t['vreme']?.toString()) == selectedVNorm);
+    final terminPostoji = _mojiTermini.any(
+        (t) => t['grad']?.toString().toUpperCase() == _selectedGrad && _normV(t['vreme']?.toString()) == selectedVNorm);
 
     if (!terminPostoji) {
       final stariGrad = _selectedGrad;
       final staroVreme = _selectedVreme;
       _selectClosestTermin();
-      final terminPromenjen =
-          _selectedGrad != stariGrad || _selectedVreme != staroVreme;
+      final terminPromenjen = _selectedGrad != stariGrad || _selectedVreme != staroVreme;
       if (terminPromenjen && _selectedVreme.isNotEmpty) {
         // Pronašao bliži termin — odmah ponovi rebuild sa novim vrednostima
         _rebuild();
@@ -439,24 +410,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (matchedEntryData == null && putnikId != null && putnikId.isNotEmpty) {
         DateTime? bestUpdatedAt;
         for (final r in rm.operativnaNedeljaCache.values) {
-          if (V3StatusFilters.isCanceledOrRejected(
-              V3StatusFilters.deriveOperativnaStatus(r))) continue;
+          if (V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r))) continue;
           if (r['created_by']?.toString() != putnikId) continue;
-          if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') !=
-              _selectedDatumIso) continue;
+          if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
           if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
           if (_normV(operativnaVreme(r)) != selectedVNorm) continue;
 
           final updatedAtRaw = r['updated_at']?.toString();
-          final updatedAt =
-              updatedAtRaw != null ? DateTime.tryParse(updatedAtRaw) : null;
+          final updatedAt = updatedAtRaw != null ? DateTime.tryParse(updatedAtRaw) : null;
           if (matchedEntryData == null) {
             matchedEntryData = r;
             bestUpdatedAt = updatedAt;
             continue;
           }
-          if (updatedAt != null &&
-              (bestUpdatedAt == null || updatedAt.isAfter(bestUpdatedAt))) {
+          if (updatedAt != null && (bestUpdatedAt == null || updatedAt.isAfter(bestUpdatedAt))) {
             matchedEntryData = r;
             bestUpdatedAt = updatedAt;
           }
@@ -475,8 +442,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       );
     }
 
-    V3StateUtils.safeSetState(
-        this, () => _mojiPutnici = _sortPutniciForDisplay(putnici));
+    V3StateUtils.safeSetState(this, () => _mojiPutnici = _sortPutniciForDisplay(putnici));
   }
 
   void _selectClosestTermin() {
@@ -501,8 +467,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       final diff = (mins - current).abs();
       if (diff < minDiff) {
         minDiff = diff;
-        bestVreme = V3DanHelper.formatVreme(
-            int.tryParse(tp[0]) ?? 0, int.tryParse(tp[1]) ?? 0);
+        bestVreme = V3DanHelper.formatVreme(int.tryParse(tp[0]) ?? 0, int.tryParse(tp[1]) ?? 0);
         bestGrad = grad;
       }
     }
@@ -518,8 +483,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return V3DanHelper.toIsoDate(_selectedDate);
   }
 
-  String? get _neradanDanRazlog =>
-      getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
+  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
   void _onPolazakChanged(String grad, String vreme) {
     setState(() {
@@ -533,8 +497,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozac = _efektivniVozac;
     if (vozac == null) return;
 
-    final dayAbbr = V3DanHelper.normalizeToWorkdayAbbr(
-        V3DanHelper.dayAbbrFromFullName(day));
+    final dayAbbr = V3DanHelper.normalizeToWorkdayAbbr(V3DanHelper.dayAbbrFromFullName(day));
     final dayIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(
       dayAbbr,
       anchor: V3DanHelper.schedulingWeekAnchor(),
@@ -546,8 +509,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final dayTerms = rm.operativnaAssignedCache.values
         .where((row) =>
             _isRowAssignedToCurrentVozac(row) &&
-            V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') ==
-                dayIso &&
+            V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == dayIso &&
             _isGpsRowEligible(row))
         .toList();
 
@@ -565,12 +527,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       dayTerms.sort((a, b) {
         final aTime = _normV(a['vreme']?.toString());
         final bTime = _normV(b['vreme']?.toString());
-        final aDiff = _timeToMinutes(aTime) < 0
-            ? 99999
-            : (_timeToMinutes(aTime) - nowMinutes).abs();
-        final bDiff = _timeToMinutes(bTime) < 0
-            ? 99999
-            : (_timeToMinutes(bTime) - nowMinutes).abs();
+        final aDiff = _timeToMinutes(aTime) < 0 ? 99999 : (_timeToMinutes(aTime) - nowMinutes).abs();
+        final bDiff = _timeToMinutes(bTime) < 0 ? 99999 : (_timeToMinutes(bTime) - nowMinutes).abs();
         if (aDiff != bDiff) return aDiff.compareTo(bDiff);
         final ga = a['grad']?.toString().toUpperCase() ?? '';
         final gb = b['grad']?.toString().toUpperCase() ?? '';
@@ -586,8 +544,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       _selectedDate = selectedDayDate;
 
       if (bestTerm != null) {
-        _selectedGrad =
-            bestTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
+        _selectedGrad = bestTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
         _selectedVreme = _normV(bestTerm['vreme']?.toString());
       } else if (dayTerms.isEmpty) {
         _selectedVreme = '';
@@ -595,8 +552,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
       if (dayTerms.isNotEmpty && _selectedVreme.isEmpty) {
         final firstTerm = dayTerms.first;
-        _selectedGrad =
-            firstTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
+        _selectedGrad = firstTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
         _selectedVreme = _normV(firstTerm['vreme']?.toString());
       }
     });
@@ -621,8 +577,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       final phoneRaw = V3VozacService.currentVozac?.telefon1 ?? '';
       final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
       if (normalizedPhone.isNotEmpty) {
-        await _secureStorage.delete(
-            key: '$_biometricPromptChoicePrefix$normalizedPhone');
+        await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
       }
 
       await V3PushTokenSyncService.clearCurrentUserDeviceTokenOnLogout(
@@ -665,8 +620,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return rm.operativnaAssignedCache.values
         .where((r) =>
             _isRowAssignedToCurrentVozac(r) &&
-            V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') ==
-                _selectedDatumIso &&
+            V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             r['grad']?.toString().toUpperCase() == gradUp &&
             _normV(r['vreme']?.toString()) == vremeNorm &&
             hasActivePutnik(r) &&
@@ -709,21 +663,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           }
 
           if (mounted) {
-            V3AppSnackBar.success(context,
-                '📍 GPS tracking pokrenut sa persistent notification! Putnici dobijaju realtime lokaciju.');
+            V3AppSnackBar.success(
+                context, '📍 GPS tracking pokrenut sa persistent notification! Putnici dobijaju realtime lokaciju.');
           }
         } else {
           V3StateUtils.safeSetState(this, () => _isTracking = false);
           if (mounted) {
-            V3AppSnackBar.error(context,
-                '❌ Greška pri pokretanju GPS trackinga. Provjerite dozvole u Settings.');
+            V3AppSnackBar.error(context, '❌ Greška pri pokretanju GPS trackinga. Provjerite dozvole u Settings.');
           }
         }
       } catch (e) {
         V3StateUtils.safeSetState(this, () => _isTracking = false);
         if (mounted) {
-          V3AppSnackBar.error(
-              context, '❌ Greška pri pokretanju GPS trackinga: $e');
+          V3AppSnackBar.error(context, '❌ Greška pri pokretanju GPS trackinga: $e');
         }
       }
     } else {
@@ -743,8 +695,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       _lastOptimizationMeta = const {};
 
       if (mounted) {
-        V3AppSnackBar.warning(
-            context, '⚠️ GPS tracking zaustavljen - notification uklonjena');
+        V3AppSnackBar.warning(context, '⚠️ GPS tracking zaustavljen - notification uklonjena');
       }
     }
   }
@@ -820,11 +771,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _buildOptimizationData(
-      List<_PutnikEntry> putnici) {
-    return putnici
-        .map((entry) => {'putnik': entry.putnik, 'entry': entry.entry})
-        .toList();
+  List<Map<String, dynamic>> _buildOptimizationData(List<_PutnikEntry> putnici) {
+    return putnici.map((entry) => {'putnik': entry.putnik, 'entry': entry.entry}).toList();
   }
 
   Future<Map<String, double>?> _resolveDriverPositionForOptimization({
@@ -837,8 +785,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     if (driverLat == null || driverLng == null) {
       if (!silent && mounted) {
-        V3AppSnackBar.warning(
-            context, 'OSRM optimizacija zahteva aktivan GPS vozača.');
+        V3AppSnackBar.warning(context, 'OSRM optimizacija zahteva aktivan GPS vozača.');
       }
       return null;
     }
@@ -863,16 +810,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   /// Dobija trenutnu GPS poziciju vozača iz baze podataka
-  Future<Map<String, dynamic>?> _getCurrentDriverPosition(
-      String vozacId) async {
+  Future<Map<String, dynamic>?> _getCurrentDriverPosition(String vozacId) async {
     try {
-      final response = V3VozacLokacijaService.getVozacLokacijaSync(vozacId,
-          onlyActive: true);
+      final response = V3VozacLokacijaService.getVozacLokacijaSync(vozacId, onlyActive: true);
 
-      final lat = (response?['lat'] as num?)?.toDouble() ??
-          double.tryParse(response?['lat']?.toString() ?? '');
-      final lng = (response?['lng'] as num?)?.toDouble() ??
-          double.tryParse(response?['lng']?.toString() ?? '');
+      final lat = (response?['lat'] as num?)?.toDouble() ?? double.tryParse(response?['lat']?.toString() ?? '');
+      final lng = (response?['lng'] as num?)?.toDouble() ?? double.tryParse(response?['lng']?.toString() ?? '');
 
       if (response != null && lat != null && lng != null) {
         return {
@@ -898,8 +841,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           backgroundColor: Colors.transparent,
           body: V3ContainerUtils.backgroundContainer(
             gradient: V3ThemeManager().currentGradient,
-            child: const Center(
-                child: CircularProgressIndicator(color: Colors.white)),
+            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
         ),
       );
@@ -929,8 +871,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
     for (final r in rm.operativnaAssignedCache.values) {
       if (!_isRowAssignedToCurrentVozac(r)) continue;
-      if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') !=
-          _selectedDatumIso) continue;
+      if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
       if (!_isGpsRowEligible(r)) continue;
       final g = r['grad']?.toString().toUpperCase() ?? '';
       final v = normV(r['vreme']?.toString());
@@ -952,13 +893,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     return StreamBuilder<int>(
       stream: rm.v3StreamFromCache<int>(
-        tables: const [
-          'v3_operativna_nedelja',
-          'v3_auth',
-          'v3_adrese',
-          'v3_kapacitet_slots',
-          'v3_app_settings'
-        ],
+        tables: const ['v3_operativna_nedelja', 'v3_auth', 'v3_adrese', 'v3_kapacitet_slots', 'v3_app_settings'],
         build: () => DateTime.now().microsecondsSinceEpoch,
       ),
       builder: (context, snapshot) {
@@ -981,8 +916,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                 preferredSize: Size.fromHeight(appBarHeight),
                 child: V3ContainerUtils.styledContainer(
                   backgroundColor: Theme.of(context).glassContainer,
-                  border: Border.all(
-                      color: Theme.of(context).glassBorder, width: 1.5),
+                  border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(25),
                     bottomRight: Radius.circular(25),
@@ -990,18 +924,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   padding: EdgeInsets.zero,
                   child: SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             aktivnaSedmica,
                             style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimary
-                                  .withValues(alpha: 0.85),
+                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1020,8 +950,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 child: _buildAppBarBtn(
                                   context: context,
                                   label: _isTracking ? 'STOP' : 'START',
-                                  color:
-                                      _isTracking ? Colors.red : Colors.green,
+                                  color: _isTracking ? Colors.red : Colors.green,
                                   height: appBarButtonHeight,
                                   onTap: _toggleTracking,
                                 ),
@@ -1042,8 +971,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                               // Dan picker
                               Expanded(
                                 flex: 2,
-                                child: _buildDanPickerBtn(context,
-                                    height: appBarButtonHeight),
+                                child: _buildDanPickerBtn(context, height: appBarButtonHeight),
                               ),
                               const SizedBox(width: 4),
                               // ⚙️ Popup meni — tema + logout
@@ -1053,8 +981,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                     await V3ThemeManager().nextTheme();
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
-                                    V3AppSnackBar.info(
-                                        context, '🎨 Tema promenjena');
+                                    V3AppSnackBar.info(context, '🎨 Tema promenjena');
                                   } else if (val == 'logout') {
                                     _logout();
                                   }
@@ -1063,8 +990,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                   PopupMenuItem(
                                     value: 'tema',
                                     child: Row(children: [
-                                      Icon(Icons.palette,
-                                          color: Colors.purpleAccent),
+                                      Icon(Icons.palette, color: Colors.purpleAccent),
                                       SizedBox(width: 8),
                                       Text('Promeni temu'),
                                     ]),
@@ -1081,20 +1007,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 ],
                                 padding: EdgeInsets.zero,
                                 child: V3ContainerUtils.iconContainer(
-                                  width: V3ContainerUtils.responsiveHeight(
-                                      context, 30),
-                                  height: V3ContainerUtils.responsiveHeight(
-                                      context, 30),
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.1),
-                                  borderRadiusGeometry:
-                                      BorderRadius.circular(8),
-                                  border: Border.all(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.35)),
+                                  width: V3ContainerUtils.responsiveHeight(context, 30),
+                                  height: V3ContainerUtils.responsiveHeight(context, 30),
+                                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                  borderRadiusGeometry: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
                                   alignment: Alignment.center,
-                                  child: const Icon(Icons.more_vert,
-                                      color: Colors.white, size: 16),
+                                  child: const Icon(Icons.more_vert, color: Colors.white, size: 16),
                                 ),
                               ),
                             ],
@@ -1113,18 +1032,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                     return SafeArea(
                       child: Container(
                         margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.20),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.redAccent.withValues(alpha: 0.7)),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
                         ),
                         child: Text(
                           '⛔ Slotovi zaključani za $_selectedDay. Razlog: $neradanRazlog',
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -1132,10 +1048,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                   }
 
                   int? getKapacitet(String grad, String vreme) {
-                    final datum =
-                        DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
-                    return V3OperativnaNedeljaService.getKapacitetVozila(
-                        grad, vreme, datum);
+                    final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+                    return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
                   }
 
                   return V3BottomNavBarZimski(
@@ -1176,14 +1090,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
               final weekRange = V3DanHelper.schedulingWeekRange();
               final today = V3DanHelper.dateOnly(DateTime.now());
               final hasNeradni = rules.any((rule) {
-                final dateIso =
-                    V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
+                final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
                 final date = DateTime.tryParse(dateIso);
                 if (date == null) return false;
                 final onlyDate = V3DanHelper.dateOnly(date);
                 if (onlyDate.isBefore(today)) return false;
-                return !onlyDate.isBefore(weekRange.start) &&
-                    !onlyDate.isAfter(weekRange.end);
+                return !onlyDate.isBefore(weekRange.start) && !onlyDate.isAfter(weekRange.end);
               });
 
               return Column(
@@ -1197,24 +1109,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                     child: _mojiPutnici.isEmpty
                         ? Center(
                             child: V3ContainerUtils.styledContainer(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 16),
+                              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                               padding: const EdgeInsets.all(20),
                               backgroundColor: Theme.of(context).glassContainer,
-                              border: Border.all(
-                                  color: Theme.of(context).glassBorder,
-                                  width: 1.5),
+                              border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
                               borderRadius: BorderRadius.circular(16),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.inbox,
-                                      color: Colors.white54, size: 48),
+                                  const Icon(Icons.inbox, color: Colors.white54, size: 48),
                                   const SizedBox(height: 12),
                                   Text(
                                     'Nema putnika za $_selectedGrad $_selectedVreme',
-                                    style: const TextStyle(
-                                        color: Colors.white70, fontSize: 16),
+                                    style: const TextStyle(color: Colors.white70, fontSize: 16),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -1231,8 +1138,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 entry: pz.entry,
                                 redniBroj: redniBrojevi[index],
                                 onChanged: _rebuild,
-                                isExcludedFromOptimization:
-                                    _isExcludedFromOptimization(pz),
+                                isExcludedFromOptimization: _isExcludedFromOptimization(pz),
                               );
                             },
                           ),
@@ -1261,9 +1167,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             fontSize: 15,
             fontWeight: FontWeight.w800,
             color: Theme.of(context).colorScheme.onPrimary,
-            shadows: const [
-              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
-            ],
+            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
           ),
         ),
         Text(
@@ -1272,9 +1176,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             fontSize: 15,
             fontWeight: FontWeight.w800,
             color: vozacBoja,
-            shadows: const [
-              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
-            ],
+            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
           ),
         ),
         V3LiveClockText(
@@ -1282,9 +1184,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             fontSize: 15,
             fontWeight: FontWeight.w800,
             color: Theme.of(context).colorScheme.onPrimary,
-            shadows: const [
-              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
-            ],
+            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
           ),
         ),
       ],
@@ -1356,11 +1256,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         children: V3DanHelper.workdayNames.map((dan) {
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, dan),
-            child: Text(dan,
-                style: TextStyle(
-                    fontWeight: dan == _selectedDay
-                        ? FontWeight.bold
-                        : FontWeight.normal)),
+            child: Text(dan, style: TextStyle(fontWeight: dan == _selectedDay ? FontWeight.bold : FontWeight.normal)),
           );
         }).toList(),
       ),

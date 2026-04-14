@@ -75,7 +75,7 @@ class V3OperativnaNedeljaEntry {
       pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
       iznosNaplacen: (json['naplacen_iznos'] as num?)?.toDouble() ?? 0,
       naplacenAt: V3DateUtils.parseTs(json['naplacen_at'] as String?),
-      naplataStatus: V3DateUtils.parseTs(json['naplacen_at'] as String?) != null ? 'placeno' : 'nije_placeno',
+      naplataStatus: V3StatusFilters.isNaplacenAt(json['naplacen_at']) ? 'placeno' : 'nije_placeno',
       pokupljenBy: json['pokupljen_by'] as String?,
       naplacenBy: json['naplacen_by'] as String?,
       otkazanoBy: json['otkazano_by'] as String?,
