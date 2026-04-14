@@ -50,7 +50,8 @@ class V3BiometricService {
 
   // Uključi/isključi biometriju
   Future<void> setBiometricEnabled(bool enabled) async {
-    await _secureStorage.write(key: _keyBiometricEnabled, value: enabled.toString());
+    await _secureStorage.write(
+        key: _keyBiometricEnabled, value: enabled.toString());
   }
 
   // Remember Me logic
@@ -64,7 +65,8 @@ class V3BiometricService {
   }
 
   // Sačuvaj kredencijale (telefon + dodatni credential)
-  Future<void> saveCredentials(String phone, String secret, {bool isBiometric = true}) async {
+  Future<void> saveCredentials(String phone, String secret,
+      {bool isBiometric = true}) async {
     await _secureStorage.write(key: _keySavedPhone, value: phone);
     await _secureStorage.write(key: _keySavedSecret, value: secret);
     if (isBiometric) {
@@ -80,7 +82,8 @@ class V3BiometricService {
   Future<Map<String, String>?> getSavedCredentials() async {
     final phone = await _secureStorage.read(key: _keySavedPhone);
     final secret = await _secureStorage.read(key: _keySavedSecret);
-    if (phone == null || secret == null || phone.isEmpty || secret.isEmpty) return null;
+    if (phone == null || secret == null || phone.isEmpty || secret.isEmpty)
+      return null;
     return {'phone': phone, 'secret': secret};
   }
 
@@ -94,7 +97,8 @@ class V3BiometricService {
   }
 
   // Autentifikacija biometrijom
-  Future<bool> authenticate({String reason = 'Potvrdite identitet za pristup'}) async {
+  Future<bool> authenticate(
+      {String reason = 'Potvrdite identitet za pristup'}) async {
     try {
       return await _auth.authenticate(
         localizedReason: reason,

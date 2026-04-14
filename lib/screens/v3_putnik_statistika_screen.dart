@@ -21,10 +21,12 @@ class V3PutnikStatistikaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
       builder: (context, _) {
         final godina = DateTime.now().year;
-        final meseci = V3PutnikStatistikaService.getZaGodinu(putnikId, godina: godina);
+        final meseci =
+            V3PutnikStatistikaService.getZaGodinu(putnikId, godina: godina);
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -33,7 +35,8 @@ class V3PutnikStatistikaScreen extends StatelessWidget {
             elevation: 0,
             automaticallyImplyLeading: false,
             centerTitle: true,
-            title: const Text('Detaljne statistike', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text('Detaljne statistike',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           body: V3ContainerUtils.backgroundContainer(
             gradient: Theme.of(context).backgroundGradient,
@@ -53,18 +56,25 @@ class V3PutnikStatistikaScreen extends StatelessWidget {
                         children: [
                           Text(
                             imePrezime,
-                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             _tipLabel(tipPutnika),
-                            style:
-                                TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                color: V3StyleHelper.whiteAlpha65,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Prikaz po mesecima (januar-decembar $godina)',
-                            style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12),
+                            style: TextStyle(
+                                color: V3StyleHelper.whiteAlpha65,
+                                fontSize: 12),
                           ),
                         ],
                       ),
@@ -108,25 +118,40 @@ class _MesecCard extends StatelessWidget {
         children: [
           Text(
             '${stats.mesecNaziv} ${stats.godina}',
-            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _MiniKpi(label: 'Pokupljen', value: '${stats.pokupljeno}', color: Colors.lightBlueAccent),
-              _MiniKpi(label: 'Vožnji', value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
-              _MiniKpi(label: 'Otkazano', value: '${stats.otkazano}', color: Colors.redAccent),
+              _MiniKpi(
+                  label: 'Pokupljen',
+                  value: '${stats.pokupljeno}',
+                  color: Colors.lightBlueAccent),
+              _MiniKpi(
+                  label: 'Vožnji',
+                  value: '${stats.ukupnoVoznji}',
+                  color: Colors.greenAccent),
+              _MiniKpi(
+                  label: 'Otkazano',
+                  value: '${stats.otkazano}',
+                  color: Colors.redAccent),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Plaćeno', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text('Plaćeno',
+                  style: TextStyle(
+                      color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.naplacenoIznos.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -134,10 +159,15 @@ class _MesecCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Dug (${stats.neplaceno})', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text('Dug (${stats.neplaceno})',
+                  style: TextStyle(
+                      color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.dugIznos.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -152,7 +182,8 @@ class _MiniKpi extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _MiniKpi({required this.label, required this.value, required this.color});
+  const _MiniKpi(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -164,12 +195,17 @@ class _MiniKpi extends StatelessWidget {
       border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       child: Column(
         children: [
-          Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(value,
+              style: TextStyle(
+                  color: color, fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: V3StyleHelper.whiteAlpha65,
+                fontSize: 11,
+                fontWeight: FontWeight.w600),
           ),
         ],
       ),

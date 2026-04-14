@@ -15,7 +15,8 @@ enum V3RealtimeConnectionState {
   error,
 }
 
-typedef V3ConnectionStateCallback = void Function(V3RealtimeConnectionState state, {Object? error});
+typedef V3ConnectionStateCallback = void
+    Function(V3RealtimeConnectionState state, {Object? error});
 
 class V3RealtimeConnectionManager {
   V3RealtimeConnectionManager({
@@ -61,7 +62,8 @@ class V3RealtimeConnectionManager {
           _setState(V3RealtimeConnectionState.subscribed, onState: onState);
           break;
         case RealtimeSubscribeStatus.channelError:
-          _setState(V3RealtimeConnectionState.error, onState: onState, error: error);
+          _setState(V3RealtimeConnectionState.error,
+              onState: onState, error: error);
           unawaited(_scheduleReconnect(configure: configure, onState: onState));
           break;
         case RealtimeSubscribeStatus.timedOut:

@@ -49,12 +49,15 @@ class _V3SmsSifreScreenState extends State<V3SmsSifreScreen> {
         gradient: Theme.of(context).backgroundGradient,
         child: SafeArea(
           child: StreamBuilder<int>(
-            stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_auth'),
+            stream:
+                V3MasterRealtimeManager.instance.tableRevisionStream('v3_auth'),
             builder: (context, _) {
               return FutureBuilder<List<Map<String, dynamic>>>(
-                future: V3SmsAuthRequestService.fetchPendingSmsRequests(limit: 50),
+                future:
+                    V3SmsAuthRequestService.fetchPendingSmsRequests(limit: 50),
                 builder: (context, snapshot) {
-                  final pending = snapshot.data ?? const <Map<String, dynamic>>[];
+                  final pending =
+                      snapshot.data ?? const <Map<String, dynamic>>[];
 
                   if (pending.isEmpty) {
                     return const Center(
@@ -71,9 +74,10 @@ class _V3SmsSifreScreenState extends State<V3SmsSifreScreen> {
                     itemBuilder: (context, index) {
                       final row = pending[index];
                       final ime = (row['ime'] ?? 'Nepoznat').toString().trim();
-                      final broj = ((row['telefon'] ?? '').toString().trim().isNotEmpty)
-                          ? (row['telefon'] ?? '').toString().trim()
-                          : (row['telefon_2'] ?? '').toString().trim();
+                      final broj =
+                          ((row['telefon'] ?? '').toString().trim().isNotEmpty)
+                              ? (row['telefon'] ?? '').toString().trim()
+                              : (row['telefon_2'] ?? '').toString().trim();
                       final sifra = (row['sifra'] ?? '').toString().trim();
 
                       return Container(
@@ -82,7 +86,8 @@ class _V3SmsSifreScreenState extends State<V3SmsSifreScreen> {
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.amber.withValues(alpha: 0.45)),
+                          border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.45)),
                         ),
                         child: Row(
                           children: [
@@ -105,7 +110,8 @@ class _V3SmsSifreScreenState extends State<V3SmsSifreScreen> {
                                     '$broj • šifra: $sifra',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -116,7 +122,8 @@ class _V3SmsSifreScreenState extends State<V3SmsSifreScreen> {
                               child: ElevatedButton.icon(
                                 onPressed: () => _odobriSmsZahtev(row),
                                 icon: const Icon(Icons.sms, size: 15),
-                                label: const Text('Odobri', style: TextStyle(fontSize: 12)),
+                                label: const Text('Odobri',
+                                    style: TextStyle(fontSize: 12)),
                               ),
                             ),
                           ],

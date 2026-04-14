@@ -48,9 +48,11 @@ class V3OsrmService {
         '$_baseUrl/trip/v1/driving/${allCoords.join(';')}?source=first${hasDestination ? '&destination=last' : ''}&roundtrip=false&overview=false&steps=false',
       );
 
-      final tripResponse = await http.get(tripUri).timeout(const Duration(seconds: 8));
+      final tripResponse =
+          await http.get(tripUri).timeout(const Duration(seconds: 8));
       if (tripResponse.statusCode != 200) {
-        debugPrint('[V3OsrmService] trip status=${tripResponse.statusCode} body=${tripResponse.body}');
+        debugPrint(
+            '[V3OsrmService] trip status=${tripResponse.statusCode} body=${tripResponse.body}');
         return null;
       }
 
@@ -121,7 +123,9 @@ class V3OsrmService {
       if (firstRoute is! Map<String, dynamic>) return null;
 
       final durationSeconds = (firstRoute['duration'] as num?)?.toDouble();
-      if (durationSeconds == null || !durationSeconds.isFinite || durationSeconds <= 0) return null;
+      if (durationSeconds == null ||
+          !durationSeconds.isFinite ||
+          durationSeconds <= 0) return null;
 
       final minutes = (durationSeconds / 60.0).ceil();
       return minutes < 1 ? 1 : minutes;

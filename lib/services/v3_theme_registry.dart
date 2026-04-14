@@ -63,7 +63,8 @@ class V3ThemeRegistry {
   static final List<String> _themeNames = List.unmodifiable(_themes.keys);
 
   /// Vraća sve dostupne teme
-  static Map<String, V3ThemeDefinition> get allThemes => Map.unmodifiable(_themes);
+  static Map<String, V3ThemeDefinition> get allThemes =>
+      Map.unmodifiable(_themes);
 
   /// Vraća listu ID-eva tema (keširana, nealocira novu listu pri svakom pozivu)
   static List<String> get themeNames => _themeNames;
@@ -133,7 +134,10 @@ class V3ThemeDefinition {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is V3ThemeDefinition && runtimeType == other.runtimeType && id == other.id;
+      identical(this, other) ||
+      other is V3ThemeDefinition &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
 
   @override
   int get hashCode => id.hashCode;

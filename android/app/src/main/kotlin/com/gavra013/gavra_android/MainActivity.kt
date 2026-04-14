@@ -1,12 +1,15 @@
 package com.gavra013.gavra_android
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.Settings
 import android.view.WindowManager
+import androidx.core.app.NotificationManagerCompat
 import com.google.android.gms.common.ConnectionResult as GmsConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.FirebaseApp
@@ -21,14 +24,81 @@ class MainActivity : FlutterFragmentActivity() {
     private val VIBRATION_CHANNEL = "com.gavra013.gavra_android/vibration"
     private val WAKELOCK_CHANNEL = "com.gavra013.gavra_android/wakelock"
     private val PUSH_TOKEN_CHANNEL = "com.gavra013.gavra_android/push_token"
+    private val FCM_CHANNEL = "com.gavra013.gavra_android/fcm"
     private val TAG = "GavraMainActivity"
     private var wakeLock: PowerManager.WakeLock? = null
     private val ioExecutor = Executors.newSingleThreadExecutor()
+
+    // FCM data iz Intent-a kad je app killed i korisnik tapne notifikaciju.
+    // Čuvamo ovde dok Flutter engine ne bude spreman (configureFlutterEngine).
+    private var pendingFcmData: Map<String, String>? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Čitaj FCM data extras iz launch Intent-a (killed-app tap)
+        pendingFcmData = extractFcmData(intent)
+        if (pendingFcmData != null) {
+            android.util.Log.d(TAG, "onCreate: pendingFcmData=${pendingFcmData}")
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // App je bila u background-u, korisnik tapnuo notifikaciju
+        val data = extractFcmData(intent) ?: return
+        android.util.Log.d(TAG, "onNewIntent: FCM tap data=$data")
+        sendFcmLaunchToFlutter(data)
+    }
+
+    /**
+     * Čita FCM data extras iz Intent-a.
+     * Android FCM dodaje sve `data` key-value direktno kao Intent extras.
+     * Vraća null ako Intent ne sadrži FCM data (nije FCM tap).
+     */
+    private fun extractFcmData(intent: Intent?): Map<String, String>? {
+        if (intent == null) return null
+        val extras = intent.extras ?: return null
+        // FCM notifikacije imaju "google.message_id" extra
+        if (!extras.containsKey("google.message_id") && !extras.containsKey("google.sent_time")) return null
+
+        val data = mutableMapOf<String, String>()
+        for (key in extras.keySet()) {
+            val value = extras.getString(key)
+            if (value != null) data[key] = value
+        }
+        return if (data.isEmpty()) null else data
+    }
+
+    /**
+     * Šalje FCM launch data Flutteru via MethodChannel.
+     * Mora se pozvati na main thread-u, engine mora biti aktivan.
+     */
+    private fun sendFcmLaunchToFlutter(data: Map<String, String>) {
+        val engine = FlutterEngineCache.getInstance().get("main_engine") ?: return
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        handler.post {
+            MethodChannel(engine.dartExecutor.binaryMessenger, FCM_CHANNEL)
+                .invokeMethod("onLaunchMessage", data)
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // Registruj engine u cache
         FlutterEngineCache.getInstance().put("main_engine", flutterEngine)
+
+        // Ako je app startovana tapom na FCM notifikaciju (killed state),
+        // pošalji data Flutteru čim je engine spreman (mali delay da se Dart init završi)
+        val pending = pendingFcmData
+        if (pending != null) {
+            pendingFcmData = null
+            android.util.Log.d(TAG, "configureFlutterEngine: šaljem pendingFcmData Flutteru")
+            val handler = android.os.Handler(android.os.Looper.getMainLooper())
+            handler.postDelayed({
+                MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FCM_CHANNEL)
+                    .invokeMethod("onLaunchMessage", pending)
+            }, 2000) // 2s da se Flutter _initFcmChannel() registruje
+        }
         
         // WakeLock Channel - za paljenje ekrana na notifikaciju
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WAKELOCK_CHANNEL).setMethodCallHandler { call, result ->
@@ -42,6 +112,20 @@ class MainActivity : FlutterFragmentActivity() {
                 "releaseWakeLock" -> {
                     releaseWakeLock()
                     result.success(true)
+                }
+                "isNotifListenerGranted" -> {
+                    val packages = NotificationManagerCompat.getEnabledListenerPackages(this)
+                    result.success(packages.contains(packageName))
+                }
+                "openNotifListenerSettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("SETTINGS_ERROR", e.message ?: "Cannot open settings", null)
+                    }
                 }
                 else -> result.notImplemented()
             }

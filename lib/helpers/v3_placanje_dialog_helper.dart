@@ -19,7 +19,8 @@ class V3PlacanjeDialogHelper {
   V3PlacanjeDialogHelper._();
 
   static Map<String, dynamic>? _getZadnjaNaplata(String putnikId) {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    final cache =
+        V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     final placenoRows = cache.where((row) {
       if (row['created_by']?.toString() != putnikId) return false;
       final vremePlacen = row['naplacen_at']?.toString();
@@ -29,14 +30,18 @@ class V3PlacanjeDialogHelper {
     if (placenoRows.isEmpty) return null;
 
     placenoRows.sort((a, b) {
-      final aDt = DateTime.tryParse(a['naplacen_at']?.toString() ?? '') ?? DateTime(2000);
-      final bDt = DateTime.tryParse(b['naplacen_at']?.toString() ?? '') ?? DateTime(2000);
+      final aDt = DateTime.tryParse(a['naplacen_at']?.toString() ?? '') ??
+          DateTime(2000);
+      final bDt = DateTime.tryParse(b['naplacen_at']?.toString() ?? '') ??
+          DateTime(2000);
       return bDt.compareTo(aDt);
     });
 
     final last = placenoRows.first;
     final vozacId = last['naplacen_by']?.toString();
-    final vozacIme = vozacId == null ? null : V3VozacService.getVozacById(vozacId)?.imePrezime;
+    final vozacIme = vozacId == null
+        ? null
+        : V3VozacService.getVozacById(vozacId)?.imePrezime;
 
     return {
       'naplacen_at': last['naplacen_at'],
@@ -57,14 +62,18 @@ class V3PlacanjeDialogHelper {
     required double defaultCena,
     bool zakljucajIznos = false,
   }) async {
-    final TextEditingController _iznosController = TextEditingController(text: defaultCena.toStringAsFixed(0));
+    final TextEditingController _iznosController =
+        TextEditingController(text: defaultCena.toStringAsFixed(0));
 
     int _selectedMonth = DateTime.now().month;
     int _selectedYear = DateTime.now().year;
     final zadnjaNaplata = _getZadnjaNaplata(putnikId);
-    final vremePlacen = DateTime.tryParse(zadnjaNaplata?['naplacen_at']?.toString() ?? '');
-    final zadnjiIznos = (zadnjaNaplata?['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
-    final naplatioIme = (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
+    final vremePlacen =
+        DateTime.tryParse(zadnjaNaplata?['naplacen_at']?.toString() ?? '');
+    final zadnjiIznos =
+        (zadnjaNaplata?['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
+    final naplatioIme =
+        (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
 
     return showDialog<V3PlacanjeRezultat>(
       context: context,
@@ -75,7 +84,8 @@ class V3PlacanjeDialogHelper {
             backgroundColor: cs.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: cs.outline.withValues(alpha: 0.25), width: 1),
+              side: BorderSide(
+                  color: cs.outline.withValues(alpha: 0.25), width: 1),
             ),
             titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
             contentPadding: const EdgeInsets.fromLTRB(22, 6, 22, 8),
@@ -89,13 +99,17 @@ class V3PlacanjeDialogHelper {
                     color: cs.primary.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.payments_outlined, color: cs.primary, size: 20),
+                  child: Icon(Icons.payments_outlined,
+                      color: cs.primary, size: 20),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Naplata: $imePrezime',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.onSurface),
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface),
                   ),
                 ),
               ],
@@ -112,14 +126,18 @@ class V3PlacanjeDialogHelper {
                     decoration: BoxDecoration(
                       color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: cs.outline.withValues(alpha: 0.25)),
+                      border:
+                          Border.all(color: cs.outline.withValues(alpha: 0.25)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Zadnja naplata',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface),
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -130,7 +148,8 @@ class V3PlacanjeDialogHelper {
                           'Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD',
                           style: TextStyle(color: cs.onSurfaceVariant),
                         ),
-                        Text('Naplatio: $naplatioIme', style: TextStyle(color: cs.onSurfaceVariant)),
+                        Text('Naplatio: $naplatioIme',
+                            style: TextStyle(color: cs.onSurfaceVariant)),
                       ],
                     ),
                   ),
@@ -138,7 +157,8 @@ class V3PlacanjeDialogHelper {
                   controller: _iznosController,
                   readOnly: zakljucajIznos,
                   decoration: InputDecoration(
-                    labelText: zakljucajIznos ? 'Iznos (zaključano)' : 'Iznos (RSD)',
+                    labelText:
+                        zakljucajIznos ? 'Iznos (zaključano)' : 'Iznos (RSD)',
                     suffixText: 'RSD',
                     prefixIcon: const Icon(Icons.payments_outlined),
                   ),
@@ -153,7 +173,8 @@ class V3PlacanjeDialogHelper {
                         decoration: const InputDecoration(
                           labelText: 'Mesec',
                           prefixIcon: Icon(Icons.calendar_month_outlined),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
                         value: _selectedMonth,
                         isExpanded: true,
@@ -172,7 +193,8 @@ class V3PlacanjeDialogHelper {
                         decoration: const InputDecoration(
                           labelText: 'Godina',
                           prefixIcon: Icon(Icons.event_outlined),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
                         value: _selectedYear,
                         isExpanded: true,
@@ -196,11 +218,15 @@ class V3PlacanjeDialogHelper {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: cs.primary,
                   foregroundColor: cs.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
                 onPressed: () {
-                  final iznos = zakljucajIznos ? defaultCena : (double.tryParse(_iznosController.text) ?? 0);
+                  final iznos = zakljucajIznos
+                      ? defaultCena
+                      : (double.tryParse(_iznosController.text) ?? 0);
                   Navigator.pop(
                     context,
                     V3PlacanjeRezultat(
@@ -249,7 +275,8 @@ class V3PlacanjeDialogHelper {
       if (vozac == null) throw 'Vozač nije ulogovan u V3';
 
       if (context.mounted) {
-        V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za $imePrezime');
+        V3AppSnackBar.payment(
+            context, '✅ Naplaćeno ${rezultat.iznos} RSD za $imePrezime');
       }
       return true;
     } catch (e) {

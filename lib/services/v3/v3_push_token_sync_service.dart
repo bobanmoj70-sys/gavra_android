@@ -77,7 +77,8 @@ class V3PushTokenSyncService {
           expectedTip: 'vozac',
           expectedV3AuthId: currentVozac.id,
         );
-        debugPrint('✅ [PushSync] Device token cleared: v3_auth (vozac) reason=$reason');
+        debugPrint(
+            '✅ [PushSync] Device token cleared: v3_auth (vozac) reason=$reason');
         return true;
       }
 
@@ -88,11 +89,13 @@ class V3PushTokenSyncService {
           deviceId: deviceId,
           expectedV3AuthId: putnikId,
         );
-        debugPrint('✅ [PushSync] Device token cleared: v3_auth (putnik) reason=$reason');
+        debugPrint(
+            '✅ [PushSync] Device token cleared: v3_auth (putnik) reason=$reason');
         return true;
       }
 
-      debugPrint('[PushSync] Nema trenutno ulogovanog korisnika za clear (reason=$reason).');
+      debugPrint(
+          '[PushSync] Nema trenutno ulogovanog korisnika za clear (reason=$reason).');
       return false;
     } catch (e) {
       debugPrint('⚠️ [PushSync] Device clear greška (reason=$reason): $e');
@@ -121,7 +124,8 @@ class V3PushTokenSyncService {
             pushToken2: updated['push_token_2'] ?? currentVozac.pushToken2,
           );
         }
-        debugPrint('✅ [PushSync] Token sync: v3_auth (vozac) provider=fcm reason=$reason');
+        debugPrint(
+            '✅ [PushSync] Token sync: v3_auth (vozac) provider=fcm reason=$reason');
         return true;
       }
 
@@ -139,11 +143,13 @@ class V3PushTokenSyncService {
           deviceId: deviceId,
         );
         currentPutnik?.addAll(updated);
-        debugPrint('✅ [PushSync] Token sync: v3_auth (putnik) provider=fcm reason=$reason');
+        debugPrint(
+            '✅ [PushSync] Token sync: v3_auth (putnik) provider=fcm reason=$reason');
         return true;
       }
 
-      debugPrint('[PushSync] Nema trenutno ulogovanog korisnika (reason=$reason).');
+      debugPrint(
+          '[PushSync] Nema trenutno ulogovanog korisnika (reason=$reason).');
       return false;
     } catch (e) {
       debugPrint('⚠️ [PushSync] Token sync greška (reason=$reason): $e');

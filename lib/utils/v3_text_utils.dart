@@ -36,19 +36,25 @@ class V3TextUtils {
   // СПЕЦИЈАЛИЗОВАНИ КОНТРОЛЕРИ ЗА ЧЕСТО КОРИШЋЕНЕ ФОРМЕ
 
   /// Контролери за логин форме
-  static TextEditingController get telefonController => getController('telefon');
+  static TextEditingController get telefonController =>
+      getController('telefon');
 
   /// Контролер за претрагу
   static TextEditingController get searchController => getController('search');
 
   /// Scoped контролери за претрагу (избегавају сударе између екрана)
-  static TextEditingController get homeSearchController => getController('home_search');
-  static TextEditingController get putniciSearchController => getController('putnici_search');
-  static TextEditingController get adreseSearchController => getController('adrese_search');
+  static TextEditingController get homeSearchController =>
+      getController('home_search');
+  static TextEditingController get putniciSearchController =>
+      getController('putnici_search');
+  static TextEditingController get adreseSearchController =>
+      getController('adrese_search');
 
   /// Scoped контролери за логин форме (путник/возач)
-  static TextEditingController get putnikTelefonController => getController('putnik_telefon');
-  static TextEditingController get vozacTelefonController => getController('vozac_telefon');
+  static TextEditingController get putnikTelefonController =>
+      getController('putnik_telefon');
+  static TextEditingController get vozacTelefonController =>
+      getController('vozac_telefon');
 
   /// Контролери за адресе/локације
   static TextEditingController get imeController => getController('ime');

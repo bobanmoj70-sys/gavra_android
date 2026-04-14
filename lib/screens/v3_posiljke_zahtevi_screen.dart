@@ -44,15 +44,11 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
     return zahtevi;
   }
 
-  String? _opisPosiljke(String putnikId) {
-    final data = V3MasterRealtimeManager.instance.putniciCache[putnikId];
-    return data?['opis_posiljke'] as String?;
-  }
-
   // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return StreamBuilder<int>(
       stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_zahtevi', 'v3_auth']),
       builder: (context, _) {
@@ -141,10 +137,8 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
                             itemCount: zahtevi.length,
                             itemBuilder: (_, i) {
                               final z = zahtevi[i];
-                              final opis = _opisPosiljke(z.putnikId);
                               return _ZahtevKartica(
                                 zahtev: z,
-                                opisPosiljke: opis,
                               );
                             },
                           ),
@@ -171,11 +165,9 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
 class _ZahtevKartica extends StatelessWidget {
   const _ZahtevKartica({
     required this.zahtev,
-    this.opisPosiljke,
   });
 
   final V3Zahtev zahtev;
-  final String? opisPosiljke;
 
   Widget _buildTimelapse(V3Zahtev z) {
     final created = z.createdAt;
@@ -283,16 +275,6 @@ class _ZahtevKartica extends StatelessWidget {
                     '${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
-                  if (opisPosiljke?.isNotEmpty == true)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '📝 $opisPosiljke',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
                   _buildTimelapse(zahtev),
                   if (zahtev.polazakAt != null)
                     Padding(

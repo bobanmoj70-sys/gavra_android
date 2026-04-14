@@ -116,7 +116,8 @@ class V3AnimationUtils {
     double end = 1.0,
     Curve curve = Curves.linear,
   }) {
-    return Tween<double>(begin: begin, end: end).animate(CurvedAnimation(parent: controller, curve: curve));
+    return Tween<double>(begin: begin, end: end)
+        .animate(CurvedAnimation(parent: controller, curve: curve));
   }
 
   /// Креира Color Tween анимацију
@@ -126,7 +127,8 @@ class V3AnimationUtils {
     required Color end,
     Curve curve = Curves.linear,
   }) {
-    return ColorTween(begin: begin, end: end).animate(CurvedAnimation(parent: controller, curve: curve));
+    return ColorTween(begin: begin, end: end)
+        .animate(CurvedAnimation(parent: controller, curve: curve));
   }
 
   /// Масовно покретање анимације

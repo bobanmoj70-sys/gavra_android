@@ -14,6 +14,7 @@ class V3ZahtevDomainService {
     return _repository.updateRaw(id, {
       'status': status.name,
       if (updatedBy != null) 'updated_by': updatedBy,
+      'updated_at': DateTime.now().toIso8601String(),
     });
   }
 
@@ -28,6 +29,7 @@ class V3ZahtevDomainService {
       'polazak_at': vreme,
       if (status != null) 'status': status,
       if (updatedBy != null) 'updated_by': updatedBy,
+      'updated_at': DateTime.now().toIso8601String(),
     });
   }
 
@@ -47,6 +49,7 @@ class V3ZahtevDomainService {
       'alternativa_posle_at': null,
       if (createdAtIso != null) 'created_at': createdAtIso,
       if (updatedBy != null) 'updated_by': updatedBy,
+      'updated_at': DateTime.now().toIso8601String(),
     };
     if (koristiSekundarnu != null) {
       updateData['koristi_sekundarnu'] = koristiSekundarnu;
@@ -66,6 +69,7 @@ class V3ZahtevDomainService {
       'alternativa_pre_at': vremePre,
       'alternativa_posle_at': vremePosle,
       if (updatedBy != null) 'updated_by': updatedBy,
+      'updated_at': DateTime.now().toIso8601String(),
     });
   }
 }

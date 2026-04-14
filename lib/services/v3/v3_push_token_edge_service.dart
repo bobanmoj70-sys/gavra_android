@@ -22,7 +22,8 @@ class V3PushTokenEdgeService {
         'push_token': pushToken,
         'device_id': deviceId,
         'slot': slot,
-        if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
+        if (expectedTip != null && expectedTip.isNotEmpty)
+          'expected_tip': expectedTip,
       },
     );
 
@@ -31,7 +32,8 @@ class V3PushTokenEdgeService {
     final isOk = data is Map && data['ok'] == true;
 
     if (status < 200 || status >= 300 || !isOk) {
-      throw Exception('Edge sync-push-token failed (status=$status, data=$data)');
+      throw Exception(
+          'Edge sync-push-token failed (status=$status, data=$data)');
     }
   }
 
@@ -51,7 +53,8 @@ class V3PushTokenEdgeService {
         'v3_auth_id': targetId,
         'device_id': deviceId,
         'clear': true,
-        if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
+        if (expectedTip != null && expectedTip.isNotEmpty)
+          'expected_tip': expectedTip,
       },
     );
 
@@ -60,7 +63,8 @@ class V3PushTokenEdgeService {
     final isOk = data is Map && data['ok'] == true;
 
     if (status < 200 || status >= 300 || !isOk) {
-      throw Exception('Edge clear sync-push-token failed (status=$status, data=$data)');
+      throw Exception(
+          'Edge clear sync-push-token failed (status=$status, data=$data)');
     }
   }
 }

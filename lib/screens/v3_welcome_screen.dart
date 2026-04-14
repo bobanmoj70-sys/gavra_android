@@ -31,7 +31,8 @@ class V3WelcomeScreen extends StatefulWidget {
   State<V3WelcomeScreen> createState() => _V3WelcomeScreenState();
 }
 
-class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _V3WelcomeScreenState extends State<V3WelcomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   static const String _biometricPhoneKey = 'v3_biometric_login_phone';
   static const String _fadeAnimationKey = 'welcome_fade';
   static const String _slideAnimationKey = 'welcome_slide';
@@ -58,7 +59,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     unawaited(
       Future<void>.delayed(const Duration(milliseconds: 300))
           .then((_) => _init())
-          .catchError((Object e) => debugPrint('[V3WelcomeScreen] delayed init error: $e')),
+          .catchError((Object e) =>
+              debugPrint('[V3WelcomeScreen] delayed init error: $e')),
     );
   }
 
@@ -104,7 +106,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _init() async {
     unawaited(() async {
       try {
-        await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
+        await V3MasterRealtimeManager.instance
+            .initV3()
+            .timeout(const Duration(seconds: 15));
       } on TimeoutException catch (e) {
         debugPrint('[V3WelcomeScreen] initV3 timeout: $e');
       } catch (e) {
@@ -131,11 +135,14 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
 
       unawaited(
-        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:auto_login_vozac')
-            .catchError((Object e) => debugPrint('[V3WelcomeScreen] auto-login vozac push sync error: $e')),
+        V3PushTokenSyncService.syncCurrentUserWithRetry(
+                reason: 'welcome:auto_login_vozac')
+            .catchError((Object e) => debugPrint(
+                '[V3WelcomeScreen] auto-login vozac push sync error: $e')),
       );
 
-      final prefersVozacScreen = restoredVozac.imePrezime.toLowerCase() == 'voja';
+      final prefersVozacScreen =
+          restoredVozac.imePrezime.toLowerCase() == 'voja';
       V3NavigationUtils.pushReplacement(
         context,
         prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
@@ -150,7 +157,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<bool> _tryAutoLoginPutnik() async {
     try {
       // Auto-login: manual SMS sesija + sačuvan telefon u SecureStorage
-      final restored = await V3ClosedAuthService.restorePutnikFromManualSmsSession();
+      final restored =
+          await V3ClosedAuthService.restorePutnikFromManualSmsSession();
 
       if (!mounted || restored == null) return false;
 
@@ -158,8 +166,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (!mounted) return false;
 
       unawaited(
-        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:auto_login_putnik')
-            .catchError((Object e) => debugPrint('[V3WelcomeScreen] auto-login push sync error: $e')),
+        V3PushTokenSyncService.syncCurrentUserWithRetry(
+                reason: 'welcome:auto_login_putnik')
+            .catchError((Object e) =>
+                debugPrint('[V3WelcomeScreen] auto-login push sync error: $e')),
       );
 
       V3NavigationUtils.pushReplacement(
@@ -244,8 +254,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3ClosedAuthService.clearManualSmsPutnikPhone();
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(
-        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_vozac')
-            .catchError((Object e) => debugPrint('[V3WelcomeScreen] vozac push sync error: $e')),
+        V3PushTokenSyncService.syncCurrentUserWithRetry(
+                reason: 'welcome:login_vozac')
+            .catchError((Object e) =>
+                debugPrint('[V3WelcomeScreen] vozac push sync error: $e')),
       );
       if (!mounted) return;
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
@@ -265,8 +277,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     await V3ClosedAuthService.clearManualSmsVozacPhone();
     await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
     unawaited(
-      V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_putnik')
-          .catchError((Object e) => debugPrint('[V3WelcomeScreen] putnik push sync error: $e')),
+      V3PushTokenSyncService.syncCurrentUserWithRetry(
+              reason: 'welcome:login_putnik')
+          .catchError((Object e) =>
+              debugPrint('[V3WelcomeScreen] putnik push sync error: $e')),
     );
     if (!mounted) return;
     V3NavigationUtils.pushReplacement(
@@ -300,11 +314,14 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         try {
                           if (_isAudioPlaying) {
                             await _audioPlayer.stop();
-                            V3StateUtils.safeSetState(this, () => _isAudioPlaying = false);
+                            V3StateUtils.safeSetState(
+                                this, () => _isAudioPlaying = false);
                           } else {
                             await _audioPlayer.setVolume(0.5);
-                            await _audioPlayer.play(AssetSource('kasno_je.mp3'));
-                            V3StateUtils.safeSetState(this, () => _isAudioPlaying = true);
+                            await _audioPlayer
+                                .play(AssetSource('kasno_je.mp3'));
+                            V3StateUtils.safeSetState(
+                                this, () => _isAudioPlaying = true);
                           }
                         } catch (e) {
                           debugPrint('[V3WelcomeScreen] Audio error: $e');
@@ -339,7 +356,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                           },
                           child: Image.asset(
                             'assets/logo_transparent.png',
-                            height: V3ContainerUtils.responsiveHeight(context, 180),
+                            height:
+                                V3ContainerUtils.responsiveHeight(context, 180),
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -454,7 +472,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.phone_android_rounded, color: Colors.black87, size: 26),
+                            Icon(Icons.phone_android_rounded,
+                                color: Colors.black87, size: 26),
                             SizedBox(width: 12),
                             Text(
                               'Prijavi se',
@@ -494,7 +513,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.9), size: 22),
+                            Icon(Icons.info_outline,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                size: 22),
                             const SizedBox(width: 10),
                             Text(
                               'O nama',
@@ -520,7 +541,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                       children: [
                         V3ContainerUtils.gradientContainer(
                           width: 60,
-                          height: V3ContainerUtils.responsiveHeight(context, 3, intensity: 0.2),
+                          height: V3ContainerUtils.responsiveHeight(context, 3,
+                              intensity: 0.2),
                           gradient: LinearGradient(
                             colors: [
                               Colors.transparent,

@@ -52,6 +52,7 @@ class V3DugService {
       await _operativnaRepo.updateById(operacijaId, {
         'naplacen_iznos': iznos,
         'naplacen_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       debugPrint('[V3DugService] markAsPaid error: $e');

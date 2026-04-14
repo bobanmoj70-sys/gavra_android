@@ -8,7 +8,8 @@ class V3Zahtev {
   final String grad;
   final String trazeniPolazakAt;
   final int brojMesta;
-  final String status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
+  final String
+      status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
   final String? polazakAt;
   final bool koristiSekundarnu;
   final String? adresaIdOverride;
@@ -42,7 +43,9 @@ class V3Zahtev {
     return V3Zahtev(
       id: json['id'] as String? ?? '',
       putnikId: putnikId,
-      datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
+      datum: json['datum'] != null
+          ? DateTime.parse(json['datum'] as String)
+          : DateTime.now(),
       grad: json['grad'] as String? ?? '',
       trazeniPolazakAt: json['trazeni_polazak_at'] as String? ?? '',
       brojMesta: json['broj_mesta'] as int? ?? 1,
@@ -59,8 +62,9 @@ class V3Zahtev {
   }
 
   Map<String, dynamic> toJson() {
-    final effectiveCreatedBy =
-        (createdBy != null && createdBy!.isNotEmpty) ? createdBy : (putnikId.isNotEmpty ? putnikId : null);
+    final effectiveCreatedBy = (createdBy != null && createdBy!.isNotEmpty)
+        ? createdBy
+        : (putnikId.isNotEmpty ? putnikId : null);
 
     return {
       if (id.isNotEmpty) 'id': id,

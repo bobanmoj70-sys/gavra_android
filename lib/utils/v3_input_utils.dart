@@ -32,8 +32,12 @@ class V3InputUtils {
         final theme = Theme.of(context);
         final cs = theme.colorScheme;
         final isDark = theme.brightness == Brightness.dark;
-        final resolvedFill = fillColor ?? (isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest);
-        final resolvedBorder = borderColor ?? (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
+        final resolvedFill = fillColor ??
+            (isDark
+                ? Colors.white.withValues(alpha: 0.10)
+                : cs.surfaceContainerHighest);
+        final resolvedBorder = borderColor ??
+            (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
         final resolvedFocused = focusedBorderColor ?? cs.primary;
         final textColor = cs.onSurface;
         final labelColor = cs.onSurface.withValues(alpha: 0.78);
@@ -116,8 +120,12 @@ class V3InputUtils {
         final theme = Theme.of(context);
         final cs = theme.colorScheme;
         final isDark = theme.brightness == Brightness.dark;
-        final resolvedFill = fillColor ?? (isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest);
-        final resolvedBorder = borderColor ?? (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
+        final resolvedFill = fillColor ??
+            (isDark
+                ? Colors.white.withValues(alpha: 0.10)
+                : cs.surfaceContainerHighest);
+        final resolvedBorder = borderColor ??
+            (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
         final resolvedFocused = focusedBorderColor ?? cs.primary;
         final textColor = cs.onSurface;
         final labelColor = cs.onSurface.withValues(alpha: 0.78);
@@ -237,7 +245,8 @@ class V3InputUtils {
   // ─── ВАЛИДАТОРИ ─────────────────────────────────────────────────────────
 
   /// Стандардни required валидатор
-  static String? requiredValidator(String? value, [String message = 'Ово поље је обавезно']) {
+  static String? requiredValidator(String? value,
+      [String message = 'Ово поље је обавезно']) {
     if (value == null || value.trim().isEmpty) {
       return message;
     }
@@ -255,7 +264,9 @@ class V3InputUtils {
       if (digitsOnly.length < 8 || digitsOnly.length > 15) {
         return 'Неисправан број телефона';
       }
-      if ((normalized.startsWith('+') || normalized.startsWith('0') || normalized.startsWith('381')) &&
+      if ((normalized.startsWith('+') ||
+              normalized.startsWith('0') ||
+              normalized.startsWith('381')) &&
           !V3PhoneUtils.isValid(normalized)) {
         return 'Неисправан број телефона';
       }

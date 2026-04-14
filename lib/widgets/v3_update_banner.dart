@@ -72,10 +72,12 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
       barrierLabel: 'force_update',
       barrierColor: Colors.black.withValues(alpha: 0.72),
       transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (dialogContext, _, __) =>
-          info.isMaintenance ? _MaintenanceDialog(info: info) : _ForceUpdateDialog(info: info),
+      pageBuilder: (dialogContext, _, __) => info.isMaintenance
+          ? _MaintenanceDialog(info: info)
+          : _ForceUpdateDialog(info: info),
       transitionBuilder: (_, animation, __, child) {
-        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         return FadeTransition(
           opacity: curved,
           child: ScaleTransition(
@@ -104,7 +106,8 @@ class _MaintenanceDialog extends StatefulWidget {
   State<_MaintenanceDialog> createState() => _MaintenanceDialogState();
 }
 
-class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTickerProviderStateMixin {
+class _MaintenanceDialogState extends State<_MaintenanceDialog>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
 
@@ -158,7 +161,8 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTicke
                 child: V3ContainerUtils.styledContainer(
                   backgroundColor: const Color(0xFF161A1E),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFFFD54F), width: 1.5),
+                  border:
+                      Border.all(color: const Color(0xFFFFD54F), width: 1.5),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.44),
@@ -175,11 +179,14 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTicke
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Icon(Icons.construction_rounded, color: Color(0xFFFFD54F), size: 34),
+                            Icon(Icons.construction_rounded,
+                                color: Color(0xFFFFD54F), size: 34),
                             SizedBox(width: 8),
-                            Icon(Icons.engineering_rounded, color: Color(0xFFFFD54F), size: 34),
+                            Icon(Icons.engineering_rounded,
+                                color: Color(0xFFFFD54F), size: 34),
                             SizedBox(width: 8),
-                            Icon(Icons.warning_amber_rounded, color: Color(0xFFFFD54F), size: 34),
+                            Icon(Icons.warning_amber_rounded,
+                                color: Color(0xFFFFD54F), size: 34),
                           ],
                         ),
                       ),
@@ -197,7 +204,8 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTicke
                       const SizedBox(height: 12),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: const Color(0x26FFD54F),
                           borderRadius: BorderRadius.circular(12),
@@ -244,7 +252,8 @@ class _ForceUpdateDialog extends StatefulWidget {
   State<_ForceUpdateDialog> createState() => _ForceUpdateDialogState();
 }
 
-class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTickerProviderStateMixin {
+class _ForceUpdateDialogState extends State<_ForceUpdateDialog>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
   String _installedVersion = '';
@@ -317,7 +326,9 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                 child: V3ContainerUtils.styledContainer(
                   backgroundColor: const Color(0xFF171C2C),
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.32), width: 1.4),
+                  border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.32),
+                      width: 1.4),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.42),
@@ -352,7 +363,8 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.system_update_rounded, color: Colors.white, size: 40),
+                          child: const Icon(Icons.system_update_rounded,
+                              color: Colors.white, size: 40),
                         ),
                       ),
                       const SizedBox(height: 22),
@@ -368,10 +380,13 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                       ),
                       const SizedBox(height: 10),
                       V3ContainerUtils.styledContainer(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                        backgroundColor: Colors.redAccent.withValues(alpha: 0.18),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        backgroundColor:
+                            Colors.redAccent.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.38)),
+                        border: Border.all(
+                            color: Colors.redAccent.withValues(alpha: 0.38)),
                         child: Text(
                           'verzija ${_installedVersion.isNotEmpty ? _installedVersion : widget.info.latestVersion}',
                           style: const TextStyle(
@@ -400,14 +415,16 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                           icon: const Icon(Icons.download_rounded, size: 20),
                           label: const Text(
                             'Ažuriraj aplikaciju',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 15),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.redAccent,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             elevation: 8,
-                            shadowColor: Colors.redAccent.withValues(alpha: 0.45),
+                            shadowColor:
+                                Colors.redAccent.withValues(alpha: 0.45),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),

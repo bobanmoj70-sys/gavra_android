@@ -70,7 +70,8 @@ class V3ContainerUtils {
       width: width,
       height: height,
       padding: padding ?? const EdgeInsets.all(16.0),
-      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      margin:
+          margin ?? const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       alignment: alignment,
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
@@ -114,7 +115,9 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null ? Border.all(color: borderColor, width: borderWidth) : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: borderWidth)
+            : null,
       ),
       child: child,
     );
@@ -189,12 +192,17 @@ class V3ContainerUtils {
     Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      padding: padding ??
+          const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.blue,
-        borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ?? (borderColor != null ? Border.all(color: borderColor, width: borderWidth ?? 1.0) : null),
+        borderRadius:
+            borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
+        border: border ??
+            (borderColor != null
+                ? Border.all(color: borderColor, width: borderWidth ?? 1.0)
+                : null),
       ),
       child: child,
     );
@@ -228,8 +236,12 @@ class V3ContainerUtils {
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ?? (borderColor != null ? Border.all(color: borderColor, width: borderWidth ?? 1.0) : null),
+        borderRadius:
+            borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
+        border: border ??
+            (borderColor != null
+                ? Border.all(color: borderColor, width: borderWidth ?? 1.0)
+                : null),
         boxShadow: boxShadow,
       ),
       child: child ?? icon,

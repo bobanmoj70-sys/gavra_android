@@ -58,7 +58,8 @@ class V3NeradniDaniBanner extends StatelessWidget {
               children: [
                 const Text(
                   '📢 Neradni dan(i) — aktivna nedelja',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(

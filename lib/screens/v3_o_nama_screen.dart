@@ -26,7 +26,8 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
     try {
       final info = await PackageInfo.fromPlatform();
       if (!mounted) return;
-      V3StateUtils.safeSetState(this, () => _appVersion = 'v${info.version} (${info.buildNumber})');
+      V3StateUtils.safeSetState(
+          this, () => _appVersion = 'v${info.version} (${info.buildNumber})');
     } catch (_) {
       if (!mounted) return;
       V3StateUtils.safeSetState(this, () => _appVersion = 'v1.0.0');
@@ -133,7 +134,8 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
                   children: [
                     _buildInfoRow('Pun naziv', 'PR LIMO SERVIS GAVRA 013'),
                     const Divider(color: Colors.white24, height: 16),
-                    _buildInfoRow('Delatnost', '4932 - Limo servis + Taksi prevoz'),
+                    _buildInfoRow(
+                        'Delatnost', '4932 - Limo servis + Taksi prevoz'),
                     const Divider(color: Colors.white24, height: 16),
                     _buildInfoRow('PIB', '102853497'),
                     const Divider(color: Colors.white24, height: 16),
@@ -212,7 +214,8 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
           height: V3ContainerUtils.responsiveHeight(context, 120),
           backgroundColor: Colors.black,
           borderRadiusGeometry: BorderRadius.circular(26),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+          border:
+              Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.35),
@@ -236,7 +239,9 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
             fontSize: 32,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
-            shadows: [Shadow(offset: Offset(0, 2), blurRadius: 4, color: Colors.black38)],
+            shadows: [
+              Shadow(offset: Offset(0, 2), blurRadius: 4, color: Colors.black38)
+            ],
           ),
         ),
         const SizedBox(height: 4),
@@ -355,16 +360,23 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12),
                   ),
                   Text(
                     value,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
             ),
-            if (onTap != null) Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.4), size: 16),
+            if (onTap != null)
+              Icon(Icons.arrow_forward_ios,
+                  color: Colors.white.withValues(alpha: 0.4), size: 16),
           ],
         ),
       ),
@@ -379,13 +391,15 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
           width: 120,
           child: Text(
             label,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ),
       ],

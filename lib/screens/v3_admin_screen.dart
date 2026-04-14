@@ -81,7 +81,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   List<String> _parseTimesCsv(String value) {
     if (value.trim().isEmpty) return [];
-    return value.split(RegExp(r'[,\n; ]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    return value
+        .split(RegExp(r'[,\n; ]+'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   List<Map<String, String>> _parseNeradniDani(dynamic raw) {
@@ -106,7 +110,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   Future<void> _openNeradniDaniEditor() async {
     try {
-      final row = await V3AppSettingsService.loadGlobal(selectColumns: 'neradni_dani');
+      final row =
+          await V3AppSettingsService.loadGlobal(selectColumns: 'neradni_dani');
       if (!mounted) return;
 
       final items = _parseNeradniDani(row['neradni_dani']);
@@ -122,7 +127,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           return StatefulBuilder(
             builder: (context, setModalState) => AlertDialog(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              title: const Text('Neradni dani', style: TextStyle(color: Colors.white)),
+              title: const Text('Neradni dani',
+                  style: TextStyle(color: Colors.white)),
               content: SizedBox(
                 width: 500,
                 child: SingleChildScrollView(
@@ -140,8 +146,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         readOnly: true,
                         onTap: () async {
                           final now = DateTime.now();
-                          final parsed = DateTime.tryParse(dateCtrl.text.trim());
-                          final initial = parsed ?? DateTime(now.year, now.month, now.day);
+                          final parsed =
+                              DateTime.tryParse(dateCtrl.text.trim());
+                          final initial =
+                              parsed ?? DateTime(now.year, now.month, now.day);
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: initial,
@@ -158,7 +166,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Datum',
                           hintText: 'Izaberi datum',
-                          prefixIcon: Icon(Icons.calendar_today, color: Colors.white70),
+                          prefixIcon:
+                              Icon(Icons.calendar_today, color: Colors.white70),
                           labelStyle: TextStyle(color: Colors.white70),
                         ),
                       ),
@@ -172,11 +181,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         ),
                         style: const TextStyle(color: Colors.white),
                         items: const [
-                          DropdownMenuItem(value: 'all', child: Text('Svi (ALL)')),
+                          DropdownMenuItem(
+                              value: 'all', child: Text('Svi (ALL)')),
                           DropdownMenuItem(value: 'bc', child: Text('BC')),
                           DropdownMenuItem(value: 'vs', child: Text('VS')),
                         ],
-                        onChanged: (val) => setModalState(() => scope = val ?? 'all'),
+                        onChanged: (val) =>
+                            setModalState(() => scope = val ?? 'all'),
                       ),
                       const SizedBox(height: 8),
                       TextField(
@@ -198,16 +209,23 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   : () {
                                       final date = dateCtrl.text.trim();
                                       if (!_dateIsoPattern.hasMatch(date)) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Izaberi datum iz kalendara.')),
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Izaberi datum iz kalendara.')),
                                         );
                                         return;
                                       }
 
-                                      final normalized = DateTime.tryParse(date);
+                                      final normalized =
+                                          DateTime.tryParse(date);
                                       if (normalized == null) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Datum nije validan kalendarski.')),
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Datum nije validan kalendarski.')),
                                         );
                                         return;
                                       }
@@ -216,13 +234,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                           '${normalized.year.toString().padLeft(4, '0')}-${normalized.month.toString().padLeft(2, '0')}-${normalized.day.toString().padLeft(2, '0')}';
 
                                       setModalState(() {
-                                        items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
+                                        items.removeWhere((e) =>
+                                            e['date'] == normalizedDate &&
+                                            e['scope'] == scope);
                                         items.add({
                                           'date': normalizedDate,
                                           'scope': scope,
                                           'reason': reasonCtrl.text.trim(),
                                         });
-                                        items.sort((a, b) => (a['date'] ?? '').compareTo(b['date'] ?? ''));
+                                        items.sort((a, b) => (a['date'] ?? '')
+                                            .compareTo(b['date'] ?? ''));
                                         dateCtrl.clear();
                                         reasonCtrl.clear();
                                         scope = 'all';
@@ -237,15 +258,20 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       const SizedBox(height: 12),
                       const Divider(color: Colors.white24),
                       const SizedBox(height: 8),
-                      const Text('Aktivna pravila', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                      const Text('Aktivna pravila',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700)),
                       const SizedBox(height: 8),
                       if (items.isEmpty)
-                        const Text('Nema unosa', style: TextStyle(color: Colors.white60))
+                        const Text('Nema unosa',
+                            style: TextStyle(color: Colors.white60))
                       else
                         ...items.map(
                           (entry) => Container(
                             margin: const EdgeInsets.only(bottom: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(8),
@@ -265,7 +291,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                       : () => setModalState(() {
                                             items.remove(entry);
                                           }),
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: Colors.redAccent),
                                 ),
                               ],
                             ),
@@ -277,7 +304,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed:
+                      isSaving ? null : () => Navigator.of(dialogContext).pop(),
                   child: const Text('Otkaži'),
                 ),
                 ElevatedButton(
@@ -291,7 +319,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               if (!_dateIsoPattern.hasMatch(draftDate)) {
                                 setModalState(() => isSaving = false);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Izaberi datum iz kalendara.')),
+                                  const SnackBar(
+                                      content:
+                                          Text('Izaberi datum iz kalendara.')),
                                 );
                                 return;
                               }
@@ -300,7 +330,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               if (normalized == null) {
                                 setModalState(() => isSaving = false);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Datum nije validan kalendarski.')),
+                                  const SnackBar(
+                                      content: Text(
+                                          'Datum nije validan kalendarski.')),
                                 );
                                 return;
                               }
@@ -308,33 +340,40 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               final normalizedDate =
                                   '${normalized.year.toString().padLeft(4, '0')}-${normalized.month.toString().padLeft(2, '0')}-${normalized.day.toString().padLeft(2, '0')}';
 
-                              items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
+                              items.removeWhere((e) =>
+                                  e['date'] == normalizedDate &&
+                                  e['scope'] == scope);
                               items.add({
                                 'date': normalizedDate,
                                 'scope': scope,
                                 'reason': reasonCtrl.text.trim(),
                               });
-                              items.sort((a, b) => (a['date'] ?? '').compareTo(b['date'] ?? ''));
+                              items.sort((a, b) =>
+                                  (a['date'] ?? '').compareTo(b['date'] ?? ''));
                             }
 
                             if (items.isEmpty) {
                               setModalState(() => isSaving = false);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Dodaj bar jedan neradan dan pre čuvanja.')),
+                                const SnackBar(
+                                    content: Text(
+                                        'Dodaj bar jedan neradan dan pre čuvanja.')),
                               );
                               return;
                             }
 
-                            await V3AppSettingsService.updateGlobal({'neradni_dani': items});
+                            await V3AppSettingsService.updateGlobal(
+                                {'neradni_dani': items});
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
-                            ScaffoldMessenger.of(this.context)
-                                .showSnackBar(const SnackBar(content: Text('✅ Neradni dani sačuvani')));
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('✅ Neradni dani sačuvani')));
                           } catch (e) {
                             if (!mounted) return;
                             setModalState(() => isSaving = false);
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(content: Text('Greška pri čuvanju: $e')));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text('Greška pri čuvanju: $e')));
                           }
                         },
                   child: const Text('Sačuvaj'),
@@ -360,10 +399,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     if (raw is! Map) return result;
 
     for (final entry in raw.entries) {
-      final normalizedDay = V3DanHelper.normalizeToWorkdayFull(entry.key.toString(), fallback: '');
+      final normalizedDay = V3DanHelper.normalizeToWorkdayFull(
+          entry.key.toString(),
+          fallback: '');
       if (normalizedDay.isEmpty) continue;
       if (entry.value is List) {
-        result[normalizedDay] = _normalizeTimes((entry.value as List).map((e) => e.toString()).toList());
+        result[normalizedDay] = _normalizeTimes(
+            (entry.value as List).map((e) => e.toString()).toList());
       }
     }
 
@@ -381,10 +423,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final vsByDayCurrent = _parseByDaySchedule(row['vs_custom_by_day']);
 
       final bcInputs = {
-        for (final day in V3DanHelper.workdayNames) day: (bcByDayCurrent[day] ?? const <String>[]).join(', '),
+        for (final day in V3DanHelper.workdayNames)
+          day: (bcByDayCurrent[day] ?? const <String>[]).join(', '),
       };
       final vsInputs = {
-        for (final day in V3DanHelper.workdayNames) day: (vsByDayCurrent[day] ?? const <String>[]).join(', '),
+        for (final day in V3DanHelper.workdayNames)
+          day: (vsByDayCurrent[day] ?? const <String>[]).join(', '),
       };
 
       await showDialog<void>(
@@ -394,7 +438,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           return StatefulBuilder(
             builder: (context, setModalState) => AlertDialog(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              title: const Text('Custom vremena polazaka', style: TextStyle(color: Colors.white)),
+              title: const Text('Custom vremena polazaka',
+                  style: TextStyle(color: Colors.white)),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -402,10 +447,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Unos formata HH:mm, razdvojeno zarezom.', style: TextStyle(color: Colors.white70)),
+                      const Text('Unos formata HH:mm, razdvojeno zarezom.',
+                          style: TextStyle(color: Colors.white70)),
                       const SizedBox(height: 10),
                       for (final day in V3DanHelper.workdayNames) ...[
-                        Text(day, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                        Text(day,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
                         TextFormField(
                           initialValue: bcInputs[day] ?? '',
@@ -434,7 +483,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed:
+                      isSaving ? null : () => Navigator.of(dialogContext).pop(),
                   child: const Text('Otkaži'),
                 ),
                 ElevatedButton(
@@ -449,10 +499,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             final bcRaw = _parseTimesCsv(bcInputs[day] ?? '');
                             final vsRaw = _parseTimesCsv(vsInputs[day] ?? '');
 
-                            invalidTokens
-                                .addAll(bcRaw.where((t) => !_timePattern.hasMatch(t)).map((t) => '$day BC:$t'));
-                            invalidTokens
-                                .addAll(vsRaw.where((t) => !_timePattern.hasMatch(t)).map((t) => '$day VS:$t'));
+                            invalidTokens.addAll(bcRaw
+                                .where((t) => !_timePattern.hasMatch(t))
+                                .map((t) => '$day BC:$t'));
+                            invalidTokens.addAll(vsRaw
+                                .where((t) => !_timePattern.hasMatch(t))
+                                .map((t) => '$day VS:$t'));
 
                             bcByDayNorm[day] = _normalizeTimes(bcRaw);
                             vsByDayNorm[day] = _normalizeTimes(vsRaw);
@@ -460,7 +512,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
                           if (invalidTokens.isNotEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Neispravno vreme: ${invalidTokens.join(', ')}')),
+                              SnackBar(
+                                  content: Text(
+                                      'Neispravno vreme: ${invalidTokens.join(', ')}')),
                             );
                             return;
                           }
@@ -474,7 +528,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
                             ScaffoldMessenger.of(this.context).showSnackBar(
-                              const SnackBar(content: Text('✅ Custom vremena sačuvana')),
+                              const SnackBar(
+                                  content: Text('✅ Custom vremena sačuvana')),
                             );
                           } catch (e) {
                             if (!mounted) return;
@@ -503,19 +558,27 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final row = await _loadUpdateSettings();
     if (!mounted) return;
 
-    final latestAndroidCtrl = TextEditingController(text: (row['latest_version_android'] ?? '').toString());
-    final minAndroidCtrl = TextEditingController(text: (row['min_supported_version_android'] ?? '').toString());
-    final urlAndroidCtrl = TextEditingController(text: (row['store_url_android'] ?? '').toString());
-    final maintenanceTitleAndroidCtrl =
-        TextEditingController(text: (row['maintenance_title_android'] ?? '').toString());
-    final maintenanceMessageAndroidCtrl =
-        TextEditingController(text: (row['maintenance_message_android'] ?? '').toString());
+    final latestAndroidCtrl = TextEditingController(
+        text: (row['latest_version_android'] ?? '').toString());
+    final minAndroidCtrl = TextEditingController(
+        text: (row['min_supported_version_android'] ?? '').toString());
+    final urlAndroidCtrl = TextEditingController(
+        text: (row['store_url_android'] ?? '').toString());
+    final maintenanceTitleAndroidCtrl = TextEditingController(
+        text: (row['maintenance_title_android'] ?? '').toString());
+    final maintenanceMessageAndroidCtrl = TextEditingController(
+        text: (row['maintenance_message_android'] ?? '').toString());
 
-    final latestIosCtrl = TextEditingController(text: (row['latest_version_ios'] ?? '').toString());
-    final minIosCtrl = TextEditingController(text: (row['min_supported_version_ios'] ?? '').toString());
-    final urlIosCtrl = TextEditingController(text: (row['store_url_ios'] ?? '').toString());
-    final maintenanceTitleIosCtrl = TextEditingController(text: (row['maintenance_title_ios'] ?? '').toString());
-    final maintenanceMessageIosCtrl = TextEditingController(text: (row['maintenance_message_ios'] ?? '').toString());
+    final latestIosCtrl = TextEditingController(
+        text: (row['latest_version_ios'] ?? '').toString());
+    final minIosCtrl = TextEditingController(
+        text: (row['min_supported_version_ios'] ?? '').toString());
+    final urlIosCtrl =
+        TextEditingController(text: (row['store_url_ios'] ?? '').toString());
+    final maintenanceTitleIosCtrl = TextEditingController(
+        text: (row['maintenance_title_ios'] ?? '').toString());
+    final maintenanceMessageIosCtrl = TextEditingController(
+        text: (row['maintenance_message_ios'] ?? '').toString());
 
     var forceAndroid = row['force_update_android'] == true;
     var forceIos = row['force_update_ios'] == true;
@@ -543,7 +606,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       // ignore
     }
 
-    Future<void> save(StateSetter setModalState, BuildContext modalContext) async {
+    Future<void> save(
+        StateSetter setModalState, BuildContext modalContext) async {
       final latestAndroid = latestAndroidCtrl.text.trim();
       final minAndroidRaw = minAndroidCtrl.text.trim();
       final storeAndroid = urlAndroidCtrl.text.trim();
@@ -570,7 +634,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       if (error != null) {
-        ScaffoldMessenger.of(modalContext).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(modalContext)
+            .showSnackBar(SnackBar(content: Text(error)));
         return;
       }
 
@@ -584,7 +649,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           'store_url_android': storeAndroid,
           'maintenance_mode_android': maintenanceAndroid,
           'maintenance_title_android': maintenanceTitleAndroidCtrl.text.trim(),
-          'maintenance_message_android': maintenanceMessageAndroidCtrl.text.trim(),
+          'maintenance_message_android':
+              maintenanceMessageAndroidCtrl.text.trim(),
           'latest_version_ios': latestIos,
           'min_supported_version_ios': minIos,
           'force_update_ios': forceIos,
@@ -637,9 +703,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,7 +723,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         const SizedBox(width: 6),
                         Text(
                           title,
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: accent),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: accent),
                         ),
                       ],
                     ),
@@ -683,7 +759,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                       activeColor: accent,
-                      title: const Text('Force update', style: TextStyle(fontWeight: FontWeight.w700)),
+                      title: const Text('Force update',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
                       value: force,
                       onChanged: onForceChanged,
                     ),
@@ -710,7 +787,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                       activeColor: Colors.amber,
-                      title: const Text('Maintenance mode', style: TextStyle(fontWeight: FontWeight.w700)),
+                      title: const Text('Maintenance mode',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
                       value: maintenance,
                       onChanged: onMaintenanceChanged,
                     ),
@@ -728,9 +806,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   bottom: MediaQuery.of(modalContext).viewInsets.bottom + 12,
                 ),
                 child: V3ContainerUtils.styledContainer(
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                    border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.2)),
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                     child: SizedBox(
                       height: MediaQuery.of(modalContext).size.height * 0.88,
@@ -739,24 +824,34 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           V3ContainerUtils.styledContainer(
                             width: 42,
                             height: 4,
-                            backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(999),
                             child: const SizedBox(),
                           ),
                           const SizedBox(height: 10),
                           const Text(
                             '🔄 Update verzije aplikacije',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'Upravljanje release i force update pravilima',
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
                           ),
                           if (quickVersionCtrl.text.isNotEmpty)
                             Text(
                               'Lokalna verzija: v${quickVersionCtrl.text}',
-                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).colorScheme.primary),
                             ),
                           const SizedBox(height: 12),
                           Expanded(
@@ -770,12 +865,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                     latest: latestAndroidCtrl,
                                     min: minAndroidCtrl,
                                     store: urlAndroidCtrl,
-                                    maintenanceTitle: maintenanceTitleAndroidCtrl,
-                                    maintenanceMessage: maintenanceMessageAndroidCtrl,
+                                    maintenanceTitle:
+                                        maintenanceTitleAndroidCtrl,
+                                    maintenanceMessage:
+                                        maintenanceMessageAndroidCtrl,
                                     force: forceAndroid,
                                     maintenance: maintenanceAndroid,
-                                    onForceChanged: (v) => setModalState(() => forceAndroid = v),
-                                    onMaintenanceChanged: (v) => setModalState(() => maintenanceAndroid = v),
+                                    onForceChanged: (v) =>
+                                        setModalState(() => forceAndroid = v),
+                                    onMaintenanceChanged: (v) => setModalState(
+                                        () => maintenanceAndroid = v),
                                   ),
                                   section(
                                     title: 'iOS (App Store)',
@@ -785,11 +884,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                     min: minIosCtrl,
                                     store: urlIosCtrl,
                                     maintenanceTitle: maintenanceTitleIosCtrl,
-                                    maintenanceMessage: maintenanceMessageIosCtrl,
+                                    maintenanceMessage:
+                                        maintenanceMessageIosCtrl,
                                     force: forceIos,
                                     maintenance: maintenanceIos,
-                                    onForceChanged: (v) => setModalState(() => forceIos = v),
-                                    onMaintenanceChanged: (v) => setModalState(() => maintenanceIos = v),
+                                    onForceChanged: (v) =>
+                                        setModalState(() => forceIos = v),
+                                    onMaintenanceChanged: (v) =>
+                                        setModalState(() => maintenanceIos = v),
                                   ),
                                 ],
                               ),
@@ -800,25 +902,35 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             children: [
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: isSaving ? null : () => Navigator.of(modalContext).pop(),
+                                  onPressed: isSaving
+                                      ? null
+                                      : () => Navigator.of(modalContext).pop(),
                                   child: const Text('Otkaži'),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: isSaving ? null : () => save(setModalState, modalContext),
+                                  onPressed: isSaving
+                                      ? null
+                                      : () => save(setModalState, modalContext),
                                   icon: isSaving
                                       ? const SizedBox(
                                           height: 16,
                                           width: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white),
                                         )
-                                      : const Icon(Icons.save_outlined, size: 18),
-                                  label: Text(isSaving ? 'Čuvam...' : 'Sačuvaj'),
+                                      : const Icon(Icons.save_outlined,
+                                          size: 18),
+                                  label:
+                                      Text(isSaving ? 'Čuvam...' : 'Sačuvaj'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Theme.of(context).colorScheme.primary,
-                                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    foregroundColor:
+                                        Theme.of(context).colorScheme.onPrimary,
                                   ),
                                 ),
                               ),
@@ -853,7 +965,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               children: [
                 V3ContainerUtils.styledContainer(
                   width: 40,
-                  height: V3ContainerUtils.responsiveHeight(context, 4, intensity: 0.2),
+                  height: V3ContainerUtils.responsiveHeight(context, 4,
+                      intensity: 0.2),
                   backgroundColor: Colors.grey.shade400,
                   borderRadius: BorderRadius.circular(2),
                   child: const SizedBox(),
@@ -871,7 +984,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(context);
-                    V3NavigationUtils.pushScreen(context, const V3FinansijeScreen());
+                    V3NavigationUtils.pushScreen(
+                        context, const V3FinansijeScreen());
                   },
                 ),
                 const Divider(),
@@ -882,7 +996,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(context);
-                    V3NavigationUtils.pushScreen(context, const V3OdrzavanjeScreen());
+                    V3NavigationUtils.pushScreen(
+                        context, const V3OdrzavanjeScreen());
                   },
                 ),
                 const SizedBox(height: 8),
@@ -902,11 +1017,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     for (final row in cache.values) {
       if (row['naplacen_at'] == null) continue;
       // Datum plaćanja
-      final vremeStr = row['naplacen_at'] as String? ?? row['updated_at'] as String?;
+      final vremeStr =
+          row['naplacen_at'] as String? ?? row['updated_at'] as String?;
       if (vremeStr != null) {
         final dt = DateTime.tryParse(vremeStr);
         if (dt == null) continue;
-        if (dt.year != danas.year || dt.month != danas.month || dt.day != danas.day) continue;
+        if (dt.year != danas.year ||
+            dt.month != danas.month ||
+            dt.day != danas.day) continue;
       } else {
         continue; // nema datuma — preskači
       }
@@ -920,7 +1038,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   }
 
   Color _bojaVozaca(String vozacId) {
-    final hex = V3MasterRealtimeManager.instance.vozaciCache[vozacId]?['boja']?.toString();
+    final hex = V3MasterRealtimeManager.instance.vozaciCache[vozacId]?['boja']
+        ?.toString();
     if (hex == null || hex.isEmpty) return Colors.blueGrey;
     try {
       final clean = hex.replaceFirst('#', '');
@@ -949,7 +1068,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final today = DateTime(now.year, now.month, now.day);
 
     final uceniciIds = rm.putniciCache.values
-        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
+        .where((p) =>
+            (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
         .map((p) => p['id'] as String)
         .toSet();
 
@@ -969,7 +1089,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final datumOnly = DateTime(datum.year, datum.month, datum.day);
       if (datumOnly != today) continue;
 
-      final ime = (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
+      final ime =
+          (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
       if (ime.isEmpty) continue;
 
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
@@ -1009,7 +1130,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         final onSurface = colorScheme.onSurface;
 
         return AlertDialog(
-          backgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surface,
+          backgroundColor:
+              theme.dialogTheme.backgroundColor ?? colorScheme.surface,
           title: Text(
             'Učenici bez VS termina',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -1026,11 +1148,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 children: [
                   Text(
                     'Bez VS (${bezVs.length})',
-                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    bezVs.isEmpty ? '— svi imaju VS termin —' : bezVs.join('\n'),
+                    bezVs.isEmpty
+                        ? '— svi imaju VS termin —'
+                        : bezVs.join('\n'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: onSurface.withValues(alpha: 0.82),
                       fontSize: 13,
@@ -1070,7 +1195,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final today = DateTime(now.year, now.month, now.day);
 
     final dnevniIds = rm.putniciCache.values
-        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'dnevni')
+        .where((p) =>
+            (p['tip_putnika'] as String? ?? '').toLowerCase() == 'dnevni')
         .map((p) => p['id'] as String)
         .toSet();
 
@@ -1090,7 +1216,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final datumOnly = DateTime(datum.year, datum.month, datum.day);
       if (datumOnly != today) continue;
 
-      final ime = (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
+      final ime =
+          (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
       if (ime.isEmpty) continue;
 
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
@@ -1130,7 +1257,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         final onSurface = colorScheme.onSurface;
 
         return AlertDialog(
-          backgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surface,
+          backgroundColor:
+              theme.dialogTheme.backgroundColor ?? colorScheme.surface,
           title: Text(
             'Dnevni bez VS termina',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -1147,11 +1275,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 children: [
                   Text(
                     'Bez VS (${bezVs.length})',
-                    style: const TextStyle(color: Colors.deepOrangeAccent, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.deepOrangeAccent,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    bezVs.isEmpty ? '— svi imaju VS termin —' : bezVs.join('\n'),
+                    bezVs.isEmpty
+                        ? '— svi imaju VS termin —'
+                        : bezVs.join('\n'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: onSurface.withValues(alpha: 0.82),
                       fontSize: 13,
@@ -1176,7 +1308,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   int _getUceniciZahteviCount() {
     final rm = V3MasterRealtimeManager.instance;
     final uceniciIds = rm.putniciCache.values
-        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
+        .where((p) =>
+            (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
         .map((p) => p['id'] as String)
         .toSet();
 
@@ -1195,7 +1328,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   int _getRadniciZahteviCount() {
     final rm = V3MasterRealtimeManager.instance;
     final radniciIds = rm.putniciCache.values
-        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'radnik')
+        .where((p) =>
+            (p['tip_putnika'] as String? ?? '').toLowerCase() == 'radnik')
         .map((p) => p['id'] as String)
         .toSet();
 
@@ -1230,7 +1364,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   int _getPosiljkeZahteviCount() {
     final rm = V3MasterRealtimeManager.instance;
     final posiljkaPutnici = rm.putniciCache.values
-        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'posiljka')
+        .where((p) =>
+            (p['tip_putnika'] as String? ?? '').toLowerCase() == 'posiljka')
         .map((p) => p['id'] as String)
         .toSet();
     return rm.zahteviCache.values.where((r) {
@@ -1265,7 +1400,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         decoration: BoxDecoration(
           color: Colors.orange.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.orange.withValues(alpha: 0.7), width: 1.5),
+          border: Border.all(
+              color: Colors.orange.withValues(alpha: 0.7), width: 1.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
@@ -1298,7 +1434,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         decoration: BoxDecoration(
           color: Colors.deepOrange.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.deepOrange.withValues(alpha: 0.7), width: 1.5),
+          border: Border.all(
+              color: Colors.deepOrange.withValues(alpha: 0.7), width: 1.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
@@ -1321,8 +1458,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth', 'v3_zahtevi']),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(
+          const ['v3_operativna_nedelja', 'v3_auth', 'v3_zahtevi']),
       builder: (context, _) => _buildScaffold(context),
     );
   }
@@ -1401,13 +1538,20 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           return _NavBtn(
                             color: Colors.blueGrey,
                             onTap: () async {
-                              final RenderBox button = context.findRenderObject()! as RenderBox;
-                              final RenderBox overlay =
-                                  Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
-                              final RelativeRect position = RelativeRect.fromRect(
+                              final RenderBox button =
+                                  context.findRenderObject()! as RenderBox;
+                              final RenderBox overlay = Navigator.of(context)
+                                  .overlay!
+                                  .context
+                                  .findRenderObject()! as RenderBox;
+                              final RelativeRect position =
+                                  RelativeRect.fromRect(
                                 Rect.fromPoints(
-                                  button.localToGlobal(Offset.zero, ancestor: overlay),
-                                  button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+                                  button.localToGlobal(Offset.zero,
+                                      ancestor: overlay),
+                                  button.localToGlobal(
+                                      button.size.bottomRight(Offset.zero),
+                                      ancestor: overlay),
                                 ),
                                 Offset.zero & overlay.size,
                               );
@@ -1418,25 +1562,39 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                 items: [
                                   PopupMenuItem(
                                     enabled: false,
-                                    height: V3ContainerUtils.responsiveHeight(context, 28),
-                                    child: Text('Tip rasporeda', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                    height: V3ContainerUtils.responsiveHeight(
+                                        context, 28),
+                                    child: Text('Tip rasporeda',
+                                        style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 12)),
                                   ),
                                   const PopupMenuItem(
                                       value: 'zimski',
-                                      child: Text('⚙️  Zimski', style: TextStyle(color: Colors.white))),
+                                      child: Text('⚙️  Zimski',
+                                          style:
+                                              TextStyle(color: Colors.white))),
                                   const PopupMenuItem(
                                       value: 'custom',
-                                      child: Text('🛠️  Custom', style: TextStyle(color: Colors.white))),
+                                      child: Text('🛠️  Custom',
+                                          style:
+                                              TextStyle(color: Colors.white))),
                                   const PopupMenuDivider(),
                                   const PopupMenuItem(
                                       value: '__custom_times__',
-                                      child: Text('⏱️  Uredi custom vremena', style: TextStyle(color: Colors.white))),
+                                      child: Text('⏱️  Uredi custom vremena',
+                                          style:
+                                              TextStyle(color: Colors.white))),
                                   const PopupMenuItem(
                                       value: '__non_working_days__',
-                                      child: Text('📅  Uredi neradne dane', style: TextStyle(color: Colors.white))),
+                                      child: Text('📅  Uredi neradne dane',
+                                          style:
+                                              TextStyle(color: Colors.white))),
                                   const PopupMenuItem(
                                       value: '__vozaci__',
-                                      child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
+                                      child: Text('🚗  Vozači admin',
+                                          style:
+                                              TextStyle(color: Colors.white))),
                                 ],
                               );
                               if (val == null) return;
@@ -1450,7 +1608,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               }
                               if (val == '__vozaci__') {
                                 if (context.mounted) {
-                                  V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
+                                  V3NavigationUtils.pushScreen<void>(
+                                      context, const V3VozaciAdminScreen());
                                 }
                                 return;
                               }
@@ -1460,23 +1619,31 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               final action = await showDialog<String>(
                                 context: context,
                                 builder: (dialogContext) => AlertDialog(
-                                  backgroundColor: Theme.of(context).colorScheme.primary,
-                                  title: const Text('Primena rasporeda', style: TextStyle(color: Colors.white)),
+                                  backgroundColor:
+                                      Theme.of(context).colorScheme.primary,
+                                  title: const Text('Primena rasporeda',
+                                      style: TextStyle(color: Colors.white)),
                                   content: Text(
                                     'Kako želiš da primeniš "$val" režim?',
-                                    style: const TextStyle(color: Colors.white70),
+                                    style:
+                                        const TextStyle(color: Colors.white70),
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.of(dialogContext).pop(),
+                                      onPressed: () =>
+                                          Navigator.of(dialogContext).pop(),
                                       child: const Text('Otkaži'),
                                     ),
                                     TextButton(
-                                      onPressed: () => Navigator.of(dialogContext).pop('tomorrow'),
+                                      onPressed: () =>
+                                          Navigator.of(dialogContext)
+                                              .pop('tomorrow'),
                                       child: const Text('Od sutra'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () => Navigator.of(dialogContext).pop('now'),
+                                      onPressed: () =>
+                                          Navigator.of(dialogContext)
+                                              .pop('now'),
                                       child: const Text('Primeni odmah'),
                                     ),
                                   ],
@@ -1492,22 +1659,28 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                     'nav_bar_type_next': null,
                                     'nav_bar_type_effective_at': null,
                                   });
-                                  debugPrint('[AdminScreen] nav_bar_type sačuvan odmah: $val');
+                                  debugPrint(
+                                      '[AdminScreen] nav_bar_type sačuvan odmah: $val');
                                 } else {
                                   final now = DateTime.now();
                                   final sutraPocetak =
-                                      DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+                                      DateTime(now.year, now.month, now.day)
+                                          .add(const Duration(days: 1));
                                   await V3AppSettingsService.updateGlobal({
                                     'nav_bar_type_next': val,
-                                    'nav_bar_type_effective_at': sutraPocetak.toIso8601String(),
+                                    'nav_bar_type_effective_at':
+                                        sutraPocetak.toIso8601String(),
                                   });
-                                  debugPrint('[AdminScreen] nav_bar_type zakazan od sutra: $val @ $sutraPocetak');
+                                  debugPrint(
+                                      '[AdminScreen] nav_bar_type zakazan od sutra: $val @ $sutraPocetak');
                                 }
                               } catch (e) {
-                                debugPrint('[AdminScreen] Greška pri čuvanju nav_bar_type: $e');
+                                debugPrint(
+                                    '[AdminScreen] Greška pri čuvanju nav_bar_type: $e');
                               }
                             },
-                            child: Text(labels[navType] ?? '⚙️', style: const TextStyle(fontSize: 20)),
+                            child: Text(labels[navType] ?? '⚙️',
+                                style: const TextStyle(fontSize: 20)),
                           );
                         },
                       ),
@@ -1552,7 +1725,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                              shadows: [
+                                Shadow(
+                                    offset: Offset(1, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black54)
+                              ],
                             ),
                           ),
                         ),
@@ -1577,7 +1755,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                              shadows: [
+                                Shadow(
+                                    offset: Offset(1, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black54)
+                              ],
                             ),
                           ),
                         ),
@@ -1602,7 +1785,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                              shadows: [
+                                Shadow(
+                                    offset: Offset(1, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black54)
+                              ],
                             ),
                           ),
                         ),
@@ -1627,7 +1815,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                              shadows: [
+                                Shadow(
+                                    offset: Offset(1, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black54)
+                              ],
                             ),
                           ),
                         ),
@@ -1648,7 +1841,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                              shadows: [
+                                Shadow(
+                                    offset: Offset(1, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black54)
+                              ],
                             ),
                           ),
                         ),
@@ -1736,7 +1934,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               // ─── DONJI DIO: Vozači s pazarom + Dužnici + Ukupno ───
               Expanded(
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + MediaQuery.of(context).padding.bottom),
+                  padding: EdgeInsets.fromLTRB(
+                      12, 0, 12, 12 + MediaQuery.of(context).padding.bottom),
                   child: _buildPazarSection(context),
                 ),
               ),
@@ -1752,7 +1951,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final pazarPoVozacu = _getPazarPoVozacu();
     final sveDugovi = V3DugService.getDugovi();
     // Dužnici = dnevni + pošiljke (naplata po pokupljenju)
-    final dugovi = sveDugovi.where((d) => d.tipPutnika == 'dnevni' || d.tipPutnika == 'posiljka').toList();
+    final dugovi = sveDugovi
+        .where((d) => d.tipPutnika == 'dnevni' || d.tipPutnika == 'posiljka')
+        .toList();
     final dugoviIznos = dugovi.fold(0.0, (s, d) => s + d.iznos);
     final ukupnoPazar = pazarPoVozacu.values.fold(0.0, (s, v) => s + v);
 
@@ -1779,14 +1980,18 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   radius: 15,
                   child: Text(
                     v.imePrezime.isNotEmpty ? v.imePrezime[0] : '?',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: V3SafeText.userName(
                     v.imePrezime,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: boja),
+                    style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.bold, color: boja),
                   ),
                 ),
                 Row(
@@ -1795,7 +2000,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     const SizedBox(width: 4),
                     Text(
                       '${pazar.toStringAsFixed(0)} RSD',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: boja),
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: boja),
                     ),
                   ],
                 ),
@@ -1823,20 +2031,28 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 22),
+                const Icon(Icons.warning_amber_rounded,
+                    color: Colors.redAccent, size: 22),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
                     'Dužnici',
-                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14),
                   ),
                 ),
                 Text(
                   '${dugoviIznos.toStringAsFixed(0)} RSD',
-                  style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.monetization_on, color: Colors.redAccent, size: 16),
+                const Icon(Icons.monetization_on,
+                    color: Colors.redAccent, size: 16),
               ],
             ),
           ),
@@ -1850,14 +2066,19 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           backgroundColor: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.green.withValues(alpha: 0.5), width: 1.5),
+          border: Border.all(
+              color: Colors.green.withValues(alpha: 0.5), width: 1.5),
           boxShadow: [
-            BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(
+                color: Colors.green.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4)),
           ],
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.account_balance_wallet, color: Colors.green[700], size: 22),
+              Icon(Icons.account_balance_wallet,
+                  color: Colors.green[700], size: 22),
               const SizedBox(width: 10),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1957,7 +2178,8 @@ class _BadgeBtn extends StatelessWidget {
                 width: 1.5,
               ),
             ),
-            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
+            child: Center(
+                child: Text(emoji, style: const TextStyle(fontSize: 22))),
           ),
         ),
         if (badgeCount > 0)
@@ -1966,14 +2188,18 @@ class _BadgeBtn extends StatelessWidget {
             top: -4,
             child: Container(
               padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              decoration:
+                  BoxDecoration(color: Colors.red, shape: BoxShape.circle),
               constraints: BoxConstraints(
                 minWidth: V3ContainerUtils.responsiveHeight(context, 20),
                 minHeight: V3ContainerUtils.responsiveHeight(context, 20),
               ),
               child: Text(
                 '$badgeCount',
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
             ),

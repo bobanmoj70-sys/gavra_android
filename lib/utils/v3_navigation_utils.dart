@@ -82,12 +82,16 @@ class V3NavigationUtils {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(false),
+            onPressed: () =>
+                Navigator.of(ctx, rootNavigator: useRootNavigator).pop(false),
             child: Text(cancelText),
           ),
           TextButton(
-            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(true),
-            style: isDangerous ? TextButton.styleFrom(foregroundColor: Colors.red) : null,
+            onPressed: () =>
+                Navigator.of(ctx, rootNavigator: useRootNavigator).pop(true),
+            style: isDangerous
+                ? TextButton.styleFrom(foregroundColor: Colors.red)
+                : null,
             child: Text(confirmText),
           ),
         ],
@@ -112,7 +116,8 @@ class V3NavigationUtils {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(),
+            onPressed: () =>
+                Navigator.of(ctx, rootNavigator: useRootNavigator).pop(),
             child: Text(okText),
           ),
         ],
@@ -140,7 +145,8 @@ class V3NavigationUtils {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx, rootNavigator: useRootNavigator).pop(),
+            onPressed: () =>
+                Navigator.of(ctx, rootNavigator: useRootNavigator).pop(),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text(okText),
           ),

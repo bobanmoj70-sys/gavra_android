@@ -29,7 +29,8 @@ class V3ButtonUtils {
           ? const SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white),
             )
           : (icon != null ? Icon(icon, size: 18) : const SizedBox.shrink()),
       label: Text(
@@ -43,7 +44,8 @@ class V3ButtonUtils {
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? Colors.blue,
         foregroundColor: foregroundColor ?? Colors.white,
-        padding: padding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding:
+            padding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         shape: RoundedRectangleBorder(
           borderRadius: borderRadius ?? BorderRadius.circular(12),
         ),
@@ -188,7 +190,8 @@ class V3ButtonUtils {
       style: OutlinedButton.styleFrom(
         foregroundColor: foregroundColor ?? Colors.blue,
         side: BorderSide(color: borderColor ?? Colors.blue),
-        padding: padding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding:
+            padding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         shape: RoundedRectangleBorder(
           borderRadius: borderRadius ?? BorderRadius.circular(12),
         ),
@@ -254,7 +257,8 @@ class V3ButtonUtils {
       ),
       style: TextButton.styleFrom(
         foregroundColor: foregroundColor ?? Colors.blue,
-        padding: padding ?? const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding:
+            padding ?? const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         shape: RoundedRectangleBorder(
           borderRadius: borderRadius ?? BorderRadius.circular(12),
         ),
@@ -279,7 +283,10 @@ class V3ButtonUtils {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.08)],
+            colors: [
+              color.withValues(alpha: 0.18),
+              color.withValues(alpha: 0.08)
+            ],
           ),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: color.withValues(alpha: 0.35)),
@@ -289,14 +296,16 @@ class V3ButtonUtils {
           icon: Icon(icon, size: 13, color: color),
           label: Text(
             text,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w600, color: color),
             overflow: TextOverflow.ellipsis,
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           ),
         ),
@@ -323,7 +332,8 @@ class V3ButtonUtils {
         borderRadius: borderRadius ?? BorderRadius.circular(12),
         child: V3ContainerUtils.styledContainer(
           padding: padding ?? const EdgeInsets.all(12),
-          backgroundColor: backgroundColor ?? Colors.white.withValues(alpha: 0.15),
+          backgroundColor:
+              backgroundColor ?? Colors.white.withValues(alpha: 0.15),
           borderRadius: borderRadius ?? BorderRadius.circular(12),
           border: Border.all(
             color: borderColor ?? Colors.white.withValues(alpha: 0.6),

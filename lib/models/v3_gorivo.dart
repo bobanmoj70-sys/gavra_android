@@ -1,8 +1,6 @@
 /// Model za tabelu v3_gorivo
 library;
 
-import '../utils/v3_date_utils.dart';
-
 class V3PumpaStanje {
   final String id;
 
@@ -14,18 +12,12 @@ class V3PumpaStanje {
 
   final double stanjeBrojacPistolj;
 
-  final DateTime? updatedAt;
-
-  final DateTime? createdAt;
-
   V3PumpaStanje({
     required this.id,
     this.naziv = 'Kucna Pumpa',
     this.kapacitetLitri = 0,
     required this.trenutnoStanje,
     this.stanjeBrojacPistolj = 0,
-    this.updatedAt,
-    this.createdAt,
   });
 
   factory V3PumpaStanje.fromJson(Map<String, dynamic> json) {
@@ -34,15 +26,13 @@ class V3PumpaStanje {
       naziv: json['naziv'] as String? ?? 'Kucna Pumpa',
       kapacitetLitri: (json['kapacitet_litri'] as num?)?.toDouble() ?? 0,
       trenutnoStanje: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? 0,
-      stanjeBrojacPistolj: (json['brojac_pistolj_litri'] as num?)?.toDouble() ?? 0,
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
+      stanjeBrojacPistolj:
+          (json['brojac_pistolj_litri'] as num?)?.toDouble() ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() => {
         if (id.isNotEmpty) 'id': id,
-        'naziv': naziv,
         'kapacitet_litri': kapacitetLitri,
         'trenutno_stanje_litri': trenutnoStanje,
         'brojac_pistolj_litri': stanjeBrojacPistolj,
@@ -60,17 +50,11 @@ class V3PumpaRezervoar {
 
   final double alarmNivo;
 
-  final DateTime? updatedAt;
-
-  final DateTime? createdAt;
-
   V3PumpaRezervoar({
     required this.id,
     this.kapacitetMax = 3000,
     required this.trenutnoLitara,
     this.alarmNivo = 500,
-    this.updatedAt,
-    this.createdAt,
   });
 
   factory V3PumpaRezervoar.fromJson(Map<String, dynamic> json) {
@@ -79,8 +63,6 @@ class V3PumpaRezervoar {
       kapacitetMax: (json['kapacitet_litri'] as num?)?.toDouble() ?? 3000,
       trenutnoLitara: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? 0,
       alarmNivo: (json['alarm_nivo_litri'] as num?)?.toDouble() ?? 500,
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
     );
   }
 
@@ -93,7 +75,9 @@ class V3PumpaRezervoar {
 
   bool get ispodAlarma => trenutnoLitara <= alarmNivo;
 
-  double get procentPunjenosti => kapacitetMax > 0 ? (trenutnoLitara / kapacitetMax * 100).clamp(0, 100) : 0;
+  double get procentPunjenosti => kapacitetMax > 0
+      ? (trenutnoLitara / kapacitetMax * 100).clamp(0, 100)
+      : 0;
 }
 
 /// Backward-compat alias (stari kod može koristiti V3GorivoStanje)
@@ -102,14 +86,13 @@ class V3PumpaRezervoar {
 class V3GorivoStanje {
   final double kolicina;
 
-  final DateTime updatedAt;
-
-  V3GorivoStanje({required this.kolicina, required this.updatedAt});
+  V3GorivoStanje({required this.kolicina});
 
   factory V3GorivoStanje.fromJson(Map<String, dynamic> json) {
     return V3GorivoStanje(
-      kolicina: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? (json['kolicina'] as num?)?.toDouble() ?? 0,
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?) ?? DateTime.now(),
+      kolicina: (json['trenutno_stanje_litri'] as num?)?.toDouble() ??
+          (json['kolicina'] as num?)?.toDouble() ??
+          0,
     );
   }
 }

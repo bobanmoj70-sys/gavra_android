@@ -26,9 +26,12 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
     return StreamBuilder<List<V3Dug>>(
       stream: V3DugService.streamDugovi(),
       builder: (context, snapshot) {
-        final isLoading = !snapshot.hasData && snapshot.connectionState == ConnectionState.waiting;
+        final isLoading = !snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting;
         final allDugovi = snapshot.data ?? [];
-        final dugovi = allDugovi.where((d) => V3StringUtils.containsSearch(d.imePrezime, _filter)).toList();
+        final dugovi = allDugovi
+            .where((d) => V3StringUtils.containsSearch(d.imePrezime, _filter))
+            .toList();
         final ukupanIznos = allDugovi.fold(0.0, (s, d) => s + d.iznos);
 
         return Scaffold(
@@ -51,7 +54,8 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
             ),
           ),
           body: Container(
-            decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+            decoration:
+                BoxDecoration(gradient: Theme.of(context).backgroundGradient),
             child: SafeArea(
               child: Column(
                 children: [
@@ -85,7 +89,8 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18)),
                       ),
                       child: TextField(
                         style: const TextStyle(color: Colors.white),
@@ -94,9 +99,11 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                           hintStyle: TextStyle(color: Colors.white54),
                           prefixIcon: Icon(Icons.search, color: Colors.white54),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                         ),
-                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _filter = v),
+                        onChanged: (v) =>
+                            V3StateUtils.safeSetState(this, () => _filter = v),
                       ),
                     ),
                   ),
@@ -105,23 +112,30 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                   // ─── Lista dugova ───
                   Expanded(
                     child: isLoading
-                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                        ? const Center(
+                            child:
+                                CircularProgressIndicator(color: Colors.white))
                         : dugovi.isEmpty
                             ? Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text('✅', style: TextStyle(fontSize: 48)),
+                                    const Text('✅',
+                                        style: TextStyle(fontSize: 48)),
                                     const SizedBox(height: 12),
                                     Text(
-                                      _filter.isEmpty ? 'Nema evidentiranih dugovanja' : 'Nema rezultata za "$_filter"',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 16),
+                                      _filter.isEmpty
+                                          ? 'Nema evidentiranih dugovanja'
+                                          : 'Nema rezultata za "$_filter"',
+                                      style: const TextStyle(
+                                          color: Colors.white70, fontSize: 16),
                                     ),
                                   ],
                                 ),
                               )
                             : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+                                padding:
+                                    const EdgeInsets.fromLTRB(12, 0, 12, 24),
                                 itemCount: dugovi.length,
                                 itemBuilder: (context, i) => _DugCard(
                                   dug: dugovi[i],
@@ -142,7 +156,8 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
     final confirm = await V3DialogHelper.showConfirmDialog(
       context,
       title: 'Potvrda naplate',
-      message: 'Da li je putnik ${dug.imePrezime} platio dug od ${dug.iznos.toStringAsFixed(2)} RSD?',
+      message:
+          'Da li je putnik ${dug.imePrezime} platio dug od ${dug.iznos.toStringAsFixed(2)} RSD?',
       confirmText: 'DA',
       cancelText: 'NE',
     );
@@ -150,7 +165,8 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
     if (confirm == true) {
       try {
         await V3DugService.markAsPaid(dug.id, iznos: dug.iznos);
-        if (mounted) V3AppSnackBar.success(context, '✅ Dug naplaćen i arhiviran');
+        if (mounted)
+          V3AppSnackBar.success(context, '✅ Dug naplaćen i arhiviran');
       } catch (e) {
         V3ErrorUtils.asyncError(this, context, e);
       }
@@ -192,8 +208,14 @@ class _StatCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(value, style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  Text(value,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold)),
+                  Text(label,
+                      style:
+                          const TextStyle(color: Colors.white60, fontSize: 11)),
                 ],
               ),
             ),
@@ -215,9 +237,12 @@ class _DugCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
+    final initial =
+        dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
     final datumStr = DateFormat('dd.MM.yyyy  HH:mm').format(dug.datum);
-    final pickupStr = dug.pokupljenAt != null ? DateFormat('dd.MM.yyyy  HH:mm').format(dug.pokupljenAt!) : 'Nepoznato';
+    final pickupStr = dug.pokupljenAt != null
+        ? DateFormat('dd.MM.yyyy  HH:mm').format(dug.pokupljenAt!)
+        : 'Nepoznato';
     final vozacStr = dug.vozacIme.isNotEmpty ? dug.vozacIme : 'Nepoznato';
 
     return Container(
@@ -225,7 +250,8 @@ class _DugCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.red.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.35), width: 1.5),
+        border:
+            Border.all(color: Colors.red.withValues(alpha: 0.35), width: 1.5),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -235,8 +261,11 @@ class _DugCard extends StatelessWidget {
             CircleAvatar(
               backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
               radius: 22,
-              child:
-                  Text(initial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(initial,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
             ),
             const SizedBox(width: 12),
             // Info
@@ -245,23 +274,35 @@ class _DugCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   V3SafeText.userName(dug.imePrezime,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15)),
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       const Text('💰 ', style: TextStyle(fontSize: 13)),
                       Text(
                         '${dug.iznos.toStringAsFixed(0)} RSD',
-                        style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w700, fontSize: 14),
+                        style: const TextStyle(
+                            color: Colors.orangeAccent,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14),
                       ),
                     ],
                   ),
                   const SizedBox(height: 1),
-                  Text(datumStr, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                  Text(datumStr,
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 11)),
                   const SizedBox(height: 1),
-                  Text('Vozač: $vozacStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  Text('Vozač: $vozacStr',
+                      style:
+                          const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
-                  Text('Pokupljen: $pickupStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  Text('Pokupljen: $pickupStr',
+                      style:
+                          const TextStyle(color: Colors.white60, fontSize: 11)),
                 ],
               ),
             ),
@@ -269,14 +310,18 @@ class _DugCard extends StatelessWidget {
             GestureDetector(
               onTap: onNaplati,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
                   'NAPLATI',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13),
                 ),
               ),
             ),

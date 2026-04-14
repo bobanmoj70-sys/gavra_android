@@ -13,17 +13,17 @@ class V3Putnik {
   final String? adresaVsId2;
 
   // Specific fields
-  final String? opisPosiljke;
-  final String? skola;
+  final String? sifra;
 
   final double cenaPoDanu;
   final double cenaPoPokupljenju;
 
   final String? pushToken;
   final String? pushToken2;
+  final String? pushDeviceId;
+  final String? pushDeviceId2;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  final String? createdBy;
 
   V3Putnik({
     required this.id,
@@ -35,15 +35,15 @@ class V3Putnik {
     this.adresaVsId,
     this.adresaBcId2,
     this.adresaVsId2,
-    this.opisPosiljke,
-    this.skola,
+    this.sifra,
     this.cenaPoDanu = 0.0,
     this.cenaPoPokupljenju = 0.0,
     this.pushToken,
     this.pushToken2,
+    this.pushDeviceId,
+    this.pushDeviceId2,
     this.createdAt,
     this.updatedAt,
-    this.createdBy,
   });
 
   factory V3Putnik.fromJson(Map<String, dynamic> json) {
@@ -57,15 +57,15 @@ class V3Putnik {
       adresaVsId: json['adresa_vs_id'] as String?,
       adresaBcId2: json['adresa_bc_id_2'] as String?,
       adresaVsId2: json['adresa_vs_id_2'] as String?,
-      opisPosiljke: json['opis_posiljke'] as String?,
-      skola: json['skola'] as String?,
+      sifra: json['sifra'] as String?,
       cenaPoDanu: (json['cena_po_danu'] as num?)?.toDouble() ?? 0.0,
       cenaPoPokupljenju: (json['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0,
       pushToken: json['push_token'] as String?,
       pushToken2: json['push_token_2'] as String?,
+      pushDeviceId: json['push_device_id'] as String?,
+      pushDeviceId2: json['push_device_id_2'] as String?,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
-      createdBy: json['created_by'] as String?,
     );
   }
 
@@ -80,13 +80,13 @@ class V3Putnik {
       'adresa_vs_id': adresaVsId,
       'adresa_bc_id_2': adresaBcId2,
       'adresa_vs_id_2': adresaVsId2,
-      'opis_posiljke': opisPosiljke,
-      'skola': skola,
+      'sifra': sifra,
       'cena_po_danu': cenaPoDanu,
       'cena_po_pokupljenju': cenaPoPokupljenju,
       if (pushToken != null) 'push_token': pushToken,
       if (pushToken2 != null) 'push_token_2': pushToken2,
-      if (createdBy != null) 'created_by': createdBy,
+      if (pushDeviceId != null) 'push_device_id': pushDeviceId,
+      if (pushDeviceId2 != null) 'push_device_id_2': pushDeviceId2,
     };
   }
 
@@ -100,12 +100,13 @@ class V3Putnik {
     String? adresaVsId,
     String? adresaBcId2,
     String? adresaVsId2,
-    String? opisPosiljke,
-    String? skola,
+    String? sifra,
     double? cenaPoDanu,
     double? cenaPoPokupljenju,
     String? pushToken,
     String? pushToken2,
+    String? pushDeviceId,
+    String? pushDeviceId2,
   }) {
     return V3Putnik(
       id: id ?? this.id,
@@ -117,12 +118,13 @@ class V3Putnik {
       adresaVsId: adresaVsId ?? this.adresaVsId,
       adresaBcId2: adresaBcId2 ?? this.adresaBcId2,
       adresaVsId2: adresaVsId2 ?? this.adresaVsId2,
-      opisPosiljke: opisPosiljke ?? this.opisPosiljke,
-      skola: skola ?? this.skola,
+      sifra: sifra ?? this.sifra,
       cenaPoDanu: cenaPoDanu ?? this.cenaPoDanu,
       cenaPoPokupljenju: cenaPoPokupljenju ?? this.cenaPoPokupljenju,
       pushToken: pushToken ?? this.pushToken,
       pushToken2: pushToken2 ?? this.pushToken2,
+      pushDeviceId: pushDeviceId ?? this.pushDeviceId,
+      pushDeviceId2: pushDeviceId2 ?? this.pushDeviceId2,
     );
   }
 

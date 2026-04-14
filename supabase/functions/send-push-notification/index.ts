@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 type PushProvider = 'fcm';
 type TokenInput = { token: string; provider: PushProvider };
@@ -220,43 +219,7 @@ async function sendFcm(
   }
 }
 
-function isUnrecoverableTokenError(result: PushResult): boolean {
-  if (result.ok) return false;
-  const text = String(result.error ?? '').toUpperCase();
-  return (
-    text.includes('UNREGISTERED') ||
-    text.includes('NOT A VALID FCM REGISTRATION TOKEN') ||
-    text.includes('INVALID REGISTRATION TOKEN')
-  );
-}
 
-async function cleanupStaleToken(token: string): Promise<boolean> {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
-  if (!supabaseUrl || !serviceRoleKey) return false;
-
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const primary = await admin
-    .from('v3_auth')
-    .update({ push_token: null, push_device_id: null, updated_at: new Date().toISOString() })
-    .eq('push_token', token)
-    .select('id')
-    .limit(1);
-
-  const secondary = await admin
-    .from('v3_auth')
-    .update({ push_token_2: null, push_device_id_2: null, updated_at: new Date().toISOString() })
-    .eq('push_token_2', token)
-    .select('id')
-    .limit(1);
-
-  const changedPrimary = Array.isArray(primary.data) && primary.data.length > 0;
-  const changedSecondary = Array.isArray(secondary.data) && secondary.data.length > 0;
-  return changedPrimary || changedSecondary;
-}
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
@@ -281,11 +244,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const results: PushResult[] = [];
-
-    for (const tokenItem of normalizedTokens) {
-      results.push(await sendFcm(tokenItem.token, title, body, dataOnly, data, payload));
-    }
+    const results: PushResult[] = await Promise.all(
+      normalizedTokens.map((tokenItem) => sendFcm(tokenItem.token, title, body, dataOnly, data, payload)),
+    );
 
     const sent = results.filter((entry) => entry.ok).length;
     const failed = results.length - sent;
@@ -296,23 +257,12 @@ Deno.serve(async (req) => {
       },
     };
 
-    const staleTokens = Array.from(
-      new Set(results.filter((entry) => isUnrecoverableTokenError(entry)).map((entry) => entry.token)),
-    );
-    let cleanedTokens = 0;
-    for (const staleToken of staleTokens) {
-      if (await cleanupStaleToken(staleToken)) {
-        cleanedTokens += 1;
-      }
-    }
-
     console.log(
       JSON.stringify({
         event: 'push_delivery_result',
         requested: normalizedTokens.length,
         sent,
         failed,
-        cleaned_tokens: cleanedTokens,
         by_provider: byProvider,
       }),
     );
@@ -323,7 +273,6 @@ Deno.serve(async (req) => {
         accepted: normalizedTokens.length,
         sent,
         failed,
-        cleaned_tokens: cleanedTokens,
         by_provider: byProvider,
         errors: results.filter((entry) => !entry.ok).slice(0, 20),
       }),

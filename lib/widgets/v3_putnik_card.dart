@@ -78,7 +78,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         duration: const Duration(milliseconds: 1500),
         onLongPress: () {
           if (_isLongPressActive && mounted) {
-            final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
+            final status =
+                widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
             final isPokupljen = widget.entry?.pokupljenAt != null;
             if (status != 'otkazano' && !isPokupljen) {
               _handlePickup();
@@ -103,7 +104,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       V2HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac == null) throw 'Niste logovani u V3 sistem';
-      await V3ZahtevService.oznaciPokupljen(pokupljenBy: currentVozac.id, operativnaId: widget.entry?.id);
+      await V3ZahtevService.oznaciPokupljen(
+          pokupljenBy: currentVozac.id, operativnaId: widget.entry?.id);
       await V2HapticService.putnikPokupljen();
       if (mounted) {
         V3AppSnackBar.success(context, 'Putnik pokupljen');
@@ -150,8 +152,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     V3StateUtils.safeSetState(this, () => _isProcessing = true);
 
     final tip = widget.putnik.tipPutnika;
-    final defaultCena =
-        (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
+    final defaultCena = (tip == 'dnevni' || tip == 'posiljka')
+        ? widget.putnik.cenaPoPokupljenju
+        : widget.putnik.cenaPoDanu;
     final zakljucajIznos = defaultCena > 0;
 
     try {
@@ -193,17 +196,24 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     if (overrideId != null && overrideId.isNotEmpty) {
       adresaId = overrideId;
     } else {
-      final grad = V3ValidationUtils.normalizeGrad(widget.entry?.grad ?? widget.zahtev?.grad ?? '');
+      final grad = V3ValidationUtils.normalizeGrad(
+          widget.entry?.grad ?? widget.zahtev?.grad ?? '');
       final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
       if (grad != 'BC' && grad != 'VS') {
-        if (mounted) V3AppSnackBar.warning(context, '⚠️ Grad nije definisan za ovog putnika');
+        if (mounted)
+          V3AppSnackBar.warning(
+              context, '⚠️ Grad nije definisan za ovog putnika');
         return;
       }
       adresaId = grad == 'BC'
-          ? (koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId) ??
+          ? (koristiSekundarnu
+                  ? widget.putnik.adresaBcId2
+                  : widget.putnik.adresaBcId) ??
               widget.putnik.adresaBcId ??
               widget.putnik.adresaBcId2
-          : (koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId) ??
+          : (koristiSekundarnu
+                  ? widget.putnik.adresaVsId2
+                  : widget.putnik.adresaVsId) ??
               widget.putnik.adresaVsId ??
               widget.putnik.adresaVsId2;
     }
@@ -211,19 +221,22 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final V3Adresa? adresa = V3AdresaService.getAdresaById(adresaId);
 
     if (adresa != null && adresa.hasValidCoordinates) {
-      final hereUrl = Uri.parse('here-route://mylocation/${adresa.gpsLat},${adresa.gpsLng}/now');
+      final hereUrl = Uri.parse(
+          'here-route://mylocation/${adresa.gpsLat},${adresa.gpsLng}/now');
       if (await canLaunchUrl(hereUrl)) {
         await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
         return;
       }
       if (mounted) {
-        V3AppSnackBar.warning(context, '⚠️ HERE aplikacija nije dostupna na uređaju');
+        V3AppSnackBar.warning(
+            context, '⚠️ HERE aplikacija nije dostupna na uređaju');
       }
       return;
     }
     if (mounted) {
       final naziv = adresaNaziv ?? '/';
-      V3AppSnackBar.warning(context, '⚠️ GPS koordinate nisu dostupne za: $naziv');
+      V3AppSnackBar.warning(
+          context, '⚠️ GPS koordinate nisu dostupne za: $naziv');
     }
   }
 
@@ -239,7 +252,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       final confirm = await V3NavigationUtils.showConfirmDialog(
         context,
         title: 'Otkazivanje putnika',
-        message: 'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
+        message:
+            'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
         confirmText: 'Da',
         cancelText: 'Ne',
         isDangerous: true,
@@ -247,9 +261,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
       if (confirm == true) {
         await V3ZahtevService.otkaziZahtev('',
-            otkazaoVozacId: V3VozacService.currentVozac?.id, operativnaId: operativnaId);
+            otkazaoVozacId: V3VozacService.currentVozac?.id,
+            operativnaId: operativnaId);
         if (mounted) {
-          V3AppSnackBar.warning(context, 'Otkazano: ${widget.putnik.imePrezime}');
+          V3AppSnackBar.warning(
+              context, 'Otkazano: ${widget.putnik.imePrezime}');
           widget.onChanged?.call();
         }
       }
@@ -331,16 +347,23 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     if (overrideId != null && overrideId.isNotEmpty) {
       return V3AdresaService.getAdresaById(overrideId)?.naziv;
     }
-    final grad = V3ValidationUtils.normalizeGrad(widget.entry?.grad ?? widget.zahtev?.grad ?? '');
+    final grad = V3ValidationUtils.normalizeGrad(
+        widget.entry?.grad ?? widget.zahtev?.grad ?? '');
     final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
     if (grad == 'BC') {
-      final id = koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId;
-      return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaBcId)?.naziv ??
+      final id = koristiSekundarnu
+          ? widget.putnik.adresaBcId2
+          : widget.putnik.adresaBcId;
+      return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaBcId)
+              ?.naziv ??
           V3AdresaService.getAdresaById(widget.putnik.adresaBcId2)?.naziv;
     }
     if (grad == 'VS') {
-      final id = koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId;
-      return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaVsId)?.naziv ??
+      final id = koristiSekundarnu
+          ? widget.putnik.adresaVsId2
+          : widget.putnik.adresaVsId;
+      return V3AdresaService.getAdresaById(id ?? widget.putnik.adresaVsId)
+              ?.naziv ??
           V3AdresaService.getAdresaById(widget.putnik.adresaVsId2)?.naziv;
     }
     return null;
@@ -374,7 +397,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final textStyle = _getStatusTextStyle();
     final Color textColor = textStyle.primary;
     final Color secondaryTextColor = textStyle.secondary;
-    final int brojMesta = widget.entry?.brojMesta ?? widget.zahtev?.brojMesta ?? 1;
+    final int brojMesta =
+        widget.entry?.brojMesta ?? widget.zahtev?.brojMesta ?? 1;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -400,7 +424,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                       padding: const EdgeInsets.only(right: 4.0),
                       child: Text(
                         '${widget.redniBroj}.',
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: textColor),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            color: textColor),
                       ),
                     ),
 
@@ -426,13 +453,19 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                               Padding(
                                 padding: const EdgeInsets.only(left: 4),
                                 child: V3ContainerUtils.styledContainer(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 5, vertical: 2),
                                   backgroundColor: textColor.withOpacity(0.18),
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: textColor.withOpacity(0.45), width: 0.6),
+                                  border: Border.all(
+                                      color: textColor.withOpacity(0.45),
+                                      width: 0.6),
                                   child: Text(
                                     'x$brojMesta',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: textColor),
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: textColor),
                                   ),
                                 ),
                               ),
@@ -443,7 +476,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                             padding: const EdgeInsets.only(top: 2),
                             child: V3SafeText.userAddress(
                               adresaNaziv,
-                              style: TextStyle(fontSize: 13, color: secondaryTextColor, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w500),
                             ),
                           ),
                       ],
@@ -467,8 +503,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                 alignment: Alignment.topRight,
                                 child: V3ContainerUtils.styledContainer(
                                   margin: const EdgeInsets.only(bottom: 6),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  backgroundColor: _getTipColor().withOpacity(0.20),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  backgroundColor:
+                                      _getTipColor().withOpacity(0.20),
                                   borderRadius: BorderRadius.circular(8),
                                   child: Text(
                                     _getTipLabel(),
@@ -484,13 +522,19 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                               // Adaptive glassmorphism ikone
                               LayoutBuilder(
                                 builder: (context, constraints) {
-                                  final double availableWidth = constraints.maxWidth;
+                                  final double availableWidth =
+                                      constraints.maxWidth;
                                   final bool isMiniEkran = availableWidth < 150;
                                   final bool isMaliEkran = availableWidth < 180;
-                                  final double iconSize = isMiniEkran ? 20 : (isMaliEkran ? 22 : 24);
-                                  final double iconInnerSize = isMiniEkran ? 16 : (isMaliEkran ? 18 : 20);
+                                  final double iconSize = isMiniEkran
+                                      ? 20
+                                      : (isMaliEkran ? 22 : 24);
+                                  final double iconInnerSize = isMiniEkran
+                                      ? 16
+                                      : (isMaliEkran ? 18 : 20);
 
-                                  Widget iconBtn(String emoji, VoidCallback onTap) {
+                                  Widget iconBtn(
+                                      String emoji, VoidCallback onTap) {
                                     return GestureDetector(
                                       onTap: onTap,
                                       child: Container(
@@ -505,14 +549,17 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                               Colors.white.withOpacity(0.10),
                                             ],
                                           ),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                           border: Border.all(
-                                            color: Colors.white.withOpacity(0.4),
+                                            color:
+                                                Colors.white.withOpacity(0.4),
                                             width: 1.0,
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.15),
+                                              color: Colors.black
+                                                  .withOpacity(0.15),
                                               blurRadius: 4,
                                               offset: const Offset(0, 2),
                                             ),
@@ -521,7 +568,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                         child: Center(
                                           child: Text(
                                             emoji,
-                                            style: TextStyle(fontSize: iconInnerSize * 0.8),
+                                            style: TextStyle(
+                                                fontSize: iconInnerSize * 0.8),
                                           ),
                                         ),
                                       ),
@@ -530,15 +578,20 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
                                   return Wrap(
                                     alignment: WrapAlignment.end,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
-                                      if (widget.onDodeliVozaca != null) iconBtn('👤', widget.onDodeliVozaca!),
-                                      if (hasAdresa) iconBtn('📍', _handleNavigation),
+                                      if (widget.onDodeliVozaca != null)
+                                        iconBtn('👤', widget.onDodeliVozaca!),
+                                      if (hasAdresa)
+                                        iconBtn('📍', _handleNavigation),
                                       if (hasTel) iconBtn('📞', _handleCall),
-                                      if (!isOtkazan) iconBtn('💰', _handlePayment),
-                                      if (!isOtkazan) iconBtn('❌', _handleOtkazivanje),
+                                      if (!isOtkazan)
+                                        iconBtn('💰', _handlePayment),
+                                      if (!isOtkazan)
+                                        iconBtn('❌', _handleOtkazivanje),
                                     ],
                                   );
                                 },
@@ -561,17 +614,22 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                     Color _bojaZaVozacId(String? vozacId) {
                       if (vozacId != null) {
                         final v = V3VozacService.getVozacById(vozacId);
-                        if (v != null) return _parseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
+                        if (v != null)
+                          return _parseHexColor(v.boja) ??
+                              const Color(0xFF9E9E9E);
                       }
-                      return _parseHexColor(_currentVozac?.boja) ?? const Color(0xFF9E9E9E);
+                      return _parseHexColor(_currentVozac?.boja) ??
+                          const Color(0xFF9E9E9E);
                     }
 
-                    final bojaPokupljen = _bojaZaVozacId(widget.entry?.pokupljenBy);
-                    final bojaNaplata = _bojaZaVozacId(widget.entry?.naplacenBy);
-                    final bojaOtkaz =
-                        (widget.entry?.otkazanoBy != null && widget.entry?.otkazanoBy == widget.entry?.putnikId)
-                            ? Colors.red
-                            : _bojaZaVozacId(widget.entry?.otkazanoBy);
+                    final bojaPokupljen =
+                        _bojaZaVozacId(widget.entry?.pokupljenBy);
+                    final bojaNaplata =
+                        _bojaZaVozacId(widget.entry?.naplacenBy);
+                    final bojaOtkaz = (widget.entry?.otkazanoBy != null &&
+                            widget.entry?.otkazanoBy == widget.entry?.putnikId)
+                        ? Colors.red
+                        : _bojaZaVozacId(widget.entry?.otkazanoBy);
 
                     String _fmt(DateTime? dt) {
                       if (dt == null) return '';
@@ -589,14 +647,19 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                             () {
                               final iznos = widget.entry?.iznosNaplacen ?? 0;
                               final vpl = widget.entry?.naplacenAt;
-                              final iznosStr = iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : '';
+                              final iznosStr = iznos > 0
+                                  ? '${iznos.toStringAsFixed(0)} RSD'
+                                  : '';
                               final dtStr = _fmt(vpl);
                               return 'Plaćeno: ${[
                                 if (iznosStr.isNotEmpty) iznosStr,
                                 if (dtStr.isNotEmpty) dtStr
                               ].join(' • ')}';
                             }(),
-                            style: TextStyle(fontSize: 13, color: bojaNaplata, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: bojaNaplata,
+                                fontWeight: FontWeight.w700),
                           ),
                         ],
 
@@ -605,9 +668,14 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              return dtStr.isNotEmpty ? 'Pokupljen: $dtStr' : 'Pokupljen';
+                              return dtStr.isNotEmpty
+                                  ? 'Pokupljen: $dtStr'
+                                  : 'Pokupljen';
                             }(),
-                            style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: bojaPokupljen,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
 
@@ -616,22 +684,32 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              return dtStr.isNotEmpty ? 'Pokupljen: $dtStr' : 'Pokupljen';
+                              return dtStr.isNotEmpty
+                                  ? 'Pokupljen: $dtStr'
+                                  : 'Pokupljen';
                             }(),
-                            style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: bojaPokupljen,
+                                fontWeight: FontWeight.bold),
                           ),
                           Text(
                             () {
                               final iznos = widget.entry?.iznosNaplacen ?? 0;
                               final vpl = widget.entry?.naplacenAt;
-                              final iznosStr = iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : '';
+                              final iznosStr = iznos > 0
+                                  ? '${iznos.toStringAsFixed(0)} RSD'
+                                  : '';
                               final dtStr = _fmt(vpl);
                               return 'Plaćeno: ${[
                                 if (iznosStr.isNotEmpty) iznosStr,
                                 if (dtStr.isNotEmpty) dtStr
                               ].join(' • ')}';
                             }(),
-                            style: TextStyle(fontSize: 13, color: bojaNaplata, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: bojaNaplata,
+                                fontWeight: FontWeight.w600),
                           ),
                         ],
 
@@ -640,9 +718,14 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.updatedAt);
-                              return dtStr.isNotEmpty ? 'Otkazano: $dtStr' : 'Otkazano';
+                              return dtStr.isNotEmpty
+                                  ? 'Otkazano: $dtStr'
+                                  : 'Otkazano';
                             }(),
-                            style: TextStyle(fontSize: 13, color: bojaOtkaz, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: bojaOtkaz,
+                                fontWeight: FontWeight.w600),
                           ),
                         ],
                       ],

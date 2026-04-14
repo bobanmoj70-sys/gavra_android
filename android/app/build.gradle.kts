@@ -103,9 +103,6 @@ dependencies {
         because("Replaces deprecated play:core for in-app reviews")
     }
 
-    implementation("com.google.android.recaptcha:recaptcha:18.8.0") {
-        because("Required by RecaptchaBridge.java imports")
-    }
 }
 
 flutter {

@@ -44,7 +44,8 @@ class V3HomeScreen extends StatefulWidget {
   State<V3HomeScreen> createState() => _V3HomeScreenState();
 }
 
-class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMixin {
+class _V3HomeScreenState extends State<V3HomeScreen>
+    with TickerProviderStateMixin {
   static const Set<String> _adminUserIds = <String>{
     '824f7bd7-e19c-4471-b7a2-d6031d810242',
   };
@@ -59,12 +60,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u aktivnoj sedmici.
   String get _selectedDatumIso =>
-      V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
+      V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay,
+          anchor: V3DanHelper.schedulingWeekAnchor());
 
-  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
+  String? get _neradanDanRazlog =>
+      getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
-  Stream<List<V3OperativnaNedeljaEntry>> _buildOperativnaStream(String datumIso) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
+  Stream<List<V3OperativnaNedeljaEntry>> _buildOperativnaStream(
+      String datumIso) {
+    return V3MasterRealtimeManager.instance
+        .v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
       tables: const [
         'v3_operativna_nedelja',
         'v3_auth',
@@ -72,13 +77,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         'v3_kapacitet_slots',
         'v3_app_settings',
       ],
-      build: () => V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso),
+      build: () =>
+          V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso),
     );
   }
 
   // Dinamična vremena prema tipu nav bara (iz baze)
-  List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
-  List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
+  List<String> get _bcVremena =>
+      getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+  List<String> get _vsVremena =>
+      getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
 
   List<String> get _sviPolasci => [
         ..._bcVremena.map((v) => '$v BC'),
@@ -122,7 +130,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
-      final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_v3_auth_id, status');
+      final rows = await supabase
+          .from('v3_trenutna_dodela')
+          .select('termin_id, vozac_v3_auth_id, status');
       final next = <String, String>{};
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
@@ -183,7 +193,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   }
 
   void _syncSelectedSlotForDatum(String datumIso) {
-    final entries = V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso);
+    final entries =
+        V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso);
     final validEntries = entries.where((e) {
       if (!_isVisibleOperativnaEntry(e)) return false;
       final grad = (e.grad ?? '').trim();
@@ -195,7 +206,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     final currentVremeNorm = _normalizeVreme(_selectedVreme);
     final hasCurrentSelection = validEntries.any(
-      (e) => (e.grad ?? '') == _selectedGrad && _normalizeVreme(e.polazakAt) == currentVremeNorm,
+      (e) =>
+          (e.grad ?? '') == _selectedGrad &&
+          _normalizeVreme(e.polazakAt) == currentVremeNorm,
     );
     if (hasCurrentSelection) return;
 
@@ -210,7 +223,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       final ga = (a.grad ?? '').toUpperCase();
       final gb = (b.grad ?? '').toUpperCase();
       if (ga != gb) return ga.compareTo(gb);
-      return _normalizeVreme(a.polazakAt).compareTo(_normalizeVreme(b.polazakAt));
+      return _normalizeVreme(a.polazakAt)
+          .compareTo(_normalizeVreme(b.polazakAt));
     });
 
     final first = validEntries.first;
@@ -301,13 +315,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
   }
 
-  V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
+  V3Vozac? _getVozacZaPutnika(
+      String putnikId, String grad, String vreme, String datum) {
     final rm = V3MasterRealtimeManager.instance;
     final normV = V3ValidationUtils.normalizeVreme(vreme);
     for (final row in rm.operativnaAssignedCache.values) {
       final rowGrad = row['grad']?.toString() ?? '';
-      final rowVreme = V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '');
-      final rowDatum = V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
+      final rowVreme =
+          V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '');
+      final rowDatum =
+          V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
       if (row['created_by'] == putnikId &&
           rowGrad == grad &&
           _isVisibleOperativnaRow(row) &&
@@ -346,7 +363,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           return Dialog(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             child: Container(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(ctx).size.height * 0.75,
@@ -355,9 +373,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               decoration: BoxDecoration(
                 gradient: Theme.of(ctx).backgroundGradient,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(ctx).glassBorder, width: 0.8),
+                border:
+                    Border.all(color: Theme.of(ctx).glassBorder, width: 0.8),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 8))
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8))
                 ],
               ),
               child: Column(
@@ -368,14 +390,19 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     backgroundColor: Theme.of(ctx).glassContainer,
-                    borderRadiusGeometry:
-                        const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                    border: Border(bottom: BorderSide(color: Theme.of(ctx).glassBorder)),
+                    borderRadiusGeometry: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20)),
+                    border: Border(
+                        bottom: BorderSide(color: Theme.of(ctx).glassBorder)),
                     child: Row(
                       children: [
                         const Expanded(
                           child: Text('Dodaj Rezervaciju',
-                              style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(dialogCtx),
@@ -383,8 +410,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             padding: const EdgeInsets.all(8),
                             backgroundColor: Colors.red.withValues(alpha: 0.2),
                             borderRadiusGeometry: BorderRadius.circular(15),
-                            border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
-                            child: const Icon(Icons.close, color: Colors.white, size: 20),
+                            border: Border.all(
+                                color: Colors.red.withValues(alpha: 0.4)),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 20),
                           ),
                         ),
                       ],
@@ -403,11 +432,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             padding: const EdgeInsets.all(12),
                             backgroundColor: Theme.of(ctx).glassContainer,
                             borderRadiusGeometry: BorderRadius.circular(12),
-                            border: Border.all(color: Theme.of(ctx).glassBorder),
+                            border:
+                                Border.all(color: Theme.of(ctx).glassBorder),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Ruta', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                const Text('Ruta',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
                                 _buildStatRow('⏰ Vreme:', _selectedVreme),
                                 _buildStatRow('📍 Grad:', _selectedGrad),
@@ -422,19 +455,26 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             decoration: InputDecoration(
                               labelText: 'Izaberi putnika',
                               prefixIcon: const Icon(Icons.person_search),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               filled: true,
                               fillColor: Colors.white,
                             ),
                             dropdownStyleData: DropdownStyleData(
-                              maxHeight: V3ContainerUtils.responsiveHeight(ctx, 280),
-                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
+                              maxHeight:
+                                  V3ContainerUtils.responsiveHeight(ctx, 280),
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.white),
                             ),
                             dropdownSearchData: DropdownSearchData(
-                              searchController: V3TextUtils.homeSearchController,
-                              searchInnerWidgetHeight: V3ContainerUtils.responsiveHeight(ctx, 50),
+                              searchController:
+                                  V3TextUtils.homeSearchController,
+                              searchInnerWidgetHeight:
+                                  V3ContainerUtils.responsiveHeight(ctx, 50),
                               searchInnerWidget: V3ContainerUtils.iconContainer(
-                                height: V3ContainerUtils.responsiveHeight(ctx, 50),
+                                height:
+                                    V3ContainerUtils.responsiveHeight(ctx, 50),
                                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                                 child: TextFormField(
                                   controller: V3TextUtils.homeSearchController,
@@ -442,15 +482,19 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   maxLines: null,
                                   decoration: InputDecoration(
                                     isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 8),
                                     hintText: 'Pretraži...',
-                                    prefixIcon: const Icon(Icons.search, size: 20),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    prefixIcon:
+                                        const Icon(Icons.search, size: 20),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8)),
                                   ),
                                 ),
                               ),
                               searchMatchFn: (item, val) =>
-                                  V3StringUtils.containsSearch(item.value?.imePrezime ?? '', val),
+                                  V3StringUtils.containsSearch(
+                                      item.value?.imePrezime ?? '', val),
                             ),
                             items: aktivniPutnici
                                 .map((p) => DropdownMenuItem(
@@ -460,31 +504,38 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 .toList(),
                             onChanged: (p) => setS(() {
                               selectedPutnik = p;
-                              selectedAdresa = null; // reset adrese kad se promijeni putnik
+                              selectedAdresa =
+                                  null; // reset adrese kad se promijeni putnik
                             }),
                           ),
                           const SizedBox(height: 12),
                           // Broj mesta
                           V3ContainerUtils.iconContainer(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
                             backgroundColor: Colors.grey.shade100,
                             borderRadiusGeometry: BorderRadius.circular(12),
                             border: Border.all(color: Colors.grey.shade400),
                             child: Row(
                               children: [
-                                const Icon(Icons.event_seat, color: Colors.grey),
+                                const Icon(Icons.event_seat,
+                                    color: Colors.grey),
                                 const SizedBox(width: 12),
-                                const Text('Broj mesta:', style: TextStyle(fontSize: 16)),
+                                const Text('Broj mesta:',
+                                    style: TextStyle(fontSize: 16)),
                                 const SizedBox(width: 8),
                                 DropdownButton<int>(
                                   value: brojMesta,
                                   underline: const SizedBox(),
                                   isDense: true,
                                   items: [1, 2, 3, 4, 5]
-                                      .map((v) =>
-                                          DropdownMenuItem(value: v, child: Text(v == 1 ? '1 mesto' : '$v mesta')))
+                                      .map((v) => DropdownMenuItem(
+                                          value: v,
+                                          child: Text(
+                                              v == 1 ? '1 mesto' : '$v mesta')))
                                       .toList(),
-                                  onChanged: (v) => setS(() => brojMesta = v ?? 1),
+                                  onChanged: (v) =>
+                                      setS(() => brojMesta = v ?? 1),
                                 ),
                               ],
                             ),
@@ -507,9 +558,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   V3ContainerUtils.iconContainer(
                     padding: const EdgeInsets.all(16),
                     backgroundColor: Theme.of(ctx).glassContainer,
-                    borderRadiusGeometry:
-                        const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
-                    border: Border(top: BorderSide(color: Theme.of(ctx).glassBorder)),
+                    borderRadiusGeometry: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20)),
+                    border: Border(
+                        top: BorderSide(color: Theme.of(ctx).glassBorder)),
                     child: Row(
                       children: [
                         Expanded(
@@ -528,28 +581,39 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 ? null
                                 : () async {
                                     if (selectedPutnik == null) {
-                                      V3AppSnackBar.error(ctx, '⚠️ Izaberite putnika');
+                                      V3AppSnackBar.error(
+                                          ctx, '⚠️ Izaberite putnika');
                                       return;
                                     }
                                     if (selectedPutnik!.id.isEmpty) {
-                                      V3AppSnackBar.error(ctx, '⚠️ Putnik nema validan ID');
+                                      V3AppSnackBar.error(
+                                          ctx, '⚠️ Putnik nema validan ID');
                                       return;
                                     }
                                     setS(() => isLoading = true);
                                     try {
-                                      final isoDate = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(
+                                      final isoDate = V3DanHelper
+                                          .datumIsoZaDanPuniUTekucojSedmici(
                                         _selectedDay,
-                                        anchor: V3DanHelper.schedulingWeekAnchor(),
+                                        anchor:
+                                            V3DanHelper.schedulingWeekAnchor(),
                                       );
-                                      final vozacId = V3VozacService.currentVozac?.id ?? 'nepoznat';
+                                      final vozacId =
+                                          V3VozacService.currentVozac?.id ??
+                                              'nepoznat';
 
                                       // Odredi koristiSekundarnu i adresaIdOverride
                                       bool? koristiSekundarnu;
                                       String? adresaIdOverride;
                                       if (selectedAdresa != null) {
-                                        final isBC = _selectedGrad.toUpperCase() == 'BC';
-                                        final id1 = isBC ? selectedPutnik!.adresaBcId : selectedPutnik!.adresaVsId;
-                                        final id2 = isBC ? selectedPutnik!.adresaBcId2 : selectedPutnik!.adresaVsId2;
+                                        final isBC =
+                                            _selectedGrad.toUpperCase() == 'BC';
+                                        final id1 = isBC
+                                            ? selectedPutnik!.adresaBcId
+                                            : selectedPutnik!.adresaVsId;
+                                        final id2 = isBC
+                                            ? selectedPutnik!.adresaBcId2
+                                            : selectedPutnik!.adresaVsId2;
                                         if (selectedAdresa!.id == id2) {
                                           koristiSekundarnu = true;
                                         } else if (selectedAdresa!.id == id1) {
@@ -562,28 +626,35 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       }
 
                                       // Direktan INSERT u v3_operativna_nedelja — bez upisa u v3_zahtevi
-                                      await V3OperativnaNedeljaService.createOrUpdateByVozac(
+                                      await V3OperativnaNedeljaService
+                                          .createOrUpdateByVozac(
                                         putnikId: selectedPutnik!.id,
                                         datum: isoDate,
                                         grad: _selectedGrad,
                                         polazakAt: _selectedVreme,
                                         brojMesta: brojMesta,
-                                        createdBy: V3AuditKorisnik.normalize(vozacId),
+                                        createdBy:
+                                            V3AuditKorisnik.normalize(vozacId),
                                         koristiSekundarnu: koristiSekundarnu,
                                         adresaIdOverride: adresaIdOverride,
                                       );
 
                                       if (!dialogCtx.mounted) return;
                                       Navigator.pop(dialogCtx);
-                                      if (mounted) V3AppSnackBar.success(context, '✅ Rezervacija dodana');
+                                      if (mounted)
+                                        V3AppSnackBar.success(
+                                            context, '✅ Rezervacija dodana');
                                     } catch (e) {
                                       setS(() => isLoading = false);
-                                      if (ctx.mounted) V3AppSnackBar.error(ctx, '❌ Greška: $e');
+                                      if (ctx.mounted)
+                                        V3AppSnackBar.error(
+                                            ctx, '❌ Greška: $e');
                                     }
                                   },
                             text: isLoading ? 'Dodaje...' : 'Dodaj',
                             icon: Icons.add,
-                            backgroundColor: Colors.green.withValues(alpha: 0.7),
+                            backgroundColor:
+                                Colors.green.withValues(alpha: 0.7),
                             foregroundColor: Colors.white,
                             isLoading: isLoading,
                           ),
@@ -607,10 +678,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         children: [
           SizedBox(
             width: 90,
-            child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white)),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 13, color: Colors.white70)),
+            child: Text(value,
+                style: const TextStyle(fontSize: 13, color: Colors.white70)),
           ),
         ],
       ),
@@ -633,7 +709,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     // Sve adrese za grad, bez duplikata
     final sve = V3AdresaService.getAdreseZaGrad(grad);
-    final putnikoviIds = {if (adresa1 != null) adresa1.id, if (adresa2 != null) adresa2.id};
+    final putnikoviIds = {
+      if (adresa1 != null) adresa1.id,
+      if (adresa2 != null) adresa2.id
+    };
     final ostale = sve.where((a) => !putnikoviIds.contains(a.id)).toList();
 
     // Izgradnja stavki: putnikove adrese prve (★), pa separator, pa ostale
@@ -642,28 +721,32 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     // "default" opcija — bez override
     items.add(const DropdownMenuItem<V3Adresa?>(
       value: null,
-      child: Text('— putnikova adresa —', style: TextStyle(fontSize: 13, color: Colors.grey)),
+      child: Text('— putnikova adresa —',
+          style: TextStyle(fontSize: 13, color: Colors.grey)),
     ));
 
     if (adresa1 != null) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: adresa1,
         child: Text('★ ${adresa1.naziv}',
-            overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       ));
     }
     if (adresa2 != null) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: adresa2,
         child: Text('★ ${adresa2.naziv}',
-            overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       ));
     }
 
     for (final a in ostale) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: a,
-        child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13)),
+        child: V3SafeText.userAddress(a.naziv,
+            style: const TextStyle(fontSize: 13)),
       ));
     }
 
@@ -671,7 +754,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       backgroundColor: Colors.white,
       borderRadiusGeometry: BorderRadius.circular(12),
-      border: Border.all(color: selected != null ? Colors.blue.shade400 : Colors.grey.shade400),
+      border: Border.all(
+          color:
+              selected != null ? Colors.blue.shade400 : Colors.grey.shade400),
       child: Row(
         children: [
           const Icon(Icons.location_on, color: Colors.blueAccent, size: 20),
@@ -682,7 +767,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 value: selected,
                 isExpanded: true,
                 isDense: true,
-                hint: const Text('Adresa (opciono)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                hint: const Text('Adresa (opciono)',
+                    style: TextStyle(fontSize: 13, color: Colors.grey)),
                 items: items,
                 onChanged: onChanged,
               ),
@@ -741,7 +827,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
           backgroundColor: const Color(0xFF1A2035),
-          title: const Text('Račun za firme', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text('Račun za firme',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -749,7 +837,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 // Datum prometa
                 Row(
                   children: [
-                    const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
+                    const Text('Datum prometa:',
+                        style: TextStyle(color: Colors.white70)),
                     const SizedBox(width: 8),
                     V3ButtonUtils.textButton(
                       onPressed: () async {
@@ -761,7 +850,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         );
                         if (d != null) setS(() => datumPrometa = d);
                       },
-                      text: '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
+                      text:
+                          '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
                       foregroundColor: Colors.amber,
                     ),
                   ],
@@ -770,11 +860,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 // Lista putnika
                 ...putnici.map((p) {
                   final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
-                  final ime = p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---';
+                  final ime = p['ime_prezime']?.toString() ??
+                      p['imePrezime']?.toString() ??
+                      '---';
                   return CheckboxListTile(
                     value: selected[id] ?? false,
                     onChanged: (v) => setS(() => selected[id] = v ?? false),
-                    title: Text(ime, style: const TextStyle(color: Colors.white)),
+                    title:
+                        Text(ime, style: const TextStyle(color: Colors.white)),
                     subtitle: selected[id] == true
                         ? Row(children: [
                             Expanded(
@@ -812,7 +905,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 }).toList();
 
                 if (odabrani.isEmpty) {
-                  V3AppSnackBar.warning(ctx, '⚠️ Odaberite barem jednog putnika');
+                  V3AppSnackBar.warning(
+                      ctx, '⚠️ Odaberite barem jednog putnika');
                   return;
                 }
 
@@ -821,9 +915,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 final racuniPodaci = <Map<String, dynamic>>[];
                 for (final p in odabrani) {
                   final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
-                  final ime = p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---';
-                  final cena = double.tryParse(ceneController[id]?.text ?? '') ?? 1500;
-                  final dana = double.tryParse(brojVoznjiController[id]?.text ?? '') ?? 1;
+                  final ime = p['ime_prezime']?.toString() ??
+                      p['imePrezime']?.toString() ??
+                      '---';
+                  final cena =
+                      double.tryParse(ceneController[id]?.text ?? '') ?? 1500;
+                  final dana =
+                      double.tryParse(brojVoznjiController[id]?.text ?? '') ??
+                          1;
                   final broj = await V3RacunService.getNextBrojRacuna();
                   racuniPodaci.add({
                     'putnik_id': id,
@@ -862,7 +961,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
           backgroundColor: const Color(0xFF1A2035),
-          title: const Text('Novi račun', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text('Novi račun',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -874,9 +975,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 _dialogField(V3TextUtils.opisController, 'Opis usluge'),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: _dialogField(V3TextUtils.iznosController, 'Cena', numeric: true)),
+                  Expanded(
+                      child: _dialogField(V3TextUtils.iznosController, 'Cena',
+                          numeric: true)),
                   const SizedBox(width: 8),
-                  Expanded(child: _dialogField(kolicinaCtrl, 'Količina', numeric: true)),
+                  Expanded(
+                      child: _dialogField(kolicinaCtrl, 'Količina',
+                          numeric: true)),
                 ]),
                 const SizedBox(height: 8),
                 // Jedinica mjere
@@ -903,7 +1008,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 const SizedBox(height: 8),
                 // Datum prometa
                 Row(children: [
-                  const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
+                  const Text('Datum prometa:',
+                      style: TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
                   V3ButtonUtils.textButton(
                     onPressed: () async {
@@ -915,7 +1021,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       );
                       if (d != null) setS(() => datumPrometa = d);
                     },
-                    text: '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
+                    text:
+                        '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
                     foregroundColor: Colors.amber,
                   ),
                 ]),
@@ -934,7 +1041,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   V3AppSnackBar.error(ctx, '⚠️ Popunite ime i opis');
                   return;
                 }
-                final cena = double.tryParse(V3TextUtils.getControllerText('iznos').trim()) ?? 0;
+                final cena = double.tryParse(
+                        V3TextUtils.getControllerText('iznos').trim()) ??
+                    0;
                 final kolicina = double.tryParse(kolicinaCtrl.text.trim()) ?? 1;
                 if (cena <= 0) {
                   V3AppSnackBar.error(ctx, '⚠️ Unesite ispravnu cenu');
@@ -970,7 +1079,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     });
   }
 
-  Widget _dialogField(TextEditingController ctrl, String label, {bool numeric = false}) {
+  Widget _dialogField(TextEditingController ctrl, String label,
+      {bool numeric = false}) {
     return numeric
         ? V3InputUtils.numberField(
             controller: ctrl,
@@ -993,7 +1103,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           backgroundColor: Colors.transparent,
           body: V3ContainerUtils.gradientContainer(
             gradient: V3ThemeManager().currentGradient,
-            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            child: const Center(
+                child: CircularProgressIndicator(color: Colors.white)),
           ),
         ),
       );
@@ -1016,7 +1127,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             if (fromPutnici != null) return fromPutnici;
 
             final putnikCacheRow = rm.putniciCache[z.putnikId];
-            if (putnikCacheRow != null) return V3Putnik.fromJson(putnikCacheRow);
+            if (putnikCacheRow != null)
+              return V3Putnik.fromJson(putnikCacheRow);
 
             return null;
           }
@@ -1026,16 +1138,19 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           final prikazaniZapisi = sviZapisi.where((z) {
             if (!_isVisibleOperativnaEntry(z)) return false;
             if (z.grad != _selectedGrad) return false;
-            if (_normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
+            if (_normalizeVreme(slotVreme(z)) != selectedVremeNorm)
+              return false;
             return true;
           }).toList()
             ..sort((a, b) {
               int sortRank(V3OperativnaNedeljaEntry e) {
-                if (V3StatusFilters.normalizeStatus(e.statusFinal) == 'otkazano') return 3;
+                if (V3StatusFilters.normalizeStatus(e.statusFinal) ==
+                    'otkazano') return 3;
                 if (e.pokupljenAt != null) return 2;
                 // Provjeri da li je putnik dodijeljen logovanom vozaču
                 if (currentVozacId != null) {
-                  final indiv = _getVozacZaPutnika(e.putnikId, e.grad ?? '', slotVreme(e), _selectedDatumIso);
+                  final indiv = _getVozacZaPutnika(e.putnikId, e.grad ?? '',
+                      slotVreme(e), _selectedDatumIso);
                   if (indiv != null) {
                     return indiv.id == currentVozacId ? 0 : 1;
                   }
@@ -1046,8 +1161,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               final aRank = sortRank(a);
               final bRank = sortRank(b);
               if (aRank != bRank) return aRank.compareTo(bRank);
-              final aIme = V3PutnikService.getPutnikById(a.putnikId)?.imePrezime ?? '';
-              final bIme = V3PutnikService.getPutnikById(b.putnikId)?.imePrezime ?? '';
+              final aIme =
+                  V3PutnikService.getPutnikById(a.putnikId)?.imePrezime ?? '';
+              final bIme =
+                  V3PutnikService.getPutnikById(b.putnikId)?.imePrezime ?? '';
               return aIme.compareTo(bIme);
             });
 
@@ -1066,15 +1183,18 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             return sviZapisi.where((z) {
               if (!_isVisibleOperativnaEntry(z)) return false;
               if (z.grad != grad) return false;
-              if (_normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
+              if (_normalizeVreme(slotVreme(z)) != targetVremeNorm)
+                return false;
               return true;
             }).fold(0, (sum, z) => sum + z.brojMesta);
           }
 
           // Kapacitet
           int? getKapacitet(String grad, String vreme) {
-            final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
-            return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
+            final datum =
+                DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+            return V3OperativnaNedeljaService.getKapacitetVozila(
+                grad, vreme, datum);
           }
 
           Color? getVozacColorForTermin(String grad, String vreme) {
@@ -1085,8 +1205,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               if (!_isVisibleOperativnaRow(row)) {
                 continue;
               }
-              if (V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') != _selectedDatumIso) continue;
-              if (V3ValidationUtils.normalizeVreme(row['vreme']?.toString() ?? '') != vremeNorm) continue;
+              if (V3DanHelper.parseIsoDatePart(
+                      row['datum']?.toString() ?? '') !=
+                  _selectedDatumIso) continue;
+              if (V3ValidationUtils.normalizeVreme(
+                      row['vreme']?.toString() ?? '') !=
+                  vremeNorm) continue;
               final vozacId = _vozacIdForOperativnaRow(row);
               if (vozacId.isEmpty) continue;
               final vozac = V3VozacService.getVozacById(vozacId);
@@ -1098,7 +1222,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           }
 
           final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
-          final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
+          final headerScaleExtra =
+              (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
           final appBarHeight = 106 + (headerScaleExtra * 20);
           final headerControlHeight = 33 + (headerScaleExtra * 8);
           final weekRange = V3DanHelper.schedulingWeekRange();
@@ -1117,14 +1242,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     preferredSize: Size.fromHeight(appBarHeight),
                     child: V3ContainerUtils.iconContainer(
                       backgroundColor: Theme.of(context).glassContainer,
-                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                      border: Border.all(
+                          color: Theme.of(context).glassBorder, width: 0.8),
                       borderRadiusGeometry: const BorderRadius.only(
                         bottomLeft: Radius.circular(25),
                         bottomRight: Radius.circular(25),
                       ),
                       child: SafeArea(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 0),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
@@ -1138,11 +1265,18 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w800,
-                                          color: Theme.of(context).colorScheme.onPrimary,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimary,
                                           letterSpacing: 1.4,
                                           shadows: const [
-                                            Shadow(blurRadius: 12, color: Colors.black87),
-                                            Shadow(offset: Offset(2, 2), blurRadius: 6, color: Colors.black54),
+                                            Shadow(
+                                                blurRadius: 12,
+                                                color: Colors.black87),
+                                            Shadow(
+                                                offset: Offset(2, 2),
+                                                blurRadius: 6,
+                                                color: Colors.black54),
                                           ],
                                         ),
                                       ),
@@ -1153,7 +1287,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               Text(
                                 aktivnaNedelja,
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary
+                                      .withValues(alpha: 0.85),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1168,13 +1305,19 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     child: V3ContainerUtils.iconContainer(
                                       height: headerControlHeight,
                                       padding: const EdgeInsets.all(6),
-                                      backgroundColor: Theme.of(context).glassContainer,
-                                      borderRadiusGeometry: BorderRadius.circular(14),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                      backgroundColor:
+                                          Theme.of(context).glassContainer,
+                                      borderRadiusGeometry:
+                                          BorderRadius.circular(14),
+                                      border: Border.all(
+                                          color: Theme.of(context).glassBorder,
+                                          width: 0.8),
                                       child: Center(
                                         child: V3LiveClockText(
                                           style: TextStyle(
-                                            color: Theme.of(context).colorScheme.onPrimary,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 14,
                                           ),
@@ -1188,9 +1331,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     child: V3ContainerUtils.iconContainer(
                                       height: headerControlHeight,
                                       padding: const EdgeInsets.all(6),
-                                      backgroundColor: Theme.of(context).glassContainer,
-                                      borderRadiusGeometry: BorderRadius.circular(14),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                      backgroundColor:
+                                          Theme.of(context).glassContainer,
+                                      borderRadiusGeometry:
+                                          BorderRadius.circular(14),
+                                      border: Border.all(
+                                          color: Theme.of(context).glassBorder,
+                                          width: 0.8),
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton2<String>(
                                           value: _selectedDay,
@@ -1198,7 +1345,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                             child: Text(
                                               _selectedDay,
                                               style: TextStyle(
-                                                color: Theme.of(context).colorScheme.onPrimary,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onPrimary,
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 14,
                                               ),
@@ -1211,13 +1360,19 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                             width: 170,
                                             maxHeight: 320,
                                             decoration: BoxDecoration(
-                                              gradient: Theme.of(context).backgroundGradient,
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                              gradient: Theme.of(context)
+                                                  .backgroundGradient,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                  color: Theme.of(context)
+                                                      .glassBorder,
+                                                  width: 0.8),
                                             ),
                                             elevation: 8,
                                           ),
-                                          menuItemStyleData: const MenuItemStyleData(
+                                          menuItemStyleData:
+                                              const MenuItemStyleData(
                                             height: 44,
                                           ),
                                           items: V3DanHelper.workdayNames
@@ -1227,22 +1382,32 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                                       child: Text(
                                                         d,
                                                         style: TextStyle(
-                                                          color: Theme.of(context).colorScheme.onPrimary,
-                                                          fontWeight: FontWeight.w700,
+                                                          color:
+                                                              Theme.of(context)
+                                                                  .colorScheme
+                                                                  .onPrimary,
+                                                          fontWeight:
+                                                              FontWeight.w700,
                                                         ),
                                                         maxLines: 1,
                                                         softWrap: false,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        textAlign: TextAlign.center,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        textAlign:
+                                                            TextAlign.center,
                                                       ),
                                                     ),
                                                   ))
                                               .toList(),
                                           onChanged: (val) {
                                             setState(() {
-                                              _selectedDay = V3DanHelper.normalizeToWorkdayFull(val!);
-                                              _syncSelectedSlotForDatum(_selectedDatumIso);
-                                              _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
+                                              _selectedDay = V3DanHelper
+                                                  .normalizeToWorkdayFull(val!);
+                                              _syncSelectedSlotForDatum(
+                                                  _selectedDatumIso);
+                                              _operativnaStream =
+                                                  _buildOperativnaStream(
+                                                      _selectedDatumIso);
                                             });
                                           },
                                         ),
@@ -1262,11 +1427,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       // Forced update gate
                       const V3UpdateBanner(),
                       const V3NeradniDaniBanner(
-                        margin: EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
+                        margin: EdgeInsets.only(
+                            left: 16, right: 16, top: 8, bottom: 4),
                       ),
                       // Action buttons
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         child: Row(
                           children: [
                             Expanded(
@@ -1334,22 +1501,36 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   },
                                   child: V3ContainerUtils.iconContainer(
                                     padding: const EdgeInsets.all(6),
-                                    backgroundColor: Theme.of(context).glassContainer,
-                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                    borderRadiusGeometry: BorderRadius.circular(12),
+                                    backgroundColor:
+                                        Theme.of(context).glassContainer,
+                                    border: Border.all(
+                                        color: Theme.of(context).glassBorder,
+                                        width: 0.8),
+                                    borderRadiusGeometry:
+                                        BorderRadius.circular(12),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.print, color: Theme.of(context).colorScheme.onPrimary, size: 18),
+                                        Icon(Icons.print,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary,
+                                            size: 18),
                                         const SizedBox(height: 4),
                                         SizedBox(
-                                          height: V3ContainerUtils.responsiveHeight(context, 16),
+                                          height:
+                                              V3ContainerUtils.responsiveHeight(
+                                                  context, 16),
                                           child: FittedBox(
                                             fit: BoxFit.scaleDown,
                                             child: Text('Štampaj',
                                                 style: TextStyle(
-                                                    color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                                    color: Colors.white,
+                                                    fontSize: 12,
+                                                    fontWeight:
+                                                        FontWeight.w600)),
                                           ),
                                         ),
                                       ],
@@ -1359,7 +1540,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     const PopupMenuItem(
                                       value: 'spisak',
                                       child: Row(children: [
-                                        Icon(Icons.list_alt, color: Colors.blue),
+                                        Icon(Icons.list_alt,
+                                            color: Colors.blue),
                                         SizedBox(width: 8),
                                         Text('Štampaj spisak'),
                                       ]),
@@ -1376,7 +1558,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                     const PopupMenuItem(
                                       value: 'racun_novi',
                                       child: Row(children: [
-                                        Icon(Icons.person_add, color: Colors.orange),
+                                        Icon(Icons.person_add,
+                                            color: Colors.orange),
                                         SizedBox(width: 8),
                                         Text('Račun - novi'),
                                       ]),
@@ -1390,28 +1573,38 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       ),
                       // Lista putnika/termina + floating neradan-banер
                       Expanded(
-                        child: ValueListenableBuilder<List<Map<String, String>>>(
+                        child:
+                            ValueListenableBuilder<List<Map<String, String>>>(
                           valueListenable: neradniDaniNotifier,
                           builder: (context, rules, _) {
                             return resolvedZapisi.isEmpty
                                 ? Center(
                                     child: Container(
-                                      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 24, vertical: 16),
                                       child: V3ContainerUtils.iconContainer(
                                         padding: const EdgeInsets.all(16),
-                                        backgroundColor: Theme.of(context).glassContainer,
-                                        border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                        borderRadiusGeometry: BorderRadius.circular(12),
+                                        backgroundColor:
+                                            Theme.of(context).glassContainer,
+                                        border: Border.all(
+                                            color:
+                                                Theme.of(context).glassBorder,
+                                            width: 0.8),
+                                        borderRadiusGeometry:
+                                            BorderRadius.circular(12),
                                         child: const Text(
                                           'Nema planiranih putnika.',
-                                          style:
-                                              TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500),
                                         ),
                                       ),
                                     ),
                                   )
                                 : ListView.builder(
-                                    padding: const EdgeInsets.only(top: 4, bottom: 16),
+                                    padding: const EdgeInsets.only(
+                                        top: 4, bottom: 16),
                                     itemCount: resolvedZapisi.length,
                                     itemBuilder: (ctx, i) {
                                       final row = resolvedZapisi[i];
@@ -1420,16 +1613,26 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
                                       final grad = z.grad ?? '';
                                       final vreme = slotVreme(z);
-                                      final indivVozac = _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
+                                      final indivVozac = _getVozacZaPutnika(
+                                          z.putnikId,
+                                          grad,
+                                          vreme,
+                                          _selectedDatumIso);
                                       final vozacBoja = indivVozac != null
                                           ? _parseVozacColor(indivVozac.boja)
                                           : getVozacColorForTermin(grad, vreme);
 
-                                      final redniBroj =
-                                          resolvedZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.entry.brojMesta) + 1;
+                                      final redniBroj = resolvedZapisi
+                                              .sublist(0, i)
+                                              .fold(
+                                                  0,
+                                                  (sum, e) =>
+                                                      sum + e.entry.brojMesta) +
+                                          1;
 
                                       return Padding(
-                                        padding: const EdgeInsets.only(bottom: 8),
+                                        padding:
+                                            const EdgeInsets.only(bottom: 8),
                                         child: V3PutnikCard(
                                           putnik: p,
                                           entry: z,
@@ -1448,7 +1651,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   bottomNavigationBar: ValueListenableBuilder<String>(
                     valueListenable: navBarTypeNotifier,
                     builder: (ctx, navType, _) {
-                      return _buildBottomNavBar(getPutnikCount, getKapacitet, getVozacColorForTermin);
+                      return _buildBottomNavBar(
+                          getPutnikCount, getKapacitet, getVozacColorForTermin);
                     },
                   ),
                 ),
@@ -1477,11 +1681,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               decoration: BoxDecoration(
                 color: Colors.red.withValues(alpha: 0.20),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
+                border:
+                    Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
               ),
               child: Text(
                 '⛔ Slotovi su zaključani za $_selectedDay. Razlog: $neradanRazlog',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -1512,7 +1718,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 }
 
 class _V3HomeButton extends StatelessWidget {
-  const _V3HomeButton({required this.label, required this.icon, required this.onTap});
+  const _V3HomeButton(
+      {required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
@@ -1531,7 +1738,8 @@ class _V3HomeButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Theme.of(context).colorScheme.onPrimary, size: 18),
+            Icon(icon,
+                color: Theme.of(context).colorScheme.onPrimary, size: 18),
             const SizedBox(height: 4),
             SizedBox(
               height: V3ContainerUtils.responsiveHeight(context, 16),
@@ -1545,7 +1753,10 @@ class _V3HomeButton extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     shadows: const [
                       Shadow(blurRadius: 8, color: Colors.black87),
-                      Shadow(offset: Offset(1, 1), blurRadius: 4, color: Colors.black54),
+                      Shadow(
+                          offset: Offset(1, 1),
+                          blurRadius: 4,
+                          color: Colors.black54),
                     ],
                   ),
                   textAlign: TextAlign.center,

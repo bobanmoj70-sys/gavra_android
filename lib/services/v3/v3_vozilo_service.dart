@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/v3_vozilo.dart';
-import '../../utils/v3_audit_korisnik.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozilo_repository.dart';
 
@@ -28,8 +27,7 @@ class V3VoziloService {
   static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();
-      final actor = V3AuditKorisnik.normalize('admin');
-      if (actor != null) data['updated_by'] = actor;
+      data['updated_at'] = DateTime.now().toIso8601String();
 
       await _repo.upsert(data);
     } catch (e) {
@@ -41,6 +39,7 @@ class V3VoziloService {
   /// Ažurira kolsku knjigu vozila (samo proslijeđena polja).
   static Future<void> updateKolskaKnjiga(String voziloId, Map<String, dynamic> data) async {
     try {
+      data['updated_at'] = DateTime.now().toIso8601String();
       await _repo.updateById(voziloId, data);
     } catch (e) {
       debugPrint('[V3VoziloService] updateKolskaKnjiga error: $e');

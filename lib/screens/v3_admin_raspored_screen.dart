@@ -395,6 +395,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           'vozac_v3_auth_id': vozac.id,
           'status': 'aktivan',
           'updated_by': V3AuditKorisnik.normalize('admin_termin_bulk'),
+          'updated_at': DateTime.now().toIso8601String(),
         });
       }
 
@@ -472,6 +473,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         'vozac_v3_auth_id': vozac.id,
         'status': 'aktivan',
         'updated_by': V3AuditKorisnik.normalize('admin_individual'),
+        'updated_at': DateTime.now().toIso8601String(),
       });
 
       await _reloadTrenutnaDodelaMap();

@@ -39,42 +39,4 @@ class V3FinansijeService {
       rethrow;
     }
   }
-
-  // --- Backward compat (stari kod koji koristi V3FinansijskiIzvestaj) ---
-  static Stream<V3FinansijskiIzvestaj> streamIzvestaj() {
-    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_finansije'],
-        build: () {
-          final now = DateTime.now();
-          final troskovi = getTroskoviMesec(mesec: now.month, godina: now.year);
-          double trosakMesec = 0;
-          final Map<String, double> poKategoriji = {};
-          for (final t in troskovi) {
-            trosakMesec += t.iznos;
-            poKategoriji[t.kategorija ?? 'ostalo'] = (poKategoriji[t.kategorija ?? 'ostalo'] ?? 0) + t.iznos;
-          }
-          return V3FinansijskiIzvestaj(
-            trosakMesec: trosakMesec,
-            troskoviPoKategoriji: poKategoriji,
-          );
-        });
-  }
-
-  /// @deprecated Koristi addTrosak umesto addUnos
-  static Future<void> addUnos(V3FinansijskiUnos unos) async {
-    final now = DateTime.now();
-    final trosak = V3Trosak(
-      id: '',
-      tip: unos.tip == 'prihod' ? 'prihod' : 'rashod',
-      naziv: unos.opis,
-      kategorija: unos.kategorija,
-      iznos: unos.iznos,
-      isplataIz: 'pazar',
-      ponavljajMesecno: false,
-      mesec: unos.datum.month,
-      godina: unos.datum.year,
-      vozacId: unos.vozacId,
-    );
-    await addTrosak(trosak);
-  }
 }

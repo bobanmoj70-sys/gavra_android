@@ -53,7 +53,9 @@ class V3Adresa {
     final double dLon = _toRadians(other.gpsLng! - gpsLng!);
 
     final double a = math.pow(math.sin(dLat / 2), 2) +
-        math.cos(_toRadians(gpsLat!)) * math.cos(_toRadians(other.gpsLat!)) * math.pow(math.sin(dLon / 2), 2);
+        math.cos(_toRadians(gpsLat!)) *
+            math.cos(_toRadians(other.gpsLat!)) *
+            math.pow(math.sin(dLon / 2), 2);
 
     return earthRadius * 2 * math.asin(math.sqrt(a));
   }

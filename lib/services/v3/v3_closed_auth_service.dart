@@ -10,11 +10,13 @@ class V3ClosedAuthService {
   V3ClosedAuthService._();
 
   static SupabaseClient get _client => Supabase.instance.client;
-  static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
+  static const _storage = FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true));
   static const _manualSmsPutnikPhoneKey = 'v3_manual_sms_putnik_phone';
   static const _manualSmsVozacPhoneKey = 'v3_manual_sms_vozac_phone';
 
-  static String normalizePhone(String rawPhone) => V3PhoneUtils.normalize(rawPhone.trim());
+  static String normalizePhone(String rawPhone) =>
+      V3PhoneUtils.normalize(rawPhone.trim());
 
   static Future<bool> ensureClientReady() => ensureSupabaseReady();
 
@@ -52,7 +54,12 @@ class V3ClosedAuthService {
       clauses.add('telefon_2.eq.$candidate');
     }
 
-    final row = await _client.from('v3_auth').select('id').or(clauses.join(',')).limit(1).maybeSingle();
+    final row = await _client
+        .from('v3_auth')
+        .select('id')
+        .or(clauses.join(','))
+        .limit(1)
+        .maybeSingle();
     return row != null;
   }
 
@@ -80,7 +87,8 @@ class V3ClosedAuthService {
 
   /// Auto-login: telefon je sačuvan u SecureStorage.
   /// Direktno čita v3_auth tabelu.
-  static Future<Map<String, dynamic>?> restorePutnikFromManualSmsSession() async {
+  static Future<Map<String, dynamic>?>
+      restorePutnikFromManualSmsSession() async {
     final storedPhone = await _storage.read(key: _manualSmsPutnikPhoneKey);
     if (storedPhone == null || storedPhone.isEmpty) return null;
 

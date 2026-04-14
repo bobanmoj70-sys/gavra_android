@@ -404,7 +404,8 @@ final ThemeData tripleBlueFashionTheme = ThemeData(
   scaffoldBackgroundColor: const Color(0xFFF0F9FF),
   appBarTheme: AppBarTheme(
     elevation: 0,
-    backgroundColor: const Color(0xFF021B79), // Originalna tamna Electric Blue boja
+    backgroundColor:
+        const Color(0xFF021B79), // Originalna tamna Electric Blue boja
     foregroundColor: Colors.white,
     systemOverlayStyle: SystemUiOverlayStyle.light,
     titleTextStyle: SerbianTextStyle.create(

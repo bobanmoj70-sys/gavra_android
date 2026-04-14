@@ -78,8 +78,6 @@ class V3DnevnaPredajaService {
       ...baseData,
       'id': predaja.id.isEmpty ? null : predaja.id,
       'created_at': dayStart.toIso8601String(),
-      'created_by': null,
-      'updated_by': null,
     };
 
     await _repo.insert(insertData);

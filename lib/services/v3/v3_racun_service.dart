@@ -44,7 +44,8 @@ class V3RacunService {
     try {
       final rows = await _repository.listRedniBrojByGodinaDescLimit1(godina);
 
-      final maxBroj = (rows).isNotEmpty ? ((rows.first['redni_broj'] as int?) ?? 0) : 0;
+      final maxBroj =
+          (rows).isNotEmpty ? ((rows.first['redni_broj'] as int?) ?? 0) : 0;
       return '${maxBroj + 1}/$godina';
     } catch (e) {
       final ts = DateTime.now().millisecondsSinceEpoch;
@@ -97,12 +98,11 @@ class V3RacunService {
       return;
     }
     try {
-      // Dohvati firma podatke iz Supabase za sve putnik_id-ove
-      final ids = racuniPodaci.map((r) => r['putnik_id']).toList();
-      final firme = await _repository.listAktivneFirmeByPutnikIds(ids);
       final firmaMap = <String, Map<String, dynamic>>{};
-      for (final f in firme) {
-        firmaMap[f['putnik_id'].toString()] = f as Map<String, dynamic>;
+      for (final r in racuniPodaci) {
+        final putnikId = r['putnik_id']?.toString();
+        if (putnikId == null || putnikId.isEmpty) continue;
+        firmaMap[putnikId] = r;
       }
 
       final pdf = pw.Document();
@@ -119,7 +119,8 @@ class V3RacunService {
         final imePutnika = r['ime_prezime']?.toString() ?? '---';
         final brojVoznji = (r['broj_voznji'] as num?)?.toDouble() ?? 1.0;
         final cenaPoVoznji = (r['cena_po_voznji'] as num?)?.toDouble() ?? 0.0;
-        final brojRacuna = r['broj_racuna']?.toString() ?? await getNextBrojRacuna();
+        final brojRacuna =
+            r['broj_racuna']?.toString() ?? await getNextBrojRacuna();
 
         pdf.addPage(
           _kreirajRacunZaFirmuStranicu(
@@ -244,23 +245,40 @@ class V3RacunService {
                     children: [
                       _tCell('#', color: PdfColors.black, bold: true),
                       _tCell('Opis usluge', color: PdfColors.black, bold: true),
-                      _tCell('Jed. mera', color: PdfColors.black, bold: true, align: pw.TextAlign.center),
-                      _tCell('Kol.', color: PdfColors.black, bold: true, align: pw.TextAlign.center),
-                      _tCell('Cena/jed.', color: PdfColors.black, bold: true, align: pw.TextAlign.right),
-                      _tCell('Ukupno', color: PdfColors.black, bold: true, align: pw.TextAlign.right),
+                      _tCell('Jed. mera',
+                          color: PdfColors.black,
+                          bold: true,
+                          align: pw.TextAlign.center),
+                      _tCell('Kol.',
+                          color: PdfColors.black,
+                          bold: true,
+                          align: pw.TextAlign.center),
+                      _tCell('Cena/jed.',
+                          color: PdfColors.black,
+                          bold: true,
+                          align: pw.TextAlign.right),
+                      _tCell('Ukupno',
+                          color: PdfColors.black,
+                          bold: true,
+                          align: pw.TextAlign.right),
                     ],
                   ),
                   pw.TableRow(
                     decoration: const pw.BoxDecoration(
-                      border: pw.Border(bottom: pw.BorderSide(width: 0.5, color: PdfColors.grey300)),
+                      border: pw.Border(
+                          bottom: pw.BorderSide(
+                              width: 0.5, color: PdfColors.grey300)),
                     ),
                     children: [
                       _tCell('1.', align: pw.TextAlign.center),
                       _tCell('Prevoz putnika - mart 2026.'),
                       _tCell(jedinicaMere, align: pw.TextAlign.center),
-                      _tCell(V3FormatUtils.formatDecimal2(kolicinaMart), align: pw.TextAlign.center),
-                      _tCell(V3FormatUtils.formatNovacRsd(cena), align: pw.TextAlign.right),
-                      _tCell(V3FormatUtils.formatNovacRsd(ukupnoMart), align: pw.TextAlign.right),
+                      _tCell(V3FormatUtils.formatDecimal2(kolicinaMart),
+                          align: pw.TextAlign.center),
+                      _tCell(V3FormatUtils.formatNovacRsd(cena),
+                          align: pw.TextAlign.right),
+                      _tCell(V3FormatUtils.formatNovacRsd(ukupnoMart),
+                          align: pw.TextAlign.right),
                     ],
                   ),
                 ],
@@ -271,7 +289,8 @@ class V3RacunService {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  _totalRow('Ukupno bez PDV-a:', V3FormatUtils.formatNovacRsd(ukupnoMart)),
+                  _totalRow('Ukupno bez PDV-a:',
+                      V3FormatUtils.formatNovacRsd(ukupnoMart)),
                   _totalRow('PDV (nije u sistemu PDV-a):', '0,00 RSD'),
                 ],
               ),
@@ -285,18 +304,27 @@ class V3RacunService {
                     bottom: pw.BorderSide(width: 1.5),
                   ),
                 ),
-                padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+                padding:
+                    const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 10),
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text('ZA UPLATU:',
-                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                        style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.black)),
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
                         pw.Text(V3FormatUtils.formatNovac(ukupnoMart),
-                            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-                        pw.Text('RSD', style: pw.TextStyle(fontSize: 10, color: PdfColors.black)),
+                            style: pw.TextStyle(
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.black)),
+                        pw.Text('RSD',
+                            style: pw.TextStyle(
+                                fontSize: 10, color: PdfColors.black)),
                       ],
                     ),
                   ],
@@ -310,18 +338,24 @@ class V3RacunService {
                 padding: const pw.EdgeInsets.all(12),
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(color: PdfColors.grey200),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                  borderRadius:
+                      const pw.BorderRadius.all(pw.Radius.circular(8)),
                 ),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text('Napomene:',
-                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _navyBlue)),
+                        style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: _navyBlue)),
                     pw.SizedBox(height: 4),
                     _napomenaItem(_napomenaPDV),
                     _napomenaItem(_napomenaValidnost),
-                    _napomenaItem('Način plaćanja: Gotovina ili uplata na tekući račun'),
-                    _napomenaItem('Uplata na žiro račun: $_firmaTekuciRacun, poziv na broj: $brojRacuna'),
+                    _napomenaItem(
+                        'Način plaćanja: Gotovina ili uplata na tekući račun'),
+                    _napomenaItem(
+                        'Uplata na žiro račun: $_firmaTekuciRacun, poziv na broj: $brojRacuna'),
                   ],
                 ),
               ),
@@ -340,7 +374,8 @@ class V3RacunService {
                       child: pw.SizedBox(height: 30),
                     ),
                     pw.SizedBox(height: 4),
-                    pw.Text('$_firmaVlasnik, vlasnik', style: const pw.TextStyle(fontSize: 9)),
+                    pw.Text('$_firmaVlasnik, vlasnik',
+                        style: const pw.TextStyle(fontSize: 9)),
                   ],
                 ),
               ),
@@ -363,7 +398,8 @@ class V3RacunService {
     required DateTime datumPrometa,
   }) {
     final ukupno = cenaPoVoznji * brojVoznji;
-    final mesecGodina = DateFormat('MMMM yyyy', 'sr_Latn_RS').format(datumPrometa);
+    final mesecGodina =
+        DateFormat('MMMM yyyy', 'sr_Latn_RS').format(datumPrometa);
     final danasDatumStr = V3DanHelper.formatDatumPuni(DateTime.now());
     final datumStr = V3DanHelper.formatDatumPuni(datumPrometa);
 
@@ -388,12 +424,19 @@ class V3RacunService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('IZDAVALAC:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('IZDAVALAC:',
+                      style: pw.TextStyle(
+                          fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 4),
-                  pw.Text(_firmaIme, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                  pw.Text(_firmaAdresa, style: const pw.TextStyle(fontSize: 10)),
-                  pw.Text('PIB: $_firmaPIB   MB: $_firmaMB', style: const pw.TextStyle(fontSize: 10)),
-                  pw.Text('Tekući račun: $_firmaTekuciRacun', style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text(_firmaIme,
+                      style: pw.TextStyle(
+                          fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(_firmaAdresa,
+                      style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text('PIB: $_firmaPIB   MB: $_firmaMB',
+                      style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text('Tekući račun: $_firmaTekuciRacun',
+                      style: const pw.TextStyle(fontSize: 10)),
                 ],
               ),
             ),
@@ -403,7 +446,8 @@ class V3RacunService {
             pw.Center(
               child: pw.Text(
                 'RAČUN br. $brojRacuna',
-                style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+                style:
+                    pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
               ),
             ),
             pw.SizedBox(height: 4),
@@ -422,15 +466,24 @@ class V3RacunService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('KUPAC:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('KUPAC:',
+                      style: pw.TextStyle(
+                          fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 4),
-                  pw.Text(firmaNaziv, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(firmaNaziv,
+                      style: pw.TextStyle(
+                          fontSize: 12, fontWeight: pw.FontWeight.bold)),
                   pw.Text(firmaAdresa, style: const pw.TextStyle(fontSize: 10)),
                   if (firmaPib.isNotEmpty)
-                    pw.Text('PIB: $firmaPib   MB: $firmaMb', style: const pw.TextStyle(fontSize: 10)),
-                  if (firmaZiro.isNotEmpty) pw.Text('Žiro: $firmaZiro', style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('PIB: $firmaPib   MB: $firmaMb',
+                        style: const pw.TextStyle(fontSize: 10)),
+                  if (firmaZiro.isNotEmpty)
+                    pw.Text('Žiro: $firmaZiro',
+                        style: const pw.TextStyle(fontSize: 10)),
                   pw.SizedBox(height: 4),
-                  pw.Text('Putnik: $imePutnika', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Putnik: $imePutnika',
+                      style: pw.TextStyle(
+                          fontSize: 10, fontWeight: pw.FontWeight.bold)),
                 ],
               ),
             ),
@@ -479,7 +532,8 @@ class V3RacunService {
                 decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
                 child: pw.Text(
                   'UKUPNO: ${V3FormatUtils.formatNovacRsd(ukupno)}',
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                      fontSize: 14, fontWeight: pw.FontWeight.bold),
                 ),
               ),
             ),
@@ -498,7 +552,10 @@ class V3RacunService {
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────
-  static pw.Widget _tCell(String text, {bool bold = false, PdfColor? color, pw.TextAlign align = pw.TextAlign.left}) {
+  static pw.Widget _tCell(String text,
+      {bool bold = false,
+      PdfColor? color,
+      pw.TextAlign align = pw.TextAlign.left}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(6),
       child: pw.Text(
@@ -519,9 +576,12 @@ class V3RacunService {
       child: pw.Row(
         mainAxisSize: pw.MainAxisSize.min,
         children: [
-          pw.Text(label, style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+          pw.Text(label,
+              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
           pw.SizedBox(width: 10),
-          pw.Text(value, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+          pw.Text(value,
+              style:
+                  pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
         ],
       ),
     );
@@ -533,7 +593,8 @@ class V3RacunService {
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('• ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          pw.Text('• ',
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
           pw.Expanded(
             child: pw.Text(text, style: const pw.TextStyle(fontSize: 9)),
           ),
@@ -569,12 +630,20 @@ class V3RacunService {
               mainAxisAlignment: pw.MainAxisAlignment.center,
               children: [
                 pw.Text('Bojan Gavrilovic',
-                    style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold, color: PdfColors.blue),
+                    style: pw.TextStyle(
+                        fontSize: 6,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue),
                     textAlign: pw.TextAlign.center),
-                pw.Text('LIMO', style: pw.TextStyle(fontSize: 5, color: PdfColors.blue)),
+                pw.Text('LIMO',
+                    style: pw.TextStyle(fontSize: 5, color: PdfColors.blue)),
                 pw.Text('GAVRA 013',
-                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blue)),
-                pw.Text('Bela Crkva', style: pw.TextStyle(fontSize: 6, color: PdfColors.blue)),
+                    style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue)),
+                pw.Text('Bela Crkva',
+                    style: pw.TextStyle(fontSize: 6, color: PdfColors.blue)),
               ],
             ),
           ),
@@ -596,7 +665,8 @@ class V3RacunService {
 
   static Future<void> _openPDF(List<int> bytes, String name) async {
     final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/${name}_${DateFormat('ddMMyyyy').format(DateTime.now())}.pdf');
+    final file = File(
+        '${tempDir.path}/${name}_${DateFormat('ddMMyyyy').format(DateTime.now())}.pdf');
     await file.writeAsBytes(bytes, flush: true);
     await OpenFilex.open(file.path);
   }

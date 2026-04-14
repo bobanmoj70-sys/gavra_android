@@ -31,7 +31,9 @@ class V3Dug {
     return V3Dug(
       id: json['id'] as String? ?? '',
       putnikId: (json['created_by'] as String?) ?? '',
-      imePrezime: json['ime_prezime'] as String? ?? json['putnik_ime'] as String? ?? 'Nepoznato',
+      imePrezime: json['ime_prezime'] as String? ??
+          json['putnik_ime'] as String? ??
+          'Nepoznato',
       tipPutnika: json['tip_putnika'] as String? ?? 'dnevni',
       vozacId: json['pokupljen_by'] as String? ?? '',
       vozacIme: json['vozac_ime'] as String? ?? '',
@@ -66,7 +68,8 @@ class V3Dug {
   }) {
     final tip = putnikData?['tip_putnika'] as String? ?? 'dnevni';
     // Iznos = cena po pokupljenju iz profila putnika (jedini relevantan iznos za dnevne/posiljke)
-    final iznos = (putnikData?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+    final iznos =
+        (putnikData?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
     return V3Dug(
       id: json['id']?.toString() ?? '',
       putnikId: json['created_by']?.toString() ?? '',

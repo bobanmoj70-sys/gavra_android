@@ -32,7 +32,8 @@ class V2ConfigService {
   String getSupabaseAnonKey() {
     final key = dotenv.maybeGet('SUPABASE_ANON_KEY') ?? '';
     if (key.isEmpty) {
-      debugPrint('[V2ConfigService] ⚠️ SUPABASE_ANON_KEY nije definisan u .env');
+      debugPrint(
+          '[V2ConfigService] ⚠️ SUPABASE_ANON_KEY nije definisan u .env');
     }
     return key;
   }

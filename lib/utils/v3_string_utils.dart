@@ -79,7 +79,8 @@ class V3StringUtils {
   static String forSearch(String s) => stripDiacritics(s.toLowerCase());
 
   /// Poredi dva stringa za sortiranje uz podršku srpskih slova
-  static int compareForSort(String a, String b) => forSearch(a).compareTo(forSearch(b));
+  static int compareForSort(String a, String b) =>
+      forSearch(a).compareTo(forSearch(b));
 
   /// Da li [haystack] sadrži [needle] — case-insensitive + bez dijakritika
   static bool containsSearch(String haystack, String needle) {
@@ -93,11 +94,17 @@ class V3StringUtils {
   /// Primer: "15:30:00" → "15:30", "09:15" → "09:15"
   static String trimTimeToHhMm(String time) {
     final trimmed = time.trim();
-    final match = RegExp(r'^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$').firstMatch(trimmed);
+    final match =
+        RegExp(r'^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$').firstMatch(trimmed);
     if (match != null) {
       final hours = int.tryParse(match.group(1)!);
       final minutes = int.tryParse(match.group(2)!);
-      if (hours != null && minutes != null && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+      if (hours != null &&
+          minutes != null &&
+          hours >= 0 &&
+          hours <= 23 &&
+          minutes >= 0 &&
+          minutes <= 59) {
         return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
       }
     }

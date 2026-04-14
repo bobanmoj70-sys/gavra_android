@@ -14,7 +14,8 @@ class V3GorivoScreen extends StatefulWidget {
   State<V3GorivoScreen> createState() => _V3GorivoScreenState();
 }
 
-class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProviderStateMixin {
+class _V3GorivoScreenState extends State<V3GorivoScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   static const Color _accent = Color(0xFFFF9800);
 
@@ -34,7 +35,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     return StreamBuilder<_GorivoData>(
       stream: V3MasterRealtimeManager.instance.v3StreamFromCache<_GorivoData>(
-        tables: ['v3_gorivo', 'v3_gorivo_promene'],
+        tables: ['v3_gorivo'],
         build: () => _GorivoData(
           stanje: V3GorivoService.getStanjeSync(),
           rezervoar: V3GorivoService.getRezervoarSync(),
@@ -73,7 +74,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+            shadows: [
+              Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)
+            ],
           ),
         ),
         bottom: TabBar(
@@ -102,12 +105,14 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
   }
 
   Widget _buildPumpaTab(V3PumpaStanje? stanje) {
-    final topPad = MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16;
+    final topPad =
+        MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16;
     if (stanje == null) {
       return Center(
         child: Padding(
           padding: EdgeInsets.only(top: topPad),
-          child: const Text('Nema podataka o pumpi', style: TextStyle(color: Colors.white70)),
+          child: const Text('Nema podataka o pumpi',
+              style: TextStyle(color: Colors.white70)),
         ),
       );
     }
@@ -127,12 +132,14 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
   }
 
   Widget _buildRezervoarTab(V3PumpaRezervoar? r, V3PumpaStanje? stanje) {
-    final topPad = MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16;
+    final topPad =
+        MediaQuery.of(context).padding.top + kToolbarHeight + 48 + 16;
     if (r == null) {
       return Center(
         child: Padding(
           padding: EdgeInsets.only(top: topPad),
-          child: const Text('Nema podataka o rezervoaru', style: TextStyle(color: Colors.white70)),
+          child: const Text('Nema podataka o rezervoaru',
+              style: TextStyle(color: Colors.white70)),
         ),
       );
     }
@@ -154,7 +161,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
             children: [
               _gorivoDetaljiRow(
                 '🔫 Stanje brojača pištolja',
-                stanje == null ? '-' : stanje.stanjeBrojacPistolj.toStringAsFixed(0),
+                stanje == null
+                    ? '-'
+                    : stanje.stanjeBrojacPistolj.toStringAsFixed(0),
                 Colors.white70,
               ),
               _gorivoDetaljiRow(
@@ -163,7 +172,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> with SingleTickerProvid
                 r.ispodAlarma ? Colors.redAccent : Colors.white54,
               ),
               _gorivoDetaljiRow(
-                  '📦 Kapacitet rezervoara', '${V3FormatUtils.formatGorivo(r.kapacitetMax)} L', Colors.white70),
+                  '📦 Kapacitet rezervoara',
+                  '${V3FormatUtils.formatGorivo(r.kapacitetMax)} L',
+                  Colors.white70),
             ],
           ),
         ],
@@ -180,8 +191,11 @@ Widget _gorivoDetaljiRow(String label, String value, Color valueColor) {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-        Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: valueColor, fontSize: 13)),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        Text(value,
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: valueColor, fontSize: 13)),
       ],
     ),
   );
@@ -219,7 +233,10 @@ class _V3BrojcanikCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: barColor.withValues(alpha: 0.5), width: 2),
       boxShadow: [
-        BoxShadow(color: barColor.withValues(alpha: 0.15), blurRadius: 16, spreadRadius: 1),
+        BoxShadow(
+            color: barColor.withValues(alpha: 0.15),
+            blurRadius: 16,
+            spreadRadius: 1),
       ],
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -230,17 +247,24 @@ class _V3BrojcanikCard extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.white),
                 ),
                 if (ispodAlarma)
                   V3ContainerUtils.iconContainer(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     backgroundColor: Colors.red.withValues(alpha: 0.15),
                     borderRadiusGeometry: BorderRadius.circular(12),
                     border: Border.all(color: Colors.red),
                     child: const Text(
                       '⚠️ MALO GORIVA',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
                     ),
                   ),
               ],
@@ -248,7 +272,8 @@ class _V3BrojcanikCard extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               '${V3FormatUtils.formatGorivo(trenutno)} L',
-              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: barColor),
+              style: TextStyle(
+                  fontSize: 48, fontWeight: FontWeight.bold, color: barColor),
             ),
             Text(
               'od ${V3FormatUtils.formatGorivo(kapacitet)} L kapaciteta',
@@ -268,10 +293,12 @@ class _V3BrojcanikCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('0 L', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                const Text('0 L',
+                    style: TextStyle(color: Colors.white38, fontSize: 12)),
                 Text(
                   '${(procenat * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: barColor),
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, color: barColor),
                 ),
                 Text(
                   '${V3FormatUtils.formatGorivo(kapacitet)} L',
@@ -303,7 +330,10 @@ class _V3DetaljiCard extends StatelessWidget {
           children: [
             const Text(
               '📊 Detalji',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 14),
             ),
             const SizedBox(height: 12),
             ...children,

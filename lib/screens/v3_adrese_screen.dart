@@ -38,8 +38,11 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
             stream: V3AdresaService.streamAdrese(),
             builder: (context, snapshot) {
               if (snapshot.hasError)
-                return Center(child: Text('Greška: ${snapshot.error}', style: const TextStyle(color: Colors.white70)));
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                return Center(
+                    child: Text('Greška: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.white70)));
+              if (!snapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
               final sve = snapshot.data!;
               return _AdreseFilterPanel(
                 adrese: sve,
@@ -51,7 +54,8 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
         ),
       ),
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
         child: FloatingActionButton.extended(
           onPressed: () => _showAdresaDialog(),
           icon: const Icon(Icons.add),
@@ -77,7 +81,9 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
           lat: result['lat'],
           lng: result['lng'],
         );
-        if (mounted) V3AppSnackBar.success(context, adresa == null ? '✅ Adresa dodata' : '✅ Adresa izmenjena');
+        if (mounted)
+          V3AppSnackBar.success(context,
+              adresa == null ? '✅ Adresa dodata' : '✅ Adresa izmenjena');
       } catch (e) {
         V3ErrorUtils.asyncError(this, context, e);
       }
@@ -111,7 +117,8 @@ class _AdreseStats {
   final int belaCrkva;
   final int vrsac;
 
-  const _AdreseStats({required this.ukupno, required this.belaCrkva, required this.vrsac});
+  const _AdreseStats(
+      {required this.ukupno, required this.belaCrkva, required this.vrsac});
 
   factory _AdreseStats.from(List<V3Adresa> adrese) {
     int bc = 0, vs = 0;
@@ -126,7 +133,8 @@ class _AdreseStats {
 
 // ─── Filter panel ─────────────────────────────────────────────────────────────
 class _AdreseFilterPanel extends StatefulWidget {
-  const _AdreseFilterPanel({required this.adrese, required this.onEdit, required this.onDelete});
+  const _AdreseFilterPanel(
+      {required this.adrese, required this.onEdit, required this.onDelete});
   final List<V3Adresa> adrese;
   final void Function(V3Adresa) onEdit;
   final void Function(V3Adresa) onDelete;
@@ -173,9 +181,14 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _StatCard(label: 'Ukupno', value: stats.ukupno, color: Colors.blue),
-                  _StatCard(label: 'B. Crkva', value: stats.belaCrkva, color: Colors.green),
-                  _StatCard(label: 'Vrsac', value: stats.vrsac, color: Colors.orange),
+                  _StatCard(
+                      label: 'Ukupno', value: stats.ukupno, color: Colors.blue),
+                  _StatCard(
+                      label: 'B. Crkva',
+                      value: stats.belaCrkva,
+                      color: Colors.green),
+                  _StatCard(
+                      label: 'Vrsac', value: stats.vrsac, color: Colors.orange),
                 ],
               ),
               const SizedBox(height: 12),
@@ -197,11 +210,13 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
                       : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                    borderSide:
+                        BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                    borderSide:
+                        BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -219,7 +234,9 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _GradChip(
-                      label: 'Svi', selected: _filterGrad == 'Svi', onTap: () => setState(() => _filterGrad = 'Svi')),
+                      label: 'Svi',
+                      selected: _filterGrad == 'Svi',
+                      onTap: () => setState(() => _filterGrad = 'Svi')),
                   const SizedBox(width: 8),
                   _GradChip(
                       label: 'Bela Crkva',
@@ -227,7 +244,9 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
                       onTap: () => setState(() => _filterGrad = 'BC')),
                   const SizedBox(width: 8),
                   _GradChip(
-                      label: 'Vrsac', selected: _filterGrad == 'VS', onTap: () => setState(() => _filterGrad = 'VS')),
+                      label: 'Vrsac',
+                      selected: _filterGrad == 'VS',
+                      onTap: () => setState(() => _filterGrad = 'VS')),
                 ],
               ),
             ],
@@ -236,7 +255,9 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
         // LISTA
         Expanded(
           child: filtered.isEmpty
-              ? const Center(child: Text('Nema adresa', style: TextStyle(color: Colors.white70)))
+              ? const Center(
+                  child: Text('Nema adresa',
+                      style: TextStyle(color: Colors.white70)))
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: filtered.length,
@@ -254,7 +275,8 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
 
 // ─── Helper widgeti ───────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value, required this.color});
+  const _StatCard(
+      {required this.label, required this.value, required this.color});
   final String label;
   final int value;
   final Color color;
@@ -262,14 +284,18 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          Text('$value', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text('$value',
+              style: TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ],
       );
 }
 
 class _GradChip extends StatelessWidget {
-  const _GradChip({required this.label, required this.selected, required this.onTap});
+  const _GradChip(
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -295,7 +321,8 @@ class _GradChip extends StatelessWidget {
 }
 
 class _AdresaCard extends StatelessWidget {
-  const _AdresaCard({required this.adresa, required this.onEdit, required this.onDelete});
+  const _AdresaCard(
+      {required this.adresa, required this.onEdit, required this.onDelete});
   final V3Adresa adresa;
   final void Function(V3Adresa) onEdit;
   final void Function(V3Adresa) onDelete;
@@ -323,13 +350,20 @@ class _AdresaCard extends StatelessWidget {
           backgroundColor: color.withValues(alpha: 0.2),
           child: Icon(Icons.location_on, color: color),
         ),
-        title: Text(adresa.naziv, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        subtitle: Text(_gradLabel(adresa.grad), style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+        title: Text(adresa.naziv,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
+        subtitle: Text(_gradLabel(adresa.grad),
+            style: TextStyle(color: Colors.grey[400], fontSize: 12)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () => onEdit(adresa)),
-            IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => onDelete(adresa)),
+            IconButton(
+                icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                onPressed: () => onEdit(adresa)),
+            IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                onPressed: () => onDelete(adresa)),
           ],
         ),
       ),
@@ -377,7 +411,9 @@ class _AdresaDialogState extends State<_AdresaDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _naziv, decoration: const InputDecoration(labelText: 'Naziv adrese')),
+            TextField(
+                controller: _naziv,
+                decoration: const InputDecoration(labelText: 'Naziv adrese')),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _selectedGrad,
@@ -391,17 +427,20 @@ class _AdresaDialogState extends State<_AdresaDialog> {
             const SizedBox(height: 4),
             TextField(
                 controller: _lat,
-                decoration: const InputDecoration(labelText: 'Latitude (opciono)'),
+                decoration:
+                    const InputDecoration(labelText: 'Latitude (opciono)'),
                 keyboardType: TextInputType.number),
             TextField(
                 controller: _lng,
-                decoration: const InputDecoration(labelText: 'Longitude (opciono)'),
+                decoration:
+                    const InputDecoration(labelText: 'Longitude (opciono)'),
                 keyboardType: TextInputType.number),
           ],
         ),
       ),
       actions: [
-        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'ODUSTANI'),
+        V3ButtonUtils.textButton(
+            onPressed: () => Navigator.pop(context), text: 'ODUSTANI'),
         V3ButtonUtils.primaryButton(
           onPressed: () {
             if (_naziv.text.isEmpty) {

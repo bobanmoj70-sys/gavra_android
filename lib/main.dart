@@ -20,12 +20,14 @@ import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_push_token_sync_service.dart';
 import 'services/v3/v3_putnik_service.dart';
+import 'services/v3/v3_role_permission_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 import 'services/v3_theme_manager.dart';
 
 // Globalna instanca za lokalne notifikacije
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 bool _localNotificationsInitialized = false;
 Future<void>? _localNotificationsInitInFlight;
 Future<void>? _supabaseInitInFlight;
@@ -42,12 +44,14 @@ Future<void> _ensureLocalNotificationsInitialized() async {
   final initFuture = () async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+    const DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
@@ -67,7 +71,8 @@ Future<void> _ensureLocalNotificationsInitialized() async {
       enableVibration: true,
     );
 
-    const AndroidNotificationChannel alternativaChannel = AndroidNotificationChannel(
+    const AndroidNotificationChannel alternativaChannel =
+        AndroidNotificationChannel(
       'gavra_alternativa',
       'Alternativa termina',
       description: 'Klikabilna obaveštenja za alternativne termine',
@@ -77,7 +82,8 @@ Future<void> _ensureLocalNotificationsInitialized() async {
     );
 
     final androidImpl =
-        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.createNotificationChannel(channel);
     await androidImpl?.createNotificationChannel(alternativaChannel);
 
@@ -145,11 +151,13 @@ void main() async {
   // SUPABASE - Inicijalizuj sa osnovnim kredencijalima
   try {
     debugPrint('🚀 [main] 4. Supabase init start');
-    final supabaseReady = await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
+    final supabaseReady =
+        await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
     if (supabaseReady) {
       debugPrint('🚀 [main] 4. Supabase init completed');
     } else {
-      debugPrint('⚠️ [main] Supabase init incomplete, nastavljam sa fallback tokom.');
+      debugPrint(
+          '⚠️ [main] Supabase init incomplete, nastavljam sa fallback tokom.');
     }
   } catch (e) {
     debugPrint('❌ [main] Supabase.initialize greška/timeout: $e');
@@ -175,10 +183,10 @@ Future<void> _postRunAppInitialization() async {
   }
 
   if (isSupabaseReady) {
-    debugPrint('🚀 [main] 6. V3MasterRealtimeManager.initV3 start (background)');
-    unawaited(V3MasterRealtimeManager.instance
-        .initV3()
-        .catchError((Object e) => debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
+    debugPrint(
+        '🚀 [main] 6. V3MasterRealtimeManager.initV3 start (background)');
+    unawaited(V3MasterRealtimeManager.instance.initV3().catchError((Object e) =>
+        debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
   } else {
     debugPrint('⚠️ [main] Preskačem initV3: Supabase nije inicijalizovan.');
   }
@@ -186,7 +194,9 @@ Future<void> _postRunAppInitialization() async {
   // 2. 🎨 Tema - učitaj iz secure storage (ui će automatski reagovati na promenu teme)
   try {
     debugPrint('🚀 [main] 7. loadThemeFromStorage start');
-    await V3ThemeManager().loadThemeFromStorage().timeout(const Duration(seconds: 3));
+    await V3ThemeManager()
+        .loadThemeFromStorage()
+        .timeout(const Duration(seconds: 3));
     debugPrint('🚀 [main] 7. loadThemeFromStorage completed');
   } catch (e) {
     debugPrint('⚠️ [main] Theme load timeout/greška: $e');
@@ -195,7 +205,8 @@ Future<void> _postRunAppInitialization() async {
   // 3. Pokreni sve ostale servise sa malom pauzom
   unawaited(
     Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks)
-        .catchError((Object e) => debugPrint('⚠️ [main] Startup tasks greška: $e')),
+        .catchError(
+            (Object e) => debugPrint('⚠️ [main] Startup tasks greška: $e')),
   );
 }
 
@@ -211,21 +222,149 @@ Future<void> _doStartupTasks() async {
 
   // Locale - UTF-8 podrska za dijakritiku
   unawaited(
-    initializeDateFormatting('sr', null)
-        .catchError((Object e) => debugPrint('⚠️ [main] initializeDateFormatting greška: $e')),
+    initializeDateFormatting('sr', null).catchError((Object e) =>
+        debugPrint('⚠️ [main] initializeDateFormatting greška: $e')),
   );
 
   // Sve ostalo pokreni istovremeno (paralelno)
   unawaited(
-    _initNotificationHandlers().catchError((Object e) => debugPrint('⚠️ [main] Notification handlers greška: $e')),
+    _initFcmChannel().catchError(
+        (Object e) => debugPrint('⚠️ [main] FCM channel greška: $e')),
   );
   unawaited(
-    _initAppServices().catchError((Object e) => debugPrint('⚠️ [main] App services greška: $e')),
+    _initNotificationHandlers().catchError(
+        (Object e) => debugPrint('⚠️ [main] Notification handlers greška: $e')),
+  );
+  unawaited(
+    _initAppServices().catchError(
+        (Object e) => debugPrint('⚠️ [main] App services greška: $e')),
   );
 }
 
+/// Sluša FCM poruke prosleđene od GavraFcmService (Kotlin) via MethodChannel.
+/// Hvata:
+///  - onMessage     → prikazuje lokalnu notifikaciju + budi ekran
+///  - onTokenRefresh → sync-uje novi FCM token sa Supabase
+Future<void> _initFcmChannel() async {
+  const channel = MethodChannel('com.gavra013.gavra_android/fcm');
+  channel.setMethodCallHandler((call) async {
+    switch (call.method) {
+      case 'onMessage':
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        final title = args['title']?.toString() ?? '';
+        final body = args['body']?.toString() ?? '';
+        final type = args['type']?.toString() ?? '';
+        debugPrint('[FCM] onMessage type=$type title=$title');
+
+        // Budi ekran
+        unawaited(V3RolePermissionService.wakeScreenOnPush());
+
+        // Prikaži lokalnu notifikaciju (foreground)
+        if (title.isNotEmpty || body.isNotEmpty) {
+          await _ensureLocalNotificationsInitialized();
+          final androidDetails = AndroidNotificationDetails(
+            'gavra_push_v2',
+            'Gavra obaveštenja',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+            styleInformation: BigTextStyleInformation(
+              body,
+              contentTitle: title,
+              summaryText: 'Gavra',
+            ),
+          );
+          await flutterLocalNotificationsPlugin.show(
+            DateTime.now().millisecondsSinceEpoch.remainder(100000),
+            title,
+            body,
+            NotificationDetails(android: androidDetails),
+            payload: type,
+          );
+        }
+
+      case 'onTokenRefresh':
+        final token = call.arguments['token']?.toString() ?? '';
+        if (token.isNotEmpty) {
+          debugPrint('[FCM] Token refresh, sync-ujem sa Supabase…');
+          unawaited(
+            V3PushTokenSyncService.syncCurrentUser(
+              token: token,
+              reason: 'fcm:token_refresh',
+            ).catchError((Object e) {
+              debugPrint('⚠️ [FCM] token sync greška: $e');
+              return false;
+            }),
+          );
+        }
+
+      case 'onLaunchMessage':
+        // Korisnik je tapnuo FCM notifikaciju dok je app bila killed/background.
+        // `arguments` je Map<String, String> sa svim FCM data key-value parovima.
+        final launchData = Map<String, String>.from(
+          (call.arguments as Map)
+              .map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')),
+        );
+        final launchType = launchData['type'] ?? '';
+        debugPrint('[FCM] onLaunchMessage type=$launchType data=$launchData');
+        unawaited(_handleFcmLaunch(launchType, launchData));
+    }
+  });
+  debugPrint('✅ [FCM] MethodChannel handler registrovan');
+}
+
+/// Rutira na pravi ekran kada korisnik tapne FCM notifikaciju dok je app bila killed/background.
+///
+/// Tipovi:
+///  - `zahtev_status`   → putnik otvori V3PutnikProfilScreen, vozač — nema navigacije (već je na svom ekranu)
+///  - `putnik_eta_start`→ otvori V3PutnikProfilScreen
+///  - `sms_auth_request`→ otvori SMS composer
+Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
+  // Sačekaj da navigator bude dostupan (max 5s)
+  for (var i = 0; i < 50; i++) {
+    if (navigatorKey.currentState != null) break;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+
+  if (!isSupabaseReady) {
+    try {
+      await _ensureSupabaseInitialized().timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('⚠️ [FCM launch] Supabase init nije uspeo: $e');
+    }
+  }
+
+  switch (type) {
+    case 'zahtev_status':
+    case 'putnik_eta_start':
+      // v3_auth_id je v3_auth.id — direktno otvori profil ekran
+      final putnikId = data['v3_auth_id'] ?? '';
+      final payload = putnikId.isNotEmpty
+          ? 'putnik_eta_start:$putnikId'
+          : 'putnik_eta_start';
+      await _openPutnikProfilFromNotification(payload);
+
+    case 'sms_auth_request':
+      final phone = data['phone'] ?? data['to'] ?? '';
+      final otp = data['otp'] ?? data['code'] ?? '';
+      if (phone.isNotEmpty && otp.isNotEmpty) {
+        final payload = 'sms_auth_request|$phone|$otp';
+        final opened = await _openSmsComposerFromAuthPayload(payload);
+        if (!opened) {
+          debugPrint(
+              '⚠️ [FCM launch] Ne mogu otvoriti SMS za sms_auth_request');
+        }
+      }
+
+    default:
+      debugPrint('[FCM launch] Nepoznat type=$type, ignoriši');
+  }
+}
+
 Future<void> _restoreSessionForPushSync() async {
-  if (V3VozacService.currentVozac != null || V3PutnikService.currentPutnik != null) return;
+  if (V3VozacService.currentVozac != null ||
+      V3PutnikService.currentPutnik != null) return;
 
   try {
     await V3ClosedAuthService.restoreVozacFromManualSmsSession();
@@ -233,7 +372,8 @@ Future<void> _restoreSessionForPushSync() async {
     debugPrint('⚠️ [Push] restoreVozacFromManualSmsSession greška: $e');
   }
 
-  if (V3VozacService.currentVozac != null || V3PutnikService.currentPutnik != null) return;
+  if (V3VozacService.currentVozac != null ||
+      V3PutnikService.currentPutnik != null) return;
 
   try {
     await V3ClosedAuthService.restorePutnikFromManualSmsSession();
@@ -355,9 +495,11 @@ void onNotificationTap(NotificationResponse response) async {
     if (actionId == null || actionId == 'approve_sms') {
       final opened = await _openSmsComposerFromAuthPayload(payload);
       if (opened) {
-        await _showActionFeedback('✅ SMS odobren', 'Otvorena je SMS aplikacija sa pripremljenom šifrom.');
+        await _showActionFeedback('✅ SMS odobren',
+            'Otvorena je SMS aplikacija sa pripremljenom šifrom.');
       } else {
-        await _showActionFeedback('⚠️ Greška', 'Ne mogu da otvorim SMS aplikaciju za ovaj zahtev.');
+        await _showActionFeedback(
+            '⚠️ Greška', 'Ne mogu da otvorim SMS aplikaciju za ovaj zahtev.');
       }
       return;
     }
@@ -383,7 +525,8 @@ void onNotificationTap(NotificationResponse response) async {
     try {
       final ready = await _ensureSupabaseInitialized();
       if (!ready) {
-        await _showActionFeedback('⚠️ Greška', 'Servis trenutno nije dostupan. Pokušajte ponovo.');
+        await _showActionFeedback(
+            '⚠️ Greška', 'Servis trenutno nije dostupan. Pokušajte ponovo.');
         return;
       }
     } catch (e) {
@@ -398,7 +541,8 @@ void onNotificationTap(NotificationResponse response) async {
     // payload format (strict): "id|altPre|altPosle"
     final parts = payload.split('|');
     if (parts.length != 3 || parts[0].trim().isEmpty) {
-      await _showActionFeedback('⚠️ Akcija nije izvršena', 'Neispravan format notifikacije.');
+      await _showActionFeedback(
+          '⚠️ Akcija nije izvršena', 'Neispravan format notifikacije.');
       return;
     }
 
@@ -408,15 +552,19 @@ void onNotificationTap(NotificationResponse response) async {
 
     if (actionId == 'accept_pre' && altPre.isNotEmpty) {
       await V3ZahtevService.prihvatiAlternativu(zahtevId, altPre);
-      await _showActionFeedback('✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPre');
+      await _showActionFeedback(
+          '✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPre');
     } else if (actionId == 'accept_posle' && altPosle.isNotEmpty) {
       await V3ZahtevService.prihvatiAlternativu(zahtevId, altPosle);
-      await _showActionFeedback('✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPosle');
+      await _showActionFeedback(
+          '✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPosle');
     } else if (actionId == 'reject') {
       await V3ZahtevService.odbijAlternativu(zahtevId);
-      await _showActionFeedback('❌ Alternativa odbijena', 'Zahtev je postavljen na odbijeno.');
+      await _showActionFeedback(
+          '❌ Alternativa odbijena', 'Zahtev je postavljen na odbijeno.');
     } else {
-      await _showActionFeedback('⚠️ Akcija nije izvršena', 'Alternativni termin nije prosleđen u notifikaciji.');
+      await _showActionFeedback('⚠️ Akcija nije izvršena',
+          'Alternativni termin nije prosleđen u notifikaciji.');
     }
   } catch (e) {
     debugPrint('[onNotificationTap] Greška pri obradi akcije: $e');
@@ -473,14 +621,16 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
     if (!isSupabaseReady) {
       final ready = await _ensureSupabaseInitialized();
       if (!ready) {
-        debugPrint('⚠️ [Push] Ne mogu da otvorim putnik profil (Supabase nije spreman).');
+        debugPrint(
+            '⚠️ [Push] Ne mogu da otvorim putnik profil (Supabase nije spreman).');
         return;
       }
     }
 
     final nav = navigatorKey.currentState;
     if (nav == null) {
-      debugPrint('⚠️ [Push] Ne mogu da otvorim putnik profil (nema navigatora).');
+      debugPrint(
+          '⚠️ [Push] Ne mogu da otvorim putnik profil (nema navigatora).');
       return;
     }
 
@@ -505,19 +655,26 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
 
     // 3) Cache refresh fallback
     if (putnikData == null) {
-      await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
+      await V3MasterRealtimeManager.instance
+          .initV3()
+          .timeout(const Duration(seconds: 15));
       final tokenResult = await V3PushTokenProvider.getBestToken();
       final token = tokenResult?.token.trim() ?? '';
       if (token.isNotEmpty) {
-        putnikData = V3MasterRealtimeManager.instance.putniciCache.values.cast<Map<String, dynamic>?>().firstWhere(
-              (p) => p != null && (p['push_token'] == token || p['push_token_2'] == token),
+        putnikData = V3MasterRealtimeManager.instance.putniciCache.values
+            .cast<Map<String, dynamic>?>()
+            .firstWhere(
+              (p) =>
+                  p != null &&
+                  (p['push_token'] == token || p['push_token_2'] == token),
               orElse: () => null,
             );
       }
     }
 
     if (putnikData == null) {
-      debugPrint('⚠️ [Push] Ne mogu da otvorim putnik profil (putnik nije pronađen).');
+      debugPrint(
+          '⚠️ [Push] Ne mogu da otvorim putnik profil (putnik nije pronađen).');
       return;
     }
 
@@ -542,7 +699,8 @@ Future<void> _initAppServices() async {
     try {
       await _ensureSupabaseInitialized().timeout(const Duration(seconds: 3));
     } catch (e) {
-      debugPrint('⚠️ [main] Preskačem app services init (Supabase nije spreman): $e');
+      debugPrint(
+          '⚠️ [main] Preskačem app services init (Supabase nije spreman): $e');
       return;
     }
   }
@@ -558,7 +716,8 @@ Future<void> _initAppServices() async {
   // Učitaj nav_bar_type iz baze
   try {
     final settings = await V3AppSettingsService.loadGlobal(
-      selectColumns: 'nav_bar_type, nav_bar_type_next, nav_bar_type_effective_at',
+      selectColumns:
+          'nav_bar_type, nav_bar_type_next, nav_bar_type_effective_at',
     );
 
     final navType = resolveEffectiveNavBarType(
@@ -577,7 +736,8 @@ Future<void> _initAppServices() async {
 
   // Provera da li je dostupna nova verzija aplikacije
   unawaited(
-    V3AppUpdateService.refreshUpdateInfo().catchError((Object e) => debugPrint('⚠️ [main] App update info greška: $e')),
+    V3AppUpdateService.refreshUpdateInfo().catchError(
+        (Object e) => debugPrint('⚠️ [main] App update info greška: $e')),
   );
 }
 

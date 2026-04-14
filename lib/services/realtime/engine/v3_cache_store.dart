@@ -1,5 +1,6 @@
 class V3CacheStore {
-  final Map<String, Map<String, Map<String, dynamic>>> _tables = <String, Map<String, Map<String, dynamic>>>{};
+  final Map<String, Map<String, Map<String, dynamic>>> _tables =
+      <String, Map<String, Map<String, dynamic>>>{};
   final Map<String, int> _revisions = <String, int>{};
   final Map<String, DateTime?> _watermarks = <String, DateTime?>{};
 
@@ -65,7 +66,8 @@ class V3CacheStore {
     } else {
       var shouldKeep = true;
       if (hasActiveKey && newRecord.containsKey(activeKey)) {
-        shouldKeep = _asBool(newRecord[activeKey], defaultValue: true) || keepInactive;
+        shouldKeep =
+            _asBool(newRecord[activeKey], defaultValue: true) || keepInactive;
       }
 
       if (!shouldKeep) {
@@ -80,7 +82,8 @@ class V3CacheStore {
     }
 
     if (changed) {
-      _watermarks[table] = _maxTime(_watermarks[table], _extractTimestamp(newRecord));
+      _watermarks[table] =
+          _maxTime(_watermarks[table], _extractTimestamp(newRecord));
       _touch(table);
     }
 
@@ -172,10 +175,16 @@ class V3CacheStore {
     if (value is num) return value != 0;
     if (value is String) {
       final normalized = value.trim().toLowerCase();
-      if (normalized == 'true' || normalized == '1' || normalized == 'yes' || normalized == 'y') {
+      if (normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'y') {
         return true;
       }
-      if (normalized == 'false' || normalized == '0' || normalized == 'no' || normalized == 'n') {
+      if (normalized == 'false' ||
+          normalized == '0' ||
+          normalized == 'no' ||
+          normalized == 'n') {
         return false;
       }
     }

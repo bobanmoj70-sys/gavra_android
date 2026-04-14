@@ -40,10 +40,13 @@ class V3StyleHelper {
   // ─── COMMON BORDERS ────────────────────────────────────────────────────────
 
   static final Border whiteAlpha13Border = Border.all(color: whiteAlpha13);
-  static final Border whiteAlpha15Border = Border.all(color: whiteAlpha15, width: 1.2);
+  static final Border whiteAlpha15Border =
+      Border.all(color: whiteAlpha15, width: 1.2);
   static final Border whiteAlpha2Border = Border.all(color: whiteAlpha2);
-  static final Border whiteAlpha3Border = Border.all(color: whiteAlpha3, width: 1.2);
-  static final Border whiteAlpha5Border = Border.all(color: whiteAlpha5, width: 1.5);
+  static final Border whiteAlpha3Border =
+      Border.all(color: whiteAlpha3, width: 1.2);
+  static final Border whiteAlpha5Border =
+      Border.all(color: whiteAlpha5, width: 1.5);
 
   // ─── COMMON BOXSHADOWS ─────────────────────────────────────────────────────
 

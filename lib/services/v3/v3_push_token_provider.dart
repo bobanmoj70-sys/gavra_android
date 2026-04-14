@@ -14,7 +14,8 @@ class V3PushTokenResult {
 class V3PushTokenProvider {
   V3PushTokenProvider._();
 
-  static const MethodChannel _channel = MethodChannel('com.gavra013.gavra_android/push_token');
+  static const MethodChannel _channel =
+      MethodChannel('com.gavra013.gavra_android/push_token');
 
   static Future<V3PushTokenResult?> getBestToken() async {
     final fcmToken = await _tryGetFcmToken();

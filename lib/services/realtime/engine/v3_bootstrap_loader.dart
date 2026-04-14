@@ -23,14 +23,12 @@ class V3BootstrapLoader {
       'v3_vozila': (results[3] as List).cast<dynamic>(),
       'v3_zahtevi': (results[4] as List).cast<dynamic>(),
       'v3_gorivo': (results[5] as List).cast<dynamic>(),
-      'v3_gorivo_promene': (results[6] as List).cast<dynamic>(),
-      'v3_vozac_lokacije': (results[7] as List).cast<dynamic>(),
-      'v3_finansije': (results[8] as List).cast<dynamic>(),
-      'v3_racuni': (results[9] as List).cast<dynamic>(),
-      'v3_racuni_arhiva': (results[10] as List).cast<dynamic>(),
-      'v3_operativna_nedelja': (results[11] as List).cast<dynamic>(),
-      'v3_kapacitet_slots': (results[12] as List).cast<dynamic>(),
-      'v3_app_settings': (results[13] as List).cast<dynamic>(),
+      'v3_vozac_lokacije': (results[6] as List).cast<dynamic>(),
+      'v3_finansije': (results[7] as List).cast<dynamic>(),
+      'v3_racuni': (results[8] as List).cast<dynamic>(),
+      'v3_operativna_nedelja': (results[9] as List).cast<dynamic>(),
+      'v3_kapacitet_slots': (results[10] as List).cast<dynamic>(),
+      'v3_app_settings': (results[11] as List).cast<dynamic>(),
     };
   }
 
@@ -44,17 +42,20 @@ class V3BootstrapLoader {
     switch (table) {
       case 'v3_adrese':
       case 'v3_vozila':
-      case 'v3_gorivo':
-      case 'v3_finansije':
-      case 'v3_racuni':
-      case 'v3_racuni_arhiva':
       case 'v3_kapacitet_slots':
         response = await _client.from(table).select().gte('updated_at', iso);
+        break;
+      case 'v3_racuni':
+      case 'v3_gorivo':
+      case 'v3_finansije':
+      case 'v3_app_settings':
+        response = await _client.from(table).select();
         break;
       case 'v3_auth_vozaci':
         response = await _client
             .from('v3_auth')
-            .select('id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
+            .select(
+                'id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
             .eq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
@@ -73,10 +74,8 @@ class V3BootstrapLoader {
                 'id, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at')
             .gte('updated_at', iso);
         break;
-      case 'v3_gorivo_promene':
       case 'v3_vozac_lokacije':
       case 'v3_operativna_nedelja':
-      case 'v3_app_settings':
         response = await _client.from(table).select().gte('updated_at', iso);
         break;
       default:
@@ -85,7 +84,10 @@ class V3BootstrapLoader {
 
     if (response is! List) return <Map<String, dynamic>>[];
 
-    final rows = response.whereType<Map<String, dynamic>>().map(Map<String, dynamic>.from).toList(growable: false);
+    final rows = response
+        .whereType<Map<String, dynamic>>()
+        .map(Map<String, dynamic>.from)
+        .toList(growable: false);
     if (table == 'v3_auth_vozaci') {
       return rows.map(_mapAuthToLegacyVozac).toList(growable: false);
     }
@@ -129,7 +131,8 @@ class V3BootstrapLoader {
     };
   }
 
-  Future<Map<String, List<Map<String, dynamic>>>> loadDeltaAll(Map<String, DateTime?> watermarks) async {
+  Future<Map<String, List<Map<String, dynamic>>>> loadDeltaAll(
+      Map<String, DateTime?> watermarks) async {
     final out = <String, List<Map<String, dynamic>>>{};
 
     for (final table in V3RealtimeTableRegistry.defaults) {

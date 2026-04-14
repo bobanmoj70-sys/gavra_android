@@ -42,7 +42,8 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   @override
   void didUpdateWidget(covariant V3VozacStatusWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.vozacId != widget.vozacId || !_sameWaypoints(oldWidget.putnikWaypoints, widget.putnikWaypoints)) {
+    if (oldWidget.vozacId != widget.vozacId ||
+        !_sameWaypoints(oldWidget.putnikWaypoints, widget.putnikWaypoints)) {
       _refreshEta();
     }
   }
@@ -74,20 +75,25 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
     final requestId = ++_etaRequestId;
 
     if (widget.putnikWaypoints.isEmpty) {
-      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId)
+        setState(() => _etaVreme = null);
       return;
     }
 
-    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(widget.vozacId, onlyActive: true);
+    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(
+        widget.vozacId,
+        onlyActive: true);
     if (lokacijaVozaca == null) {
-      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId)
+        setState(() => _etaVreme = null);
       return;
     }
 
     final vozacLat = _toDouble(lokacijaVozaca['lat']);
     final vozacLng = _toDouble(lokacijaVozaca['lng']);
     if (vozacLat == null || vozacLng == null) {
-      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId)
+        setState(() => _etaVreme = null);
       return;
     }
 
@@ -96,12 +102,14 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
       ...widget.putnikWaypoints,
     ];
 
-    final durationMin = await V3OsrmService.getEtaMinutes(waypoints: allWaypoints);
+    final durationMin =
+        await V3OsrmService.getEtaMinutes(waypoints: allWaypoints);
 
     if (requestId != _etaRequestId) return;
 
     if (durationMin == null) {
-      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId)
+        setState(() => _etaVreme = null);
       return;
     }
 

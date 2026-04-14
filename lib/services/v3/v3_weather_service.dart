@@ -24,7 +24,9 @@ class V3WeatherSnapshot {
 
   String get compactLabel {
     final temp = '${temperatureC.round()}°';
-    final rain = precipitationProbability != null ? ' · ${precipitationProbability}%' : '';
+    final rain = precipitationProbability != null
+        ? ' · ${precipitationProbability}%'
+        : '';
     return '$icon $temp$rain';
   }
 }
@@ -39,9 +41,11 @@ class V3WeatherService {
     'VS': const _GradConfig(lat: 45.1190, lng: 21.3030, name: 'Vršac'),
   };
 
-  static final Map<String, V3WeatherSnapshot> _cache = <String, V3WeatherSnapshot>{};
+  static final Map<String, V3WeatherSnapshot> _cache =
+      <String, V3WeatherSnapshot>{};
 
-  static Future<Map<String, V3WeatherSnapshot>> fetchBcVs({bool forceRefresh = false}) async {
+  static Future<Map<String, V3WeatherSnapshot>> fetchBcVs(
+      {bool forceRefresh = false}) async {
     final results = <String, V3WeatherSnapshot>{};
     for (final grad in _gradConfig.keys) {
       final snapshot = await fetchByGrad(grad, forceRefresh: forceRefresh);
@@ -52,14 +56,17 @@ class V3WeatherService {
     return results;
   }
 
-  static Future<V3WeatherSnapshot?> fetchByGrad(String grad, {bool forceRefresh = false}) async {
+  static Future<V3WeatherSnapshot?> fetchByGrad(String grad,
+      {bool forceRefresh = false}) async {
     final normalized = grad.trim().toUpperCase();
     final config = _gradConfig[normalized];
     if (config == null) return null;
 
     final now = DateTime.now();
     final cached = _cache[normalized];
-    if (!forceRefresh && cached != null && now.difference(cached.fetchedAt) < _cacheTtl) {
+    if (!forceRefresh &&
+        cached != null &&
+        now.difference(cached.fetchedAt) < _cacheTtl) {
       return cached;
     }
 
@@ -75,7 +82,8 @@ class V3WeatherService {
 
       final response = await http.get(uri).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) {
-        debugPrint('[V3WeatherService] status=${response.statusCode} body=${response.body}');
+        debugPrint(
+            '[V3WeatherService] status=${response.statusCode} body=${response.body}');
         return cached;
       }
 
@@ -88,7 +96,9 @@ class V3WeatherService {
       final currentTemp = (current['temperature_2m'] as num?)?.toDouble();
       final weatherCode = (current['weather_code'] as num?)?.toInt();
       final currentTimeRaw = current['time']?.toString();
-      if (currentTemp == null || weatherCode == null || currentTimeRaw == null) {
+      if (currentTemp == null ||
+          weatherCode == null ||
+          currentTimeRaw == null) {
         return cached;
       }
 
@@ -114,15 +124,19 @@ class V3WeatherService {
     }
   }
 
-  static int? _extractPrecipitation(Map<String, dynamic> data, String currentTimeRaw) {
+  static int? _extractPrecipitation(
+      Map<String, dynamic> data, String currentTimeRaw) {
     final hourly = data['hourly'];
     if (hourly is! Map<String, dynamic>) return null;
 
     final times = hourly['time'];
     final precip = hourly['precipitation_probability'];
-    if (times is! List || precip is! List || times.isEmpty || precip.isEmpty) return null;
+    if (times is! List || precip is! List || times.isEmpty || precip.isEmpty)
+      return null;
 
-    final currentHour = currentTimeRaw.length >= 13 ? currentTimeRaw.substring(0, 13) : currentTimeRaw;
+    final currentHour = currentTimeRaw.length >= 13
+        ? currentTimeRaw.substring(0, 13)
+        : currentTimeRaw;
     int index = times.indexWhere((t) {
       final value = t?.toString() ?? '';
       return value.length >= 13 && value.substring(0, 13) == currentHour;
@@ -144,9 +158,12 @@ class V3WeatherService {
     if (code == 2) return const _WeatherView('⛅', 'Delimično oblačno');
     if (code == 3) return const _WeatherView('☁️', 'Oblačno');
     if ({45, 48}.contains(code)) return const _WeatherView('🌫️', 'Magla');
-    if ({51, 53, 55, 56, 57}.contains(code)) return const _WeatherView('🌦️', 'Rominjanje');
-    if ({61, 63, 65, 66, 67, 80, 81, 82}.contains(code)) return const _WeatherView('🌧️', 'Kiša');
-    if ({71, 73, 75, 77, 85, 86}.contains(code)) return const _WeatherView('❄️', 'Sneg');
+    if ({51, 53, 55, 56, 57}.contains(code))
+      return const _WeatherView('🌦️', 'Rominjanje');
+    if ({61, 63, 65, 66, 67, 80, 81, 82}.contains(code))
+      return const _WeatherView('🌧️', 'Kiša');
+    if ({71, 73, 75, 77, 85, 86}.contains(code))
+      return const _WeatherView('❄️', 'Sneg');
     if ({95, 96, 99}.contains(code)) return const _WeatherView('⛈️', 'Oluja');
     return const _WeatherView('🌡️', 'Vreme');
   }

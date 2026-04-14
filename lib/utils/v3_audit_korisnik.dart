@@ -12,7 +12,8 @@ class V3AuditKorisnik {
   static String? extractUuid(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
 
-    final candidate = raw.contains(':') ? raw.split(':').last.trim() : raw.trim();
+    final candidate =
+        raw.contains(':') ? raw.split(':').last.trim() : raw.trim();
     if (_uuidRegex.hasMatch(candidate)) return candidate.toLowerCase();
 
     return null;
@@ -23,6 +24,8 @@ class V3AuditKorisnik {
     String? fallback,
     bool useCurrentUser = true,
   }) {
-    return extractUuid(raw) ?? extractUuid(fallback) ?? (useCurrentUser ? currentUserId() : null);
+    return extractUuid(raw) ??
+        extractUuid(fallback) ??
+        (useCurrentUser ? currentUserId() : null);
   }
 }

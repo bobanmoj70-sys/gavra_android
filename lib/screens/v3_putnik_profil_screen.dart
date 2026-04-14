@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -42,13 +41,14 @@ class V3PutnikProfilScreen extends StatefulWidget {
   State<V3PutnikProfilScreen> createState() => _V3PutnikProfilScreenState();
 }
 
-class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with WidgetsBindingObserver {
+class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen>
+    with WidgetsBindingObserver {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
+  static const String _biometricPromptChoicePrefix =
+      'v3_biometric_prompt_choice_';
 
   late Map<String, dynamic> _putnikData;
   Map<String, String> _activeVozacByTerminId = const {};
-  PermissionStatus _notifStatus = PermissionStatus.granted;
   // Operativni termini po danu
   // key = dan kratica npr 'pon', value = lista termina (BC i VS)
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
@@ -84,8 +84,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final weekRange = V3DanHelper.schedulingWeekRange();
     final ponedeljak = weekRange.start;
     final petak = weekRange.end;
-    final od = '${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')}.';
-    final doDatuma = '${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}.';
+    final od =
+        '${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')}.';
+    final doDatuma =
+        '${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}.';
     return '$od - $doDatuma';
   }
 
@@ -94,7 +96,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
-    _checkNotifPermission();
     _refresh();
     _refreshWeather(forceRefresh: true);
     _weatherTimer = Timer.periodic(const Duration(minutes: 15), (_) {
@@ -103,8 +104,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Pratimo promjene cache-a
     V3StreamUtils.subscribe<int>(
       key: 'putnik_profil_cache',
-      stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_auth', 'v3_zahtevi', 'v3_operativna_nedelja', 'v3_app_settings']),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+        'v3_auth',
+        'v3_zahtevi',
+        'v3_operativna_nedelja',
+        'v3_app_settings'
+      ]),
       onData: (_) {
         if (mounted) _refresh();
       },
@@ -122,26 +127,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkNotifPermission();
       _refreshWeather();
     }
   }
 
   Future<void> _refreshWeather({bool forceRefresh = false}) async {
-    final snapshots = await V3WeatherService.fetchBcVs(forceRefresh: forceRefresh);
+    final snapshots =
+        await V3WeatherService.fetchBcVs(forceRefresh: forceRefresh);
     if (!mounted || snapshots.isEmpty) return;
     V3StateUtils.safeSetState(this, () => _weatherByGrad = snapshots);
-  }
-
-  Future<void> _checkNotifPermission() async {
-    final status = await Permission.notification.status;
-    V3StateUtils.safeSetState(this, () => _notifStatus = status);
-  }
-
-  Future<void> _requestNotifPermission() async {
-    final status = await Permission.notification.request();
-    V3StateUtils.safeSetState(this, () => _notifStatus = status);
-    if (status.isPermanentlyDenied) await openAppSettings();
   }
 
   void _refresh() {
@@ -157,12 +151,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final rm = V3MasterRealtimeManager.instance;
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
-      final datumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dan, anchor: anchor);
+      final datumIso =
+          V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dan, anchor: anchor);
       final infos = <_ZahtevInfo>[];
 
       for (final grad in const ['BC', 'VS']) {
         final opRows = rm.operativnaNedeljaCache.values.where((e) {
-          final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(e));
+          final status = V3StatusFilters.normalizeStatus(
+              V3StatusFilters.deriveOperativnaStatus(e));
           return (e['created_by']?.toString() ?? '') == putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               (e['grad']?.toString().toUpperCase() ?? '') == grad &&
@@ -171,7 +167,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
         if (opRows.isEmpty) {
           final pendingRows = rm.zahteviCache.values.where((z) {
-            final status = V3StatusFilters.normalizeStatus(z['status']?.toString());
+            final status =
+                V3StatusFilters.normalizeStatus(z['status']?.toString());
             return (z['created_by']?.toString() ?? '') == putnikId &&
                 (z['datum'] as String? ?? '').startsWith(datumIso) &&
                 (z['grad']?.toString().toUpperCase() ?? '') == grad &&
@@ -181,13 +178,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           if (pendingRows.isEmpty) continue;
 
           pendingRows.sort((a, b) {
-            final aTs = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-            final bTs = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final aTs = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            final bTs = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+                DateTime.fromMillisecondsSinceEpoch(0);
             return bTs.compareTo(aTs);
           });
 
           final pending = pendingRows.first;
-          final trazeniVreme = _normalizeValidTime(pending['trazeni_polazak_at']?.toString()) ?? '—';
+          final trazeniVreme =
+              _normalizeValidTime(pending['trazeni_polazak_at']?.toString()) ??
+                  '—';
 
           infos.add(_ZahtevInfo(
             grad: grad,
@@ -202,9 +203,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         Map<String, dynamic>? selected;
         int selectedRank = -1;
         for (final row in opRows) {
-          final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(row));
+          final status = V3StatusFilters.normalizeStatus(
+              V3StatusFilters.deriveOperativnaStatus(row));
           if (V3StatusFilters.isRejected(status)) continue;
-          final rank = _statusPriorityForCell(status) + ((row['pokupljen_at'] != null) ? 10 : 0);
+          final rank = _statusPriorityForCell(status) +
+              ((row['pokupljen_at'] != null) ? 10 : 0);
           if (rank > selectedRank) {
             selected = row;
             selectedRank = rank;
@@ -213,8 +216,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
         if (selected == null) continue;
 
-        final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(selected));
-        final opPolazakAt = _normalizeValidTime(selected['polazak_at']?.toString());
+        final status = V3StatusFilters.normalizeStatus(
+            V3StatusFilters.deriveOperativnaStatus(selected));
+        final opPolazakAt =
+            _normalizeValidTime(selected['polazak_at']?.toString());
         final displayVreme = opPolazakAt ?? '—';
 
         infos.add(_ZahtevInfo(
@@ -229,7 +234,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final bestByGrad = <String, _ZahtevInfo>{};
       for (final info in infos) {
         final current = bestByGrad[info.grad];
-        if (current == null || _statusPriorityForCell(info.status) > _statusPriorityForCell(current.status)) {
+        if (current == null ||
+            _statusPriorityForCell(info.status) >
+                _statusPriorityForCell(current.status)) {
           bestByGrad[info.grad] = info;
         }
       }
@@ -282,7 +289,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         _activeVozacByTerminId = next;
       });
     } catch (e) {
-      debugPrint('[V3PutnikProfilScreen] _reloadTrenutnaDodelaForPutnik error: $e');
+      debugPrint(
+          '[V3PutnikProfilScreen] _reloadTrenutnaDodelaForPutnik error: $e');
     }
   }
 
@@ -301,15 +309,20 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
 
     if (novoVreme != null && validNovoVreme == null) {
-      if (mounted) V3AppSnackBar.warning(context, V3PutnikProfilMessages.invalidTermTime);
+      if (mounted)
+        V3AppSnackBar.warning(context, V3PutnikProfilMessages.invalidTermTime);
       return;
     }
 
-    final tipPutnika = (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
-    if (validNovoVreme != null && tipPutnika == 'dnevni' && !_isDnevniDatumAllowed(datumPolaska)) {
+    final tipPutnika =
+        (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
+    if (validNovoVreme != null &&
+        tipPutnika == 'dnevni' &&
+        !_isDnevniDatumAllowed(datumPolaska)) {
       final allowedLabel = _allowedDnevniDateLabel();
       if (mounted) {
-        V3AppSnackBar.info(context, V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
+        V3AppSnackBar.info(context,
+            V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
       }
       return;
     }
@@ -324,12 +337,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           grad: grad,
           otkazaoPutnikId: putnikId,
         );
-        if (mounted) V3AppSnackBar.success(context, V3PutnikProfilMessages.tripCanceled(dan, grad));
+        if (mounted)
+          V3AppSnackBar.success(
+              context, V3PutnikProfilMessages.tripCanceled(dan, grad));
       } else {
         // Sačuvaj izmenu po kontekstu (putnik + dan + grad)
-        final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
+        final putnikCache =
+            V3MasterRealtimeManager.instance.putniciCache[putnikId];
         final tipPutnika = putnikCache?['tip_putnika'] as String? ?? 'dnevni';
-        final brojMesta = tipPutnika == 'posiljka' ? 0 : 1; // posiljka ne zauzima putničko mesto
+        final brojMesta = tipPutnika == 'posiljka'
+            ? 0
+            : 1; // posiljka ne zauzima putničko mesto
         await V3ZahtevService.sacuvajPolazakPutnikaPoKontekstu(
           putnikId: putnikId,
           datum: datumPolaska,
@@ -340,7 +358,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           updatedBy: V3AuditKorisnik.normalize(putnikId),
         );
         if (mounted) {
-          V3AppSnackBar.success(context, V3PutnikProfilMessages.requestReceived);
+          V3AppSnackBar.success(
+              context, V3PutnikProfilMessages.requestReceived);
         }
       }
     } catch (e) {
@@ -348,8 +367,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     }
   }
 
-  Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
-    final tipPutnika = (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
+  Future<void> _showTimePicker(
+      BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
+    final tipPutnika =
+        (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
     final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
       dan,
       anchor: V3DanHelper.schedulingWeekAnchor(),
@@ -358,58 +379,71 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     if (tipPutnika == 'dnevni' && !_isDnevniDatumAllowed(datumPolaska)) {
       final allowedLabel = _allowedDnevniDateLabel();
       if (mounted) {
-        V3AppSnackBar.info(ctx, V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
+        V3AppSnackBar.info(
+            ctx, V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
       }
       return;
     }
 
     // Scenario 2: zahtev u obradi — blokirati sve akcije
     if (V3StatusFilters.isPending(info?.status)) {
-      if (mounted) V3AppSnackBar.info(ctx, V3PutnikProfilMessages.requestPendingDispatcher);
+      if (mounted)
+        V3AppSnackBar.info(
+            ctx, V3PutnikProfilMessages.requestPendingDispatcher);
       return;
     }
     // Scenario 6: putnik je već pokupljen — ne može da otkazuje
-    if (V3StatusFilters.isActionLocked(status: info?.status, pokupljen: info?.pokupljen ?? false)) {
-      if (mounted) V3AppSnackBar.info(ctx, V3PutnikProfilMessages.alreadyPickedUp);
+    if (V3StatusFilters.isActionLocked(
+        status: info?.status, pokupljen: info?.pokupljen ?? false)) {
+      if (mounted)
+        V3AppSnackBar.info(ctx, V3PutnikProfilMessages.alreadyPickedUp);
       return;
     }
     // Scenario 5: zaključavanje 15 min pre polaska
     final datumIso = V3DanHelper.toIsoDate(datumPolaska);
-    final neradanRazlog = getNeradanDanRazlog(datumIso: datumIso, grad: grad.toLowerCase());
+    final neradanRazlog =
+        getNeradanDanRazlog(datumIso: datumIso, grad: grad.toLowerCase());
     if (neradanRazlog != null) {
       if (mounted) {
-        V3AppSnackBar.info(ctx, V3PutnikProfilMessages.nonWorkingDay(datumIso, neradanRazlog));
+        V3AppSnackBar.info(
+            ctx, V3PutnikProfilMessages.nonWorkingDay(datumIso, neradanRazlog));
       }
       return;
     }
 
     final now = DateTime.now();
     final dayFullName = V3DanHelper.fullName(datumPolaska);
-    final vremena = getRasporedVremena(grad.toLowerCase(), navBarTypeNotifier.value, day: dayFullName)
+    final vremena = getRasporedVremena(
+            grad.toLowerCase(), navBarTypeNotifier.value,
+            day: dayFullName)
         .where((v) => _normalizeValidTime(v) != null)
         .toList();
     final currentVreme = info?.vreme;
-    final hasActive =
-        info != null && !V3StatusFilters.isCanceledOrRejected(info.status) && !V3StatusFilters.isOfferLike(info.status);
+    final hasActive = info != null &&
+        !V3StatusFilters.isCanceledOrRejected(info.status) &&
+        !V3StatusFilters.isOfferLike(info.status);
     // Provera da li putnik ima drugu adresu za ovaj grad
     final putnikId = _putnikData['id']?.toString();
     final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
-    final hasSecondary =
-        grad == 'BC' ? (putnikCache?['adresa_bc_id_2'] != null) : (putnikCache?['adresa_vs_id_2'] != null);
+    final hasSecondary = grad == 'BC'
+        ? (putnikCache?['adresa_bc_id_2'] != null)
+        : (putnikCache?['adresa_vs_id_2'] != null);
     String? secondaryId;
     if (grad == 'BC') {
       secondaryId = putnikCache?['adresa_bc_id_2'] as String?;
     } else {
       secondaryId = putnikCache?['adresa_vs_id_2'] as String?;
     }
-    final secondaryNaziv = V3AdresaService.getAdresaById(secondaryId)?.naziv ?? 'Druga adresa';
+    final secondaryNaziv =
+        V3AdresaService.getAdresaById(secondaryId)?.naziv ?? 'Druga adresa';
     bool koristiSekundarnu = info?.koristiSekundarnu ?? false;
     await showDialog<void>(
       context: ctx,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
           backgroundColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: V3ContainerUtils.gradientContainer(
             width: 320,
             gradient: V3ThemeManager().currentGradient,
@@ -424,12 +458,16 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     children: [
                       Text(
                         grad == 'BC' ? '🏙️ BC polazak' : '🌆 VS polazak',
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         _getDanLabel(dan),
-                        style: TextStyle(color: V3StyleHelper.whiteAlpha5, fontSize: 12),
+                        style: TextStyle(
+                            color: V3StyleHelper.whiteAlpha5, fontSize: 12),
                       ),
                     ],
                   ),
@@ -440,7 +478,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                     child: InkWell(
-                      onTap: () => setDialogState(() => koristiSekundarnu = !koristiSekundarnu),
+                      onTap: () => setDialogState(
+                          () => koristiSekundarnu = !koristiSekundarnu),
                       borderRadius: BorderRadius.circular(8),
                       child: V3ContainerUtils.styledContainer(
                         padding: const EdgeInsets.all(10),
@@ -452,7 +491,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         child: Row(
                           children: [
                             Icon(
-                              koristiSekundarnu ? Icons.location_on : Icons.location_on_outlined,
+                              koristiSekundarnu
+                                  ? Icons.location_on
+                                  : Icons.location_on_outlined,
                               color: Colors.white54,
                               size: 20,
                             ),
@@ -462,7 +503,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    koristiSekundarnu ? 'Druga adresa' : 'Primarna adresa',
+                                    koristiSekundarnu
+                                        ? 'Druga adresa'
+                                        : 'Primarna adresa',
                                     style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 11,
@@ -472,14 +515,22 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                     koristiSekundarnu
                                         ? secondaryNaziv
                                         : (grad == 'BC'
-                                            ? (V3AdresaService.getAdresaById(putnikCache?['adresa_bc_id'] as String?)
+                                            ? (V3AdresaService.getAdresaById(
+                                                        putnikCache?[
+                                                                'adresa_bc_id']
+                                                            as String?)
                                                     ?.naziv ??
                                                 'Glavna adresa')
-                                            : (V3AdresaService.getAdresaById(putnikCache?['adresa_vs_id'] as String?)
+                                            : (V3AdresaService.getAdresaById(
+                                                        putnikCache?[
+                                                                'adresa_vs_id']
+                                                            as String?)
                                                     ?.naziv ??
                                                 'Glavna adresa')),
                                     style: TextStyle(
-                                      color: koristiSekundarnu ? Colors.greenAccent : Colors.white,
+                                      color: koristiSekundarnu
+                                          ? Colors.greenAccent
+                                          : Colors.white,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -491,9 +542,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             ),
                             Switch(
                               value: koristiSekundarnu,
-                              onChanged: (val) => setDialogState(() => koristiSekundarnu = val),
+                              onChanged: (val) =>
+                                  setDialogState(() => koristiSekundarnu = val),
                               activeColor: Colors.orange,
-                              activeTrackColor: Colors.orange.withValues(alpha: 0.3),
+                              activeTrackColor:
+                                  Colors.orange.withValues(alpha: 0.3),
                             ),
                           ],
                         ),
@@ -513,7 +566,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           child: V3ButtonUtils.outlinedButton(
                             onPressed: () async {
                               Navigator.of(dialogCtx).pop();
-                              await _updatePolazak(dan, grad, null, trenutniInfo: info);
+                              await _updatePolazak(dan, grad, null,
+                                  trenutniInfo: info);
                             },
                             text: 'Otkaži termin',
                             icon: Icons.cancel_outlined,
@@ -524,15 +578,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                           ),
                         ),
                       if (hasActive) const SizedBox(height: 10),
-                      if (hasActive) const Divider(color: Colors.white24, height: 1),
+                      if (hasActive)
+                        const Divider(color: Colors.white24, height: 1),
                       if (hasActive) const SizedBox(height: 10),
                       // Wrap grid
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: vremena.map((vreme) {
-                          final isSelected =
-                              currentVreme != null && V3StringUtils.safeSubstringTime(currentVreme) == vreme;
+                          final isSelected = currentVreme != null &&
+                              V3StringUtils.safeSubstringTime(currentVreme) ==
+                                  vreme;
                           // Scenario 5: zaključaj dugme 15 min pre polaska
                           final parts = vreme.split(':');
                           final polazak = DateTime(
@@ -542,25 +598,33 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                             int.parse(parts[0]),
                             int.parse(parts[1]),
                           );
-                          final isLocked = now.isAfter(polazak.subtract(const Duration(minutes: 15)));
+                          final isLocked = now.isAfter(
+                              polazak.subtract(const Duration(minutes: 15)));
                           return SizedBox(
                             width: 82,
                             child: OutlinedButton(
                               onPressed: isLocked
                                   ? () async {
                                       Navigator.of(dialogCtx).pop();
-                                      final unlockAt = V3DanHelper.nextSchedulingUnlock(now: now);
+                                      final unlockAt =
+                                          V3DanHelper.nextSchedulingUnlock(
+                                              now: now);
                                       final unlockStr =
                                           '${unlockAt.day}.${unlockAt.month}.${unlockAt.year}. ${unlockAt.hour.toString().padLeft(2, '0')}:${unlockAt.minute.toString().padLeft(2, '0')}';
-                                      await Future<void>.delayed(const Duration(milliseconds: 120));
+                                      await Future<void>.delayed(
+                                          const Duration(milliseconds: 120));
                                       if (!mounted) return;
                                       V3AppSnackBar.info(
-                                          ctx, V3PutnikProfilMessages.schedulingLocked(vreme, unlockStr));
+                                          ctx,
+                                          V3PutnikProfilMessages
+                                              .schedulingLocked(
+                                                  vreme, unlockStr));
                                     }
                                   : () async {
                                       Navigator.of(dialogCtx).pop();
                                       await _updatePolazak(dan, grad, vreme,
-                                          trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
+                                          trenutniInfo: info,
+                                          koristiSekundarnu: koristiSekundarnu);
                                     },
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: isLocked
@@ -576,13 +640,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                           : Colors.white60,
                                   width: isSelected ? 2.5 : 1.5,
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
                               ),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isSelected) const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                                  if (isSelected)
+                                    const Icon(Icons.check_circle,
+                                        color: Colors.greenAccent, size: 14),
                                   Text(
                                     vreme,
                                     style: TextStyle(
@@ -591,7 +659,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                           : isSelected
                                               ? Colors.white
                                               : Colors.white,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -625,7 +695,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final current = now ?? DateTime.now();
     final today = DateTime(current.year, current.month, current.day);
     final tomorrow = today.add(const Duration(days: 1));
-    final target = DateTime(datumPolaska.year, datumPolaska.month, datumPolaska.day);
+    final target =
+        DateTime(datumPolaska.year, datumPolaska.month, datumPolaska.day);
 
     if (current.hour < 16) {
       return target == today;
@@ -670,10 +741,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
 
-    final phoneRaw = (_putnikData['telefon_1'] ?? _putnikData['telefon'] ?? '').toString();
+    final phoneRaw =
+        (_putnikData['telefon_1'] ?? _putnikData['telefon'] ?? '').toString();
     final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
     if (normalizedPhone.isNotEmpty) {
-      await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
+      await _secureStorage.delete(
+          key: '$_biometricPromptChoicePrefix$normalizedPhone');
     }
 
     await V3BiometricService().clearCredentials();
@@ -697,9 +770,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final rm = V3MasterRealtimeManager.instance;
     final operativniTermini = rm.operativnaAssignedCache.values
         .where((r) => (r['created_by']?.toString() ?? '') == putnikId)
-        .where((r) => !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r)))
-        .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
-        .where((r) => V3StatusFilters.isApproved(V3StatusFilters.deriveOperativnaStatus(r)))
+        .where((r) => !V3StatusFilters.isCanceledOrRejected(
+            V3StatusFilters.deriveOperativnaStatus(r)))
+        .where((r) =>
+            ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) ==
+            'tracking')
+        .where((r) => V3StatusFilters.isApproved(
+            V3StatusFilters.deriveOperativnaStatus(r)))
         .toList();
 
     final now = DateTime.now();
@@ -711,7 +788,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final vozacId = _activeVozacByTerminId[terminId];
       if (vozacId == null || vozacId.isEmpty) continue;
 
-      final vreme = V3StringUtils.safeSubstringTime((row['polazak_at'] as String?) ?? '');
+      final vreme =
+          V3StringUtils.safeSubstringTime((row['polazak_at'] as String?) ?? '');
       if (vreme.isEmpty) continue;
 
       final datum = DateTime.tryParse(row['datum'] as String? ?? '');
@@ -723,7 +801,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final minute = int.tryParse(parts[1]);
       if (hour == null || minute == null) continue;
 
-      final polazak = DateTime(datum.year, datum.month, datum.day, hour, minute);
+      final polazak =
+          DateTime(datum.year, datum.month, datum.day, hour, minute);
       final krajPrikaza = polazak.add(const Duration(hours: 1));
 
       if (now.isAfter(krajPrikaza)) continue;
@@ -767,15 +846,20 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     } else if (grad == 'BC') {
       final adresaBc1 = _putnikData['adresa_bc_id'] as String?;
       final adresaBc2 = _putnikData['adresa_bc_id_2'] as String?;
-      mojAdresaId = koristiSekundarnu ? (adresaBc2 ?? adresaBc1) : (adresaBc1 ?? adresaBc2);
+      mojAdresaId = koristiSekundarnu
+          ? (adresaBc2 ?? adresaBc1)
+          : (adresaBc1 ?? adresaBc2);
     } else if (grad == 'VS') {
       final adresaVs1 = _putnikData['adresa_vs_id'] as String?;
       final adresaVs2 = _putnikData['adresa_vs_id_2'] as String?;
-      mojAdresaId = koristiSekundarnu ? (adresaVs2 ?? adresaVs1) : (adresaVs1 ?? adresaVs2);
+      mojAdresaId = koristiSekundarnu
+          ? (adresaVs2 ?? adresaVs1)
+          : (adresaVs1 ?? adresaVs2);
     }
 
     final mojaAdresa = V3AdresaService.getAdresaById(mojAdresaId);
-    if (mojaAdresa == null || !mojaAdresa.hasValidCoordinates) return const SizedBox.shrink();
+    if (mojaAdresa == null || !mojaAdresa.hasValidCoordinates)
+      return const SizedBox.shrink();
 
     // Pronađi putnike koji su pre ovog na ruti (manji route_order) i resolvi njihove adrese
     final putnikWaypoints = <({double lat, double lng})>[];
@@ -845,9 +929,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final putnikId = _putnikData['id']?.toString();
     final tip = _putnikData['tip_putnika'] as String? ?? 'radnik';
     final cenaPoDanu = (_putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
-    final cenaPoPokupljenju = (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+    final cenaPoPokupljenju =
+        (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
     final koristiCenuPoPokupljenju = tip == 'dnevni' || tip == 'posiljka';
-    final efektivnaCena = koristiCenuPoPokupljenju ? cenaPoPokupljenju : cenaPoDanu;
+    final efektivnaCena =
+        koristiCenuPoPokupljenju ? cenaPoPokupljenju : cenaPoDanu;
     final cenaInfo = efektivnaCena > 0
         ? '${koristiCenuPoPokupljenju ? 'Cena po pokupljenju' : 'Cena po danu'}: ${efektivnaCena.toStringAsFixed(0)} RSD'
         : null;
@@ -863,7 +949,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaBcNaziv2 = V3AdresaService.getNazivAdreseById(adresaBcId2);
     final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
     final stats = V3PutnikStatistikaService.getTekuciMesec(putnikId ?? '');
-    final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId ?? '');
+    final ukupanDug =
+        V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId ?? '');
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
     final nedeljaInfo = 'Aktivna nedelja: $nedeljaOpseg';
     return ValueListenableBuilder<ThemeData>(
@@ -882,10 +969,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     children: [
                       // Forced update gate
                       const V3UpdateBanner(),
-                      // ── NOTIFIKACIJE UPOZORENJE ──────────────────────────
-                      if (_notifStatus.isDenied || _notifStatus.isPermanentlyDenied)
-                        _NotifBanner(onEnable: _requestNotifPermission),
-                      const SizedBox(height: 8),
                       // ── HEADER CARD ──────────────────────────────────────
                       _buildHeaderCard(
                         tip: tip,
@@ -901,7 +984,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       // ── STATUS WIDGET ────────────────────────────────────
                       _buildVozacEtaWidgets(),
                       const SizedBox(height: 10),
-                      _buildStatistikaCard(tip: tip, stats: stats, cenaInfo: cenaInfo, ukupanDug: ukupanDug),
+                      _buildStatistikaCard(
+                          tip: tip,
+                          stats: stats,
+                          cenaInfo: cenaInfo,
+                          ukupanDug: ukupanDug),
                       const SizedBox(height: 10),
                       _buildDetaljneStatistikeSection(
                         putnikId: putnikId,
@@ -986,7 +1073,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   await V3ThemeManager().nextTheme();
                   V3StateUtils.safeSetState(this, () {});
                   if (!mounted) return;
-                  V3AppSnackBar.info(context, V3PutnikProfilMessages.themeChanged);
+                  V3AppSnackBar.info(
+                      context, V3PutnikProfilMessages.themeChanged);
                 },
               ),
               Expanded(
@@ -1016,7 +1104,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             spacing: 8,
             runSpacing: 6,
             children: [
-              if (tip.toLowerCase() != 'radnik') _Badge(label: tipLabel, color: avatarColors[0]),
+              if (tip.toLowerCase() != 'radnik')
+                _Badge(label: tipLabel, color: avatarColors[0]),
             ],
           ),
           if (telefon.isNotEmpty || telefon2.isNotEmpty) ...[
@@ -1028,7 +1117,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    [if (telefon.isNotEmpty) telefon, if (telefon2.isNotEmpty) telefon2].join('  •  '),
+                    [
+                      if (telefon.isNotEmpty) telefon,
+                      if (telefon2.isNotEmpty) telefon2
+                    ].join('  •  '),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: V3StyleHelper.whiteAlpha9,
@@ -1056,29 +1148,39 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          const Icon(Icons.location_city, color: Colors.white38, size: 12),
+                          const Icon(Icons.location_city,
+                              color: Colors.white38, size: 12),
                           const SizedBox(width: 4),
                           Text('Bela Crkva',
                               style: TextStyle(
-                                  color: V3StyleHelper.whiteAlpha45, fontSize: 14, fontWeight: FontWeight.bold)),
+                                  color: V3StyleHelper.whiteAlpha45,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 3),
                         Row(children: [
-                          const Icon(Icons.home, color: Colors.white60, size: 14),
+                          const Icon(Icons.home,
+                              color: Colors.white60, size: 14),
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(adresaBcNaziv,
-                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
+                                  style: TextStyle(
+                                      color: V3StyleHelper.whiteAlpha9,
+                                      fontSize: 14),
                                   overflow: TextOverflow.ellipsis)),
                         ]),
-                        if (adresaBcNaziv2 != null && adresaBcNaziv2.isNotEmpty) ...[
+                        if (adresaBcNaziv2 != null &&
+                            adresaBcNaziv2.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Row(children: [
-                            const Icon(Icons.home_outlined, color: Colors.white60, size: 14),
+                            const Icon(Icons.home_outlined,
+                                color: Colors.white60, size: 14),
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaBcNaziv2,
-                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
+                                    style: TextStyle(
+                                        color: V3StyleHelper.whiteAlpha9,
+                                        fontSize: 14),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -1098,29 +1200,39 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          const Icon(Icons.location_city, color: Colors.white38, size: 12),
+                          const Icon(Icons.location_city,
+                              color: Colors.white38, size: 12),
                           const SizedBox(width: 4),
                           Text('Vrsac',
                               style: TextStyle(
-                                  color: V3StyleHelper.whiteAlpha45, fontSize: 14, fontWeight: FontWeight.bold)),
+                                  color: V3StyleHelper.whiteAlpha45,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 3),
                         Row(children: [
-                          const Icon(Icons.work, color: Colors.white60, size: 14),
+                          const Icon(Icons.work,
+                              color: Colors.white60, size: 14),
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(adresaVsNaziv,
-                                  style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
+                                  style: TextStyle(
+                                      color: V3StyleHelper.whiteAlpha9,
+                                      fontSize: 14),
                                   overflow: TextOverflow.ellipsis)),
                         ]),
-                        if (adresaVsNaziv2 != null && adresaVsNaziv2.isNotEmpty) ...[
+                        if (adresaVsNaziv2 != null &&
+                            adresaVsNaziv2.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Row(children: [
-                            const Icon(Icons.work_outline, color: Colors.white60, size: 14),
+                            const Icon(Icons.work_outline,
+                                color: Colors.white60, size: 14),
                             const SizedBox(width: 4),
                             Expanded(
                                 child: Text(adresaVsNaziv2,
-                                    style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 14),
+                                    style: TextStyle(
+                                        color: V3StyleHelper.whiteAlpha9,
+                                        fontSize: 14),
                                     overflow: TextOverflow.ellipsis)),
                           ]),
                         ],
@@ -1152,14 +1264,20 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Center(
             child: Text(
               stats.mesecNaziv,
-              style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(height: 8),
           const Center(
             child: Text(
               'Stanje vožnji i naplate',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
           ),
@@ -1169,20 +1287,27 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               child: Text(
                 cenaInfo,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 13, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    color: V3StyleHelper.whiteAlpha9,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
               ),
             ),
           ],
           const SizedBox(height: 4),
           Text(
             _modelNaplataLabel(tip),
-            style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12, fontWeight: FontWeight.w500),
+            style: TextStyle(
+                color: V3StyleHelper.whiteAlpha65,
+                fontSize: 12,
+                fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _kpiTile('Pokupljen', '${stats.pokupljeno}', Colors.lightBlueAccent),
+              _kpiTile(
+                  'Pokupljen', '${stats.pokupljeno}', Colors.lightBlueAccent),
               _kpiTile('Vožnji', '${stats.ukupnoVoznji}', Colors.greenAccent),
               _kpiTile('Otkazano', '${stats.otkazano}', Colors.redAccent),
             ],
@@ -1193,10 +1318,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Plaćeno', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text('Plaćeno',
+                  style: TextStyle(
+                      color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.naplacenoIznos.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -1204,10 +1334,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Dug', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text('Dug',
+                  style: TextStyle(
+                      color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.dugIznos.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -1215,10 +1350,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Ukupan dug', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text('Ukupan dug',
+                  style: TextStyle(
+                      color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${ukupanDug.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -1236,12 +1376,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       child: Column(
         children: [
-          Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(value,
+              style: TextStyle(
+                  color: color, fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: V3StyleHelper.whiteAlpha65,
+                fontSize: 11,
+                fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -1272,7 +1417,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           const Text(
             'Detaljne statistike',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
@@ -1419,7 +1565,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     child: Center(
                       child: _ZahtevCell(
                         info: bcInfo,
-                        onTap: () => _showTimePicker(context, dan, 'BC', bcInfo),
+                        onTap: () =>
+                            _showTimePicker(context, dan, 'BC', bcInfo),
                       ),
                     ),
                   ),
@@ -1427,7 +1574,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     child: Center(
                       child: _ZahtevCell(
                         info: vsInfo,
-                        onTap: () => _showTimePicker(context, dan, 'VS', vsInfo),
+                        onTap: () =>
+                            _showTimePicker(context, dan, 'VS', vsInfo),
                       ),
                     ),
                   ),
@@ -1493,50 +1641,6 @@ class _ZahtevInfo {
 // ─────────────────────────────────────────────────────────────────────
 // Small widgets
 // ─────────────────────────────────────────────────────────────────────
-class _NotifBanner extends StatelessWidget {
-  final VoidCallback onEnable;
-  const _NotifBanner({required this.onEnable});
-  @override
-  Widget build(BuildContext context) {
-    return V3ContainerUtils.styledContainer(
-      margin: const EdgeInsets.only(top: 8, bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      backgroundColor: Colors.red.withValues(alpha: 0.85),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.redAccent),
-      child: Row(
-        children: [
-          const Icon(Icons.notifications_off, color: Colors.white, size: 22),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Notifikacije isključene!',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                Text(
-                  'Nećete videti potvrde vožnji.',
-                  style: TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          V3ButtonUtils.textButton(
-            onPressed: onEnable,
-            text: 'UKLJUČI',
-            foregroundColor: Colors.red,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Badge extends StatelessWidget {
   final String label;
   final Color color;
@@ -1580,7 +1684,9 @@ class _WeatherMiniCell extends StatelessWidget {
     }
 
     final temp = '${data.temperatureC.round()}°';
-    final rain = data.precipitationProbability != null ? ' · ${data.precipitationProbability}%' : '';
+    final rain = data.precipitationProbability != null
+        ? ' · ${data.precipitationProbability}%'
+        : '';
 
     return Row(
       mainAxisSize: MainAxisSize.min,

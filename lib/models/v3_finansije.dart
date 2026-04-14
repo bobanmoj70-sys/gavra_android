@@ -42,7 +42,7 @@ class V3Trosak {
       ponavljajMesecno: json['ponavljaj_mesecno'] as bool? ?? true,
       mesec: json['mesec'] as int? ?? now.month,
       godina: json['godina'] as int? ?? now.year,
-      vozacId: (json['naplaceno_by'] ?? json['vozac_v3_auth_id'])?.toString(),
+      vozacId: json['naplaceno_by']?.toString(),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
@@ -60,75 +60,4 @@ class V3Trosak {
         'godina': godina,
         'naplaceno_by': vozacId,
       };
-}
-
-// --- Backward compat aliases za stari kod ---
-
-/// @deprecated Koristi V3Trosak — mapira se na v3_finansije
-class V3FinansijskiUnos {
-  final String id;
-  final String tip;
-  final String kategorija;
-  final String opis;
-  final double iznos;
-  final DateTime datum;
-  final String? vozacId;
-  final String? voziloId;
-  final String? putnikId;
-  final DateTime createdAt;
-
-  V3FinansijskiUnos({
-    required this.id,
-    required this.tip,
-    required this.kategorija,
-    required this.opis,
-    required this.iznos,
-    required this.datum,
-    this.vozacId,
-    this.voziloId,
-    this.putnikId,
-    required this.createdAt,
-  });
-
-  factory V3FinansijskiUnos.fromJson(Map<String, dynamic> json) {
-    final now = DateTime.now();
-    return V3FinansijskiUnos(
-      id: json['id']?.toString() ?? '',
-      tip: json['tip'] as String? ?? 'trosak',
-      kategorija: json['kategorija'] as String? ?? 'ostalo',
-      opis: json['naziv'] as String? ?? json['opis'] as String? ?? '',
-      iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
-      datum: V3DateUtils.parseTs(json['created_at'] as String?) ?? now,
-      vozacId: (json['naplaceno_by'] ?? json['vozac_v3_auth_id'])?.toString(),
-      voziloId: null,
-      putnikId: null,
-      createdAt: now,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'naziv': opis,
-        'kategorija': kategorija,
-        'iznos': iznos,
-        'naplaceno_by': vozacId,
-      };
-}
-
-class V3FinansijskiIzvestaj {
-  final double prihodDanas;
-  final double trosakDanas;
-  final double prihodMesec;
-  final double trosakMesec;
-  final Map<String, double> troskoviPoKategoriji;
-
-  V3FinansijskiIzvestaj({
-    this.prihodDanas = 0,
-    this.trosakDanas = 0,
-    this.prihodMesec = 0,
-    this.trosakMesec = 0,
-    this.troskoviPoKategoriji = const {},
-  });
-
-  double get netoDanas => prihodDanas - trosakDanas;
-  double get netoMesec => prihodMesec - trosakMesec;
 }

@@ -81,7 +81,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: V3ContainerUtils.gradientContainer(
             gradient: Theme.of(context).backgroundGradient,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -97,7 +98,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     Center(
                       child: V3ContainerUtils.styledContainer(
                         width: 40,
-                        height: V3ContainerUtils.responsiveHeight(context, 4, intensity: 0.2),
+                        height: V3ContainerUtils.responsiveHeight(context, 4,
+                            intensity: 0.2),
                         backgroundColor: Colors.white.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(2),
                         padding: EdgeInsets.zero,
@@ -107,12 +109,18 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     const SizedBox(height: 16),
                     Text(
                       isEdit ? '✏️ UREDI VOZAČA' : '➕ DODAJ VOZAČA',
-                      style: const TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.2),
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          letterSpacing: 1.2),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       isEdit ? (vozac.imePrezime) : 'Novi vozač',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20),
                     ),
                     const SizedBox(height: 20),
 
@@ -121,7 +129,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                       controller: imeCtrl,
                       label: 'Ime i prezime',
                       icon: Icons.person,
-                      validator: (v) => (v?.isEmpty ?? true) ? 'Unesite ime' : null,
+                      validator: (v) =>
+                          (v?.isEmpty ?? true) ? 'Unesite ime' : null,
                     ),
                     const SizedBox(height: 12),
 
@@ -146,7 +155,10 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     // Boja picker
                     Text(
                       'BOJA VOZAČA',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11, letterSpacing: 1),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 11,
+                          letterSpacing: 1),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -159,17 +171,28 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
                             width: 40,
-                            height: V3ContainerUtils.responsiveHeight(context, 40),
+                            height:
+                                V3ContainerUtils.responsiveHeight(context, 40),
                             decoration: BoxDecoration(
                               color: c,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: isSel ? Colors.white : Colors.transparent,
+                                color:
+                                    isSel ? Colors.white : Colors.transparent,
                                 width: 3,
                               ),
-                              boxShadow: isSel ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 10)] : null,
+                              boxShadow: isSel
+                                  ? [
+                                      BoxShadow(
+                                          color: c.withValues(alpha: 0.6),
+                                          blurRadius: 10)
+                                    ]
+                                  : null,
                             ),
-                            child: isSel ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                            child: isSel
+                                ? const Icon(Icons.check,
+                                    color: Colors.white, size: 20)
+                                : null,
                           ),
                         );
                       }).toList(),
@@ -185,8 +208,12 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                           final novi = V3Vozac(
                             id: vozac?.id ?? '',
                             imePrezime: imeCtrl.text.trim(),
-                            telefon1: tel1Ctrl.text.trim().isEmpty ? null : tel1Ctrl.text.trim(),
-                            telefon2: tel2Ctrl.text.trim().isEmpty ? null : tel2Ctrl.text.trim(),
+                            telefon1: tel1Ctrl.text.trim().isEmpty
+                                ? null
+                                : tel1Ctrl.text.trim(),
+                            telefon2: tel2Ctrl.text.trim().isEmpty
+                                ? null
+                                : tel2Ctrl.text.trim(),
                             boja: _colorToHex(selectedColor),
                           );
                           try {
@@ -196,7 +223,9 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                             if (mounted) {
                               V3AppSnackBar.success(
                                 context,
-                                isEdit ? '✅ ${novi.imePrezime} ažuriran' : '✅ ${novi.imePrezime} dodat',
+                                isEdit
+                                    ? '✅ ${novi.imePrezime} ažuriran'
+                                    : '✅ ${novi.imePrezime} dodat',
                               );
                             }
                           } catch (e) {
@@ -239,7 +268,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
     if (potvrda != true) return;
     try {
       await V3VozacService.deactivateVozac(vozac.id);
-      if (mounted) V3AppSnackBar.success(context, '🗑️ ${vozac.imePrezime} obrisan');
+      if (mounted)
+        V3AppSnackBar.success(context, '🗑️ ${vozac.imePrezime} obrisan');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -273,17 +303,25 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
               children: [
                 const Text(
                   '🚗 Vozači Admin',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
                 ),
                 const SizedBox(width: 8),
                 V3ContainerUtils.badgeContainer(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   backgroundColor: Colors.blueAccent.withValues(alpha: 0.3),
                   borderRadiusGeometry: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: Colors.blueAccent.withValues(alpha: 0.5)),
                   child: Text(
                     '${aktivni.length}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
                   ),
                 ),
               ],
@@ -291,7 +329,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
             actions: [
               IconButton(
                 tooltip: 'Dodaj vozača',
-                icon: const Icon(Icons.add_circle, color: Colors.greenAccent, size: 28),
+                icon: const Icon(Icons.add_circle,
+                    color: Colors.greenAccent, size: 28),
                 onPressed: _showDodajDialog,
               ),
             ],
@@ -306,17 +345,23 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                       child: InkWell(
-                        onTap: () => V3StateUtils.safeSetState(this, () => _showNeaktivni = !_showNeaktivni),
+                        onTap: () => V3StateUtils.safeSetState(
+                            this, () => _showNeaktivni = !_showNeaktivni),
                         borderRadius: BorderRadius.circular(10),
                         child: V3ContainerUtils.styledContainer(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          backgroundColor:
+                              Colors.redAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                          border: Border.all(
+                              color: Colors.redAccent.withValues(alpha: 0.4)),
                           child: Row(
                             children: [
                               Icon(
-                                _showNeaktivni ? Icons.visibility_off : Icons.visibility,
+                                _showNeaktivni
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                                 color: Colors.redAccent,
                                 size: 16,
                               ),
@@ -325,7 +370,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                                 _showNeaktivni
                                     ? 'Sakrij neaktivne (${neaktivni.length})'
                                     : 'Prikaži neaktivne (${neaktivni.length})',
-                                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                                style: const TextStyle(
+                                    color: Colors.redAccent, fontSize: 13),
                               ),
                             ],
                           ),
@@ -341,12 +387,17 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.directions_car_outlined,
-                                    size: 56, color: Colors.white.withValues(alpha: 0.25)),
+                                    size: 56,
+                                    color:
+                                        Colors.white.withValues(alpha: 0.25)),
                                 const SizedBox(height: 16),
                                 Text(
                                   'Nema vozača.\nKlikni + da dodaš.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 17),
+                                  style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 17),
                                 ),
                               ],
                             ),
@@ -405,7 +456,8 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blueAccent.withValues(alpha: 0.3)),
+          borderSide:
+              BorderSide(color: Colors.blueAccent.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -458,8 +510,13 @@ class _VozacKartica extends StatelessWidget {
                 backgroundColor: cardColor.withValues(alpha: 0.3),
                 radius: 24,
                 child: Text(
-                  vozac.imePrezime.isNotEmpty ? vozac.imePrezime[0].toUpperCase() : '?',
-                  style: TextStyle(color: cardColor, fontWeight: FontWeight.bold, fontSize: 18),
+                  vozac.imePrezime.isNotEmpty
+                      ? vozac.imePrezime[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                      color: cardColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
                 ),
               ),
               const SizedBox(width: 14),
@@ -484,25 +541,37 @@ class _VozacKartica extends StatelessWidget {
                         if (jeNeaktivan)
                           V3ContainerUtils.styledContainer(
                             margin: const EdgeInsets.only(left: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            backgroundColor:
+                                Colors.redAccent.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
-                            child: const Text('neaktivan', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
+                            border: Border.all(
+                                color: Colors.redAccent.withValues(alpha: 0.5)),
+                            child: const Text('neaktivan',
+                                style: TextStyle(
+                                    color: Colors.redAccent, fontSize: 10)),
                           ),
                       ],
                     ),
                     if (vozac.telefon1?.isNotEmpty == true)
                       Row(
                         children: [
-                          const Icon(Icons.phone, size: 12, color: Colors.white38),
+                          const Icon(Icons.phone,
+                              size: 12, color: Colors.white38),
                           const SizedBox(width: 4),
-                          Text(vozac.telefon1!, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          Text(vozac.telefon1!,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 13)),
                           if (vozac.telefon2?.isNotEmpty == true) ...[
                             const SizedBox(width: 8),
-                            const Text('/', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                            const Text('/',
+                                style: TextStyle(
+                                    color: Colors.white38, fontSize: 13)),
                             const SizedBox(width: 8),
-                            Text(vozac.telefon2!, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                            Text(vozac.telefon2!,
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 13)),
                           ],
                         ],
                       ),
@@ -527,24 +596,30 @@ class _VozacKartica extends StatelessWidget {
                   ),
                   if (onReactivate != null)
                     IconButton(
-                      icon: const Icon(Icons.restore, color: Colors.greenAccent, size: 20),
+                      icon: const Icon(Icons.restore,
+                          color: Colors.greenAccent, size: 20),
                       onPressed: onReactivate,
                       padding: EdgeInsets.zero,
                       constraints: BoxConstraints(
-                        minWidth: V3ContainerUtils.responsiveHeight(context, 32),
-                        minHeight: V3ContainerUtils.responsiveHeight(context, 32),
+                        minWidth:
+                            V3ContainerUtils.responsiveHeight(context, 32),
+                        minHeight:
+                            V3ContainerUtils.responsiveHeight(context, 32),
                       ),
                       visualDensity: VisualDensity.compact,
                       tooltip: 'Reaktiviraj',
                     )
                   else if (onDeactivate != null)
                     IconButton(
-                      icon: const Icon(Icons.person_off, color: Colors.redAccent, size: 20),
+                      icon: const Icon(Icons.person_off,
+                          color: Colors.redAccent, size: 20),
                       onPressed: onDeactivate,
                       padding: EdgeInsets.zero,
                       constraints: BoxConstraints(
-                        minWidth: V3ContainerUtils.responsiveHeight(context, 32),
-                        minHeight: V3ContainerUtils.responsiveHeight(context, 32),
+                        minWidth:
+                            V3ContainerUtils.responsiveHeight(context, 32),
+                        minHeight:
+                            V3ContainerUtils.responsiveHeight(context, 32),
                       ),
                       visualDensity: VisualDensity.compact,
                       tooltip: 'Deaktiviraj',

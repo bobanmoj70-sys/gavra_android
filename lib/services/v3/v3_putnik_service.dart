@@ -21,19 +21,24 @@ class V3PutnikService {
 
   static List<V3Putnik> getPutniciByTip(String tip) {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    return cache.where((r) => r['tip_putnika'] == tip).map((r) => V3Putnik.fromJson(r)).toList()
+    return cache
+        .where((r) => r['tip_putnika'] == tip)
+        .map((r) => V3Putnik.fromJson(r))
+        .toList()
       ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 
   static Stream<List<V3Putnik>> streamPutniciByTip(String tip) =>
-      V3MasterRealtimeManager.instance.v3StreamFromRevisions(tables: ['v3_auth'], build: () => getPutniciByTip(tip));
+      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
+          tables: ['v3_auth'], build: () => getPutniciByTip(tip));
 
   static V3Putnik? getPutnikById(String id) {
     final data = V3MasterRealtimeManager.instance.putniciCache[id];
     return data != null ? V3Putnik.fromJson(data) : null;
   }
 
-  static Future<Map<String, dynamic>?> getByPhoneOrCache(String normalizedPhone) async {
+  static Future<Map<String, dynamic>?> getByPhoneOrCache(
+      String normalizedPhone) async {
     final needle = normalizedPhone.trim();
     if (needle.isEmpty) return null;
 
@@ -53,7 +58,8 @@ class V3PutnikService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> getByPhoneDirect(String normalizedPhone) async {
+  static Future<Map<String, dynamic>?> getByPhoneDirect(
+      String normalizedPhone) async {
     final needle = normalizedPhone.trim();
     if (needle.isEmpty) return null;
 
@@ -68,7 +74,8 @@ class V3PutnikService {
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
-  static Future<Map<String, dynamic>?> getActiveByPushToken(String token) async {
+  static Future<Map<String, dynamic>?> getActiveByPushToken(
+      String token) async {
     final safeToken = token.trim();
     if (safeToken.isEmpty) return null;
 
@@ -76,14 +83,17 @@ class V3PutnikService {
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
-  static Future<void> addUpdatePutnik(V3Putnik putnik, {String? createdBy, String? updatedBy}) async {
+  static Future<void> addUpdatePutnik(V3Putnik putnik,
+      {String? createdBy, String? updatedBy}) async {
     try {
       final data = putnik.toJson();
       final createdByUuid = V3AuditKorisnik.normalize(createdBy);
-      final updatedByUuid = V3AuditKorisnik.normalize(updatedBy, fallback: createdByUuid);
+      final updatedByUuid =
+          V3AuditKorisnik.normalize(updatedBy, fallback: createdByUuid);
 
       if (putnik.id.isEmpty) data.remove('id');
-      if (putnik.id.isEmpty && createdByUuid != null) data['created_by'] = createdByUuid;
+      if (putnik.id.isEmpty && createdByUuid != null)
+        data['created_by'] = createdByUuid;
       if (updatedByUuid != null) data['updated_by'] = updatedByUuid;
 
       await _repo.upsert(data);
@@ -107,7 +117,9 @@ class V3PutnikService {
     try {
       if (token.isEmpty) return const {};
 
-      if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
+      if (existingToken1 == null ||
+          existingToken1.isEmpty ||
+          existingToken1 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
           deviceId: deviceId,
@@ -117,7 +129,9 @@ class V3PutnikService {
         return {'push_token': token};
       }
 
-      if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
+      if (existingToken2 == null ||
+          existingToken2.isEmpty ||
+          existingToken2 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
           deviceId: deviceId,
@@ -149,7 +163,9 @@ class V3PutnikService {
 
     // 1. Pronađi sve zahteve za danas
     final danasnjiZahtevi = rm.zahteviCache.values
-        .where((z) => z['datum'] == nowIso && !V3StatusFilters.isCanceledOrRejected(z['status']?.toString()))
+        .where((z) =>
+            z['datum'] == nowIso &&
+            !V3StatusFilters.isCanceledOrRejected(z['status']?.toString()))
         .toList();
 
     // 2. Za svaki zahtev nađi putnika
@@ -168,8 +184,9 @@ class V3PutnikService {
   }
 
   static Stream<List<Map<String, dynamic>>> streamKombinovaniPutniciDanas() {
-    return V3MasterRealtimeManager.instance
-        .v3StreamFromRevisions(tables: ['v3_auth', 'v3_zahtevi'], build: () => getKombinovaniPutniciDanas());
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
+        tables: ['v3_auth', 'v3_zahtevi'],
+        build: () => getKombinovaniPutniciDanas());
   }
 
   /// Get active v3 passengers + their requests for today, filtered by city and time
@@ -184,7 +201,8 @@ class V3PutnikService {
 
     final filtriraniZahtevi = rm.zahteviCache.values.where((z) {
       final isDanas = z['datum'] == nowIso;
-      final statusAllowed = !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
+      final statusAllowed =
+          !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
       final isGrad = z['grad'] == grad;
       final isVreme = z['trazeni_polazak_at'] == vreme;
       return isDanas && statusAllowed && isGrad && isVreme;
@@ -209,21 +227,26 @@ class V3PutnikService {
     required String vreme,
   }) {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_auth', 'v3_zahtevi'], build: () => getKombinovaniPutniciFiltrirano(grad: grad, vreme: vreme));
+        tables: ['v3_auth', 'v3_zahtevi'],
+        build: () => getKombinovaniPutniciFiltrirano(grad: grad, vreme: vreme));
   }
 
   /// Streams V3 passengers who have an active request for a specific date.
-  static Stream<List<V3Putnik>> streamPutniciByDatum({required String datumIso}) {
+  static Stream<List<V3Putnik>> streamPutniciByDatum(
+      {required String datumIso}) {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
       tables: ['v3_auth', 'v3_zahtevi'],
       build: () {
         final rm = V3MasterRealtimeManager.instance;
         final matchingZahtevi = rm.zahteviCache.values.where((z) {
-          final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
-          return rDatum == datumIso && !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
+          final rDatum =
+              V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
+          return rDatum == datumIso &&
+              !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
         });
 
-        final Set<String> uniquePutnikIds = matchingZahtevi.map((z) => z['created_by'] as String).toSet();
+        final Set<String> uniquePutnikIds =
+            matchingZahtevi.map((z) => z['created_by'] as String).toSet();
 
         return uniquePutnikIds
             .map((id) {
@@ -242,7 +265,8 @@ class V3PutnikService {
 
   static Future<List<V3Putnik>> getAllAktivniPutnici() async {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    return cache.map((p) => V3Putnik.fromJson(p)).toList()..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+    return cache.map((p) => V3Putnik.fromJson(p)).toList()
+      ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 
   /// Filtrira putnike po tačnom datumu, gradu i vremenu.
@@ -279,7 +303,8 @@ class V3PutnikService {
     }
 
     final lista = rez.values.toList();
-    lista.sort((a, b) => (a['ime_prezime'] as String).compareTo(b['ime_prezime'] as String));
+    lista.sort((a, b) =>
+        (a['ime_prezime'] as String).compareTo(b['ime_prezime'] as String));
     return lista;
   }
 }

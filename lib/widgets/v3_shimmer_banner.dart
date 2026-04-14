@@ -22,7 +22,8 @@ class V3ShimmerBanner extends StatefulWidget {
   State<V3ShimmerBanner> createState() => _V3ShimmerBannerState();
 }
 
-class _V3ShimmerBannerState extends State<V3ShimmerBanner> with SingleTickerProviderStateMixin {
+class _V3ShimmerBannerState extends State<V3ShimmerBanner>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
@@ -43,8 +44,10 @@ class _V3ShimmerBannerState extends State<V3ShimmerBanner> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(widget.borderRadius);
-    final bgColor = widget.backgroundColor ?? Colors.red.withValues(alpha: 0.22);
-    final borderColor = widget.borderColor ?? Colors.redAccent.withValues(alpha: 0.8);
+    final bgColor =
+        widget.backgroundColor ?? Colors.red.withValues(alpha: 0.22);
+    final borderColor =
+        widget.borderColor ?? Colors.redAccent.withValues(alpha: 0.8);
 
     return Container(
       width: double.infinity,

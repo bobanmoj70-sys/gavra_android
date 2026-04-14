@@ -11,10 +11,13 @@ class V3DialogUtils {
   static const Color _darkBg = Color(0xFF1A1A1A);
   static const double _defaultBorderRadius = 16;
 
-  static ShapeBorder _buildDialogShape({required double borderRadius, Color? borderColor}) {
+  static ShapeBorder _buildDialogShape(
+      {required double borderRadius, Color? borderColor}) {
     return RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadius),
-      side: borderColor != null ? BorderSide(color: borderColor.withValues(alpha: 0.3)) : BorderSide.none,
+      side: borderColor != null
+          ? BorderSide(color: borderColor.withValues(alpha: 0.3))
+          : BorderSide.none,
     );
   }
 
@@ -56,9 +59,13 @@ class V3DialogUtils {
       useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         backgroundColor: backgroundColor ?? _darkBg,
-        shape: _buildDialogShape(borderRadius: borderRadius, borderColor: borderColor),
+        shape: _buildDialogShape(
+            borderRadius: borderRadius, borderColor: borderColor),
         title: titleIcon != null
-            ? _buildDialogTitle(title: title, titleIcon: titleIcon, titleIconColor: titleIconColor)
+            ? _buildDialogTitle(
+                title: title,
+                titleIcon: titleIcon,
+                titleIconColor: titleIconColor)
             : Text(title, style: const TextStyle(color: Colors.white)),
         content: Text(
           content,
@@ -93,12 +100,14 @@ class V3DialogUtils {
       useRootNavigator: useRootNavigator,
       actions: [
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(false),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: useRootNavigator).pop(false),
           text: cancelText,
           foregroundColor: cancelColor ?? Colors.grey,
         ),
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(true),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: useRootNavigator).pop(true),
           text: confirmText,
           foregroundColor: confirmColor ?? Colors.amber,
         ),
@@ -128,7 +137,8 @@ class V3DialogUtils {
       useRootNavigator: useRootNavigator,
       actions: [
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: useRootNavigator).pop(),
           text: buttonText,
           foregroundColor: buttonColor ?? Colors.amber,
         ),
@@ -155,7 +165,8 @@ class V3DialogUtils {
     if (cancelText != null) {
       actions.add(
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: useRootNavigator).pop(),
           text: cancelText,
           foregroundColor: Colors.grey,
         ),
@@ -166,7 +177,9 @@ class V3DialogUtils {
     for (final entry in choices.entries) {
       actions.add(
         V3ButtonUtils.textButton(
-          onPressed: () => Navigator.of(context, rootNavigator: useRootNavigator).pop(entry.key),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: useRootNavigator)
+                  .pop(entry.key),
           text: entry.value,
           foregroundColor: Colors.amber,
         ),
@@ -206,9 +219,13 @@ class V3DialogUtils {
       useRootNavigator: useRootNavigator,
       builder: (ctx) => AlertDialog(
         backgroundColor: backgroundColor ?? _darkBg,
-        shape: _buildDialogShape(borderRadius: borderRadius, borderColor: borderColor),
+        shape: _buildDialogShape(
+            borderRadius: borderRadius, borderColor: borderColor),
         title: titleIcon != null
-            ? _buildDialogTitle(title: title, titleIcon: titleIcon, titleIconColor: titleIconColor)
+            ? _buildDialogTitle(
+                title: title,
+                titleIcon: titleIcon,
+                titleIconColor: titleIconColor)
             : Text(title, style: const TextStyle(color: Colors.white)),
         content: content,
         actions: actions,

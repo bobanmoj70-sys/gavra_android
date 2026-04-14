@@ -41,7 +41,8 @@ class V3UIUtils {
 
   /// Standardna "Greška pri čuvanju" poruka
   static void showSaveError(BuildContext context, [Object? error]) {
-    final msg = error != null ? '❌ Greška pri čuvanju: $error' : '❌ Greška pri čuvanju';
+    final msg =
+        error != null ? '❌ Greška pri čuvanju: $error' : '❌ Greška pri čuvanju';
     showError(context, msg);
   }
 
@@ -51,7 +52,8 @@ class V3UIUtils {
   }
 
   /// Standardna greška za catch blokove
-  static void showCatchError(BuildContext context, String action, Object error) {
+  static void showCatchError(
+      BuildContext context, String action, Object error) {
     showError(context, '❌ Greška pri $action: $error');
   }
 

@@ -23,7 +23,8 @@ class V3KapacitetSlotsService {
         maxMesta: maxMesta,
         id: id,
       );
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_kapacitet_slots', row);
+      V3MasterRealtimeManager.instance
+          .v3UpsertToCache('v3_kapacitet_slots', row);
       return row;
     } catch (e) {
       debugPrint('[V3KapacitetSlotsService] upsertSlot error: $e');

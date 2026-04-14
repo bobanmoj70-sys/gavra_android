@@ -108,7 +108,8 @@ class V3SafeText extends StatelessWidget {
   }
 
   /// Dugački opisi - više linija, fade
-  static Widget description(String description, {TextStyle? style, int maxLines = 5}) {
+  static Widget description(String description,
+      {TextStyle? style, int maxLines = 5}) {
     return V3SafeText(
       description,
       style: style,

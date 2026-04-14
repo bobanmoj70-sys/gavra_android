@@ -10,7 +10,8 @@ class V3ValidationUtils {
   /// Normalizuje naziv grada u uppercase kraticu ('BC' ili 'VS')
   static String normalizeGrad(String grad) {
     final upper = grad.trim().toUpperCase();
-    if (upper == 'BC' || upper == 'BANJA LUKA' || upper == 'BANJALUKA') return 'BC';
+    if (upper == 'BC' || upper == 'BANJA LUKA' || upper == 'BANJALUKA')
+      return 'BC';
     if (upper == 'VS' || upper == 'ČELINAC' || upper == 'CELINAC') return 'VS';
     return upper;
   }
@@ -50,7 +51,8 @@ class V3ValidationUtils {
     final trimmed = vreme.trim();
 
     // HH:mm:ss → HH:mm
-    final withSecondsMatch = RegExp(r'^(\d{1,2}):(\d{2}):\d{2}$').firstMatch(trimmed);
+    final withSecondsMatch =
+        RegExp(r'^(\d{1,2}):(\d{2}):\d{2}$').firstMatch(trimmed);
     if (withSecondsMatch != null) {
       final h = int.parse(withSecondsMatch.group(1)!);
       final m = int.parse(withSecondsMatch.group(2)!);

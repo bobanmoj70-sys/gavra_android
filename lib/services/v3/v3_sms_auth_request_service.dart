@@ -20,12 +20,16 @@ class V3SmsAuthRequestService {
           .or('telefon.eq.$safePhone,telefon_2.eq.$safePhone')
           .maybeSingle();
 
-      final requesterName = (requesterRow?['ime']?.toString().trim().isNotEmpty ?? false)
-          ? requesterRow!['ime'].toString().trim()
-          : 'Nepoznat korisnik';
+      final requesterName =
+          (requesterRow?['ime']?.toString().trim().isNotEmpty ?? false)
+              ? requesterRow!['ime'].toString().trim()
+              : 'Nepoznat korisnik';
 
-      final targetRows =
-          await supabase.from('v3_auth').select('id,push_token,push_token_2').eq('id', targetId).limit(1);
+      final targetRows = await supabase
+          .from('v3_auth')
+          .select('id,push_token,push_token_2')
+          .eq('id', targetId)
+          .limit(1);
 
       final tokens = <Map<String, String>>[];
       final seen = <String>{};
@@ -67,7 +71,8 @@ class V3SmsAuthRequestService {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> fetchPendingSmsRequests({int limit = 20}) async {
+  static Future<List<Map<String, dynamic>>> fetchPendingSmsRequests(
+      {int limit = 20}) async {
     final rows = await supabase
         .from('v3_auth')
         .select('id,ime,telefon,telefon_2,sifra,updated_at,tip')
@@ -75,6 +80,9 @@ class V3SmsAuthRequestService {
         .order('updated_at', ascending: false)
         .limit(limit);
 
-    return rows.whereType<Map<String, dynamic>>().map(Map<String, dynamic>.from).toList(growable: false);
+    return rows
+        .whereType<Map<String, dynamic>>()
+        .map(Map<String, dynamic>.from)
+        .toList(growable: false);
   }
 }

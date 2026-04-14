@@ -16,7 +16,8 @@ class V3AppUpdateService {
     '824f7bd7-e19c-4471-b7a2-d6031d810242',
   };
 
-  static Future<void> refreshUpdateInfo({Map<String, dynamic>? appSettingsRow}) async {
+  static Future<void> refreshUpdateInfo(
+      {Map<String, dynamic>? appSettingsRow}) async {
     try {
       if (!Platform.isAndroid && !Platform.isIOS) {
         updateInfoNotifier.value = null;
@@ -37,7 +38,8 @@ class V3AppUpdateService {
 
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version.trim();
-      final playStoreUrl = 'https://play.google.com/store/apps/details?id=${packageInfo.packageName}';
+      final playStoreUrl =
+          'https://play.google.com/store/apps/details?id=${packageInfo.packageName}';
 
       final key = Platform.isIOS ? 'ios' : 'android';
       final selected = _resolvePlatformConfig(row, key);
@@ -45,8 +47,10 @@ class V3AppUpdateService {
       final latest = (selected['latest'] ?? '').toString().trim();
       final minSupported = (selected['minSupported'] ?? '').toString().trim();
       final maintenanceMode = selected['maintenanceMode'] == true;
-      final maintenanceTitle = (selected['maintenanceTitle'] ?? '').toString().trim();
-      final maintenanceMessage = (selected['maintenanceMessage'] ?? '').toString().trim();
+      final maintenanceTitle =
+          (selected['maintenanceTitle'] ?? '').toString().trim();
+      final maintenanceMessage =
+          (selected['maintenanceMessage'] ?? '').toString().trim();
       var storeUrl = (selected['storeUrl'] ?? '').toString().trim();
       if (Platform.isAndroid && storeUrl.isEmpty) {
         storeUrl = playStoreUrl;
@@ -64,7 +68,9 @@ class V3AppUpdateService {
           storeUrl: storeUrl,
           isForced: true,
           isMaintenance: true,
-          maintenanceTitle: maintenanceTitle.isNotEmpty ? maintenanceTitle : 'Malo čačkamo ispod haube 🔧',
+          maintenanceTitle: maintenanceTitle.isNotEmpty
+              ? maintenanceTitle
+              : 'Malo čačkamo ispod haube 🔧',
           maintenanceMessage: maintenanceMessage.isNotEmpty
               ? maintenanceMessage
               : 'Radovi su u toku, šlemovi su na glavama i traka je razvučena. Vrati se uskoro — biće bolje nego pre 😄',
@@ -106,7 +112,8 @@ class V3AppUpdateService {
     }
   }
 
-  static Map<String, dynamic> _resolvePlatformConfig(Map<String, dynamic> row, String key) {
+  static Map<String, dynamic> _resolvePlatformConfig(
+      Map<String, dynamic> row, String key) {
     if (key == 'ios') {
       return {
         'latest': row['latest_version_ios'],
@@ -135,11 +142,14 @@ class V3AppUpdateService {
   }
 
   static bool _isUpdateGateBypassedForOperator() {
-    final putnikId = (V3PutnikService.currentPutnik?['id'] ?? '').toString().trim();
-    if (putnikId.isNotEmpty && _updateGateBypassUserIds.contains(putnikId)) return true;
+    final putnikId =
+        (V3PutnikService.currentPutnik?['id'] ?? '').toString().trim();
+    if (putnikId.isNotEmpty && _updateGateBypassUserIds.contains(putnikId))
+      return true;
 
     final vozacId = V3VozacService.currentVozac?.id.trim() ?? '';
-    if (vozacId.isNotEmpty && _updateGateBypassUserIds.contains(vozacId)) return true;
+    if (vozacId.isNotEmpty && _updateGateBypassUserIds.contains(vozacId))
+      return true;
 
     return false;
   }
@@ -148,12 +158,17 @@ class V3AppUpdateService {
     List<int> parse(String input) {
       final cleaned = input.trim().split('+').first.split('-').first;
       if (cleaned.isEmpty) return const [0];
-      return cleaned.split('.').map((segment) => int.tryParse(segment) ?? 0).toList(growable: false);
+      return cleaned
+          .split('.')
+          .map((segment) => int.tryParse(segment) ?? 0)
+          .toList(growable: false);
     }
 
     final leftParts = parse(left);
     final rightParts = parse(right);
-    final maxLength = leftParts.length > rightParts.length ? leftParts.length : rightParts.length;
+    final maxLength = leftParts.length > rightParts.length
+        ? leftParts.length
+        : rightParts.length;
 
     for (var index = 0; index < maxLength; index++) {
       final leftValue = index < leftParts.length ? leftParts[index] : 0;

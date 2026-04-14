@@ -104,6 +104,15 @@
       </intent-filter>
     </service>
 
+    <!-- 🔥 FCM Service - prima push notifikacije u foreground/background, prosleđuje Flutteru -->
+    <service
+      android:name=".GavraFcmService"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+      </intent-filter>
+    </service>
+
     <!-- 🛰️ GPS FOREGROUND SERVICE - background GPS tracking dok vozač prikuplja putnike -->
     <service
       android:name="id.flutter.flutter_background_service.BackgroundService"

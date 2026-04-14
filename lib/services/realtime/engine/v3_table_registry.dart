@@ -29,11 +29,9 @@ class V3RealtimeTableRegistry {
     V3RealtimeTableConfig(name: 'v3_vozila', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_zahtevi', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_gorivo', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_gorivo_promene', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_vozac_lokacije', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_finansije', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_racuni', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_racuni_arhiva', hasActiveKey: false),
     V3RealtimeTableConfig(
       name: 'v3_operativna_nedelja',
       hasActiveKey: false,
@@ -48,7 +46,8 @@ class V3RealtimeTableRegistry {
     ),
   ];
 
-  static final Map<String, V3RealtimeTableConfig> byName = <String, V3RealtimeTableConfig>{
+  static final Map<String, V3RealtimeTableConfig> byName =
+      <String, V3RealtimeTableConfig>{
     for (final table in defaults) table.name: table,
   };
 }

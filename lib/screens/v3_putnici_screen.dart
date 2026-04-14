@@ -429,20 +429,6 @@ class _PutnikCard extends StatelessWidget {
                   ],
                 ),
               ],
-              // ── Skola / opis ─────────────────────────────────────────
-              if (putnik.skola != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.school_outlined, size: 14, color: Colors.white38),
-                    const SizedBox(width: 4),
-                    Flexible(
-                        child: Text(putnik.skola!,
-                            style: const TextStyle(fontSize: 12, color: Colors.white54),
-                            overflow: TextOverflow.ellipsis)),
-                  ],
-                ),
-              ],
               const SizedBox(height: 10),
               // ── Action buttons row 1 ─────────────────────────────────
               Row(
@@ -595,8 +581,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
   late final TextEditingController _ime = TextEditingController(text: widget.existing?.imePrezime ?? '');
   late final TextEditingController _tel1 = TextEditingController(text: widget.existing?.telefon1 ?? '');
   late final TextEditingController _tel2 = TextEditingController(text: widget.existing?.telefon2 ?? '');
-  late final TextEditingController _skola = TextEditingController(text: widget.existing?.skola ?? '');
-  late final TextEditingController _opis = TextEditingController(text: widget.existing?.opisPosiljke ?? '');
   late final TextEditingController _cenaDan = TextEditingController(text: () {
     final tip = widget.existing?.tipPutnika ?? 'radnik';
     final cena =
@@ -626,7 +610,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
 
   @override
   void dispose() {
-    for (final c in [_ime, _tel1, _tel2, _skola, _opis, _cenaDan]) c.dispose();
+    for (final c in [_ime, _tel1, _tel2, _cenaDan]) c.dispose();
     super.dispose();
   }
 
@@ -642,8 +626,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         imePrezime: _ime.text.trim(),
         telefon1: V3PhoneUtils.normalizeOrNull(_tel1.text),
         telefon2: V3PhoneUtils.normalizeOrNull(_tel2.text),
-        skola: _tip == 'ucenik' && _skola.text.trim().isNotEmpty ? _skola.text.trim() : null,
-        opisPosiljke: _tip == 'posiljka' && _opis.text.trim().isNotEmpty ? _opis.text.trim() : null,
         tipPutnika: _tip,
         cenaPoDanu: (_tip == 'dnevni' || _tip == 'posiljka')
             ? 0.0 // dnevni/posiljka koriste cenaPoPokupljenju
@@ -862,24 +844,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       label: (_tip == 'dnevni' || _tip == 'posiljka') ? 'Cena po pokupljanju' : 'Cena po danu',
                       suffixText: 'din',
                     ),
-                    // Школa
-                    if (_tip == 'ucenik') ...[
-                      const SizedBox(height: 10),
-                      V3InputUtils.textField(
-                        controller: _skola,
-                        label: 'Школa',
-                        icon: Icons.school,
-                      ),
-                    ],
-                    // Opis pošiljke
-                    if (_tip == 'posiljka') ...[
-                      const SizedBox(height: 10),
-                      V3InputUtils.textField(
-                        controller: _opis,
-                        label: 'Opis pošiljke',
-                        icon: Icons.description,
-                      ),
-                    ],
                     const SizedBox(height: 14),
                     // ── Adrese BC ──
                     Container(

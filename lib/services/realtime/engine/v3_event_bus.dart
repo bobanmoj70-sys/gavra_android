@@ -1,9 +1,12 @@
 import 'dart:async';
 
 class V3EventBus {
-  final StreamController<void> _changeController = StreamController<void>.broadcast();
-  final StreamController<Set<String>> _tableChangeController = StreamController<Set<String>>.broadcast();
-  final StreamController<Map<String, int>> _revisionController = StreamController<Map<String, int>>.broadcast();
+  final StreamController<void> _changeController =
+      StreamController<void>.broadcast();
+  final StreamController<Set<String>> _tableChangeController =
+      StreamController<Set<String>>.broadcast();
+  final StreamController<Map<String, int>> _revisionController =
+      StreamController<Map<String, int>>.broadcast();
 
   static const Duration defaultDebounceWindow = Duration(milliseconds: 90);
   final Duration emitDebounceWindow;
@@ -22,7 +25,8 @@ class V3EventBus {
     required List<String> tables,
     required T Function() build,
   }) {
-    final watchedTables = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toSet();
+    final watchedTables =
+        tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toSet();
 
     return _tableChangeController.stream
         .where((changedTables) {
@@ -73,7 +77,9 @@ class V3EventBus {
     _emitDebounceTimer = null;
 
     if (_pendingTableChanges.isEmpty) return;
-    final changed = _pendingTableChanges.contains('*') ? <String>{'*'} : Set<String>.from(_pendingTableChanges);
+    final changed = _pendingTableChanges.contains('*')
+        ? <String>{'*'}
+        : Set<String>.from(_pendingTableChanges);
     _pendingTableChanges.clear();
 
     _changeController.add(null);

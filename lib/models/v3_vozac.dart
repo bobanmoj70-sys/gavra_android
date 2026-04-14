@@ -6,6 +6,7 @@ class V3Vozac {
   final String? telefon1;
   final String? telefon2;
   final String? boja;
+  final String? sifra;
   final String? pushToken;
   final String? pushToken2;
   final DateTime? createdAt;
@@ -17,6 +18,7 @@ class V3Vozac {
     this.telefon1,
     this.telefon2,
     this.boja,
+    this.sifra,
     this.pushToken,
     this.pushToken2,
     this.createdAt,
@@ -30,6 +32,7 @@ class V3Vozac {
       telefon1: json['telefon_1'] as String?,
       telefon2: json['telefon_2'] as String?,
       boja: json['boja'] as String?,
+      sifra: json['sifra'] as String?,
       pushToken: json['push_token'] as String?,
       pushToken2: json['push_token_2'] as String?,
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
@@ -44,6 +47,7 @@ class V3Vozac {
       'telefon_1': telefon1,
       'telefon_2': telefon2,
       'boja': boja,
+      'sifra': sifra,
       'push_token': pushToken,
       'push_token_2': pushToken2,
     };
@@ -55,6 +59,7 @@ class V3Vozac {
     String? telefon1,
     String? telefon2,
     String? boja,
+    String? sifra,
     String? pushToken,
     String? pushToken2,
     DateTime? createdAt,
@@ -66,6 +71,7 @@ class V3Vozac {
       telefon1: telefon1 ?? this.telefon1,
       telefon2: telefon2 ?? this.telefon2,
       boja: boja ?? this.boja,
+      sifra: sifra ?? this.sifra,
       pushToken: pushToken ?? this.pushToken,
       pushToken2: pushToken2 ?? this.pushToken2,
       createdAt: createdAt ?? this.createdAt,

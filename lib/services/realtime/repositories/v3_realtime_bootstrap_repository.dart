@@ -13,7 +13,8 @@ class V3RealtimeBootstrapRepository {
         'v3_auth_vozaci',
         supabase
             .from('v3_auth')
-            .select('id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
+            .select(
+                'id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
             .eq('tip', 'vozac'),
       ),
       _withTimeout(
@@ -31,21 +32,28 @@ class V3RealtimeBootstrapRepository {
             'id, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at'),
       ),
       _withTimeout('v3_gorivo', supabase.from('v3_gorivo').select()),
-      _withTimeout('v3_gorivo_promene', supabase.from('v3_gorivo_promene').select()),
-      _withTimeout('v3_vozac_lokacije', supabase.from('v3_vozac_lokacije').select()),
+      _withTimeout(
+          'v3_vozac_lokacije', supabase.from('v3_vozac_lokacije').select()),
       _withTimeout('v3_finansije', supabase.from('v3_finansije').select()),
       _withTimeout('v3_racuni', supabase.from('v3_racuni').select()),
-      _withTimeout('v3_racuni_arhiva', supabase.from('v3_racuni_arhiva').select()),
-      _withTimeout('v3_operativna_nedelja', supabase.from('v3_operativna_nedelja').select()),
-      _withTimeout('v3_kapacitet_slots', supabase.from('v3_kapacitet_slots').select()),
-      _withTimeout('v3_app_settings', supabase.from('v3_app_settings').select()),
+      _withTimeout('v3_operativna_nedelja',
+          supabase.from('v3_operativna_nedelja').select()),
+      _withTimeout(
+          'v3_kapacitet_slots', supabase.from('v3_kapacitet_slots').select()),
+      _withTimeout(
+          'v3_app_settings', supabase.from('v3_app_settings').select()),
     ]).timeout(_bootstrapTimeout);
 
     final vozaciRaw = (results[1] as List).cast<dynamic>();
-    final vozaciMapped = vozaciRaw.whereType<Map<String, dynamic>>().map(_mapAuthToLegacyVozac).toList(growable: false);
+    final vozaciMapped = vozaciRaw
+        .whereType<Map<String, dynamic>>()
+        .map(_mapAuthToLegacyVozac)
+        .toList(growable: false);
     final putniciRaw = (results[2] as List).cast<dynamic>();
-    final putniciMapped =
-        putniciRaw.whereType<Map<String, dynamic>>().map(_mapAuthToLegacyPutnik).toList(growable: false);
+    final putniciMapped = putniciRaw
+        .whereType<Map<String, dynamic>>()
+        .map(_mapAuthToLegacyPutnik)
+        .toList(growable: false);
 
     return <dynamic>[
       results[0],
@@ -60,8 +68,6 @@ class V3RealtimeBootstrapRepository {
       results[9],
       results[10],
       results[11],
-      results[12],
-      results[13],
     ];
   }
 

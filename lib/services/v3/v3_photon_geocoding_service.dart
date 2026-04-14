@@ -51,7 +51,8 @@ class V3PhotonGeocodingService {
 
       final response = await http.get(uri).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) {
-        debugPrint('[V3PhotonGeocoding] status=${response.statusCode} body=${response.body}');
+        debugPrint(
+            '[V3PhotonGeocoding] status=${response.statusCode} body=${response.body}');
         return null;
       }
 
@@ -73,7 +74,9 @@ class V3PhotonGeocodingService {
       if (lat == null || lng == null) return null;
 
       final properties = first['properties'];
-      final label = properties is Map<String, dynamic> ? properties['name']?.toString() : null;
+      final label = properties is Map<String, dynamic>
+          ? properties['name']?.toString()
+          : null;
 
       return V3GeocodingResult(lat: lat, lng: lng, label: label);
     } catch (e) {

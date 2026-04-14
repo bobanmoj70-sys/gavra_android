@@ -23,7 +23,8 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
   List<V3Zahtev> _getZahtevi() {
     final rm = V3MasterRealtimeManager.instance;
     final uceniciIds = rm.putniciCache.values
-        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
+        .where((p) =>
+            (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
         .map((p) => p['id'] as String)
         .toSet();
 
@@ -38,7 +39,8 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()
-      ..sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
+      ..sort((a, b) => (b.createdAt ?? DateTime(2000))
+          .compareTo(a.createdAt ?? DateTime(2000)));
   }
 
   // ─── Build ─────────────────────────────────────────────────────────────────
@@ -46,7 +48,8 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_zahtevi', 'v3_auth']),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_zahtevi', 'v3_auth']),
       builder: (context, _) {
         final zahtevi = _getZahtevi();
 
@@ -68,19 +71,27 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
               children: [
                 const Text(
                   'Monitoring Učenika',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
                 ),
                 if (brObrada > 0) ...[
                   const SizedBox(width: 8),
                   V3ContainerUtils.badgeContainer(
-                    backgroundColor: Colors.lightBlueAccent.withValues(alpha: 0.3),
+                    backgroundColor:
+                        Colors.lightBlueAccent.withValues(alpha: 0.3),
                     borderColor: Colors.lightBlueAccent.withValues(alpha: 0.6),
                     borderWidth: 1,
                     borderRadius: 10,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     child: Text(
                       '$brObrada',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13),
                     ),
                   ),
                 ],
@@ -100,10 +111,14 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
                       runSpacing: 6,
                       alignment: WrapAlignment.center,
                       children: [
-                        if (brObrada > 0) _badge('🟡 $brObrada obrada', Colors.amber),
-                        if (brOdobreno > 0) _badge('🟢 $brOdobreno odobreno', Colors.greenAccent),
-                        if (brOdbijeno > 0) _badge('🔴 $brOdbijeno odbijeno', Colors.redAccent),
-                        if (brOtkazano > 0) _badge('⛔ $brOtkazano otkazano', Colors.orange),
+                        if (brObrada > 0)
+                          _badge('🟡 $brObrada obrada', Colors.amber),
+                        if (brOdobreno > 0)
+                          _badge('🟢 $brOdobreno odobreno', Colors.greenAccent),
+                        if (brOdbijeno > 0)
+                          _badge('🔴 $brOdbijeno odbijeno', Colors.redAccent),
+                        if (brOtkazano > 0)
+                          _badge('⛔ $brOtkazano otkazano', Colors.orange),
                       ],
                     ),
                   ),
@@ -115,7 +130,10 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.school_outlined, size: 56, color: Colors.white.withValues(alpha: 0.25)),
+                                Icon(Icons.school_outlined,
+                                    size: 56,
+                                    color:
+                                        Colors.white.withValues(alpha: 0.25)),
                                 const SizedBox(height: 14),
                                 Text(
                                   'Nema zahteva učenika',
@@ -152,7 +170,9 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
         backgroundColor: color.withValues(alpha: 0.15),
         borderColor: color.withValues(alpha: 0.5),
         borderWidth: 1,
-        child: Text(tekst, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        child: Text(tekst,
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w600)),
       );
 }
 
@@ -174,17 +194,21 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
     }
 
     String odgovorInfo;
-    if (updated != null && updated.isAfter(created.add(const Duration(seconds: 5)))) {
+    if (updated != null &&
+        updated.isAfter(created.add(const Duration(seconds: 5)))) {
       final diff = updated.difference(created);
       final mins = diff.inMinutes;
       final secs = diff.inSeconds % 60;
       final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
 
       String odgovorLabel;
-      if (z.status == 'alternativa' && (z.altVremePre != null || z.altVremePosle != null)) {
+      if (z.status == 'alternativa' &&
+          (z.altVremePre != null || z.altVremePosle != null)) {
         final alts = [
-          if (z.altVremePre != null) V3StringUtils.formatAlternativeTime(z.altVremePre),
-          if (z.altVremePosle != null) V3StringUtils.formatAlternativeTime(z.altVremePosle),
+          if (z.altVremePre != null)
+            V3StringUtils.formatAlternativeTime(z.altVremePre),
+          if (z.altVremePosle != null)
+            V3StringUtils.formatAlternativeTime(z.altVremePosle),
         ].join(' / ');
         odgovorLabel = '⚠️ alt: $alts';
       } else {
@@ -197,7 +221,8 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
         };
       }
 
-      odgovorInfo = '${fmt(created)} → ${fmt(updated)} ($diffStr) $odgovorLabel';
+      odgovorInfo =
+          '${fmt(created)} → ${fmt(updated)} ($diffStr) $odgovorLabel';
     } else {
       odgovorInfo = '${fmt(created)} · čeka kron...';
     }
@@ -226,7 +251,8 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       backgroundColor: borderColor.withValues(alpha: 0.06),
       borderRadiusGeometry: BorderRadius.circular(14),
-      border: Border.all(color: borderColor.withValues(alpha: 0.45), width: 1.5),
+      border:
+          Border.all(color: borderColor.withValues(alpha: 0.45), width: 1.5),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
@@ -246,7 +272,9 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Učenik',
+                          V3PutnikService.getPutnikById(zahtev.putnikId)
+                                  ?.imePrezime ??
+                              'Učenik',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -254,7 +282,8 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Text(statusLabel, style: TextStyle(color: borderColor, fontSize: 12)),
+                      Text(statusLabel,
+                          style: TextStyle(color: borderColor, fontSize: 12)),
                     ],
                   ),
                   const SizedBox(height: 3),
@@ -268,7 +297,8 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 3),
                       child: Text(
                         '👥 ${zahtev.brojMesta} mesta',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 12),
                       ),
                     ),
                   // ── Timelapse ──────────────────────────────────
