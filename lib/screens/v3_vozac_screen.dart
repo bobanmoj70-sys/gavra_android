@@ -240,10 +240,45 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     _rebuild();
   }
 
-  bool _isRowAssignedToCurrentVozac(Map<String, dynamic> row) {
-    final operativnaId = row['id']?.toString().trim() ?? '';
-    if (operativnaId.isEmpty) return false;
-    return _assignedOperativnaIds.contains(operativnaId);
+  List<Map<String, dynamic>> _assignedOperativnaRows({
+    String? datumIso,
+    String? grad,
+    String? vreme,
+    bool onlyEligible = false,
+  }) {
+    final rm = V3MasterRealtimeManager.instance;
+    final trazeniDatum = datumIso?.trim() ?? '';
+    final trazeniGrad = grad?.trim().toUpperCase() ?? '';
+    final trazenoVreme = _normV(vreme);
+
+    final rows = <Map<String, dynamic>>[];
+    for (final operativnaId in _assignedOperativnaIds) {
+      final raw = rm.operativnaNedeljaCache[operativnaId] ?? rm.operativnaAssignedCache[operativnaId];
+      if (raw == null) continue;
+
+      final row = Map<String, dynamic>.from(raw);
+      row['vreme'] = row['vreme'] ?? row['polazak_at'];
+
+      if (trazeniDatum.isNotEmpty) {
+        final rowDatum = V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
+        if (rowDatum != trazeniDatum) continue;
+      }
+
+      if (trazeniGrad.isNotEmpty) {
+        final rowGrad = row['grad']?.toString().toUpperCase() ?? '';
+        if (rowGrad != trazeniGrad) continue;
+      }
+
+      if (trazenoVreme.isNotEmpty) {
+        final rowVreme = _normV(row['vreme']?.toString());
+        if (rowVreme != trazenoVreme) continue;
+      }
+
+      if (onlyEligible && !_isGpsRowEligible(row)) continue;
+      rows.add(row);
+    }
+
+    return rows;
   }
 
   bool _isExcludedFromOptimization(_PutnikEntry entry) {
@@ -338,18 +373,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return ((row['polazak_at'] as String?) ?? '');
     }
 
-    String rowGrad(Map<String, dynamic> row) => (row['grad']?.toString().toUpperCase() ?? '');
-
-    String rowDatum(Map<String, dynamic> row) => V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
-
     final selectedVNorm = _normV(_selectedVreme);
 
-    // 1. Moji termini za ovaj datum (iz izvedenog operativna cache-a)
-    _mojiTermini = rm.operativnaAssignedCache.values
-        .where(
-          (r) => _isRowAssignedToCurrentVozac(r) && rowDatum(r) == _selectedDatumIso && _isGpsRowEligible(r),
-        )
-        .toList();
+    // 1. Moji termini za ovaj datum (izvor dodele: v3_trenutna_dodela)
+    _mojiTermini = _assignedOperativnaRows(
+      datumIso: _selectedDatumIso,
+      onlyEligible: true,
+    );
 
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
     final terminPostoji = _mojiTermini.any(
@@ -373,14 +403,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     // 2. Putnici za ovaj dan/grad/vreme:
     //    Direktno iz izvedenog operativna cache-a, ali dodela isključivo preko v3_trenutna_dodela
 
-    // Putnici iz izvedenog operativna cache-a za ovog vozača i ovaj termin
-    final terminPutnici = rm.operativnaAssignedCache.values.where((r) =>
-        _isRowAssignedToCurrentVozac(r) &&
-        rowDatum(r) == _selectedDatumIso &&
-        rowGrad(r) == _selectedGrad &&
-        _normV(r['vreme']?.toString()) == selectedVNorm &&
-        r['created_by'] != null &&
-        _isGpsRowEligible(r));
+    // Putnici iz operativna reda za assigned ID-jeve (dodela dolazi iz v3_trenutna_dodela)
+    final terminPutnici = _assignedOperativnaRows(
+      datumIso: _selectedDatumIso,
+      grad: _selectedGrad,
+      vreme: selectedVNorm,
+      onlyEligible: true,
+    ).where((r) => r['created_by'] != null);
 
     // Redovi bez duplikata po operativna ID
     final allSelectedRowsById = <String, Map<String, dynamic>>{};
@@ -505,13 +534,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final parsedDayDate = DateTime.tryParse(dayIso);
     if (parsedDayDate == null) return;
     final selectedDayDate = V3DanHelper.dateOnly(parsedDayDate);
-    final rm = V3MasterRealtimeManager.instance;
-    final dayTerms = rm.operativnaAssignedCache.values
-        .where((row) =>
-            _isRowAssignedToCurrentVozac(row) &&
-            V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == dayIso &&
-            _isGpsRowEligible(row))
-        .toList();
+    final dayTerms = _assignedOperativnaRows(
+      datumIso: dayIso,
+      onlyEligible: true,
+    );
 
     final currentVremeNorm = _normV(_selectedVreme);
     final hasCurrentSelection = dayTerms.any(
@@ -616,15 +642,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return putnik != null;
     }
 
-    // Broji sva mesta za redove koji efektivno pripadaju ovom vozaču
-    return rm.operativnaAssignedCache.values
-        .where((r) =>
-            _isRowAssignedToCurrentVozac(r) &&
-            V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
-            r['grad']?.toString().toUpperCase() == gradUp &&
-            _normV(r['vreme']?.toString()) == vremeNorm &&
-            hasActivePutnik(r) &&
-            _isGpsRowActiveForCount(r))
+    // Broji sva mesta za assigned redove (izvor dodele: v3_trenutna_dodela)
+    return _assignedOperativnaRows(
+      datumIso: _selectedDatumIso,
+      grad: gradUp,
+      vreme: vremeNorm,
+    )
+        .where((r) => hasActivePutnik(r) && _isGpsRowActiveForCount(r))
         .fold<int>(0, (sum, r) => sum + parseBrojMesta(r['broj_mesta']));
   }
 
@@ -847,7 +871,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       );
     }
 
-    // Termini za BottomNavBar — iz izvedenog operativna cache-a
+    // Termini za BottomNavBar — iz assigned ID-jeva (v3_trenutna_dodela)
     final rm = V3MasterRealtimeManager.instance;
     String normV(String? v) {
       if (v == null || v.isEmpty) return '';
@@ -869,10 +893,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (g == 'BC') bcVremenaSet.add(v);
       if (g == 'VS') vsVremenaSet.add(v);
     }
-    for (final r in rm.operativnaAssignedCache.values) {
-      if (!_isRowAssignedToCurrentVozac(r)) continue;
-      if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
-      if (!_isGpsRowEligible(r)) continue;
+    for (final r in _assignedOperativnaRows(datumIso: _selectedDatumIso, onlyEligible: true)) {
       final g = r['grad']?.toString().toUpperCase() ?? '';
       final v = normV(r['vreme']?.toString());
       if (v.isEmpty) continue;
