@@ -242,11 +242,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     try {
       // Nađi red po telefonu
-      final rows = await Supabase.instance.client
-          .from('v3_auth')
-          .select('id')
-          .or(_buildPhoneOrClause(phone))
-          .limit(1);
+      final rows = await Supabase.instance.client.from('v3_auth').select('id').or(_buildPhoneOrClause(phone)).limit(1);
 
       if (!mounted) return;
       if (rows.isEmpty) {
@@ -259,13 +255,20 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       setState(() => _statusMessage = '📨 Pripremam zahtev...');
 
-      final otp = (100000 + Random().nextInt(900000)).toString();
-
-      // Upiši šifru direktno po ID
-      await Supabase.instance.client
+      // Ako već postoji šifra — koristi je, ne prepisuj
+      final existing = await Supabase.instance.client
           .from('v3_auth')
-          .update({'sifra': otp})
-          .eq('id', authId);
+          .select('sifra')
+          .eq('id', authId)
+          .limit(1);
+      final existingSifra = (existing.isNotEmpty ? existing.first['sifra'] : null)?.toString().trim() ?? '';
+
+      final otp = existingSifra.isNotEmpty ? existingSifra : (100000 + Random().nextInt(900000)).toString();
+
+      if (existingSifra.isEmpty) {
+        // Upiši novu šifru samo ako je nema
+        await Supabase.instance.client.from('v3_auth').update({'sifra': otp}).eq('id', authId);
+      }
 
       await V3SmsAuthRequestService.notifyTargetForSmsAuthRequest(
         phone: phone,
@@ -357,10 +360,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       }
 
       // Obrisi šifru
-      await Supabase.instance.client
-          .from('v3_auth')
-          .update({'sifra': null})
-          .eq('id', authId);
+      await Supabase.instance.client.from('v3_auth').update({'sifra': null}).eq('id', authId);
 
       setState(() {
         _targetAuthId = authId;
