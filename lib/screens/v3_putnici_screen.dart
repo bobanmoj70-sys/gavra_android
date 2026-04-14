@@ -615,15 +615,20 @@ class _PutnikDialogState extends State<_PutnikDialog> {
   }
 
   Future<void> _sacuvaj() async {
-    if (_ime.text.trim().isEmpty) {
-      V3AppSnackBar.error(context, '❌ Ime je obavezno');
+    final telText = _tel1.text.trim().isNotEmpty ? _tel1.text.trim() : _tel2.text.trim();
+    final imeVal = _ime.text.trim();
+
+    // Ako ne unese ni ime ni telefon, prekinemo
+    if (imeVal.isEmpty && telText.isEmpty) {
+      V3AppSnackBar.error(context, '⚠️ Unesite makar ime ili broj telefona');
       return;
     }
+
     V3StateUtils.safeSetState(this, () => _saving = true);
     try {
       final putnik = V3Putnik(
         id: widget.existing?.id ?? '',
-        imePrezime: _ime.text.trim(),
+        imePrezime: imeVal,
         telefon1: V3PhoneUtils.normalizeOrNull(_tel1.text),
         telefon2: V3PhoneUtils.normalizeOrNull(_tel2.text),
         tipPutnika: _tip,
@@ -814,7 +819,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                     // Ime
                     V3InputUtils.textField(
                       controller: _ime,
-                      label: 'Ime i prezime *',
+                      label: 'Ime i prezime',
                       icon: Icons.person,
                     ),
                     const SizedBox(height: 10),
@@ -824,7 +829,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         Expanded(
                           child: V3InputUtils.phoneField(
                             controller: _tel1,
-                            label: 'Telefon 1',
+                            label: 'Telefon 1 *',
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -832,7 +837,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           child: V3InputUtils.phoneField(
                             controller: _tel2,
                             label: 'Telefon 2',
-                            isRequired: false,
                           ),
                         ),
                       ],

@@ -81,6 +81,7 @@ async function getFcmAccessToken(payload: PushPayload): Promise<string> {
   }
 
   const candidates = [
+    envOrPayload('FIREBASE_SERVICE_ACCOUNT', payload),
     envOrPayload('firebase_admin_sdk', payload),
     envOrPayload('firebase_sa_078c775e7b11', payload),
     envOrPayload('firebase_sa_81779c4cc1fa', payload),

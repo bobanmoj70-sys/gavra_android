@@ -127,8 +127,8 @@ Deno.serve(async (req) => {
 
     const updatePayload: Record<string, unknown> =
       slot === "secondary"
-        ? { push_token_2: pushToken, push_device_id_2: deviceId }
-        : { push_token: pushToken, push_device_id: deviceId };
+        ? { push_token_2: pushToken, push_device_id_2: deviceId, updated_at: new Date().toISOString() }
+        : { push_token: pushToken, push_device_id: deviceId, updated_at: new Date().toISOString() };
 
     if (slot === "primary" && rowDeviceSecondary === deviceId) {
       updatePayload.push_token_2 = null;
