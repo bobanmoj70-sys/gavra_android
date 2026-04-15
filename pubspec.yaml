@@ -56,9 +56,6 @@ dependencies:
   # 🗺️ OFFLINE MAPS DATABASE
   sqflite: ^2.4.1
 
-  # 📇 CONTACT PICKER - biranje broja iz imenika
-  flutter_contacts: ^1.1.9
-
   vibration: ^3.1.4
   
   # 🔐 BIOMETRIC AUTHENTICATION (otisak prsta, Face ID)

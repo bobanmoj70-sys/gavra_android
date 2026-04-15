@@ -18,6 +18,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
 
 enum _SmsStep { unosTelefona, unosKoda, unosProfila }
@@ -771,6 +772,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.1),
             prefixIcon: const Icon(Icons.phone, color: Colors.amber),
+            suffixIcon: IconButton(
+              tooltip: 'Nalepi',
+              icon: const Icon(Icons.content_paste_rounded, color: Colors.amber),
+              onPressed: _isLoading ? null : () => V3InputUtils.pasteFromClipboardIntoController(_phoneController),
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white30),

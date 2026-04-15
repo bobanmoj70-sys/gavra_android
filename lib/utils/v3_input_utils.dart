@@ -1,10 +1,69 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gavra_android/utils/v3_phone_utils.dart';
 
 /// V3InputUtils - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ INPUT FIELD-ОВИМА
 /// Елиминише све TextField/TextFormField дупликате!
 class V3InputUtils {
   V3InputUtils._();
+
+  static Future<void> pasteFromClipboardIntoController(TextEditingController controller) async {
+    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+    final pasteText = (clipboardData?.text ?? '').trim();
+    if (pasteText.isEmpty) return;
+
+    final value = controller.value;
+    final selection = value.selection;
+
+    if (!selection.isValid) {
+      final merged = '${value.text}$pasteText';
+      controller.value = value.copyWith(
+        text: merged,
+        selection: TextSelection.collapsed(offset: merged.length),
+        composing: TextRange.empty,
+      );
+      return;
+    }
+
+    final start = math.max(0, math.min(selection.start, selection.end));
+    final end = math.max(start, math.max(selection.start, selection.end));
+
+    final merged = value.text.replaceRange(start, end, pasteText);
+    final cursorOffset = start + pasteText.length;
+
+    controller.value = value.copyWith(
+      text: merged,
+      selection: TextSelection.collapsed(offset: cursorOffset),
+      composing: TextRange.empty,
+    );
+  }
+
+  static Widget? _buildSuffixActions({
+    required TextEditingController controller,
+    required Color iconColor,
+    Widget? suffixIcon,
+  }) {
+    final actions = <Widget>[
+      if (suffixIcon != null) suffixIcon,
+      IconButton(
+        tooltip: 'Nalepi',
+        icon: Icon(Icons.content_paste_rounded, color: iconColor, size: 20),
+        onPressed: () => pasteFromClipboardIntoController(controller),
+      ),
+    ];
+
+    if (actions.length == 1) return actions.first;
+
+    return SizedBox(
+      width: actions.length * 44,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: actions,
+      ),
+    );
+  }
 
   // ─── СТАНДАРДНИ INPUT FIELD-ОВИ ─────────────────────────────────────────
 
@@ -32,12 +91,8 @@ class V3InputUtils {
         final theme = Theme.of(context);
         final cs = theme.colorScheme;
         final isDark = theme.brightness == Brightness.dark;
-        final resolvedFill = fillColor ??
-            (isDark
-                ? Colors.white.withValues(alpha: 0.10)
-                : cs.surfaceContainerHighest);
-        final resolvedBorder = borderColor ??
-            (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
+        final resolvedFill = fillColor ?? (isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest);
+        final resolvedBorder = borderColor ?? (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
         final resolvedFocused = focusedBorderColor ?? cs.primary;
         final textColor = cs.onSurface;
         final labelColor = cs.onSurface.withValues(alpha: 0.78);
@@ -60,7 +115,11 @@ class V3InputUtils {
             hintText: hint,
             hintStyle: TextStyle(color: hintColor),
             prefixIcon: icon != null ? Icon(icon, color: iconColor) : null,
-            suffixIcon: suffixIcon,
+            suffixIcon: _buildSuffixActions(
+              controller: controller,
+              iconColor: iconColor,
+              suffixIcon: suffixIcon,
+            ),
             suffixText: suffixText,
             suffixStyle: TextStyle(color: labelColor),
             filled: true,
@@ -120,12 +179,8 @@ class V3InputUtils {
         final theme = Theme.of(context);
         final cs = theme.colorScheme;
         final isDark = theme.brightness == Brightness.dark;
-        final resolvedFill = fillColor ??
-            (isDark
-                ? Colors.white.withValues(alpha: 0.10)
-                : cs.surfaceContainerHighest);
-        final resolvedBorder = borderColor ??
-            (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
+        final resolvedFill = fillColor ?? (isDark ? Colors.white.withValues(alpha: 0.10) : cs.surfaceContainerHighest);
+        final resolvedBorder = borderColor ?? (isDark ? Colors.white30 : cs.outline.withValues(alpha: 0.6));
         final resolvedFocused = focusedBorderColor ?? cs.primary;
         final textColor = cs.onSurface;
         final labelColor = cs.onSurface.withValues(alpha: 0.78);
@@ -148,7 +203,11 @@ class V3InputUtils {
             hintText: hint,
             hintStyle: TextStyle(color: hintColor),
             prefixIcon: icon != null ? Icon(icon, color: iconColor) : null,
-            suffixIcon: suffixIcon,
+            suffixIcon: _buildSuffixActions(
+              controller: controller,
+              iconColor: iconColor,
+              suffixIcon: suffixIcon,
+            ),
             suffixText: suffixText,
             suffixStyle: TextStyle(color: labelColor),
             filled: true,
@@ -245,8 +304,7 @@ class V3InputUtils {
   // ─── ВАЛИДАТОРИ ─────────────────────────────────────────────────────────
 
   /// Стандардни required валидатор
-  static String? requiredValidator(String? value,
-      [String message = 'Ово поље је обавезно']) {
+  static String? requiredValidator(String? value, [String message = 'Ово поље је обавезно']) {
     if (value == null || value.trim().isEmpty) {
       return message;
     }
@@ -264,9 +322,7 @@ class V3InputUtils {
       if (digitsOnly.length < 8 || digitsOnly.length > 15) {
         return 'Неисправан број телефона';
       }
-      if ((normalized.startsWith('+') ||
-              normalized.startsWith('0') ||
-              normalized.startsWith('381')) &&
+      if ((normalized.startsWith('+') || normalized.startsWith('0') || normalized.startsWith('381')) &&
           !V3PhoneUtils.isValid(normalized)) {
         return 'Неисправан број телефона';
       }
