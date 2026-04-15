@@ -16,7 +16,6 @@ import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_messages.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_korisnik.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -27,6 +26,7 @@ import '../utils/v3_status_presentation.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
+import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_update_banner.dart';
@@ -296,7 +296,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           novoVreme: validNovoVreme,
           brojMesta: brojMesta,
           koristiSekundarnu: koristiSekundarnu,
-          updatedBy: V3AuditKorisnik.normalize(putnikId),
+          updatedBy: V3UuidUtils.normalizeUuid(putnikId),
         );
         if (mounted) {
           V3AppSnackBar.success(context, V3PutnikProfilMessages.requestReceived);

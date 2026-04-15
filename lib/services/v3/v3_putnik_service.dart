@@ -4,8 +4,8 @@ import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
 import '../../models/v3_zahtev.dart';
-import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
 import 'v3_auth_lookup_service.dart';
@@ -79,8 +79,8 @@ class V3PutnikService {
   static Future<void> addUpdatePutnik(V3Putnik putnik, {String? createdBy, String? updatedBy}) async {
     try {
       final data = putnik.toJson();
-      final createdByUuid = V3AuditKorisnik.normalize(createdBy);
-      final updatedByUuid = V3AuditKorisnik.normalize(updatedBy, fallback: createdByUuid);
+      final createdByUuid = V3UuidUtils.normalizeUuid(createdBy);
+      final updatedByUuid = V3UuidUtils.normalizeUuid(updatedBy, fallback: createdByUuid);
 
       if (putnik.id.isEmpty) data.remove('id');
       if (putnik.id.isEmpty && createdByUuid != null) data['created_by'] = createdByUuid;

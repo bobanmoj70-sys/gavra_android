@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
-import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_string_utils.dart';
+import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
 
@@ -295,7 +295,7 @@ class V3OperativnaNedeljaService {
     String? adresaIdOverride,
   }) async {
     try {
-      final actor = V3AuditKorisnik.normalize(createdBy);
+      final actor = V3UuidUtils.normalizeUuid(createdBy);
 
       // Provjeri postoji li već zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
@@ -341,7 +341,7 @@ class V3OperativnaNedeljaService {
     String? updatedBy,
   }) async {
     if (operativnaIds.isEmpty) return;
-    final actor = V3AuditKorisnik.normalize(updatedBy);
+    final actor = V3UuidUtils.normalizeUuid(updatedBy);
 
     for (final id in operativnaIds) {
       await _updateById(id, {
@@ -358,7 +358,7 @@ class V3OperativnaNedeljaService {
     required String polazakAt,
     String? updatedBy,
   }) async {
-    final actor = V3AuditKorisnik.normalize(updatedBy);
+    final actor = V3UuidUtils.normalizeUuid(updatedBy);
     final updatedRows = await _repo.updateByTerminReturningList(
       datumIso: datumIso,
       grad: grad,
@@ -381,7 +381,7 @@ class V3OperativnaNedeljaService {
     required String navBarType,
     String? updatedBy,
   }) async {
-    final actor = V3AuditKorisnik.normalize(updatedBy);
+    final actor = V3UuidUtils.normalizeUuid(updatedBy);
     await _updateById(operativnaId, {
       'pokupljen_by': vozacId,
       'updated_at': DateTime.now().toIso8601String(),
@@ -396,7 +396,7 @@ class V3OperativnaNedeljaService {
     required String datumIso,
     String? updatedBy,
   }) async {
-    final actor = V3AuditKorisnik.normalize(updatedBy);
+    final actor = V3UuidUtils.normalizeUuid(updatedBy);
     final updatedRows = await _repo.updateByPutnikGradPolazakAtDatumReturningList(
       putnikId: putnikId,
       grad: grad,

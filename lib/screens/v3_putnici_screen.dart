@@ -8,7 +8,7 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_korisnik.dart';
+import '../utils/v3_uuid_utils.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -622,7 +622,10 @@ class _PutnikDialogState extends State<_PutnikDialog> {
             ? double.tryParse(_cenaDan.text.replaceAll(',', '.')) ?? 0.0
             : 0.0, // radnici/ucenici koriste cenaPoDanu
       );
-      await V3PutnikService.addUpdatePutnik(putnik, createdBy: V3AuditKorisnik.normalize('admin'));
+      await V3PutnikService.addUpdatePutnik(
+        putnik,
+        createdBy: V3UuidUtils.normalizeUuid('admin'),
+      );
       if (mounted) {
         V3AppSnackBar.success(context, widget.existing == null ? '✅ Putnik dodan' : '✅ Putnik sačuvan');
         Navigator.pop(context);

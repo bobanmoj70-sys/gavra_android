@@ -9,12 +9,12 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_korisnik.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_time_utils.dart';
+import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_putnik_card.dart';
 
@@ -348,6 +348,9 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Future<void> _dodelijTermin(String grad, String vreme, V3Vozac vozac) async {
     try {
       final datum = _selectedDatumIso;
+      final actorUuid = V3UuidUtils.normalizeUuid(
+        V3VozacService.currentVozac?.id,
+      );
 
       // Pronađi sve putnike iz operativne nedelje za ovaj termin
       final rm = V3MasterRealtimeManager.instance;
@@ -381,7 +384,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           'putnik_v3_auth_id': putnikId,
           'vozac_v3_auth_id': vozac.id,
           'status': 'aktivan',
-          'updated_by': V3AuditKorisnik.normalize('admin_termin_bulk'),
+          if (actorUuid != null) 'updated_by': actorUuid,
           'updated_at': DateTime.now().toIso8601String(),
         });
       }
@@ -436,6 +439,9 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Future<void> _dodelijPutniku(String putnikId, V3Vozac vozac, String grad, String vreme) async {
     try {
       final datum = _selectedDatumIso;
+      final actorUuid = V3UuidUtils.normalizeUuid(
+        V3VozacService.currentVozac?.id,
+      );
       final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
       final operativna = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.firstWhere(
         (r) =>
@@ -459,7 +465,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         'putnik_v3_auth_id': putnikId,
         'vozac_v3_auth_id': vozac.id,
         'status': 'aktivan',
-        'updated_by': V3AuditKorisnik.normalize('admin_individual'),
+        if (actorUuid != null) 'updated_by': actorUuid,
         'updated_at': DateTime.now().toIso8601String(),
       });
 
@@ -708,7 +714,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             centerTitle: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
-            foregroundColor: Colors.white,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),

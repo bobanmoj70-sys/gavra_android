@@ -3,9 +3,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
-import '../../utils/v3_audit_korisnik.dart';
 import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_kapacitet_slots_repository.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -112,7 +112,7 @@ class V3ZahtevService {
       _assertDatumUTekucojNedelji(zahtev.datum);
 
       final data = zahtev.toJson();
-      final createdByUuid = V3AuditKorisnik.normalize(createdBy);
+      final createdByUuid = V3UuidUtils.normalizeUuid(createdBy);
       if (createdByUuid != null) data['created_by'] = createdByUuid;
       data['updated_at'] = DateTime.now().toIso8601String();
       if (!data.containsKey('created_at')) {
@@ -180,7 +180,7 @@ class V3ZahtevService {
       final row = aktivni.first;
       final rowKey = (row['id']?.toString() ?? '').trim();
       if (rowKey.isNotEmpty) {
-        final updBy = V3AuditKorisnik.normalize(otkazaoPutnikId);
+        final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
         final updated = await _repository.updateRawMaybeSingle(
           rowKey,
           {
@@ -213,7 +213,7 @@ class V3ZahtevService {
 
   static Future<void> updateStatus(String id, String newStatus, {String? updatedBy}) async {
     try {
-      final updByUuid = V3AuditKorisnik.normalize(updatedBy, fallback: V3VozacService.currentVozac?.id);
+      final updByUuid = V3UuidUtils.normalizeUuid(updatedBy, fallback: V3VozacService.currentVozac?.id);
       final status = V3ZahtevStatus.values.firstWhere(
         (value) => value.name == newStatus,
         orElse: () => V3ZahtevStatus.obrada,
@@ -234,7 +234,7 @@ class V3ZahtevService {
         id: id,
         vreme: novoVreme,
         status: status,
-        updatedBy: V3AuditKorisnik.normalize(V3VozacService.currentVozac?.id),
+        updatedBy: V3UuidUtils.normalizeUuid(V3VozacService.currentVozac?.id),
       );
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
     } catch (e) {
@@ -321,7 +321,7 @@ class V3ZahtevService {
         }
       } else {
         // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovdje
-        final String? updBy = V3AuditKorisnik.normalize(otkazaoPutnikId);
+        final String? updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
         final row = await _repository.updateRaw(
           id,
           {
@@ -394,7 +394,7 @@ class V3ZahtevService {
         id: id,
         novoVreme: novoVreme,
         koristiSekundarnu: koristiSekundarnu,
-        updatedBy: V3AuditKorisnik.normalize(updatedBy),
+        updatedBy: V3UuidUtils.normalizeUuid(updatedBy),
         createdAtIso: nowIso,
       );
     } catch (e) {

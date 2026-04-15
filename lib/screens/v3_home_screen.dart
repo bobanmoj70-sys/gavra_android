@@ -17,7 +17,6 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_audit_korisnik.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -27,6 +26,7 @@ import '../utils/v3_status_filters.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../utils/v3_time_utils.dart';
+import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_zimski.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
@@ -554,7 +554,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         grad: _selectedGrad,
                                         polazakAt: _selectedVreme,
                                         brojMesta: brojMesta,
-                                        createdBy: V3AuditKorisnik.normalize(vozacId),
+                                        createdBy: V3UuidUtils.normalizeUuid(vozacId),
                                         koristiSekundarnu: koristiSekundarnu,
                                         adresaIdOverride: adresaIdOverride,
                                       );
