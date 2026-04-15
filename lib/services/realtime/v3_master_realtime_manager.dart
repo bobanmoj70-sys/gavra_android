@@ -172,7 +172,7 @@ class V3MasterRealtimeManager {
       if (awsParsed != null) {
         aktivnaSedmicaStartNotifier.value = DateTime(awsParsed.year, awsParsed.month, awsParsed.day);
       } else {
-        aktivnaSedmicaStartNotifier.value = null;
+        debugPrint('[V3MasterRealtimeManager] active_week_start je nevažeći, zadržavam postojeću vrednost.');
       }
     }
 
@@ -181,7 +181,7 @@ class V3MasterRealtimeManager {
       if (aweParsed != null) {
         aktivnaSedmicaEndNotifier.value = DateTime(aweParsed.year, aweParsed.month, aweParsed.day);
       } else {
-        aktivnaSedmicaEndNotifier.value = null;
+        debugPrint('[V3MasterRealtimeManager] active_week_end je nevažeći, zadržavam postojeću vrednost.');
       }
     }
 

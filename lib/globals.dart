@@ -271,9 +271,16 @@ final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateIn
 
 /// AKTIVNA SEDMICA NOTIFIER - globalni izvor istine iz v3_app_settings
 /// Sadrži početak (Ponedeljak) aktivne sedmice (kako je zadato u bazi)
-/// Ako je null, pada se nazad na lokalnu logiku uređaja iz V3DanHelper.
-final ValueNotifier<DateTime?> aktivnaSedmicaStartNotifier = ValueNotifier<DateTime?>(null);
+/// Inicijalno ima lokalnu vrednost (početak tekuće sedmice) i zatim se
+/// prepisuje vrednošću iz baze kada stigne.
+final DateTime _initialActiveWeekStart = (() {
+  final today = DateTime.now();
+  final dateOnly = DateTime(today.year, today.month, today.day);
+  return dateOnly.subtract(Duration(days: dateOnly.weekday - DateTime.monday));
+})();
+final ValueNotifier<DateTime?> aktivnaSedmicaStartNotifier = ValueNotifier<DateTime?>(_initialActiveWeekStart);
 
 /// AKTIVNA SEDMICA END NOTIFIER - globalni kraj aktivne sedmice iz v3_app_settings
-/// Ako je null, kraj se računa lokalno iz anchor-a (ponedeljak + 6 dana).
-final ValueNotifier<DateTime?> aktivnaSedmicaEndNotifier = ValueNotifier<DateTime?>(null);
+/// Inicijalno je kraj lokalne aktivne sedmice i zatim se prepisuje iz baze.
+final ValueNotifier<DateTime?> aktivnaSedmicaEndNotifier =
+    ValueNotifier<DateTime?>(_initialActiveWeekStart.add(const Duration(days: 6)));
