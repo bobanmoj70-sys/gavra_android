@@ -77,15 +77,4 @@ class V3SmsAuthRequestService {
       return;
     }
   }
-
-  static Future<List<Map<String, dynamic>>> fetchPendingSmsRequests({int limit = 20}) async {
-    final rows = await supabase
-        .from('v3_auth')
-        .select('id,ime,telefon,telefon_2,sifra,updated_at,tip')
-        .not('sifra', 'is', null)
-        .order('updated_at', ascending: false)
-        .limit(limit);
-
-    return rows.whereType<Map<String, dynamic>>().map(Map<String, dynamic>.from).toList(growable: false);
-  }
 }

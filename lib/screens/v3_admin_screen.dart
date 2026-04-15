@@ -23,7 +23,6 @@ import 'v3_odrzavanje_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
-import 'v3_sms_sifre_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
 import 'v3_vozaci_admin_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
@@ -1219,14 +1218,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }).length;
   }
 
-  int _getSmsSifreCount() {
-    final rm = V3MasterRealtimeManager.instance;
-    return rm.authCache.values.where((row) {
-      final sifra = (row['sifra'] ?? '').toString().trim();
-      return sifra.isNotEmpty;
-    }).length;
-  }
-
   /// Učenici brojač: broj učenika bez VS termina danas.
   Widget _buildSaVsWidget(BuildContext context) {
     final stats = _getUceniciBcVsSummary();
@@ -1686,19 +1677,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
                           const V3PosiljkeZahteviScreen(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // 🔐 SMS šifre
-                    Expanded(
-                      child: _BadgeBtn(
-                        emoji: '🔐',
-                        color: Colors.amber,
-                        badgeCount: _getSmsSifreCount(),
-                        onTap: () => V3NavigationUtils.pushScreen<void>(
-                          context,
-                          const V3SmsSifreScreen(),
                         ),
                       ),
                     ),
