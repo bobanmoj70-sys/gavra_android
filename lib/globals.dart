@@ -7,8 +7,7 @@ import 'utils/v3_dan_helper.dart';
 export 'utils/v3_dan_helper.dart';
 
 void initDanHelperGlobals() {
-  V3DanHelper.getGlobalActiveWeekStart =
-      () => aktivnaSedmicaStartNotifier.value;
+  V3DanHelper.getGlobalActiveWeekStart = () => aktivnaSedmicaStartNotifier.value;
   V3DanHelper.getGlobalActiveWeekEnd = () => aktivnaSedmicaEndNotifier.value;
 }
 
@@ -67,8 +66,7 @@ const Set<String> _allowedNavBarTypes = {'zimski', 'custom'};
 DateTime? _parseSettingsDateTime(dynamic value) {
   if (value == null) return null;
   if (value is DateTime) return value;
-  if (value is String && value.trim().isNotEmpty)
-    return DateTime.tryParse(value);
+  if (value is String && value.trim().isNotEmpty) return DateTime.tryParse(value);
   return null;
 }
 
@@ -89,10 +87,7 @@ String? resolveEffectiveNavBarType({
   final effective = _parseSettingsDateTime(effectiveAt);
   final tsNow = now ?? DateTime.now();
 
-  if (next != null &&
-      _allowedNavBarTypes.contains(next) &&
-      effective != null &&
-      !tsNow.isBefore(effective)) {
+  if (next != null && _allowedNavBarTypes.contains(next) && effective != null && !tsNow.isBefore(effective)) {
     return next;
   }
 
@@ -106,43 +101,12 @@ String? resolveEffectiveNavBarType({
 /// RASPORED NOTIFIER - vremena polazaka iz baze (v3_app_settings)
 /// Ključevi: 'bc_zimski', 'vs_zimski'
 /// Puni se pri startu i ažurira realtime kad admin promeni rasporede u bazi
-final ValueNotifier<Map<String, List<String>>> rasporedNotifier =
-    ValueNotifier<Map<String, List<String>>>({
-  'bc_zimski': [
-    '05:00',
-    '06:00',
-    '07:00',
-    '08:00',
-    '09:00',
-    '11:00',
-    '12:00',
-    '13:00',
-    '14:00',
-    '15:30',
-    '18:00'
-  ],
-  'vs_zimski': [
-    '06:00',
-    '07:00',
-    '08:00',
-    '10:00',
-    '11:00',
-    '12:00',
-    '13:00',
-    '14:00',
-    '15:30',
-    '17:00',
-    '19:00'
-  ],
+final ValueNotifier<Map<String, List<String>>> rasporedNotifier = ValueNotifier<Map<String, List<String>>>({
+  'bc_zimski': ['05:00', '06:00', '07:00', '08:00', '09:00', '11:00', '12:00', '13:00', '14:00', '15:30', '18:00'],
+  'vs_zimski': ['06:00', '07:00', '08:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:30', '17:00', '19:00'],
 });
 
-const List<String> _customWorkdayNames = [
-  'Ponedeljak',
-  'Utorak',
-  'Sreda',
-  'Cetvrtak',
-  'Petak'
-];
+const List<String> _customWorkdayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak'];
 
 Map<String, List<String>> _emptyCustomDayMap() => {
       for (final day in _customWorkdayNames) day: <String>[],
@@ -150,8 +114,7 @@ Map<String, List<String>> _emptyCustomDayMap() => {
 
 /// CUSTOM RASPORED PO DANIMA - vremena polazaka za radne dane
 /// Struktura: {'bc': {'Ponedeljak': [...], ...}, 'vs': {'Ponedeljak': [...], ...}}
-final ValueNotifier<Map<String, Map<String, List<String>>>>
-    customRasporedByDayNotifier =
+final ValueNotifier<Map<String, Map<String, List<String>>>> customRasporedByDayNotifier =
     ValueNotifier<Map<String, Map<String, List<String>>>>({
   'bc': _emptyCustomDayMap(),
   'vs': _emptyCustomDayMap(),
@@ -160,8 +123,7 @@ final ValueNotifier<Map<String, Map<String, List<String>>>>
 /// NERADNI DANI - lista pravila iz v3_app_settings.neradni_dani
 /// Očekivani format svakog unosa:
 /// {"date":"yyyy-MM-dd", "scope":"all|bc|vs", "reason":"..."}
-final ValueNotifier<List<Map<String, String>>> neradniDaniNotifier =
-    ValueNotifier<List<Map<String, String>>>([]);
+final ValueNotifier<List<Map<String, String>>> neradniDaniNotifier = ValueNotifier<List<Map<String, String>>>([]);
 
 String _normalizeNeradanScope(String? raw) {
   final scope = (raw ?? 'all').trim().toLowerCase();
@@ -175,8 +137,7 @@ List<Map<String, String>> _parseNeradniDani(dynamic raw) {
   final out = <Map<String, String>>[];
   for (final item in raw) {
     if (item is! Map) continue;
-    final dateIso =
-        V3DanHelper.parseIsoDatePart((item['date'] ?? '').toString());
+    final dateIso = V3DanHelper.parseIsoDatePart((item['date'] ?? '').toString());
     if (dateIso.length != 10) continue;
 
     out.add({
@@ -205,8 +166,7 @@ String? getNeradanDanRazlog({
     if (rule['date'] != normalizedDate) continue;
 
     final scope = _normalizeNeradanScope(rule['scope']);
-    final scopeMatches = scope == 'all' ||
-        (normalizedGrad.isNotEmpty && scope == normalizedGrad);
+    final scopeMatches = scope == 'all' || (normalizedGrad.isNotEmpty && scope == normalizedGrad);
     if (!scopeMatches) continue;
 
     final reason = (rule['reason'] ?? '').trim();
@@ -221,7 +181,7 @@ String? getNeradanDanRazlogZaDan({
   String? grad,
   DateTime? anchor,
 }) {
-  final normalizedDay = V3DanHelper.normalizeToWorkdayFull(day, fallback: '');
+  final normalizedDay = V3DanHelper.normalizeToWorkdayFull(day);
   if (normalizedDay.isEmpty) return null;
 
   final datumIso = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(
@@ -246,14 +206,13 @@ List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
   final normalizedSezona = sezona.toLowerCase();
 
   if (day != null && day.trim().isNotEmpty) {
-    final normalizedDay = V3DanHelper.normalizeToWorkdayFull(day, fallback: '');
+    final normalizedDay = V3DanHelper.normalizeToWorkdayFull(day);
     if (normalizedDay.isNotEmpty) {
       final datumIso = V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(
         normalizedDay,
         anchor: V3DanHelper.schedulingWeekAnchor(),
       );
-      if (datumIso.isNotEmpty &&
-          isNeradanDan(datumIso: datumIso, grad: normalizedGrad)) {
+      if (datumIso.isNotEmpty && isNeradanDan(datumIso: datumIso, grad: normalizedGrad)) {
         return <String>[];
       }
     }
@@ -263,8 +222,7 @@ List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
     final cityMap = customRasporedByDayNotifier.value[normalizedGrad];
 
     if (day != null && day.trim().isNotEmpty) {
-      final normalizedDay =
-          V3DanHelper.normalizeToWorkdayFull(day, fallback: '');
+      final normalizedDay = V3DanHelper.normalizeToWorkdayFull(day);
       if (normalizedDay.isNotEmpty && cityMap != null) {
         final dayTimes = cityMap[normalizedDay];
         if (dayTimes != null && dayTimes.isNotEmpty) {
@@ -293,8 +251,7 @@ final V2ConfigService configService = V2ConfigService();
 class V2UpdateInfo {
   final String latestVersion;
   final String storeUrl;
-  final bool
-      isForced; // true = korisnik mora da ažurira (u forced-only toku očekivano true)
+  final bool isForced; // true = korisnik mora da ažurira (u forced-only toku očekivano true)
   final bool isMaintenance;
   final String maintenanceTitle;
   final String maintenanceMessage;
@@ -310,16 +267,13 @@ class V2UpdateInfo {
 }
 
 /// Notifier koji se puni nakon provere verzije samo kada postoji obavezni update
-final ValueNotifier<V2UpdateInfo?> updateInfoNotifier =
-    ValueNotifier<V2UpdateInfo?>(null);
+final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateInfo?>(null);
 
 /// AKTIVNA SEDMICA NOTIFIER - globalni izvor istine iz v3_app_settings
 /// Sadrži početak (Ponedeljak) aktivne sedmice (kako je zadato u bazi)
 /// Ako je null, pada se nazad na lokalnu logiku uređaja iz V3DanHelper.
-final ValueNotifier<DateTime?> aktivnaSedmicaStartNotifier =
-    ValueNotifier<DateTime?>(null);
+final ValueNotifier<DateTime?> aktivnaSedmicaStartNotifier = ValueNotifier<DateTime?>(null);
 
 /// AKTIVNA SEDMICA END NOTIFIER - globalni kraj aktivne sedmice iz v3_app_settings
 /// Ako je null, kraj se računa lokalno iz anchor-a (ponedeljak + 6 dana).
-final ValueNotifier<DateTime?> aktivnaSedmicaEndNotifier =
-    ValueNotifier<DateTime?>(null);
+final ValueNotifier<DateTime?> aktivnaSedmicaEndNotifier = ValueNotifier<DateTime?>(null);

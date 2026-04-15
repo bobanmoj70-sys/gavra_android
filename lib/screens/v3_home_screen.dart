@@ -108,7 +108,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
-      final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_v3_auth_id, status');
+      final rows = await supabase
+          .from('v3_trenutna_dodela')
+          .select('termin_id, vozac_v3_auth_id, status')
+          .eq('status', 'aktivan');
       final next = <String, String>{};
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;

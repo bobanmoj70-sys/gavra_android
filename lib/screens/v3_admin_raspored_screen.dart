@@ -67,7 +67,10 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
-      final rows = await supabase.from('v3_trenutna_dodela').select('termin_id, vozac_v3_auth_id, status');
+      final rows = await supabase
+          .from('v3_trenutna_dodela')
+          .select('termin_id, vozac_v3_auth_id, status')
+          .eq('status', 'aktivan');
       final next = <String, String>{};
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
@@ -378,15 +381,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         final putnikId = row['created_by']?.toString() ?? '';
         if (operativnaId.isEmpty || putnikId.isEmpty) continue;
 
-        await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
-        await supabase.from('v3_trenutna_dodela').insert({
+        await supabase.from('v3_trenutna_dodela').upsert({
           'termin_id': operativnaId,
           'putnik_v3_auth_id': putnikId,
           'vozac_v3_auth_id': vozac.id,
           'status': 'aktivan',
           if (actorUuid != null) 'updated_by': actorUuid,
           'updated_at': DateTime.now().toIso8601String(),
-        });
+        }, onConflict: 'termin_id');
       }
 
       await _reloadTrenutnaDodelaMap();
@@ -459,15 +461,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       }
 
       final operativnaId = operativna['id'] as String;
-      await supabase.from('v3_trenutna_dodela').delete().eq('termin_id', operativnaId);
-      await supabase.from('v3_trenutna_dodela').insert({
+      await supabase.from('v3_trenutna_dodela').upsert({
         'termin_id': operativnaId,
         'putnik_v3_auth_id': putnikId,
         'vozac_v3_auth_id': vozac.id,
         'status': 'aktivan',
         if (actorUuid != null) 'updated_by': actorUuid,
         'updated_at': DateTime.now().toIso8601String(),
-      });
+      }, onConflict: 'termin_id');
 
       await _reloadTrenutnaDodelaMap();
       if (mounted) setState(() {});
@@ -735,7 +736,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     child: Row(
                       children: V3DanHelper.workdayNames.map((day) {
                         final isSelected = _selectedDay == day;
-                        final abbr = V3DanHelper.normalizeToWorkdayAbbr(V3DanHelper.dayAbbrFromFullName(day));
+                        final abbr = V3DanHelper.workdayAbbrFromFullName(day);
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(

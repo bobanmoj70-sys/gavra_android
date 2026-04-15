@@ -175,8 +175,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     _loadingDodela = true;
     try {
-      final rows =
-          await supabase.from('v3_trenutna_dodela').select('termin_id, status').eq('vozac_v3_auth_id', vozacAuthId);
+      final rows = await supabase
+          .from('v3_trenutna_dodela')
+          .select('termin_id, status')
+          .eq('vozac_v3_auth_id', vozacAuthId)
+          .eq('status', 'aktivan');
 
       final assigned = <String>{};
       for (final row in (rows as List<dynamic>)) {
@@ -526,7 +529,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozac = _efektivniVozac;
     if (vozac == null) return;
 
-    final dayAbbr = V3DanHelper.normalizeToWorkdayAbbr(V3DanHelper.dayAbbrFromFullName(day));
+    final dayAbbr = V3DanHelper.workdayAbbrFromFullName(day);
     final dayIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(
       dayAbbr,
       anchor: V3DanHelper.schedulingWeekAnchor(),

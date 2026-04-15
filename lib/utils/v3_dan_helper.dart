@@ -4,26 +4,9 @@ class V3DanHelper {
 
   static const int _isoDateLength = 10;
 
-  static const _names = [
-    'Ponedeljak',
-    'Utorak',
-    'Sreda',
-    'Cetvrtak',
-    'Petak',
-    'Subota',
-    'Nedelja'
-  ];
+  static const _names = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja'];
   static const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
   static const _labels = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
-  static const _upper = [
-    'PONEDELJAK',
-    'UTORAK',
-    'SREDA',
-    'CETVRTAK',
-    'PETAK',
-    'SUBOTA',
-    'NEDELJA'
-  ];
 
   static String _normalizeDayToken(String value) {
     return value
@@ -61,47 +44,29 @@ class V3DanHelper {
   /// Puni naziv dana (npr. 'Ponedeljak').
   static String fullName(DateTime datum) => _names[datum.weekday - 1];
 
-  /// Kratica dana (npr. 'pon').
-  static String abbr(DateTime datum) => _abbrs[datum.weekday - 1];
-
   /// Kratki UI label (npr. 'Pon').
   static String label(DateTime datum) => _labels[datum.weekday - 1];
 
-  /// Puni naziv velikim slovima (npr. 'PONEDELJAK').
-  static String fullNameUpper(DateTime datum) => _upper[datum.weekday - 1];
-
   // ─── Lista dana za UI (dropdown/chip) ───────────────────────────
 
-  /// Svi puni nazivi dana — za dropdown/chip liste.
-  static const List<String> dayNames = _names;
-
-  /// Sve kratice dana.
-  static const List<String> dayAbbrs = _abbrs;
-
   /// Radni dani (ponedeljak–petak) — puni nazivi.
-  static const List<String> workdayNames = [
-    'Ponedeljak',
-    'Utorak',
-    'Sreda',
-    'Cetvrtak',
-    'Petak'
-  ];
+  static const List<String> workdayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak'];
 
   /// Radni dani (ponedeljak–petak) — kratice.
   static const List<String> workdayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
 
   // ─── Inicijalizacija tekućeg dana ───────────────────────────────
 
-  /// Danas kao puni naziv.
-  static String defaultDay() {
-    final w = DateTime.now().weekday;
-    return _names[w - 1];
-  }
-
-  /// Danas kao puni naziv RADNOG dana (vikend -> 'Ponedeljak').
+  /// Danas kao puni naziv RADNOG dana.
+  /// - Ako je danas ponedeljak–petak: vraća današnji radni dan.
+  /// - Ako je vikend: vraća ponedeljak aktivne sedmice zakazivanja.
   static String defaultWorkdayFullName({DateTime? now}) {
     final current = now ?? DateTime.now();
-    return normalizeToWorkdayFull(fullName(current));
+    final base = dateOnly(current);
+    if (base.weekday >= DateTime.monday && base.weekday <= DateTime.friday) {
+      return fullName(base);
+    }
+    return fullName(schedulingWeekRange(now: current).start);
   }
 
   /// Podrazumevani datum radnog dana.
@@ -116,28 +81,20 @@ class V3DanHelper {
     return schedulingWeekRange(now: current).start;
   }
 
-  /// Normalizuje puni naziv dana na radni dan (vikend/invalid -> fallback).
-  static String normalizeToWorkdayFull(String dayFullName,
-      {String fallback = 'Ponedeljak'}) {
+  /// Normalizuje puni naziv dana na radni dan.
+  /// Vraća prazan string za vikend/invalid.
+  static String normalizeToWorkdayFull(String dayFullName) {
     final index = _indexForFullDayName(dayFullName);
     if (index >= 0 && index <= 4) return _names[index];
-    return fallback;
+    return '';
   }
 
-  /// Normalizuje kraticu dana na radni dan (vikend/invalid -> fallback).
-  static String normalizeToWorkdayAbbr(String dayAbbr,
-      {String fallback = 'pon'}) {
-    final index = _indexForDayAbbr(dayAbbr);
-    if (index >= 0 && index <= 4) return _abbrs[index];
-    return fallback;
-  }
-
-  /// Kratica dana iz punog naziva (invalid -> fallback).
-  static String dayAbbrFromFullName(String dayFullName,
-      {String fallback = 'pon'}) {
+  /// Kratica radnog dana iz punog naziva dana.
+  /// Vraća prazan string za vikend/invalid.
+  static String workdayAbbrFromFullName(String dayFullName) {
     final index = _indexForFullDayName(dayFullName);
-    if (index >= 0 && index < _abbrs.length) return _abbrs[index];
-    return fallback;
+    if (index >= 0 && index <= 4) return _abbrs[index];
+    return '';
   }
 
   // ─── Aktivna sedmica za zakazivanje ────────────────────────────
@@ -160,23 +117,21 @@ class V3DanHelper {
   }
 
   /// Početak i kraj aktivne sedmice zakazivanja.
-  /// Ako je globalni override postavljen u app settings, koristi njega.
+  /// Zahteva globalni override iz app settings (`aktivnaSedmicaStart/End`).
   static ({DateTime start, DateTime end}) schedulingWeekRange({DateTime? now}) {
     final overrideStart = getGlobalActiveWeekStart?.call();
-    if (overrideStart != null) {
-      final start = dateOnly(overrideStart);
-      final overrideEnd = getGlobalActiveWeekEnd?.call();
-      final end =
-          (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
-              ? dateOnly(overrideEnd)
-              : start.add(const Duration(days: 6));
-      return (start: start, end: end);
+    if (overrideStart == null) {
+      throw StateError(
+        'Aktivna sedmica nije podešena (aktivnaSedmicaStartNotifier je null).',
+      );
     }
 
-    final anchor = dateOnly(schedulingWeekAnchor(now: now));
-    final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-    return (start: monday, end: sunday);
+    final start = dateOnly(overrideStart);
+    final overrideEnd = getGlobalActiveWeekEnd?.call();
+    final end = (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
+        ? dateOnly(overrideEnd)
+        : start.add(const Duration(days: 6));
+    return (start: start, end: end);
   }
 
   /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 03:00).
@@ -184,12 +139,10 @@ class V3DanHelper {
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
     final saturday = base.add(Duration(days: DateTime.saturday - base.weekday));
-    final unlockThisWeek =
-        DateTime(saturday.year, saturday.month, saturday.day, 3, 0);
+    final unlockThisWeek = DateTime(saturday.year, saturday.month, saturday.day, 3, 0);
     if (current.isBefore(unlockThisWeek)) return unlockThisWeek;
     final nextSaturday = saturday.add(const Duration(days: 7));
-    return DateTime(
-        nextSaturday.year, nextSaturday.month, nextSaturday.day, 3, 0);
+    return DateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 3, 0);
   }
 
   /// Da li je datum unutar aktivne sedmice zakazivanja.
@@ -203,16 +156,14 @@ class V3DanHelper {
   static bool isInSchedulingWorkweek(DateTime datum, {DateTime? now}) {
     if (!isInSchedulingWeek(datum, now: now)) return false;
     final target = dateOnly(datum);
-    return target.weekday >= DateTime.monday &&
-        target.weekday <= DateTime.friday;
+    return target.weekday >= DateTime.monday && target.weekday <= DateTime.friday;
   }
 
   // ─── naziv/kratica → ISO datum (RAČUNANJE PO SEDMICI) ────────
 
   /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.
   /// Ne gura automatski u sledeću sedmicu ako je dan već prošao.
-  static String datumIsoZaDanPuniUTekucojSedmici(String danPuni,
-      {DateTime? anchor}) {
+  static String datumIsoZaDanPuniUTekucojSedmici(String danPuni, {DateTime? anchor}) {
     final targetIndex = _indexForFullDayName(danPuni);
     if (targetIndex == -1) return '';
     final range = schedulingWeekRange(now: anchor ?? DateTime.now());
@@ -222,17 +173,17 @@ class V3DanHelper {
 
   /// DateTime za izabrani dan u TEKUĆOJ sedmici.
   /// Sedmica se računa od [anchor] datuma (ili danas ako nije prosleđen).
-  static DateTime datumZaDanAbbrUTekucojSedmici(String danAbbr,
-      {DateTime? anchor}) {
+  static DateTime datumZaDanAbbrUTekucojSedmici(String danAbbr, {DateTime? anchor}) {
     final targetIndex = _indexForDayAbbr(danAbbr);
     final range = schedulingWeekRange(now: anchor ?? DateTime.now());
-    if (targetIndex == -1) return range.start;
+    if (targetIndex == -1) {
+      throw ArgumentError.value(danAbbr, 'danAbbr', 'Nevažeća kratica dana');
+    }
     return range.start.add(Duration(days: targetIndex));
   }
 
   /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.
-  static String datumIsoZaDanAbbrUTekucojSedmici(String danAbbr,
-      {DateTime? anchor}) {
+  static String datumIsoZaDanAbbrUTekucojSedmici(String danAbbr, {DateTime? anchor}) {
     return toIsoDate(datumZaDanAbbrUTekucojSedmici(danAbbr, anchor: anchor));
   }
 
@@ -264,12 +215,6 @@ class V3DanHelper {
     return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year.toString().substring(2)}';
   }
 
-  /// Formatira datetime u DD.MM.YYYY HH:MM format
-  static String formatDatumVreme(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
-
   /// Formatira datetime u DD.MM. HH:MM format (kratko)
   static String formatDatumVremeKratko(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}. '
@@ -289,10 +234,5 @@ class V3DanHelper {
   /// Generira DateTime sa datumom (god, mes, dan) i vremenom na 00:00:00.
   static DateTime dateOnlyFrom(int godina, int mesec, int dan) {
     return DateTime(godina, mesec, dan);
-  }
-
-  /// Formatira datum u dd.MM.yyyy format - alias za formatDatumPuni
-  static String formatDatumDdMmYyyy(DateTime datum) {
-    return formatDatumPuni(datum);
   }
 }

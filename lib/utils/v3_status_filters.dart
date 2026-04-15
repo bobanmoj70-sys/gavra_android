@@ -4,6 +4,11 @@ class V3StatusFilters {
   static String normalizeStatus(String? status) {
     final normalized = (status ?? '').trim().toLowerCase();
     switch (normalized) {
+      case 'active':
+        return 'aktivan';
+      case 'inactive':
+      case 'deleted':
+        return 'neaktivan';
       case 'otkazan':
       case 'cancelled':
         return 'otkazano';
@@ -94,13 +99,6 @@ class V3StatusFilters {
 
   static bool isDodelaAktivna(String? status) {
     final normalized = normalizeStatus(status);
-    if (normalized.isEmpty) return false;
-    if (normalized == 'otkazano') return false;
-    const inactiveStatuses = {
-      'inactive',
-      'neaktivan',
-      'deleted',
-    };
-    return !inactiveStatuses.contains(normalized);
+    return normalized == 'aktivan';
   }
 }

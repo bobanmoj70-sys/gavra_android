@@ -347,7 +347,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     if (raw is! Map) return result;
 
     for (final entry in raw.entries) {
-      final normalizedDay = V3DanHelper.normalizeToWorkdayFull(entry.key.toString(), fallback: '');
+      final normalizedDay = V3DanHelper.normalizeToWorkdayFull(entry.key.toString());
       if (normalizedDay.isEmpty) continue;
       if (entry.value is List) {
         result[normalizedDay] = _normalizeTimes((entry.value as List).map((e) => e.toString()).toList());

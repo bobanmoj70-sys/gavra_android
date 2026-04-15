@@ -16,16 +16,13 @@ import 'repositories/v3_realtime_bootstrap_repository.dart';
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
 class V3MasterRealtimeManager {
   V3MasterRealtimeManager._internal();
-  static final V3MasterRealtimeManager _instance =
-      V3MasterRealtimeManager._internal();
+  static final V3MasterRealtimeManager _instance = V3MasterRealtimeManager._internal();
   static V3MasterRealtimeManager get instance => _instance;
-  static final V3RealtimeBootstrapRepository _bootstrapRepository =
-      V3RealtimeBootstrapRepository();
+  static final V3RealtimeBootstrapRepository _bootstrapRepository = V3RealtimeBootstrapRepository();
 
   final V3CacheStore _cacheStore = V3CacheStore();
   final V3EventBus _eventBus = V3EventBus();
-  late final V3BootstrapLoader _bootstrapLoader =
-      V3BootstrapLoader(repository: _bootstrapRepository);
+  late final V3BootstrapLoader _bootstrapLoader = V3BootstrapLoader(repository: _bootstrapRepository);
   bool _cacheStoreRegistered = false;
 
   // --- REALTIME ---
@@ -69,8 +66,7 @@ class V3MasterRealtimeManager {
 
       final datumIso = V3DanHelper.parseIsoDatePart(_asString(entry['datum']));
       final grad = (entry['grad']?.toString() ?? '').trim().toUpperCase();
-      final polazakTime =
-          _extractTimeToken(entry['polazak_at']?.toString()) ?? '';
+      final polazakTime = _extractTimeToken(entry['polazak_at']?.toString()) ?? '';
 
       final row = Map<String, dynamic>.from(entry);
       row['vreme'] = row['vreme'] ?? row['polazak_at'];
@@ -102,9 +98,7 @@ class V3MasterRealtimeManager {
 
     final nextType = row['nav_bar_type_next']?.toString().toLowerCase();
     final effectiveAt = _tryParseDateTime(row['nav_bar_type_effective_at']);
-    if (nextType != null &&
-        ['zimski', 'custom'].contains(nextType) &&
-        effectiveAt != null) {
+    if (nextType != null && ['zimski', 'custom'].contains(nextType) && effectiveAt != null) {
       final delay = effectiveAt.difference(now);
       if (!delay.isNegative && delay > Duration.zero) {
         _navTypeSwitchTimer = Timer(delay, () {
@@ -127,9 +121,7 @@ class V3MasterRealtimeManager {
       if (val is! Map) return result;
 
       for (final entry in val.entries) {
-        final normalizedDay = V3DanHelper.normalizeToWorkdayFull(
-            entry.key.toString(),
-            fallback: '');
+        final normalizedDay = V3DanHelper.normalizeToWorkdayFull(entry.key.toString());
         if (normalizedDay.isEmpty) continue;
         result[normalizedDay] = _toList(entry.value);
       }
@@ -153,10 +145,8 @@ class V3MasterRealtimeManager {
     if (changed) rasporedNotifier.value = updated;
 
     final customByDayUpdated = {
-      'bc': Map<String, List<String>>.from(
-          customRasporedByDayNotifier.value['bc'] ?? {}),
-      'vs': Map<String, List<String>>.from(
-          customRasporedByDayNotifier.value['vs'] ?? {}),
+      'bc': Map<String, List<String>>.from(customRasporedByDayNotifier.value['bc'] ?? {}),
+      'vs': Map<String, List<String>>.from(customRasporedByDayNotifier.value['vs'] ?? {}),
     };
     bool customByDayChanged = false;
 
@@ -180,8 +170,7 @@ class V3MasterRealtimeManager {
     if (row.containsKey('active_week_start')) {
       final awsParsed = _tryParseDateTime(row['active_week_start']);
       if (awsParsed != null) {
-        aktivnaSedmicaStartNotifier.value =
-            DateTime(awsParsed.year, awsParsed.month, awsParsed.day);
+        aktivnaSedmicaStartNotifier.value = DateTime(awsParsed.year, awsParsed.month, awsParsed.day);
       } else {
         aktivnaSedmicaStartNotifier.value = null;
       }
@@ -190,17 +179,15 @@ class V3MasterRealtimeManager {
     if (row.containsKey('active_week_end')) {
       final aweParsed = _tryParseDateTime(row['active_week_end']);
       if (aweParsed != null) {
-        aktivnaSedmicaEndNotifier.value =
-            DateTime(aweParsed.year, aweParsed.month, aweParsed.day);
+        aktivnaSedmicaEndNotifier.value = DateTime(aweParsed.year, aweParsed.month, aweParsed.day);
       } else {
         aktivnaSedmicaEndNotifier.value = null;
       }
     }
 
     unawaited(
-      V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row).catchError(
-          (Object e) => debugPrint(
-              '[V3MasterRealtimeManager] app update info error: $e')),
+      V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row)
+          .catchError((Object e) => debugPrint('[V3MasterRealtimeManager] app update info error: $e')),
     );
   }
 
@@ -214,13 +201,11 @@ class V3MasterRealtimeManager {
   DateTime? _tryParseDateTime(dynamic value) {
     if (value == null) return null;
     if (value is DateTime) return value;
-    if (value is String && value.trim().isNotEmpty)
-      return DateTime.tryParse(value);
+    if (value is String && value.trim().isNotEmpty) return DateTime.tryParse(value);
     return null;
   }
 
-  void _scheduleEmit({Set<String>? tables, bool immediate = false}) =>
-      _eventBus.scheduleEmit(
+  void _scheduleEmit({Set<String>? tables, bool immediate = false}) => _eventBus.scheduleEmit(
         tables: tables,
         immediate: immediate,
         revisions: _cacheStore.revisionsSnapshot(),
@@ -242,8 +227,7 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
     _cacheStore.registerTable('v3_kapacitet_slots', kapacitetSlotsCache);
     _cacheStore.registerTable('v3_app_settings', appSettingsCache);
-    _cacheStore.registerTable(
-        'v3_operativna_assigned', operativnaAssignedCache);
+    _cacheStore.registerTable('v3_operativna_assigned', operativnaAssignedCache);
 
     _cacheStoreRegistered = true;
   }
@@ -266,8 +250,7 @@ class V3MasterRealtimeManager {
   Future<void> _initV3Internal() async {
     debugPrint('[V3MasterRealtimeManager] ⚡ STARTED initV3()');
     if (!isSupabaseReady) {
-      debugPrint(
-          '[V3MasterRealtimeManager] Supabase nije spreman, preskačem initV3.');
+      debugPrint('[V3MasterRealtimeManager] Supabase nije spreman, preskačem initV3.');
       return;
     }
     try {
@@ -316,16 +299,13 @@ class V3MasterRealtimeManager {
     final channel = supabase.channel('v3_realtime_all');
     for (final config in V3RealtimeTableRegistry.defaults) {
       final sourceTable =
-          (config.name == 'v3_auth_vozaci' || config.name == 'v3_auth_putnici')
-              ? 'v3_auth'
-              : config.name;
+          (config.name == 'v3_auth_vozaci' || config.name == 'v3_auth_putnici') ? 'v3_auth' : config.name;
       channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: sourceTable,
         callback: (payload) {
-          if (config.name == 'v3_auth_vozaci' ||
-              config.name == 'v3_auth_putnici') {
+          if (config.name == 'v3_auth_vozaci' || config.name == 'v3_auth_putnici') {
             _onAuthBackedPayload(config: config, payload: payload);
             return;
           }
@@ -366,8 +346,7 @@ class V3MasterRealtimeManager {
     final cappedAttempt = _reconnectAttempts > 6 ? 6 : _reconnectAttempts;
     final baseMs = 500 * (1 << cappedAttempt);
     final jitter = Random().nextInt(250);
-    await Future<void>.delayed(
-        Duration(milliseconds: (baseMs + jitter).toInt()));
+    await Future<void>.delayed(Duration(milliseconds: (baseMs + jitter).toInt()));
     if (_realtimeDisposed) return;
     try {
       await _setupRealtime();
@@ -431,8 +410,7 @@ class V3MasterRealtimeManager {
     final mappedNew = _mapAuthToLegacyRow(payload.newRecord, config.name);
     final mappedOld = _mapAuthToLegacyRow(payload.oldRecord, config.name);
 
-    final shouldDelete = payload.eventType == PostgresChangeEvent.delete ||
-        (mappedNew.isEmpty && mappedOld.isNotEmpty);
+    final shouldDelete = payload.eventType == PostgresChangeEvent.delete || (mappedNew.isEmpty && mappedOld.isNotEmpty);
 
     final changed = _cacheStore.applyRealtimeMutation(
       table: config.name,
@@ -449,8 +427,7 @@ class V3MasterRealtimeManager {
     _scheduleEmit(tables: affected);
   }
 
-  Map<String, dynamic> _mapAuthToLegacyRow(
-      Map<String, dynamic> row, String logicalTable) {
+  Map<String, dynamic> _mapAuthToLegacyRow(Map<String, dynamic> row, String logicalTable) {
     if (logicalTable == 'v3_auth_vozaci') {
       return _mapAuthToLegacyVozac(row);
     }
@@ -481,8 +458,7 @@ class V3MasterRealtimeManager {
 
   Map<String, dynamic> _mapAuthToLegacyPutnik(Map<String, dynamic> row) {
     final tip = row['tip']?.toString().trim().toLowerCase();
-    if (tip == null || tip.isEmpty || tip == 'vozac')
-      return <String, dynamic>{};
+    if (tip == null || tip.isEmpty || tip == 'vozac') return <String, dynamic>{};
 
     final id = row['id']?.toString();
     if (id == null || id.isEmpty) return <String, dynamic>{};
@@ -506,17 +482,12 @@ class V3MasterRealtimeManager {
     };
   }
 
-  Stream<T> v3StreamFromCache<T>(
-      {required List<String> tables, required T Function() build}) {
+  Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
     return v3StreamFromRevisions(tables: tables, build: build);
   }
 
-  Stream<T> v3StreamFromRevisions<T>(
-      {required List<String> tables, required T Function() build}) {
-    final normalized = tables
-        .map((t) => t.trim())
-        .where((t) => t.isNotEmpty)
-        .toList(growable: false);
+  Stream<T> v3StreamFromRevisions<T>({required List<String> tables, required T Function() build}) {
+    final normalized = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toList(growable: false);
 
     return Stream<T>.multi(
       (controller) {
@@ -535,17 +506,11 @@ class V3MasterRealtimeManager {
 
   Stream<int> tableRevisionStream(String table) {
     final normalized = table.trim();
-    return onRevisions
-        .map((snapshot) =>
-            snapshot[normalized] ?? _cacheStore.revision(normalized))
-        .distinct();
+    return onRevisions.map((snapshot) => snapshot[normalized] ?? _cacheStore.revision(normalized)).distinct();
   }
 
   Stream<int> tablesRevisionStream(List<String> tables) {
-    final normalized = tables
-        .map((t) => t.trim())
-        .where((t) => t.isNotEmpty)
-        .toList(growable: false);
+    final normalized = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toList(growable: false);
     if (normalized.isEmpty) {
       return onRevisions.map((_) => 0).distinct();
     }
@@ -615,8 +580,7 @@ class V3MasterRealtimeManager {
     return Map<String, dynamic>.from(row);
   }
 
-  Map<String, dynamic> _normalizeRowForTable(
-      String table, Map<String, dynamic> row) {
+  Map<String, dynamic> _normalizeRowForTable(String table, Map<String, dynamic> row) {
     switch (table) {
       case 'v3_zahtevi':
         return _normalizeZahtevRow(row);
@@ -645,8 +609,7 @@ class V3MasterRealtimeManager {
       debugPrint(
           '[V3MasterRealtimeManager] operativnaAssignedCache rebuilt: ${operativnaAssignedCache.length} records from operativna_nedelja');
     } catch (e) {
-      debugPrint(
-          '[V3MasterRealtimeManager] Error refreshing assigned operativna cache: $e');
+      debugPrint('[V3MasterRealtimeManager] Error refreshing assigned operativna cache: $e');
     }
   }
 

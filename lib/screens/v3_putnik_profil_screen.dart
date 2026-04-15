@@ -221,7 +221,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final rows = await supabase
           .from('v3_trenutna_dodela')
           .select('termin_id, vozac_v3_auth_id, status')
-          .eq('putnik_v3_auth_id', putnikId);
+          .eq('putnik_v3_auth_id', putnikId)
+          .eq('status', 'aktivan');
 
       final next = <String, String>{};
       for (final row in (rows as List<dynamic>)) {
