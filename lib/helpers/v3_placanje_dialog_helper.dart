@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 
@@ -251,34 +251,13 @@ class V3PlacanjeDialogHelper {
       if (vozac == null) throw 'Vozač nije ulogovan u V3';
 
       if (snimiMesecnuUplatu) {
-        final existing = await supabase
-            .from('v3_finansije')
-            .select('id')
-            .eq('tip', 'prihod')
-            .eq('kategorija', 'operativna_naplata')
-            .eq('putnik_v3_auth_id', putnikId)
-            .eq('mesec', rezultat.mesec)
-            .eq('godina', rezultat.godina)
-            .isFilter('operativna_id', null)
-            .maybeSingle();
-
-        final payload = {
-          'naziv': 'Naplata prevoza',
-          'kategorija': 'operativna_naplata',
-          'tip': 'prihod',
-          'iznos': rezultat.iznos,
-          'putnik_v3_auth_id': putnikId,
-          'naplaceno_by': vozac.id,
-          'mesec': rezultat.mesec,
-          'godina': rezultat.godina,
-          'updated_at': DateTime.now().toIso8601String(),
-        };
-
-        if (existing != null) {
-          await supabase.from('v3_finansije').update(payload).eq('id', existing['id']);
-        } else {
-          await supabase.from('v3_finansije').insert(payload);
-        }
+        await V3FinansijeService.sacuvajMesecnuOperativnuNaplatu(
+          putnikId: putnikId,
+          naplacenoBy: vozac.id,
+          iznos: rezultat.iznos,
+          mesec: rezultat.mesec,
+          godina: rezultat.godina,
+        );
       }
 
       if (context.mounted) {

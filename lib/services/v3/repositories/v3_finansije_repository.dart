@@ -5,6 +5,23 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload);
   }
 
+  Future<Map<String, dynamic>?> findMesecnaOperativnaNaplataId({
+    required String putnikId,
+    required int mesec,
+    required int godina,
+  }) {
+    return supabase
+        .from('v3_finansije')
+        .select('id')
+        .eq('tip', 'prihod')
+        .eq('kategorija', 'operativna_naplata')
+        .eq('putnik_v3_auth_id', putnikId)
+        .eq('mesec', mesec)
+        .eq('godina', godina)
+        .isFilter('operativna_id', null)
+        .maybeSingle();
+  }
+
   Future<void> deleteById(String id) {
     return supabase.from('v3_finansije').delete().eq('id', id);
   }

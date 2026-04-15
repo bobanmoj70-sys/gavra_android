@@ -39,4 +39,41 @@ class V3FinansijeService {
       rethrow;
     }
   }
+
+  static Future<void> sacuvajMesecnuOperativnuNaplatu({
+    required String putnikId,
+    required String naplacenoBy,
+    required double iznos,
+    required int mesec,
+    required int godina,
+  }) async {
+    try {
+      final existing = await _repo.findMesecnaOperativnaNaplataId(
+        putnikId: putnikId,
+        mesec: mesec,
+        godina: godina,
+      );
+
+      final payload = {
+        'naziv': 'Naplata prevoza',
+        'kategorija': 'operativna_naplata',
+        'tip': 'prihod',
+        'iznos': iznos,
+        'putnik_v3_auth_id': putnikId,
+        'naplaceno_by': naplacenoBy,
+        'mesec': mesec,
+        'godina': godina,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (existing != null) {
+        await _repo.updateById(existing['id'] as String, payload);
+      } else {
+        await _repo.insert(payload);
+      }
+    } catch (e) {
+      debugPrint('[V3FinansijeService] sacuvajMesecnuOperativnuNaplatu error: $e');
+      rethrow;
+    }
+  }
 }
