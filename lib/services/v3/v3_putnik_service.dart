@@ -101,6 +101,7 @@ class V3PutnikService {
     required String putnikId,
     required String token,
     required String deviceId,
+    String? osDeviceId,
     String? existingToken1,
     String? existingToken2,
   }) async {
@@ -111,6 +112,7 @@ class V3PutnikService {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
           slot: 'primary',
           expectedV3AuthId: putnikId,
         );
@@ -121,6 +123,7 @@ class V3PutnikService {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
           slot: 'secondary',
           expectedV3AuthId: putnikId,
         );
@@ -130,6 +133,7 @@ class V3PutnikService {
       await V3PushTokenEdgeService.syncPushToken(
         pushToken: token,
         deviceId: deviceId,
+        osDeviceId: osDeviceId,
         slot: 'secondary',
         expectedV3AuthId: putnikId,
       );

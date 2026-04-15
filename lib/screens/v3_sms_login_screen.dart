@@ -10,6 +10,8 @@ import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_os_device_id_service.dart';
+import '../services/v3/v3_push_token_sync_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_sms_auth_request_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -328,7 +330,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       // Čitaj šifru i ID direktno po telefonu iz baze
       final rows = await Supabase.instance.client
           .from('v3_auth')
-          .select('id,sifra')
+          .select(
+            'id,sifra,push_device_id,push_device_id_2,os_device_id,os_device_id_2,push_token,push_token_2',
+          )
           .or(_buildPhoneOrClause(_normalizedPhone!))
           .limit(1);
 
@@ -342,6 +346,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       final authId = rows.first['id'].toString().trim();
       final storedCode = (rows.first['sifra'] ?? '').toString().trim();
+      final pushDeviceId = (rows.first['push_device_id'] ?? '').toString().trim();
+      final pushDeviceId2 = (rows.first['push_device_id_2'] ?? '').toString().trim();
+      final osDeviceIdPrimary = (rows.first['os_device_id'] ?? '').toString().trim();
+      final osDeviceIdSecondary = (rows.first['os_device_id_2'] ?? '').toString().trim();
+      final pushToken = (rows.first['push_token'] ?? '').toString().trim();
+      final pushToken2 = (rows.first['push_token_2'] ?? '').toString().trim();
 
       if (storedCode.isEmpty) {
         V3AppSnackBar.error(context, '❌ Kod nije pronađen ili je istekao. Zatražite novi kod.');
@@ -352,6 +362,29 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       if (storedCode != code) {
         _otpController.clear();
         V3AppSnackBar.error(context, '❌ Pogrešan kod. Proverite SMS i pokušajte ponovo.');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
+      final deviceId = await V3PushTokenSyncService.getOrCreateDeviceIdForAuth();
+      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+      final hasPrimaryBinding = pushDeviceId.isNotEmpty || pushToken.isNotEmpty;
+      final hasSecondaryBinding = pushDeviceId2.isNotEmpty || pushToken2.isNotEmpty;
+      final hasAnyBinding = hasPrimaryBinding || hasSecondaryBinding;
+      final hasOsBinding = osDeviceIdPrimary.isNotEmpty || osDeviceIdSecondary.isNotEmpty;
+      final matchesKnownOsDevice = osDeviceId.isNotEmpty &&
+          ((osDeviceIdPrimary.isNotEmpty && osDeviceIdPrimary == osDeviceId) ||
+              (osDeviceIdSecondary.isNotEmpty && osDeviceIdSecondary == osDeviceId));
+      final matchesKnownPushDevice = (pushDeviceId.isNotEmpty && pushDeviceId == deviceId) ||
+          (pushDeviceId2.isNotEmpty && pushDeviceId2 == deviceId);
+      final matchesKnownDevice = hasOsBinding ? matchesKnownOsDevice : matchesKnownPushDevice;
+      final hasFreeDeviceSlot = !hasPrimaryBinding || !hasSecondaryBinding;
+
+      if (hasAnyBinding && !matchesKnownDevice && !hasFreeDeviceSlot) {
+        V3AppSnackBar.error(
+          context,
+          '❌ Ovaj uređaj nije odobren za nalog. Koristite postojeći uređaj ili kontaktirajte administraciju.',
+        );
         setState(() => _statusMessage = '');
         return;
       }

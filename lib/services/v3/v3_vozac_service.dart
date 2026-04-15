@@ -17,12 +17,10 @@ class V3VozacService {
 
   static List<V3Vozac> getAllVozaci() {
     final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
-    return cache.map((r) => V3Vozac.fromJson(r)).toList()
-      ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
+    return cache.map((r) => V3Vozac.fromJson(r)).toList()..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
   }
 
-  static Stream<List<V3Vozac>> streamVozaci() =>
-      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
+  static Stream<List<V3Vozac>> streamVozaci() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_auth'],
         build: () => getAllVozaci(),
       );
@@ -51,8 +49,7 @@ class V3VozacService {
       final match = cache.firstWhere((r) {
         final t1 = V3PhoneUtils.normalize(r['telefon_1']?.toString() ?? '');
         final t2 = V3PhoneUtils.normalize(r['telefon_2']?.toString() ?? '');
-        return t1 == normalizedPhone ||
-            (t2.isNotEmpty && t2 == normalizedPhone);
+        return t1 == normalizedPhone || (t2.isNotEmpty && t2 == normalizedPhone);
       });
       return V3Vozac.fromJson(match);
     } catch (_) {
@@ -106,18 +103,18 @@ class V3VozacService {
     required String vozacId,
     required String token,
     required String deviceId,
+    String? osDeviceId,
     String? existingToken1,
     String? existingToken2,
   }) async {
     try {
       if (token.isEmpty) return const {};
 
-      if (existingToken1 == null ||
-          existingToken1.isEmpty ||
-          existingToken1 == token) {
+      if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
           slot: 'primary',
           expectedTip: 'vozac',
           expectedV3AuthId: vozacId,
@@ -125,12 +122,11 @@ class V3VozacService {
         return {'push_token': token};
       }
 
-      if (existingToken2 == null ||
-          existingToken2.isEmpty ||
-          existingToken2 == token) {
+      if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
           slot: 'secondary',
           expectedTip: 'vozac',
           expectedV3AuthId: vozacId,
@@ -141,6 +137,7 @@ class V3VozacService {
       await V3PushTokenEdgeService.syncPushToken(
         pushToken: token,
         deviceId: deviceId,
+        osDeviceId: osDeviceId,
         slot: 'secondary',
         expectedTip: 'vozac',
         expectedV3AuthId: vozacId,
@@ -160,8 +157,7 @@ class V3VozacService {
     final token = pushToken.trim();
     if (id.isEmpty || token.isEmpty) return false;
 
-    final row =
-        await _repo.getActiveByIdAndPushToken(vozacId: id, pushToken: token);
+    final row = await _repo.getActiveByIdAndPushToken(vozacId: id, pushToken: token);
     return row != null;
   }
 }

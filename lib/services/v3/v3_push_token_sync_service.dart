@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
+import 'v3_os_device_id_service.dart';
 import 'v3_push_token_edge_service.dart';
 import 'v3_push_token_provider.dart';
 import 'v3_putnik_service.dart';
@@ -69,16 +70,17 @@ class V3PushTokenSyncService {
         debugPrint('[PushSync] Nema device_id za clear (reason=$reason).');
         return false;
       }
+      final osDeviceId = await V3OsDeviceIdService.getOsDeviceId();
 
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac != null) {
         await V3PushTokenEdgeService.clearPushTokenByDevice(
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
           expectedTip: 'vozac',
           expectedV3AuthId: currentVozac.id,
         );
-        debugPrint(
-            '✅ [PushSync] Device token cleared: v3_auth (vozac) reason=$reason');
+        debugPrint('✅ [PushSync] Device token cleared: v3_auth (vozac) reason=$reason');
         return true;
       }
 
@@ -87,15 +89,14 @@ class V3PushTokenSyncService {
       if (putnikId.isNotEmpty) {
         await V3PushTokenEdgeService.clearPushTokenByDevice(
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
           expectedV3AuthId: putnikId,
         );
-        debugPrint(
-            '✅ [PushSync] Device token cleared: v3_auth (putnik) reason=$reason');
+        debugPrint('✅ [PushSync] Device token cleared: v3_auth (putnik) reason=$reason');
         return true;
       }
 
-      debugPrint(
-          '[PushSync] Nema trenutno ulogovanog korisnika za clear (reason=$reason).');
+      debugPrint('[PushSync] Nema trenutno ulogovanog korisnika za clear (reason=$reason).');
       return false;
     } catch (e) {
       debugPrint('⚠️ [PushSync] Device clear greška (reason=$reason): $e');
@@ -109,6 +110,7 @@ class V3PushTokenSyncService {
   }) async {
     try {
       final deviceId = await _getOrCreateDeviceId();
+      final osDeviceId = await V3OsDeviceIdService.getOsDeviceId();
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac != null) {
         final updated = await V3VozacService.updatePushTokensOnLogin(
@@ -117,6 +119,7 @@ class V3PushTokenSyncService {
           existingToken1: currentVozac.pushToken,
           existingToken2: currentVozac.pushToken2,
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
         );
         if (updated.isNotEmpty) {
           V3VozacService.currentVozac = V3VozacService.currentVozac?.copyWith(
@@ -124,8 +127,7 @@ class V3PushTokenSyncService {
             pushToken2: updated['push_token_2'] ?? currentVozac.pushToken2,
           );
         }
-        debugPrint(
-            '✅ [PushSync] Token sync: v3_auth (vozac) provider=fcm reason=$reason');
+        debugPrint('✅ [PushSync] Token sync: v3_auth (vozac) provider=fcm reason=$reason');
         return true;
       }
 
@@ -141,20 +143,23 @@ class V3PushTokenSyncService {
           existingToken1: token1,
           existingToken2: token2,
           deviceId: deviceId,
+          osDeviceId: osDeviceId,
         );
         currentPutnik?.addAll(updated);
-        debugPrint(
-            '✅ [PushSync] Token sync: v3_auth (putnik) provider=fcm reason=$reason');
+        debugPrint('✅ [PushSync] Token sync: v3_auth (putnik) provider=fcm reason=$reason');
         return true;
       }
 
-      debugPrint(
-          '[PushSync] Nema trenutno ulogovanog korisnika (reason=$reason).');
+      debugPrint('[PushSync] Nema trenutno ulogovanog korisnika (reason=$reason).');
       return false;
     } catch (e) {
       debugPrint('⚠️ [PushSync] Token sync greška (reason=$reason): $e');
       return false;
     }
+  }
+
+  static Future<String> getOrCreateDeviceIdForAuth() {
+    return _getOrCreateDeviceId();
   }
 
   static Future<String> _getOrCreateDeviceId() async {
