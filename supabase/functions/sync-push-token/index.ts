@@ -5,7 +5,6 @@ type SyncPayload = {
   v3_auth_id?: string;
   sifra?: string;
   push_token?: string;
-  device_id?: string;
   os_device_id?: string;
   slot?: "primary" | "secondary";
   expected_tip?: string;
@@ -38,14 +37,13 @@ Deno.serve(async (req) => {
     const userId = String(payload.v3_auth_id ?? "").trim();
     const sifra = String(payload.sifra ?? "").trim();
     const pushToken = String(payload.push_token ?? "").trim();
-    const deviceId = String(payload.device_id ?? "").trim();
     const osDeviceId = String(payload.os_device_id ?? "").trim();
     const requestedSlot = payload.slot === "secondary" ? "secondary" : "primary";
     const expectedTip = String(payload.expected_tip ?? "").trim();
     const clear = payload.clear === true;
 
     if (!userId) return badRequest("v3_auth_id is required");
-    if (!deviceId) return badRequest("device_id is required");
+    if (!osDeviceId) return badRequest("os_device_id is required");
     if (!clear && !pushToken) return badRequest("push_token is required");
 
     const client = createClient(supabaseUrl, anonKey, {
@@ -54,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data: row, error: rowError } = await client
       .from("v3_auth")
-      .select("id, tip, sifra, push_token, push_token_2, push_device_id, push_device_id_2, os_device_id, os_device_id_2")
+      .select("id, tip, sifra, push_token, push_token_2, os_device_id, os_device_id_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -75,42 +73,22 @@ Deno.serve(async (req) => {
       return badRequest("sifra mismatch", 403);
     }
 
-    const rowDevicePrimary = String(row.push_device_id ?? "").trim();
-    const rowDeviceSecondary = String(row.push_device_id_2 ?? "").trim();
     const rowOsDevicePrimary = String(row.os_device_id ?? "").trim();
     const rowOsDeviceSecondary = String(row.os_device_id_2 ?? "").trim();
-    const rowTokenPrimary = String(row.push_token ?? "").trim();
-    const rowTokenSecondary = String(row.push_token_2 ?? "").trim();
 
     if (clear) {
       const clearPayload: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       };
 
-      if (rowDevicePrimary && rowDevicePrimary === deviceId) {
+      if (rowOsDevicePrimary && rowOsDevicePrimary === osDeviceId) {
         clearPayload.push_token = null;
-        clearPayload.push_device_id = null;
         clearPayload.os_device_id = null;
       }
 
-      if (rowDeviceSecondary && rowDeviceSecondary === deviceId) {
+      if (rowOsDeviceSecondary && rowOsDeviceSecondary === osDeviceId) {
         clearPayload.push_token_2 = null;
-        clearPayload.push_device_id_2 = null;
         clearPayload.os_device_id_2 = null;
-      }
-
-      if (osDeviceId) {
-        if (rowOsDevicePrimary && rowOsDevicePrimary === osDeviceId) {
-          clearPayload.push_token = null;
-          clearPayload.push_device_id = null;
-          clearPayload.os_device_id = null;
-        }
-
-        if (rowOsDeviceSecondary && rowOsDeviceSecondary === osDeviceId) {
-          clearPayload.push_token_2 = null;
-          clearPayload.push_device_id_2 = null;
-          clearPayload.os_device_id_2 = null;
-        }
       }
 
       if (Object.keys(clearPayload).length > 1) {
@@ -126,24 +104,20 @@ Deno.serve(async (req) => {
           v3_auth_id: userId,
           tip: rowTip,
           cleared: true,
-          device_id: deviceId,
+          os_device_id: osDeviceId,
         }),
         { status: 200, headers: jsonHeaders },
       );
     }
 
     let slot: "primary" | "secondary" = "primary";
-    if (osDeviceId && rowOsDevicePrimary && rowOsDevicePrimary === osDeviceId) {
+    if (rowOsDevicePrimary && rowOsDevicePrimary === osDeviceId) {
       slot = "primary";
-    } else if (osDeviceId && rowOsDeviceSecondary && rowOsDeviceSecondary === osDeviceId) {
+    } else if (rowOsDeviceSecondary && rowOsDeviceSecondary === osDeviceId) {
       slot = "secondary";
-    } else if (rowDevicePrimary && rowDevicePrimary === deviceId) {
+    } else if (!rowOsDevicePrimary) {
       slot = "primary";
-    } else if (rowDeviceSecondary && rowDeviceSecondary === deviceId) {
-      slot = "secondary";
-    } else if (!rowDevicePrimary || !rowTokenPrimary) {
-      slot = "primary";
-    } else if (!rowDeviceSecondary || !rowTokenSecondary) {
+    } else if (!rowOsDeviceSecondary) {
       slot = "secondary";
     } else {
       slot = requestedSlot;
@@ -153,36 +127,21 @@ Deno.serve(async (req) => {
       slot === "secondary"
         ? {
             push_token_2: pushToken,
-            push_device_id_2: deviceId,
-            ...(osDeviceId ? { os_device_id_2: osDeviceId } : {}),
+            os_device_id_2: osDeviceId,
             updated_at: new Date().toISOString(),
           }
         : {
             push_token: pushToken,
-            push_device_id: deviceId,
-            ...(osDeviceId ? { os_device_id: osDeviceId } : {}),
+            os_device_id: osDeviceId,
             updated_at: new Date().toISOString(),
           };
 
-    if (slot === "primary" && rowDeviceSecondary === deviceId) {
+    if (slot === "primary" && rowOsDeviceSecondary === osDeviceId) {
       updatePayload.push_token_2 = null;
-      updatePayload.push_device_id_2 = null;
       updatePayload.os_device_id_2 = null;
     }
-    if (slot === "secondary" && rowDevicePrimary === deviceId) {
+    if (slot === "secondary" && rowOsDevicePrimary === osDeviceId) {
       updatePayload.push_token = null;
-      updatePayload.push_device_id = null;
-      updatePayload.os_device_id = null;
-    }
-
-    if (osDeviceId && slot === "primary" && rowOsDeviceSecondary === osDeviceId) {
-      updatePayload.push_token_2 = null;
-      updatePayload.push_device_id_2 = null;
-      updatePayload.os_device_id_2 = null;
-    }
-    if (osDeviceId && slot === "secondary" && rowOsDevicePrimary === osDeviceId) {
-      updatePayload.push_token = null;
-      updatePayload.push_device_id = null;
       updatePayload.os_device_id = null;
     }
 
@@ -190,7 +149,7 @@ Deno.serve(async (req) => {
       .from("v3_auth")
       .update(updatePayload)
       .eq("id", userId)
-      .select("id,push_token,push_device_id,os_device_id,push_token_2,push_device_id_2,os_device_id_2")
+      .select("id,push_token,os_device_id,push_token_2,os_device_id_2")
       .maybeSingle();
 
     if (updateError) {
@@ -207,9 +166,7 @@ Deno.serve(async (req) => {
         v3_auth_id: userId,
         tip: rowTip,
         slot,
-        device_id: deviceId,
         os_device_id: osDeviceId || null,
-        persisted_device_id: slot === "secondary" ? updatedRow.push_device_id_2 : updatedRow.push_device_id,
         persisted_os_device_id: slot === "secondary" ? updatedRow.os_device_id_2 : updatedRow.os_device_id,
       }),
       { status: 200, headers: jsonHeaders },

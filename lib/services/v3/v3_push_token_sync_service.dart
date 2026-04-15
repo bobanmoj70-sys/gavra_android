@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:uuid/uuid.dart';
 
 import 'v3_os_device_id_service.dart';
 import 'v3_push_token_edge_service.dart';
@@ -12,9 +10,6 @@ import 'v3_vozac_service.dart';
 
 class V3PushTokenSyncService {
   V3PushTokenSyncService._();
-
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
-  static const String _deviceIdKey = 'v3_push_device_id';
 
   static Future<bool> syncCurrentUser({
     String? token,
@@ -65,17 +60,15 @@ class V3PushTokenSyncService {
     String reason = 'logout',
   }) async {
     try {
-      final deviceId = await _readDeviceId();
-      if (deviceId == null || deviceId.isEmpty) {
-        debugPrint('[PushSync] Nema device_id za clear (reason=$reason).');
+      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+      if (osDeviceId.isEmpty) {
+        debugPrint('[PushSync] Nema os_device_id za clear (reason=$reason).');
         return false;
       }
-      final osDeviceId = await V3OsDeviceIdService.getOsDeviceId();
 
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac != null) {
         await V3PushTokenEdgeService.clearPushTokenByDevice(
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
           expectedTip: 'vozac',
           expectedV3AuthId: currentVozac.id,
@@ -88,7 +81,6 @@ class V3PushTokenSyncService {
       final putnikId = currentPutnik?['id']?.toString().trim() ?? '';
       if (putnikId.isNotEmpty) {
         await V3PushTokenEdgeService.clearPushTokenByDevice(
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
           expectedV3AuthId: putnikId,
         );
@@ -109,8 +101,11 @@ class V3PushTokenSyncService {
     required String reason,
   }) async {
     try {
-      final deviceId = await _getOrCreateDeviceId();
-      final osDeviceId = await V3OsDeviceIdService.getOsDeviceId();
+      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+      if (osDeviceId.isEmpty) {
+        debugPrint('[PushSync] Nema os_device_id za sync (reason=$reason).');
+        return false;
+      }
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac != null) {
         final updated = await V3VozacService.updatePushTokensOnLogin(
@@ -118,7 +113,6 @@ class V3PushTokenSyncService {
           token: token,
           existingToken1: currentVozac.pushToken,
           existingToken2: currentVozac.pushToken2,
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
         );
         if (updated.isNotEmpty) {
@@ -142,7 +136,6 @@ class V3PushTokenSyncService {
           token: token,
           existingToken1: token1,
           existingToken2: token2,
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
         );
         currentPutnik?.addAll(updated);
@@ -156,23 +149,5 @@ class V3PushTokenSyncService {
       debugPrint('⚠️ [PushSync] Token sync greška (reason=$reason): $e');
       return false;
     }
-  }
-
-  static Future<String> getOrCreateDeviceIdForAuth() {
-    return _getOrCreateDeviceId();
-  }
-
-  static Future<String> _getOrCreateDeviceId() async {
-    final existing = (await _storage.read(key: _deviceIdKey) ?? '').trim();
-    if (existing.isNotEmpty) return existing;
-
-    final generated = const Uuid().v4();
-    await _storage.write(key: _deviceIdKey, value: generated);
-    return generated;
-  }
-
-  static Future<String?> _readDeviceId() async {
-    final existing = (await _storage.read(key: _deviceIdKey) ?? '').trim();
-    return existing.isEmpty ? null : existing;
   }
 }

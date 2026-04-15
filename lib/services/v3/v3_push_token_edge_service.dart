@@ -5,9 +5,8 @@ class V3PushTokenEdgeService {
 
   static Future<void> syncPushToken({
     required String pushToken,
-    required String deviceId,
+    required String osDeviceId,
     required String slot,
-    String? osDeviceId,
     String? expectedTip,
     String? expectedV3AuthId,
   }) async {
@@ -21,8 +20,7 @@ class V3PushTokenEdgeService {
       body: {
         'v3_auth_id': targetId,
         'push_token': pushToken,
-        'device_id': deviceId,
-        if ((osDeviceId ?? '').trim().isNotEmpty) 'os_device_id': osDeviceId!.trim(),
+        'os_device_id': osDeviceId.trim(),
         'slot': slot,
         if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
       },
@@ -38,8 +36,7 @@ class V3PushTokenEdgeService {
   }
 
   static Future<void> clearPushTokenByDevice({
-    required String deviceId,
-    String? osDeviceId,
+    required String osDeviceId,
     String? expectedTip,
     String? expectedV3AuthId,
   }) async {
@@ -52,8 +49,7 @@ class V3PushTokenEdgeService {
       'sync-push-token',
       body: {
         'v3_auth_id': targetId,
-        'device_id': deviceId,
-        if ((osDeviceId ?? '').trim().isNotEmpty) 'os_device_id': osDeviceId!.trim(),
+        'os_device_id': osDeviceId.trim(),
         'clear': true,
         if (expectedTip != null && expectedTip.isNotEmpty) 'expected_tip': expectedTip,
       },

@@ -100,8 +100,7 @@ class V3PutnikService {
   static Future<Map<String, String>> updatePushTokensOnLogin({
     required String putnikId,
     required String token,
-    required String deviceId,
-    String? osDeviceId,
+    required String osDeviceId,
     String? existingToken1,
     String? existingToken2,
   }) async {
@@ -111,7 +110,6 @@ class V3PutnikService {
       if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
           slot: 'primary',
           expectedV3AuthId: putnikId,
@@ -122,7 +120,6 @@ class V3PutnikService {
       if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
           slot: 'secondary',
           expectedV3AuthId: putnikId,
@@ -132,7 +129,6 @@ class V3PutnikService {
 
       await V3PushTokenEdgeService.syncPushToken(
         pushToken: token,
-        deviceId: deviceId,
         osDeviceId: osDeviceId,
         slot: 'secondary',
         expectedV3AuthId: putnikId,

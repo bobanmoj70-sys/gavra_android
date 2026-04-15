@@ -102,8 +102,7 @@ class V3VozacService {
   static Future<Map<String, String>> updatePushTokensOnLogin({
     required String vozacId,
     required String token,
-    required String deviceId,
-    String? osDeviceId,
+    required String osDeviceId,
     String? existingToken1,
     String? existingToken2,
   }) async {
@@ -113,7 +112,6 @@ class V3VozacService {
       if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
           slot: 'primary',
           expectedTip: 'vozac',
@@ -125,7 +123,6 @@ class V3VozacService {
       if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
         await V3PushTokenEdgeService.syncPushToken(
           pushToken: token,
-          deviceId: deviceId,
           osDeviceId: osDeviceId,
           slot: 'secondary',
           expectedTip: 'vozac',
@@ -136,7 +133,6 @@ class V3VozacService {
 
       await V3PushTokenEdgeService.syncPushToken(
         pushToken: token,
-        deviceId: deviceId,
         osDeviceId: osDeviceId,
         slot: 'secondary',
         expectedTip: 'vozac',
