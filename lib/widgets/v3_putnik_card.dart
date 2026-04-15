@@ -152,6 +152,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     V3StateUtils.safeSetState(this, () => _isProcessing = true);
 
     final tip = widget.putnik.tipPutnika;
+    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
     final defaultCena =
         (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
     final zakljucajIznos = defaultCena > 0;
@@ -171,8 +172,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         putnikId: widget.putnik.id,
         imePrezime: widget.putnik.imePrezime,
         rezultat: rezultat,
+        snimiMesecnuUplatu: isMesecniModel,
       );
-      if (ok && widget.entry != null) {
+      if (ok && !isMesecniModel && widget.entry != null) {
         await V3OperativnaNedeljaService.updateNaplata(
           id: widget.entry!.id,
           iznos: rezultat.iznos,
