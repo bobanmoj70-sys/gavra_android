@@ -19,6 +19,27 @@ class V3DialogHelper {
 
   // ─── OSNOVNI DIALOG METODI ─────────────────────────────────────────────────
 
+  /// Generic showDialog wrapper za custom builder scenarije.
+  static Future<T?> showDialogBuilder<T>({
+    required BuildContext context,
+    required WidgetBuilder builder,
+    bool barrierDismissible = true,
+    Color? barrierColor,
+    bool useRootNavigator = true,
+    RouteSettings? routeSettings,
+  }) {
+    if (!context.mounted) return Future.value(null);
+
+    return showDialog<T>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      useRootNavigator: useRootNavigator,
+      routeSettings: routeSettings,
+      builder: builder,
+    );
+  }
+
   /// Osnovni AlertDialog sa standardnim styling-om
   static Future<T?> showBasicDialog<T>({
     required BuildContext context,
@@ -41,9 +62,7 @@ class V3DialogHelper {
         backgroundColor: backgroundColor ?? _darkBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
-          side: borderColor != null
-              ? BorderSide(color: borderColor.withValues(alpha: 0.3))
-              : BorderSide.none,
+          side: borderColor != null ? BorderSide(color: borderColor.withValues(alpha: 0.3)) : BorderSide.none,
         ),
         title: titleIcon != null
             ? Row(
@@ -51,8 +70,7 @@ class V3DialogHelper {
                   Icon(titleIcon, color: titleIconColor ?? Colors.amber),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(title,
-                        style: const TextStyle(color: Colors.white)),
+                    child: Text(title, style: const TextStyle(color: Colors.white)),
                   ),
                 ],
               )
@@ -88,9 +106,7 @@ class V3DialogHelper {
         backgroundColor: backgroundColor ?? _darkBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
-          side: borderColor != null
-              ? BorderSide(color: borderColor.withValues(alpha: 0.3))
-              : BorderSide.none,
+          side: borderColor != null ? BorderSide(color: borderColor.withValues(alpha: 0.3)) : BorderSide.none,
         ),
         title: titleIcon != null
             ? Row(
@@ -98,8 +114,7 @@ class V3DialogHelper {
                   Icon(titleIcon, color: titleIconColor ?? Colors.amber),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(title,
-                        style: const TextStyle(color: Colors.white)),
+                    child: Text(title, style: const TextStyle(color: Colors.white)),
                   ),
                 ],
               )
@@ -142,8 +157,7 @@ class V3DialogHelper {
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, true),
           text: confirmText,
-          foregroundColor:
-              isDangerous ? Colors.red : (confirmColor ?? Colors.amber),
+          foregroundColor: isDangerous ? Colors.red : (confirmColor ?? Colors.amber),
         ),
       ],
     );
@@ -311,9 +325,7 @@ class V3DialogHelper {
         backgroundColor: backgroundColor ?? _darkBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
-          side: borderColor != null
-              ? BorderSide(color: borderColor.withValues(alpha: 0.3))
-              : BorderSide.none,
+          side: borderColor != null ? BorderSide(color: borderColor.withValues(alpha: 0.3)) : BorderSide.none,
         ),
         children: options,
       ),
@@ -424,6 +436,37 @@ class V3DialogHelper {
     );
   }
 
+  /// Generic showModalBottomSheet wrapper za custom builder scenarije.
+  static Future<T?> showBottomSheetBuilder<T>({
+    required BuildContext context,
+    required WidgetBuilder builder,
+    bool isScrollControlled = false,
+    bool enableDrag = true,
+    bool isDismissible = true,
+    bool useRootNavigator = false,
+    Color? backgroundColor,
+    Color? barrierColor,
+    double? elevation,
+    ShapeBorder? shape,
+    Clip? clipBehavior,
+  }) {
+    if (!context.mounted) return Future.value(null);
+
+    return showModalBottomSheet<T>(
+      context: context,
+      builder: builder,
+      isScrollControlled: isScrollControlled,
+      enableDrag: enableDrag,
+      isDismissible: isDismissible,
+      useRootNavigator: useRootNavigator,
+      backgroundColor: backgroundColor,
+      barrierColor: barrierColor,
+      elevation: elevation,
+      shape: shape,
+      clipBehavior: clipBehavior,
+    );
+  }
+
   /// Gradient styled bottom sheet
   static Future<T?> showGradientBottomSheet<T>({
     required BuildContext context,
@@ -452,9 +495,7 @@ class V3DialogHelper {
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(borderRadius),
           ),
-          border: borderColor != null
-              ? Border.all(color: borderColor.withValues(alpha: 0.2))
-              : null,
+          border: borderColor != null ? Border.all(color: borderColor.withValues(alpha: 0.2)) : null,
         ),
         child: child,
       ),
@@ -503,8 +544,7 @@ class V3DialogHelper {
                 borderSide: BorderSide(color: Colors.amber),
               ),
               enabledBorder: UnderlineInputBorder(
-                borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
               ),
             ),
             onChanged: (value) {

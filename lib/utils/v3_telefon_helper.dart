@@ -24,11 +24,9 @@ class V3TelefonHelper {
   ///
   /// **Koristi umjesto:** 15+ duplikata tel: launch koda
   /// **Primjer:** V3TelefonHelper.pozovi(this, context, '0641162560');
-  static Future<void> pozovi(
-      State state, BuildContext context, String broj) async {
+  static Future<void> pozovi(State state, BuildContext context, String broj) async {
     if (broj.isEmpty) {
-      V3ErrorUtils.validationError(
-          state, context, 'Telefon broj nije dostupan');
+      V3ErrorUtils.validationError(state, context, 'Telefon broj nije dostupan');
       return;
     }
 
@@ -40,8 +38,7 @@ class V3TelefonHelper {
     if (!status.isGranted) {
       final result = await Permission.phone.request();
       if (!result.isGranted) {
-        V3ErrorUtils.permissionError(
-            state, context, 'Dozvola za pozive je potrebna');
+        V3ErrorUtils.permissionError(state, context, 'Dozvola za pozive je potrebna');
         return;
       }
     }
@@ -64,11 +61,9 @@ class V3TelefonHelper {
   ///
   /// **Koristi kada:** već imaš permission ili u emergency situacijama
   /// **Primjer:** V3TelefonHelper.pozoviBrzo(this, context, '064123456');
-  static Future<void> pozoviBrzo(
-      State state, BuildContext context, String broj) async {
+  static Future<void> pozoviBrzo(State state, BuildContext context, String broj) async {
     if (broj.isEmpty) {
-      V3ErrorUtils.validationError(
-          state, context, 'Telefon broj nije dostupan');
+      V3ErrorUtils.validationError(state, context, 'Telefon broj nije dostupan');
       return;
     }
 
@@ -130,8 +125,7 @@ class V3TelefonHelper {
   /// Otvara isključivo HERE WeGo aplikaciju (bez web/Google fallback-a)
   ///
   /// Ako aplikacija nije instalirana, prikazuje poruku da je potrebno instalirati HERE WeGo.
-  static Future<void> otvoriHereWeGoAppOnly(
-      State state, BuildContext context) async {
+  static Future<void> otvoriHereWeGoAppOnly(State state, BuildContext context) async {
     final hereAppUri = Uri.parse('here-route://mylocation');
 
     try {
@@ -154,8 +148,7 @@ class V3TelefonHelper {
   ///
   /// **Koristi umjesto:** here-route:// launch duplikata
   /// **Primjer:** V3TelefonHelper.navigirajDo(this, context, 44.8983, 21.4152);
-  static Future<void> navigirajDo(
-      State state, BuildContext context, double lat, double lng) async {
+  static Future<void> navigirajDo(State state, BuildContext context, double lat, double lng) async {
     // Pokušaj HERE WeGo prvo
     final hereUrl = Uri.parse('here-route://mylocation/$lat,$lng/now');
 
@@ -170,8 +163,7 @@ class V3TelefonHelper {
     }
 
     // Fallback na web HERE
-    final webHereUrl =
-        Uri.parse('https://wego.here.com/directions/drive/mypos/$lat,$lng');
+    final webHereUrl = Uri.parse('https://wego.here.com/directions/drive/mypos/$lat,$lng');
 
     try {
       if (!state.mounted) return;
@@ -203,8 +195,7 @@ class V3TelefonHelper {
   ///
   /// **Koristi umjesto:** Uri.parse(url) launch duplikata
   /// **Primjer:** V3TelefonHelper.otvoriMaps(this, context, 'https://share.here.com/r/44.8983,21.4152');
-  static Future<void> otvoriMaps(
-      State state, BuildContext context, String urlOrAddress) async {
+  static Future<void> otvoriMaps(State state, BuildContext context, String urlOrAddress) async {
     final input = urlOrAddress.trim();
     if (input.isEmpty) {
       V3ErrorUtils.validationError(state, context, 'Neispravna maps adresa');
@@ -214,8 +205,7 @@ class V3TelefonHelper {
     final parsed = Uri.tryParse(input);
     final uri = (parsed != null && parsed.hasScheme)
         ? parsed
-        : Uri.https(
-            'www.google.com', '/maps/search/', {'api': '1', 'query': input});
+        : Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': input});
 
     try {
       if (!state.mounted) return;
@@ -236,16 +226,13 @@ class V3TelefonHelper {
   ///
   /// **Koristi umjesto:** ručnog pravljenja waypoints URL-a
   /// **Primjer:** V3TelefonHelper.navigirajMultiStop(this, context, [(44.89, 21.41), (44.90, 21.42)]);
-  static Future<void> navigirajMultiStop(State state, BuildContext context,
-      List<(double, double)> waypoints) async {
+  static Future<void> navigirajMultiStop(State state, BuildContext context, List<(double, double)> waypoints) async {
     if (waypoints.isEmpty) {
-      V3ErrorUtils.validationError(
-          state, context, 'Nema destinacija za navigaciju');
+      V3ErrorUtils.validationError(state, context, 'Nema destinacija za navigaciju');
       return;
     }
 
-    final waypointsBuffer =
-        StringBuffer('https://wego.here.com/directions/drive/');
+    final waypointsBuffer = StringBuffer('https://wego.here.com/directions/drive/');
     for (int i = 0; i < waypoints.length; i++) {
       final (lat, lng) = waypoints[i];
       if (i == 0) {
@@ -259,15 +246,6 @@ class V3TelefonHelper {
   }
 
   // ─── UTILITY METHODS ───────────────────────────────────────────────────
-
-  /// Provjeri da li je telefon broj valjan
-  ///
-  /// **Koristi za:** validaciju pre poziva
-  /// **Primjer:** if (V3TelefonHelper.isValidPhone('064123456')) { ... }
-  static bool isValidPhone(String? phone) {
-    if (phone == null || phone.trim().isEmpty) return false;
-    return V3PhoneUtils.isValid(phone);
-  }
 
   /// Format telefon broj za display (dodaj razmake/crtice)
   ///

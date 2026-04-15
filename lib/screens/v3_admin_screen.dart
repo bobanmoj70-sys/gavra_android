@@ -112,7 +112,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
       final items = _parseNeradniDani(row['neradni_dani']);
 
-      await showDialog<void>(
+      await V3DialogHelper.showDialogBuilder<void>(
         context: context,
         builder: (dialogContext) {
           var isSaving = false;
@@ -374,7 +374,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         for (final day in V3DanHelper.workdayNames) day: (vsByDayCurrent[day] ?? const <String>[]).join(', '),
       };
 
-      await showDialog<void>(
+      await V3DialogHelper.showDialogBuilder<void>(
         context: context,
         builder: (dialogContext) {
           var isSaving = false;
@@ -587,7 +587,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
     }
 
-    await showModalBottomSheet<void>(
+    await V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -976,7 +976,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
     final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList()..sort();
 
-    showDialog<void>(
+    V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
@@ -1097,7 +1097,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
     final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList()..sort();
 
-    showDialog<void>(
+    V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
@@ -1424,7 +1424,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               if (!allowedNavTypes.contains(val)) {
                                 return;
                               }
-                              final action = await showDialog<String>(
+                              final action = await V3DialogHelper.showDialogBuilder<String>(
                                 context: context,
                                 builder: (dialogContext) => AlertDialog(
                                   backgroundColor: Theme.of(context).colorScheme.primary,

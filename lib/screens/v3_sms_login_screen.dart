@@ -19,6 +19,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
 
@@ -602,7 +603,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   }
 
   Future<bool> _showFirstPutnikBiometricChoiceDialog() async {
-    final result = await showDialog<bool>(
+    final result = await V3DialogHelper.showDialogBuilder<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {

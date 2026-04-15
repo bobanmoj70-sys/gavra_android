@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_time_utils.dart';
@@ -519,7 +520,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       return;
     }
 
-    await showModalBottomSheet<void>(
+    await V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -598,7 +599,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       return;
     }
 
-    await showModalBottomSheet<void>(
+    await V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,

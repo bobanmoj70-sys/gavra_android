@@ -5,6 +5,7 @@ import '../services/v3/v3_vozilo_service.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_ui_utils.dart';
@@ -33,12 +34,7 @@ List<BoxShadow>? _getRegistracijaSenka(V3Vozilo v) {
   if (v.registracijaVaziDo == null) return null;
   final dana = v.danaDoIstekaRegistracije;
   if (dana >= 15 && dana <= 30) {
-    return [
-      BoxShadow(
-          color: Colors.lime.withValues(alpha: 0.6),
-          blurRadius: 12,
-          spreadRadius: 3)
-    ];
+    return [BoxShadow(color: Colors.lime.withValues(alpha: 0.6), blurRadius: 12, spreadRadius: 3)];
   }
   return null;
 }
@@ -101,29 +97,22 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             stream: V3VoziloService.streamVozila(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(
-                    child: Text('Greška: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.white)));
+                return Center(child: Text('Greška: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
               }
               if (!snapshot.hasData) {
-                return const Center(
-                    child: CircularProgressIndicator(color: Colors.white));
+                return const Center(child: CircularProgressIndicator(color: Colors.white));
               }
 
               final vozila = snapshot.data!;
               if (vozila.isEmpty) {
-                return const Center(
-                    child: Text('Nema vozila.',
-                        style: TextStyle(color: Colors.white)));
+                return const Center(child: Text('Nema vozila.', style: TextStyle(color: Colors.white)));
               }
 
               if (_selected == null) {
                 _selected = vozila.first;
               } else {
                 final exists = vozila.any((v) => v.id == _selected!.id);
-                _selected = exists
-                    ? vozila.firstWhere((v) => v.id == _selected!.id)
-                    : vozila.first;
+                _selected = exists ? vozila.firstWhere((v) => v.id == _selected!.id) : vozila.first;
               }
 
               return Column(
@@ -159,9 +148,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           children: sorted.map((v) {
             final isSel = v.id == _selected?.id;
             final color = _getVoziloColor(v.registracija);
-            final borderColor = isSel
-                ? (color == Colors.white ? Colors.black : color)
-                : Colors.white24;
+            final borderColor = isSel ? (color == Colors.white ? Colors.black : color) : Colors.white24;
             final senka = _getRegistracijaSenka(v);
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -178,18 +165,12 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                               : color.withValues(alpha: 0.25))
                           : Colors.white10,
                       borderRadius: BorderRadius.circular(8),
-                      border:
-                          Border.all(color: borderColor, width: isSel ? 2 : 1),
+                      border: Border.all(color: borderColor, width: isSel ? 2 : 1),
                       boxShadow: senka,
                       child: Icon(Icons.airport_shuttle,
                           size: 32,
                           color: color,
-                          shadows: [
-                            Shadow(
-                                color: Colors.black54,
-                                blurRadius: 2,
-                                offset: const Offset(1, 1))
-                          ]),
+                          shadows: [Shadow(color: Colors.black54, blurRadius: 2, offset: const Offset(1, 1))]),
                     ),
                     const SizedBox(height: 3),
                     V3ContainerUtils.styledContainer(
@@ -201,10 +182,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(2),
                         child: Image.asset(_getTablicaImage(v.registracija),
-                            width: 60,
-                            height:
-                                V3ContainerUtils.responsiveHeight(context, 15),
-                            fit: BoxFit.contain),
+                            width: 60, height: V3ContainerUtils.responsiveHeight(context, 15), fit: BoxFit.contain),
                       ),
                     ),
                   ],
@@ -232,22 +210,14 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(v.displayNaziv,
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 4),
-                Text('Registracija: ${v.registracija}',
-                    style:
-                        TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                Text('Registracija: ${v.registracija}', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
                 if (v.godinaProizvodnje != null)
-                  Text('Godina: ${v.godinaProizvodnje}',
-                      style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.75))),
+                  Text('Godina: ${v.godinaProizvodnje}', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
                 const SizedBox(height: 10),
                 V3ContainerUtils.styledContainer(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   backgroundColor: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                   child: Row(
@@ -255,15 +225,9 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                     children: [
                       const Icon(Icons.speed, size: 16, color: Colors.white),
                       const SizedBox(width: 6),
-                      Text('Kilometraža: ',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.8))),
+                      Text('Kilometraža: ', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
                       Text('${V3FormatUtils.formatBroj(v.trenutnaKm)} km',
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white)),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                     ],
                   ),
                 ),
@@ -296,8 +260,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                     ? '${v.danaDoIstekaRegistracije} dana'
                     : null,
             badgeColor: v.registracijaIstekla ? Colors.red : Colors.orange,
-            onEdit: () => _editDate('registracija_vazi_do',
-                'Registracija važi do', v.registracijaVaziDo),
+            onEdit: () => _editDate('registracija_vazi_do', 'Registracija važi do', v.registracijaVaziDo),
           ),
 
           // Napomena
@@ -305,8 +268,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             icon: '📝',
             label: 'Napomena',
             value: v.napomena ?? '-',
-            onEdit: () =>
-                _editText('napomena', 'Napomena', v.napomena, multiline: true),
+            onEdit: () => _editText('napomena', 'Napomena', v.napomena, multiline: true),
           ),
 
           _SectionDivider(),
@@ -316,54 +278,49 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             icon: '🔧',
             label: 'Mali servis',
             value: _formatServis(v.maliServisDatum, v.maliServisKm),
-            onEdit: () => _editServis('mali_servis', 'Mali servis',
-                v.maliServisDatum, v.maliServisKm, v.trenutnaKm.toInt()),
+            onEdit: () =>
+                _editServis('mali_servis', 'Mali servis', v.maliServisDatum, v.maliServisKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🛠️',
             label: 'Veliki servis',
             value: _formatServis(v.velikiServisDatum, v.velikiServisKm),
-            onEdit: () => _editServis('veliki_servis', 'Veliki servis',
-                v.velikiServisDatum, v.velikiServisKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis(
+                'veliki_servis', 'Veliki servis', v.velikiServisDatum, v.velikiServisKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '⚡',
             label: 'Alternator',
             value: _formatServis(v.alternatorDatum, v.alternatorKm),
-            onEdit: () => _editServis('alternator', 'Alternator',
-                v.alternatorDatum, v.alternatorKm, v.trenutnaKm.toInt()),
+            onEdit: () =>
+                _editServis('alternator', 'Alternator', v.alternatorDatum, v.alternatorKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🔋',
             label: 'Akumulator',
             value: _formatServis(v.akumulatorDatum, v.akumulatorKm),
-            onEdit: () => _editServis('akumulator', 'Akumulator',
-                v.akumulatorDatum, v.akumulatorKm, v.trenutnaKm.toInt()),
+            onEdit: () =>
+                _editServis('akumulator', 'Akumulator', v.akumulatorDatum, v.akumulatorKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🛑',
             label: 'Pločice prednje',
             value: _formatServis(v.plocicePrednjeDatum, v.plocicePrednjeKm),
             onEdit: () => _editServis(
-                'plocice_prednje',
-                'Pločice prednje',
-                v.plocicePrednjeDatum,
-                v.plocicePrednjeKm,
-                v.trenutnaKm.toInt()),
+                'plocice_prednje', 'Pločice prednje', v.plocicePrednjeDatum, v.plocicePrednjeKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🛑',
             label: 'Pločice zadnje',
             value: _formatServis(v.plociceZadnjeDatum, v.plociceZadnjeKm),
-            onEdit: () => _editServis('plocice_zadnje', 'Pločice zadnje',
-                v.plociceZadnjeDatum, v.plociceZadnjeKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis(
+                'plocice_zadnje', 'Pločice zadnje', v.plociceZadnjeDatum, v.plociceZadnjeKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🔩',
             label: 'Trap',
             value: _formatServis(v.trapDatum, v.trapKm),
-            onEdit: () => _editServis(
-                'trap', 'Trap', v.trapDatum, v.trapKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis('trap', 'Trap', v.trapDatum, v.trapKm, v.trenutnaKm.toInt()),
           ),
 
           _SectionDivider(),
@@ -374,16 +331,16 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             label: 'Gume prednje',
             value: v.gumePrednjeOpis ?? '-',
             subtitle: _formatGumeSubtitle(v.gumePrednjeDatum, v.gumePrednjeKm),
-            onEdit: () => _editGume('prednje', v.gumePrednjeDatum,
-                v.gumePrednjeOpis, v.gumePrednjeKm, v.trenutnaKm.toInt()),
+            onEdit: () =>
+                _editGume('prednje', v.gumePrednjeDatum, v.gumePrednjeOpis, v.gumePrednjeKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🛞',
             label: 'Gume zadnje',
             value: v.gumeZadnjeOpis ?? '-',
             subtitle: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
-            onEdit: () => _editGume('zadnje', v.gumeZadnjeDatum,
-                v.gumeZadnjeOpis, v.gumeZadnjeKm, v.trenutnaKm.toInt()),
+            onEdit: () =>
+                _editGume('zadnje', v.gumeZadnjeDatum, v.gumeZadnjeOpis, v.gumeZadnjeKm, v.trenutnaKm.toInt()),
           ),
 
           _SectionDivider(),
@@ -403,9 +360,8 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
 
   // ── Edit handlers ─────────────────────────────────────────────────────────
 
-  void _editText(String field, String label, String? current,
-      {bool multiline = false}) {
-    showDialog<void>(
+  void _editText(String field, String label, String? current, {bool multiline = false}) {
+    V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (_) => _TextDialog(
         field: field,
@@ -427,17 +383,16 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
     );
     if (picked == null || !mounted) return;
     try {
-      await V3VoziloService.updateKolskaKnjiga(_selected!.id,
-          {field: V3DanHelper.parseIsoDatePart(picked.toIso8601String())});
+      await V3VoziloService.updateKolskaKnjiga(
+          _selected!.id, {field: V3DanHelper.parseIsoDatePart(picked.toIso8601String())});
       V3UIUtils.showSaveSuccess(context);
     } catch (_) {
       V3UIUtils.showSaveError(context);
     }
   }
 
-  Future<void> _editServis(
-      String prefix, String label, DateTime? datum, int? km, int trenutnaKm) {
-    return showModalBottomSheet<void>(
+  Future<void> _editServis(String prefix, String label, DateTime? datum, int? km, int trenutnaKm) {
+    return V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -452,9 +407,8 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
     );
   }
 
-  Future<void> _editGume(
-      String pozicija, DateTime? datum, String? opis, int? km, int trenutnaKm) {
-    return showModalBottomSheet<void>(
+  Future<void> _editGume(String pozicija, DateTime? datum, String? opis, int? km, int trenutnaKm) {
+    return V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -483,8 +437,7 @@ class _GlassCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
       ),
       child: child,
     );
@@ -545,45 +498,34 @@ class _EditableField extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.6))),
+                  Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6))),
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           value ?? '-',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: valueColor ?? Colors.white),
+                          style:
+                              TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: valueColor ?? Colors.white),
                         ),
                       ),
                       if (badge != null)
                         V3ContainerUtils.styledContainer(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           backgroundColor: badgeColor?.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: badgeColor ?? Colors.white, width: 0.8),
+                          border: Border.all(color: badgeColor ?? Colors.white, width: 0.8),
                           child: Text(badge!,
                               style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: badgeColor ?? Colors.white)),
+                                  fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor ?? Colors.white)),
                         ),
                     ],
                   ),
                   if (subtitle != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(subtitle!,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.55))),
+                      child:
+                          Text(subtitle!, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.55))),
                     ),
                 ],
               ),
@@ -711,8 +653,7 @@ class _ServisSheetState extends State<_ServisSheet> {
   void initState() {
     super.initState();
     _datum = widget.datum ?? DateTime.now();
-    _kmCtrl = TextEditingController(
-        text: (widget.km ?? widget.trenutnaKm).toString());
+    _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
   }
 
   @override
@@ -728,8 +669,7 @@ class _ServisSheetState extends State<_ServisSheet> {
         color: Colors.grey.shade900,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -740,10 +680,7 @@ class _ServisSheetState extends State<_ServisSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(widget.label,
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 24),
                 InkWell(
@@ -761,15 +698,11 @@ class _ServisSheetState extends State<_ServisSheet> {
                       labelText: 'Datum',
                       labelStyle: const TextStyle(color: Colors.white60),
                       border: const OutlineInputBorder(),
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white30)),
-                      prefixIcon: const Icon(Icons.calendar_today,
-                          color: Colors.white60),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                      prefixIcon: const Icon(Icons.calendar_today, color: Colors.white60),
                     ),
                     child: Text(
-                      _datum != null
-                          ? '${_datum!.day}.${_datum!.month}.${_datum!.year}'
-                          : 'Izaberi datum',
+                      _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : 'Izaberi datum',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
@@ -786,13 +719,11 @@ class _ServisSheetState extends State<_ServisSheet> {
                   onPressed: () async {
                     final kmValue = int.tryParse(_kmCtrl.text);
                     final data = <String, dynamic>{
-                      '${widget.prefix}_datum': V3DanHelper.parseIsoDatePart(
-                          _datum?.toIso8601String() ?? ''),
+                      '${widget.prefix}_datum': V3DanHelper.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
                       '${widget.prefix}_km': kmValue,
                     };
                     try {
-                      await V3VoziloService.updateKolskaKnjiga(
-                          widget.voziloId, data);
+                      await V3VoziloService.updateKolskaKnjiga(widget.voziloId, data);
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       V3UIUtils.showSaveSuccess(context);
@@ -850,17 +781,15 @@ class _GumeSheetState extends State<_GumeSheet> {
     super.initState();
     _datum = widget.datum ?? DateTime.now();
     _opisCtrl = TextEditingController(text: widget.opis ?? '');
-    _kmCtrl = TextEditingController(
-        text: (widget.km ?? widget.trenutnaKm).toString());
+    _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
     final o = widget.opis;
     if (o != null) {
       if (o.contains('☀️') || o.toLowerCase().contains('letn'))
         _tip = 'letnje';
       else if (o.contains('❄️') || o.toLowerCase().contains('zimsk'))
         _tip = 'zimske';
-      else if (o.contains('🛤️') ||
-          o.toLowerCase().contains('m+s') ||
-          o.toLowerCase().contains('univerzal')) _tip = 'ms';
+      else if (o.contains('🛤️') || o.toLowerCase().contains('m+s') || o.toLowerCase().contains('univerzal'))
+        _tip = 'ms';
     }
   }
 
@@ -880,12 +809,9 @@ class _GumeSheetState extends State<_GumeSheet> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
-            color:
-                isSel ? Colors.orange.withValues(alpha: 0.25) : Colors.white10,
+            color: isSel ? Colors.orange.withValues(alpha: 0.25) : Colors.white10,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: isSel ? Colors.orange : Colors.white24,
-                width: isSel ? 2 : 1),
+            border: Border.all(color: isSel ? Colors.orange : Colors.white24, width: isSel ? 2 : 1),
           ),
           child: Text(label,
               textAlign: TextAlign.center,
@@ -906,8 +832,7 @@ class _GumeSheetState extends State<_GumeSheet> {
         color: Colors.grey.shade900,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -918,15 +843,10 @@ class _GumeSheetState extends State<_GumeSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text('🛞 $label',
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 20),
-                const Text('Tip guma:',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w500, color: Colors.white70)),
+                const Text('Tip guma:', style: TextStyle(fontWeight: FontWeight.w500, color: Colors.white70)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -960,15 +880,11 @@ class _GumeSheetState extends State<_GumeSheet> {
                       labelText: 'Datum zamene',
                       labelStyle: const TextStyle(color: Colors.white60),
                       border: const OutlineInputBorder(),
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white30)),
-                      prefixIcon: const Icon(Icons.calendar_today,
-                          color: Colors.white60),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                      prefixIcon: const Icon(Icons.calendar_today, color: Colors.white60),
                     ),
                     child: Text(
-                      _datum != null
-                          ? '${_datum!.day}.${_datum!.month}.${_datum!.year}'
-                          : 'Izaberi datum',
+                      _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : 'Izaberi datum',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
@@ -1003,14 +919,12 @@ class _GumeSheetState extends State<_GumeSheet> {
                     final kmValue = int.tryParse(_kmCtrl.text);
                     final dbPrefix = 'gume_${widget.pozicija}';
                     final data = <String, dynamic>{
-                      '${dbPrefix}_datum': V3DanHelper.parseIsoDatePart(
-                          _datum?.toIso8601String() ?? ''),
+                      '${dbPrefix}_datum': V3DanHelper.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
                       '${dbPrefix}_opis': finalOpis.isEmpty ? null : finalOpis,
                       '${dbPrefix}_km': kmValue,
                     };
                     try {
-                      await V3VoziloService.updateKolskaKnjiga(
-                          widget.voziloId, data);
+                      await V3VoziloService.updateKolskaKnjiga(widget.voziloId, data);
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       V3UIUtils.showSaveSuccess(context);

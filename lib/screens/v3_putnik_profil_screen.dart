@@ -364,7 +364,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     }
     final secondaryNaziv = V3AdresaService.getAdresaById(secondaryId)?.naziv ?? 'Druga adresa';
     bool koristiSekundarnu = info?.koristiSekundarnu ?? false;
-    await showDialog<void>(
+    await V3DialogHelper.showDialogBuilder<void>(
       context: ctx,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(

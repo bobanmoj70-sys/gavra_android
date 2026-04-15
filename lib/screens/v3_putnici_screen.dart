@@ -317,7 +317,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
   void _showEditDialog(V3Putnik p) => _showPutnikDialog(p);
 
   void _showPutnikDialog(V3Putnik? existing) {
-    showDialog(
+    V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (_) => _PutnikDialog(existing: existing),
     );

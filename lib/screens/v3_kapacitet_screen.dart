@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
 
@@ -62,7 +63,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
   }
 
   Future<void> _editKapacitet(String grad, String vreme, int? trenutni) async {
-    final result = await showDialog<int>(
+    final result = await V3DialogHelper.showDialogBuilder<int>(
       context: context,
       barrierColor: Colors.black54,
       builder: (_) => _KapacitetEditDialog(grad: grad, vreme: vreme, trenutni: trenutni ?? 0),

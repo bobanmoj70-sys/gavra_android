@@ -1273,7 +1273,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   void _showDanDialog() {
-    showDialog<String>(
+    V3DialogHelper.showDialogBuilder<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
         title: const Text('Izaberi dan'),

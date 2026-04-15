@@ -19,6 +19,7 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -327,7 +328,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     ].toList()
       ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
 
-    showDialog<void>(
+    V3DialogHelper.showDialogBuilder<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) => StatefulBuilder(
@@ -725,7 +726,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     DateTime datumPrometa = DateTime.now();
 
-    showDialog(
+    V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
@@ -846,7 +847,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     String jedMera = 'usluga';
     DateTime datumPrometa = DateTime.now();
 
-    showDialog(
+    V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(

@@ -4,6 +4,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_dialog_helper.dart';
 
 class V3PlacanjeRezultat {
   final double iznos;
@@ -67,7 +68,7 @@ class V3PlacanjeDialogHelper {
     final zadnjiIznos = (zadnjaNaplata?['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
     final naplatioIme = (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
 
-    return showDialog<V3PlacanjeRezultat>(
+    return V3DialogHelper.showDialogBuilder<V3PlacanjeRezultat>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {

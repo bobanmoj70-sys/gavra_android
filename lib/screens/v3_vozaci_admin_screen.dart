@@ -76,7 +76,7 @@ class _V3VozaciAdminScreenState extends State<V3VozaciAdminScreen> {
     Color selectedColor = _hexToColor(vozac?.boja);
     final formKey = GlobalKey<FormState>();
 
-    await showModalBottomSheet<void>(
+    await V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
