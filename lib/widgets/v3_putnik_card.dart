@@ -17,8 +17,8 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
-import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_filters.dart';
@@ -240,7 +240,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     V3StateUtils.safeSetState(this, () => _isProcessing = true);
 
     try {
-      final confirm = await V3NavigationUtils.showConfirmDialog(
+      final confirm = await V3DialogHelper.showConfirmDialog(
         context,
         title: 'Otkazivanje putnika',
         message: 'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',

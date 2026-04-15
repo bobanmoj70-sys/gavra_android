@@ -9,6 +9,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_filters.dart';
@@ -811,8 +812,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   // ignore: unused_element
   void _showStatistikeMenu(BuildContext context) {
-    V3NavigationUtils.showBottomSheet<void>(
-      context,
+    V3DialogHelper.showBottomSheet<void>(
+      context: context,
       child: SafeArea(
         top: false,
         child: Container(

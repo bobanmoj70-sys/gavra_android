@@ -8,19 +8,18 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_uuid_utils.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
-import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_phone_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
+import '../utils/v3_uuid_utils.dart';
 import 'v3_putnik_statistika_screen.dart';
 
 class V3PutniciScreen extends StatefulWidget {
@@ -496,8 +495,8 @@ class _PutnikCard extends StatelessWidget {
   }
 
   void _pokaziKontakt(BuildContext context) {
-    V3NavigationUtils.showBottomSheet<void>(
-      context,
+    V3DialogHelper.showBottomSheet<void>(
+      context: context,
       child: SafeArea(
         top: false,
         child: Padding(

@@ -1,3 +1,5 @@
+import 'v3_time_utils.dart';
+
 /// Centralni string utilities — normalizacija za pretragu i sortiranje.
 /// Podržava srpska latinična slova: č→c, š→s, ž→z, ć→c, đ→d
 class V3StringUtils {
@@ -92,19 +94,7 @@ class V3StringUtils {
   /// Trimuje vreme string sa HH:mm:ss na HH:mm format
   /// Primer: "15:30:00" → "15:30", "09:15" → "09:15"
   static String trimTimeToHhMm(String time) {
-    final trimmed = time.trim();
-    final match = RegExp(r'^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$').firstMatch(trimmed);
-    if (match != null) {
-      final hours = int.tryParse(match.group(1)!);
-      final minutes = int.tryParse(match.group(2)!);
-      if (hours != null && minutes != null && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
-      }
-    }
-    if (trimmed.length >= 5) {
-      return trimmed.substring(0, 5);
-    }
-    return trimmed;
+    return V3TimeUtils.normalizeToHHmm(time);
   }
 
   /// Normalizuje alternativno vreme za prikaz (null-safe)
