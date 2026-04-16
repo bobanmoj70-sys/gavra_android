@@ -60,8 +60,8 @@ class V3SmsAuthRequestService {
         'send-push-notification',
         body: {
           'tokens': tokens,
-          'title': 'Novi zahtev za šifru',
-          'body': '$requesterName traži šifru za broj $safePhone',
+          'title': 'Novi zahtev za OTP kod',
+          'body': '$requesterName traži OTP kod za broj $safePhone',
           'data': {
             'type': 'sms_auth_request',
             'phone': safePhone,

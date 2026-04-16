@@ -184,7 +184,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     final raw = await _secureStorage.read(key: widget.biometricKey!);
     if (raw == null) {
-      if (mounted) V3AppSnackBar.info(context, 'ℹ️ Nema sačuvanih podataka. Prijavi se SMS-om.');
+      if (mounted) V3AppSnackBar.info(context, 'ℹ️ Nema sačuvanih podataka. Prijavi se OTP kodom.');
       return;
     }
 
@@ -199,7 +199,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     final normalized = V3ClosedAuthService.normalizePhone(raw);
     if (normalized.isEmpty) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Sačuvan telefon nije ispravan. Prijavi se SMS-om.');
+      if (mounted) V3AppSnackBar.error(context, '❌ Sačuvan telefon nije ispravan. Prijavi se OTP kodom.');
       return;
     }
 
@@ -311,7 +311,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
 
     if (code.length != 6) {
-      V3AppSnackBar.warning(context, 'Unesite 6-cifreni kod iz SMS-a.');
+      V3AppSnackBar.warning(context, 'Unesite 6-cifreni OTP kod.');
       return;
     }
 
@@ -357,7 +357,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       if (storedCode != code) {
         _otpController.clear();
-        V3AppSnackBar.error(context, '❌ Pogrešan kod. Proverite SMS i pokušajte ponovo.');
+        V3AppSnackBar.error(context, '❌ Pogrešan OTP kod. Proverite kod i pokušajte ponovo.');
         setState(() => _statusMessage = '');
         return;
       }
@@ -742,7 +742,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
-                          'Uključi prijavu biometrijom nakon uspešnog SMS logina',
+                          'Uključi prijavu biometrijom nakon uspešne OTP prijave',
                           style: TextStyle(color: Colors.white, fontSize: 13),
                         ),
                       ),
@@ -781,7 +781,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       children: [
         _buildInfoBox(
           icon: Icons.sms_outlined,
-          text: 'Unesite broj telefona. Zahtev za SMS kod biće prosleđen administratoru.',
+          text: 'Unesite broj telefona. Zahtev za OTP kod biće prosleđen administratoru.',
         ),
         const SizedBox(height: 24),
         TextField(
@@ -825,7 +825,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         ],
         const SizedBox(height: 24),
         V3ButtonUtils.primaryButton(
-          text: _isSmsCooldownActive ? 'Pošalji SMS kod (${_cooldownRemainingSeconds}s)' : 'Pošalji SMS kod',
+          text: _isSmsCooldownActive ? 'Pošalji OTP kod (${_cooldownRemainingSeconds}s)' : 'Pošalji OTP kod',
           icon: Icons.send,
           isLoading: _isLoading || _isSmsCooldownActive,
           onPressed: _isSmsCooldownActive ? null : _sendSms,
