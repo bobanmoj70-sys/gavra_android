@@ -3,7 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type SyncPayload = {
   v3_auth_id?: string;
-  sifra?: string;
   push_token?: string;
   os_device_id?: string;
   slot?: "primary" | "secondary";
@@ -35,7 +34,6 @@ Deno.serve(async (req) => {
 
     const payload = (await req.json()) as SyncPayload;
     const userId = String(payload.v3_auth_id ?? "").trim();
-    const sifra = String(payload.sifra ?? "").trim();
     const pushToken = String(payload.push_token ?? "").trim();
     const osDeviceId = String(payload.os_device_id ?? "").trim();
     const requestedSlot = payload.slot === "secondary" ? "secondary" : "primary";
@@ -52,7 +50,7 @@ Deno.serve(async (req) => {
 
     const { data: row, error: rowError } = await client
       .from("v3_auth")
-      .select("id, tip, sifra, push_token, push_token_2, os_device_id, os_device_id_2")
+      .select("id, tip, push_token, push_token_2, os_device_id, os_device_id_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -66,11 +64,6 @@ Deno.serve(async (req) => {
     const rowTip = String(row.tip ?? "").trim();
     if (expectedTip && rowTip && expectedTip !== rowTip) {
       return badRequest("expected_tip mismatch", 403);
-    }
-
-    const rowSifra = String(row.sifra ?? "").trim();
-    if (sifra && rowSifra && sifra !== rowSifra) {
-      return badRequest("sifra mismatch", 403);
     }
 
     const rowOsDevicePrimary = String(row.os_device_id ?? "").trim();

@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,8 +9,8 @@ import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_os_device_id_service.dart';
+import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
-import '../services/v3/v3_sms_auth_request_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
@@ -23,7 +21,7 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
 
-enum _SmsStep { unosTelefona, unosKoda, unosProfila }
+enum _SmsStep { unosTelefona, unosProfila }
 
 /// Unified SMS login screen za putnike i vozače.
 ///
@@ -53,11 +51,9 @@ class V3SmsLoginScreen extends StatefulWidget {
 }
 
 class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
-  static const String _smsApprovalTargetV3AuthId = '824f7bd7-e19c-4471-b7a2-d6031d810242';
   static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
 
   final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
   final _imeController = TextEditingController();
   final _prezimeController = TextEditingController();
   static const _secureStorage = FlutterSecureStorage();
@@ -66,14 +62,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   _SmsStep _step = _SmsStep.unosTelefona;
   bool _isLoading = false;
   String _statusMessage = '';
-  String? _verificationId;
   String? _targetAuthId;
   String? _normalizedPhone;
   String _selectedTip = '';
   V3Adresa? _selectedBcAdresa;
   V3Adresa? _selectedVsAdresa;
   String _missingProfileMessage = '';
-  String _generatedOtp = '';
   DateTime? _nextSmsAllowedAt;
   Timer? _cooldownTimer;
 
@@ -83,6 +77,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   bool _biometricAvailable = false;
   bool _hasSavedCredentials = false;
   bool _enableBiometricOnSuccess = false;
+  bool _autoBiometricAttempted = false;
   IconData _biometricIcon = Icons.fingerprint;
 
   bool get _biometricEnabled => widget.biometricKey != null;
@@ -100,7 +95,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   void dispose() {
     _cooldownTimer?.cancel();
     _phoneController.dispose();
-    _otpController.dispose();
     _imeController.dispose();
     _prezimeController.dispose();
     super.dispose();
@@ -176,15 +170,29 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         _enableBiometricOnSuccess = available && (hasCreds || _enableBiometricOnSuccess);
         _biometricIcon = info.icon;
       });
+      _tryAutoBiometricLogin();
     }
   }
 
-  Future<void> _loginWithBiometric() async {
+  void _tryAutoBiometricLogin() {
+    if (_autoBiometricAttempted) return;
+    if (!_biometricEnabled || !_biometricAvailable || !_hasSavedCredentials) return;
+
+    _autoBiometricAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isLoading || _step != _SmsStep.unosTelefona) return;
+      _loginWithBiometric(silentFailure: true);
+    });
+  }
+
+  Future<void> _loginWithBiometric({bool silentFailure = false}) async {
     if (widget.biometricKey == null) return;
 
     final raw = await _secureStorage.read(key: widget.biometricKey!);
     if (raw == null) {
-      if (mounted) V3AppSnackBar.info(context, 'ℹ️ Nema sačuvanih podataka. Prijavi se OTP kodom.');
+      if (!silentFailure && mounted) {
+        V3AppSnackBar.info(context, 'ℹ️ Nema sačuvanih podataka. Prijavi se brojem telefona.');
+      }
       return;
     }
 
@@ -193,13 +201,17 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     );
 
     if (!authenticated) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Biometrijska autentifikacija nije uspela');
+      if (!silentFailure && mounted) {
+        V3AppSnackBar.error(context, '❌ Biometrijska autentifikacija nije uspela');
+      }
       return;
     }
 
     final normalized = V3ClosedAuthService.normalizePhone(raw);
     if (normalized.isEmpty) {
-      if (mounted) V3AppSnackBar.error(context, '❌ Sačuvan telefon nije ispravan. Prijavi se OTP kodom.');
+      if (!silentFailure && mounted) {
+        V3AppSnackBar.error(context, '❌ Sačuvan telefon nije ispravan. Prijavi se brojem telefona.');
+      }
       return;
     }
 
@@ -241,12 +253,23 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     setState(() {
       _isLoading = true;
-      _statusMessage = '🔍 Proveravam broj...';
+      _statusMessage = '🔍 Proveravam broj i uređaj...';
     });
 
     try {
-      // Nađi red po telefonu
-      final rows = await Supabase.instance.client.from('v3_auth').select('id').or(_buildPhoneOrClause(phone)).limit(1);
+      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+      if (osDeviceId.isEmpty) {
+        if (!mounted) return;
+        V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
+      final rows = await Supabase.instance.client
+          .from('v3_auth')
+          .select('id,os_device_id,os_device_id_2')
+          .or(_buildPhoneOrClause(phone))
+          .limit(10);
 
       if (!mounted) return;
       if (rows.isEmpty) {
@@ -255,39 +278,52 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         return;
       }
 
-      final authId = rows.first['id'].toString().trim();
-
-      setState(() => _statusMessage = '📨 Pripremam zahtev...');
-
-      // Ako već postoji šifra — koristi je, ne prepisuj
-      final existing = await Supabase.instance.client.from('v3_auth').select('sifra').eq('id', authId).limit(1);
-      final existingSifra = (existing.isNotEmpty ? existing.first['sifra'] : null)?.toString().trim() ?? '';
-
-      final otp = existingSifra.isNotEmpty ? existingSifra : (100000 + Random().nextInt(900000)).toString();
-
-      if (existingSifra.isEmpty) {
-        // Upiši novu šifru samo ako je nema
-        await Supabase.instance.client.from('v3_auth').update({'sifra': otp}).eq('id', authId);
+      bool matchesDevice(Map<dynamic, dynamic> row) {
+        final primary = (row['os_device_id'] ?? '').toString().trim();
+        final secondary = (row['os_device_id_2'] ?? '').toString().trim();
+        return primary == osDeviceId || secondary == osDeviceId;
       }
 
-      await V3SmsAuthRequestService.notifyTargetForSmsAuthRequest(
-        phone: phone,
-        otp: otp,
-        requesterV3AuthId: authId,
-        targetV3AuthId: _smsApprovalTargetV3AuthId,
-      );
+      final matchedRows = rows
+          .whereType<Map>()
+          .where((row) => matchesDevice(row))
+          .map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>()))
+          .toList();
+
+      if (matchedRows.isEmpty) {
+        V3AppSnackBar.error(context, '❌ Broj i UUID uređaja se ne poklapaju.');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
+      if (matchedRows.length > 1) {
+        V3AppSnackBar.error(context, '❌ Pronađeno je više naloga za isti broj i uređaj.');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
+      final authId = matchedRows.first['id']?.toString().trim() ?? '';
+      if (authId.isEmpty) {
+        V3AppSnackBar.error(context, '❌ Nalog nije moguće verifikovati.');
+        setState(() => _statusMessage = '');
+        return;
+      }
+
+      setState(() => _statusMessage = '🔐 Pripremam prijavu...');
+
+      await _syncDeviceAndPushForLogin(authId);
 
       if (!mounted) return;
 
       _startSmsCooldown();
 
       setState(() {
-        _verificationId = 'custom_sms';
+        _targetAuthId = authId;
         _normalizedPhone = phone;
-        _generatedOtp = otp;
-        _step = _SmsStep.unosKoda;
         _statusMessage = '';
       });
+
+      await _advanceAfterPhoneAuth();
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _sendSms error: $e');
@@ -298,108 +334,65 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
   }
 
-  // ─── Korak 2: Verifikuj OTP ────────────────────────────────────
+  Future<void> _syncDeviceAndPushForLogin(String authId) async {
+    final rows = await Supabase.instance.client
+        .from('v3_auth')
+        .select('id,os_device_id,os_device_id_2,push_token,push_token_2')
+        .eq('id', authId)
+        .limit(1);
 
-  Future<void> _verifyOtp() async {
-    final code = _otpController.text.trim().replaceAll(RegExp(r'\D'), '');
+    if (rows.isEmpty) return;
 
-    final ready = await V3ClosedAuthService.ensureClientReady();
-    if (!ready) {
-      if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Servis trenutno nije dostupan. Pokušajte ponovo.');
+    final osDeviceIdPrimary = (rows.first['os_device_id'] ?? '').toString().trim();
+    final osDeviceIdSecondary = (rows.first['os_device_id_2'] ?? '').toString().trim();
+    final pushToken = (rows.first['push_token'] ?? '').toString().trim();
+    final pushToken2 = (rows.first['push_token_2'] ?? '').toString().trim();
+
+    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+    final tokenResult = await V3PushTokenProvider.getBestToken();
+    final currentPushToken = tokenResult?.token.trim() ?? '';
+
+    final updatePayload = <String, dynamic>{};
+
+    if (osDeviceId.isEmpty && currentPushToken.isEmpty) {
+      await Supabase.instance.client.from('v3_auth').update(updatePayload).eq('id', authId);
       return;
     }
 
-    if (code.length != 6) {
-      V3AppSnackBar.warning(context, 'Unesite 6-cifreni OTP kod.');
-      return;
+    final usePrimarySlot = (osDeviceId.isNotEmpty && osDeviceIdPrimary.isNotEmpty && osDeviceIdPrimary == osDeviceId) ||
+        (currentPushToken.isNotEmpty && pushToken.isNotEmpty && pushToken == currentPushToken) ||
+        osDeviceIdPrimary.isEmpty;
+
+    if (usePrimarySlot) {
+      if (osDeviceId.isNotEmpty) {
+        updatePayload['os_device_id'] = osDeviceId;
+      }
+      if (currentPushToken.isNotEmpty) {
+        updatePayload['push_token'] = currentPushToken;
+      }
+    } else {
+      if (osDeviceId.isNotEmpty) {
+        updatePayload['os_device_id_2'] = osDeviceId;
+      }
+      if (currentPushToken.isNotEmpty) {
+        updatePayload['push_token_2'] = currentPushToken;
+      }
+
+      if (osDeviceId.isNotEmpty && osDeviceIdPrimary == osDeviceId) {
+        updatePayload['os_device_id'] = null;
+      }
+      if (currentPushToken.isNotEmpty && pushToken == currentPushToken) {
+        updatePayload['push_token'] = null;
+      }
+      if (osDeviceId.isNotEmpty && osDeviceIdSecondary.isEmpty && pushToken2.isEmpty) {
+        updatePayload['os_device_id_2'] = osDeviceId;
+      }
     }
 
-    if (_normalizedPhone == null) {
-      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
-      _resetToStep1();
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _statusMessage = '🔐 Verifikujem kod...';
-    });
-
-    try {
-      // Čitaj šifru i ID direktno po telefonu iz baze
-      final rows = await Supabase.instance.client
-          .from('v3_auth')
-          .select('id,sifra,os_device_id,os_device_id_2,push_token,push_token_2')
-          .or(_buildPhoneOrClause(_normalizedPhone!))
-          .limit(1);
-
-      if (!mounted) return;
-
-      if (rows.isEmpty) {
-        V3AppSnackBar.error(context, '❌ Broj nije pronađen. Počni ponovo.');
-        _resetToStep1();
-        return;
-      }
-
-      final authId = rows.first['id'].toString().trim();
-      final storedCode = (rows.first['sifra'] ?? '').toString().trim();
-      final osDeviceIdPrimary = (rows.first['os_device_id'] ?? '').toString().trim();
-      final osDeviceIdSecondary = (rows.first['os_device_id_2'] ?? '').toString().trim();
-      final pushToken = (rows.first['push_token'] ?? '').toString().trim();
-      final pushToken2 = (rows.first['push_token_2'] ?? '').toString().trim();
-
-      if (storedCode.isEmpty) {
-        V3AppSnackBar.error(context, '❌ Kod nije pronađen ili je istekao. Zatražite novi kod.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      if (storedCode != code) {
-        _otpController.clear();
-        V3AppSnackBar.error(context, '❌ Pogrešan OTP kod. Proverite kod i pokušajte ponovo.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-      final hasPrimaryBinding = osDeviceIdPrimary.isNotEmpty || pushToken.isNotEmpty;
-      final hasSecondaryBinding = osDeviceIdSecondary.isNotEmpty || pushToken2.isNotEmpty;
-      final hasAnyBinding = hasPrimaryBinding || hasSecondaryBinding;
-      final matchesKnownOsDevice = osDeviceId.isNotEmpty &&
-          ((osDeviceIdPrimary.isNotEmpty && osDeviceIdPrimary == osDeviceId) ||
-              (osDeviceIdSecondary.isNotEmpty && osDeviceIdSecondary == osDeviceId));
-      final matchesKnownDevice = matchesKnownOsDevice;
-      final hasFreeDeviceSlot = osDeviceIdPrimary.isEmpty || osDeviceIdSecondary.isEmpty;
-
-      if (hasAnyBinding && !matchesKnownDevice && !hasFreeDeviceSlot) {
-        V3AppSnackBar.error(
-          context,
-          '❌ Ovaj uređaj nije odobren za nalog. Koristite postojeći uređaj ili kontaktirajte administraciju.',
-        );
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      // Obrisi šifru
-      await Supabase.instance.client.from('v3_auth').update({'sifra': null}).eq('id', authId);
-
-      setState(() {
-        _targetAuthId = authId;
-        _statusMessage = '✅ Kod tačan!';
-      });
-      await _advanceAfterVerifiedOtp();
-    } catch (e) {
-      if (!mounted) return;
-      debugPrint('[V3SmsLogin] _verifyOtp error: $e');
-      V3AppSnackBar.error(context, '❌ Trenutno ne možemo da proverimo kod. Pokušajte ponovo.');
-      setState(() => _statusMessage = '');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    await Supabase.instance.client.from('v3_auth').update(updatePayload).eq('id', authId);
   }
 
-  Future<void> _advanceAfterVerifiedOtp() async {
+  Future<void> _advanceAfterPhoneAuth() async {
     final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
     if (phone.isEmpty) {
       if (mounted) {
@@ -409,14 +402,22 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
+    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+    if (osDeviceId.isEmpty) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
+      _resetToStep1();
+      return;
+    }
+
+    final vozac = await V3VozacService.getVozacByPhoneDirect(phone, osDeviceId: osDeviceId);
     if (vozac != null) {
       if (!mounted) return;
       await _finalize();
       return;
     }
 
-    final putnik = await V3PutnikService.getByPhoneDirect(phone);
+    final putnik = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
     if (putnik == null) {
       if (!mounted) return;
       V3AppSnackBar.error(context, '❌ Broj nije autorizovan za pristup.');
@@ -511,7 +512,15 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final existing = await V3PutnikService.getByPhoneDirect(phone);
+      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+      if (osDeviceId.isEmpty) {
+        if (!mounted) return;
+        V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
+        _resetToStep1();
+        return;
+      }
+
+      final existing = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
       if (existing == null) {
         if (!mounted) return;
         V3AppSnackBar.error(context, '❌ Broj nije autorizovan za unos profila.');
@@ -530,7 +539,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       await V3PutnikService.addUpdatePutnik(putnik);
 
-      final refreshed = await V3PutnikService.getByPhoneDirect(phone);
+      final refreshed = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
       final missingAfterSave = _missingRequiredProfileFields(refreshed);
       if (missingAfterSave.isNotEmpty) {
         if (!mounted) return;
@@ -641,7 +650,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   void _resetToStep1() {
     setState(() {
       _step = _SmsStep.unosTelefona;
-      _verificationId = null;
       _targetAuthId = null;
       _normalizedPhone = null;
       _imeController.clear();
@@ -650,7 +658,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _selectedBcAdresa = null;
       _selectedVsAdresa = null;
       _missingProfileMessage = '';
-      _otpController.clear();
       _statusMessage = '';
     });
   }
@@ -711,7 +718,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                 duration: const Duration(milliseconds: 300),
                 child: switch (_step) {
                   _SmsStep.unosTelefona => _buildPhoneStep(),
-                  _SmsStep.unosKoda => _buildOtpStep(),
                   _SmsStep.unosProfila => _buildProfileStep(),
                 },
               ),
@@ -742,7 +748,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
-                          'Uključi prijavu biometrijom nakon uspešne OTP prijave',
+                          'Uključi prijavu biometrijom nakon uspešne prijave',
                           style: TextStyle(color: Colors.white, fontSize: 13),
                         ),
                       ),
@@ -781,7 +787,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       children: [
         _buildInfoBox(
           icon: Icons.sms_outlined,
-          text: 'Unesite broj telefona. Zahtev za OTP kod biće prosleđen administratoru.',
+          text: 'Unesite broj telefona za prijavu.',
         ),
         const SizedBox(height: 24),
         TextField(
@@ -825,7 +831,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         ],
         const SizedBox(height: 24),
         V3ButtonUtils.primaryButton(
-          text: _isSmsCooldownActive ? 'Pošalji OTP kod (${_cooldownRemainingSeconds}s)' : 'Pošalji OTP kod',
+          text: _isSmsCooldownActive ? 'Nastavi (${_cooldownRemainingSeconds}s)' : 'Nastavi',
           icon: Icons.send,
           isLoading: _isLoading || _isSmsCooldownActive,
           onPressed: _isSmsCooldownActive ? null : _sendSms,
@@ -855,99 +861,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOtpStep() {
-    return Column(
-      key: const ValueKey('otp'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildInfoBox(
-          icon: Icons.lock_outlined,
-          text: 'Vaš verifikacioni kod je:\n\n$_generatedOtp\n\nUnesite kod u polje ispod:',
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: _otpController,
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          maxLength: 6,
-          autofocus: true,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 12,
-          ),
-          decoration: InputDecoration(
-            counterText: '',
-            hintText: '------',
-            hintStyle: TextStyle(
-              color: Colors.white.withValues(alpha: 0.3),
-              fontSize: 32,
-              letterSpacing: 12,
-            ),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.1),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white30),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white30),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.amber, width: 2),
-            ),
-          ),
-          onSubmitted: (_) {
-            if (!_isLoading) _verifyOtp();
-          },
-        ),
-        if (_statusMessage.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _buildStatusMessage(_statusMessage),
-        ],
-        const SizedBox(height: 24),
-        V3ButtonUtils.primaryButton(
-          text: 'Potvrdi kod',
-          icon: Icons.verified_user_outlined,
-          isLoading: _isLoading,
-          onPressed: _verifyOtp,
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: V3ButtonUtils.outlinedButton(
-                text: _isSmsCooldownActive ? 'Novi kod (${_cooldownRemainingSeconds}s)' : 'Pošalji novi kod',
-                icon: Icons.refresh,
-                borderColor: Colors.white54,
-                foregroundColor: Colors.white,
-                isLoading: _isLoading || _isSmsCooldownActive,
-                onPressed: _isSmsCooldownActive ? null : _sendSms,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: V3ButtonUtils.outlinedButton(
-                text: 'Promeni broj',
-                icon: Icons.edit,
-                borderColor: Colors.white38,
-                foregroundColor: Colors.white,
-                isLoading: _isLoading,
-                onPressed: _isLoading ? null : _resetToStep1,
-                fontSize: 14,
-              ),
-            ),
-          ],
         ),
       ],
     );

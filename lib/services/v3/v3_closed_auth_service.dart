@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_phone_utils.dart';
+import 'v3_os_device_id_service.dart';
 import 'v3_putnik_service.dart';
 import 'v3_vozac_service.dart';
 
@@ -10,13 +11,11 @@ class V3ClosedAuthService {
   V3ClosedAuthService._();
 
   static SupabaseClient get _client => Supabase.instance.client;
-  static const _storage = FlutterSecureStorage(
-      aOptions: AndroidOptions(encryptedSharedPreferences: true));
+  static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   static const _manualSmsPutnikPhoneKey = 'v3_manual_sms_putnik_phone';
   static const _manualSmsVozacPhoneKey = 'v3_manual_sms_vozac_phone';
 
-  static String normalizePhone(String rawPhone) =>
-      V3PhoneUtils.normalize(rawPhone.trim());
+  static String normalizePhone(String rawPhone) => V3PhoneUtils.normalize(rawPhone.trim());
 
   static Future<bool> ensureClientReady() => ensureSupabaseReady();
 
@@ -54,12 +53,7 @@ class V3ClosedAuthService {
       clauses.add('telefon_2.eq.$candidate');
     }
 
-    final row = await _client
-        .from('v3_auth')
-        .select('id')
-        .or(clauses.join(','))
-        .limit(1)
-        .maybeSingle();
+    final row = await _client.from('v3_auth').select('id').or(clauses.join(',')).limit(1).maybeSingle();
     return row != null;
   }
 
@@ -87,15 +81,17 @@ class V3ClosedAuthService {
 
   /// Auto-login: telefon je sačuvan u SecureStorage.
   /// Direktno čita v3_auth tabelu.
-  static Future<Map<String, dynamic>?>
-      restorePutnikFromManualSmsSession() async {
+  static Future<Map<String, dynamic>?> restorePutnikFromManualSmsSession() async {
     final storedPhone = await _storage.read(key: _manualSmsPutnikPhoneKey);
     if (storedPhone == null || storedPhone.isEmpty) return null;
 
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return null;
 
-    final putnik = await V3PutnikService.getByPhoneDirect(phone);
+    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+    if (osDeviceId.isEmpty) return null;
+
+    final putnik = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
     if (putnik == null) return null;
 
     V3PutnikService.currentPutnik = putnik;
@@ -110,7 +106,10 @@ class V3ClosedAuthService {
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return;
 
-    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
+    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+    if (osDeviceId.isEmpty) return;
+
+    final vozac = await V3VozacService.getVozacByPhoneDirect(phone, osDeviceId: osDeviceId);
     if (vozac == null) return;
 
     V3VozacService.currentVozac = vozac;

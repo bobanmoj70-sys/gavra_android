@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_os_device_id_service.dart';
 import '../services/v3/v3_push_token_sync_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
@@ -252,9 +253,16 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     V3Vozac? vozac;
     Map<String, dynamic>? putnik;
 
+    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+    if (osDeviceId.isEmpty) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
+      return;
+    }
+
     try {
-      vozac = await V3VozacService.getVozacByPhoneDirect(phone);
-      putnik = await V3PutnikService.getByPhoneDirect(phone);
+      vozac = await V3VozacService.getVozacByPhoneDirect(phone, osDeviceId: osDeviceId);
+      putnik = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
     } on StateError {
       if (!mounted) return;
       V3AppSnackBar.error(context, V3WelcomeMessages.securityConflict);

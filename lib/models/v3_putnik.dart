@@ -12,9 +12,6 @@ class V3Putnik {
   final String? adresaBcId2;
   final String? adresaVsId2;
 
-  // Specific fields
-  final String? sifra;
-
   final double cenaPoDanu;
   final double cenaPoPokupljenju;
 
@@ -35,7 +32,6 @@ class V3Putnik {
     this.adresaVsId,
     this.adresaBcId2,
     this.adresaVsId2,
-    this.sifra,
     this.cenaPoDanu = 0.0,
     this.cenaPoPokupljenju = 0.0,
     this.pushToken,
@@ -57,7 +53,6 @@ class V3Putnik {
       adresaVsId: json['adresa_vs_id'] as String?,
       adresaBcId2: json['adresa_bc_id_2'] as String?,
       adresaVsId2: json['adresa_vs_id_2'] as String?,
-      sifra: json['sifra'] as String?,
       cenaPoDanu: (json['cena_po_danu'] as num?)?.toDouble() ?? 0.0,
       cenaPoPokupljenju: (json['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0,
       pushToken: json['push_token'] as String?,
@@ -80,7 +75,6 @@ class V3Putnik {
       'adresa_vs_id': adresaVsId,
       'adresa_bc_id_2': adresaBcId2,
       'adresa_vs_id_2': adresaVsId2,
-      'sifra': sifra,
       'cena_po_danu': cenaPoDanu,
       'cena_po_pokupljenju': cenaPoPokupljenju,
       if (pushToken != null) 'push_token': pushToken,
@@ -100,7 +94,6 @@ class V3Putnik {
     String? adresaVsId,
     String? adresaBcId2,
     String? adresaVsId2,
-    String? sifra,
     double? cenaPoDanu,
     double? cenaPoPokupljenju,
     String? pushToken,
@@ -118,7 +111,6 @@ class V3Putnik {
       adresaVsId: adresaVsId ?? this.adresaVsId,
       adresaBcId2: adresaBcId2 ?? this.adresaBcId2,
       adresaVsId2: adresaVsId2 ?? this.adresaVsId2,
-      sifra: sifra ?? this.sifra,
       cenaPoDanu: cenaPoDanu ?? this.cenaPoDanu,
       cenaPoPokupljenju: cenaPoPokupljenju ?? this.cenaPoPokupljenju,
       pushToken: pushToken ?? this.pushToken,

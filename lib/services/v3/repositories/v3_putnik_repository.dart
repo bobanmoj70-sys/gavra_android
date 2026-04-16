@@ -4,7 +4,7 @@ import '../../../globals.dart';
 
 class V3PutnikRepository {
   static const String _legacyPutnikSelect =
-      'id:id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, sifra:sifra, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at';
+      'id:id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at';
 
   Future<List<dynamic>> listByPhone(String normalizedPhone) {
     return supabase
@@ -57,7 +57,6 @@ class V3PutnikRepository {
     if (payload.containsKey('telefon_1')) out['telefon'] = payload['telefon_1'];
     if (payload.containsKey('telefon_2')) out['telefon_2'] = payload['telefon_2'];
     if (payload.containsKey('tip_putnika')) out['tip'] = payload['tip_putnika'];
-    if (payload.containsKey('sifra')) out['sifra'] = payload['sifra'];
 
     if (payload.containsKey('adresa_bc_id')) out['adresa_primary_bc_id'] = payload['adresa_bc_id'];
     if (payload.containsKey('adresa_vs_id')) out['adresa_primary_vs_id'] = payload['adresa_vs_id'];

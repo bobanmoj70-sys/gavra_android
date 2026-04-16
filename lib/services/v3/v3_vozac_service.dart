@@ -57,11 +57,11 @@ class V3VozacService {
     }
   }
 
-  static Future<V3Vozac?> getVozacByPhoneDirect(String normalizedPhone) async {
+  static Future<V3Vozac?> getVozacByPhoneDirect(String normalizedPhone, {String? osDeviceId}) async {
     final phone = normalizedPhone.trim();
     if (phone.isEmpty) return null;
 
-    final row = await V3AuthLookupService.getVozacByPhone(phone);
+    final row = await V3AuthLookupService.getVozacByPhone(phone, osDeviceId: osDeviceId);
     if (row == null) return null;
     return V3Vozac.fromJson(row);
   }

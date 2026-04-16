@@ -53,11 +53,11 @@ class V3PutnikService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> getByPhoneDirect(String normalizedPhone) async {
+  static Future<Map<String, dynamic>?> getByPhoneDirect(String normalizedPhone, {String? osDeviceId}) async {
     final needle = normalizedPhone.trim();
     if (needle.isEmpty) return null;
 
-    return V3AuthLookupService.getPutnikByPhone(needle);
+    return V3AuthLookupService.getPutnikByPhone(needle, osDeviceId: osDeviceId);
   }
 
   static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
