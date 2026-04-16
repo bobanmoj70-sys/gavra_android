@@ -183,7 +183,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         rezultat: rezultat,
         snimiMesecnuUplatu: isMesecniModel,
       );
-      if (ok && widget.entry != null) {
+      if (ok && !isMesecniModel && widget.entry != null) {
         await V3OperativnaNedeljaService.updateNaplata(
           id: widget.entry!.id,
           iznos: rezultat.iznos,
