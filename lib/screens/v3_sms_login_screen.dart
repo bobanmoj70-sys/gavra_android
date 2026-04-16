@@ -17,7 +17,6 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
 
@@ -51,8 +50,6 @@ class V3SmsLoginScreen extends StatefulWidget {
 }
 
 class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
-  static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
-
   final _phoneController = TextEditingController();
   final _imeController = TextEditingController();
   final _prezimeController = TextEditingController();
@@ -76,7 +73,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   bool _biometricDeviceSupported = false;
   bool _biometricAvailable = false;
   bool _hasSavedCredentials = false;
-  bool _enableBiometricOnSuccess = false;
   bool _autoBiometricAttempted = false;
   IconData _biometricIcon = Icons.fingerprint;
 
@@ -167,7 +163,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         _biometricDeviceSupported = supported;
         _biometricAvailable = available;
         _hasSavedCredentials = hasCreds;
-        _enableBiometricOnSuccess = available && (hasCreds || _enableBiometricOnSuccess);
         _biometricIcon = info.icon;
       });
       _tryAutoBiometricLogin();
@@ -253,21 +248,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     setState(() {
       _isLoading = true;
-      _statusMessage = '🔍 Proveravam broj i uređaj...';
+      _statusMessage = '🔍 Proveravam broj...';
     });
 
     try {
-      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-      if (osDeviceId.isEmpty) {
-        if (!mounted) return;
-        V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
       final rows = await Supabase.instance.client
           .from('v3_auth')
-          .select('id,os_device_id,os_device_id_2')
+          .select('id,telefon,telefon_2')
           .or(_buildPhoneOrClause(phone))
           .limit(10);
 
@@ -278,31 +265,32 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         return;
       }
 
-      bool matchesDevice(Map<dynamic, dynamic> row) {
-        final primary = (row['os_device_id'] ?? '').toString().trim();
-        final secondary = (row['os_device_id_2'] ?? '').toString().trim();
-        return primary == osDeviceId || secondary == osDeviceId;
+      final matchedRows =
+          rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>())).toList();
+
+      final uniqueIds =
+          matchedRows.map((row) => row['id']?.toString().trim() ?? '').where((id) => id.isNotEmpty).toSet();
+
+      String authId = '';
+      if (uniqueIds.length == 1) {
+        authId = uniqueIds.first;
+      } else {
+        final primaryMatches = matchedRows.where((row) {
+          final rowPhone = V3ClosedAuthService.normalizePhone(row['telefon']?.toString() ?? '');
+          return rowPhone == phone;
+        }).toList();
+
+        final primaryIds =
+            primaryMatches.map((row) => row['id']?.toString().trim() ?? '').where((id) => id.isNotEmpty).toSet();
+        if (primaryIds.length == 1) {
+          authId = primaryIds.first;
+        } else {
+          V3AppSnackBar.error(context, '❌ Pronađeno je više naloga za isti broj telefona.');
+          setState(() => _statusMessage = '');
+          return;
+        }
       }
 
-      final matchedRows = rows
-          .whereType<Map>()
-          .where((row) => matchesDevice(row))
-          .map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>()))
-          .toList();
-
-      if (matchedRows.isEmpty) {
-        V3AppSnackBar.error(context, '❌ Broj i UUID uređaja se ne poklapaju.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      if (matchedRows.length > 1) {
-        V3AppSnackBar.error(context, '❌ Pronađeno je više naloga za isti broj i uređaj.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      final authId = matchedRows.first['id']?.toString().trim() ?? '';
       if (authId.isEmpty) {
         V3AppSnackBar.error(context, '❌ Nalog nije moguće verifikovati.');
         setState(() => _statusMessage = '');
@@ -394,6 +382,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   Future<void> _advanceAfterPhoneAuth() async {
     final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
+    final authId = (_targetAuthId ?? '').trim();
     if (phone.isEmpty) {
       if (mounted) {
         V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
@@ -402,22 +391,21 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-    if (osDeviceId.isEmpty) {
+    if (authId.isEmpty) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
+      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
       _resetToStep1();
       return;
     }
 
-    final vozac = await V3VozacService.getVozacByPhoneDirect(phone, osDeviceId: osDeviceId);
+    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
     if (vozac != null) {
       if (!mounted) return;
       await _finalize();
       return;
     }
 
-    final putnik = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
+    final putnik = await V3PutnikService.getActiveById(authId);
     if (putnik == null) {
       if (!mounted) return;
       V3AppSnackBar.error(context, '❌ Broj nije autorizovan za pristup.');
@@ -433,7 +421,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     if (hasName && hasTip && hasBcAdresa && hasVsAdresa) {
       if (!mounted) return;
-      await _finalize(isPutnikLogin: true);
+      await _finalize();
       return;
     }
 
@@ -484,6 +472,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final prezime = _prezimeController.text.trim();
     final fullName = '$ime $prezime'.trim();
     final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
+    final authId = (_targetAuthId ?? '').trim();
 
     if (ime.isEmpty || prezime.isEmpty) {
       V3AppSnackBar.warning(context, 'Unesite ime i prezime.');
@@ -506,21 +495,19 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
+    if (authId.isEmpty) {
+      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      _resetToStep1();
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _statusMessage = '💾 Čuvam profil...';
     });
 
     try {
-      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-      if (osDeviceId.isEmpty) {
-        if (!mounted) return;
-        V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
-        _resetToStep1();
-        return;
-      }
-
-      final existing = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
+      final existing = await V3PutnikService.getActiveById(authId);
       if (existing == null) {
         if (!mounted) return;
         V3AppSnackBar.error(context, '❌ Broj nije autorizovan za unos profila.');
@@ -539,7 +526,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       await V3PutnikService.addUpdatePutnik(putnik);
 
-      final refreshed = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
+      final refreshed = await V3PutnikService.getActiveById(authId);
       final missingAfterSave = _missingRequiredProfileFields(refreshed);
       if (missingAfterSave.isNotEmpty) {
         if (!mounted) return;
@@ -554,7 +541,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       if (!mounted) return;
 
       V3AppSnackBar.success(context, '✅ Profil sačuvan.');
-      await _finalize(isPutnikLogin: true);
+      await _finalize();
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _saveOnboarding error: $e');
@@ -567,7 +554,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   // ─── Finalizacija ──────────────────────────────────────────────
 
-  Future<void> _finalize({bool skipBiometricSave = false, bool isPutnikLogin = false}) async {
+  Future<void> _finalize({bool skipBiometricSave = false}) async {
     try {
       final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
       if (phone.isEmpty) {
@@ -578,25 +565,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       if (!mounted) return;
 
-      if (_biometricEnabled && isPutnikLogin && !skipBiometricSave && _biometricAvailable && !_hasSavedCredentials) {
-        final choiceKey = '$_biometricPromptChoicePrefix$phone';
-        final alreadyAnswered = (await _secureStorage.read(key: choiceKey)) == '1';
-
-        if (!alreadyAnswered) {
-          final wantsBiometric = await _showFirstPutnikBiometricChoiceDialog();
-          if (!mounted) return;
-
-          await _secureStorage.write(key: choiceKey, value: '1');
-          setState(() => _enableBiometricOnSuccess = wantsBiometric);
-
-          if (!wantsBiometric) {
-            await V3BiometricService().setBiometricEnabled(false);
-          }
-        }
-      }
-
-      // Sačuvaj biometriju za sledeći put
-      if (_biometricEnabled && !skipBiometricSave && _biometricAvailable && _enableBiometricOnSuccess) {
+      // Automatski sačuvaj biometriju za sledeći put (bez pitanja)
+      if (_biometricEnabled && !skipBiometricSave && _biometricAvailable) {
         await _secureStorage.write(key: widget.biometricKey!, value: phone);
         await V3BiometricService().setBiometricEnabled(true);
         if (mounted) setState(() => _hasSavedCredentials = true);
@@ -609,42 +579,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       V3AppSnackBar.error(context, '❌ Prijava trenutno nije moguća. Pokušajte ponovo.');
       setState(() => _statusMessage = '');
     }
-  }
-
-  Future<bool> _showFirstPutnikBiometricChoiceDialog() async {
-    final result = await V3DialogHelper.showDialogBuilder<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return PopScope(
-          canPop: false,
-          child: AlertDialog(
-            backgroundColor: const Color(0xFF1D1D1D),
-            title: const Text(
-              'Prijava biometrijom',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-            ),
-            content: const Text(
-              'Da li želite da ubuduće ulazite biometrijom?',
-              style: TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Ne'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-                child: const Text('Da', style: TextStyle(color: Colors.black)),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    return result ?? false;
   }
 
   void _resetToStep1() {
@@ -721,49 +655,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                   _SmsStep.unosProfila => _buildProfileStep(),
                 },
               ),
-              if (_biometricEnabled && _biometricChecked && _biometricAvailable && _hasSavedCredentials) ...[
-                const SizedBox(height: 16),
-                V3ButtonUtils.outlinedButton(
-                  onPressed: _isLoading ? null : _loginWithBiometric,
-                  text: 'Prijava biometrijom',
-                  icon: _biometricIcon,
-                  borderColor: Colors.amber,
-                  foregroundColor: Colors.white,
-                  isLoading: _isLoading,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ] else if (_biometricEnabled && _biometricChecked && _biometricAvailable && !_hasSavedCredentials) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(_biometricIcon, color: Colors.amber, size: 20),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Uključi prijavu biometrijom nakon uspešne prijave',
-                          style: TextStyle(color: Colors.white, fontSize: 13),
-                        ),
-                      ),
-                      Switch(
-                        value: _enableBiometricOnSuccess,
-                        onChanged: _isLoading ? null : (v) => setState(() => _enableBiometricOnSuccess = v),
-                        activeColor: Colors.amber,
-                      ),
-                    ],
-                  ),
-                ),
-              ] else if (_biometricEnabled &&
-                  _biometricChecked &&
-                  _biometricDeviceSupported &&
-                  !_biometricAvailable) ...[
+              if (_biometricEnabled && _biometricChecked && _biometricDeviceSupported && !_biometricAvailable) ...[
                 const SizedBox(height: 16),
                 const Text(
                   'Biometrija nije podešena na uređaju. Uključite je u podešavanjima telefona.',

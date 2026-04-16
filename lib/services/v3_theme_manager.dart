@@ -13,9 +13,10 @@ class V3ThemeManager extends ChangeNotifier {
     _themeNotifier = ValueNotifier(_currentTheme.themeData);
   }
   static final V3ThemeManager _instance = V3ThemeManager._internal();
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
-      aOptions: AndroidOptions(encryptedSharedPreferences: true));
+  static const FlutterSecureStorage _secureStorage =
+      FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   static const String _themeStorageKey = 'v3_theme_id';
+  static const Duration _themeReadTimeout = Duration(seconds: 2);
 
   late String _currentThemeId;
   late V3ThemeDefinition _currentTheme;
@@ -53,7 +54,8 @@ class V3ThemeManager extends ChangeNotifier {
   /// Učitaj temu iz secure storage (pozvati pre MaterialApp kada je moguće).
   Future<void> loadThemeFromStorage() async {
     try {
-      final storedThemeId = await _secureStorage.read(key: _themeStorageKey);
+      final storedThemeId =
+          await _secureStorage.read(key: _themeStorageKey).timeout(_themeReadTimeout, onTimeout: () => null);
       if (storedThemeId == null || storedThemeId.isEmpty) return;
       if (!V3ThemeRegistry.hasTheme(storedThemeId)) return;
 
@@ -62,7 +64,9 @@ class V3ThemeManager extends ChangeNotifier {
       _themeNotifier.value = _currentTheme.themeData;
       _themeNotifier.notifyListeners();
       notifyListeners();
-    } catch (_) {}
+    } catch (_) {
+      return;
+    }
   }
 
   Future<void> _persistThemeId(String themeId) async {

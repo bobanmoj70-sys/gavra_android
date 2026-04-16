@@ -49,6 +49,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   late final AnimationController _pulseController;
   late final Animation<double> _fadeAnimation;
   Timer? _slideStartTimer;
+  bool _isDisposing = false;
 
   String _appVersion = '';
 
@@ -87,10 +88,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       end: 1.0,
       curve: Curves.easeInOut,
     );
-    _fadeController.forward();
+    if (!_isDisposing) {
+      _fadeController.forward();
+    }
     _slideStartTimer?.cancel();
     _slideStartTimer = Timer(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
+      if (!mounted || _isDisposing) return;
       _slideController.forward();
     });
   }
@@ -206,6 +209,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
   @override
   void dispose() {
+    _isDisposing = true;
     WidgetsBinding.instance.removeObserver(this);
     _slideStartTimer?.cancel();
     V3AnimationUtils.disposeController(_fadeAnimationKey);
