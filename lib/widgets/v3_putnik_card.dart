@@ -157,6 +157,15 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
     final zakljucajIznos = defaultCena > 0;
 
+    if (!isMesecniModel && widget.entry == null) {
+      if (mounted) {
+        V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon potvrđenog termina.');
+      }
+      _globalProcessingLock = false;
+      V3StateUtils.safeSetState(this, () => _isProcessing = false);
+      return;
+    }
+
     try {
       final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
         context: context,
@@ -174,7 +183,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         rezultat: rezultat,
         snimiMesecnuUplatu: isMesecniModel,
       );
-      if (ok && !isMesecniModel && widget.entry != null) {
+      if (ok && widget.entry != null) {
         await V3OperativnaNedeljaService.updateNaplata(
           id: widget.entry!.id,
           iznos: rezultat.iznos,
