@@ -66,6 +66,23 @@ Deno.serve(async (req) => {
       return badRequest("expected_tip mismatch", 403);
     }
 
+    if (!clear) {
+      const { data: conflictRows, error: conflictError } = await client
+        .from("v3_auth")
+        .select("id")
+        .neq("id", userId)
+        .or(`os_device_id.eq.${osDeviceId},os_device_id_2.eq.${osDeviceId}`)
+        .limit(1);
+
+      if (conflictError) {
+        return badRequest(`v3_auth conflict lookup error: ${conflictError.message}`, 500);
+      }
+
+      if ((conflictRows ?? []).length > 0) {
+        return badRequest("os_device_id belongs to another account", 403);
+      }
+    }
+
     const rowOsDevicePrimary = String(row.os_device_id ?? "").trim();
     const rowOsDeviceSecondary = String(row.os_device_id_2 ?? "").trim();
 

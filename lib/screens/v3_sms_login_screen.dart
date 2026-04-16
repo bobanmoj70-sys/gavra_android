@@ -261,7 +261,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       if (!mounted) return;
       if (rows.isEmpty) {
         V3AppSnackBar.error(context, '❌ Broj nije registrovan u sistemu.');
-        setState(() => _statusMessage = '');
+        V3AppSnackBar.error(context,
+            '❌ Pokušaj neovlašćenog pristupa. Vaš uređaj nema ovlašćen pristup ovom nalogu jer je već povezan sa drugim korisničkim profilom.');
         return;
       }
 
@@ -295,6 +296,23 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         V3AppSnackBar.error(context, '❌ Nalog nije moguće verifikovati.');
         setState(() => _statusMessage = '');
         return;
+      }
+
+      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
+      if (osDeviceId.isNotEmpty) {
+        final conflictRows = await Supabase.instance.client
+            .from('v3_auth')
+            .select('id')
+            .neq('id', authId)
+            .or('os_device_id.eq.$osDeviceId,os_device_id_2.eq.$osDeviceId')
+            .limit(1);
+
+        if (conflictRows.isNotEmpty) {
+          V3AppSnackBar.error(
+              context, '❌ Prijava nije odobrena: ovaj uređaj je već povezan sa drugim korisničkim nalogom.');
+          setState(() => _statusMessage = '');
+          return;
+        }
       }
 
       setState(() => _statusMessage = '🔐 Pripremam prijavu...');
