@@ -1561,6 +1561,7 @@ class _ZahtevCell extends StatelessWidget {
     );
     final statusColor = badgeStyle.color;
     final statusIcon = badgeStyle.icon;
+    final isCanceledOrRejected = V3StatusFilters.isCanceledOrRejected(info!.status);
     final vreme = V3StringUtils.trimTimeToHhMm(info!.vreme);
     return GestureDetector(
       onTap: onTap,
@@ -1575,6 +1576,10 @@ class _ZahtevCell extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (isCanceledOrRejected) ...[
+              const Icon(Icons.cancel, size: 12, color: Colors.redAccent),
+              const SizedBox(width: 4),
+            ],
             Flexible(
               child: Text(
                 '$statusIcon $vreme',
