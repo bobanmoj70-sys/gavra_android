@@ -8,7 +8,7 @@ class V3ValidationUtils {
   /// Normalizuje naziv grada u uppercase kraticu ('BC' ili 'VS')
   static String normalizeGrad(String grad) {
     final upper = grad.trim().toUpperCase();
-    if (upper == 'BC' || upper == 'BANJA LUKA' || upper == 'BANJALUKA') return 'BC';
+    if (upper == 'BC') return 'BC';
     if (upper == 'VS' || upper == 'ČELINAC' || upper == 'CELINAC') return 'VS';
     return upper;
   }

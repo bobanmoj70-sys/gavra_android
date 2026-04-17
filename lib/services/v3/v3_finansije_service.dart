@@ -7,6 +7,7 @@ import 'repositories/v3_finansije_repository.dart';
 class V3FinansijeService {
   V3FinansijeService._();
   static final V3FinansijeRepository _repo = V3FinansijeRepository();
+  static final Set<String> _mesecnaNaplataLocks = <String>{};
 
   /// Vraca sve troškove za trenutni mesec iz cache-a (v3_finansije)
   static List<V3Trosak> getTroskoviMesec({int? mesec, int? godina}) {
@@ -47,8 +48,15 @@ class V3FinansijeService {
     required int mesec,
     required int godina,
   }) async {
+    final lockKey = '$putnikId:$mesec:$godina';
+    if (_mesecnaNaplataLocks.contains(lockKey)) {
+      debugPrint('[V3FinansijeService] sacuvajMesecnuOperativnuNaplatu skipped (lock): $lockKey');
+      return;
+    }
+    _mesecnaNaplataLocks.add(lockKey);
+
     try {
-      final existing = await _repo.findMesecnaOperativnaNaplataId(
+      Map<String, dynamic>? existing = await _repo.findMesecnaOperativnaNaplataId(
         putnikId: putnikId,
         mesec: mesec,
         godina: godina,
@@ -69,11 +77,22 @@ class V3FinansijeService {
       if (existing != null) {
         await _repo.updateById(existing['id'] as String, payload);
       } else {
+        existing = await _repo.findMesecnaOperativnaNaplataId(
+          putnikId: putnikId,
+          mesec: mesec,
+          godina: godina,
+        );
+        if (existing != null) {
+          await _repo.updateById(existing['id'] as String, payload);
+          return;
+        }
         await _repo.insert(payload);
       }
     } catch (e) {
       debugPrint('[V3FinansijeService] sacuvajMesecnuOperativnuNaplatu error: $e');
       rethrow;
+    } finally {
+      _mesecnaNaplataLocks.remove(lockKey);
     }
   }
 }

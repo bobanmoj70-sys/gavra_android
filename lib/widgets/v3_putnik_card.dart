@@ -190,6 +190,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           naplacenBy: V3VozacService.currentVozac?.id,
         );
       }
+      if (ok && mounted) {
+        V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za ${widget.putnik.imePrezime}');
+      }
       widget.onChanged?.call();
     } catch (e) {
       V3ErrorUtils.safeError(this, context, 'Greška pri plaćanju: $e');

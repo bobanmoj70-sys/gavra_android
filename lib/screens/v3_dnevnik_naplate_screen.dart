@@ -51,8 +51,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
     V3StreamUtils.subscribe<int>(
       key: 'dnevnik_naplate_cache',
-      stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
       onData: (_) {
         if (!mounted) return;
         _ucitajVozace();
@@ -79,9 +78,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
   }
 
   void _ucitajVozace() {
-    final list = V3VozacService.getAllVozaci()
-        .map((v) => _VozacItem(id: v.id, ime: v.imePrezime))
-        .toList()
+    final list = V3VozacService.getAllVozaci().map((v) => _VozacItem(id: v.id, ime: v.imePrezime)).toList()
       ..sort((a, b) => a.ime.compareTo(b.ime));
     V3StateUtils.safeSetState(this, () => _vozaci = list);
   }
@@ -89,8 +86,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
   void _prikaziNaplate() {
     if (_selectedVozacId == null) return;
 
-    final target =
-        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final target = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
     final putniciCache = V3MasterRealtimeManager.instance.putniciCache;
 
@@ -102,9 +98,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       if (vozacId != _selectedVozacId) continue;
 
       final vremePlaceno = row['naplacen_at'] as String? ?? '';
-      final sortTs = vremePlaceno.isNotEmpty
-          ? vremePlaceno
-          : (row['updated_at'] as String? ?? '');
+      final sortTs = vremePlaceno.isNotEmpty ? vremePlaceno : (row['updated_at'] as String? ?? '');
       final dt = V3DateUtils.parseTs(sortTs);
       if (dt == null) continue;
 
@@ -165,12 +159,10 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     buf.writeln('─────────────────────────');
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
-      buf.writeln(
-          '${i + 1}. ${n.ime} — ${n.iznos.toStringAsFixed(0)} din — ${n.vremeNaplate}');
+      buf.writeln('${i + 1}. ${n.ime} — ${n.iznos.toStringAsFixed(0)} din — ${n.vremeNaplate}');
     }
     buf.writeln('─────────────────────────');
-    buf.writeln(
-        'UKUPNO: ${_naplate.length} uplata — ${_ukupnoIznos.toStringAsFixed(0)} din');
+    buf.writeln('UKUPNO: ${_naplate.length} uplata — ${_ukupnoIznos.toStringAsFixed(0)} din');
     final predaoVal = _predaoIznos;
     if (predaoVal != null) {
       final razlika = predaoVal - _ukupnoIznos;
@@ -187,8 +179,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
   Future<void> _exportPdf() async {
     if (_naplate.isEmpty) return;
 
-    final fontRegularData =
-        await rootBundle.load('assets/fonts/Lato-Regular.ttf');
+    final fontRegularData = await rootBundle.load('assets/fonts/Lato-Regular.ttf');
     final fontBoldData = await rootBundle.load('assets/fonts/Lato-Bold.ttf');
     final fontRegular = pw.Font.ttf(fontRegularData);
     final fontBold = pw.Font.ttf(fontBoldData);
@@ -244,8 +235,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                   children: [
                     _pdfCell('${i + 1}.', style: baseStyle),
                     _pdfCell(_naplate[i].ime, style: baseStyle),
-                    _pdfCell('${_naplate[i].iznos.toStringAsFixed(0)} din',
-                        style: baseStyle),
+                    _pdfCell('${_naplate[i].iznos.toStringAsFixed(0)} din', style: baseStyle),
                     _pdfCell(_naplate[i].vremeNaplate, style: baseStyle),
                   ],
                 ),
@@ -259,10 +249,8 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('UKUPNO (${_naplate.length} uplata):',
-                  style: summaryStyle),
-              pw.Text('${_ukupnoIznos.toStringAsFixed(0)} din',
-                  style: summaryStyle),
+              pw.Text('UKUPNO (${_naplate.length} uplata):', style: summaryStyle),
+              pw.Text('${_ukupnoIznos.toStringAsFixed(0)} din', style: summaryStyle),
             ],
           ),
           if (predaoVal != null) ...[
@@ -271,8 +259,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text('Predao:', style: normalStyle),
-                pw.Text('${predaoVal.toStringAsFixed(0)} din',
-                    style: normalStyle),
+                pw.Text('${predaoVal.toStringAsFixed(0)} din', style: normalStyle),
               ],
             ),
             if (razlika != null) ...[
@@ -280,10 +267,8 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text(razlika >= 0 ? 'Višak:' : 'Manjak:',
-                      style: summaryStyle),
-                  pw.Text('${razlika.abs().toStringAsFixed(0)} din',
-                      style: summaryStyle),
+                  pw.Text(razlika >= 0 ? 'Višak:' : 'Manjak:', style: summaryStyle),
+                  pw.Text('${razlika.abs().toStringAsFixed(0)} din', style: summaryStyle),
                 ],
               ),
             ],
@@ -312,8 +297,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Dnevnik naplate',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Dnevnik naplate', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (_naplate.isNotEmpty) ...[
             IconButton(
@@ -330,8 +314,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
         ],
       ),
       body: Container(
-        decoration:
-            BoxDecoration(gradient: Theme.of(context).backgroundGradient),
+        decoration: BoxDecoration(gradient: Theme.of(context).backgroundGradient),
         child: SafeArea(
           child: Column(
             children: [
@@ -352,13 +335,10 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedVozacId,
-                            hint: const Text('Vozač',
-                                style: TextStyle(color: Colors.white54)),
+                            hint: const Text('Vozač', style: TextStyle(color: Colors.white54)),
                             dropdownColor: const Color(0xFF1A1A2E),
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 14),
-                            icon: const Icon(Icons.arrow_drop_down,
-                                color: Colors.white54),
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
                             isExpanded: true,
                             items: _vozaci
                                 .map((v) => DropdownMenuItem(
@@ -368,8 +348,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                                 .toList(),
                             onChanged: (id) {
                               if (id == null) return;
-                              final vozac =
-                                  _vozaci.firstWhere((v) => v.id == id);
+                              final vozac = _vozaci.firstWhere((v) => v.id == id);
                               setState(() {
                                 _selectedVozacId = id;
                                 _selectedVozacIme = vozac.ime;
@@ -389,8 +368,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                       onTap: _pickDate,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
@@ -398,15 +376,11 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today,
-                                color: Colors.white70, size: 16),
+                            const Icon(Icons.calendar_today, color: Colors.white70, size: 16),
                             const SizedBox(width: 6),
                             Text(
                               _formatDatum(_selectedDate),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600),
+                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
@@ -432,22 +406,18 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                                 ? Center(
                                     child: Text(
                                       'Nema naplata za ${_formatDatum(_selectedDate)}',
-                                      style: const TextStyle(
-                                          color: Colors.white54, fontSize: 16),
+                                      style: const TextStyle(color: Colors.white54, fontSize: 16),
                                     ),
                                   )
                                 : ListView.builder(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
                                     itemCount: _naplate.length,
-                                    itemBuilder: (_, i) =>
-                                        _NaplataCard(n: _naplate[i], index: i),
+                                    itemBuilder: (_, i) => _NaplataCard(n: _naplate[i], index: i),
                                   ),
                           ),
                           // Footer: Ukupno + Predao
                           _PredajaFooter(
-                            key: ValueKey(
-                                '$_selectedVozacId-${_selectedDate.toIso8601String()}'),
+                            key: ValueKey('$_selectedVozacId-${_selectedDate.toIso8601String()}'),
                             naplate: _naplate,
                             ukupnoIznos: _ukupnoIznos,
                             vozacId: _selectedVozacId!,
@@ -519,24 +489,15 @@ class _NaplataCard extends StatelessWidget {
         children: [
           SizedBox(
             width: 28,
-            child: Text('${index + 1}.',
-                style: const TextStyle(color: Colors.white38, fontSize: 13)),
+            child: Text('${index + 1}.', style: const TextStyle(color: Colors.white38, fontSize: 13)),
           ),
           Expanded(
-            child: Text(n.ime,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600)),
+            child: Text(n.ime, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
           ),
           Text('${n.iznos.toStringAsFixed(0)} din',
-              style: const TextStyle(
-                  color: Colors.greenAccent,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold)),
+              style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(width: 10),
-          Text(n.vremeNaplate,
-              style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(n.vremeNaplate, style: const TextStyle(color: Colors.white38, fontSize: 12)),
         ],
       ),
     );
@@ -587,21 +548,23 @@ class _PredajaFooterState extends State<_PredajaFooter> {
       datum: widget.datum,
     );
     if (!mounted) return;
-    final iznos = (predaja != null && predaja.predaoIznos > 0)
-        ? predaja.predaoIznos
-        : null;
+    final iznos = (predaja != null && predaja.predaoIznos > 0) ? predaja.predaoIznos : null;
     widget.onPredaoChanged?.call(iznos);
     setState(() {
-      V3TextUtils.setControllerText(
-          'iznos', iznos != null ? iznos.toStringAsFixed(0) : '');
+      V3TextUtils.setControllerText('iznos', iznos != null ? iznos.toStringAsFixed(0) : '');
       _sacuvan = iznos != null;
     });
   }
 
   Future<void> _sacuvaj() async {
-    final predaoVal = double.tryParse(
-        V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
+    final predaoVal = double.tryParse(V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
     if (predaoVal == null) return;
+    if (predaoVal <= 0) {
+      if (mounted) {
+        V3AppSnackBar.warning(context, 'Unesite iznos predaje veći od 0 din.');
+      }
+      return;
+    }
 
     try {
       await V3DnevnaPredajaService.upsertPredaja(V3DnevnaPredaja(
@@ -625,8 +588,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
 
   @override
   Widget build(BuildContext context) {
-    final predaoVal = double.tryParse(
-        V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
+    final predaoVal = double.tryParse(V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
     final razlika = predaoVal != null ? predaoVal - widget.ukupnoIznos : null;
 
     return Container(
@@ -644,14 +606,10 @@ class _PredajaFooterState extends State<_PredajaFooter> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Ukupno naplaćeno:',
-                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const Text('Ukupno naplaćeno:', style: TextStyle(color: Colors.white70, fontSize: 14)),
               Text(
                 '${widget.ukupnoIznos.toStringAsFixed(0)} din',
-                style: const TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold),
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -660,8 +618,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
           // Predao input + dugme
           Row(
             children: [
-              const Text('Predao:',
-                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const Text('Predao:', style: TextStyle(color: Colors.white70, fontSize: 14)),
               const SizedBox(width: 10),
               Expanded(
                 child: V3InputUtils.numberField(
@@ -677,8 +634,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
                 backgroundColor: _sacuvan ? Colors.green[700] : Colors.green,
                 foregroundColor: Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
             ],
           ),

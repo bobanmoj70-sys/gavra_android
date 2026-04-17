@@ -63,6 +63,8 @@ class V3PlacanjeDialogHelper {
 
     int _selectedMonth = DateTime.now().month;
     int _selectedYear = DateTime.now().year;
+    final currentYear = DateTime.now().year;
+    final years = List.generate(6, (i) => currentYear - 1 + i);
     final zadnjaNaplata = _getZadnjaNaplata(putnikId);
     final vremePlacen = DateTime.tryParse(zadnjaNaplata?['naplacen_at']?.toString() ?? '');
     final zadnjiIznos = (zadnjaNaplata?['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
@@ -178,7 +180,7 @@ class V3PlacanjeDialogHelper {
                         ),
                         value: _selectedYear,
                         isExpanded: true,
-                        items: [2024, 2025, 2026].map((y) {
+                        items: years.map((y) {
                           return DropdownMenuItem(value: y, child: Text('$y.'));
                         }).toList(),
                         onChanged: (v) => setState(() => _selectedYear = v!),
@@ -202,7 +204,12 @@ class V3PlacanjeDialogHelper {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
                 onPressed: () {
-                  final iznos = zakljucajIznos ? defaultCena : (double.tryParse(_iznosController.text) ?? 0);
+                  final rawIznos = _iznosController.text.trim().replaceAll(',', '.');
+                  final iznos = zakljucajIznos ? defaultCena : (double.tryParse(rawIznos) ?? 0);
+                  if (iznos <= 0) {
+                    V3AppSnackBar.warning(context, 'Unesite ispravan iznos (> 0 RSD).');
+                    return;
+                  }
                   Navigator.pop(
                     context,
                     V3PlacanjeRezultat(
@@ -259,10 +266,6 @@ class V3PlacanjeDialogHelper {
           mesec: rezultat.mesec,
           godina: rezultat.godina,
         );
-      }
-
-      if (context.mounted) {
-        V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za $imePrezime');
       }
       return true;
     } catch (e) {

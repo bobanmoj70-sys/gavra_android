@@ -98,6 +98,8 @@ _V3IzvestajData _buildIzvestaj() {
 
   for (final row in finansijeCache) {
     if (row['tip'] != 'prihod') continue;
+    final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+    if (kategorija == 'dnevna_predaja') continue;
 
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;
@@ -130,7 +132,6 @@ _V3IzvestajData _buildIzvestaj() {
   // Troškovi iz cache
   double trosakDan = 0, trosakNed = 0, trosakMes = 0, trosakGod = 0;
   final troskoviMes = V3FinansijeService.getTroskoviMesec(mesec: now.month, godina: now.year);
-  final troskoviGod = V3FinansijeService.getTroskoviMesec(mesec: null, godina: now.year);
 
   for (final row in finansijeCache) {
     if (row['tip'] != 'rashod') continue;
@@ -146,6 +147,9 @@ _V3IzvestajData _buildIzvestaj() {
     if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
       trosakNed += iznos;
     }
+    if (!dt.isBefore(godStart) && dt.isBefore(godEnd)) {
+      trosakGod += iznos;
+    }
   }
 
   final Map<String, double> poKat = {};
@@ -154,10 +158,6 @@ _V3IzvestajData _buildIzvestaj() {
     final kat = _katLabel(t.kategorija);
     poKat[kat] = (poKat[kat] ?? 0) + t.iznos;
   }
-  for (final t in troskoviGod) {
-    trosakGod += t.iznos;
-  }
-
   // Potraživanja
   final dugovi = V3DugService.getDugovi();
   final potr = dugovi.fold(0.0, (s, d) => s + d.iznos);
@@ -240,7 +240,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                       podnaslov: iz.danasPeriod,
                       prihod: iz.prihodDanas,
                       troskovi: iz.trosakDanas,
-                      voznjiLabel: '${iz.voznjiDanas} vožnji',
+                      voznjiLabel: '${iz.voznjiDanas} uplata',
                       color: Colors.blue,
                     ),
                     const SizedBox(height: 16),
@@ -250,7 +250,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                       podnaslov: iz.nedeljaPeriod,
                       prihod: iz.prihodNedelja,
                       troskovi: iz.trosakNedelja,
-                      voznjiLabel: '${iz.voznjiNedelja} vožnji',
+                      voznjiLabel: '${iz.voznjiNedelja} uplata',
                       color: Colors.indigo,
                     ),
                     const SizedBox(height: 16),
@@ -260,7 +260,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                       podnaslov: _mesecNaziv(DateTime.now().month),
                       prihod: iz.prihodMesec,
                       troskovi: iz.trosakMesec,
-                      voznjiLabel: '${iz.voznjiMesec} vožnji',
+                      voznjiLabel: '${iz.voznjiMesec} uplata',
                       color: Colors.green,
                     ),
                     const SizedBox(height: 16),
@@ -270,7 +270,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                       podnaslov: 'Ceo godišnji bilans',
                       prihod: iz.prihodGodina,
                       troskovi: iz.trosakGodina,
-                      voznjiLabel: '${iz.voznjiGodina} vožnji',
+                      voznjiLabel: '${iz.voznjiGodina} uplata',
                       color: Colors.grey,
                     ),
                     const SizedBox(height: 16),

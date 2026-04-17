@@ -4,6 +4,7 @@ import '../../models/v3_dug.dart';
 import '../../utils/v3_status_filters.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
+import 'v3_vozac_service.dart';
 
 /// V3DugService - Upravljanje dugovima/naplatama iz v3_operativna_nedelja.
 /// Tabela v3_dugovi ne postoji - dugovi se prate kroz naplacen_at u v3_operativna_nedelja.
@@ -49,10 +50,12 @@ class V3DugService {
 
   static Future<void> markAsPaid(String operacijaId, {double iznos = 0}) async {
     try {
+      final currentVozacId = V3VozacService.currentVozac?.id;
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
       await _operativnaRepo.updateById(operacijaId, {
         'naplacen_iznos': iznos,
         'naplacen_at': DateTime.now().toIso8601String(),
+        if (currentVozacId != null) 'naplacen_by': currentVozacId,
         'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
