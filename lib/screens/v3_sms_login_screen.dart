@@ -72,6 +72,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   bool _biometricChecked = false;
   bool _biometricDeviceSupported = false;
   bool _biometricAvailable = false;
+  bool _biometricEnabledForUser = false;
   bool _hasSavedCredentials = false;
   bool _autoBiometricAttempted = false;
   IconData _biometricIcon = Icons.fingerprint;
@@ -154,14 +155,16 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final bio = V3BiometricService();
     final supported = await bio.isDeviceSupported();
     final available = await bio.isBiometricAvailable();
+    final enabledForUser = await bio.isBiometricEnabled();
     final savedPhone = widget.biometricKey != null ? await _secureStorage.read(key: widget.biometricKey!) : null;
-    final hasCreds = (savedPhone ?? '').trim().isNotEmpty;
+    final hasCreds = (savedPhone ?? '').trim().isNotEmpty && enabledForUser;
     final info = await bio.getBiometricInfo();
     if (mounted) {
       setState(() {
         _biometricChecked = true;
         _biometricDeviceSupported = supported;
         _biometricAvailable = available;
+        _biometricEnabledForUser = enabledForUser;
         _hasSavedCredentials = hasCreds;
         _biometricIcon = info.icon;
       });
@@ -171,7 +174,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   void _tryAutoBiometricLogin() {
     if (_autoBiometricAttempted) return;
-    if (!_biometricEnabled || !_biometricAvailable || !_hasSavedCredentials) return;
+    if (!_biometricEnabled || !_biometricAvailable || !_biometricEnabledForUser || !_hasSavedCredentials) return;
 
     _autoBiometricAttempted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -182,6 +185,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   Future<void> _loginWithBiometric({bool silentFailure = false}) async {
     if (widget.biometricKey == null) return;
+
+    if (!_biometricEnabledForUser) {
+      if (!silentFailure && mounted) {
+        V3AppSnackBar.info(context, 'ℹ️ Biometrija nije uključena za ovaj nalog.');
+      }
+      return;
+    }
 
     final raw = await _secureStorage.read(key: widget.biometricKey!);
     if (raw == null) {
@@ -261,8 +271,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       if (!mounted) return;
       if (rows.isEmpty) {
         V3AppSnackBar.error(context, '❌ Broj nije registrovan u sistemu.');
-        V3AppSnackBar.error(context,
-            '❌ Pokušaj neovlašćenog pristupa. Vaš uređaj nema ovlašćen pristup ovom nalogu jer je već povezan sa drugim korisničkim profilom.');
+        setState(() => _statusMessage = '');
         return;
       }
 
@@ -302,16 +311,38 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       if (osDeviceId.isNotEmpty) {
         final conflictRows = await Supabase.instance.client
             .from('v3_auth')
-            .select('id')
+            .select('id,telefon,telefon_2')
             .neq('id', authId)
             .or('os_device_id.eq.$osDeviceId,os_device_id_2.eq.$osDeviceId')
-            .limit(1);
+            .limit(5);
 
         if (conflictRows.isNotEmpty) {
-          V3AppSnackBar.error(
-              context, '❌ Prijava nije odobrena: ovaj uređaj je već povezan sa drugim korisničkim nalogom.');
-          setState(() => _statusMessage = '');
-          return;
+          // Proveravamo da li je conflict row zapravo isti korisnik (drugi format telefona)
+          final realConflict = conflictRows.whereType<Map>().any((row) {
+            final t1 = V3ClosedAuthService.normalizePhone(row['telefon']?.toString() ?? '');
+            final t2 = V3ClosedAuthService.normalizePhone(row['telefon_2']?.toString() ?? '');
+            return t1 != phone && t2 != phone;
+          });
+
+          if (realConflict) {
+            V3AppSnackBar.error(
+                context, '❌ Prijava nije odobrena: ovaj uređaj je već povezan sa drugim korisničkim nalogom.');
+            setState(() => _statusMessage = '');
+            return;
+          }
+
+          // Isti korisnik, drugačiji format telefona u bazi – koristimo taj authId
+          final sameUserRow = conflictRows.whereType<Map>().cast<Map<String, dynamic>>().firstWhere(
+            (row) {
+              final t1 = V3ClosedAuthService.normalizePhone(row['telefon']?.toString() ?? '');
+              final t2 = V3ClosedAuthService.normalizePhone(row['telefon_2']?.toString() ?? '');
+              return t1 == phone || t2 == phone;
+            },
+            orElse: () => {},
+          );
+          if (sameUserRow.isNotEmpty) {
+            authId = sameUserRow['id']?.toString().trim() ?? authId;
+          }
         }
       }
 
@@ -587,7 +618,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       if (_biometricEnabled && !skipBiometricSave && _biometricAvailable) {
         await _secureStorage.write(key: widget.biometricKey!, value: phone);
         await V3BiometricService().setBiometricEnabled(true);
-        if (mounted) setState(() => _hasSavedCredentials = true);
+        if (mounted) {
+          setState(() {
+            _biometricEnabledForUser = true;
+            _hasSavedCredentials = true;
+          });
+        }
       }
 
       await widget.onVerified(phone);
@@ -746,6 +782,15 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           isLoading: _isLoading || _isSmsCooldownActive,
           onPressed: _isSmsCooldownActive ? null : _sendSms,
         ),
+        if (_biometricEnabled && _biometricChecked && _biometricAvailable && _hasSavedCredentials) ...[
+          const SizedBox(height: 10),
+          V3ButtonUtils.amberButton(
+            text: 'Prijava biometrijom',
+            icon: _biometricIcon,
+            isLoading: _isLoading,
+            onPressed: _isLoading ? null : () => _loginWithBiometric(),
+          ),
+        ],
         const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -126,9 +127,22 @@ Future<bool> _ensureSupabaseInitialized() async {
   return isSupabaseReady;
 }
 
+void _installGlobalErrorHandlers() {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('❌ [main] FlutterError: ${details.exceptionAsString()}');
+  };
+
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    debugPrint('❌ [main] Uncaught platform error: $error');
+    return true;
+  };
+}
+
 void main() async {
   debugPrint('🚀 [main] 1. START');
   WidgetsFlutterBinding.ensureInitialized();
+  _installGlobalErrorHandlers();
   debugPrint('🚀 [main] 2. WidgetsFlutterBinding DONE');
   initDanHelperGlobals();
 
@@ -138,8 +152,7 @@ void main() async {
     await configService.initializeBasic().timeout(const Duration(seconds: 3));
     debugPrint('🚀 [main] 3. configService completed');
   } catch (e) {
-    // Critical error - cannot continue without credentials
-    throw Exception('Ne mogu da inicijalizujem osnovne kredencijale: $e');
+    debugPrint('⚠️ [main] configService timeout/greška, nastavljam sa fallback tokom: $e');
   }
 
   // SUPABASE - Inicijalizuj sa osnovnim kredencijalima
@@ -206,7 +219,7 @@ Future<void> _doStartupTasks() async {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   } catch (e) {
-    debugPrint('âš ï¸ [main] Wakelock/SystemChrome greška: $e');
+    debugPrint('⚠️ [main] Wakelock/SystemChrome greška: $e');
   }
 
   // Locale - UTF-8 podrska za dijakritiku

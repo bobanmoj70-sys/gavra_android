@@ -134,9 +134,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
       if (rawPhone != null && rawPhone.isNotEmpty) {
         final bio = V3BiometricService();
+        final enabledForUser = await bio.isBiometricEnabled();
         final isAvailable = await bio.isBiometricAvailable();
 
-        if (isAvailable && mounted) {
+        if (enabledForUser && isAvailable && mounted) {
           final authenticated = await bio.authenticate(
             reason: 'Potvrdi identitet za automatski ulazak',
           );
