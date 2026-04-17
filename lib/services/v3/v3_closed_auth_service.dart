@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_phone_utils.dart';
-import 'v3_os_device_id_service.dart';
 import 'v3_putnik_service.dart';
 import 'v3_vozac_service.dart';
 
@@ -88,10 +87,8 @@ class V3ClosedAuthService {
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return null;
 
-    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-    if (osDeviceId.isEmpty) return null;
-
-    final putnik = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
+    // Tražimo samo po telefonu – bez device filtera, jer device možda još nije upisan u bazu
+    final putnik = await V3PutnikService.getByPhoneDirect(phone);
     if (putnik == null) return null;
 
     V3PutnikService.currentPutnik = putnik;
@@ -106,10 +103,8 @@ class V3ClosedAuthService {
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return;
 
-    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-    if (osDeviceId.isEmpty) return;
-
-    final vozac = await V3VozacService.getVozacByPhoneDirect(phone, osDeviceId: osDeviceId);
+    // Tražimo samo po telefonu – bez device filtera, jer device možda još nije upisan u bazu
+    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
     if (vozac == null) return;
 
     V3VozacService.currentVozac = vozac;
