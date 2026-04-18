@@ -68,6 +68,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   String _missingProfileMessage = '';
   DateTime? _nextSmsAllowedAt;
   Timer? _cooldownTimer;
+  bool _isBackendReady = false;
 
   // Biometrija
   bool _biometricChecked = false;
@@ -86,6 +87,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     if (widget.initialPhone != null) {
       _phoneController.text = V3PhoneUtils.normalize(widget.initialPhone!);
     }
+    unawaited(_waitForBackendReady());
     if (_biometricEnabled) _checkBiometric();
   }
 
@@ -107,6 +109,21 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   }
 
   bool get _isSmsCooldownActive => _cooldownRemainingSeconds > 0;
+  bool get _canSubmitPhoneStep => _isBackendReady && !_isSmsCooldownActive && !_isLoading;
+
+  Future<void> _waitForBackendReady() async {
+    while (mounted && !_isBackendReady) {
+      final ready = await V3ClosedAuthService.ensureClientReady();
+      if (!mounted) return;
+
+      if (ready) {
+        setState(() => _isBackendReady = true);
+        return;
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+    }
+  }
 
   String _buildPhoneOrClause(String phoneInput) {
     final normalized = V3ClosedAuthService.normalizePhone(phoneInput);
@@ -232,9 +249,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   // ─── Korak 1: Proveri telefon + pošalji SMS ────────────────────
 
   Future<void> _sendSms() async {
-    if (_isSmsCooldownActive) {
-      final sec = _cooldownRemainingSeconds;
-      V3AppSnackBar.info(context, 'Sačekajte $sec s pre novog zahteva.');
+    if (!_canSubmitPhoneStep) {
+      if (_isSmsCooldownActive) {
+        final sec = _cooldownRemainingSeconds;
+        V3AppSnackBar.info(context, 'Sačekajte $sec s pre novog zahteva.');
+      } else if (!_isBackendReady) {
+        V3AppSnackBar.info(context, '⏳ Učitavanje baze... sačekajte trenutak.');
+      }
       return;
     }
 
@@ -247,13 +268,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final phone = V3ClosedAuthService.normalizePhone(input);
     if (!V3PhoneUtils.isValid(phone)) {
       V3AppSnackBar.error(context, '❌ Neispravan format broja telefona.');
-      return;
-    }
-
-    final ready = await V3ClosedAuthService.ensureClientReady();
-    if (!ready) {
-      if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Servis trenutno nije dostupan. Pokušajte ponovo.');
       return;
     }
 
@@ -748,19 +762,25 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             ),
           ),
           onSubmitted: (_) {
-            if (!_isLoading) _sendSms();
+            if (_canSubmitPhoneStep) _sendSms();
           },
         ),
         if (_statusMessage.isNotEmpty) ...[
           const SizedBox(height: 12),
           _buildStatusMessage(_statusMessage),
         ],
+        if (!_isBackendReady) ...[
+          const SizedBox(height: 12),
+          _buildStatusMessage('⏳ Učitavanje baze... sačekajte trenutak.'),
+        ],
         const SizedBox(height: 24),
         V3ButtonUtils.primaryButton(
-          text: _isSmsCooldownActive ? 'Nastavi (${_cooldownRemainingSeconds}s)' : 'Nastavi',
+          text: !_isBackendReady
+              ? 'Učitavanje baze...'
+              : (_isSmsCooldownActive ? 'Nastavi (${_cooldownRemainingSeconds}s)' : 'Nastavi'),
           icon: Icons.send,
-          isLoading: _isLoading || _isSmsCooldownActive,
-          onPressed: _isSmsCooldownActive ? null : _sendSms,
+          isLoading: _isLoading || _isSmsCooldownActive || !_isBackendReady,
+          onPressed: _canSubmitPhoneStep ? _sendSms : null,
         ),
         if (_biometricEnabled && _biometricChecked && _biometricAvailable && _hasSavedCredentials) ...[
           const SizedBox(height: 10),

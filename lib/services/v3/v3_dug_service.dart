@@ -48,7 +48,10 @@ class V3DugService {
         build: () => getDugovi(),
       );
 
-  static Future<void> markAsPaid(String operacijaId, {double iznos = 0}) async {
+  static Future<void> markAsPaid(String operacijaId, {required double iznos}) async {
+    if (iznos <= 0) {
+      throw ArgumentError('Iznos naplate mora biti veći od nule.');
+    }
     try {
       final currentVozacId = V3VozacService.currentVozac?.id;
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
