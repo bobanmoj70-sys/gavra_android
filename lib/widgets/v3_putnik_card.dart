@@ -153,11 +153,12 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
+    final isPoPokupljenjuModel = tip == 'dnevni' || tip == 'posiljka';
     final defaultCena =
         (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
     final zakljucajIznos = defaultCena > 0;
 
-    if (!isMesecniModel && widget.entry == null) {
+    if (isPoPokupljenjuModel && widget.entry == null) {
       if (mounted) {
         V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon potvrđenog termina.');
       }
@@ -166,7 +167,30 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       return;
     }
 
+    if (isPoPokupljenjuModel && !V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt)) {
+      if (mounted) {
+        V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon pokupljanja putnika.');
+      }
+      _globalProcessingLock = false;
+      V3StateUtils.safeSetState(this, () => _isProcessing = false);
+      return;
+    }
+
+    final alreadyPaid = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+
     try {
+      if (alreadyPaid && widget.entry != null) {
+        final confirmOverwrite = await V3DialogHelper.showConfirmDialog(
+          context,
+          title: 'Naplata već postoji',
+          message: 'Ovaj termin je već naplaćen. Da li želite da prepišete postojeću naplatu?',
+          confirmText: 'DA, PREPIŠI',
+          cancelText: 'NE',
+          isDangerous: true,
+        );
+        if (confirmOverwrite != true) return;
+      }
+
       final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
         context: context,
         putnikId: widget.putnik.id,
