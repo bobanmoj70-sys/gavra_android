@@ -16,7 +16,7 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
-import '../widgets/v3_bottom_nav_bar_zimski.dart';
+import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_putnik_card.dart';
 
 /// V3 ekran za upravljanje rasporedom vozača.
@@ -868,8 +868,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             builder: (context, navType, _) {
               final commonProps = _buildNavBarProps();
               // Zimski raspored widget generički hendluje i zimsku i custom varijantu
-              return V3BottomNavBarZimski(
-                sviPolasci: commonProps.sviPolasci,
+              return V3BottomNavBarSlotovi(
                 selectedGrad: commonProps.selectedGrad,
                 selectedVreme: commonProps.selectedVreme,
                 onPolazakChanged: commonProps.onChanged,
@@ -888,7 +887,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   }
 
   _NavBarProps _buildNavBarProps() => _NavBarProps(
-        sviPolasci: _sviPolasci,
         selectedGrad: _selectedGrad,
         selectedVreme: _selectedVreme,
         onChanged: (grad, vreme) => setState(() {
@@ -998,7 +996,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
 // ─── NavBar props helper ──────────────────────────────────────────────────────
 class _NavBarProps {
-  final List<String> sviPolasci;
   final String selectedGrad;
   final String selectedVreme;
   final void Function(String, String) onChanged;
@@ -1006,7 +1003,6 @@ class _NavBarProps {
   final int? Function(String, String) getKapacitet;
 
   const _NavBarProps({
-    required this.sviPolasci,
     required this.selectedGrad,
     required this.selectedVreme,
     required this.onChanged,

@@ -26,7 +26,7 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_telefon_helper.dart';
-import '../widgets/v3_bottom_nav_bar_zimski.dart';
+import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
@@ -94,16 +94,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   // Moji putnici (izvor: v3_operativna_nedelja)
   List<_PutnikEntry> _mojiPutnici = [];
   Set<String> _assignedOperativnaIds = <String>{};
-
-  List<String> get _bcVremena =>
-      getRasporedVremena('bc', navBarTypeNotifier.value, day: V3DanHelper.fullName(_selectedDate));
-  List<String> get _vsVremena =>
-      getRasporedVremena('vs', navBarTypeNotifier.value, day: V3DanHelper.fullName(_selectedDate));
-
-  List<String> get _sviPolasci => [
-        ..._bcVremena.map((v) => '$v BC'),
-        ..._vsVremena.map((v) => '$v VS'),
-      ];
 
   String _normV(String? v) {
     if (v == null || v.isEmpty) return '';
@@ -1076,8 +1066,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                     return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
                   }
 
-                  return V3BottomNavBarZimski(
-                    sviPolasci: _sviPolasci,
+                  return V3BottomNavBarSlotovi(
                     selectedGrad: _selectedGrad,
                     selectedVreme: _selectedVreme,
                     onPolazakChanged: _onPolazakChanged,

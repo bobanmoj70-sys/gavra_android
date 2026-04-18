@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_stream_utils.dart';
@@ -461,8 +462,20 @@ class V3ForegroundGpsService {
       final toDate =
           DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
 
-      final rowsRaw = await _operativnaRepository.listByVozacAndDateRange(
-        vozacId: vozacId,
+      final dodelaRows = await supabase
+          .from('v3_trenutna_dodela')
+          .select('termin_id, status')
+          .eq('vozac_v3_auth_id', vozacId)
+          .eq('status', 'aktivan');
+
+      final assignedTerminIds = (dodelaRows as List<dynamic>)
+          .map((row) => (row as Map<String, dynamic>)['termin_id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
+      if (assignedTerminIds.isEmpty) return;
+
+      final rowsRaw = await _operativnaRepository.listByDateRange(
         fromDate: fromDate,
         toDate: toDate,
       );
@@ -475,6 +488,8 @@ class V3ForegroundGpsService {
       }
 
       final relevantRows = rows.where((row) {
+        final rowId = row['id']?.toString() ?? '';
+        if (!assignedTerminIds.contains(rowId)) return false;
         if (row['created_by'] == null) return false;
         final status = V3StatusFilters.deriveOperativnaStatus(row);
         if (V3StatusFilters.isCanceledOrRejected(status)) return false;

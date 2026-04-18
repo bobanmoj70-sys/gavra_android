@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 
-class V3BottomNavBarZimski extends StatefulWidget {
-  const V3BottomNavBarZimski({
+class V3BottomNavBarSlotovi extends StatefulWidget {
+  const V3BottomNavBarSlotovi({
     super.key,
-    required this.sviPolasci,
     required this.selectedGrad,
     required this.selectedVreme,
     required this.onPolazakChanged,
@@ -18,7 +17,6 @@ class V3BottomNavBarZimski extends StatefulWidget {
     this.showVozacBoja = false,
     this.getVozacColor,
   });
-  final List<String> sviPolasci;
   final String selectedGrad;
   final String selectedVreme;
   final void Function(String grad, String vreme) onPolazakChanged;
@@ -31,10 +29,10 @@ class V3BottomNavBarZimski extends StatefulWidget {
   final Color? Function(String grad, String vreme)? getVozacColor;
 
   @override
-  State<V3BottomNavBarZimski> createState() => _BottomNavBarZimskiState();
+  State<V3BottomNavBarSlotovi> createState() => _BottomNavBarSlotoviState();
 }
 
-class _BottomNavBarZimskiState extends State<V3BottomNavBarZimski> {
+class _BottomNavBarSlotoviState extends State<V3BottomNavBarSlotovi> {
   final ScrollController _bcScrollController = ScrollController();
   final ScrollController _vsScrollController = ScrollController();
 
@@ -47,10 +45,9 @@ class _BottomNavBarZimskiState extends State<V3BottomNavBarZimski> {
   }
 
   @override
-  void didUpdateWidget(V3BottomNavBarZimski oldWidget) {
+  void didUpdateWidget(V3BottomNavBarSlotovi oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedVreme != widget.selectedVreme ||
-        oldWidget.selectedGrad != widget.selectedGrad) {
+    if (oldWidget.selectedVreme != widget.selectedVreme || oldWidget.selectedGrad != widget.selectedGrad) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToSelected();
       });
@@ -67,8 +64,7 @@ class _BottomNavBarZimskiState extends State<V3BottomNavBarZimski> {
     if (widget.selectedGrad == 'BC') {
       final index = bcVremena.indexOf(widget.selectedVreme);
       if (index != -1 && _bcScrollController.hasClients) {
-        final targetOffset =
-            (index * itemWidth) - (MediaQuery.of(context).size.width / 4);
+        final targetOffset = (index * itemWidth) - (MediaQuery.of(context).size.width / 4);
         _bcScrollController.animateTo(
           targetOffset.clamp(0.0, _bcScrollController.position.maxScrollExtent),
           duration: const Duration(milliseconds: 300),
@@ -78,8 +74,7 @@ class _BottomNavBarZimskiState extends State<V3BottomNavBarZimski> {
     } else if (widget.selectedGrad == 'VS') {
       final index = vsVremena.indexOf(widget.selectedVreme);
       if (index != -1 && _vsScrollController.hasClients) {
-        final targetOffset =
-            (index * itemWidth) - (MediaQuery.of(context).size.width / 4);
+        final targetOffset = (index * itemWidth) - (MediaQuery.of(context).size.width / 4);
         _vsScrollController.animateTo(
           targetOffset.clamp(0.0, _vsScrollController.position.maxScrollExtent),
           duration: const Duration(milliseconds: 300),
@@ -209,12 +204,9 @@ class _PolazakRow extends StatelessWidget {
   final Color? Function(String grad, String vreme)? getVozacColor;
 
   Color _selectedFillColor() {
-    if (currentThemeId == 'dark_steel_grey')
-      return const Color(0xFF4A4A4A).withOpacity(0.22);
-    if (currentThemeId == 'passionate_rose')
-      return const Color(0xFFDC143C).withOpacity(0.22);
-    if (currentThemeId == 'dark_pink')
-      return const Color(0xFFE91E8C).withOpacity(0.22);
+    if (currentThemeId == 'dark_steel_grey') return const Color(0xFF4A4A4A).withOpacity(0.22);
+    if (currentThemeId == 'passionate_rose') return const Color(0xFFDC143C).withOpacity(0.22);
+    if (currentThemeId == 'dark_pink') return const Color(0xFFE91E8C).withOpacity(0.22);
     return Colors.blueAccent.withOpacity(0.22);
   }
 
@@ -247,13 +239,11 @@ class _PolazakRow extends StatelessWidget {
               controller: scrollController,
               child: Row(
                 children: vremena.map((vreme) {
-                  final bool selected =
-                      selectedGrad == grad && selectedVreme == vreme;
+                  final bool selected = selectedGrad == grad && selectedVreme == vreme;
                   final selectedFillColor = _selectedFillColor();
                   final selectedPrimaryColor = _selectedStrokeAndTextColor();
                   // Boja vozaca za termin (iz raspored cache-a)
-                  final vozacBorderColor =
-                      showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
+                  final vozacBorderColor = showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
                   final hasVozac = vozacBorderColor != null;
 
                   return GestureDetector(
@@ -286,32 +276,24 @@ class _PolazakRow extends StatelessWidget {
                             vreme,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: selected
-                                  ? selectedPrimaryColor
-                                  : Colors.white,
+                              color: selected ? selectedPrimaryColor : Colors.white,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Builder(
                             builder: (ctx) {
-                              final loading =
-                                  isSlotLoading?.call(grad, vreme) ?? false;
+                              final loading = isSlotLoading?.call(grad, vreme) ?? false;
                               if (loading) {
                                 return const SizedBox(
                                   height: 12,
                                   width: 12,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 );
                               }
                               final count = getPutnikCount(grad, vreme);
                               final kapacitet = getKapacitet?.call(grad, vreme);
-                              final displayText = kapacitet != null
-                                  ? '$count ($kapacitet)'
-                                  : '$count';
-                              final slobodna = kapacitet != null
-                                  ? (kapacitet - count).clamp(0, kapacitet)
-                                  : null;
+                              final displayText = kapacitet != null ? '$count ($kapacitet)' : '$count';
+                              final slobodna = kapacitet != null ? (kapacitet - count).clamp(0, kapacitet) : null;
                               final textColor = selected
                                   ? selectedPrimaryColor
                                   : slobodna == null

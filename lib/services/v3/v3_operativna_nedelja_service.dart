@@ -122,16 +122,6 @@ class V3OperativnaNedeljaService {
     return !V3StatusFilters.isCanceledOrRejected(status);
   }
 
-  static Future<void> _updateById(
-    String id,
-    Map<String, dynamic> payload,
-  ) async {
-    final row = await _repo.updateByIdReturningMaybeSingle(id, payload);
-    if (row != null) {
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
-    }
-  }
-
   static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByFilter({
     required String grad,
     required String vreme,
@@ -331,86 +321,6 @@ class V3OperativnaNedeljaService {
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] createOrUpdateByVozac error: $e');
       rethrow;
-    }
-  }
-
-  static Future<void> assignVozacBulkByIds({
-    required List<String> operativnaIds,
-    required String vozacId,
-    required String navBarType,
-    String? updatedBy,
-  }) async {
-    if (operativnaIds.isEmpty) return;
-    final actor = V3UuidUtils.normalizeUuid(updatedBy);
-
-    for (final id in operativnaIds) {
-      await _updateById(id, {
-        'pokupljen_by': vozacId,
-        'updated_at': DateTime.now().toIso8601String(),
-        if (actor != null) 'updated_by': actor,
-      });
-    }
-  }
-
-  static Future<void> removeVozacByTermin({
-    required String datumIso,
-    required String grad,
-    required String polazakAt,
-    String? updatedBy,
-  }) async {
-    final actor = V3UuidUtils.normalizeUuid(updatedBy);
-    final updatedRows = await _repo.updateByTerminReturningList(
-      datumIso: datumIso,
-      grad: grad,
-      polazakAt: polazakAt,
-      payload: {
-        'pokupljen_by': null,
-        'updated_at': DateTime.now().toIso8601String(),
-        if (actor != null) 'updated_by': actor,
-      },
-    );
-
-    for (final row in updatedRows) {
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
-    }
-  }
-
-  static Future<void> assignVozacByOperativnaId({
-    required String operativnaId,
-    required String vozacId,
-    required String navBarType,
-    String? updatedBy,
-  }) async {
-    final actor = V3UuidUtils.normalizeUuid(updatedBy);
-    await _updateById(operativnaId, {
-      'pokupljen_by': vozacId,
-      'updated_at': DateTime.now().toIso8601String(),
-      if (actor != null) 'updated_by': actor,
-    });
-  }
-
-  static Future<void> removeVozacByPutnikAndTermin({
-    required String putnikId,
-    required String grad,
-    required String polazakAt,
-    required String datumIso,
-    String? updatedBy,
-  }) async {
-    final actor = V3UuidUtils.normalizeUuid(updatedBy);
-    final updatedRows = await _repo.updateByPutnikGradPolazakAtDatumReturningList(
-      putnikId: putnikId,
-      grad: grad,
-      polazakAt: polazakAt,
-      datumIso: datumIso,
-      payload: {
-        'pokupljen_by': null,
-        'updated_at': DateTime.now().toIso8601String(),
-        if (actor != null) 'updated_by': actor,
-      },
-    );
-
-    for (final row in updatedRows) {
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
     }
   }
 
