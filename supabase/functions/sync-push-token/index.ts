@@ -62,6 +62,8 @@ Deno.serve(async (req) => {
     }
 
     const rowTip = String(row.tip ?? "").trim();
+    const rowPushPrimary = String(row.push_token ?? "").trim();
+    const rowPushSecondary = String(row.push_token_2 ?? "").trim();
     if (expectedTip && rowTip && expectedTip !== rowTip) {
       return badRequest("expected_tip mismatch", 403);
     }
@@ -80,6 +82,30 @@ Deno.serve(async (req) => {
 
       if ((conflictRows ?? []).length > 0) {
         return badRequest("os_device_id belongs to another account", 403);
+      }
+
+      // Enforce: jedan push token globalno pripada samo jednom nalogu/slotu.
+      // Očisti isti token iz drugih redova pre upisa trenutnog korisnika.
+      const nowIso = new Date().toISOString();
+
+      const { error: clearPrimaryTokenElsewhereError } = await client
+        .from("v3_auth")
+        .update({ push_token: null, os_device_id: null, updated_at: nowIso })
+        .neq("id", userId)
+        .eq("push_token", pushToken);
+
+      if (clearPrimaryTokenElsewhereError) {
+        return badRequest(`clear duplicate push_token error: ${clearPrimaryTokenElsewhereError.message}`, 500);
+      }
+
+      const { error: clearSecondaryTokenElsewhereError } = await client
+        .from("v3_auth")
+        .update({ push_token_2: null, os_device_id_2: null, updated_at: nowIso })
+        .neq("id", userId)
+        .eq("push_token_2", pushToken);
+
+      if (clearSecondaryTokenElsewhereError) {
+        return badRequest(`clear duplicate push_token_2 error: ${clearSecondaryTokenElsewhereError.message}`, 500);
       }
     }
 
@@ -151,6 +177,16 @@ Deno.serve(async (req) => {
       updatePayload.os_device_id_2 = null;
     }
     if (slot === "secondary" && rowOsDevicePrimary === osDeviceId) {
+      updatePayload.push_token = null;
+      updatePayload.os_device_id = null;
+    }
+
+    // Enforce: jedan push token može da postoji samo u jednom slotu i jednom os_device_id.
+    if (slot === "primary" && rowPushSecondary === pushToken) {
+      updatePayload.push_token_2 = null;
+      updatePayload.os_device_id_2 = null;
+    }
+    if (slot === "secondary" && rowPushPrimary === pushToken) {
       updatePayload.push_token = null;
       updatePayload.os_device_id = null;
     }

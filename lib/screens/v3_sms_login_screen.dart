@@ -9,6 +9,7 @@ import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_os_device_id_service.dart';
+import '../services/v3/v3_push_token_edge_service.dart';
 import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -374,12 +375,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   Future<void> _syncDeviceAndPushForLogin(String authId) async {
     final rows = await Supabase.instance.client
         .from('v3_auth')
-        .select('id,os_device_id,os_device_id_2,push_token,push_token_2')
+        .select('id,tip,os_device_id,os_device_id_2,push_token,push_token_2')
         .eq('id', authId)
         .limit(1);
 
     if (rows.isEmpty) return;
 
+    final tip = (rows.first['tip'] ?? '').toString().trim();
     final osDeviceIdPrimary = (rows.first['os_device_id'] ?? '').toString().trim();
     final osDeviceIdSecondary = (rows.first['os_device_id_2'] ?? '').toString().trim();
     final pushToken = (rows.first['push_token'] ?? '').toString().trim();
@@ -389,44 +391,22 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final tokenResult = await V3PushTokenProvider.getBestToken();
     final currentPushToken = tokenResult?.token.trim() ?? '';
 
-    final updatePayload = <String, dynamic>{};
-
-    if (osDeviceId.isEmpty && currentPushToken.isEmpty) {
-      await Supabase.instance.client.from('v3_auth').update(updatePayload).eq('id', authId);
+    if (osDeviceId.isEmpty || currentPushToken.isEmpty) {
       return;
     }
 
     final usePrimarySlot = (osDeviceId.isNotEmpty && osDeviceIdPrimary.isNotEmpty && osDeviceIdPrimary == osDeviceId) ||
         (currentPushToken.isNotEmpty && pushToken.isNotEmpty && pushToken == currentPushToken) ||
         osDeviceIdPrimary.isEmpty;
+    final slotHint = usePrimarySlot || (osDeviceIdSecondary.isEmpty && pushToken2.isEmpty) ? 'primary' : 'secondary';
 
-    if (usePrimarySlot) {
-      if (osDeviceId.isNotEmpty) {
-        updatePayload['os_device_id'] = osDeviceId;
-      }
-      if (currentPushToken.isNotEmpty) {
-        updatePayload['push_token'] = currentPushToken;
-      }
-    } else {
-      if (osDeviceId.isNotEmpty) {
-        updatePayload['os_device_id_2'] = osDeviceId;
-      }
-      if (currentPushToken.isNotEmpty) {
-        updatePayload['push_token_2'] = currentPushToken;
-      }
-
-      if (osDeviceId.isNotEmpty && osDeviceIdPrimary == osDeviceId) {
-        updatePayload['os_device_id'] = null;
-      }
-      if (currentPushToken.isNotEmpty && pushToken == currentPushToken) {
-        updatePayload['push_token'] = null;
-      }
-      if (osDeviceId.isNotEmpty && osDeviceIdSecondary.isEmpty && pushToken2.isEmpty) {
-        updatePayload['os_device_id_2'] = osDeviceId;
-      }
-    }
-
-    await Supabase.instance.client.from('v3_auth').update(updatePayload).eq('id', authId);
+    await V3PushTokenEdgeService.syncPushToken(
+      pushToken: currentPushToken,
+      osDeviceId: osDeviceId,
+      slot: slotHint,
+      expectedTip: tip.isEmpty ? null : tip,
+      expectedV3AuthId: authId,
+    );
   }
 
   Future<void> _advanceAfterPhoneAuth() async {
