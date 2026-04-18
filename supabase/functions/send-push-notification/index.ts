@@ -54,7 +54,8 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
 
 function normalizeTokens(tokens: PushPayload['tokens']): TokenInput[] {
   if (!Array.isArray(tokens)) return [];
-  return tokens
+  const seen = new Set<string>();
+  const normalized = tokens
     .filter((item) => typeof item === 'object' && item !== null)
     .map((item) => {
       const token = String(item?.token ?? '').trim();
@@ -62,6 +63,16 @@ function normalizeTokens(tokens: PushPayload['tokens']): TokenInput[] {
       return { token, provider };
     })
     .filter((item) => item.token.length > 0);
+
+  const deduped: TokenInput[] = [];
+  for (const item of normalized) {
+    const key = `${item.provider}:${item.token}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
 }
 
 function toStringData(input: Record<string, unknown> | undefined): Record<string, string> {

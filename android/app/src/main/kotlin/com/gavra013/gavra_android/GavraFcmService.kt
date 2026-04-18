@@ -68,9 +68,10 @@ class GavraFcmService : FirebaseMessagingService() {
             }
         } else {
             // Engine nije aktivan (background bez keširanog engine-a).
-            // Prikaži nativnu Android notifikaciju direktno iz Kotlin-a.
+            // Prikaži nativnu Android notifikaciju samo za data-only poruke.
+            // Za poruke sa `notification` payload-om Android već prikazuje system notifikaciju.
             android.util.Log.w(TAG, "Flutter engine nije aktivan, prikazujem nativnu notifikaciju.")
-            if (title.isNotEmpty() || body.isNotEmpty()) {
+            if (remoteMessage.notification == null && (title.isNotEmpty() || body.isNotEmpty())) {
                 showNativeNotification(title, body, type, data)
             }
         }
