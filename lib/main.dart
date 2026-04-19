@@ -19,9 +19,11 @@ import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
+import 'services/v3/v3_os_device_id_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
+import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 import 'services/v3_theme_manager.dart';
 
@@ -289,6 +291,88 @@ Future<void> _showForegroundPushNotification({
   );
 }
 
+Future<void> _showAlternativaFromData(
+  Map<String, String> data, {
+  String? title,
+  String? body,
+}) async {
+  final rawPayload = (data['payload'] ?? '').trim();
+
+  String zahtevId = '';
+  String altPre = '';
+  String altPosle = '';
+
+  if (rawPayload.isNotEmpty) {
+    final parts = rawPayload.split('|');
+    if (parts.length == 3) {
+      zahtevId = parts[0].trim();
+      altPre = parts[1].trim();
+      altPosle = parts[2].trim();
+    }
+  }
+
+  if (zahtevId.isEmpty) {
+    zahtevId = (data['zahtev_id'] ?? data['id'] ?? data['entity_id'] ?? '').trim();
+  }
+  if (altPre.isEmpty) {
+    altPre = (data['alt_pre'] ?? '').trim();
+  }
+  if (altPosle.isEmpty) {
+    altPosle = (data['alt_posle'] ?? '').trim();
+  }
+
+  if (zahtevId.isEmpty) {
+    debugPrint('⚠️ [alternativa] Nedostaje zahtevId u FCM data payload-u: $data');
+    return;
+  }
+
+  await showAlternativaNotification(
+    zahtevId: zahtevId,
+    altPre: altPre,
+    altPosle: altPosle,
+    title: (title == null || title.trim().isEmpty) ? 'Informacija o dostupnosti termina' : title,
+    body: (body == null || body.trim().isEmpty)
+        ? 'Trenutno nema slobodnih mesta u željenom terminu. Izaberite dostupni termin.'
+        : body,
+  );
+}
+
+Future<void> _syncRefreshedPushToken(String token) async {
+  final safeToken = token.trim();
+  if (safeToken.isEmpty) return;
+
+  final identity = await V3OsDeviceIdService.getDeviceIdentity();
+  final androidDeviceId = (identity.androidDeviceId ?? '').trim();
+  final androidBuildId = (identity.androidBuildId ?? '').trim();
+  final iosDeviceId = (identity.iosDeviceId ?? '').trim();
+  final iosBuildId = (identity.iosBuildId ?? '').trim();
+
+  final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
+  if (putnikId.isNotEmpty) {
+    await V3PutnikService.writePushTokenOnLogin(
+      putnikId: putnikId,
+      pushToken: safeToken,
+      androidDeviceId: androidDeviceId,
+      androidBuildId: androidBuildId,
+      iosDeviceId: iosDeviceId,
+      iosBuildId: iosBuildId,
+    );
+    return;
+  }
+
+  final vozacId = (V3VozacService.currentVozac?.id ?? '').trim();
+  if (vozacId.isNotEmpty) {
+    await V3VozacService.writePushTokenOnLogin(
+      vozacId: vozacId,
+      pushToken: safeToken,
+      androidDeviceId: androidDeviceId,
+      androidBuildId: androidBuildId,
+      iosDeviceId: iosDeviceId,
+      iosBuildId: iosBuildId,
+    );
+  }
+}
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -314,9 +398,19 @@ Future<void> _initIosFcmHandlers() async {
     final type = message.data['type']?.toString() ?? '';
     final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
     final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
+    final data = _messageDataToStringMap(message.data);
 
     debugPrint('[FCM][iOS] onMessage type=$type title=$title');
     unawaited(V3RolePermissionService.wakeScreenOnPush());
+
+    if (type == 'v3_alternativa') {
+      await _showAlternativaFromData(
+        data,
+        title: title,
+        body: body,
+      );
+      return;
+    }
 
     if (message.notification == null) {
       await _showForegroundPushNotification(
@@ -345,6 +439,7 @@ Future<void> _initIosFcmHandlers() async {
   messaging.onTokenRefresh.listen((token) {
     if (token.trim().isNotEmpty) {
       debugPrint('[FCM][iOS] Token refresh primljen.');
+      unawaited(_syncRefreshedPushToken(token));
     }
   });
 
@@ -364,10 +459,22 @@ Future<void> _initFcmChannel() async {
         final title = args['title']?.toString() ?? '';
         final body = args['body']?.toString() ?? '';
         final type = args['type']?.toString() ?? '';
+        final rawData = args['data'];
+        final data =
+            rawData is Map ? rawData.map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')) : <String, String>{};
         debugPrint('[FCM] onMessage type=$type title=$title');
 
         // Budi ekran
         unawaited(V3RolePermissionService.wakeScreenOnPush());
+
+        if (type == 'v3_alternativa') {
+          await _showAlternativaFromData(
+            data,
+            title: title,
+            body: body,
+          );
+          return;
+        }
 
         // Prikaži lokalnu notifikaciju (foreground)
         if (title.isNotEmpty || body.isNotEmpty) {
@@ -382,6 +489,7 @@ Future<void> _initFcmChannel() async {
         final token = call.arguments['token']?.toString() ?? '';
         if (token.isNotEmpty) {
           debugPrint('[FCM] Token refresh primljen.');
+          unawaited(_syncRefreshedPushToken(token));
         }
 
       case 'onLaunchMessage':
@@ -419,6 +527,10 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
   }
 
   switch (type) {
+    case 'v3_alternativa':
+      await _showAlternativaFromData(data);
+      return;
+
     case 'zahtev_status':
     case 'putnik_eta_start':
       // v3_auth_id je v3_auth.id — direktno otvori profil ekran

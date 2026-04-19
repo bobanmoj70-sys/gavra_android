@@ -12,7 +12,9 @@ class V3ClosedAuthService {
   static SupabaseClient get _client => Supabase.instance.client;
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   static const _manualSmsPutnikPhoneKey = 'v3_manual_sms_putnik_phone';
+  static const _manualSmsPutnikAuthIdKey = 'v3_manual_sms_putnik_auth_id';
   static const _manualSmsVozacPhoneKey = 'v3_manual_sms_vozac_phone';
+  static const _manualSmsVozacAuthIdKey = 'v3_manual_sms_vozac_auth_id';
 
   static String normalizePhone(String rawPhone) => V3PhoneUtils.normalize(rawPhone.trim());
 
@@ -35,47 +37,48 @@ class V3ClosedAuthService {
     return authId;
   }
 
-  static Future<String?> findAuthIdByPhoneViaEdge(String rawPhone) async {
+  static Future<String?> findAuthIdByPhoneViaEdge(
+    String rawPhone, {
+    String? expectedAuthId,
+    String expectedTip = 'putnik',
+  }) async {
     final ready = await ensureClientReady();
     if (!ready) return null;
 
     final phone = normalizePhone(rawPhone);
     if (phone.isEmpty) return null;
-
-    final localAuthId = await findAuthIdByPhone(phone);
-    if (localAuthId == null || localAuthId.isEmpty) return null;
+    final expectedId = (expectedAuthId ?? '').trim();
 
     try {
       final response = await _client.functions.invoke(
         'verify-login',
         body: {
-          'v3_auth_id': localAuthId,
           'telefon': phone,
+          'expected_tip': expectedTip.trim(),
+          if (expectedId.isNotEmpty) 'v3_auth_id': expectedId,
         },
       );
 
       final status = response.status;
       final data = response.data;
       if (status < 200 || status >= 300 || data is! Map) {
-        return localAuthId;
-      }
-
-      final reason = data['reason']?.toString().trim() ?? '';
-      if (reason == 'login_pair_not_found') {
         return null;
       }
 
       final ok = data['ok'] == true;
-      if (!ok) return localAuthId;
+      if (!ok) return null;
 
       final verifiedId = data['v3_auth_id']?.toString().trim() ?? '';
       if (verifiedId.isNotEmpty) {
+        if (expectedId.isNotEmpty && verifiedId != expectedId) {
+          return null;
+        }
         return verifiedId;
       }
 
-      return localAuthId;
+      return null;
     } catch (_) {
-      return localAuthId;
+      return null;
     }
   }
 
@@ -84,34 +87,61 @@ class V3ClosedAuthService {
   /// Sačuvaj normalizovani telefon nakon uspešne manual SMS verifikacije.
   static Future<void> saveManualSmsPutnikPhone(String normalizedPhone) async {
     await _storage.write(key: _manualSmsPutnikPhoneKey, value: normalizedPhone);
+    await _storage.delete(key: _manualSmsPutnikAuthIdKey);
+  }
+
+  static Future<void> saveManualSmsPutnikSession({
+    required String normalizedPhone,
+    required String authId,
+  }) async {
+    await _storage.write(key: _manualSmsPutnikPhoneKey, value: normalizedPhone);
+    await _storage.write(key: _manualSmsPutnikAuthIdKey, value: authId.trim());
   }
 
   /// Sačuvaj normalizovani telefon vozača nakon uspešne manual SMS verifikacije.
   static Future<void> saveManualSmsVozacPhone(String normalizedPhone) async {
     await _storage.write(key: _manualSmsVozacPhoneKey, value: normalizedPhone);
+    await _storage.delete(key: _manualSmsVozacAuthIdKey);
+  }
+
+  static Future<void> saveManualSmsVozacSession({
+    required String normalizedPhone,
+    required String authId,
+  }) async {
+    await _storage.write(key: _manualSmsVozacPhoneKey, value: normalizedPhone);
+    await _storage.write(key: _manualSmsVozacAuthIdKey, value: authId.trim());
   }
 
   /// Obriši sačuvani putnik telefon (pri odjavi).
   static Future<void> clearManualSmsPutnikPhone() async {
     await _storage.delete(key: _manualSmsPutnikPhoneKey);
+    await _storage.delete(key: _manualSmsPutnikAuthIdKey);
   }
 
   /// Obriši sačuvani vozač telefon (pri odjavi).
   static Future<void> clearManualSmsVozacPhone() async {
     await _storage.delete(key: _manualSmsVozacPhoneKey);
+    await _storage.delete(key: _manualSmsVozacAuthIdKey);
   }
 
   /// Auto-login: telefon je sačuvan u SecureStorage.
   /// Direktno čita v3_auth tabelu.
   static Future<Map<String, dynamic>?> restorePutnikFromManualSmsSession() async {
     final storedPhone = await _storage.read(key: _manualSmsPutnikPhoneKey);
+    final storedAuthId = (await _storage.read(key: _manualSmsPutnikAuthIdKey))?.trim() ?? '';
     if (storedPhone == null || storedPhone.isEmpty) return null;
+    if (storedAuthId.isEmpty) return null;
 
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return null;
 
-    // Tražimo samo po telefonu – bez device filtera, jer device možda još nije upisan u bazu
-    final putnik = await V3PutnikService.getByPhoneDirect(phone);
+    final verifiedAuthId = await findAuthIdByPhoneViaEdge(
+      phone,
+      expectedAuthId: storedAuthId,
+    );
+    if (verifiedAuthId == null || verifiedAuthId.isEmpty) return null;
+
+    final putnik = await V3PutnikService.getActiveById(verifiedAuthId);
     if (putnik == null) return null;
 
     V3PutnikService.currentPutnik = putnik;
@@ -121,14 +151,23 @@ class V3ClosedAuthService {
   /// Auto-login: sačuvan telefon vozača u SecureStorage.
   static Future<void> restoreVozacFromManualSmsSession() async {
     final storedPhone = await _storage.read(key: _manualSmsVozacPhoneKey);
+    final storedAuthId = (await _storage.read(key: _manualSmsVozacAuthIdKey))?.trim() ?? '';
     if (storedPhone == null || storedPhone.isEmpty) return;
+    if (storedAuthId.isEmpty) return;
 
     final phone = normalizePhone(storedPhone);
     if (phone.isEmpty) return;
 
-    // Tražimo samo po telefonu – bez device filtera, jer device možda još nije upisan u bazu
-    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
-    if (vozac == null) return;
+    final verifiedAuthId = await findAuthIdByPhoneViaEdge(
+      phone,
+      expectedAuthId: storedAuthId,
+      expectedTip: 'vozac',
+    );
+    if (verifiedAuthId == null || verifiedAuthId.isEmpty) return;
+
+    var vozac = V3VozacService.getVozacById(verifiedAuthId);
+    vozac ??= await V3VozacService.getVozacByPhoneDirect(phone);
+    if (vozac == null || vozac.id.trim() != verifiedAuthId) return;
 
     V3VozacService.currentVozac = vozac;
   }

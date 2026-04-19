@@ -92,7 +92,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     super.dispose();
   }
 
-  bool get _canSubmitPhoneStep => !_isLoading;
+  bool get _canSubmitPhoneStep => !_isLoading && _isBackendReady;
 
   Future<void> _waitForBackendReady() async {
     while (mounted && !_isBackendReady) {
@@ -212,8 +212,16 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final authId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(phone);
-      if (authId == null) {
+      final putnikAuthId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+        phone,
+        expectedTip: 'putnik',
+      );
+      final vozacAuthId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+        phone,
+        expectedTip: 'vozac',
+      );
+      final authId = (putnikAuthId ?? vozacAuthId ?? '').trim();
+      if (authId.isEmpty) {
         if (!mounted) return;
         V3AppSnackBar.error(context, '❌ Broj telefona i UUID reda nisu pronađeni.');
         setState(() => _statusMessage = '');

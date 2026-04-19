@@ -266,15 +266,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         await V3VozacService.writePushTokenOnLogin(
           vozacId: v3AuthId,
           pushToken: token,
-          pushToken2: token,
           androidDeviceId: androidDeviceId,
-          androidDeviceId2: androidDeviceId,
           androidBuildId: androidBuildId,
-          androidBuildId2: androidBuildId,
           iosDeviceId: iosDeviceId,
-          iosDeviceId2: iosDeviceId,
           iosBuildId: iosBuildId,
-          iosBuildId2: iosBuildId,
         );
         return;
       }
@@ -282,15 +277,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: v3AuthId,
         pushToken: token,
-        pushToken2: token,
         androidDeviceId: androidDeviceId,
-        androidDeviceId2: androidDeviceId,
         androidBuildId: androidBuildId,
-        androidBuildId2: androidBuildId,
         iosDeviceId: iosDeviceId,
-        iosDeviceId2: iosDeviceId,
         iosBuildId: iosBuildId,
-        iosBuildId2: iosBuildId,
       );
     } catch (e) {
       debugPrint('[V3WelcomeScreen] push token write error: $e');
@@ -301,25 +291,67 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     V3Vozac? vozac;
     Map<String, dynamic>? putnik;
 
-    final resolvedId = (authId ?? '').trim();
+    var resolvedId = (authId ?? '').trim();
+    String? putnikVerifiedId;
+    String? vozacVerifiedId;
 
     if (resolvedId.isNotEmpty) {
-      vozac = V3VozacService.getVozacById(resolvedId);
-      putnik = await V3PutnikService.getActiveById(resolvedId);
+      putnikVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+        phone,
+        expectedAuthId: resolvedId,
+        expectedTip: 'putnik',
+      );
+      vozacVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+        phone,
+        expectedAuthId: resolvedId,
+        expectedTip: 'vozac',
+      );
+    } else {
+      putnikVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+        phone,
+        expectedTip: 'putnik',
+      );
+      vozacVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+        phone,
+        expectedTip: 'vozac',
+      );
+      resolvedId = (putnikVerifiedId ?? vozacVerifiedId ?? '').trim();
     }
 
-    vozac ??= await V3VozacService.getVozacByPhoneDirect(
-      phone,
-    );
-    putnik ??= await V3PutnikService.getByPhoneDirect(
-      phone,
-    );
+    if ((putnikVerifiedId ?? '').isEmpty && (vozacVerifiedId ?? '').isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Telefon nije uparen sa UUID nalogom.')),
+        );
+      }
+      return;
+    }
+
+    final selectedVozacId = (vozacVerifiedId ?? '').trim();
+    final selectedPutnikId = (putnikVerifiedId ?? '').trim();
+
+    if (selectedVozacId.isNotEmpty) {
+      vozac = V3VozacService.getVozacById(selectedVozacId);
+      if (vozac == null) {
+        final vozacDirect = await V3VozacService.getVozacByPhoneDirect(phone);
+        if (vozacDirect != null && vozacDirect.id.trim() == selectedVozacId) {
+          vozac = vozacDirect;
+        }
+      }
+    }
+
+    if (selectedPutnikId.isNotEmpty) {
+      putnik = await V3PutnikService.getActiveById(selectedPutnikId);
+    }
 
     if (!mounted) return;
 
     if (vozac != null) {
       V3VozacService.currentVozac = vozac;
-      await V3ClosedAuthService.saveManualSmsVozacPhone(phone);
+      await V3ClosedAuthService.saveManualSmsVozacSession(
+        normalizedPhone: phone,
+        authId: vozac.id,
+      );
       await V3ClosedAuthService.clearManualSmsPutnikPhone();
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
@@ -332,8 +364,17 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       return;
     }
 
+    if (selectedPutnikId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Telefon nije uparen sa UUID putnika.')),
+        );
+      }
+      return;
+    }
+
     putnik ??= <String, dynamic>{
-      'id': '',
+      'id': selectedPutnikId,
       'ime_prezime': '',
       'telefon_1': phone,
       'telefon_2': '',
@@ -345,7 +386,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     };
 
     V3PutnikService.currentPutnik = putnik;
-    await V3ClosedAuthService.saveManualSmsPutnikPhone(phone);
+    await V3ClosedAuthService.saveManualSmsPutnikSession(
+      normalizedPhone: phone,
+      authId: selectedPutnikId,
+    );
     await V3ClosedAuthService.clearManualSmsVozacPhone();
     await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
     final putnikId = putnik['id']?.toString().trim() ?? '';
