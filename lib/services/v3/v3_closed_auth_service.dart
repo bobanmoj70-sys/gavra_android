@@ -57,21 +57,25 @@ class V3ClosedAuthService {
       final status = response.status;
       final data = response.data;
       if (status < 200 || status >= 300 || data is! Map) {
+        return localAuthId;
+      }
+
+      final reason = data['reason']?.toString().trim() ?? '';
+      if (reason == 'login_pair_not_found') {
         return null;
       }
 
       final ok = data['ok'] == true;
-      if (!ok) return null;
+      if (!ok) return localAuthId;
 
       final verifiedId = data['v3_auth_id']?.toString().trim() ?? '';
-      final verifiedPhone = data['telefon']?.toString().trim() ?? '';
-      if (verifiedId.isEmpty || verifiedPhone != phone) {
-        return null;
+      if (verifiedId.isNotEmpty) {
+        return verifiedId;
       }
 
-      return verifiedId;
+      return localAuthId;
     } catch (_) {
-      return null;
+      return localAuthId;
     }
   }
 

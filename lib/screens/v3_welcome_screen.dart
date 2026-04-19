@@ -142,7 +142,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
           if (authenticated && mounted) {
             await _stopAudio();
-            await _onLoginVerified(V3ClosedAuthService.normalizePhone(rawPhone));
+            await _onLoginVerified(V3ClosedAuthService.normalizePhone(rawPhone), null);
           }
         }
       }
