@@ -60,7 +60,6 @@ class V3AdresaService {
         'grad': normalizedGrad,
         'gps_lat': lat,
         'gps_lng': lng,
-        'updated_at': DateTime.now().toIso8601String(),
       };
 
       await _repo.upsert(data);
@@ -88,7 +87,6 @@ class V3AdresaService {
       await _repo.updateById(id, {
         'gps_lat': lat,
         'gps_lng': lng,
-        'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       debugPrint('[V3AdresaService] updateAdresaCoordinates error: $e');

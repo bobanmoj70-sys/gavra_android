@@ -200,7 +200,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       if (!_putnikPostoji(putnikId)) continue;
       if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
       final statusFinal = V3StatusFilters.deriveOperativnaStatus(row);
-      if (V3StatusFilters.isCanceledOrRejected(statusFinal) ||
+      if (V3StatusFilters.isOtkazanoAt(row['otkazano_at']) ||
           V3StatusFilters.normalizeStatus(statusFinal) == 'obrada') {
         continue;
       }
@@ -265,7 +265,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       return V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum &&
           row['grad'] == grad &&
           _putnikPostoji(putnikId) &&
-          !V3StatusFilters.isCanceledOrRejected(statusFinal) &&
+          !V3StatusFilters.isOtkazanoAt(row['otkazano_at']) &&
           V3TimeUtils.normalizeToHHmm(rowVreme) == normV;
     }).toList();
 
@@ -299,7 +299,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       final statusFinal = V3StatusFilters.deriveOperativnaStatus(row);
       if (row['created_by'] == putnikId &&
           row['grad'] == grad &&
-          !V3StatusFilters.isCanceledOrRejected(statusFinal) &&
+          !V3StatusFilters.isOtkazanoAt(row['otkazano_at']) &&
           V3TimeUtils.normalizeToHHmm(rowVreme) == normV &&
           V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') == datum) {
         final vozacId = _vozacIdForOperativnaRow(row);
@@ -327,7 +327,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           r['grad'] == grad &&
           V3TimeUtils.normalizeToHHmm((r['polazak_at']) as String? ?? '') == normV &&
           _putnikPostoji(putnikId) &&
-          !V3StatusFilters.isCanceledOrRejected(statusFinal) &&
+          !V3StatusFilters.isOtkazanoAt(r['otkazano_at']) &&
           V3StatusFilters.normalizeStatus(statusFinal) != 'obrada';
     }).fold(0, (sum, r) => sum + ((r['broj_mesta'] as int?) ?? 1));
   }
@@ -368,7 +368,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             r['grad'] == grad &&
             V3TimeUtils.normalizeToHHmm(rowVreme) == V3TimeUtils.normalizeToHHmm(vreme) &&
             _putnikPostoji(putnikId) &&
-            !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r));
+            !V3StatusFilters.isOtkazanoAt(r['otkazano_at']);
       }).toList();
 
       final operativnaIds = putnici
@@ -388,7 +388,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           'vozac_v3_auth_id': vozac.id,
           'status': 'aktivan',
           if (actorUuid != null) 'updated_by': actorUuid,
-          'updated_at': DateTime.now().toIso8601String(),
         }, onConflict: 'termin_id');
       }
 
@@ -420,7 +419,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                 r['grad'] == grad &&
                 V3TimeUtils.normalizeToHHmm(rowVreme) == normVreme &&
                 _putnikPostoji(putnikId) &&
-                !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r));
+                !V3StatusFilters.isOtkazanoAt(r['otkazano_at']);
           })
           .map((r) => r['id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
@@ -452,7 +451,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == datum &&
             r['grad'] == grad &&
             V3TimeUtils.normalizeToHHmm(_effectiveTime(r)) == normVreme &&
-            !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r)),
+            !V3StatusFilters.isOtkazanoAt(r['otkazano_at']),
         orElse: () => <String, dynamic>{},
       );
 
@@ -468,7 +467,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         'vozac_v3_auth_id': vozac.id,
         'status': 'aktivan',
         if (actorUuid != null) 'updated_by': actorUuid,
-        'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'termin_id');
 
       await _reloadTrenutnaDodelaMap();
@@ -489,7 +487,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             r['grad'] == grad &&
             V3TimeUtils.normalizeToHHmm(_effectiveTime(r)) == normVreme &&
-            !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r)),
+            !V3StatusFilters.isOtkazanoAt(r['otkazano_at']),
         orElse: () => <String, dynamic>{},
       );
 
@@ -695,15 +693,15 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             ? (sviZapisi
                 .where((z) =>
                     z.grad == _selectedGrad &&
-                    !V3StatusFilters.isCanceledOrRejected(z.statusFinal) &&
+                    !V3StatusFilters.isOtkazanoAt(z.otkazanoAt) &&
                     _putnikPostoji(z.putnikId) &&
                     V3TimeUtils.normalizeToHHmm(slotVreme(z)) == V3TimeUtils.normalizeToHHmm(_selectedVreme) &&
                     !V3StatusFilters.isRejected(z.statusFinal))
                 .toList()
               ..sort((a, b) {
                 // Zatim po statusu (otkazano na kraj)
-                final aOtk = V3StatusFilters.isCanceled(a.statusFinal) ? 1 : 0;
-                final bOtk = V3StatusFilters.isCanceled(b.statusFinal) ? 1 : 0;
+                final aOtk = V3StatusFilters.isOtkazanoAt(a.otkazanoAt) ? 1 : 0;
+                final bOtk = V3StatusFilters.isOtkazanoAt(b.otkazanoAt) ? 1 : 0;
                 return aOtk.compareTo(bOtk);
               }))
             : <V3OperativnaNedeljaEntry>[];
@@ -846,7 +844,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                               entry: z,
                                               redniBroj: redniBroj,
                                               vozacBoja: vozacBoja,
-                                              onDodeliVozaca: V3StatusFilters.isCanceled(z.statusFinal)
+                                              onDodeliVozaca: V3StatusFilters.isOtkazanoAt(z.otkazanoAt)
                                                   ? null
                                                   : () => _showPutnikAssignDialog(z),
                                               onChanged: () => setState(() {}),

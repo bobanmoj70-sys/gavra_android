@@ -645,7 +645,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                         if (isOtkazan) ...[
                           Text(
                             () {
-                              final dtStr = _fmt(widget.entry?.updatedAt);
+                              final dtStr = _fmt(widget.entry?.otkazanoAt);
                               return dtStr.isNotEmpty ? 'Otkazano: $dtStr' : 'Otkazano';
                             }(),
                             style: TextStyle(fontSize: 13, color: bojaOtkaz, fontWeight: FontWeight.w600),

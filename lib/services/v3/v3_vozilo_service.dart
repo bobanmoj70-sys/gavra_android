@@ -27,7 +27,6 @@ class V3VoziloService {
   static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();
-      data['updated_at'] = DateTime.now().toIso8601String();
 
       await _repo.upsert(data);
     } catch (e) {
@@ -39,7 +38,6 @@ class V3VoziloService {
   /// Ažurira kolsku knjigu vozila (samo proslijeđena polja).
   static Future<void> updateKolskaKnjiga(String voziloId, Map<String, dynamic> data) async {
     try {
-      data['updated_at'] = DateTime.now().toIso8601String();
       await _repo.updateById(voziloId, data);
     } catch (e) {
       debugPrint('[V3VoziloService] updateKolskaKnjiga error: $e');

@@ -1,18 +1,39 @@
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
+
 /// Pomoćne funkcije za parsiranje datuma/vremena iz Supabase baze.
 ///
 /// Supabase timestamptz kolone (created_at, updated_at, vreme_*) dolaze
-/// kao UTC string sa 'Z' sufiksom. Dart ih parsira kao UTC DateTime.
-/// Uvijek pozivamo .toLocal() da dobijemo lokalno vrijeme (Europe/Belgrade).
+/// kao ISO string. Parsiramo ih kao instant i eksplicitno konvertujemo
+/// u `Europe/Belgrade`, nezavisno od timezone uređaja.
 ///
-/// Kolone tipa `date` (datum) dolaze bez timezone — ne trebaju .toLocal().
+/// Kolone tipa `date` (datum) dolaze bez timezone — ne trebaju TZ konverziju.
 class V3DateUtils {
   V3DateUtils._();
 
-  /// Parsira timestamptz string iz baze → lokalno vrijeme uređaja.
+  static const String _belgradeTzName = 'Europe/Belgrade';
+  static bool _tzInitialized = false;
+  static tz.Location? _belgradeLocation;
+
+  static void _ensureBelgradeTz() {
+    if (_tzInitialized && _belgradeLocation != null) return;
+    tz_data.initializeTimeZones();
+    _belgradeLocation = tz.getLocation(_belgradeTzName);
+    _tzInitialized = true;
+  }
+
+  static DateTime _toBelgrade(DateTime dt) {
+    _ensureBelgradeTz();
+    return tz.TZDateTime.from(dt.toUtc(), _belgradeLocation!);
+  }
+
+  /// Parsira timestamptz string iz baze → Europe/Belgrade vrijeme.
   /// Koristiti za: created_at, updated_at, pokupljen_at, naplacen_at, itd.
   static DateTime? parseTs(String? s) {
     if (s == null || s.isEmpty) return null;
-    return DateTime.tryParse(s)?.toLocal();
+    final parsed = DateTime.tryParse(s);
+    if (parsed == null) return null;
+    return _toBelgrade(parsed);
   }
 
   /// Parsira timestamptz string ili vraća fallback vrijednost.

@@ -58,6 +58,12 @@ class V3StatusFilters {
     return true;
   }
 
+  static bool isOtkazanoAt(Object? otkazanoAt) {
+    if (otkazanoAt == null) return false;
+    if (otkazanoAt is String) return otkazanoAt.trim().isNotEmpty;
+    return true;
+  }
+
   static bool isRejected(String? status) {
     return normalizeStatus(status) == 'odbijeno';
   }

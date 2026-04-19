@@ -46,6 +46,7 @@ dependencies:
   # printing: ^5.14.2  # removed for Android-only build to avoid web dependency conflicts
   pdf: ^3.11.3
   geolocator: ^13.0.2
+  timezone: ^0.9.4
   # graphql: ^5.1.2  # UKLONJENO 2026-01-05 - nije korišćen
   # graphql_flutter: ^5.1.2  # UKLONJENO 2026-01-05 - nije korišćen
   uuid: ^4.4.0

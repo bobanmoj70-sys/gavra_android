@@ -57,9 +57,7 @@ class V3DugService {
       // V3 Arhitektura: Fire and Forget (Realtime će odraditi sync preko updated_at)
       await _operativnaRepo.updateById(operacijaId, {
         'naplacen_iznos': iznos,
-        'naplacen_at': DateTime.now().toIso8601String(),
         if (currentVozacId != null) 'naplacen_by': currentVozacId,
-        'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       debugPrint('[V3DugService] markAsPaid error: $e');

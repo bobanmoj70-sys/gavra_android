@@ -31,7 +31,6 @@ class V3KapacitetSlotsRepository {
             'vreme': vreme,
             'datum': datumIso,
             'max_mesta': maxMesta,
-            'updated_at': DateTime.now().toIso8601String(),
           },
           onConflict: 'grad,vreme,datum',
         )

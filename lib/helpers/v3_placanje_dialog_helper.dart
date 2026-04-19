@@ -4,6 +4,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 
 class V3PlacanjeRezultat {
@@ -31,8 +32,8 @@ class V3PlacanjeDialogHelper {
     if (placenoRows.isEmpty) return null;
 
     placenoRows.sort((a, b) {
-      final aDt = DateTime.tryParse(a['naplacen_at']?.toString() ?? '') ?? DateTime(2000);
-      final bDt = DateTime.tryParse(b['naplacen_at']?.toString() ?? '') ?? DateTime(2000);
+      final aDt = V3DateUtils.parseTs(a['naplacen_at']?.toString()) ?? DateTime(2000);
+      final bDt = V3DateUtils.parseTs(b['naplacen_at']?.toString()) ?? DateTime(2000);
       return bDt.compareTo(aDt);
     });
 
@@ -66,7 +67,7 @@ class V3PlacanjeDialogHelper {
     final currentYear = DateTime.now().year;
     final years = List.generate(6, (i) => currentYear - 1 + i);
     final zadnjaNaplata = _getZadnjaNaplata(putnikId);
-    final vremePlacen = DateTime.tryParse(zadnjaNaplata?['naplacen_at']?.toString() ?? '');
+    final vremePlacen = V3DateUtils.parseTs(zadnjaNaplata?['naplacen_at']?.toString());
     final zadnjiIznos = (zadnjaNaplata?['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
     final naplatioIme = (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
 
@@ -127,7 +128,7 @@ class V3PlacanjeDialogHelper {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen.toLocal())}',
+                          'Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen)}',
                           style: TextStyle(color: cs.onSurfaceVariant),
                         ),
                         Text(

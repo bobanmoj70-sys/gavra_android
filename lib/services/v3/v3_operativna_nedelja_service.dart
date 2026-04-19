@@ -118,8 +118,7 @@ class V3OperativnaNedeljaService {
   static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
 
   static bool _isOperativnaAktivna(Map<String, dynamic> row) {
-    final status = V3StatusFilters.deriveOperativnaStatus(row);
-    return !V3StatusFilters.isCanceledOrRejected(status);
+    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
   }
 
   static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByFilter({
@@ -215,8 +214,6 @@ class V3OperativnaNedeljaService {
     try {
       final row = await _repo.updateByIdReturningSingle(id, {
         'naplacen_iznos': iznos,
-        'naplacen_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
         if (naplacenBy != null) 'naplacen_by': naplacenBy,
       });
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
@@ -299,7 +296,6 @@ class V3OperativnaNedeljaService {
         // UPDATE: prepiši polazak_at
         await _repo.updateById(postojeci.first['id'] as String, {
           'polazak_at': polazakAt,
-          'updated_at': DateTime.now().toIso8601String(),
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_override_id': adresaIdOverride, // null = briše override
@@ -312,7 +308,6 @@ class V3OperativnaNedeljaService {
           'grad': grad,
           'polazak_at': polazakAt,
           'broj_mesta': brojMesta,
-          'updated_at': DateTime.now().toIso8601String(),
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,

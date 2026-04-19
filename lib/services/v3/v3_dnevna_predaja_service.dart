@@ -66,7 +66,6 @@ class V3DnevnaPredajaService {
       'godina': predaja.datum.year,
       'naplaceno_by': predaja.vozacId,
       'tip': _tip,
-      'updated_at': DateTime.now().toIso8601String(),
     };
 
     if (existing != null && existing['id'] != null) {

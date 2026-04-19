@@ -42,7 +42,6 @@ class V3GorivoService {
       await _repo.updateById(id, {
         'trenutno_stanje_litri': novoStanje,
         'brojac_pistolj_litri': noviBrojac,
-        'updated_at': DateTime.now().toIso8601String(),
       });
 
       return true;
@@ -57,7 +56,6 @@ class V3GorivoService {
     try {
       await _repo.updateById(id, {
         'trenutno_stanje_litri': novoLitara,
-        'updated_at': DateTime.now().toIso8601String(),
       });
 
       return true;

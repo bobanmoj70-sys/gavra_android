@@ -71,7 +71,6 @@ class V3FinansijeService {
         'naplaceno_by': naplacenoBy,
         'mesec': mesec,
         'godina': godina,
-        'updated_at': DateTime.now().toIso8601String(),
       };
 
       if (existing != null) {

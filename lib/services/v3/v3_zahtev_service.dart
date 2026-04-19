@@ -114,7 +114,6 @@ class V3ZahtevService {
       final data = zahtev.toJson();
       final createdByUuid = V3UuidUtils.normalizeUuid(createdBy);
       if (createdByUuid != null) data['created_by'] = createdByUuid;
-      data['updated_at'] = DateTime.now().toIso8601String();
       if (!data.containsKey('created_at')) {
         data['created_at'] = DateTime.now().toIso8601String();
       }
@@ -186,7 +185,6 @@ class V3ZahtevService {
           {
             'status': 'otkazano',
             if (updBy != null) 'updated_by': updBy,
-            'updated_at': DateTime.now().toIso8601String(),
           },
         );
         if (updated != null) {
@@ -202,7 +200,6 @@ class V3ZahtevService {
       grad: grad,
       payload: {
         if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
-        'otkazano_at': DateTime.now().toIso8601String(),
       },
     );
 
@@ -311,7 +308,6 @@ class V3ZahtevService {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
         final payload = {
           'otkazano_by': otkazaoVozacId,
-          'otkazano_at': DateTime.now().toIso8601String(),
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
@@ -327,13 +323,11 @@ class V3ZahtevService {
           {
             'status': 'otkazano',
             if (updBy != null) 'updated_by': updBy,
-            'updated_at': DateTime.now().toIso8601String(),
           },
         );
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
         final payload2 = {
           if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
-          'otkazano_at': DateTime.now().toIso8601String(),
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);
@@ -351,7 +345,6 @@ class V3ZahtevService {
   static Future<void> oznaciPokupljen({String? pokupljenBy, String? operativnaId}) async {
     try {
       final payload = {
-        'pokupljen_at': DateTime.now().toIso8601String(),
         if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
       };
       if (operativnaId != null && operativnaId.isNotEmpty) {
@@ -372,7 +365,6 @@ class V3ZahtevService {
         id,
         {
           'polazak_at': vreme,
-          'updated_at': DateTime.now().toIso8601String(),
         },
       );
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
@@ -495,7 +487,6 @@ class V3ZahtevService {
         'polazak_at': izabranoVremeNormalized,
         'alternativa_pre_at': null,
         'alternativa_posle_at': null,
-        'updated_at': DateTime.now().toIso8601String(),
       },
     );
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
@@ -508,7 +499,6 @@ class V3ZahtevService {
         'status': 'odbijeno',
         'alternativa_pre_at': null,
         'alternativa_posle_at': null,
-        'updated_at': DateTime.now().toIso8601String(),
       },
     );
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
