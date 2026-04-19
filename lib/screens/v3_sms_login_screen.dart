@@ -183,6 +183,18 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       setState(() => _normalizedPhone = normalized);
     }
 
+    final authId = (await V3ClosedAuthService.findAuthIdByPhone(normalized) ?? '').trim();
+    if (authId.isEmpty) {
+      if (!silentFailure && mounted) {
+        V3AppSnackBar.error(context, '❌ Broj telefona i UUID reda nisu pronađeni.');
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _targetAuthId = authId);
+    }
+
     if (!mounted) return;
     await _finalize(skipBiometricSave: true);
   }
@@ -212,15 +224,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final putnikAuthId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-        phone,
-        expectedTip: 'putnik',
-      );
-      final vozacAuthId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-        phone,
-        expectedTip: 'vozac',
-      );
-      final authId = (putnikAuthId ?? vozacAuthId ?? '').trim();
+      final authId = (await V3ClosedAuthService.findAuthIdByPhone(phone) ?? '').trim();
       if (authId.isEmpty) {
         if (!mounted) return;
         V3AppSnackBar.error(context, '❌ Broj telefona i UUID reda nisu pronađeni.');
@@ -348,8 +352,15 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   Future<void> _finalize({bool skipBiometricSave = false}) async {
     try {
       final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
+      final authId = (_targetAuthId ?? '').trim();
       if (phone.isEmpty) {
         V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+        _resetToStep1();
+        return;
+      }
+
+      if (authId.isEmpty) {
+        V3AppSnackBar.error(context, '❌ UUID naloga nedostaje. Prijavi se ponovo.');
         _resetToStep1();
         return;
       }
@@ -368,7 +379,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         }
       }
 
-      await widget.onVerified(phone, _targetAuthId);
+      await widget.onVerified(phone, authId);
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _finalize error: $e');

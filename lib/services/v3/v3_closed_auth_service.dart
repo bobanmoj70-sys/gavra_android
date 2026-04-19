@@ -40,7 +40,6 @@ class V3ClosedAuthService {
   static Future<String?> findAuthIdByPhoneViaEdge(
     String rawPhone, {
     String? expectedAuthId,
-    String expectedTip = 'putnik',
   }) async {
     final ready = await ensureClientReady();
     if (!ready) return null;
@@ -48,14 +47,14 @@ class V3ClosedAuthService {
     final phone = normalizePhone(rawPhone);
     if (phone.isEmpty) return null;
     final expectedId = (expectedAuthId ?? '').trim();
+    if (expectedId.isEmpty) return null;
 
     try {
       final response = await _client.functions.invoke(
         'verify-login',
         body: {
           'telefon': phone,
-          'expected_tip': expectedTip.trim(),
-          if (expectedId.isNotEmpty) 'v3_auth_id': expectedId,
+          'v3_auth_id': expectedId,
         },
       );
 
@@ -161,12 +160,11 @@ class V3ClosedAuthService {
     final verifiedAuthId = await findAuthIdByPhoneViaEdge(
       phone,
       expectedAuthId: storedAuthId,
-      expectedTip: 'vozac',
     );
     if (verifiedAuthId == null || verifiedAuthId.isEmpty) return;
 
     var vozac = V3VozacService.getVozacById(verifiedAuthId);
-    vozac ??= await V3VozacService.getVozacByPhoneDirect(phone);
+    vozac ??= await V3VozacService.getVozacByIdDirect(verifiedAuthId);
     if (vozac == null || vozac.id.trim() != verifiedAuthId) return;
 
     V3VozacService.currentVozac = vozac;

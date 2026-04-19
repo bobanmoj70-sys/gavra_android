@@ -23,7 +23,6 @@ import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
 import 'v3_putnik_profil_screen.dart';
 import 'v3_sms_login_screen.dart';
-import 'v3_vozac_screen.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
   const V3WelcomeScreen({super.key});
@@ -142,7 +141,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
           if (authenticated && mounted) {
             await _stopAudio();
-            await _onLoginVerified(V3ClosedAuthService.normalizePhone(rawPhone), null);
+            final normalizedPhone = V3ClosedAuthService.normalizePhone(rawPhone);
+            if (normalizedPhone.isEmpty) return;
+
+            final authId = (await V3ClosedAuthService.findAuthIdByPhone(normalizedPhone) ?? '').trim();
+            if (authId.isEmpty) return;
+
+            await _onLoginVerified(normalizedPhone, authId);
           }
         }
       }
@@ -164,10 +169,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(_writePushTokenOnLogin(v3AuthId: restoredVozac.id, isVozac: true));
 
-      final prefersVozacScreen = restoredVozac.imePrezime.toLowerCase() == 'voja';
       V3NavigationUtils.pushReplacement(
         context,
-        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
+        const V3HomeScreen(),
       );
       return true;
     } catch (e) {
@@ -291,34 +295,22 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     V3Vozac? vozac;
     Map<String, dynamic>? putnik;
 
-    var resolvedId = (authId ?? '').trim();
-    String? putnikVerifiedId;
-    String? vozacVerifiedId;
-
-    if (resolvedId.isNotEmpty) {
-      putnikVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-        phone,
-        expectedAuthId: resolvedId,
-        expectedTip: 'putnik',
-      );
-      vozacVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-        phone,
-        expectedAuthId: resolvedId,
-        expectedTip: 'vozac',
-      );
-    } else {
-      putnikVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-        phone,
-        expectedTip: 'putnik',
-      );
-      vozacVerifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-        phone,
-        expectedTip: 'vozac',
-      );
-      resolvedId = (putnikVerifiedId ?? vozacVerifiedId ?? '').trim();
+    final resolvedId = (authId ?? '').trim();
+    if (resolvedId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ UUID naloga nedostaje za proveru.')),
+        );
+      }
+      return;
     }
 
-    if ((putnikVerifiedId ?? '').isEmpty && (vozacVerifiedId ?? '').isEmpty) {
+    final verifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+      phone,
+      expectedAuthId: resolvedId,
+    );
+
+    if ((verifiedId ?? '').trim().isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('❌ Telefon nije uparen sa UUID nalogom.')),
@@ -327,21 +319,18 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       return;
     }
 
-    final selectedVozacId = (vozacVerifiedId ?? '').trim();
-    final selectedPutnikId = (putnikVerifiedId ?? '').trim();
-
-    if (selectedVozacId.isNotEmpty) {
-      vozac = V3VozacService.getVozacById(selectedVozacId);
+    if (resolvedId.isNotEmpty) {
+      vozac = V3VozacService.getVozacById(resolvedId);
       if (vozac == null) {
-        final vozacDirect = await V3VozacService.getVozacByPhoneDirect(phone);
-        if (vozacDirect != null && vozacDirect.id.trim() == selectedVozacId) {
+        final vozacDirect = await V3VozacService.getVozacByIdDirect(resolvedId);
+        if (vozacDirect != null && vozacDirect.id.trim() == resolvedId) {
           vozac = vozacDirect;
         }
       }
     }
 
-    if (selectedPutnikId.isNotEmpty) {
-      putnik = await V3PutnikService.getActiveById(selectedPutnikId);
+    if (resolvedId.isNotEmpty) {
+      putnik = await V3PutnikService.getActiveById(resolvedId);
     }
 
     if (!mounted) return;
@@ -356,39 +345,26 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
       if (!mounted) return;
-      final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
       V3NavigationUtils.pushReplacement(
         context,
-        prefersVozacScreen ? const V3VozacScreen() : const V3HomeScreen(),
+        const V3HomeScreen(),
       );
       return;
     }
 
-    if (selectedPutnikId.isEmpty) {
+    if (putnik == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Telefon nije uparen sa UUID putnika.')),
+          const SnackBar(content: Text('❌ UUID nije mapiran ni na vozača ni na putnika.')),
         );
       }
       return;
     }
 
-    putnik ??= <String, dynamic>{
-      'id': selectedPutnikId,
-      'ime_prezime': '',
-      'telefon_1': phone,
-      'telefon_2': '',
-      'tip_putnika': '',
-      'adresa_bc_id': null,
-      'adresa_vs_id': null,
-      'adresa_bc_id_2': null,
-      'adresa_vs_id_2': null,
-    };
-
     V3PutnikService.currentPutnik = putnik;
     await V3ClosedAuthService.saveManualSmsPutnikSession(
       normalizedPhone: phone,
-      authId: selectedPutnikId,
+      authId: resolvedId,
     );
     await V3ClosedAuthService.clearManualSmsVozacPhone();
     await V3RolePermissionService.ensurePassengerPermissionsOnLogin();

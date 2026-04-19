@@ -43,6 +43,16 @@ class V3VozacRepository {
     return _mapAuthRowToLegacyVozac(row);
   }
 
+  Future<Map<String, dynamic>?> getById(String authId) async {
+    final id = authId.trim();
+    if (id.isEmpty) return null;
+
+    final row = await supabase.from('v3_auth').select(_authVozacSelect).eq('id', id).eq('tip', 'vozac').maybeSingle();
+
+    if (row == null) return null;
+    return _mapAuthRowToLegacyVozac(row);
+  }
+
   Future<void> insert(Map<String, dynamic> payload) {
     final telefon = payload['telefon_1']?.toString().trim() ?? '';
     if (telefon.isEmpty) {

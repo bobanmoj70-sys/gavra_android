@@ -7,11 +7,30 @@ type VerifyLoginPayload = {
   v3_auth_id?: string;
   telefon?: string;
   phone?: string;
-  expected_tip?: string;
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+}
+
+function normalizePhone(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const digits = raw.replace(/\D+/g, "");
+  if (!digits) return "";
+
+  if (digits.startsWith("381")) {
+    const rest = digits.slice(3);
+    return rest.startsWith("0") ? rest : `0${rest}`;
+  }
+
+  if (digits.startsWith("00") && digits.slice(2).startsWith("381")) {
+    const rest = digits.slice(5);
+    return rest.startsWith("0") ? rest : `0${rest}`;
+  }
+
+  return digits.startsWith("0") ? digits : `0${digits}`;
 }
 
 Deno.serve(async (req) => {
@@ -30,62 +49,51 @@ Deno.serve(async (req) => {
     const payload = (await req.json()) as VerifyLoginPayload;
     const userId = String(payload.v3_auth_id ?? "").trim();
     const phone = String(payload.telefon ?? payload.phone ?? "").trim();
-    const expectedTip = String(payload.expected_tip ?? "putnik").trim();
+    const canonicalPhone = normalizePhone(phone);
 
-    if (!phone) {
+    if (!canonicalPhone) {
       return json(200, { ok: false, reason: "missing_phone" });
+    }
+
+    if (!userId) {
+      return json(200, { ok: false, reason: "missing_v3_auth_id" });
     }
 
     const client = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const query = client
+    const { data: account, error: lookupError } = await client
       .from("v3_auth")
       .select("id, telefon, telefon_2, tip")
-      .or(`telefon.eq.${phone},telefon_2.eq.${phone}`)
-      .limit(2);
-
-    if (expectedTip) {
-      query.eq("tip", expectedTip);
-    }
-
-    const { data: rows, error: lookupError } = await query;
+      .eq("id", userId)
+      .maybeSingle();
 
     if (lookupError) {
       return json(200, { ok: false, reason: "v3_auth_lookup_error", warning: lookupError.message });
     }
 
-    const matches = Array.isArray(rows) ? rows : [];
-    if (matches.length === 0) {
-      return json(200, { ok: false, reason: "login_pair_not_found", telefon: phone });
+    if (!account) {
+      return json(200, { ok: false, reason: "login_pair_not_found", telefon: canonicalPhone });
     }
 
-    if (matches.length > 1) {
-      return json(200, { ok: false, reason: "multiple_accounts_for_phone", telefon: phone });
-    }
-
-    const account = matches[0];
-    const resolvedId = String(account?.id ?? "").trim();
-
-    if (!resolvedId) {
-      return json(200, { ok: false, reason: "invalid_account_id", telefon: phone });
-    }
-
-    if (userId && userId != resolvedId) {
+    const normalizedTel1 = normalizePhone(account.telefon);
+    const normalizedTel2 = normalizePhone(account.telefon_2);
+    const phoneOk = canonicalPhone === normalizedTel1 || canonicalPhone === normalizedTel2;
+    if (!phoneOk) {
       return json(200, {
         ok: false,
         reason: "uuid_phone_mismatch",
         expected_v3_auth_id: userId,
-        resolved_v3_auth_id: resolvedId,
-        telefon: phone,
+        resolved_v3_auth_id: userId,
+        telefon: canonicalPhone,
       });
     }
 
     return json(200, {
       ok: true,
-      v3_auth_id: resolvedId,
-      telefon: phone,
+      v3_auth_id: userId,
+      telefon: canonicalPhone,
       tip: String(account?.tip ?? "").trim(),
     });
   } catch (error) {

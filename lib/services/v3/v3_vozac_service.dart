@@ -66,6 +66,15 @@ class V3VozacService {
     return V3Vozac.fromJson(row);
   }
 
+  static Future<V3Vozac?> getVozacByIdDirect(String authId) async {
+    final id = authId.trim();
+    if (id.isEmpty) return null;
+
+    final row = await _repo.getById(id);
+    if (row == null) return null;
+    return V3Vozac.fromJson(row);
+  }
+
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
       final actorUuid = V3UuidUtils.normalizeUuid(currentVozac?.id);
