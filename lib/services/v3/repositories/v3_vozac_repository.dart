@@ -4,7 +4,7 @@ import '../../../globals.dart';
 
 class V3VozacRepository {
   static const String _authVozacSelect =
-      'id, ime, telefon, telefon_2, boja, push_token, push_token_2, created_at, updated_at, tip';
+      'id, ime, telefon, telefon_2, boja, push_token, push_token_2, created_at, updated_at';
 
   Future<void> deleteById(String id) {
     return Future.value();
@@ -28,19 +28,6 @@ class V3VozacRepository {
         .eq('tip', 'vozac')
         .eq('push_token', pushToken)
         .maybeSingle();
-  }
-
-  Future<Map<String, dynamic>?> getByPhone(String normalizedPhone) async {
-    final row = await supabase
-        .from('v3_auth')
-        .select(_authVozacSelect)
-        .or('telefon.eq.$normalizedPhone,telefon_2.eq.$normalizedPhone')
-        .eq('tip', 'vozac')
-        .limit(1)
-        .maybeSingle();
-
-    if (row == null) return null;
-    return _mapAuthRowToLegacyVozac(row);
   }
 
   Future<Map<String, dynamic>?> getById(String authId) async {

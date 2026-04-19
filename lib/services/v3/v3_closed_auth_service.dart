@@ -83,24 +83,12 @@ class V3ClosedAuthService {
 
   // ─── Manual SMS sesija ──────────────────────────────────────────
 
-  /// Sačuvaj normalizovani telefon nakon uspešne manual SMS verifikacije.
-  static Future<void> saveManualSmsPutnikPhone(String normalizedPhone) async {
-    await _storage.write(key: _manualSmsPutnikPhoneKey, value: normalizedPhone);
-    await _storage.delete(key: _manualSmsPutnikAuthIdKey);
-  }
-
   static Future<void> saveManualSmsPutnikSession({
     required String normalizedPhone,
     required String authId,
   }) async {
     await _storage.write(key: _manualSmsPutnikPhoneKey, value: normalizedPhone);
     await _storage.write(key: _manualSmsPutnikAuthIdKey, value: authId.trim());
-  }
-
-  /// Sačuvaj normalizovani telefon vozača nakon uspešne manual SMS verifikacije.
-  static Future<void> saveManualSmsVozacPhone(String normalizedPhone) async {
-    await _storage.write(key: _manualSmsVozacPhoneKey, value: normalizedPhone);
-    await _storage.delete(key: _manualSmsVozacAuthIdKey);
   }
 
   static Future<void> saveManualSmsVozacSession({
