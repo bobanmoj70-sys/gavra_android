@@ -137,6 +137,11 @@ class MainActivity : FlutterFragmentActivity() {
                 "isGmsAvailable" -> {
                     result.success(isGmsAvailable())
                 }
+                "getAndroidId" -> {
+                    val androidId = getAndroidId()
+                    android.util.Log.d(TAG, "getAndroidId requested, hasValue=${!androidId.isNullOrBlank()}")
+                    result.success(androidId)
+                }
                 "getFcmToken" -> {
                     ioExecutor.execute {
                         try {
@@ -337,5 +342,19 @@ class MainActivity : FlutterFragmentActivity() {
         }
         android.util.Log.d(TAG, "✅ FCM token fetched: ${token.take(16)}…")
         return token
+    }
+
+    private fun getAndroidId(): String? {
+        return try {
+            val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+            val safeId = androidId?.trim()?.takeIf { it.isNotEmpty() }
+            if (safeId.isNullOrEmpty()) {
+                android.util.Log.w(TAG, "getAndroidId returned empty")
+            }
+            safeId
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "getAndroidId failed: ${e.message}")
+            null
+        }
     }
 }

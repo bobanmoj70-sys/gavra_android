@@ -57,11 +57,11 @@ class V3VozacService {
     }
   }
 
-  static Future<V3Vozac?> getVozacByPhoneDirect(String normalizedPhone, {String? osDeviceId}) async {
+  static Future<V3Vozac?> getVozacByPhoneDirect(String normalizedPhone) async {
     final phone = normalizedPhone.trim();
     if (phone.isEmpty) return null;
 
-    final row = await V3AuthLookupService.getVozacByPhone(phone, osDeviceId: osDeviceId);
+    final row = await V3AuthLookupService.getVozacByPhone(phone);
     if (row == null) return null;
     return V3Vozac.fromJson(row);
   }
@@ -102,9 +102,7 @@ class V3VozacService {
   static Future<void> writePushTokenOnLogin({
     required String vozacId,
     required String pushToken,
-    String? osDeviceId,
     String? pushToken2,
-    String? osDeviceId2,
     String? androidDeviceId,
     String? androidDeviceId2,
     String? androidBuildId,
@@ -116,9 +114,7 @@ class V3VozacService {
   }) async {
     final safeId = vozacId.trim();
     final safeToken = pushToken.trim();
-    final safeOsDeviceId = (osDeviceId ?? '').trim();
     final safeToken2 = (pushToken2 ?? '').trim();
-    final safeOsDeviceId2 = (osDeviceId2 ?? '').trim();
     final safeAndroidDeviceId = (androidDeviceId ?? '').trim();
     final safeAndroidDeviceId2 = (androidDeviceId2 ?? '').trim();
     final safeAndroidBuildId = (androidBuildId ?? '').trim();
@@ -134,8 +130,6 @@ class V3VozacService {
         v3AuthId: safeId,
         pushToken: safeToken,
         pushToken2: safeToken2,
-        osDeviceId: safeOsDeviceId,
-        osDeviceId2: safeOsDeviceId2,
         androidDeviceId: safeAndroidDeviceId,
         androidDeviceId2: safeAndroidDeviceId2,
         androidBuildId: safeAndroidBuildId,

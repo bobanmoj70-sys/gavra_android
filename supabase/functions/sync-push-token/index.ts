@@ -5,8 +5,6 @@ type WritePayload = {
   v3_auth_id?: string;
   push_token?: string;
   push_token_2?: string;
-  os_device_id?: string;
-  os_device_id_2?: string;
   android_device_id?: string;
   android_device_id_2?: string;
   android_build_id?: string;
@@ -48,8 +46,6 @@ Deno.serve(async (req) => {
     const updatePayload: Record<string, unknown> = {
       ...(String(payload.push_token ?? "").trim() ? { push_token: String(payload.push_token ?? "").trim() } : {}),
       ...(String(payload.push_token_2 ?? "").trim() ? { push_token_2: String(payload.push_token_2 ?? "").trim() } : {}),
-      ...(String(payload.os_device_id ?? "").trim() ? { os_device_id: String(payload.os_device_id ?? "").trim() } : {}),
-      ...(String(payload.os_device_id_2 ?? "").trim() ? { os_device_id_2: String(payload.os_device_id_2 ?? "").trim() } : {}),
       ...(String(payload.android_device_id ?? "").trim()
         ? { android_device_id: String(payload.android_device_id ?? "").trim() }
         : {}),

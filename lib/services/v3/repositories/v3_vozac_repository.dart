@@ -71,8 +71,6 @@ class V3VozacRepository {
     if (payload.containsKey('boja')) out['boja'] = payload['boja'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
     if (payload.containsKey('push_token_2')) out['push_token_2'] = payload['push_token_2'];
-    if (payload.containsKey('os_device_id')) out['os_device_id'] = payload['os_device_id'];
-    if (payload.containsKey('os_device_id_2')) out['os_device_id_2'] = payload['os_device_id_2'];
     if (payload.containsKey('android_device_id')) out['android_device_id'] = payload['android_device_id'];
     if (payload.containsKey('android_device_id_2')) out['android_device_id_2'] = payload['android_device_id_2'];
 

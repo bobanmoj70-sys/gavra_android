@@ -258,7 +258,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (token.isEmpty) return;
 
       final identity = await V3OsDeviceIdService.getDeviceIdentity();
-      final osDeviceId = (identity.osDeviceId ?? '').trim();
       final androidDeviceId = (identity.androidDeviceId ?? '').trim();
       final androidBuildId = (identity.androidBuildId ?? '').trim();
       final iosDeviceId = (identity.iosDeviceId ?? '').trim();
@@ -267,9 +266,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         await V3VozacService.writePushTokenOnLogin(
           vozacId: v3AuthId,
           pushToken: token,
-          osDeviceId: osDeviceId,
           pushToken2: token,
-          osDeviceId2: osDeviceId,
           androidDeviceId: androidDeviceId,
           androidDeviceId2: androidDeviceId,
           androidBuildId: androidBuildId,
@@ -285,9 +282,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: v3AuthId,
         pushToken: token,
-        osDeviceId: osDeviceId,
         pushToken2: token,
-        osDeviceId2: osDeviceId,
         androidDeviceId: androidDeviceId,
         androidDeviceId2: androidDeviceId,
         androidBuildId: androidBuildId,
@@ -306,14 +301,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     V3Vozac? vozac;
     Map<String, dynamic>? putnik;
 
-    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
     vozac = await V3VozacService.getVozacByPhoneDirect(
       phone,
-      osDeviceId: osDeviceId.isEmpty ? null : osDeviceId,
     );
     putnik = await V3PutnikService.getByPhoneDirect(
       phone,
-      osDeviceId: osDeviceId.isEmpty ? null : osDeviceId,
     );
 
     if (!mounted) return;

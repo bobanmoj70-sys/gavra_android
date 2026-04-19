@@ -1,16 +1,14 @@
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/services.dart';
 
 class V3DeviceIdentity {
-  final String? osDeviceId;
   final String? androidDeviceId;
   final String? androidBuildId;
   final String? iosDeviceId;
   final String? iosBuildId;
 
   const V3DeviceIdentity({
-    this.osDeviceId,
     this.androidDeviceId,
     this.androidBuildId,
     this.iosDeviceId,
@@ -22,43 +20,52 @@ class V3OsDeviceIdService {
   V3OsDeviceIdService._();
 
   static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
-  static const FlutterSecureStorage _storage =
-      FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
-  static const String _storageKey = 'v3_os_device_id';
-
-  static bool _isUsableId(String value) {
-    final v = value.trim().toLowerCase();
-    if (v.isEmpty) return false;
-    if (v == 'unknown' || v == 'null' || v == 'rel' || v == 'test-keys') return false;
-    return true;
-  }
-
-  static String _generateFallbackId() {
-    final now = DateTime.now().microsecondsSinceEpoch;
-    final hash = now.toRadixString(16).padLeft(12, '0');
-    return 'gavra-$hash';
-  }
+  static const MethodChannel _pushTokenChannel = MethodChannel('com.gavra013.gavra_android/push_token');
 
   static String? _clean(String? value) {
     final safe = (value ?? '').trim();
     return safe.isEmpty ? null : safe;
   }
 
-  static Future<V3DeviceIdentity> getDeviceIdentity() async {
-    final osDeviceId = _clean(await getOsDeviceId());
+  static Future<String?> _getAndroidIdFromChannel() async {
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      try {
+        final androidId = await _pushTokenChannel.invokeMethod<String>('getAndroidId');
+        final safeId = _clean(androidId);
+        if (safeId != null) {
+          debugPrint('[V3OsDeviceIdService] Android ID from channel (attempt=$attempt)');
+          return safeId;
+        }
+        debugPrint('[V3OsDeviceIdService] Empty Android ID from channel (attempt=$attempt)');
+      } on MissingPluginException catch (e) {
+        debugPrint('[V3OsDeviceIdService] getAndroidId MissingPluginException (attempt=$attempt): $e');
+      } catch (e) {
+        debugPrint('[V3OsDeviceIdService] getAndroidId channel error (attempt=$attempt): $e');
+      }
 
+      if (attempt < 3) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+    }
+
+    return null;
+  }
+
+  static Future<V3DeviceIdentity> getDeviceIdentity() async {
     try {
       if (kIsWeb) {
-        return V3DeviceIdentity(osDeviceId: osDeviceId);
+        return const V3DeviceIdentity();
       }
 
       if (defaultTargetPlatform == TargetPlatform.android) {
         final androidInfo = await _deviceInfo.androidInfo;
+        var androidDeviceId = _clean(androidInfo.data['androidId']?.toString());
+        androidDeviceId ??= _clean(androidInfo.data['android_id']?.toString());
+        androidDeviceId ??= await _getAndroidIdFromChannel();
         final androidBuildId = _clean(androidInfo.id);
 
         return V3DeviceIdentity(
-          osDeviceId: osDeviceId,
-          androidDeviceId: osDeviceId,
+          androidDeviceId: androidDeviceId,
           androidBuildId: androidBuildId,
         );
       }
@@ -69,54 +76,14 @@ class V3OsDeviceIdService {
         final iosBuildId = _clean(iosInfo.systemVersion);
 
         return V3DeviceIdentity(
-          osDeviceId: osDeviceId,
           iosDeviceId: iosDeviceId,
           iosBuildId: iosBuildId,
         );
       }
 
-      return V3DeviceIdentity(osDeviceId: osDeviceId);
+      return const V3DeviceIdentity();
     } catch (_) {
-      return V3DeviceIdentity(osDeviceId: osDeviceId);
-    }
-  }
-
-  static Future<String?> getOsDeviceId() async {
-    try {
-      if (kIsWeb) return null;
-
-      final stored = (await _storage.read(key: _storageKey) ?? '').trim();
-      if (_isUsableId(stored)) return stored;
-
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        final androidInfo = await _deviceInfo.androidInfo;
-        final androidId = (androidInfo.data['androidId'] ?? '').toString().trim();
-        if (_isUsableId(androidId)) {
-          await _storage.write(key: _storageKey, value: androidId);
-          return androidId;
-        }
-
-        final fallbackId = _generateFallbackId();
-        await _storage.write(key: _storageKey, value: fallbackId);
-        return fallbackId;
-      }
-
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final iosInfo = await _deviceInfo.iosInfo;
-        final idfv = (iosInfo.identifierForVendor ?? '').trim();
-        if (_isUsableId(idfv)) {
-          await _storage.write(key: _storageKey, value: idfv);
-          return idfv;
-        }
-
-        final fallbackId = _generateFallbackId();
-        await _storage.write(key: _storageKey, value: fallbackId);
-        return fallbackId;
-      }
-
-      return null;
-    } catch (_) {
-      return null;
+      return const V3DeviceIdentity();
     }
   }
 }

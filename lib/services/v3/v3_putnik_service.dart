@@ -53,11 +53,11 @@ class V3PutnikService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> getByPhoneDirect(String normalizedPhone, {String? osDeviceId}) async {
+  static Future<Map<String, dynamic>?> getByPhoneDirect(String normalizedPhone) async {
     final needle = normalizedPhone.trim();
     if (needle.isEmpty) return null;
 
-    return V3AuthLookupService.getPutnikByPhone(needle, osDeviceId: osDeviceId);
+    return V3AuthLookupService.getPutnikByPhone(needle);
   }
 
   static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
@@ -100,9 +100,7 @@ class V3PutnikService {
   static Future<void> writePushTokenOnLogin({
     required String putnikId,
     required String pushToken,
-    String? osDeviceId,
     String? pushToken2,
-    String? osDeviceId2,
     String? androidDeviceId,
     String? androidDeviceId2,
     String? androidBuildId,
@@ -114,9 +112,7 @@ class V3PutnikService {
   }) async {
     final safeId = putnikId.trim();
     final safeToken = pushToken.trim();
-    final safeOsDeviceId = (osDeviceId ?? '').trim();
     final safeToken2 = (pushToken2 ?? '').trim();
-    final safeOsDeviceId2 = (osDeviceId2 ?? '').trim();
     final safeAndroidDeviceId = (androidDeviceId ?? '').trim();
     final safeAndroidDeviceId2 = (androidDeviceId2 ?? '').trim();
     final safeAndroidBuildId = (androidBuildId ?? '').trim();
@@ -132,8 +128,6 @@ class V3PutnikService {
         v3AuthId: safeId,
         pushToken: safeToken,
         pushToken2: safeToken2,
-        osDeviceId: safeOsDeviceId,
-        osDeviceId2: safeOsDeviceId2,
         androidDeviceId: safeAndroidDeviceId,
         androidDeviceId2: safeAndroidDeviceId2,
         androidBuildId: safeAndroidBuildId,
