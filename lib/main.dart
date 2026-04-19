@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
@@ -267,10 +268,56 @@ Map<String, String> _messageDataToStringMap(Map<String, dynamic> raw) {
   return raw.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ''));
 }
 
+String _encodeTapPayload(String type, Map<String, String> data) {
+  final safeType = type.trim();
+  final safeData = <String, String>{
+    for (final entry in data.entries)
+      if (entry.key.trim().isNotEmpty) entry.key.trim(): entry.value,
+  };
+
+  if (safeData.isEmpty) {
+    return safeType;
+  }
+
+  return jsonEncode({
+    'kind': 'fcm',
+    'type': safeType,
+    'data': safeData,
+  });
+}
+
+({String type, Map<String, String> data}) _decodeTapPayload(String payload) {
+  try {
+    final decoded = jsonDecode(payload);
+    if (decoded is Map<String, dynamic>) {
+      final type = decoded['type']?.toString().trim() ?? '';
+      final rawData = decoded['data'];
+      final data =
+          rawData is Map ? rawData.map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')) : <String, String>{};
+
+      if (type.isNotEmpty) {
+        return (type: type, data: data);
+      }
+    }
+  } catch (_) {}
+
+  if (payload.startsWith('putnik_eta_start')) {
+    final parts = payload.split(':');
+    final putnikId = parts.length > 1 ? parts[1].trim() : '';
+    return (
+      type: 'putnik_eta_start',
+      data: putnikId.isNotEmpty ? {'v3_auth_id': putnikId} : <String, String>{},
+    );
+  }
+
+  return (type: payload.trim(), data: <String, String>{});
+}
+
 Future<void> _showForegroundPushNotification({
   required String title,
   required String body,
   required String payload,
+  Map<String, String> data = const <String, String>{},
 }) async {
   if (title.isEmpty && body.isEmpty) return;
 
@@ -297,7 +344,7 @@ Future<void> _showForegroundPushNotification({
       android: androidDetails,
       iOS: const DarwinNotificationDetails(),
     ),
-    payload: payload,
+    payload: _encodeTapPayload(payload, data),
   );
 }
 
@@ -427,6 +474,7 @@ Future<void> _initIosFcmHandlers() async {
         title: title,
         body: body,
         payload: type,
+        data: data,
       );
     }
   });
@@ -492,6 +540,7 @@ Future<void> _initFcmChannel() async {
             title: title,
             body: body,
             payload: type,
+            data: data,
           );
         }
 
@@ -645,9 +694,13 @@ void onNotificationTap(NotificationResponse response) async {
 
   if (payload == null) return;
 
+  final decodedPayload = _decodeTapPayload(payload);
+  final decodedType = decodedPayload.type;
+  final decodedData = decodedPayload.data;
+
   // Tap na samu notifikaciju (bez action dugmeta) za putnik ETA flow
-  if (payload.startsWith('putnik_eta_start')) {
-    await _openPutnikProfilFromNotification(payload);
+  if (decodedType == 'zahtev_status' || decodedType == 'putnik_eta_start') {
+    await _handleFcmLaunch(decodedType, decodedData);
     return;
   }
 
