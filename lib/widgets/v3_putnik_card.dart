@@ -80,9 +80,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         duration: const Duration(milliseconds: 1500),
         onLongPress: () {
           if (_isLongPressActive && mounted) {
-            final status = widget.entry?.statusFinal ?? widget.zahtev?.status ?? '';
             final isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
-            if (!V3StatusFilters.isCanceled(status) && !isPokupljen) {
+            final isOtkazan = widget.entry?.otkazanoAt != null;
+            if (!isOtkazan && !isPokupljen) {
               _handlePickup();
             }
           }
@@ -372,7 +372,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Widget build(BuildContext context) {
     final status = V3StatusFilters.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
     final bool isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
-    final bool isOtkazan = V3StatusFilters.isCanceled(status);
+    final bool isOtkazan = widget.entry?.otkazanoAt != null;
     final bool isPlacen = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
     final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();

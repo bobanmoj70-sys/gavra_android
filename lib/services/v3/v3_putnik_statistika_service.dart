@@ -246,8 +246,7 @@ class V3PutnikStatistikaService {
   static bool _isPlaceno(Map<String, dynamic> row) => V3StatusFilters.isNaplacenAt(row['naplacen_at']);
 
   static bool _isOtkazano(Map<String, dynamic> row) {
-    final status = V3StatusFilters.deriveOperativnaStatus(row);
-    return V3StatusFilters.isCanceled(status);
+    return row['otkazano_at'] != null;
   }
 
   static double _placeniIznosIliFallback(Map<String, dynamic> row, double fallback) {

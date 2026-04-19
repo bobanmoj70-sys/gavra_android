@@ -98,8 +98,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       if (vozacId != _selectedVozacId) continue;
 
       final vremePlaceno = row['naplacen_at'] as String? ?? '';
-      final sortTs = vremePlaceno.isNotEmpty ? vremePlaceno : (row['updated_at'] as String? ?? '');
-      final dt = V3DateUtils.parseTs(sortTs);
+      final dt = V3DateUtils.parseTs(vremePlaceno);
       if (dt == null) continue;
 
       final payDay = DateTime(dt.year, dt.month, dt.day);

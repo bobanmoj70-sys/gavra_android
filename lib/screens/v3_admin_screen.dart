@@ -875,16 +875,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final danas = DateTime.now();
     final result = <String, double>{};
     for (final row in cache.values) {
-      if (row['naplacen_at'] == null) continue;
-      // Datum plaćanja
-      final vremeStr = row['naplacen_at'] as String? ?? row['updated_at'] as String?;
-      if (vremeStr != null) {
-        final dt = DateTime.tryParse(vremeStr);
-        if (dt == null) continue;
-        if (dt.year != danas.year || dt.month != danas.month || dt.day != danas.day) continue;
-      } else {
-        continue; // nema datuma — preskači
-      }
+      final naplacenAtStr = row['naplacen_at'] as String?;
+      if (naplacenAtStr == null || naplacenAtStr.isEmpty) continue;
+      final dt = DateTime.tryParse(naplacenAtStr);
+      if (dt == null) continue;
+      if (dt.year != danas.year || dt.month != danas.month || dt.day != danas.day) continue;
       // Akter: ko je naplatio
       final akterId = row['naplacen_by']?.toString();
       if (akterId == null || akterId.isEmpty) continue;
@@ -934,8 +929,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['created_by']?.toString();
       if (putnikId == null || !uceniciIds.contains(putnikId)) continue;
-      final status = V3StatusFilters.deriveOperativnaStatus(r);
-      if (V3StatusFilters.isCanceledOrRejected(status)) continue;
+      if (r['otkazano_at'] != null) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
@@ -954,6 +948,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       if (grad == 'BC') {
+        final status = V3StatusFilters.deriveOperativnaStatus(r);
         if (status != 'odobreno') continue;
         final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
         if (polazakAt.isEmpty) continue;
@@ -1055,8 +1050,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['created_by']?.toString();
       if (putnikId == null || !dnevniIds.contains(putnikId)) continue;
-      final status = V3StatusFilters.deriveOperativnaStatus(r);
-      if (V3StatusFilters.isCanceledOrRejected(status)) continue;
+      if (r['otkazano_at'] != null) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
@@ -1075,6 +1069,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       if (grad == 'BC') {
+        final status = V3StatusFilters.deriveOperativnaStatus(r);
         if (status != 'odobreno') continue;
         final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
         if (polazakAt.isEmpty) continue;
