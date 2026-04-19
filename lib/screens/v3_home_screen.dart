@@ -99,8 +99,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   }
 
   bool _isVisibleOperativnaRow(Map<String, dynamic> row) {
-    final status = V3StatusFilters.deriveOperativnaStatus(row);
-    return !V3StatusFilters.isCanceledOrRejected(status);
+    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
   }
 
   Future<void> _reloadTrenutnaDodelaMap() async {
@@ -1017,7 +1016,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           }).toList()
             ..sort((a, b) {
               int sortRank(V3OperativnaNedeljaEntry e) {
-                if (V3StatusFilters.isCanceled(e.statusFinal)) return 3;
+                if (V3StatusFilters.isOtkazanoAt(e.otkazanoAt)) return 3;
                 if (V3StatusFilters.isPokupljenAt(e.pokupljenAt)) return 2;
                 // Provjeri da li je putnik dodijeljen logovanom vozaču
                 if (currentVozacId != null) {

@@ -137,17 +137,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isGpsRowEligible(Map<String, dynamic> row) {
-    final status = V3StatusFilters.deriveOperativnaStatus(row);
-    return !V3StatusFilters.isCanceledOrRejected(status);
+    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
   }
 
   bool _isGpsRowActiveForCount(Map<String, dynamic> row) {
-    final status = V3StatusFilters.deriveOperativnaStatus(row);
-    final pokupljen = V3StatusFilters.isPokupljenAt(row['pokupljen_at']);
-    return V3StatusFilters.isVisibleForDisplay(
-      status: status,
-      pokupljen: pokupljen,
-    );
+    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
   }
 
   Future<void> _reloadTrenutnaDodelaForVozac() async {
@@ -275,20 +269,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isExcludedFromOptimization(_PutnikEntry entry) {
-    final status = entry.entry?.statusFinal;
     final isPokupljen = V3StatusFilters.isPokupljenAt(entry.entry?.pokupljenAt);
-    return V3StatusFilters.isExcludedFromOptimization(
-      status: status,
-      pokupljen: isPokupljen,
-    );
+    final isOtkazan = V3StatusFilters.isOtkazanoAt(entry.entry?.otkazanoAt);
+    return isPokupljen || isOtkazan;
   }
 
   List<_PutnikEntry> _sortPutniciForDisplay(List<_PutnikEntry> putnici) {
     final sorted = List<_PutnikEntry>.from(putnici);
     sorted.sort((a, b) {
       int sortRank(_PutnikEntry entry) {
-        final status = entry.entry?.statusFinal;
-        if (V3StatusFilters.isCanceledOrRejected(status)) return 3;
+        if (V3StatusFilters.isOtkazanoAt(entry.entry?.otkazanoAt)) return 3;
         if (V3StatusFilters.isPokupljenAt(entry.entry?.pokupljenAt)) return 2;
         return 1;
       }
@@ -432,7 +422,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (matchedEntryData == null && putnikId != null && putnikId.isNotEmpty) {
         DateTime? bestUpdatedAt;
         for (final r in rm.operativnaNedeljaCache.values) {
-          if (V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r))) continue;
+          if (V3StatusFilters.isOtkazanoAt(r['otkazano_at'])) continue;
           if (r['created_by']?.toString() != putnikId) continue;
           if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
           if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;

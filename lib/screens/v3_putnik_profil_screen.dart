@@ -133,11 +133,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
       for (final grad in const ['BC', 'VS']) {
         final opRows = rm.operativnaNedeljaCache.values.where((e) {
-          final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(e));
           return (e['created_by']?.toString() ?? '') == putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               (e['grad']?.toString().toUpperCase() ?? '') == grad &&
-              !V3StatusFilters.isCanceledOrRejected(status);
+              !V3StatusFilters.isOtkazanoAt(e['otkazano_at']);
         }).toList();
 
         if (opRows.isEmpty) {
@@ -658,7 +657,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final rm = V3MasterRealtimeManager.instance;
     final operativniTermini = rm.operativnaAssignedCache.values
         .where((r) => (r['created_by']?.toString() ?? '') == putnikId)
-        .where((r) => !V3StatusFilters.isCanceledOrRejected(V3StatusFilters.deriveOperativnaStatus(r)))
+        .where((r) => !V3StatusFilters.isOtkazanoAt(r['otkazano_at']))
         .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
         .where((r) => V3StatusFilters.isApproved(V3StatusFilters.deriveOperativnaStatus(r)))
         .toList();

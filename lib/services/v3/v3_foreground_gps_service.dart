@@ -491,8 +491,7 @@ class V3ForegroundGpsService {
         final rowId = row['id']?.toString() ?? '';
         if (!assignedTerminIds.contains(rowId)) return false;
         if (row['created_by'] == null) return false;
-        final status = V3StatusFilters.deriveOperativnaStatus(row);
-        if (V3StatusFilters.isCanceledOrRejected(status)) return false;
+        if (V3StatusFilters.isOtkazanoAt(row['otkazano_at'])) return false;
         final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
         if (rowGrad != grad) return false;
         final rt = rowTime(row);
