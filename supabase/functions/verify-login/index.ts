@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
 
     const { data: account, error: lookupError } = await client
       .from("v3_auth")
-      .select("id, telefon, telefon_2, tip")
+      .select("id, telefon, telefon_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -94,7 +94,6 @@ Deno.serve(async (req) => {
       ok: true,
       v3_auth_id: userId,
       telefon: canonicalPhone,
-      tip: String(account?.tip ?? "").trim(),
     });
   } catch (error) {
     return json(200, {

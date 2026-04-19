@@ -15,7 +15,6 @@ class V3PushTokenEdgeService {
     String? iosDeviceId2,
     String? iosBuildId,
     String? iosBuildId2,
-    String? expectedTip,
   }) async {
     final targetId = v3AuthId.trim();
     final safePushToken = pushToken.trim();
@@ -52,7 +51,6 @@ class V3PushTokenEdgeService {
         if ((iosBuildId ?? '').trim().isNotEmpty || (iosBuildId2 ?? '').trim().isNotEmpty)
           'incoming_ios_build_id': (iosBuildId ?? '').trim().isNotEmpty ? iosBuildId!.trim() : iosBuildId2!.trim(),
         if ((pushToken2 ?? '').trim().isNotEmpty) 'push_token_2': pushToken2!.trim(),
-        if ((expectedTip ?? '').trim().isNotEmpty) 'expected_tip': expectedTip!.trim(),
       },
     );
 

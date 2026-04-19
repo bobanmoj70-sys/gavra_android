@@ -30,7 +30,6 @@ Deno.serve(async (req) => {
 
     const payload = (await req.json()) as Record<string, unknown>;
     const userId = String(payload.v3_auth_id ?? "").trim();
-    const expectedTip = String(payload.expected_tip ?? "").trim();
 
     if (!userId) {
       return json(200, { ok: false, updated: false, reason: "missing_v3_auth_id" });
@@ -43,7 +42,7 @@ Deno.serve(async (req) => {
     const { data: existing, error: existingError } = await client
       .from("v3_auth")
       .select(
-        "id, tip, os_device_id, os_device_id_2, android_device_id, android_device_id_2, ios_device_id, ios_device_id_2",
+        "id, os_device_id, os_device_id_2, android_device_id, android_device_id_2, ios_device_id, ios_device_id_2",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -54,16 +53,6 @@ Deno.serve(async (req) => {
 
     if (!existing) {
       return json(200, { ok: false, updated: false, reason: "v3_auth_not_found" });
-    }
-
-    if (expectedTip && String(existing.tip ?? "").trim() != expectedTip) {
-      return json(200, {
-        ok: false,
-        updated: false,
-        reason: "tip_mismatch",
-        expected_tip: expectedTip,
-        actual_tip: String(existing.tip ?? "").trim(),
-      });
     }
 
     const incomingOsDeviceId = firstNonEmpty(

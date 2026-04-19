@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../models/v3_vozac.dart';
-import '../../utils/v3_phone_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozac_repository.dart';
-import 'v3_auth_lookup_service.dart';
 import 'v3_push_token_edge_service.dart';
 
 /// Service for V3 drivers (`v3_vozaci`).
@@ -28,42 +26,6 @@ class V3VozacService {
   static V3Vozac? getVozacById(String id) {
     final data = V3MasterRealtimeManager.instance.vozaciCache[id];
     return data != null ? V3Vozac.fromJson(data) : null;
-  }
-
-  static V3Vozac? getVozacByName(String name) {
-    final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
-    try {
-      final match = cache.firstWhere(
-        (r) => r['ime_prezime'].toString().toLowerCase() == name.toLowerCase(),
-      );
-      return V3Vozac.fromJson(match);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static V3Vozac? getVozacByPhone(String normalizedPhone) {
-    if (normalizedPhone.isEmpty) return null;
-    final cache = V3MasterRealtimeManager.instance.vozaciCache.values;
-    try {
-      final match = cache.firstWhere((r) {
-        final t1 = V3PhoneUtils.normalize(r['telefon_1']?.toString() ?? '');
-        final t2 = V3PhoneUtils.normalize(r['telefon_2']?.toString() ?? '');
-        return t1 == normalizedPhone || (t2.isNotEmpty && t2 == normalizedPhone);
-      });
-      return V3Vozac.fromJson(match);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<V3Vozac?> getVozacByPhoneDirect(String normalizedPhone) async {
-    final phone = normalizedPhone.trim();
-    if (phone.isEmpty) return null;
-
-    final row = await V3AuthLookupService.getVozacByPhone(phone);
-    if (row == null) return null;
-    return V3Vozac.fromJson(row);
   }
 
   static Future<V3Vozac?> getVozacByIdDirect(String authId) async {
@@ -147,7 +109,6 @@ class V3VozacService {
         iosDeviceId2: safeIosDeviceId2,
         iosBuildId: safeIosBuildId,
         iosBuildId2: safeIosBuildId2,
-        expectedTip: 'vozac',
       );
     } catch (e) {
       debugPrint('[V3VozacService] writePushTokenOnLogin error: $e');

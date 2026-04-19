@@ -8,7 +8,6 @@ import '../../utils/v3_status_filters.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
-import 'v3_auth_lookup_service.dart';
 import 'v3_push_token_edge_service.dart';
 
 /// Service for V3 passengers (logical `v3_putnici` cache backed by `v3_auth`).
@@ -31,33 +30,6 @@ class V3PutnikService {
   static V3Putnik? getPutnikById(String id) {
     final data = V3MasterRealtimeManager.instance.putniciCache[id];
     return data != null ? V3Putnik.fromJson(data) : null;
-  }
-
-  static Future<Map<String, dynamic>?> getByPhoneOrCache(String normalizedPhone) async {
-    final needle = normalizedPhone.trim();
-    if (needle.isEmpty) return null;
-
-    final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    for (final row in cache) {
-      final telefon1 = row['telefon_1']?.toString().trim() ?? '';
-      final telefon2 = row['telefon_2']?.toString().trim() ?? '';
-      if (telefon1 == needle || (telefon2.isNotEmpty && telefon2 == needle)) {
-        return Map<String, dynamic>.from(row);
-      }
-    }
-
-    final rows = await _repo.listByPhone(needle);
-    if (rows.isNotEmpty) {
-      return Map<String, dynamic>.from(rows.first as Map);
-    }
-    return null;
-  }
-
-  static Future<Map<String, dynamic>?> getByPhoneDirect(String normalizedPhone) async {
-    final needle = normalizedPhone.trim();
-    if (needle.isEmpty) return null;
-
-    return V3AuthLookupService.getPutnikByPhone(needle);
   }
 
   static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
