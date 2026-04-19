@@ -2,17 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_os_device_id_service.dart';
-import '../services/v3/v3_push_token_edge_service.dart';
-import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
-import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -55,7 +50,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   final _imeController = TextEditingController();
   final _prezimeController = TextEditingController();
   static const _secureStorage = FlutterSecureStorage();
-  static const int _smsCooldownSeconds = 60;
 
   _SmsStep _step = _SmsStep.unosTelefona;
   bool _isLoading = false;
@@ -66,8 +60,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   V3Adresa? _selectedBcAdresa;
   V3Adresa? _selectedVsAdresa;
   String _missingProfileMessage = '';
-  DateTime? _nextSmsAllowedAt;
-  Timer? _cooldownTimer;
   bool _isBackendReady = false;
 
   // Biometrija
@@ -93,23 +85,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   @override
   void dispose() {
-    _cooldownTimer?.cancel();
     _phoneController.dispose();
     _imeController.dispose();
     _prezimeController.dispose();
     super.dispose();
   }
 
-  int get _cooldownRemainingSeconds {
-    final until = _nextSmsAllowedAt;
-    if (until == null) return 0;
-    final now = DateTime.now();
-    if (!until.isAfter(now)) return 0;
-    return until.difference(now).inSeconds + 1;
-  }
-
-  bool get _isSmsCooldownActive => _cooldownRemainingSeconds > 0;
-  bool get _canSubmitPhoneStep => _isBackendReady && !_isSmsCooldownActive && !_isLoading;
+  bool get _canSubmitPhoneStep => !_isLoading;
 
   Future<void> _waitForBackendReady() async {
     while (mounted && !_isBackendReady) {
@@ -123,48 +105,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       await Future<void>.delayed(const Duration(milliseconds: 600));
     }
-  }
-
-  String _buildPhoneOrClause(String phoneInput) {
-    final normalized = V3ClosedAuthService.normalizePhone(phoneInput);
-    final candidates = <String>{};
-
-    void addCandidate(String? value) {
-      final safe = (value ?? '').trim();
-      if (safe.isNotEmpty) candidates.add(safe);
-    }
-
-    addCandidate(phoneInput);
-    addCandidate(normalized);
-
-    final digits = normalized.replaceAll('+', '');
-    addCandidate(digits);
-    if (digits.isNotEmpty) {
-      addCandidate('+$digits');
-    }
-    if (digits.startsWith('381') && digits.length > 3) {
-      addCandidate('0${digits.substring(3)}');
-    }
-
-    final clauses = <String>[];
-    for (final phone in candidates) {
-      clauses.add('telefon.eq.$phone');
-      clauses.add('telefon_2.eq.$phone');
-    }
-    return clauses.join(',');
-  }
-
-  void _startSmsCooldown() {
-    _nextSmsAllowedAt = DateTime.now().add(const Duration(seconds: _smsCooldownSeconds));
-    _cooldownTimer?.cancel();
-    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      if (!_isSmsCooldownActive) {
-        _cooldownTimer?.cancel();
-      }
-      setState(() {});
-    });
-    setState(() {});
   }
 
   // ─── Biometrija ────────────────────────────────────────────────
@@ -250,12 +190,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   Future<void> _sendSms() async {
     if (!_canSubmitPhoneStep) {
-      if (_isSmsCooldownActive) {
-        final sec = _cooldownRemainingSeconds;
-        V3AppSnackBar.info(context, 'Sačekajte $sec s pre novog zahteva.');
-      } else if (!_isBackendReady) {
-        V3AppSnackBar.info(context, '⏳ Učitavanje baze... sačekajte trenutak.');
-      }
       return;
     }
 
@@ -266,8 +200,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
 
     final phone = V3ClosedAuthService.normalizePhone(input);
-    if (!V3PhoneUtils.isValid(phone)) {
-      V3AppSnackBar.error(context, '❌ Neispravan format broja telefona.');
+    if (phone.isEmpty) {
+      V3AppSnackBar.warning(context, 'Unesite broj telefona.');
       return;
     }
 
@@ -277,97 +211,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final rows = await Supabase.instance.client
-          .from('v3_auth')
-          .select('id,telefon,telefon_2')
-          .or(_buildPhoneOrClause(phone))
-          .limit(10);
-
-      if (!mounted) return;
-      if (rows.isEmpty) {
-        V3AppSnackBar.error(context, '❌ Broj nije registrovan u sistemu.');
+      final authId = await V3ClosedAuthService.findAuthIdByPhone(phone);
+      if (authId == null) {
+        if (!mounted) return;
+        V3AppSnackBar.error(context, '❌ Broj telefona i UUID reda nisu pronađeni.');
         setState(() => _statusMessage = '');
         return;
       }
-
-      final matchedRows =
-          rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>())).toList();
-
-      final uniqueIds =
-          matchedRows.map((row) => row['id']?.toString().trim() ?? '').where((id) => id.isNotEmpty).toSet();
-
-      String authId = '';
-      if (uniqueIds.length == 1) {
-        authId = uniqueIds.first;
-      } else {
-        final primaryMatches = matchedRows.where((row) {
-          final rowPhone = V3ClosedAuthService.normalizePhone(row['telefon']?.toString() ?? '');
-          return rowPhone == phone;
-        }).toList();
-
-        final primaryIds =
-            primaryMatches.map((row) => row['id']?.toString().trim() ?? '').where((id) => id.isNotEmpty).toSet();
-        if (primaryIds.length == 1) {
-          authId = primaryIds.first;
-        } else {
-          V3AppSnackBar.error(context, '❌ Pronađeno je više naloga za isti broj telefona.');
-          setState(() => _statusMessage = '');
-          return;
-        }
-      }
-
-      if (authId.isEmpty) {
-        V3AppSnackBar.error(context, '❌ Nalog nije moguće verifikovati.');
-        setState(() => _statusMessage = '');
-        return;
-      }
-
-      final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-      if (osDeviceId.isNotEmpty) {
-        final conflictRows = await Supabase.instance.client
-            .from('v3_auth')
-            .select('id,telefon,telefon_2')
-            .neq('id', authId)
-            .or('os_device_id.eq.$osDeviceId,os_device_id_2.eq.$osDeviceId')
-            .limit(5);
-
-        if (conflictRows.isNotEmpty) {
-          // Proveravamo da li je conflict row zapravo isti korisnik (drugi format telefona)
-          final realConflict = conflictRows.whereType<Map>().any((row) {
-            final t1 = V3ClosedAuthService.normalizePhone(row['telefon']?.toString() ?? '');
-            final t2 = V3ClosedAuthService.normalizePhone(row['telefon_2']?.toString() ?? '');
-            return t1 != phone && t2 != phone;
-          });
-
-          if (realConflict) {
-            V3AppSnackBar.error(
-                context, '❌ Prijava nije odobrena: ovaj uređaj je već povezan sa drugim korisničkim nalogom.');
-            setState(() => _statusMessage = '');
-            return;
-          }
-
-          // Isti korisnik, drugačiji format telefona u bazi – koristimo taj authId
-          final sameUserRow = conflictRows.whereType<Map>().cast<Map<String, dynamic>>().firstWhere(
-            (row) {
-              final t1 = V3ClosedAuthService.normalizePhone(row['telefon']?.toString() ?? '');
-              final t2 = V3ClosedAuthService.normalizePhone(row['telefon_2']?.toString() ?? '');
-              return t1 == phone || t2 == phone;
-            },
-            orElse: () => {},
-          );
-          if (sameUserRow.isNotEmpty) {
-            authId = sameUserRow['id']?.toString().trim() ?? authId;
-          }
-        }
-      }
-
-      setState(() => _statusMessage = '🔐 Pripremam prijavu...');
-
-      await _syncDeviceAndPushForLogin(authId);
-
-      if (!mounted) return;
-
-      _startSmsCooldown();
 
       setState(() {
         _targetAuthId = authId;
@@ -386,46 +236,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
   }
 
-  Future<void> _syncDeviceAndPushForLogin(String authId) async {
-    final rows = await Supabase.instance.client
-        .from('v3_auth')
-        .select('id,tip,os_device_id,os_device_id_2,push_token,push_token_2')
-        .eq('id', authId)
-        .limit(1);
-
-    if (rows.isEmpty) return;
-
-    final tip = (rows.first['tip'] ?? '').toString().trim();
-    final osDeviceIdPrimary = (rows.first['os_device_id'] ?? '').toString().trim();
-    final osDeviceIdSecondary = (rows.first['os_device_id_2'] ?? '').toString().trim();
-    final pushToken = (rows.first['push_token'] ?? '').toString().trim();
-    final pushToken2 = (rows.first['push_token_2'] ?? '').toString().trim();
-
-    final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-    final tokenResult = await V3PushTokenProvider.getBestToken();
-    final currentPushToken = tokenResult?.token.trim() ?? '';
-
-    if (osDeviceId.isEmpty || currentPushToken.isEmpty) {
-      return;
-    }
-
-    final usePrimarySlot = (osDeviceId.isNotEmpty && osDeviceIdPrimary.isNotEmpty && osDeviceIdPrimary == osDeviceId) ||
-        (currentPushToken.isNotEmpty && pushToken.isNotEmpty && pushToken == currentPushToken) ||
-        osDeviceIdPrimary.isEmpty;
-    final slotHint = usePrimarySlot || (osDeviceIdSecondary.isEmpty && pushToken2.isEmpty) ? 'primary' : 'secondary';
-
-    await V3PushTokenEdgeService.syncPushToken(
-      pushToken: currentPushToken,
-      osDeviceId: osDeviceId,
-      slot: slotHint,
-      expectedTip: tip.isEmpty ? null : tip,
-      expectedV3AuthId: authId,
-    );
-  }
-
   Future<void> _advanceAfterPhoneAuth() async {
     final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
-    final authId = (_targetAuthId ?? '').trim();
     if (phone.isEmpty) {
       if (mounted) {
         V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
@@ -433,81 +245,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       }
       return;
     }
-
-    if (authId.isEmpty) {
-      if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
-      _resetToStep1();
-      return;
-    }
-
-    final vozac = await V3VozacService.getVozacByPhoneDirect(phone);
-    if (vozac != null) {
-      if (!mounted) return;
-      await _finalize();
-      return;
-    }
-
-    final putnik = await V3PutnikService.getActiveById(authId);
-    if (putnik == null) {
-      if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Broj nije autorizovan za pristup.');
-      _resetToStep1();
-      return;
-    }
-
-    final missingNow = _missingRequiredProfileFields(putnik);
-    final hasName = !missingNow.contains('ime');
-    final hasTip = !missingNow.contains('tip');
-    final hasBcAdresa = !missingNow.contains('adresa BC');
-    final hasVsAdresa = !missingNow.contains('adresa VS');
-
-    if (hasName && hasTip && hasBcAdresa && hasVsAdresa) {
-      if (!mounted) return;
-      await _finalize();
-      return;
-    }
-
-    final existingName = putnik['ime_prezime']?.toString().trim() ?? '';
-    if (existingName.isNotEmpty) {
-      final parts = existingName.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-      if (parts.isNotEmpty) {
-        _imeController.text = parts.first;
-        _prezimeController.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-      }
-    }
-
-    final existingTip = putnik['tip_putnika']?.toString().trim() ?? '';
-    if (existingTip == 'radnik' || existingTip == 'ucenik' || existingTip == 'dnevni' || existingTip == 'posiljka') {
-      _selectedTip = existingTip;
-    } else {
-      _selectedTip = '';
-    }
-
-    final adreseBc = V3AdresaService.getAdreseZaGrad('BC');
-    final adreseVs = V3AdresaService.getAdreseZaGrad('VS');
-    final existingBcId = putnik['adresa_bc_id']?.toString().trim() ?? '';
-    final existingVsId = putnik['adresa_vs_id']?.toString().trim() ?? '';
-
-    _selectedBcAdresa = existingBcId.isEmpty
-        ? null
-        : adreseBc
-            .where((a) => a.id == existingBcId)
-            .cast<V3Adresa?>()
-            .firstWhere((a) => a != null, orElse: () => null);
-    _selectedVsAdresa = existingVsId.isEmpty
-        ? null
-        : adreseVs
-            .where((a) => a.id == existingVsId)
-            .cast<V3Adresa?>()
-            .firstWhere((a) => a != null, orElse: () => null);
-
     if (!mounted) return;
-    setState(() {
-      _step = _SmsStep.unosProfila;
-      _statusMessage = '';
-      _missingProfileMessage = missingNow.isEmpty ? '' : 'Dopunite obavezna polja: ${missingNow.join(', ')}.';
-    });
+    await _finalize();
   }
 
   Future<void> _saveOnboarding() async {
@@ -769,17 +508,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           const SizedBox(height: 12),
           _buildStatusMessage(_statusMessage),
         ],
-        if (!_isBackendReady) ...[
-          const SizedBox(height: 12),
-          _buildStatusMessage('⏳ Učitavanje baze... sačekajte trenutak.'),
-        ],
         const SizedBox(height: 24),
         V3ButtonUtils.primaryButton(
-          text: !_isBackendReady
-              ? 'Učitavanje baze...'
-              : (_isSmsCooldownActive ? 'Nastavi (${_cooldownRemainingSeconds}s)' : 'Nastavi'),
+          text: 'Nastavi',
           icon: Icons.send,
-          isLoading: _isLoading || _isSmsCooldownActive || !_isBackendReady,
+          isLoading: _isLoading,
           onPressed: _canSubmitPhoneStep ? _sendSms : null,
         ),
         if (_biometricEnabled && _biometricChecked && _biometricAvailable && _hasSavedCredentials) ...[

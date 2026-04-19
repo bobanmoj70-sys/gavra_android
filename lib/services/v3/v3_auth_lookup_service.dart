@@ -20,13 +20,10 @@ class V3AuthLookupService {
     final orClause = _buildPhoneOrClause(candidates);
 
     final rows = await supabase.from('v3_auth').select(_authLookupSelect).or(orClause).limit(20);
-    final filteredRows = _filterRowsByDevice(rows, osDeviceId: osDeviceId);
+    final typedRows =
+        rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>())).toList();
 
-    final vozaciRows = filteredRows.where((row) => row['tip'] == 'vozac').toList();
-    if (vozaciRows.length > 1) {
-      throw StateError('Pronađeno više vozača za isti broj telefona i uređaj.');
-    }
-
+    final vozaciRows = typedRows.where((row) => row['tip'] == 'vozac').toList();
     if (vozaciRows.isEmpty) return null;
     return _mapAuthToLegacyVozac(vozaciRows.first);
   }
@@ -44,34 +41,12 @@ class V3AuthLookupService {
     final orClause = _buildPhoneOrClause(candidates);
 
     final rows = await supabase.from('v3_auth').select(_authLookupSelect).or(orClause).limit(20);
-    final filteredRows = _filterRowsByDevice(rows, osDeviceId: osDeviceId);
-
-    final putniciRows = filteredRows.where((row) => row['tip'] != 'vozac').toList();
-    if (putniciRows.length > 1) {
-      throw StateError('Pronađeno više putnika za isti broj telefona i uređaj.');
-    }
-
-    if (putniciRows.isEmpty) return null;
-    return _mapAuthToLegacyPutnik(putniciRows.first);
-  }
-
-  static List<Map<String, dynamic>> _filterRowsByDevice(
-    List<dynamic> rows, {
-    String? osDeviceId,
-  }) {
-    final normalizedDeviceId = (osDeviceId ?? '').trim();
-
     final typedRows =
         rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>())).toList();
-    if (normalizedDeviceId.isEmpty) {
-      return typedRows;
-    }
 
-    return typedRows.where((row) {
-      final primary = (row['os_device_id'] ?? '').toString().trim();
-      final secondary = (row['os_device_id_2'] ?? '').toString().trim();
-      return primary == normalizedDeviceId || secondary == normalizedDeviceId;
-    }).toList();
+    final putniciRows = typedRows.where((row) => row['tip'] != 'vozac').toList();
+    if (putniciRows.isEmpty) return null;
+    return _mapAuthToLegacyPutnik(putniciRows.first);
   }
 
   static Map<String, dynamic> _mapAuthToLegacyVozac(Map<String, dynamic> row) {

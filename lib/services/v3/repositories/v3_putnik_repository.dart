@@ -46,7 +46,7 @@ class V3PutnikRepository {
   }
 
   Future<void> deleteById(String id) {
-    return supabase.from('v3_auth').delete().eq('id', id);
+    return Future.value();
   }
 
   Map<String, dynamic> _mapPayload(Map<String, dynamic> payload) {
@@ -67,6 +67,10 @@ class V3PutnikRepository {
     if (payload.containsKey('cena_po_pokupljenju')) out['cena_po_pokupljenju'] = payload['cena_po_pokupljenju'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
     if (payload.containsKey('push_token_2')) out['push_token_2'] = payload['push_token_2'];
+    if (payload.containsKey('os_device_id')) out['os_device_id'] = payload['os_device_id'];
+    if (payload.containsKey('os_device_id_2')) out['os_device_id_2'] = payload['os_device_id_2'];
+    if (payload.containsKey('android_device_id')) out['android_device_id'] = payload['android_device_id'];
+    if (payload.containsKey('android_device_id_2')) out['android_device_id_2'] = payload['android_device_id_2'];
 
     return out;
   }

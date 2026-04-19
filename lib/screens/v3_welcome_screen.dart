@@ -9,15 +9,13 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_os_device_id_service.dart';
-import '../services/v3/v3_push_token_sync_service.dart';
+import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_animation_utils.dart';
-import '../utils/v3_app_messages.dart';
-import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -164,11 +162,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (!mounted) return false;
 
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
-
-      unawaited(
-        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:auto_login_vozac')
-            .catchError((Object e) => debugPrint('[V3WelcomeScreen] auto-login vozac push sync error: $e')),
-      );
+      unawaited(_writePushTokenOnLogin(v3AuthId: restoredVozac.id, isVozac: true));
 
       final prefersVozacScreen = restoredVozac.imePrezime.toLowerCase() == 'voja';
       V3NavigationUtils.pushReplacement(
@@ -192,10 +186,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _stopAudio();
       if (!mounted) return false;
 
-      unawaited(
-        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:auto_login_putnik')
-            .catchError((Object e) => debugPrint('[V3WelcomeScreen] auto-login push sync error: $e')),
-      );
+      final putnikId = restored['id']?.toString().trim() ?? '';
+      if (putnikId.isNotEmpty) {
+        unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
+      }
 
       V3NavigationUtils.pushReplacement(
         context,
@@ -254,42 +248,82 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
   }
 
+  Future<void> _writePushTokenOnLogin({
+    required String v3AuthId,
+    required bool isVozac,
+  }) async {
+    try {
+      final tokenResult = await V3PushTokenProvider.getBestToken();
+      final token = tokenResult?.token.trim() ?? '';
+      if (token.isEmpty) return;
+
+      final identity = await V3OsDeviceIdService.getDeviceIdentity();
+      final osDeviceId = (identity.osDeviceId ?? '').trim();
+      final androidDeviceId = (identity.androidDeviceId ?? '').trim();
+      final androidBuildId = (identity.androidBuildId ?? '').trim();
+      final iosDeviceId = (identity.iosDeviceId ?? '').trim();
+      final iosBuildId = (identity.iosBuildId ?? '').trim();
+      if (isVozac) {
+        await V3VozacService.writePushTokenOnLogin(
+          vozacId: v3AuthId,
+          pushToken: token,
+          osDeviceId: osDeviceId,
+          pushToken2: token,
+          osDeviceId2: osDeviceId,
+          androidDeviceId: androidDeviceId,
+          androidDeviceId2: androidDeviceId,
+          androidBuildId: androidBuildId,
+          androidBuildId2: androidBuildId,
+          iosDeviceId: iosDeviceId,
+          iosDeviceId2: iosDeviceId,
+          iosBuildId: iosBuildId,
+          iosBuildId2: iosBuildId,
+        );
+        return;
+      }
+
+      await V3PutnikService.writePushTokenOnLogin(
+        putnikId: v3AuthId,
+        pushToken: token,
+        osDeviceId: osDeviceId,
+        pushToken2: token,
+        osDeviceId2: osDeviceId,
+        androidDeviceId: androidDeviceId,
+        androidDeviceId2: androidDeviceId,
+        androidBuildId: androidBuildId,
+        androidBuildId2: androidBuildId,
+        iosDeviceId: iosDeviceId,
+        iosDeviceId2: iosDeviceId,
+        iosBuildId: iosBuildId,
+        iosBuildId2: iosBuildId,
+      );
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] push token write error: $e');
+    }
+  }
+
   Future<void> _onLoginVerified(String phone) async {
     V3Vozac? vozac;
     Map<String, dynamic>? putnik;
 
     final osDeviceId = (await V3OsDeviceIdService.getOsDeviceId() ?? '').trim();
-    if (osDeviceId.isEmpty) {
-      if (!mounted) return;
-      V3AppSnackBar.error(context, '❌ Uređaj nije moguće verifikovati (UUID nedostaje).');
-      return;
-    }
-
-    try {
-      vozac = await V3VozacService.getVozacByPhoneDirect(phone, osDeviceId: osDeviceId);
-      putnik = await V3PutnikService.getByPhoneDirect(phone, osDeviceId: osDeviceId);
-    } on StateError {
-      if (!mounted) return;
-      V3AppSnackBar.error(context, V3WelcomeMessages.securityConflict);
-      return;
-    }
+    vozac = await V3VozacService.getVozacByPhoneDirect(
+      phone,
+      osDeviceId: osDeviceId.isEmpty ? null : osDeviceId,
+    );
+    putnik = await V3PutnikService.getByPhoneDirect(
+      phone,
+      osDeviceId: osDeviceId.isEmpty ? null : osDeviceId,
+    );
 
     if (!mounted) return;
-
-    if (vozac != null && putnik != null) {
-      V3AppSnackBar.error(context, V3WelcomeMessages.securityConflict);
-      return;
-    }
 
     if (vozac != null) {
       V3VozacService.currentVozac = vozac;
       await V3ClosedAuthService.saveManualSmsVozacPhone(phone);
       await V3ClosedAuthService.clearManualSmsPutnikPhone();
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
-      unawaited(
-        V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_vozac')
-            .catchError((Object e) => debugPrint('[V3WelcomeScreen] vozac push sync error: $e')),
-      );
+      unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
       if (!mounted) return;
       final prefersVozacScreen = vozac.imePrezime.toLowerCase() == 'voja';
       V3NavigationUtils.pushReplacement(
@@ -299,18 +333,25 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       return;
     }
 
-    if (putnik == null) {
-      V3AppSnackBar.error(context, V3WelcomeMessages.profileNotFoundForPhone);
-      return;
-    }
+    putnik ??= <String, dynamic>{
+      'id': '',
+      'ime_prezime': '',
+      'telefon_1': phone,
+      'telefon_2': '',
+      'tip_putnika': '',
+      'adresa_bc_id': null,
+      'adresa_vs_id': null,
+      'adresa_bc_id_2': null,
+      'adresa_vs_id_2': null,
+    };
     V3PutnikService.currentPutnik = putnik;
     await V3ClosedAuthService.saveManualSmsPutnikPhone(phone);
     await V3ClosedAuthService.clearManualSmsVozacPhone();
     await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
-    unawaited(
-      V3PushTokenSyncService.syncCurrentUserWithRetry(reason: 'welcome:login_putnik')
-          .catchError((Object e) => debugPrint('[V3WelcomeScreen] putnik push sync error: $e')),
-    );
+    final putnikId = putnik['id']?.toString().trim() ?? '';
+    if (putnikId.isNotEmpty) {
+      unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
+    }
     if (!mounted) return;
     V3NavigationUtils.pushReplacement(
       context,

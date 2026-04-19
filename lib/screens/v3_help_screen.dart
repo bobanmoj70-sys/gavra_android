@@ -67,7 +67,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.login,
-              title: '1. Prijava (Log in)',
+              title: 'Prijava (Log in)',
               content: [
                 'Prijava je jednostavna i bezbedna. Prilikom prvog prijavljivanja automatski se kreira vaš nalog.',
                 '',
@@ -82,7 +82,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.calendar_month,
-              title: '2. Zakazivanje prevoza',
+              title: 'Zakazivanje prevoza',
               content: [
                 'Zakazivanje se vrši iz vašeg profila, po danima i gradovima.',
                 '',
@@ -106,7 +106,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.notifications_active,
-              title: '3. Obaveštenja (Push notifikacije)',
+              title: 'Obaveštenja (Push notifikacije)',
               content: [
                 'Aplikacija vas automatski obaveštava o svakoj promeni statusa:',
                 '',
@@ -120,7 +120,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.fingerprint,
-              title: '4. Biometrijska prijava',
+              title: 'Biometrijska prijava',
               content: [
                 'Naš sistem automatski detektuje da li vaš uređaj podržava biometrijsku autentifikaciju (otisak prsta ili Face ID).',
                 '',
@@ -131,7 +131,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.location_on,
-              title: '5. Adrese',
+              title: 'Adrese',
               content: [
                 'Svaki putnik ima dodeljenu primarnu adresu za svaki smer (BC / VS).',
                 '',
@@ -142,7 +142,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.swap_horiz,
-              title: '6. Alternativni termin',
+              title: 'Alternativni termin',
               content: [
                 'Kada traženo vreme nije dostupno, digitalni dispečer vam može ponuditi alternativu – ranije ili kasnije od traženog termina.',
                 '',
@@ -151,7 +151,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.event_busy,
-              title: '7. Neradni dani',
+              title: 'Neradni dani',
               content: [
                 'Aplikacija automatski prikazuje obaveštenje ako u tekućoj nedelji postoji neradni dan.',
                 '',
@@ -160,7 +160,7 @@ class V3HelpScreen extends StatelessWidget {
             ),
             _HelpSection(
               icon: Icons.people,
-              title: '9. Tipovi putnika',
+              title: 'Tipovi putnika',
               content: [
                 '👷 Radnik',
                 'Radnici uglavnom imaju slicna polazna vremena - bez potrebe za dodatnom optimizacijom. Prolaze standardnu obradu zahteva.',

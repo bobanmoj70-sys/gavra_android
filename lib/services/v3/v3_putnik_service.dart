@@ -97,46 +97,54 @@ class V3PutnikService {
     await _repo.deleteById(id);
   }
 
-  static Future<Map<String, String>> updatePushTokensOnLogin({
+  static Future<void> writePushTokenOnLogin({
     required String putnikId,
-    required String token,
-    required String osDeviceId,
-    String? existingToken1,
-    String? existingToken2,
+    required String pushToken,
+    String? osDeviceId,
+    String? pushToken2,
+    String? osDeviceId2,
+    String? androidDeviceId,
+    String? androidDeviceId2,
+    String? androidBuildId,
+    String? androidBuildId2,
+    String? iosDeviceId,
+    String? iosDeviceId2,
+    String? iosBuildId,
+    String? iosBuildId2,
   }) async {
+    final safeId = putnikId.trim();
+    final safeToken = pushToken.trim();
+    final safeOsDeviceId = (osDeviceId ?? '').trim();
+    final safeToken2 = (pushToken2 ?? '').trim();
+    final safeOsDeviceId2 = (osDeviceId2 ?? '').trim();
+    final safeAndroidDeviceId = (androidDeviceId ?? '').trim();
+    final safeAndroidDeviceId2 = (androidDeviceId2 ?? '').trim();
+    final safeAndroidBuildId = (androidBuildId ?? '').trim();
+    final safeAndroidBuildId2 = (androidBuildId2 ?? '').trim();
+    final safeIosDeviceId = (iosDeviceId ?? '').trim();
+    final safeIosDeviceId2 = (iosDeviceId2 ?? '').trim();
+    final safeIosBuildId = (iosBuildId ?? '').trim();
+    final safeIosBuildId2 = (iosBuildId2 ?? '').trim();
+    if (safeId.isEmpty || safeToken.isEmpty) return;
+
     try {
-      if (token.isEmpty) return const {};
-
-      if (existingToken1 == null || existingToken1.isEmpty || existingToken1 == token) {
-        await V3PushTokenEdgeService.syncPushToken(
-          pushToken: token,
-          osDeviceId: osDeviceId,
-          slot: 'primary',
-          expectedV3AuthId: putnikId,
-        );
-        return {'push_token': token};
-      }
-
-      if (existingToken2 == null || existingToken2.isEmpty || existingToken2 == token) {
-        await V3PushTokenEdgeService.syncPushToken(
-          pushToken: token,
-          osDeviceId: osDeviceId,
-          slot: 'secondary',
-          expectedV3AuthId: putnikId,
-        );
-        return {'push_token_2': token};
-      }
-
-      await V3PushTokenEdgeService.syncPushToken(
-        pushToken: token,
-        osDeviceId: osDeviceId,
-        slot: 'secondary',
-        expectedV3AuthId: putnikId,
+      await V3PushTokenEdgeService.writeLoginColumns(
+        v3AuthId: safeId,
+        pushToken: safeToken,
+        pushToken2: safeToken2,
+        osDeviceId: safeOsDeviceId,
+        osDeviceId2: safeOsDeviceId2,
+        androidDeviceId: safeAndroidDeviceId,
+        androidDeviceId2: safeAndroidDeviceId2,
+        androidBuildId: safeAndroidBuildId,
+        androidBuildId2: safeAndroidBuildId2,
+        iosDeviceId: safeIosDeviceId,
+        iosDeviceId2: safeIosDeviceId2,
+        iosBuildId: safeIosBuildId,
+        iosBuildId2: safeIosBuildId2,
       );
-      return {'push_token_2': token};
     } catch (e) {
-      debugPrint('[V3PutnikService] updatePushTokensOnLogin error: $e');
-      rethrow;
+      debugPrint('[V3PutnikService] writePushTokenOnLogin error: $e');
     }
   }
 

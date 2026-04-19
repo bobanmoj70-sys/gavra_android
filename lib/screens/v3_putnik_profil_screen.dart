@@ -7,7 +7,6 @@ import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_push_token_sync_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
@@ -624,9 +623,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     if (ok != true || !mounted) return;
     // Otkaži stream subscription prije brisanja sesije
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
-    await V3PushTokenSyncService.clearCurrentUserDeviceTokenOnLogout(
-      reason: 'putnik_logout',
-    );
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
 

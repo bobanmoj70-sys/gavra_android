@@ -11,7 +11,6 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
-import '../services/v3/v3_push_token_sync_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -589,9 +588,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
       }
 
-      await V3PushTokenSyncService.clearCurrentUserDeviceTokenOnLogout(
-        reason: 'vozac_logout',
-      );
       await V3BiometricService().clearCredentials();
       V3VozacService.currentVozac = null;
       await V3ClosedAuthService.clearManualSmsVozacPhone();

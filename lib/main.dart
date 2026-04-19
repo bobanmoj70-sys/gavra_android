@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -15,13 +18,10 @@ import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
-import 'services/v3/v3_closed_auth_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
-import 'services/v3/v3_push_token_sync_service.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
-import 'services/v3/v3_vozac_service.dart';
 import 'services/v3/v3_zahtev_service.dart';
 import 'services/v3_theme_manager.dart';
 
@@ -232,12 +232,123 @@ Future<void> _doStartupTasks() async {
   unawaited(
     _initFcmChannel().catchError((Object e) => debugPrint('⚠️ [main] FCM channel greška: $e')),
   );
+  if (Platform.isIOS) {
+    unawaited(
+      _initIosFcmHandlers().catchError((Object e) => debugPrint('⚠️ [main] iOS FCM handlers greška: $e')),
+    );
+  }
   unawaited(
     _initNotificationHandlers().catchError((Object e) => debugPrint('⚠️ [main] Notification handlers greška: $e')),
   );
   unawaited(
     _initAppServices().catchError((Object e) => debugPrint('⚠️ [main] App services greška: $e')),
   );
+}
+
+Future<void> _ensureFirebaseInitialized() async {
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+  }
+}
+
+Map<String, String> _messageDataToStringMap(Map<String, dynamic> raw) {
+  return raw.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ''));
+}
+
+Future<void> _showForegroundPushNotification({
+  required String title,
+  required String body,
+  required String payload,
+}) async {
+  if (title.isEmpty && body.isEmpty) return;
+
+  await _ensureLocalNotificationsInitialized();
+  final androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
+    styleInformation: BigTextStyleInformation(
+      body,
+      contentTitle: title,
+      summaryText: 'Gavra',
+    ),
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(),
+    ),
+    payload: payload,
+  );
+}
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await _ensureFirebaseInitialized();
+
+  final type = message.data['type']?.toString() ?? '';
+  debugPrint('[FCM][iOS] background message type=$type id=${message.messageId}');
+}
+
+Future<void> _initIosFcmHandlers() async {
+  await _ensureFirebaseInitialized();
+
+  final messaging = FirebaseMessaging.instance;
+  await messaging.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    final type = message.data['type']?.toString() ?? '';
+    final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
+    final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
+
+    debugPrint('[FCM][iOS] onMessage type=$type title=$title');
+    unawaited(V3RolePermissionService.wakeScreenOnPush());
+
+    if (message.notification == null) {
+      await _showForegroundPushNotification(
+        title: title,
+        body: body,
+        payload: type,
+      );
+    }
+  });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    final type = message.data['type']?.toString() ?? '';
+    final data = _messageDataToStringMap(message.data);
+    debugPrint('[FCM][iOS] onMessageOpenedApp type=$type data=$data');
+    unawaited(_handleFcmLaunch(type, data));
+  });
+
+  final initialMessage = await messaging.getInitialMessage();
+  if (initialMessage != null) {
+    final type = initialMessage.data['type']?.toString() ?? '';
+    final data = _messageDataToStringMap(initialMessage.data);
+    debugPrint('[FCM][iOS] getInitialMessage type=$type data=$data');
+    unawaited(_handleFcmLaunch(type, data));
+  }
+
+  messaging.onTokenRefresh.listen((token) {
+    if (token.trim().isNotEmpty) {
+      debugPrint('[FCM][iOS] Token refresh primljen.');
+    }
+  });
+
+  debugPrint('✅ [FCM][iOS] Firebase Messaging handlers konfigurisani');
 }
 
 /// Sluša FCM poruke prosleđene od GavraFcmService (Kotlin) via MethodChannel.
@@ -260,25 +371,9 @@ Future<void> _initFcmChannel() async {
 
         // Prikaži lokalnu notifikaciju (foreground)
         if (title.isNotEmpty || body.isNotEmpty) {
-          await _ensureLocalNotificationsInitialized();
-          final androidDetails = AndroidNotificationDetails(
-            'gavra_push_v2',
-            'Gavra obaveštenja',
-            importance: Importance.max,
-            priority: Priority.high,
-            playSound: true,
-            enableVibration: true,
-            styleInformation: BigTextStyleInformation(
-              body,
-              contentTitle: title,
-              summaryText: 'Gavra',
-            ),
-          );
-          await flutterLocalNotificationsPlugin.show(
-            DateTime.now().millisecondsSinceEpoch.remainder(100000),
-            title,
-            body,
-            NotificationDetails(android: androidDetails),
+          await _showForegroundPushNotification(
+            title: title,
+            body: body,
             payload: type,
           );
         }
@@ -286,16 +381,7 @@ Future<void> _initFcmChannel() async {
       case 'onTokenRefresh':
         final token = call.arguments['token']?.toString() ?? '';
         if (token.isNotEmpty) {
-          debugPrint('[FCM] Token refresh, sync-ujem sa Supabase…');
-          unawaited(
-            V3PushTokenSyncService.syncCurrentUser(
-              token: token,
-              reason: 'fcm:token_refresh',
-            ).catchError((Object e) {
-              debugPrint('⚠️ [FCM] token sync greška: $e');
-              return false;
-            }),
-          );
+          debugPrint('[FCM] Token refresh primljen.');
         }
 
       case 'onLaunchMessage':
@@ -347,24 +433,6 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
   }
 }
 
-Future<void> _restoreSessionForPushSync() async {
-  if (V3VozacService.currentVozac != null || V3PutnikService.currentPutnik != null) return;
-
-  try {
-    await V3ClosedAuthService.restoreVozacFromManualSmsSession();
-  } catch (e) {
-    debugPrint('⚠️ [Push] restoreVozacFromManualSmsSession greška: $e');
-  }
-
-  if (V3VozacService.currentVozac != null || V3PutnikService.currentPutnik != null) return;
-
-  try {
-    await V3ClosedAuthService.restorePutnikFromManualSmsSession();
-  } catch (e) {
-    debugPrint('⚠️ [Push] restorePutnikFromManualSmsSession greška: $e');
-  }
-}
-
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)
 Future<void> _initNotificationHandlers() async {
   try {
@@ -381,20 +449,6 @@ Future<void> _initNotificationHandlers() async {
       debugPrint('⚠️ [Push] Preskačem token sync (Supabase nije spreman): $e');
       return;
     }
-  }
-
-  try {
-    await _restoreSessionForPushSync();
-
-    final tokenResult = await V3PushTokenProvider.getBestToken();
-    if (tokenResult != null && tokenResult.token.trim().isNotEmpty) {
-      await V3PushTokenSyncService.syncCurrentUser(
-        token: tokenResult.token,
-        reason: 'main:init_notification_handlers',
-      );
-    }
-  } catch (e) {
-    debugPrint('⚠️ [Push] Token sync init greška: $e');
   }
 }
 

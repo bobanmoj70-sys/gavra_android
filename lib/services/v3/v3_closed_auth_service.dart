@@ -8,6 +8,12 @@ import 'v3_vozac_service.dart';
 
 class V3ClosedAuthService {
   V3ClosedAuthService._();
+  static final RegExp _uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}4',
+  );
+  static final RegExp _uuidPatternStrict = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
 
   static SupabaseClient get _client => Supabase.instance.client;
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
@@ -18,12 +24,14 @@ class V3ClosedAuthService {
 
   static Future<bool> ensureClientReady() => ensureSupabaseReady();
 
-  static Future<bool> phoneExists(String rawPhone) async {
-    final ready = await ensureClientReady();
-    if (!ready) return false;
+  static bool isValidUuid(String value) {
+    final trimmed = value.trim();
+    return _uuidPattern.hasMatch(trimmed) || _uuidPatternStrict.hasMatch(trimmed);
+  }
 
+  static List<String> _phoneCandidates(String rawPhone) {
     final phone = normalizePhone(rawPhone);
-    if (phone.isEmpty) return false;
+    if (phone.isEmpty) return const [];
 
     final candidates = <String>{};
 
@@ -44,16 +52,40 @@ class V3ClosedAuthService {
       addCandidate('0${digits.substring(3)}');
     }
 
-    if (candidates.isEmpty) return false;
+    return candidates.toList();
+  }
 
+  static String _phoneOrClause(List<String> candidates) {
     final clauses = <String>[];
     for (final candidate in candidates) {
       clauses.add('telefon.eq.$candidate');
       clauses.add('telefon_2.eq.$candidate');
     }
+    return clauses.join(',');
+  }
 
-    final row = await _client.from('v3_auth').select('id').or(clauses.join(',')).limit(1).maybeSingle();
-    return row != null;
+  static Future<String?> findAuthIdByPhone(String rawPhone) async {
+    final ready = await ensureClientReady();
+    if (!ready) return null;
+
+    final candidates = _phoneCandidates(rawPhone);
+    if (candidates.isEmpty) return null;
+
+    final rows = await _client.from('v3_auth').select('id').or(_phoneOrClause(candidates)).limit(10);
+    final ids = rows
+        .whereType<Map>()
+        .map((row) => row['id']?.toString().trim() ?? '')
+        .where((id) => id.isNotEmpty && isValidUuid(id))
+        .toSet()
+        .toList();
+
+    if (ids.isEmpty) return null;
+    return ids.first;
+  }
+
+  static Future<bool> phoneExists(String rawPhone) async {
+    final id = await findAuthIdByPhone(rawPhone);
+    return id != null;
   }
 
   // ─── Manual SMS sesija ──────────────────────────────────────────
