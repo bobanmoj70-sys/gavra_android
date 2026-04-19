@@ -23,7 +23,7 @@ class V3PushTokenEdgeService {
     }
 
     final response = await supabase.functions.invoke(
-      'sync-push-token',
+      'sync-login-columns',
       body: {
         'v3_auth_id': targetId,
         'push_token': pushToken.trim(),
@@ -34,6 +34,10 @@ class V3PushTokenEdgeService {
         if ((androidBuildId2 ?? '').trim().isNotEmpty) 'android_build_id_2': androidBuildId2!.trim(),
         if ((iosDeviceId ?? '').trim().isNotEmpty) 'ios_device_id': iosDeviceId!.trim(),
         if ((iosDeviceId2 ?? '').trim().isNotEmpty) 'ios_device_id_2': iosDeviceId2!.trim(),
+        if ((androidDeviceId ?? '').trim().isNotEmpty || (iosDeviceId ?? '').trim().isNotEmpty)
+          'os_device_id': ((androidDeviceId ?? '').trim().isNotEmpty ? androidDeviceId! : iosDeviceId!).trim(),
+        if ((androidDeviceId2 ?? '').trim().isNotEmpty || (iosDeviceId2 ?? '').trim().isNotEmpty)
+          'os_device_id_2': ((androidDeviceId2 ?? '').trim().isNotEmpty ? androidDeviceId2! : iosDeviceId2!).trim(),
         if ((iosBuildId ?? '').trim().isNotEmpty) 'ios_build_id': iosBuildId!.trim(),
         if ((iosBuildId2 ?? '').trim().isNotEmpty) 'ios_build_id_2': iosBuildId2!.trim(),
         if ((expectedTip ?? '').trim().isNotEmpty) 'expected_tip': expectedTip!.trim(),
@@ -42,10 +46,10 @@ class V3PushTokenEdgeService {
 
     final status = response.status;
     final data = response.data;
-    final isOk = data is Map && data['ok'] == true;
+    final isUpdated = data is Map && data['ok'] == true && data['updated'] == true;
 
-    if (status < 200 || status >= 300 || !isOk) {
-      throw Exception('Edge sync-push-token failed (status=$status, data=$data)');
+    if (status < 200 || status >= 300 || !isUpdated) {
+      throw Exception('Edge sync-login-columns failed (status=$status, data=$data)');
     }
   }
 }

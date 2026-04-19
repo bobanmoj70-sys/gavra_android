@@ -15,6 +15,7 @@ import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
+import '../widgets/v3_update_banner.dart';
 
 enum _SmsStep { unosTelefona, unosProfila }
 
@@ -24,13 +25,13 @@ enum _SmsStep { unosTelefona, unosProfila }
 /// [initialPhone]  – pre-popunjen telefon (vozač)
 /// [header]        – widget iznad forme (vozač header sa imenom)
 /// [biometricKey]  – ključ za SecureStorage biometrije (null = bez biometrije)
-/// [onVerified]    – callback nakon uspešne verifikacije, prima normalizovan telefon
+/// [onVerified]    – callback nakon uspešne verifikacije, prima normalizovan telefon + auth id (ako postoji)
 class V3SmsLoginScreen extends StatefulWidget {
   final String title;
   final String? initialPhone;
   final Widget? header;
   final String? biometricKey;
-  final Future<void> Function(String canonicalPhone) onVerified;
+  final Future<void> Function(String canonicalPhone, String? authId) onVerified;
 
   const V3SmsLoginScreen({
     super.key,
@@ -211,7 +212,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final authId = await V3ClosedAuthService.findAuthIdByPhone(phone);
+      final authId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(phone);
       if (authId == null) {
         if (!mounted) return;
         V3AppSnackBar.error(context, '❌ Broj telefona i UUID reda nisu pronađeni.');
@@ -359,7 +360,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         }
       }
 
-      await widget.onVerified(phone);
+      await widget.onVerified(phone, _targetAuthId);
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _finalize error: $e');
@@ -431,6 +432,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const V3UpdateBanner(),
               if (widget.header != null) ...[
                 widget.header!,
                 const SizedBox(height: 32),

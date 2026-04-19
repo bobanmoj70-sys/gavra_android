@@ -1,5 +1,4 @@
 import '../../globals.dart';
-import '../../utils/v3_phone_utils.dart';
 
 class V3AuthLookupService {
   V3AuthLookupService._();
@@ -11,36 +10,50 @@ class V3AuthLookupService {
     final ready = await ensureSupabaseReady();
     if (!ready) return null;
 
-    final candidates = _phoneCandidates(normalizedPhone);
-    if (candidates.isEmpty) return null;
+    final phone = normalizedPhone.trim();
+    if (phone.isEmpty) return null;
 
-    final orClause = _buildPhoneOrClause(candidates);
+    final authId = await _findAuthIdByPhone(phone);
+    if (authId == null) return null;
 
-    final rows = await supabase.from('v3_auth').select(_authLookupSelect).or(orClause).limit(20);
-    final typedRows =
-        rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>())).toList();
+    final row = await _getAuthById(authId);
+    if (row == null) return null;
 
-    final vozaciRows = typedRows.where((row) => row['tip'] == 'vozac').toList();
-    if (vozaciRows.isEmpty) return null;
-    return _mapAuthToLegacyVozac(vozaciRows.first);
+    if (row['tip'] != 'vozac') return null;
+    return _mapAuthToLegacyVozac(row);
   }
 
   static Future<Map<String, dynamic>?> getPutnikByPhone(String normalizedPhone) async {
     final ready = await ensureSupabaseReady();
     if (!ready) return null;
 
-    final candidates = _phoneCandidates(normalizedPhone);
-    if (candidates.isEmpty) return null;
+    final phone = normalizedPhone.trim();
+    if (phone.isEmpty) return null;
 
-    final orClause = _buildPhoneOrClause(candidates);
+    final authId = await _findAuthIdByPhone(phone);
+    if (authId == null) return null;
 
-    final rows = await supabase.from('v3_auth').select(_authLookupSelect).or(orClause).limit(20);
-    final typedRows =
-        rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row.cast<String, dynamic>())).toList();
+    final row = await _getAuthById(authId);
+    if (row == null) return null;
 
-    final putniciRows = typedRows.where((row) => row['tip'] != 'vozac').toList();
-    if (putniciRows.isEmpty) return null;
-    return _mapAuthToLegacyPutnik(putniciRows.first);
+    if (row['tip'] == 'vozac') return null;
+    return _mapAuthToLegacyPutnik(row);
+  }
+
+  static Future<String?> _findAuthIdByPhone(String phone) async {
+    final data = await supabase.rpc(
+      'v3_auth_find_id_by_phone',
+      params: {'p_telefon': phone},
+    );
+    final authId = data?.toString().trim() ?? '';
+    if (authId.isEmpty) return null;
+    return authId;
+  }
+
+  static Future<Map<String, dynamic>?> _getAuthById(String authId) async {
+    final row = await supabase.from('v3_auth').select(_authLookupSelect).eq('id', authId).maybeSingle();
+    if (row == null) return null;
+    return Map<String, dynamic>.from(row.cast<String, dynamic>());
   }
 
   static Map<String, dynamic> _mapAuthToLegacyVozac(Map<String, dynamic> row) {
@@ -75,42 +88,5 @@ class V3AuthLookupService {
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };
-  }
-
-  static List<String> _phoneCandidates(String inputPhone) {
-    final raw = inputPhone.trim();
-    if (raw.isEmpty) return const [];
-
-    final normalized = V3PhoneUtils.normalize(raw);
-    final digits = normalized.replaceAll('+', '');
-    final out = <String>{};
-
-    void addCandidate(String? value) {
-      final v = (value ?? '').trim();
-      if (v.isNotEmpty) out.add(v);
-    }
-
-    addCandidate(raw);
-    addCandidate(normalized);
-
-    if (digits.isNotEmpty) {
-      addCandidate(digits); // 381...
-      addCandidate('+$digits');
-    }
-
-    if (digits.startsWith('381') && digits.length > 3) {
-      addCandidate('0${digits.substring(3)}');
-    }
-
-    return out.toList();
-  }
-
-  static String _buildPhoneOrClause(List<String> phones) {
-    final clauses = <String>[];
-    for (final phone in phones) {
-      clauses.add('telefon.eq.$phone');
-      clauses.add('telefon_2.eq.$phone');
-    }
-    return clauses.join(',');
   }
 }

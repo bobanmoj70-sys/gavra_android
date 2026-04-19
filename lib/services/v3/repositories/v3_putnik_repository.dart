@@ -10,7 +10,7 @@ class V3PutnikRepository {
     return supabase
         .from('v3_auth')
         .select(_legacyPutnikSelect)
-        .or('telefon.eq.$normalizedPhone,telefon_2.eq.$normalizedPhone')
+        .eq('telefon', normalizedPhone)
         .neq('tip', 'vozac')
         .limit(1);
   }

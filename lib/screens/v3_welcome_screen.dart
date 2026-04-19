@@ -297,14 +297,21 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
   }
 
-  Future<void> _onLoginVerified(String phone) async {
+  Future<void> _onLoginVerified(String phone, String? authId) async {
     V3Vozac? vozac;
     Map<String, dynamic>? putnik;
 
-    vozac = await V3VozacService.getVozacByPhoneDirect(
+    final resolvedId = (authId ?? '').trim();
+
+    if (resolvedId.isNotEmpty) {
+      vozac = V3VozacService.getVozacById(resolvedId);
+      putnik = await V3PutnikService.getActiveById(resolvedId);
+    }
+
+    vozac ??= await V3VozacService.getVozacByPhoneDirect(
       phone,
     );
-    putnik = await V3PutnikService.getByPhoneDirect(
+    putnik ??= await V3PutnikService.getByPhoneDirect(
       phone,
     );
 
@@ -336,6 +343,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       'adresa_bc_id_2': null,
       'adresa_vs_id_2': null,
     };
+
     V3PutnikService.currentPutnik = putnik;
     await V3ClosedAuthService.saveManualSmsPutnikPhone(phone);
     await V3ClosedAuthService.clearManualSmsVozacPhone();
