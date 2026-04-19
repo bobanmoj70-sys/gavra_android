@@ -30,6 +30,7 @@ import 'services/v3_theme_manager.dart';
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 bool _localNotificationsInitialized = false;
+bool _notificationLaunchHandled = false;
 Future<void>? _localNotificationsInitInFlight;
 Future<void>? _supabaseInitInFlight;
 
@@ -83,6 +84,15 @@ Future<void> _ensureLocalNotificationsInitialized() async {
         flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.createNotificationChannel(channel);
     await androidImpl?.createNotificationChannel(alternativaChannel);
+
+    if (!_notificationLaunchHandled) {
+      final launchDetails = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+      final notificationResponse = launchDetails?.notificationResponse;
+      if ((launchDetails?.didNotificationLaunchApp ?? false) && notificationResponse != null) {
+        _notificationLaunchHandled = true;
+        onNotificationTap(notificationResponse);
+      }
+    }
 
     _localNotificationsInitialized = true;
   }();
@@ -582,20 +592,20 @@ Future<void> showAlternativaNotification({
       AndroidNotificationAction(
         'accept_pre',
         altPre,
-        showsUserInterface: false,
+        showsUserInterface: true,
         cancelNotification: true,
       ),
     if (altPosle.isNotEmpty)
       AndroidNotificationAction(
         'accept_posle',
         altPosle,
-        showsUserInterface: false,
+        showsUserInterface: true,
         cancelNotification: true,
       ),
     const AndroidNotificationAction(
       'reject',
       'Odbij',
-      showsUserInterface: false,
+      showsUserInterface: true,
       cancelNotification: true,
     ),
   ];
@@ -627,6 +637,7 @@ Future<void> showAlternativaNotification({
 // Hendler za klik na interaktivne gumbe (actions)
 @pragma('vm:entry-point')
 void onNotificationTap(NotificationResponse response) async {
+  DartPluginRegistrant.ensureInitialized();
   WidgetsFlutterBinding.ensureInitialized();
 
   final String? payload = response.payload;

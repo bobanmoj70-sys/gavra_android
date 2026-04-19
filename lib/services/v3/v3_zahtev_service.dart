@@ -483,16 +483,40 @@ class V3ZahtevService {
       id,
       {
         'status': 'odobreno',
-        'trazeni_polazak_at': izabranoVremeNormalized,
-        'polazak_at': izabranoVremeNormalized,
+        'trazeni_polazak_at': selectedHHmm,
+        'polazak_at': selectedHHmm,
         'alternativa_pre_at': null,
         'alternativa_posle_at': null,
       },
     );
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+
+    final putnikId = (zahtev['created_by']?.toString() ?? '').trim();
+    if (putnikId.isNotEmpty && grad.isNotEmpty && datum.isNotEmpty) {
+      final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
+        putnikId: putnikId,
+        datumIso: datum,
+        grad: grad,
+        payload: {
+          'polazak_at': selectedHHmm,
+          'alternativa_pre_at': null,
+          'alternativa_posle_at': null,
+          'otkazano_at': null,
+          'otkazano_by': null,
+        },
+      );
+      for (final op in updatedOperativni) {
+        if (op is Map<String, dynamic>) {
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', op);
+        }
+      }
+      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
+    }
   }
 
   static Future<void> odbijAlternativu(String id) async {
+    final zahtev = await _repository.getById(id);
+
     final row = await _repository.updateRaw(
       id,
       {
@@ -502,5 +526,31 @@ class V3ZahtevService {
       },
     );
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+
+    final putnikId = (zahtev?['created_by']?.toString() ?? '').trim();
+    final grad = (zahtev?['grad']?.toString() ?? '').trim();
+    final datum = (zahtev?['datum']?.toString() ?? '').split('T').first;
+
+    if (putnikId.isNotEmpty && grad.isNotEmpty && datum.isNotEmpty) {
+      final nowIso = DateTime.now().toIso8601String();
+      final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
+        putnikId: putnikId,
+        datumIso: datum,
+        grad: grad,
+        payload: {
+          'polazak_at': null,
+          'alternativa_pre_at': null,
+          'alternativa_posle_at': null,
+          'otkazano_at': nowIso,
+          'otkazano_by': putnikId,
+        },
+      );
+      for (final op in updatedOperativni) {
+        if (op is Map<String, dynamic>) {
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', op);
+        }
+      }
+      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
+    }
   }
 }

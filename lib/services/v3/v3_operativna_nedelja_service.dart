@@ -214,6 +214,7 @@ class V3OperativnaNedeljaService {
     try {
       final row = await _repo.updateByIdReturningSingle(id, {
         'naplacen_iznos': iznos,
+        'naplacen_at': DateTime.now().toIso8601String(),
         if (naplacenBy != null) 'naplacen_by': naplacenBy,
       });
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
