@@ -40,7 +40,7 @@ class V3PlacanjeDialogHelper {
     });
 
     final last = placenoRows.first;
-    final vozacId = last['naplacen_by']?.toString();
+    final vozacId = last['naplaceno_by']?.toString();
     final vozacIme = vozacId == null ? null : V3VozacService.getVozacById(vozacId)?.imePrezime;
 
     return {
