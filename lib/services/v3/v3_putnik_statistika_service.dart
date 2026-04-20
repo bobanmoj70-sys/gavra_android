@@ -254,10 +254,7 @@ class V3PutnikStatistikaService {
 
   static bool _isPlaceno(Map<String, dynamic> row, Map<String, Map<String, dynamic>> naplataByOperativna) {
     final operativnaId = row['id']?.toString() ?? '';
-    if (operativnaId.isNotEmpty && naplataByOperativna.containsKey(operativnaId)) {
-      return true;
-    }
-    return V3StatusFilters.isNaplacenAt(row['naplacen_at']);
+    return operativnaId.isNotEmpty && naplataByOperativna.containsKey(operativnaId);
   }
 
   static bool _isOtkazano(Map<String, dynamic> row) {
@@ -277,8 +274,7 @@ class V3PutnikStatistikaService {
         return iznosFin > 0 ? iznosFin : fallback;
       }
     }
-    final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0;
-    return iznos > 0 ? iznos : fallback;
+    return fallback;
   }
 
   static Map<String, Map<String, dynamic>> _latestNaplataByOperativna({

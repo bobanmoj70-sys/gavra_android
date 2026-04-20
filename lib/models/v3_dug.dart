@@ -1,5 +1,4 @@
 import '../utils/v3_date_utils.dart';
-import '../utils/v3_status_filters.dart';
 
 class V3Dug {
   final String id;
@@ -81,7 +80,7 @@ class V3Dug {
       datum: V3DateUtils.parseDatumOr(json['datum'] as String?, DateTime.now()),
       pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
       iznos: iznos,
-      placeno: V3StatusFilters.isNaplacenAt(json['naplacen_at']),
+      placeno: json['placeno_finansije'] as bool? ?? false,
       createdAt: null,
     );
   }

@@ -64,7 +64,7 @@ class V3DugService {
         final rowWithDriver = Map<String, dynamic>.from(row);
         rowWithDriver['pokupljen_by'] = pickupVozacId;
         rowWithDriver['vozac_ime'] = vozacData?['ime_prezime'] as String? ?? '';
-        rowWithDriver['naplacen_at'] = naplata?['created_at'];
+        rowWithDriver['placeno_finansije'] = naplata != null;
         dugovi.add(V3Dug.fromOperacija(rowWithDriver, putnikData: putnikData));
       } catch (_) {}
     }
