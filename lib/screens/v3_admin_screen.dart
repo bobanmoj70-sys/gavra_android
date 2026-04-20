@@ -869,21 +869,25 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     );
   }
 
-  /// Računa pazar po vozaču iz operativnaNedeljaCache — samo danas, akter = naplacen_by
+  /// Računa pazar po vozaču iz v3_finansije — samo danas, akter = naplaceno_by
   Map<String, double> _getPazarPoVozacu() {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
     final danas = DateTime.now();
     final result = <String, double>{};
     for (final row in cache.values) {
-      final naplacenAtStr = row['naplacen_at'] as String?;
-      if (naplacenAtStr == null || naplacenAtStr.isEmpty) continue;
-      final dt = DateTime.tryParse(naplacenAtStr);
+      if (row['tip'] != 'prihod') continue;
+      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+      if (kategorija != 'operativna_naplata') continue;
+
+      final createdAtStr = row['created_at'] as String?;
+      if (createdAtStr == null || createdAtStr.isEmpty) continue;
+      final dt = DateTime.tryParse(createdAtStr);
       if (dt == null) continue;
       if (dt.year != danas.year || dt.month != danas.month || dt.day != danas.day) continue;
       // Akter: ko je naplatio
-      final akterId = row['naplacen_by']?.toString();
+      final akterId = row['naplaceno_by']?.toString();
       if (akterId == null || akterId.isEmpty) continue;
-      final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
+      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
       result[akterId] = (result[akterId] ?? 0.0) + iznos;
     }
     return result;

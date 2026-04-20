@@ -56,12 +56,6 @@ class V3FinansijeService {
     _mesecnaNaplataLocks.add(lockKey);
 
     try {
-      Map<String, dynamic>? existing = await _repo.findMesecnaOperativnaNaplataId(
-        putnikId: putnikId,
-        mesec: mesec,
-        godina: godina,
-      );
-
       final payload = {
         'naziv': 'Naplata prevoza',
         'kategorija': 'operativna_naplata',
@@ -69,24 +63,12 @@ class V3FinansijeService {
         'iznos': iznos,
         'putnik_v3_auth_id': putnikId,
         'naplaceno_by': naplacenoBy,
+        'broj_voznji': 1,
         'mesec': mesec,
         'godina': godina,
       };
 
-      if (existing != null) {
-        await _repo.updateById(existing['id'] as String, payload);
-      } else {
-        existing = await _repo.findMesecnaOperativnaNaplataId(
-          putnikId: putnikId,
-          mesec: mesec,
-          godina: godina,
-        );
-        if (existing != null) {
-          await _repo.updateById(existing['id'] as String, payload);
-          return;
-        }
-        await _repo.insert(payload);
-      }
+      await _repo.insert(payload);
     } catch (e) {
       debugPrint('[V3FinansijeService] sacuvajMesecnuOperativnuNaplatu error: $e');
       rethrow;

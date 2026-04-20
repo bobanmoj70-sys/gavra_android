@@ -61,7 +61,6 @@ class V3DnevnaPredajaService {
       'kategorija': _kategorija,
       'iznos': predaja.predaoIznos,
       'isplata_iz': 'predaja',
-      'ponavljaj_mesecno': false,
       'mesec': predaja.datum.month,
       'godina': predaja.datum.year,
       'naplaceno_by': predaja.vozacId,

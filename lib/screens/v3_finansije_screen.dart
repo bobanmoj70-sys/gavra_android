@@ -588,7 +588,6 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
             kategorija: s.$1,
             iznos: val,
             isplataIz: 'pazar',
-            ponavljajMesecno: false,
             mesec: now.month,
             godina: now.year,
           )));

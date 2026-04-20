@@ -25,7 +25,7 @@ import '../utils/v3_text_utils.dart';
 
 /// DNEVNIK NAPLATE — V3
 /// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
-/// Podaci iz v3_operativna_nedelja cache (placeno kada je naplacen_at postavljen)
+/// Podaci iz v3_finansije cache (prihod operativna_naplata)
 class V3DnevnikNaplateScreen extends StatefulWidget {
   const V3DnevnikNaplateScreen({super.key});
 
@@ -51,7 +51,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
     V3StreamUtils.subscribe<int>(
       key: 'dnevnik_naplate_cache',
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_finansije', 'v3_auth']),
       onData: (_) {
         if (!mounted) return;
         _ucitajVozace();
@@ -87,30 +87,32 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     if (_selectedVozacId == null) return;
 
     final target = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache;
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
     final putniciCache = V3MasterRealtimeManager.instance.putniciCache;
 
     final rows = <_NaplataRow>[];
     for (final row in cache.values) {
-      if (row['naplacen_at'] == null) continue;
+      if (row['tip'] != 'prihod') continue;
+      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+      if (kategorija != 'operativna_naplata') continue;
 
-      final vozacId = row['naplacen_by']?.toString() ?? '';
+      final vozacId = row['naplaceno_by']?.toString() ?? '';
       if (vozacId != _selectedVozacId) continue;
 
-      final vremePlaceno = row['naplacen_at'] as String? ?? '';
+      final vremePlaceno = row['created_at'] as String? ?? '';
       final dt = V3DateUtils.parseTs(vremePlaceno);
       if (dt == null) continue;
 
       final payDay = DateTime(dt.year, dt.month, dt.day);
       if (payDay != target) continue;
 
-      final putnikId = row['created_by']?.toString() ?? '';
+      final putnikId = row['putnik_v3_auth_id']?.toString() ?? '';
       final putnikData = putniciCache[putnikId];
       final ime = (putnikData?['ime_prezime'] as String?) ??
           row['ime_prezime'] as String? ??
           row['putnik_ime'] as String? ??
           '?';
-      final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
+      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
       final vreme = V3DanHelper.formatVreme(dt.hour, dt.minute);
       rows.add(_NaplataRow(
         id: row['id']?.toString() ?? '',

@@ -8,7 +8,6 @@ class V3Trosak {
   final String? kategorija;
   final double iznos;
   final String isplataIz; // 'pazar', 'racun', ...
-  final bool ponavljajMesecno;
   final int mesec;
   final int godina;
   final String? vozacId;
@@ -22,7 +21,6 @@ class V3Trosak {
     this.kategorija,
     this.iznos = 0,
     this.isplataIz = 'pazar',
-    this.ponavljajMesecno = true,
     required this.mesec,
     required this.godina,
     this.vozacId,
@@ -39,7 +37,6 @@ class V3Trosak {
       kategorija: json['kategorija'] as String?,
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
       isplataIz: json['isplata_iz'] as String? ?? 'pazar',
-      ponavljajMesecno: json['ponavljaj_mesecno'] as bool? ?? true,
       mesec: json['mesec'] as int? ?? now.month,
       godina: json['godina'] as int? ?? now.year,
       vozacId: json['naplaceno_by']?.toString(),
@@ -55,7 +52,6 @@ class V3Trosak {
         'kategorija': kategorija,
         'iznos': iznos,
         'isplata_iz': isplataIz,
-        'ponavljaj_mesecno': ponavljajMesecno,
         'mesec': mesec,
         'godina': godina,
         'naplaceno_by': vozacId,
