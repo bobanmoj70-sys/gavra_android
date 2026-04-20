@@ -27,10 +27,6 @@ class V3StatusFilters {
     final otkazanoAt = (row['otkazano_at']?.toString() ?? '').trim();
     if (otkazanoAt.isNotEmpty) return 'otkazano';
 
-    final altPre = (row['alternativa_pre_at']?.toString() ?? '').trim();
-    final altPosle = (row['alternativa_posle_at']?.toString() ?? '').trim();
-    if (altPre.isNotEmpty || altPosle.isNotEmpty) return 'alternativa';
-
     final polazakAt = (row['polazak_at']?.toString() ?? '').trim();
     if (polazakAt.isNotEmpty) return 'odobreno';
 

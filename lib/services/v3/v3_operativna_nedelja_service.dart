@@ -27,8 +27,6 @@ class V3OperativnaNedeljaEntry {
   final String? otkazanoBy;
   final DateTime? otkazanoAt;
   final int? maxMesta;
-  final String? altVremePre;
-  final String? altVremePosle;
   final bool koristiSekundarnu;
   final String? adresaIdOverride;
   final String? createdBy;
@@ -52,8 +50,6 @@ class V3OperativnaNedeljaEntry {
     this.otkazanoBy,
     this.otkazanoAt,
     this.maxMesta,
-    this.altVremePre,
-    this.altVremePosle,
     this.koristiSekundarnu = false,
     this.adresaIdOverride,
     this.createdBy,
@@ -81,8 +77,6 @@ class V3OperativnaNedeljaEntry {
       otkazanoBy: json['otkazano_by'] as String?,
       otkazanoAt: V3DateUtils.parseTs(json['otkazano_at'] as String?),
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
-      altVremePre: json['alternativa_pre_at'] as String?,
-      altVremePosle: json['alternativa_posle_at'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
       adresaIdOverride: json['adresa_override_id'] as String?,
       createdBy: json['created_by'] as String?,
@@ -105,8 +99,6 @@ class V3OperativnaNedeljaEntry {
       if (naplacenBy != null) 'naplacen_by': naplacenBy,
       if (otkazanoBy != null) 'otkazano_by': otkazanoBy,
       if (otkazanoAt != null) 'otkazano_at': otkazanoAt!.toIso8601String(),
-      if (altVremePre != null) 'alternativa_pre_at': altVremePre,
-      if (altVremePosle != null) 'alternativa_posle_at': altVremePosle,
       'koristi_sekundarnu': koristiSekundarnu,
       if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
     };
@@ -252,9 +244,9 @@ class V3OperativnaNedeljaService {
   }
 
   /// Čita broj zauzetih mesta — suma broj_mesta aktivnih operativnih zapisa.
-  /// Aktivni status je izveden iz operativnih kolona (`otkazano_at`, `alternativa_*`, `polazak_at`).
+  /// Aktivni status je izveden iz operativnih kolona (`otkazano_at`, `polazak_at`).
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
-    const aktivniStatusi = {'obrada', 'odobreno', 'alternativa'};
+    const aktivniStatusi = {'obrada', 'odobreno'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
     return zapisi.where((e) => aktivniStatusi.contains(e.statusFinal)).fold(0, (sum, e) => sum + e.brojMesta);
   }

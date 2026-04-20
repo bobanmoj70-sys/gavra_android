@@ -455,7 +455,7 @@ class V3ZahtevService {
     final kapacitetRow = await _kapacitetRepository.getSlotByGradDatumVreme(
       grad: grad,
       datum: datum,
-      vreme: izabranoVremeNormalized,
+      vreme: selectedHHmm,
     );
 
     if (kapacitetRow == null) {
@@ -476,7 +476,7 @@ class V3ZahtevService {
       return toHHmm(assigned) == selectedHHmm;
     }).length;
     if (maxMesta > 0 && usedCount >= maxMesta) {
-      throw Exception('Termin $izabranoVremeNormalized je trenutno popunjen.');
+      throw Exception('Termin $selectedHHmm je trenutno popunjen.');
     }
 
     final row = await _repository.updateRaw(
@@ -499,8 +499,6 @@ class V3ZahtevService {
         grad: grad,
         payload: {
           'polazak_at': selectedHHmm,
-          'alternativa_pre_at': null,
-          'alternativa_posle_at': null,
           'otkazano_at': null,
           'otkazano_by': null,
         },
@@ -539,8 +537,6 @@ class V3ZahtevService {
         grad: grad,
         payload: {
           'polazak_at': null,
-          'alternativa_pre_at': null,
-          'alternativa_posle_at': null,
           'otkazano_at': nowIso,
           'otkazano_by': putnikId,
         },
