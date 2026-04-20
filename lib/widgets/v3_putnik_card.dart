@@ -255,8 +255,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     }
 
     final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
-    final alreadyPaid =
-        !isMesecniModel && ((naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt));
+    final alreadyPaid = !isMesecniModel && (naplataInfo?.isPaid ?? false);
 
     try {
       if (alreadyPaid && widget.entry != null) {
@@ -383,7 +382,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
     final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
-    final bool isPlacen = (naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+    final bool isPlacen = naplataInfo?.isPaid ?? false;
 
     return V3StyleHelper.putnikCard(
       status: status,
@@ -399,7 +398,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
     final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
-    final placen = (naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+    final placen = naplataInfo?.isPaid ?? false;
     return V3StatusPresentation.forCardText(
       status: status,
       pokupljen: pokupljen,
@@ -456,10 +455,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
     final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
-    final bool isPlacen = (naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
-    final String? naplataById = naplataInfo?.paidBy ?? widget.entry?.naplacenBy;
-    final DateTime? naplataAt = naplataInfo?.paidAt ?? widget.entry?.naplacenAt;
-    final double naplataIznos = naplataInfo?.iznos ?? (widget.entry?.iznosNaplacen ?? 0);
+    final bool isPlacen = naplataInfo?.isPaid ?? false;
+    final String? naplataById = naplataInfo?.paidBy;
+    final DateTime? naplataAt = naplataInfo?.paidAt;
+    final double naplataIznos = naplataInfo?.iznos ?? 0;
     final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
@@ -679,9 +678,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                         if (isPlacen && !isPokupljen) ...[
                           Text(
                             () {
-                              final iznos = widget.entry?.iznosNaplacen ?? 0;
                               final vpl = naplataAt;
-                              final iznosSafe = naplataIznos > 0 ? naplataIznos : iznos;
+                              final iznosSafe = naplataIznos;
                               final iznosStr = iznosSafe > 0 ? '${iznosSafe.toStringAsFixed(0)} RSD' : '';
                               final dtStr = _fmt(vpl);
                               return 'Plaćeno: ${[
@@ -715,7 +713,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           ),
                           Text(
                             () {
-                              final iznos = naplataIznos > 0 ? naplataIznos : (widget.entry?.iznosNaplacen ?? 0);
+                              final iznos = naplataIznos;
                               final vpl = naplataAt;
                               final iznosStr = iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : '';
                               final dtStr = _fmt(vpl);

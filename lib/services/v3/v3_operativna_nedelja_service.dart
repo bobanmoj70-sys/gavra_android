@@ -19,11 +19,7 @@ class V3OperativnaNedeljaEntry {
   final DateTime? updatedAt;
   final int brojMesta;
   final DateTime? pokupljenAt;
-  final double iznosNaplacen;
-  final DateTime? naplacenAt;
-  final String naplataStatus;
   final String? pokupljenBy;
-  final String? naplacenBy;
   final String? otkazanoBy;
   final DateTime? otkazanoAt;
   final int? maxMesta;
@@ -42,11 +38,7 @@ class V3OperativnaNedeljaEntry {
     this.updatedAt,
     this.brojMesta = 1,
     this.pokupljenAt,
-    this.iznosNaplacen = 0,
-    this.naplacenAt,
-    this.naplataStatus = 'nije_placeno',
     this.pokupljenBy,
-    this.naplacenBy,
     this.otkazanoBy,
     this.otkazanoAt,
     this.maxMesta,
@@ -69,11 +61,7 @@ class V3OperativnaNedeljaEntry {
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
       pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
-      iznosNaplacen: (json['naplacen_iznos'] as num?)?.toDouble() ?? 0,
-      naplacenAt: V3DateUtils.parseTs(json['naplacen_at'] as String?),
-      naplataStatus: V3StatusFilters.isNaplacenAt(json['naplacen_at']) ? 'placeno' : 'nije_placeno',
       pokupljenBy: json['pokupljen_by'] as String?,
-      naplacenBy: json['naplacen_by'] as String?,
       otkazanoBy: json['otkazano_by'] as String?,
       otkazanoAt: V3DateUtils.parseTs(json['otkazano_at'] as String?),
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
@@ -93,10 +81,7 @@ class V3OperativnaNedeljaEntry {
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       if (polazakAt != null) 'polazak_at': polazakAt,
       if (pokupljenAt != null) 'pokupljen_at': pokupljenAt!.toIso8601String(),
-      'naplacen_iznos': iznosNaplacen,
-      if (naplacenAt != null) 'naplacen_at': naplacenAt!.toIso8601String(),
       if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
-      if (naplacenBy != null) 'naplacen_by': naplacenBy,
       if (otkazanoBy != null) 'otkazano_by': otkazanoBy,
       if (otkazanoAt != null) 'otkazano_at': otkazanoAt!.toIso8601String(),
       'koristi_sekundarnu': koristiSekundarnu,
