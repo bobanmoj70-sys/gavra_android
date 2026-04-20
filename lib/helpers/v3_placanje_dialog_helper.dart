@@ -22,18 +22,20 @@ class V3PlacanjeDialogHelper {
   V3PlacanjeDialogHelper._();
 
   static Map<String, dynamic>? _getZadnjaNaplata(String putnikId) {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
     final placenoRows = cache.where((row) {
-      if (row['created_by']?.toString() != putnikId) return false;
-      final vremePlacen = row['naplacen_at']?.toString();
+      if (row['tip']?.toString() != 'prihod') return false;
+      if ((row['kategorija']?.toString().toLowerCase() ?? '') != 'operativna_naplata') return false;
+      if (row['putnik_v3_auth_id']?.toString() != putnikId) return false;
+      final vremePlacen = row['created_at']?.toString();
       return vremePlacen != null && vremePlacen.isNotEmpty;
     }).toList();
 
     if (placenoRows.isEmpty) return null;
 
     placenoRows.sort((a, b) {
-      final aDt = V3DateUtils.parseTs(a['naplacen_at']?.toString()) ?? DateTime(2000);
-      final bDt = V3DateUtils.parseTs(b['naplacen_at']?.toString()) ?? DateTime(2000);
+      final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime(2000);
+      final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime(2000);
       return bDt.compareTo(aDt);
     });
 
@@ -42,8 +44,8 @@ class V3PlacanjeDialogHelper {
     final vozacIme = vozacId == null ? null : V3VozacService.getVozacById(vozacId)?.imePrezime;
 
     return {
-      'naplacen_at': last['naplacen_at'],
-      'naplacen_iznos': (last['naplacen_iznos'] as num?)?.toDouble() ?? 0.0,
+      'naplacen_at': last['created_at'],
+      'naplacen_iznos': (last['iznos'] as num?)?.toDouble() ?? 0.0,
       'naplatio_ime': vozacIme ?? 'Nepoznato',
     };
   }
@@ -252,6 +254,7 @@ class V3PlacanjeDialogHelper {
     required String putnikId,
     required String imePrezime,
     required V3PlacanjeRezultat rezultat,
+    String? operativnaId,
     String? zahtevId,
     bool snimiMesecnuUplatu = false,
   }) async {
@@ -266,6 +269,18 @@ class V3PlacanjeDialogHelper {
           iznos: rezultat.iznos,
           mesec: rezultat.mesec,
           godina: rezultat.godina,
+        );
+      } else {
+        final operativna = (operativnaId ?? '').trim();
+        if (operativna.isEmpty) {
+          throw 'Operativna vožnja nije pronađena za ovu naplatu.';
+        }
+        await V3FinansijeService.sacuvajOperativnuNaplatu(
+          operativnaId: operativna,
+          putnikId: putnikId,
+          naplacenoBy: vozac.id,
+          iznos: rezultat.iznos,
+          datum: DateTime.now(),
         );
       }
       return true;

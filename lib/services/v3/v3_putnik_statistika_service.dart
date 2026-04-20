@@ -137,6 +137,7 @@ class V3PutnikStatistikaService {
 
     return _computePoPokupljenju(
       rows: rows,
+      putnikId: putnikId,
       godina: godina,
       mesec: mesec,
       mesecNaziv: mesecNaziv,
@@ -214,18 +215,26 @@ class V3PutnikStatistikaService {
 
   static V3PutnikMesecnaStatistika _computePoPokupljenju({
     required List<Map<String, dynamic>> rows,
+    required String putnikId,
     required int godina,
     required int mesec,
     required String mesecNaziv,
     required double cenaPoPokupljenju,
   }) {
+    final naplataByOperativna = _latestNaplataByOperativna(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
     final aktivne = rows.where((r) => !_isOtkazano(r)).toList();
-    final placeniRows = aktivne.where(_isPlaceno).toList();
+    final placeniRows = aktivne.where((r) => _isPlaceno(r, naplataByOperativna)).toList();
     final pokupljeniRows = aktivne.where(_isPokupljen).toList();
-    final dugRows = pokupljeniRows.where((r) => !_isPlaceno(r)).toList();
+    final dugRows = pokupljeniRows.where((r) => !_isPlaceno(r, naplataByOperativna)).toList();
 
-    final naplacenoIznos =
-        placeniRows.fold<double>(0, (sum, r) => sum + _placeniIznosIliFallback(r, cenaPoPokupljenju));
+    final naplacenoIznos = placeniRows.fold<double>(
+      0,
+      (sum, r) => sum + _placeniIznosIliFallback(r, cenaPoPokupljenju, naplataByOperativna),
+    );
 
     return V3PutnikMesecnaStatistika(
       godina: godina,
@@ -243,15 +252,69 @@ class V3PutnikStatistikaService {
 
   static bool _isPokupljen(Map<String, dynamic> row) => V3StatusFilters.isPokupljenAt(row['pokupljen_at']);
 
-  static bool _isPlaceno(Map<String, dynamic> row) => V3StatusFilters.isNaplacenAt(row['naplacen_at']);
+  static bool _isPlaceno(Map<String, dynamic> row, Map<String, Map<String, dynamic>> naplataByOperativna) {
+    final operativnaId = row['id']?.toString() ?? '';
+    if (operativnaId.isNotEmpty && naplataByOperativna.containsKey(operativnaId)) {
+      return true;
+    }
+    return V3StatusFilters.isNaplacenAt(row['naplacen_at']);
+  }
 
   static bool _isOtkazano(Map<String, dynamic> row) {
     return row['otkazano_at'] != null;
   }
 
-  static double _placeniIznosIliFallback(Map<String, dynamic> row, double fallback) {
+  static double _placeniIznosIliFallback(
+    Map<String, dynamic> row,
+    double fallback,
+    Map<String, Map<String, dynamic>> naplataByOperativna,
+  ) {
+    final operativnaId = row['id']?.toString() ?? '';
+    if (operativnaId.isNotEmpty) {
+      final naplata = naplataByOperativna[operativnaId];
+      if (naplata != null) {
+        final iznosFin = (naplata['iznos'] as num?)?.toDouble() ?? 0;
+        return iznosFin > 0 ? iznosFin : fallback;
+      }
+    }
     final iznos = (row['naplacen_iznos'] as num?)?.toDouble() ?? 0;
     return iznos > 0 ? iznos : fallback;
+  }
+
+  static Map<String, Map<String, dynamic>> _latestNaplataByOperativna({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final rows = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    final result = <String, Map<String, dynamic>>{};
+
+    for (final row in rows) {
+      if (row['tip']?.toString() != 'prihod') continue;
+      if ((row['kategorija']?.toString().toLowerCase() ?? '') != 'operativna_naplata') continue;
+      if (row['putnik_v3_auth_id']?.toString() != putnikId) continue;
+
+      final rowGodina = (row['godina'] as num?)?.toInt();
+      final rowMesec = (row['mesec'] as num?)?.toInt();
+      if (rowGodina != godina || rowMesec != mesec) continue;
+
+      final operativnaId = row['operativna_id']?.toString() ?? '';
+      if (operativnaId.isEmpty) continue;
+
+      final existing = result[operativnaId];
+      if (existing == null) {
+        result[operativnaId] = row;
+        continue;
+      }
+
+      final existingTs = DateTime.tryParse(existing['created_at']?.toString() ?? '') ?? DateTime(2000);
+      final currentTs = DateTime.tryParse(row['created_at']?.toString() ?? '') ?? DateTime(2000);
+      if (currentTs.isAfter(existingTs)) {
+        result[operativnaId] = row;
+      }
+    }
+
+    return result;
   }
 
   static DateTime? _extractDatum(Map<String, dynamic> row) {

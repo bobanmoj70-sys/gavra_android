@@ -9,6 +9,7 @@ import '../helpers/v3_placanje_dialog_helper.dart';
 import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
@@ -17,6 +18,7 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -30,6 +32,20 @@ import '../utils/v3_validation_utils.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
 /// Vizuelni stil i logika prepisani iz V2PutnikCard.
+class _V3NaplataInfo {
+  final bool isPaid;
+  final double iznos;
+  final DateTime? paidAt;
+  final String? paidBy;
+
+  const _V3NaplataInfo({
+    required this.isPaid,
+    required this.iznos,
+    this.paidAt,
+    this.paidBy,
+  });
+}
+
 class V3PutnikCard extends StatefulWidget {
   const V3PutnikCard({
     super.key,
@@ -92,6 +108,68 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   void _cancelLongPressTimer() {
     V3StreamUtils.cancelTimer('putnik_card_${widget.putnik.id}_longpress');
     _isLongPressActive = false;
+  }
+
+  _V3NaplataInfo? _getNaplataInfo({required bool isMesecniModel}) {
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    if (cache.isEmpty) return null;
+
+    if (!isMesecniModel) {
+      final operativnaId = widget.entry?.id;
+      if (operativnaId == null || operativnaId.isEmpty) return null;
+
+      final candidates = cache.where((row) {
+        if (row['tip'] != 'prihod') return false;
+        final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+        if (kategorija != 'operativna_naplata') return false;
+        return (row['operativna_id']?.toString() ?? '') == operativnaId;
+      }).toList();
+
+      if (candidates.isEmpty) return null;
+      candidates.sort((a, b) {
+        final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDt.compareTo(aDt);
+      });
+
+      final row = candidates.first;
+      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
+      final paidAt = V3DateUtils.parseTs(row['created_at']?.toString());
+      final paidBy = row['naplaceno_by']?.toString();
+      return _V3NaplataInfo(isPaid: iznos > 0, iznos: iznos, paidAt: paidAt, paidBy: paidBy);
+    }
+
+    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+    final mesec = datumRef.month;
+    final godina = datumRef.year;
+    final putnikId = widget.putnik.id;
+
+    final candidates = cache.where((row) {
+      if (row['tip'] != 'prihod') return false;
+      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+      if (kategorija != 'operativna_naplata') return false;
+      if ((row['putnik_v3_auth_id']?.toString() ?? '') != putnikId) return false;
+
+      final rMesec = (row['mesec'] as num?)?.toInt();
+      final rGodina = (row['godina'] as num?)?.toInt();
+      return rMesec == mesec && rGodina == godina;
+    }).toList();
+
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) {
+      final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDt.compareTo(aDt);
+    });
+
+    final latest = candidates.first;
+    final ukupno = candidates.fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
+    return _V3NaplataInfo(
+      isPaid: ukupno > 0,
+      iznos: ukupno,
+      paidAt: V3DateUtils.parseTs(latest['created_at']?.toString()),
+      paidBy: latest['naplaceno_by']?.toString(),
+    );
   }
 
   // ─── Akcije ────────────────────────────────────────────────────
@@ -176,7 +254,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       return;
     }
 
-    final alreadyPaid = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final alreadyPaid =
+        !isMesecniModel && ((naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt));
 
     try {
       if (alreadyPaid && widget.entry != null) {
@@ -205,15 +285,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         putnikId: widget.putnik.id,
         imePrezime: widget.putnik.imePrezime,
         rezultat: rezultat,
+        operativnaId: widget.entry?.id,
         snimiMesecnuUplatu: isMesecniModel,
       );
-      if (ok && !isMesecniModel && widget.entry != null) {
-        await V3OperativnaNedeljaService.updateNaplata(
-          id: widget.entry!.id,
-          iznos: rezultat.iznos,
-          naplacenBy: V3VozacService.currentVozac?.id,
-        );
-      }
       if (ok && mounted) {
         V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za ${widget.putnik.imePrezime}');
       }
@@ -306,7 +380,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   BoxDecoration _getCardDecoration() {
     final status = V3StatusFilters.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
     final bool isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
-    final bool isPlacen = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+    final tip = widget.putnik.tipPutnika;
+    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
+    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final bool isPlacen = (naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
 
     return V3StyleHelper.putnikCard(
       status: status,
@@ -319,7 +396,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   V3StatusTextStyle _getStatusTextStyle() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status;
     final pokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
-    final placen = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+    final tip = widget.putnik.tipPutnika;
+    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
+    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final placen = (naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
     return V3StatusPresentation.forCardText(
       status: status,
       pokupljen: pokupljen,
@@ -373,7 +453,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = V3StatusFilters.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
     final bool isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
     final bool isOtkazan = widget.entry?.otkazanoAt != null;
-    final bool isPlacen = V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+    final tip = widget.putnik.tipPutnika;
+    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
+    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final bool isPlacen = (naplataInfo?.isPaid ?? false) || V3StatusFilters.isNaplacenAt(widget.entry?.naplacenAt);
+    final String? naplataById = naplataInfo?.paidBy ?? widget.entry?.naplacenBy;
+    final DateTime? naplataAt = naplataInfo?.paidAt ?? widget.entry?.naplacenAt;
+    final double naplataIznos = naplataInfo?.iznos ?? (widget.entry?.iznosNaplacen ?? 0);
     final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
@@ -573,7 +659,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                     }
 
                     final bojaPokupljen = _bojaZaVozacId(widget.entry?.pokupljenBy);
-                    final bojaNaplata = _bojaZaVozacId(widget.entry?.naplacenBy);
+                    final bojaNaplata = _bojaZaVozacId(naplataById);
                     final bojaOtkaz =
                         (widget.entry?.otkazanoBy != null && widget.entry?.otkazanoBy == widget.entry?.putnikId)
                             ? Colors.red
@@ -594,8 +680,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final iznos = widget.entry?.iznosNaplacen ?? 0;
-                              final vpl = widget.entry?.naplacenAt;
-                              final iznosStr = iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : '';
+                              final vpl = naplataAt;
+                              final iznosSafe = naplataIznos > 0 ? naplataIznos : iznos;
+                              final iznosStr = iznosSafe > 0 ? '${iznosSafe.toStringAsFixed(0)} RSD' : '';
                               final dtStr = _fmt(vpl);
                               return 'Plaćeno: ${[
                                 if (iznosStr.isNotEmpty) iznosStr,
@@ -628,8 +715,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           ),
                           Text(
                             () {
-                              final iznos = widget.entry?.iznosNaplacen ?? 0;
-                              final vpl = widget.entry?.naplacenAt;
+                              final iznos = naplataIznos > 0 ? naplataIznos : (widget.entry?.iznosNaplacen ?? 0);
+                              final vpl = naplataAt;
                               final iznosStr = iznos > 0 ? '${iznos.toStringAsFixed(0)} RSD' : '';
                               final dtStr = _fmt(vpl);
                               return 'Plaćeno: ${[

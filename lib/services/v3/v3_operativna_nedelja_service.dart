@@ -198,24 +198,6 @@ class V3OperativnaNedeljaService {
     );
   }
 
-  static Future<void> updateNaplata({
-    required String id,
-    required double iznos,
-    String? naplacenBy,
-  }) async {
-    try {
-      final row = await _repo.updateByIdReturningSingle(id, {
-        'naplacen_iznos': iznos,
-        'naplacen_at': DateTime.now().toIso8601String(),
-        if (naplacenBy != null) 'naplacen_by': naplacenBy,
-      });
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
-    } catch (e) {
-      debugPrint('[V3OperativnaNedeljaService] updateNaplata error: $e');
-      rethrow;
-    }
-  }
-
   /// Čita max_mesta za dati grad/vreme/datum iz v3_kapacitet_slots cache-a.
   /// Vraća null ako slot nije pronađen.
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
