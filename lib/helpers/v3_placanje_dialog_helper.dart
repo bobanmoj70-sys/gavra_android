@@ -44,8 +44,8 @@ class V3PlacanjeDialogHelper {
     final vozacIme = vozacId == null ? null : V3VozacService.getVozacById(vozacId)?.imePrezime;
 
     return {
-      'naplacen_at': last['created_at'],
-      'naplacen_iznos': (last['iznos'] as num?)?.toDouble() ?? 0.0,
+      'placeno_at': last['created_at'],
+      'placeno_iznos': (last['iznos'] as num?)?.toDouble() ?? 0.0,
       'naplatio_ime': vozacIme ?? 'Nepoznato',
     };
   }
@@ -69,8 +69,8 @@ class V3PlacanjeDialogHelper {
     final currentYear = DateTime.now().year;
     final years = List.generate(6, (i) => currentYear - 1 + i);
     final zadnjaNaplata = _getZadnjaNaplata(putnikId);
-    final vremePlacen = V3DateUtils.parseTs(zadnjaNaplata?['naplacen_at']?.toString());
-    final zadnjiIznos = (zadnjaNaplata?['naplacen_iznos'] as num?)?.toDouble() ?? 0.0;
+    final vremePlacen = V3DateUtils.parseTs(zadnjaNaplata?['placeno_at']?.toString());
+    final zadnjiIznos = (zadnjaNaplata?['placeno_iznos'] as num?)?.toDouble() ?? 0.0;
     final naplatioIme = (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
 
     return V3DialogHelper.showDialogBuilder<V3PlacanjeRezultat>(

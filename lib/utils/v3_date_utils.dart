@@ -28,7 +28,7 @@ class V3DateUtils {
   }
 
   /// Parsira timestamptz string iz baze → Europe/Belgrade vrijeme.
-  /// Koristiti za: created_at, updated_at, pokupljen_at, naplacen_at, itd.
+  /// Koristiti za: created_at, updated_at, pokupljen_at, placeno_at, itd.
   static DateTime? parseTs(String? s) {
     if (s == null || s.isEmpty) return null;
     final parsed = DateTime.tryParse(s);

@@ -48,12 +48,6 @@ class V3StatusFilters {
     return true;
   }
 
-  static bool isNaplacenAt(Object? naplacenAt) {
-    if (naplacenAt == null) return false;
-    if (naplacenAt is String) return naplacenAt.trim().isNotEmpty;
-    return true;
-  }
-
   static bool isOtkazanoAt(Object? otkazanoAt) {
     if (otkazanoAt == null) return false;
     if (otkazanoAt is String) return otkazanoAt.trim().isNotEmpty;
