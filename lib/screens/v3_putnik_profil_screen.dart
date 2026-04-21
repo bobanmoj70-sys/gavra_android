@@ -134,8 +134,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         final opRows = rm.operativnaNedeljaCache.values.where((e) {
           return (e['created_by']?.toString() ?? '') == putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
-              (e['grad']?.toString().toUpperCase() ?? '') == grad &&
-              !V3StatusFilters.isOtkazanoAt(e['otkazano_at']);
+              (e['grad']?.toString().toUpperCase() ?? '') == grad;
         }).toList();
 
         if (opRows.isEmpty) {
@@ -172,7 +171,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         int selectedRank = -1;
         for (final row in opRows) {
           final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(row));
-          if (V3StatusFilters.isRejected(status)) continue;
           final rank = V3StatusPresentation.statusPriority(status) +
               (V3StatusFilters.isPokupljenAt(row['pokupljen_at']) ? 10 : 0);
           if (rank > selectedRank) {
