@@ -257,11 +257,17 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     required bool isVozac,
   }) async {
     try {
-      final tokenResult = await V3PushTokenProvider.getBestToken();
+      final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => null,
+      );
       final token = tokenResult?.token.trim() ?? '';
       if (token.isEmpty) return;
 
-      final identity = await V3OsDeviceIdService.getDeviceIdentity();
+      final identity = await V3OsDeviceIdService.getDeviceIdentity().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => const V3DeviceIdentity(),
+      );
       final androidDeviceId = (identity.androidDeviceId ?? '').trim();
       final androidBuildId = (identity.androidBuildId ?? '').trim();
       final iosDeviceId = (identity.iosDeviceId ?? '').trim();
@@ -274,7 +280,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           androidBuildId: androidBuildId,
           iosDeviceId: iosDeviceId,
           iosBuildId: iosBuildId,
-        );
+        ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
         return;
       }
 
@@ -285,7 +291,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         androidBuildId: androidBuildId,
         iosDeviceId: iosDeviceId,
         iosBuildId: iosBuildId,
-      );
+      ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
     } catch (e) {
       debugPrint('[V3WelcomeScreen] push token write error: $e');
     }

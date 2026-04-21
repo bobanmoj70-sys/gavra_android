@@ -377,34 +377,54 @@ Future<void> _syncRefreshedPushToken(String token) async {
   final safeToken = token.trim();
   if (safeToken.isEmpty) return;
 
-  final identity = await V3OsDeviceIdService.getDeviceIdentity();
-  final androidDeviceId = (identity.androidDeviceId ?? '').trim();
-  final androidBuildId = (identity.androidBuildId ?? '').trim();
-  final iosDeviceId = (identity.iosDeviceId ?? '').trim();
-  final iosBuildId = (identity.iosBuildId ?? '').trim();
-
-  final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
-  if (putnikId.isNotEmpty) {
-    await V3PutnikService.writePushTokenOnLogin(
-      putnikId: putnikId,
-      pushToken: safeToken,
-      androidDeviceId: androidDeviceId,
-      androidBuildId: androidBuildId,
-      iosDeviceId: iosDeviceId,
-      iosBuildId: iosBuildId,
+  Future<void> doSyncAttempt() async {
+    final identity = await V3OsDeviceIdService.getDeviceIdentity().timeout(
+      const Duration(seconds: 3),
+      onTimeout: () => const V3DeviceIdentity(),
     );
-    return;
+    final androidDeviceId = (identity.androidDeviceId ?? '').trim();
+    final androidBuildId = (identity.androidBuildId ?? '').trim();
+    final iosDeviceId = (identity.iosDeviceId ?? '').trim();
+    final iosBuildId = (identity.iosBuildId ?? '').trim();
+
+    final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
+    if (putnikId.isNotEmpty) {
+      await V3PutnikService.writePushTokenOnLogin(
+        putnikId: putnikId,
+        pushToken: safeToken,
+        androidDeviceId: androidDeviceId,
+        androidBuildId: androidBuildId,
+        iosDeviceId: iosDeviceId,
+        iosBuildId: iosBuildId,
+      );
+      return;
+    }
+
+    final vozacId = (V3VozacService.currentVozac?.id ?? '').trim();
+    if (vozacId.isNotEmpty) {
+      await V3VozacService.writePushTokenOnLogin(
+        vozacId: vozacId,
+        pushToken: safeToken,
+        androidDeviceId: androidDeviceId,
+        androidBuildId: androidBuildId,
+        iosDeviceId: iosDeviceId,
+        iosBuildId: iosBuildId,
+      );
+    }
   }
 
-  final vozacId = (V3VozacService.currentVozac?.id ?? '').trim();
-  if (vozacId.isNotEmpty) {
-    await V3VozacService.writePushTokenOnLogin(
-      vozacId: vozacId,
-      pushToken: safeToken,
-      androidDeviceId: androidDeviceId,
-      androidBuildId: androidBuildId,
-      iosDeviceId: iosDeviceId,
-      iosBuildId: iosBuildId,
+  try {
+    await doSyncAttempt().timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('[FCM] Token refresh sync prvi pokušaj nije uspeo: $e');
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 2), () async {
+        try {
+          await doSyncAttempt().timeout(const Duration(seconds: 5));
+        } catch (retryError) {
+          debugPrint('[FCM] Token refresh sync retry nije uspeo: $retryError');
+        }
+      }),
     );
   }
 }

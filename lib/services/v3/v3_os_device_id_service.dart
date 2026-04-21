@@ -71,9 +71,22 @@ class V3OsDeviceIdService {
       }
 
       if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final iosInfo = await _deviceInfo.iosInfo;
-        final iosDeviceId = _clean(iosInfo.identifierForVendor);
-        final iosBuildId = _clean(iosInfo.systemVersion);
+        String? iosDeviceId;
+        String? iosBuildId;
+
+        for (var attempt = 1; attempt <= 3; attempt++) {
+          final iosInfo = await _deviceInfo.iosInfo;
+          iosDeviceId = _clean(iosInfo.identifierForVendor);
+          iosBuildId = _clean(iosInfo.systemVersion);
+
+          if (iosDeviceId != null) {
+            break;
+          }
+
+          if (attempt < 3) {
+            await Future<void>.delayed(const Duration(milliseconds: 250));
+          }
+        }
 
         return V3DeviceIdentity(
           iosDeviceId: iosDeviceId,

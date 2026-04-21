@@ -15,6 +15,29 @@ function firstNonEmpty(...values: unknown[]): string {
   return "";
 }
 
+function tokenDeviceMarker(token: string): string {
+  const safeToken = token.trim();
+  if (!safeToken) return "";
+  return `token:${safeToken.slice(0, 48)}`;
+}
+
+function deriveIncomingOsDeviceId(params: {
+  payload: Record<string, unknown>;
+  incomingAndroidDeviceId: string;
+  incomingIosDeviceId: string;
+  incomingPushToken: string;
+}): string {
+  const { payload, incomingAndroidDeviceId, incomingIosDeviceId, incomingPushToken } = params;
+  return firstNonEmpty(
+    payload.incoming_os_device_id,
+    payload.os_device_id,
+    payload.os_device_id_2,
+    incomingAndroidDeviceId,
+    incomingIosDeviceId,
+    tokenDeviceMarker(incomingPushToken),
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json(200, { ok: false, updated: false, reason: "method_not_allowed" });
@@ -55,10 +78,10 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, updated: false, reason: "v3_auth_not_found" });
     }
 
-    const incomingOsDeviceId = firstNonEmpty(
-      payload.incoming_os_device_id,
-      payload.os_device_id,
-      payload.os_device_id_2,
+    const incomingPushToken = firstNonEmpty(
+      payload.incoming_push_token,
+      payload.push_token,
+      payload.push_token_2,
     );
     const incomingAndroidDeviceId = firstNonEmpty(
       payload.incoming_android_device_id,
@@ -70,11 +93,12 @@ Deno.serve(async (req) => {
       payload.ios_device_id,
       payload.ios_device_id_2,
     );
-    const incomingPushToken = firstNonEmpty(
-      payload.incoming_push_token,
-      payload.push_token,
-      payload.push_token_2,
-    );
+    const incomingOsDeviceId = deriveIncomingOsDeviceId({
+      payload,
+      incomingAndroidDeviceId,
+      incomingIosDeviceId,
+      incomingPushToken,
+    });
     const incomingAndroidBuildId = firstNonEmpty(
       payload.incoming_android_build_id,
       payload.android_build_id,

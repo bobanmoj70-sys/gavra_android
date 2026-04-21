@@ -1,2 +1,2 @@
-ne odgovaras na osnovu pretpostavki
-promene vrsis samo na zahteb ili odobrenje
+pre odgovora proveris sve sto je povezano sa pitanjem kod + funkcije u bazi
+kod ne menjas bez mog zahteva ili odobrenja

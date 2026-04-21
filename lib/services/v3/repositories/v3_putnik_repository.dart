@@ -4,7 +4,7 @@ import '../../../globals.dart';
 
 class V3PutnikRepository {
   static const String _legacyPutnikSelect =
-      'id:id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at';
+      'id:id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, os_device_id, os_device_id_2, android_device_id, android_device_id_2, ios_device_id, ios_device_id_2, android_build_id, android_build_id_2, ios_build_id, ios_build_id_2, created_at, updated_at';
 
   Future<Map<String, dynamic>?> getActiveById(String id) {
     return supabase.from('v3_auth').select(_legacyPutnikSelect).eq('id', id).neq('tip', 'vozac').maybeSingle();
@@ -58,8 +58,16 @@ class V3PutnikRepository {
     if (payload.containsKey('cena_po_pokupljenju')) out['cena_po_pokupljenju'] = payload['cena_po_pokupljenju'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
     if (payload.containsKey('push_token_2')) out['push_token_2'] = payload['push_token_2'];
+    if (payload.containsKey('os_device_id')) out['os_device_id'] = payload['os_device_id'];
+    if (payload.containsKey('os_device_id_2')) out['os_device_id_2'] = payload['os_device_id_2'];
     if (payload.containsKey('android_device_id')) out['android_device_id'] = payload['android_device_id'];
     if (payload.containsKey('android_device_id_2')) out['android_device_id_2'] = payload['android_device_id_2'];
+    if (payload.containsKey('ios_device_id')) out['ios_device_id'] = payload['ios_device_id'];
+    if (payload.containsKey('ios_device_id_2')) out['ios_device_id_2'] = payload['ios_device_id_2'];
+    if (payload.containsKey('android_build_id')) out['android_build_id'] = payload['android_build_id'];
+    if (payload.containsKey('android_build_id_2')) out['android_build_id_2'] = payload['android_build_id_2'];
+    if (payload.containsKey('ios_build_id')) out['ios_build_id'] = payload['ios_build_id'];
+    if (payload.containsKey('ios_build_id_2')) out['ios_build_id_2'] = payload['ios_build_id_2'];
 
     return out;
   }
