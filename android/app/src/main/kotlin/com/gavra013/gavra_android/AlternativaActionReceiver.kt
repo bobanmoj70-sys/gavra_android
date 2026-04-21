@@ -100,7 +100,7 @@ class AlternativaActionReceiver : BroadcastReceiver() {
 
     private fun loadEnv(context: Context): Map<String, String> {
         val result = mutableMapOf<String, String>()
-        context.assets.open(".env").use { input ->
+        context.assets.open("flutter_assets/.env").use { input ->
             BufferedReader(InputStreamReader(input)).useLines { lines ->
                 lines.forEach { rawLine ->
                     val line = rawLine.trim()
