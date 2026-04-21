@@ -34,6 +34,8 @@ class GavraFcmService : FirebaseMessagingService() {
         const val FCM_CHANNEL = "com.gavra013.gavra_android/fcm"
         private const val NOTIF_CHANNEL_ID = "gavra_push_v2"
         private const val NOTIF_CHANNEL_NAME = "Gavra obaveštenja"
+        private const val ALTERNATIVA_CHANNEL_ID = "gavra_alternativa"
+        private const val ALTERNATIVA_CHANNEL_NAME = "Alternativa termina"
         private const val TAG = "GavraFcmService"
     }
 
@@ -48,6 +50,15 @@ class GavraFcmService : FirebaseMessagingService() {
         val type = data["type"] ?: ""
 
         android.util.Log.d(TAG, "FCM type=$type title=$title")
+
+        if (type == "v3_alternativa") {
+            showAlternativaNotification(
+                title = if (title.isNotEmpty()) title else "Informacija o dostupnosti termina",
+                body = if (body.isNotEmpty()) body else "Trenutno nema slobodnih mesta u željenom terminu.",
+                data = data,
+            )
+            return
+        }
 
         // Prosledi Flutteru via MethodChannel (radi samo ako je engine aktivan)
         val engine = FlutterEngineCache.getInstance().get("main_engine")
@@ -143,5 +154,99 @@ class GavraFcmService : FirebaseMessagingService() {
 
         notifManager.notify(notifId, notification)
         android.util.Log.d(TAG, "Nativna notifikacija prikazana id=$notifId type=$type")
+    }
+
+    private fun showAlternativaNotification(
+        title: String,
+        body: String,
+        data: Map<String, String>,
+    ) {
+        val zahtevId = data["zahtev_id"].orEmpty().trim()
+        val altPre = data["alt_pre"].orEmpty().trim()
+        val altPosle = data["alt_posle"].orEmpty().trim()
+
+        if (zahtevId.isEmpty()) {
+            android.util.Log.w(TAG, "v3_alternativa bez zahtev_id, fallback na regular notifikaciju")
+            showNativeNotification(title, body, "v3_alternativa", data)
+            return
+        }
+
+        val notifManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            ALTERNATIVA_CHANNEL_ID,
+            ALTERNATIVA_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            enableVibration(true)
+            enableLights(true)
+        }
+        notifManager.createNotificationChannel(channel)
+
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("google.message_id", "gavra_alt_${System.currentTimeMillis()}")
+            putExtra("type", "v3_alternativa")
+            data.forEach { (k, v) -> putExtra(k, v) }
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            this,
+            (System.currentTimeMillis() and 0x7FFFFFFF).toInt(),
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val builder = NotificationCompat.Builder(this, ALTERNATIVA_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(contentPendingIntent)
+
+        if (altPre.isNotEmpty()) {
+            builder.addAction(
+                0,
+                altPre,
+                buildAlternativaActionIntent(zahtevId, "accept_pre", 101),
+            )
+        }
+
+        if (altPosle.isNotEmpty()) {
+            builder.addAction(
+                0,
+                altPosle,
+                buildAlternativaActionIntent(zahtevId, "accept_posle", 102),
+            )
+        }
+
+        builder.addAction(
+            0,
+            "Odbij",
+            buildAlternativaActionIntent(zahtevId, "reject", 103),
+        )
+
+        val notifId = System.currentTimeMillis().rem(100000).toInt()
+        notifManager.notify(notifId, builder.build())
+        android.util.Log.d(TAG, "Alternativa notifikacija prikazana id=$notifId zahtevId=$zahtevId")
+    }
+
+    private fun buildAlternativaActionIntent(
+        zahtevId: String,
+        actionId: String,
+        requestCode: Int,
+    ): PendingIntent {
+        val intent = Intent(this, AlternativaActionReceiver::class.java).apply {
+            action = AlternativaActionReceiver.ACTION_ALTERNATIVA
+            putExtra(AlternativaActionReceiver.EXTRA_ZAHTEV_ID, zahtevId)
+            putExtra(AlternativaActionReceiver.EXTRA_ACTION_ID, actionId)
+        }
+
+        return PendingIntent.getBroadcast(
+            this,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 }

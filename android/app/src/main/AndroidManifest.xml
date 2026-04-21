@@ -97,6 +97,10 @@
       </intent-filter>
     </service>
 
+    <receiver
+      android:name=".AlternativaActionReceiver"
+      android:exported="false" />
+
     <!-- 🛰️ GPS FOREGROUND SERVICE - background GPS tracking dok vozač prikuplja putnike -->
     <service
       android:name="id.flutter.flutter_background_service.BackgroundService"

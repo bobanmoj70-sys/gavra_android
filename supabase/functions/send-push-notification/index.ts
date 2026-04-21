@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
     const normalizedTokens = normalizeTokens(payload.tokens);
     const title = String(payload.title ?? '').trim();
     const body = String(payload.body ?? '').trim();
-    const dataOnly = Boolean(payload.data_only);
+    let dataOnly = Boolean(payload.data_only);
     const rawData = toStringData(payload.data);
     const alignedDataResult = alignAndValidateData(payload, rawData);
 
@@ -304,6 +304,10 @@ Deno.serve(async (req) => {
     }
 
     const data = alignedDataResult.data;
+
+    if (String(data.type ?? '').trim() === 'v3_alternativa') {
+      dataOnly = true;
+    }
 
     if (normalizedTokens.length === 0) {
       return new Response(
