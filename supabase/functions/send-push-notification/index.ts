@@ -10,7 +10,6 @@ type PushPayload = {
   body?: string;
   event_id?: string;
   type?: string;
-  entity_id?: string;
   recipient_id?: string;
   dedup?: boolean;
   data?: Record<string, unknown>;
@@ -83,6 +82,53 @@ function toStringData(input: Record<string, unknown> | undefined): Record<string
     output[key] = typeof value === 'string' ? value : JSON.stringify(value);
   }
   return output;
+}
+
+function normalizeHhMmOrEmpty(input: string): string | null {
+  const value = input.trim();
+  if (!value) return '';
+
+  const match = value.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+  if (!match) return null;
+
+  const hh = String(Number(match[1] ?? 0)).padStart(2, '0');
+  const mm = String(Number(match[2] ?? 0)).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function alignAndValidateData(payload: PushPayload, data: Record<string, string>): { ok: true; data: Record<string, string> } | { ok: false; error: string } {
+  const aligned = { ...data };
+  const payloadType = String(payload.type ?? '').trim();
+
+  if (payloadType && !aligned.type) {
+    aligned.type = payloadType;
+  }
+
+  const effectiveType = String(aligned.type ?? '').trim();
+  if (effectiveType !== 'v3_alternativa') {
+    return { ok: true, data: aligned };
+  }
+
+  aligned.type = 'v3_alternativa';
+  const zahtevId = String(aligned.zahtev_id ?? '').trim();
+  if (!zahtevId) {
+    return { ok: false, error: 'v3_alternativa requires data.zahtev_id' };
+  }
+
+  const altPreNormalized = normalizeHhMmOrEmpty(String(aligned.alt_pre ?? ''));
+  if (altPreNormalized === null) {
+    return { ok: false, error: 'Invalid data.alt_pre format (expected HH:mm or empty)' };
+  }
+
+  const altPosleNormalized = normalizeHhMmOrEmpty(String(aligned.alt_posle ?? ''));
+  if (altPosleNormalized === null) {
+    return { ok: false, error: 'Invalid data.alt_posle format (expected HH:mm or empty)' };
+  }
+
+  aligned.alt_pre = altPreNormalized;
+  aligned.alt_posle = altPosleNormalized;
+
+  return { ok: true, data: aligned };
 }
 
 async function getFcmAccessToken(payload: PushPayload): Promise<string> {
@@ -247,7 +293,17 @@ Deno.serve(async (req) => {
     const title = String(payload.title ?? '').trim();
     const body = String(payload.body ?? '').trim();
     const dataOnly = Boolean(payload.data_only);
-    const data = toStringData(payload.data);
+    const rawData = toStringData(payload.data);
+    const alignedDataResult = alignAndValidateData(payload, rawData);
+
+    if (!alignedDataResult.ok) {
+      return new Response(
+        JSON.stringify({ ok: false, error: alignedDataResult.error }),
+        { status: 400, headers: jsonHeaders },
+      );
+    }
+
+    const data = alignedDataResult.data;
 
     if (normalizedTokens.length === 0) {
       return new Response(

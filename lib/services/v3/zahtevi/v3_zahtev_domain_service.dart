@@ -54,18 +54,4 @@ class V3ZahtevDomainService {
 
     await _repository.updateRaw(id, updateData);
   }
-
-  Future<void> offerAlternative({
-    required String id,
-    String? vremePre,
-    String? vremePosle,
-    String? updatedBy,
-  }) async {
-    await _repository.updateRaw(id, {
-      'status': V3ZahtevStatus.alternativa.name,
-      'alternativa_pre_at': vremePre,
-      'alternativa_posle_at': vremePosle,
-      if (updatedBy != null) 'updated_by': updatedBy,
-    });
-  }
 }

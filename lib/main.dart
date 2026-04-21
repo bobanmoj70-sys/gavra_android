@@ -25,8 +25,8 @@ import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
 import 'services/v3/v3_vozac_service.dart';
-import 'services/v3/v3_zahtev_service.dart';
 import 'services/v3_theme_manager.dart';
+import 'utils/v3_time_utils.dart';
 
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -353,30 +353,9 @@ Future<void> _showAlternativaFromData(
   String? title,
   String? body,
 }) async {
-  final rawPayload = (data['payload'] ?? '').trim();
-
-  String zahtevId = '';
-  String altPre = '';
-  String altPosle = '';
-
-  if (rawPayload.isNotEmpty) {
-    final parts = rawPayload.split('|');
-    if (parts.length == 3) {
-      zahtevId = parts[0].trim();
-      altPre = parts[1].trim();
-      altPosle = parts[2].trim();
-    }
-  }
-
-  if (zahtevId.isEmpty) {
-    zahtevId = (data['zahtev_id'] ?? data['id'] ?? data['entity_id'] ?? '').trim();
-  }
-  if (altPre.isEmpty) {
-    altPre = (data['alt_pre'] ?? '').trim();
-  }
-  if (altPosle.isEmpty) {
-    altPosle = (data['alt_posle'] ?? '').trim();
-  }
+  final zahtevId = (data['zahtev_id'] ?? '').trim();
+  final altPre = V3TimeUtils.normalizeToHHmm((data['alt_pre'] ?? '').trim());
+  final altPosle = V3TimeUtils.normalizeToHHmm((data['alt_posle'] ?? '').trim());
 
   if (zahtevId.isEmpty) {
     debugPrint('⚠️ [alternativa] Nedostaje zahtevId u FCM data payload-u: $data');
@@ -683,6 +662,43 @@ Future<void> showAlternativaNotification({
   );
 }
 
+Future<Map<String, dynamic>> _executeAlternativaEdgeAction({
+  required String zahtevId,
+  required String actionId,
+}) async {
+  final safeZahtevId = zahtevId.trim();
+  final safeActionId = actionId.trim();
+
+  if (safeZahtevId.isEmpty) {
+    throw Exception('Nedostaje zahtev_id za alternativa akciju.');
+  }
+
+  if (!{'accept_pre', 'accept_posle', 'reject'}.contains(safeActionId)) {
+    throw Exception('Nepoznata alternativa akcija: $safeActionId');
+  }
+
+  final response = await supabase.functions.invoke(
+    'v3-alternativa-action',
+    body: {
+      'zahtev_id': safeZahtevId,
+      'action': safeActionId,
+    },
+  );
+
+  final data = response.data;
+  if (response.status < 200 || response.status >= 300 || data is! Map) {
+    throw Exception('Edge alternativa action failed (status=${response.status}, data=$data)');
+  }
+
+  final map = Map<String, dynamic>.from(data);
+  if (map['ok'] != true) {
+    final reason = (map['reason'] ?? 'unknown_error').toString();
+    throw Exception('Alternativa akcija nije uspela: $reason');
+  }
+
+  return map;
+}
+
 // Hendler za klik na interaktivne gumbe (actions)
 @pragma('vm:entry-point')
 void onNotificationTap(NotificationResponse response) async {
@@ -705,15 +721,6 @@ void onNotificationTap(NotificationResponse response) async {
   }
 
   if (actionId == null) {
-    final parts = payload.split('|');
-    if (parts.length == 3 && parts[0].trim().isNotEmpty) {
-      // Korisnik tapnuo na body notifikacije — ponovo prikaži sa akcijama
-      await showAlternativaNotification(
-        zahtevId: parts[0].trim(),
-        altPre: parts[1].trim(),
-        altPosle: parts[2].trim(),
-      );
-    }
     return;
   }
 
@@ -735,7 +742,7 @@ void onNotificationTap(NotificationResponse response) async {
   }
 
   try {
-    // V3 alternativa handling
+    // V3 alternativa handling (Edge-only)
     // payload format (strict): "id|altPre|altPosle"
     final parts = payload.split('|');
     if (parts.length != 3 || parts[0].trim().isEmpty) {
@@ -744,20 +751,21 @@ void onNotificationTap(NotificationResponse response) async {
     }
 
     final zahtevId = parts[0].trim();
-    final altPre = parts[1].trim();
-    final altPosle = parts[2].trim();
+    if (actionId == 'accept_pre' || actionId == 'accept_posle' || actionId == 'reject') {
+      final result = await _executeAlternativaEdgeAction(
+        zahtevId: zahtevId,
+        actionId: actionId,
+      );
 
-    if (actionId == 'accept_pre' && altPre.isNotEmpty) {
-      await V3ZahtevService.prihvatiAlternativu(zahtevId, altPre);
-      await _showActionFeedback('✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPre');
-    } else if (actionId == 'accept_posle' && altPosle.isNotEmpty) {
-      await V3ZahtevService.prihvatiAlternativu(zahtevId, altPosle);
-      await _showActionFeedback('✅ Alternativa prihvaćena', 'Prihvaćen termin: $altPosle');
-    } else if (actionId == 'reject') {
-      await V3ZahtevService.odbijAlternativu(zahtevId);
-      await _showActionFeedback('❌ Alternativa odbijena', 'Zahtev je postavljen na odbijeno.');
+      if (actionId == 'reject') {
+        await _showActionFeedback('❌ Alternativa odbijena', 'Zahtev je postavljen na odbijeno.');
+      } else {
+        final selectedTime = (result['selected_time'] ?? '').toString().trim();
+        final suffix = selectedTime.isNotEmpty ? 'Prihvaćen termin: $selectedTime' : 'Alternativa je prihvaćena.';
+        await _showActionFeedback('✅ Alternativa prihvaćena', suffix);
+      }
     } else {
-      await _showActionFeedback('⚠️ Akcija nije izvršena', 'Alternativni termin nije prosleđen u notifikaciji.');
+      await _showActionFeedback('⚠️ Akcija nije izvršena', 'Nepoznata akcija notifikacije.');
     }
   } catch (e) {
     debugPrint('[onNotificationTap] Greška pri obradi akcije: $e');

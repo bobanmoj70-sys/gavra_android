@@ -8,17 +8,13 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
-import '../utils/v3_input_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_filters.dart';
 import '../utils/v3_status_presentation.dart';
 import '../utils/v3_string_utils.dart';
-import '../utils/v3_text_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
 
@@ -81,8 +77,6 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
         String label = '✅ Uspeh';
         if (status == 'odobreno')
           label = '✅ Odobreno';
-        else if (status == 'alternativa')
-          label = '🔄 Ponuđena alternativa';
         else if (V3StatusFilters.isCanceled(status))
           label = '🚫 Otkazano';
         else if (status == 'odbijeno') label = '❌ Odbijeno';
@@ -92,84 +86,6 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
-  }
-
-  Future<void> _showAlternativaDialog(V3Zahtev zahtev) async {
-    // Inicijalno popunjavanje sugerisanim terminima (npr. +- 15 ili 30 min)
-    final zVreme = zahtev.trazeniPolazakAt; // HH:mm
-    if (zVreme.length == 5) {
-      final hh = int.tryParse(zVreme.substring(0, 2)) ?? 0;
-      final mm = int.tryParse(zVreme.substring(3, 5)) ?? 0;
-      final d = DateTime(2000, 1, 1, hh, mm);
-
-      // Prvo nudi vreme PRE, pa vreme POSLE zeljenog termina
-      final dPre = d.subtract(const Duration(minutes: 15));
-      final dPosle = d.add(const Duration(minutes: 15));
-
-      V3TextUtils.setControllerText('pre', V3DanHelper.formatVreme(dPre.hour, dPre.minute));
-      V3TextUtils.setControllerText('posle', V3DanHelper.formatVreme(dPosle.hour, dPosle.minute));
-    }
-
-    final result = await V3DialogHelper.showCustomDialog<bool>(
-      context: context,
-      title: 'Ponudi alternativu',
-      titleIcon: Icons.sync_alt,
-      titleIconColor: Colors.orangeAccent,
-      backgroundColor: const Color(0xFF1A1A1A),
-      borderRadius: 20,
-      borderColor: Colors.orangeAccent,
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Termin ${zahtev.trazeniPolazakAt} je pun. Ponudite putniku druga vremena:',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            _timeInput('Prvi termin (obično pre)', V3TextUtils.preController),
-            const SizedBox(height: 12),
-            _timeInput('Drugi termin (obično posle)', V3TextUtils.posleController),
-          ],
-        ),
-      ),
-      actions: [
-        V3ButtonUtils.textButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          text: 'Odustani',
-          foregroundColor: Colors.white54,
-        ),
-        V3ButtonUtils.elevatedButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          text: 'Pošalji ponudu',
-          backgroundColor: Colors.orangeAccent,
-          foregroundColor: Colors.black,
-          fontWeight: FontWeight.bold,
-        ),
-      ],
-    );
-
-    if (result == true) {
-      try {
-        await V3ZahtevService.ponudiAlternativu(
-          id: zahtev.id,
-          vremePre: V3TextUtils.isEmpty('pre') ? null : V3TextUtils.getControllerText('pre'),
-          vremePosle: V3TextUtils.isEmpty('posle') ? null : V3TextUtils.getControllerText('posle'),
-        );
-        if (mounted) V3AppSnackBar.success(context, 'Ponuđena alternativa putniku');
-      } catch (e) {
-        V3ErrorUtils.safeError(this, context, 'Greška pri slanju alternative: $e');
-      }
-    }
-  }
-
-  Widget _timeInput(String label, TextEditingController controller) {
-    return V3InputUtils.textField(
-      controller: controller,
-      label: label,
-      icon: Icons.access_time,
-      keyboardType: TextInputType.datetime,
-    );
   }
 
   // ─── build ───────────────────────────────────────────────────────
@@ -259,7 +175,6 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                         zahtev: obrada[i],
                         putnik: V3PutnikService.getPutnikById(obrada[i].putnikId),
                         onOdobri: () => _updateStatus(obrada[i].id, 'odobreno'),
-                        onAlternativa: () => _showAlternativaDialog(obrada[i]),
                         onOdbij: () => _updateStatus(obrada[i].id, 'otkazano'),
                       ),
                       childCount: obrada.length,
@@ -408,14 +323,12 @@ class _ZahtevCard extends StatelessWidget {
   final V3Zahtev zahtev;
   final V3Putnik? putnik;
   final VoidCallback? onOdobri;
-  final VoidCallback? onAlternativa;
   final VoidCallback? onOdbij;
 
   const _ZahtevCard({
     required this.zahtev,
     required this.putnik,
     required this.onOdobri,
-    this.onAlternativa,
     required this.onOdbij,
   });
 
@@ -520,7 +433,7 @@ class _ZahtevCard extends StatelessWidget {
             ),
 
             // Akcije
-            if (onOdobri != null || onAlternativa != null || onOdbij != null) ...[
+            if (onOdobri != null || onOdbij != null) ...[
               const SizedBox(width: 8),
               Column(
                 mainAxisSize: MainAxisSize.min,
@@ -531,14 +444,6 @@ class _ZahtevCard extends StatelessWidget {
                       color: Colors.green,
                       onTap: onOdobri!,
                     ),
-                  if (onAlternativa != null) ...[
-                    const SizedBox(height: 6),
-                    _ActionBtn(
-                      icon: Icons.sync_alt,
-                      color: Colors.orangeAccent,
-                      onTap: onAlternativa!,
-                    ),
-                  ],
                   if (onOdbij != null) ...[
                     const SizedBox(height: 6),
                     _ActionBtn(

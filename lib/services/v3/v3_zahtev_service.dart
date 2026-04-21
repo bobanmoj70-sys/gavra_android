@@ -4,10 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../../utils/v3_status_filters.dart';
-import '../../utils/v3_time_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
-import 'repositories/v3_kapacitet_slots_repository.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
 import 'v3_vozac_service.dart';
 import 'zahtevi/v3_zahtev_domain_service.dart';
@@ -20,7 +18,6 @@ class V3ZahtevService {
 
   static final V3ZahtevRepository _repository = V3ZahtevRepository();
   static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
-  static final V3KapacitetSlotsRepository _kapacitetRepository = V3KapacitetSlotsRepository();
   static final V3ZahtevDomainService _domain = V3ZahtevDomainService(_repository);
 
   static String _datumKey(DateTime datum) => V3DanHelper.parseIsoDatePart(datum.toIso8601String());
@@ -392,161 +389,6 @@ class V3ZahtevService {
     } catch (e) {
       debugPrint('[V3ZahtevService] TrazeniPolazakAt update error: $e');
       rethrow;
-    }
-  }
-
-  static Future<void> ponudiAlternativu({
-    required String id,
-    String? vremePre,
-    String? vremePosle,
-  }) async {
-    try {
-      await _domain.offerAlternative(
-        id: id,
-        vremePre: vremePre,
-        vremePosle: vremePosle,
-      );
-    } catch (e) {
-      debugPrint('[V3ZahtevService] Alternativa error: $e');
-      rethrow;
-    }
-  }
-
-  static Future<void> prihvatiAlternativu(String id, String izabranoVreme) async {
-    String toHHmm(String value) {
-      final normalized = V3TimeUtils.normalizeToHHmm(value);
-      if (!RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$').hasMatch(normalized)) {
-        throw Exception('Neispravan format vremena: $value');
-      }
-      return normalized;
-    }
-
-    final izabranoVremeNormalized = izabranoVreme.trim();
-    if (izabranoVremeNormalized.isEmpty) {
-      throw Exception('Izabrano vreme je prazno.');
-    }
-    final selectedHHmm = toHHmm(izabranoVremeNormalized);
-
-    final zahtev = await _repository.getById(id);
-
-    if (zahtev == null) {
-      throw Exception('Zahtev nije pronađen.');
-    }
-
-    final status = zahtev['status']?.toString();
-    if (!V3StatusFilters.isOfferLike(status)) {
-      throw Exception('Zahtev više nije u statusu alternativa.');
-    }
-
-    final altPre = (zahtev['alternativa_pre_at']?.toString() ?? '').trim();
-    final altPosle = (zahtev['alternativa_posle_at']?.toString() ?? '').trim();
-    final allowedTimes = <String>{
-      if (altPre.isNotEmpty) toHHmm(altPre),
-      if (altPosle.isNotEmpty) toHHmm(altPosle),
-    };
-
-    if (allowedTimes.isNotEmpty && !allowedTimes.contains(selectedHHmm)) {
-      throw Exception('Izabrano vreme nije među ponuđenim alternativama.');
-    }
-
-    final grad = (zahtev['grad'] as String? ?? '').trim();
-    final datum = (zahtev['datum'] as String? ?? '').split('T').first;
-
-    final kapacitetRow = await _kapacitetRepository.getSlotByGradDatumVreme(
-      grad: grad,
-      datum: datum,
-      vreme: selectedHHmm,
-    );
-
-    if (kapacitetRow == null) {
-      throw Exception('Slot više ne postoji u kapacitetu.');
-    }
-
-    final maxMesta = int.tryParse('${kapacitetRow['max_mesta'] ?? 0}') ?? 0;
-    final usedRows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.where((row) {
-      final rowGrad = (row['grad']?.toString() ?? '').trim();
-      final rowDatum = (row['datum']?.toString() ?? '').split('T').first;
-      final rowStatus = V3StatusFilters.deriveOperativnaStatus(row);
-      return rowGrad == grad && rowDatum == datum && rowStatus == 'odobreno';
-    }).toList();
-
-    final usedCount = usedRows.where((row) {
-      final assigned = (row['polazak_at']?.toString() ?? '').trim();
-      if (assigned.isEmpty) return false;
-      return toHHmm(assigned) == selectedHHmm;
-    }).length;
-    if (maxMesta > 0 && usedCount >= maxMesta) {
-      throw Exception('Termin $selectedHHmm je trenutno popunjen.');
-    }
-
-    final row = await _repository.updateRaw(
-      id,
-      {
-        'status': 'odobreno',
-        'trazeni_polazak_at': selectedHHmm,
-        'polazak_at': selectedHHmm,
-        'alternativa_pre_at': null,
-        'alternativa_posle_at': null,
-      },
-    );
-    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-
-    final putnikId = (zahtev['created_by']?.toString() ?? '').trim();
-    if (putnikId.isNotEmpty && grad.isNotEmpty && datum.isNotEmpty) {
-      final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
-        putnikId: putnikId,
-        datumIso: datum,
-        grad: grad,
-        payload: {
-          'polazak_at': selectedHHmm,
-          'otkazano_at': null,
-          'otkazano_by': null,
-        },
-      );
-      for (final op in updatedOperativni) {
-        if (op is Map<String, dynamic>) {
-          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', op);
-        }
-      }
-      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
-    }
-  }
-
-  static Future<void> odbijAlternativu(String id) async {
-    final zahtev = await _repository.getById(id);
-
-    final row = await _repository.updateRaw(
-      id,
-      {
-        'status': 'odbijeno',
-        'alternativa_pre_at': null,
-        'alternativa_posle_at': null,
-      },
-    );
-    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-
-    final putnikId = (zahtev?['created_by']?.toString() ?? '').trim();
-    final grad = (zahtev?['grad']?.toString() ?? '').trim();
-    final datum = (zahtev?['datum']?.toString() ?? '').split('T').first;
-
-    if (putnikId.isNotEmpty && grad.isNotEmpty && datum.isNotEmpty) {
-      final nowIso = DateTime.now().toIso8601String();
-      final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
-        putnikId: putnikId,
-        datumIso: datum,
-        grad: grad,
-        payload: {
-          'polazak_at': null,
-          'otkazano_at': nowIso,
-          'otkazano_by': putnikId,
-        },
-      );
-      for (final op in updatedOperativni) {
-        if (op is Map<String, dynamic>) {
-          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', op);
-        }
-      }
-      await V3MasterRealtimeManager.instance.refreshV3GpsRaspored();
     }
   }
 }
