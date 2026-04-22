@@ -33,6 +33,7 @@ import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
+import 'helpers/v3_boja_status_helper.dart';
 import 'v3_admin_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
@@ -287,21 +288,18 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
     final rm = V3MasterRealtimeManager.instance;
-    final normV = V3TimeUtils.normalizeToHHmm(vreme);
-    for (final row in rm.operativnaAssignedCache.values) {
-      final rowGrad = row['grad']?.toString() ?? '';
-      final rowVreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString());
-      final rowDatum = V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '');
-      if (row['created_by'] == putnikId &&
-          rowGrad == grad &&
-          _isVisibleOperativnaRow(row) &&
-          rowVreme == normV &&
-          rowDatum == datum) {
-        final vozacId = _vozacIdForOperativnaRow(row);
-        if (vozacId.isNotEmpty) {
-          return V3VozacService.getVozacById(vozacId);
-        }
-      }
+    final vozacId = V3BojaStatusHelper.assignedVozacIdForPutnik(
+      operativnaRows: rm.operativnaNedeljaCache.values,
+      putnikId: putnikId,
+      grad: grad,
+      vreme: vreme,
+      datumIso: datum,
+      vozacIdForRow: _vozacIdForOperativnaRow,
+      isVisibleRow: _isVisibleOperativnaRow,
+      vremeKolona: 'polazak_at',
+    );
+    if ((vozacId ?? '').isNotEmpty) {
+      return V3VozacService.getVozacById(vozacId!);
     }
     return null;
   }
@@ -1006,34 +1004,29 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           // Lista: datum dolazi iz stream-a; prikazujemo redove samo za izabrani grad + slot vreme
           final currentVozacId = V3VozacService.currentVozac?.id;
-          final selectedGradNorm = _selectedGrad.trim().toUpperCase();
-          final selectedVremeNorm = _normalizeVreme(_selectedVreme);
           final prikazaniZapisi = sviZapisi.where((z) {
-            final gradNorm = (z.grad ?? '').trim().toUpperCase();
-            if (gradNorm != selectedGradNorm) return false;
-            if (_normalizeVreme(slotVreme(z)) != selectedVremeNorm) return false;
-            return true;
+            return V3BojaStatusHelper.matchesSelectedSlot(
+              entry: z,
+              grad: _selectedGrad,
+              vreme: _selectedVreme,
+            );
           }).toList()
             ..sort((a, b) {
-              int sortRank(V3OperativnaNedeljaEntry e) {
-                if (V3StatusFilters.isOtkazanoAt(e.otkazanoAt)) return 3;
-                if (V3StatusFilters.isPokupljenAt(e.pokupljenAt)) return 2;
-                // Provjeri da li je putnik dodijeljen logovanom vozaču
-                if (currentVozacId != null) {
-                  final indiv = _getVozacZaPutnika(e.putnikId, e.grad ?? '', slotVreme(e), _selectedDatumIso);
-                  if (indiv != null) {
-                    return indiv.id == currentVozacId ? 0 : 1;
-                  }
-                }
-                return 1;
-              }
-
-              final aRank = sortRank(a);
-              final bRank = sortRank(b);
-              if (aRank != bRank) return aRank.compareTo(bRank);
-              final aIme = V3PutnikService.getPutnikById(a.putnikId)?.imePrezime ?? '';
-              final bIme = V3PutnikService.getPutnikById(b.putnikId)?.imePrezime ?? '';
-              return aIme.compareTo(bIme);
+              return V3BojaStatusHelper.compareEntriesForDisplay(
+                a: a,
+                b: b,
+                currentVozacId: currentVozacId,
+                assignedVozacIdForEntry: (entry) {
+                  final indiv = _getVozacZaPutnika(
+                    entry.putnikId,
+                    entry.grad ?? '',
+                    slotVreme(entry),
+                    _selectedDatumIso,
+                  );
+                  return indiv?.id;
+                },
+                putnikNameById: (putnikId) => V3PutnikService.getPutnikById(putnikId)?.imePrezime ?? '',
+              );
             });
 
           final resolvedZapisi = prikazaniZapisi.map((z) {
@@ -1049,12 +1042,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
           int getPutnikCount(String grad, String vreme) {
-            final targetVremeNorm = _normalizeVreme(vreme);
-            return sviZapisi.where((z) {
-              if (z.grad != grad) return false;
-              if (_normalizeVreme(slotVreme(z)) != targetVremeNorm) return false;
-              return true;
-            }).fold(0, (sum, z) => sum + z.brojMesta);
+            return V3BojaStatusHelper.countMestaForSlot(
+              entries: sviZapisi,
+              grad: grad,
+              vreme: vreme,
+            );
           }
 
           // Kapacitet
@@ -1064,21 +1056,19 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           }
 
           Color? getVozacColorForTermin(String grad, String vreme) {
-            final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
             final rm = V3MasterRealtimeManager.instance;
-            for (final row in rm.operativnaAssignedCache.values) {
-              if (row['grad'] != grad) continue;
-              if (!_isVisibleOperativnaRow(row)) {
-                continue;
-              }
-              if (V3DanHelper.parseIsoDatePart(row['datum']?.toString() ?? '') != _selectedDatumIso) continue;
-              if (V3TimeUtils.normalizeToHHmm(row['vreme']?.toString()) != vremeNorm) continue;
-              final vozacId = _vozacIdForOperativnaRow(row);
-              if (vozacId.isEmpty) continue;
-              final vozac = V3VozacService.getVozacById(vozacId);
-              if (vozac != null) {
-                return _parseVozacColor(vozac.boja);
-              }
+            final vozacId = V3BojaStatusHelper.sharedVozacIdForTermin(
+              operativnaRows: rm.operativnaNedeljaCache.values,
+              grad: grad,
+              vreme: vreme,
+              datumIso: _selectedDatumIso,
+              vozacIdForRow: _vozacIdForOperativnaRow,
+              isVisibleRow: _isVisibleOperativnaRow,
+              vremeKolona: 'polazak_at',
+            );
+            if ((vozacId ?? '').isNotEmpty) {
+              final vozac = V3VozacService.getVozacById(vozacId!);
+              if (vozac != null) return _parseVozacColor(vozac.boja);
             }
             return null;
           }
