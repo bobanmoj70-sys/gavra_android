@@ -8,7 +8,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_os_device_id_service.dart';
 import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
@@ -257,29 +256,39 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     required bool isVozac,
   }) async {
     try {
-      final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
-        const Duration(seconds: 6),
-        onTimeout: () => null,
-      );
-      final token = tokenResult?.token.trim() ?? '';
-      if (token.isEmpty) return;
+      final installationId = (await V3PushTokenProvider.getInstallationId())?.trim() ?? '';
+      if (installationId.isEmpty) return;
 
-      final identity = await V3OsDeviceIdService.getDeviceIdentity().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => const V3DeviceIdentity(),
-      );
-      final androidDeviceId = (identity.androidDeviceId ?? '').trim();
-      final androidBuildId = (identity.androidBuildId ?? '').trim();
-      final iosDeviceId = (identity.iosDeviceId ?? '').trim();
-      final iosBuildId = (identity.iosBuildId ?? '').trim();
+      String token = '';
+      var resolvedInstallationId = installationId;
+
+      for (var attempt = 1; attempt <= 4; attempt++) {
+        final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
+          const Duration(seconds: 6),
+          onTimeout: () => null,
+        );
+        token = tokenResult?.token.trim() ?? '';
+        resolvedInstallationId = tokenResult?.installationId?.trim() ?? installationId;
+
+        if (token.isNotEmpty && resolvedInstallationId.isNotEmpty) {
+          break;
+        }
+
+        if (attempt < 4) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+        }
+      }
+
+      if (resolvedInstallationId.isEmpty) {
+        debugPrint('[V3WelcomeScreen] installation id unavailable after login sync attempts.');
+        return;
+      }
+
       if (isVozac) {
         await V3VozacService.writePushTokenOnLogin(
           vozacId: v3AuthId,
           pushToken: token,
-          androidDeviceId: androidDeviceId,
-          androidBuildId: androidBuildId,
-          iosDeviceId: iosDeviceId,
-          iosBuildId: iosBuildId,
+          installationId: resolvedInstallationId,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
         return;
       }
@@ -287,10 +296,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: v3AuthId,
         pushToken: token,
-        androidDeviceId: androidDeviceId,
-        androidBuildId: androidBuildId,
-        iosDeviceId: iosDeviceId,
-        iosBuildId: iosBuildId,
+        installationId: resolvedInstallationId,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
     } catch (e) {
       debugPrint('[V3WelcomeScreen] push token write error: $e');

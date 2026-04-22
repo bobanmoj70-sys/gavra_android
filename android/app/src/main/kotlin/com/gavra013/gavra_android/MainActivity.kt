@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.google.android.gms.common.ConnectionResult as GmsConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.FirebaseApp
+import com.google.firebase.installations.FirebaseInstallations
 import com.google.firebase.messaging.FirebaseMessaging
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -152,6 +153,20 @@ class MainActivity : FlutterFragmentActivity() {
                         } catch (e: Exception) {
                             runOnUiThread {
                                 result.error("FCM_TOKEN_ERROR", e.message ?: "Unknown FCM token error", null)
+                            }
+                        }
+                    }
+                }
+                "getInstallationId" -> {
+                    ioExecutor.execute {
+                        try {
+                            val installationId = getInstallationId()
+                            runOnUiThread {
+                                result.success(installationId)
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("INSTALLATION_ID_ERROR", e.message ?: "Unknown installation id error", null)
                             }
                         }
                     }
@@ -342,6 +357,24 @@ class MainActivity : FlutterFragmentActivity() {
         }
         android.util.Log.d(TAG, "✅ FCM token fetched: ${token.take(16)}…")
         return token
+    }
+
+    private fun getInstallationId(): String {
+        if (!isGmsAvailable()) {
+            throw IllegalStateException("Google Play Services not available")
+        }
+
+        if (FirebaseApp.getApps(this).isEmpty()) {
+            FirebaseApp.initializeApp(this) ?: throw IllegalStateException("FirebaseApp is not initialized")
+        }
+
+        val task = FirebaseInstallations.getInstance().id
+        val installationId = com.google.android.gms.tasks.Tasks.await(task)
+        if (installationId.isNullOrBlank()) {
+            throw IllegalStateException("Firebase installation id is empty")
+        }
+        android.util.Log.d(TAG, "✅ Installation ID fetched: ${installationId.take(16)}…")
+        return installationId
     }
 
     private fun getAndroidId(): String? {

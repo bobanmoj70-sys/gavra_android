@@ -635,20 +635,41 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                   child: Builder(builder: (_) {
                     // Vozač boja po akteru — svaki tekst koristi ID aktera koji je stvarno izvršio akciju
                     final _currentVozac = V3VozacService.currentVozac;
-                    Color _bojaZaVozacId(String? vozacId) {
-                      if (vozacId != null) {
-                        final v = V3VozacService.getVozacById(vozacId);
-                        if (v != null) return V3CardColorPolicy.tryParseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
-                      }
-                      return V3CardColorPolicy.tryParseHexColor(_currentVozac?.boja) ?? const Color(0xFF9E9E9E);
+                    const String _sistemAkterId = '4feffa3a-8b4d-4e28-9b8b-c0af3c48ea4e';
+
+                    bool _isSistemAkter(String? akterId, {Map<String, dynamic>? auth}) {
+                      final id = (akterId ?? '').trim();
+                      if (id.isNotEmpty && id == _sistemAkterId) return true;
+                      final tip = (auth?['tip']?.toString() ?? '').trim().toLowerCase();
+                      return tip == 'sistem';
                     }
 
-                    final bojaPokupljen = _bojaZaVozacId(widget.entry?.pokupljenBy);
-                    final bojaNaplata = _bojaZaVozacId(naplataById);
+                    Color _bojaZaAkteraId(String? akterId, {bool fallbackToCurrentVozac = true}) {
+                      if (akterId != null && akterId.isNotEmpty) {
+                        final auth = V3MasterRealtimeManager.instance.authCache[akterId];
+                        if (_isSistemAkter(akterId, auth: auth)) {
+                          return const Color(0xFF212121);
+                        }
+                        final authBoja = auth?['boja']?.toString();
+                        final parsedAuthBoja = V3CardColorPolicy.tryParseHexColor(authBoja);
+                        if (parsedAuthBoja != null) return parsedAuthBoja;
+
+                        final v = V3VozacService.getVozacById(akterId);
+                        if (v != null) return V3CardColorPolicy.tryParseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
+                      }
+                      if (fallbackToCurrentVozac) {
+                        return V3CardColorPolicy.tryParseHexColor(_currentVozac?.boja) ?? const Color(0xFF9E9E9E);
+                      }
+                      return const Color(0xFFC62828);
+                    }
+
+                    final bojaPokupljen = _bojaZaAkteraId(widget.entry?.pokupljenBy, fallbackToCurrentVozac: true);
+                    final bojaNaplata = _bojaZaAkteraId(naplataById, fallbackToCurrentVozac: true);
+                    final otkazaoAkterId = widget.entry?.otkazanoBy ?? widget.entry?.updatedBy;
+                    final otkazaoJePutnik =
+                        otkazaoAkterId != null && otkazaoAkterId.isNotEmpty && otkazaoAkterId == widget.entry?.putnikId;
                     final bojaOtkaz =
-                        (widget.entry?.otkazanoBy != null && widget.entry?.otkazanoBy == widget.entry?.putnikId)
-                            ? Colors.red
-                            : _bojaZaVozacId(widget.entry?.otkazanoBy);
+                        otkazaoJePutnik ? Colors.red : _bojaZaAkteraId(otkazaoAkterId, fallbackToCurrentVozac: false);
 
                     String _fmt(DateTime? dt) {
                       if (dt == null) return '';

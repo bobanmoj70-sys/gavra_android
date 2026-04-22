@@ -4,12 +4,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 
 class V3PushTokenResult {
   final String token;
+  final String? installationId;
 
   const V3PushTokenResult({
     required this.token,
+    this.installationId,
   });
 }
 
@@ -17,14 +21,27 @@ class V3PushTokenProvider {
   V3PushTokenProvider._();
 
   static const MethodChannel _channel = MethodChannel('com.gavra013.gavra_android/push_token');
+  static const FlutterSecureStorage _storage =
+      FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
+  static const String _installationStorageKey = 'installation_device_id';
 
   static Future<V3PushTokenResult?> getBestToken() async {
     final fcmToken = await _tryGetFcmToken();
     if (fcmToken != null) {
-      return V3PushTokenResult(token: fcmToken);
+      final installationId = await getInstallationId();
+      return V3PushTokenResult(token: fcmToken, installationId: installationId);
     }
 
     return null;
+  }
+
+  static Future<String?> getInstallationId() async {
+    final stored = (await _storage.read(key: _installationStorageKey) ?? '').trim();
+    if (stored.isNotEmpty) return stored;
+
+    final generated = const Uuid().v4();
+    await _storage.write(key: _installationStorageKey, value: generated);
+    return generated;
   }
 
   static Future<String?> _tryGetFcmToken() async {

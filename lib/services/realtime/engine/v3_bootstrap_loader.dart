@@ -54,8 +54,7 @@ class V3BootstrapLoader {
       case 'v3_auth_vozaci':
         response = await _client
             .from('v3_auth')
-            .select(
-                'id, ime, telefon, telefon_2, boja, push_token, created_at, updated_at, tip')
+            .select('id, ime, telefon, telefon_2, boja, push_token, push_token_2, created_at, updated_at, tip')
             .eq('tip', 'vozac')
             .gte('updated_at', iso);
         break;
@@ -84,10 +83,7 @@ class V3BootstrapLoader {
 
     if (response is! List) return <Map<String, dynamic>>[];
 
-    final rows = response
-        .whereType<Map<String, dynamic>>()
-        .map(Map<String, dynamic>.from)
-        .toList(growable: false);
+    final rows = response.whereType<Map<String, dynamic>>().map(Map<String, dynamic>.from).toList(growable: false);
     if (table == 'v3_auth_vozaci') {
       return rows.map(_mapAuthToLegacyVozac).toList(growable: false);
     }
@@ -106,6 +102,7 @@ class V3BootstrapLoader {
       'telefon_2': row['telefon_2'],
       'boja': row['boja'],
       'push_token': row['push_token'],
+      'push_token_2': row['push_token_2'],
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };
@@ -131,8 +128,7 @@ class V3BootstrapLoader {
     };
   }
 
-  Future<Map<String, List<Map<String, dynamic>>>> loadDeltaAll(
-      Map<String, DateTime?> watermarks) async {
+  Future<Map<String, List<Map<String, dynamic>>>> loadDeltaAll(Map<String, DateTime?> watermarks) async {
     final out = <String, List<Map<String, dynamic>>>{};
 
     for (final table in V3RealtimeTableRegistry.defaults) {

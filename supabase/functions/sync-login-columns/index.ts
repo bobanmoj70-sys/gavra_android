@@ -15,26 +15,16 @@ function firstNonEmpty(...values: unknown[]): string {
   return "";
 }
 
-function tokenDeviceMarker(token: string): string {
-  const safeToken = token.trim();
-  if (!safeToken) return "";
-  return `token:${safeToken.slice(0, 48)}`;
-}
-
-function deriveIncomingOsDeviceId(params: {
+function deriveIncomingInstallationId(params: {
   payload: Record<string, unknown>;
-  incomingAndroidDeviceId: string;
-  incomingIosDeviceId: string;
-  incomingPushToken: string;
+  incomingInstallationId: string;
 }): string {
-  const { payload, incomingAndroidDeviceId, incomingIosDeviceId, incomingPushToken } = params;
+  const { payload, incomingInstallationId } = params;
   return firstNonEmpty(
-    payload.incoming_os_device_id,
-    payload.os_device_id,
-    payload.os_device_id_2,
-    incomingAndroidDeviceId,
-    incomingIosDeviceId,
-    tokenDeviceMarker(incomingPushToken),
+    incomingInstallationId,
+    payload.incoming_installation_id,
+    payload.installation_id,
+    payload.installation_id_2,
   );
 }
 
@@ -64,9 +54,7 @@ Deno.serve(async (req) => {
 
     const { data: existing, error: existingError } = await client
       .from("v3_auth")
-      .select(
-        "id, os_device_id, os_device_id_2, android_device_id, android_device_id_2, ios_device_id, ios_device_id_2",
-      )
+      .select("id, installation_id, installation_id_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -83,61 +71,38 @@ Deno.serve(async (req) => {
       payload.push_token,
       payload.push_token_2,
     );
-    const incomingAndroidDeviceId = firstNonEmpty(
-      payload.incoming_android_device_id,
-      payload.android_device_id,
-      payload.android_device_id_2,
+    const incomingInstallationId = firstNonEmpty(
+      payload.incoming_installation_id,
+      payload.installation_id,
+      payload.installation_id_2,
     );
-    const incomingIosDeviceId = firstNonEmpty(
-      payload.incoming_ios_device_id,
-      payload.ios_device_id,
-      payload.ios_device_id_2,
-    );
-    const incomingOsDeviceId = deriveIncomingOsDeviceId({
+    const incomingInstallationIdResolved = deriveIncomingInstallationId({
       payload,
-      incomingAndroidDeviceId,
-      incomingIosDeviceId,
-      incomingPushToken,
+      incomingInstallationId,
     });
-    const incomingAndroidBuildId = firstNonEmpty(
-      payload.incoming_android_build_id,
-      payload.android_build_id,
-      payload.android_build_id_2,
-    );
-    const incomingIosBuildId = firstNonEmpty(
-      payload.incoming_ios_build_id,
-      payload.ios_build_id,
-      payload.ios_build_id_2,
-    );
+    const incomingPlatform = firstNonEmpty(payload.incoming_platform, payload.platform);
+    const incomingAppVersion = firstNonEmpty(payload.incoming_app_version, payload.app_version);
 
-    if (!incomingOsDeviceId) {
-      return json(200, { ok: false, updated: false, reason: "missing_incoming_os_device_id" });
+    if (!incomingInstallationIdResolved) {
+      return json(200, { ok: false, updated: false, reason: "missing_incoming_installation_id" });
     }
 
-    if (!incomingPushToken) {
-      return json(200, { ok: false, updated: false, reason: "missing_incoming_push_token" });
-    }
-
-    const slot1Os = String(existing.os_device_id ?? "").trim();
-    const slot2Os = String(existing.os_device_id_2 ?? "").trim();
-    const slot1Android = String(existing.android_device_id ?? "").trim();
-    const slot2Android = String(existing.android_device_id_2 ?? "").trim();
-    const slot1Ios = String(existing.ios_device_id ?? "").trim();
-    const slot2Ios = String(existing.ios_device_id_2 ?? "").trim();
+    const slot1Installation = String(existing.installation_id ?? "").trim();
+    const slot2Installation = String(existing.installation_id_2 ?? "").trim();
 
     let slot: 1 | 2 | null = null;
     let reason = "";
 
-    if (slot1Os && slot1Os === incomingOsDeviceId) {
+    if (slot1Installation && slot1Installation === incomingInstallationIdResolved) {
       slot = 1;
       reason = "slot_matched";
-    } else if (slot2Os && slot2Os === incomingOsDeviceId) {
+    } else if (slot2Installation && slot2Installation === incomingInstallationIdResolved) {
       slot = 2;
       reason = "slot_matched";
-    } else if (!slot1Os) {
+    } else if (!slot1Installation) {
       slot = 1;
       reason = "slot_assigned";
-    } else if (!slot2Os) {
+    } else if (!slot2Installation) {
       slot = 2;
       reason = "slot_assigned";
     } else {
@@ -153,35 +118,19 @@ Deno.serve(async (req) => {
     };
 
     if (slot === 1) {
-      patch.push_token = incomingPushToken;
-
-      if (reason === "slot_assigned") {
-        patch.os_device_id = incomingOsDeviceId;
-        if (incomingAndroidDeviceId) patch.android_device_id = incomingAndroidDeviceId;
-        if (incomingIosDeviceId) patch.ios_device_id = incomingIosDeviceId;
-      } else {
-        if (incomingAndroidDeviceId && !slot1Android) patch.android_device_id = incomingAndroidDeviceId;
-        if (incomingIosDeviceId && !slot1Ios) patch.ios_device_id = incomingIosDeviceId;
-      }
-
-      if (incomingAndroidBuildId) patch.android_build_id = incomingAndroidBuildId;
-      if (incomingIosBuildId) patch.ios_build_id = incomingIosBuildId;
+      if (incomingPushToken) patch.push_token = incomingPushToken;
+      patch.installation_id = incomingInstallationIdResolved;
+      patch.last_seen_at = new Date().toISOString();
+      if (incomingPlatform) patch.platform = incomingPlatform;
+      if (incomingAppVersion) patch.app_version = incomingAppVersion;
     }
 
     if (slot === 2) {
-      patch.push_token_2 = incomingPushToken;
-
-      if (reason === "slot_assigned") {
-        patch.os_device_id_2 = incomingOsDeviceId;
-        if (incomingAndroidDeviceId) patch.android_device_id_2 = incomingAndroidDeviceId;
-        if (incomingIosDeviceId) patch.ios_device_id_2 = incomingIosDeviceId;
-      } else {
-        if (incomingAndroidDeviceId && !slot2Android) patch.android_device_id_2 = incomingAndroidDeviceId;
-        if (incomingIosDeviceId && !slot2Ios) patch.ios_device_id_2 = incomingIosDeviceId;
-      }
-
-      if (incomingAndroidBuildId) patch.android_build_id_2 = incomingAndroidBuildId;
-      if (incomingIosBuildId) patch.ios_build_id_2 = incomingIosBuildId;
+      if (incomingPushToken) patch.push_token_2 = incomingPushToken;
+      patch.installation_id_2 = incomingInstallationIdResolved;
+      patch.last_seen_at_2 = new Date().toISOString();
+      if (incomingPlatform) patch.platform_2 = incomingPlatform;
+      if (incomingAppVersion) patch.app_version_2 = incomingAppVersion;
     }
 
     const columns = Object.keys(patch);

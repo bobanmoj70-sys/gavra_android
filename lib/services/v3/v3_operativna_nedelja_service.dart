@@ -17,6 +17,7 @@ class V3OperativnaNedeljaEntry {
   final String? statusFinal;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? updatedBy;
   final int brojMesta;
   final DateTime? pokupljenAt;
   final String? pokupljenBy;
@@ -36,6 +37,7 @@ class V3OperativnaNedeljaEntry {
     this.statusFinal,
     this.createdAt,
     this.updatedAt,
+    this.updatedBy,
     this.brojMesta = 1,
     this.pokupljenAt,
     this.pokupljenBy,
@@ -62,6 +64,7 @@ class V3OperativnaNedeljaEntry {
       ),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      updatedBy: json['updated_by'] as String?,
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
       pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
       pokupljenBy: json['pokupljen_by'] as String?,
@@ -82,6 +85,7 @@ class V3OperativnaNedeljaEntry {
       'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+      if (updatedBy != null) 'updated_by': updatedBy,
       if (polazakAt != null) 'polazak_at': polazakAt,
       if (pokupljenAt != null) 'pokupljen_at': pokupljenAt!.toIso8601String(),
       if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,

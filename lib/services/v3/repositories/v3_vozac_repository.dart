@@ -4,7 +4,7 @@ import '../../../globals.dart';
 
 class V3VozacRepository {
   static const String _authVozacSelect =
-      'id, ime, telefon, telefon_2, boja, push_token, push_token_2, os_device_id, os_device_id_2, android_device_id, android_device_id_2, ios_device_id, ios_device_id_2, android_build_id, android_build_id_2, ios_build_id, ios_build_id_2, created_at, updated_at';
+      'id, ime, telefon, telefon_2, boja, push_token, push_token_2, created_at, updated_at';
 
   Future<void> deleteById(String id) {
     return Future.value();
@@ -26,7 +26,7 @@ class V3VozacRepository {
         .select('id')
         .eq('id', vozacId)
         .eq('tip', 'vozac')
-        .eq('push_token', pushToken)
+        .or('push_token.eq.$pushToken,push_token_2.eq.$pushToken')
         .maybeSingle();
   }
 
@@ -68,16 +68,6 @@ class V3VozacRepository {
     if (payload.containsKey('boja')) out['boja'] = payload['boja'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
     if (payload.containsKey('push_token_2')) out['push_token_2'] = payload['push_token_2'];
-    if (payload.containsKey('os_device_id')) out['os_device_id'] = payload['os_device_id'];
-    if (payload.containsKey('os_device_id_2')) out['os_device_id_2'] = payload['os_device_id_2'];
-    if (payload.containsKey('android_device_id')) out['android_device_id'] = payload['android_device_id'];
-    if (payload.containsKey('android_device_id_2')) out['android_device_id_2'] = payload['android_device_id_2'];
-    if (payload.containsKey('ios_device_id')) out['ios_device_id'] = payload['ios_device_id'];
-    if (payload.containsKey('ios_device_id_2')) out['ios_device_id_2'] = payload['ios_device_id_2'];
-    if (payload.containsKey('android_build_id')) out['android_build_id'] = payload['android_build_id'];
-    if (payload.containsKey('android_build_id_2')) out['android_build_id_2'] = payload['android_build_id_2'];
-    if (payload.containsKey('ios_build_id')) out['ios_build_id'] = payload['ios_build_id'];
-    if (payload.containsKey('ios_build_id_2')) out['ios_build_id_2'] = payload['ios_build_id_2'];
 
     return out;
   }
@@ -91,16 +81,6 @@ class V3VozacRepository {
       'boja': row['boja'],
       'push_token': row['push_token'],
       'push_token_2': row['push_token_2'],
-      'os_device_id': row['os_device_id'],
-      'os_device_id_2': row['os_device_id_2'],
-      'android_device_id': row['android_device_id'],
-      'android_device_id_2': row['android_device_id_2'],
-      'ios_device_id': row['ios_device_id'],
-      'ios_device_id_2': row['ios_device_id_2'],
-      'android_build_id': row['android_build_id'],
-      'android_build_id_2': row['android_build_id_2'],
-      'ios_build_id': row['ios_build_id'],
-      'ios_build_id_2': row['ios_build_id_2'],
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };

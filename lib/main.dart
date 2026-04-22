@@ -20,7 +20,6 @@ import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_foreground_gps_service.dart';
-import 'services/v3/v3_os_device_id_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
@@ -376,26 +375,15 @@ Future<void> _showAlternativaFromData(
 Future<void> _syncRefreshedPushToken(String token) async {
   final safeToken = token.trim();
   if (safeToken.isEmpty) return;
+  final installationId = (await V3PushTokenProvider.getInstallationId())?.trim() ?? '';
 
   Future<void> doSyncAttempt() async {
-    final identity = await V3OsDeviceIdService.getDeviceIdentity().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () => const V3DeviceIdentity(),
-    );
-    final androidDeviceId = (identity.androidDeviceId ?? '').trim();
-    final androidBuildId = (identity.androidBuildId ?? '').trim();
-    final iosDeviceId = (identity.iosDeviceId ?? '').trim();
-    final iosBuildId = (identity.iosBuildId ?? '').trim();
-
     final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
     if (putnikId.isNotEmpty) {
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: putnikId,
         pushToken: safeToken,
-        androidDeviceId: androidDeviceId,
-        androidBuildId: androidBuildId,
-        iosDeviceId: iosDeviceId,
-        iosBuildId: iosBuildId,
+        installationId: installationId,
       );
       return;
     }
@@ -405,10 +393,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
       await V3VozacService.writePushTokenOnLogin(
         vozacId: vozacId,
         pushToken: safeToken,
-        androidDeviceId: androidDeviceId,
-        androidBuildId: androidBuildId,
-        iosDeviceId: iosDeviceId,
-        iosBuildId: iosBuildId,
+        installationId: installationId,
       );
     }
   }

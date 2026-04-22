@@ -194,12 +194,14 @@ class V3ZahtevService {
     }
 
     final datumIso = _datumKey(datum);
+    final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
     final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
       putnikId: putnikId,
       datumIso: datumIso,
       grad: grad,
       payload: {
         if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
+        if (updBy != null) 'updated_by': updBy,
       },
     );
 
@@ -309,8 +311,10 @@ class V3ZahtevService {
     try {
       if (otkazaoVozacId != null) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
+        final String? updBy = V3UuidUtils.normalizeUuid(otkazaoVozacId);
         final payload = {
           'otkazano_by': otkazaoVozacId,
+          if (updBy != null) 'updated_by': updBy,
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
@@ -329,8 +333,10 @@ class V3ZahtevService {
           },
         );
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+        final String? updBy2 = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
         final payload2 = {
           if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
+          if (updBy2 != null) 'updated_by': updBy2,
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);

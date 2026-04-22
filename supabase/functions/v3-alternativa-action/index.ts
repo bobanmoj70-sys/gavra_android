@@ -43,6 +43,7 @@ async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: st
       polazak_at: selectedHHmm,
       otkazano_at: null,
       otkazano_by: null,
+      updated_by: putnikId,
     })
     .eq("created_by", putnikId)
     .eq("datum", datum)
@@ -63,6 +64,7 @@ async function updateOperativnaForReject(client: any, row: any) {
       polazak_at: null,
       otkazano_at: new Date().toISOString(),
       otkazano_by: putnikId,
+      updated_by: putnikId,
     })
     .eq("created_by", putnikId)
     .eq("datum", datum)
