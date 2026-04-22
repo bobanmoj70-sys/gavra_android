@@ -18,12 +18,13 @@ import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
-import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../utils/v3_time_utils.dart';
@@ -33,7 +34,6 @@ import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
-import 'helpers/v3_boja_status_helper.dart';
 import 'v3_admin_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
@@ -100,7 +100,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   }
 
   bool _isVisibleOperativnaRow(Map<String, dynamic> row) {
-    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
+    return V3StatusPolicy.canAssign(
+      status: row['status']?.toString(),
+      otkazanoAt: row['otkazano_at'],
+      pokupljenAt: row['pokupljen_at'],
+    );
   }
 
   Future<void> _reloadTrenutnaDodelaMap() async {
@@ -113,7 +117,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
         final status = mapped['status']?.toString() ?? '';
-        if (!V3StatusFilters.isDodelaAktivna(status)) continue;
+        if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
         final vozacId = mapped['vozac_v3_auth_id']?.toString().trim() ?? '';
         if (terminId.isEmpty || vozacId.isEmpty) continue;
@@ -275,20 +279,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   // ─── Dodjela vozača putniku (admin only) ──────────────────────
 
-  Color _parseVozacColor(String? hex) {
-    if (hex == null || hex.isEmpty) return Colors.blueAccent;
-    final h = hex.replaceAll('#', '');
-    try {
-      return Color(int.parse('FF$h', radix: 16));
-    } catch (e) {
-      debugPrint('[V3HomeScreen] Invalid vozac color "$hex": $e');
-      return Colors.blueAccent;
-    }
-  }
-
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
     final rm = V3MasterRealtimeManager.instance;
-    final vozacId = V3BojaStatusHelper.assignedVozacIdForPutnik(
+    final vozacId = V3StatusPolicy.assignedVozacIdForPutnik(
       operativnaRows: rm.operativnaNedeljaCache.values,
       putnikId: putnikId,
       grad: grad,
@@ -1005,17 +998,21 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           // Lista: datum dolazi iz stream-a; prikazujemo redove samo za izabrani grad + slot vreme
           final currentVozacId = V3VozacService.currentVozac?.id;
           final prikazaniZapisi = sviZapisi.where((z) {
-            return V3BojaStatusHelper.matchesSelectedSlot(
-              entry: z,
+            return V3StatusPolicy.matchesSelectedSlot(
+              entryGrad: z.grad,
+              entryVreme: z.polazakAt,
               grad: _selectedGrad,
               vreme: _selectedVreme,
             );
           }).toList()
             ..sort((a, b) {
-              return V3BojaStatusHelper.compareEntriesForDisplay(
+              return V3StatusPolicy.compareEntriesForDisplay<V3OperativnaNedeljaEntry>(
                 a: a,
                 b: b,
                 currentVozacId: currentVozacId,
+                otkazanoAtOf: (entry) => entry.otkazanoAt,
+                pokupljenAtOf: (entry) => entry.pokupljenAt,
+                putnikIdOf: (entry) => entry.putnikId,
                 assignedVozacIdForEntry: (entry) {
                   final indiv = _getVozacZaPutnika(
                     entry.putnikId,
@@ -1042,10 +1039,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
           int getPutnikCount(String grad, String vreme) {
-            return V3BojaStatusHelper.countMestaForSlot(
-              entries: sviZapisi,
+            return V3StatusPolicy.countOccupiedSeatsForSlot<V3OperativnaNedeljaEntry>(
+              items: sviZapisi,
               grad: grad,
               vreme: vreme,
+              gradOf: (entry) => entry.grad,
+              vremeOf: (entry) => entry.polazakAt,
+              seatsOf: (entry) => entry.brojMesta,
+              statusOf: (entry) => entry.statusFinal,
+              otkazanoAtOf: (entry) => entry.otkazanoAt,
             );
           }
 
@@ -1057,7 +1059,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
           Color? getVozacColorForTermin(String grad, String vreme) {
             final rm = V3MasterRealtimeManager.instance;
-            final vozacId = V3BojaStatusHelper.sharedVozacIdForTermin(
+            final vozacId = V3StatusPolicy.sharedVozacIdForTermin(
               operativnaRows: rm.operativnaNedeljaCache.values,
               grad: grad,
               vreme: vreme,
@@ -1068,7 +1070,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             );
             if ((vozacId ?? '').isNotEmpty) {
               final vozac = V3VozacService.getVozacById(vozacId!);
-              if (vozac != null) return _parseVozacColor(vozac.boja);
+              if (vozac != null) return V3CardColorPolicy.vozacColorOr(vozac.boja);
             }
             return null;
           }
@@ -1398,7 +1400,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       final vreme = slotVreme(z);
                                       final indivVozac = _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
                                       final vozacBoja = indivVozac != null
-                                          ? _parseVozacColor(indivVozac.boja)
+                                          ? V3CardColorPolicy.vozacColorOr(indivVozac.boja)
                                           : getVozacColorForTermin(grad, vreme);
 
                                       final redniBroj =

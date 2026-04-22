@@ -1,5 +1,5 @@
 import '../../utils/v3_dan_helper.dart';
-import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_status_policy.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
 class V3PutnikMesecnaStatistika {
@@ -250,7 +250,7 @@ class V3PutnikStatistikaService {
     );
   }
 
-  static bool _isPokupljen(Map<String, dynamic> row) => V3StatusFilters.isPokupljenAt(row['pokupljen_at']);
+  static bool _isPokupljen(Map<String, dynamic> row) => V3StatusPolicy.isTimestampSet(row['pokupljen_at']);
 
   static bool _isPlaceno(Map<String, dynamic> row, Map<String, Map<String, dynamic>> naplataByOperativna) {
     final operativnaId = row['id']?.toString() ?? '';

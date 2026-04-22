@@ -20,8 +20,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
-import '../utils/v3_status_filters.dart';
-import '../utils/v3_status_presentation.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
@@ -139,11 +138,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
         if (opRows.isEmpty) {
           final pendingRows = rm.zahteviCache.values.where((z) {
-            final status = V3StatusFilters.normalizeStatus(z['status']?.toString());
+            final status = V3StatusPolicy.normalizeStatus(z['status']?.toString());
             return (z['created_by']?.toString() ?? '') == putnikId &&
                 (z['datum'] as String? ?? '').startsWith(datumIso) &&
                 (z['grad']?.toString().toUpperCase() ?? '') == grad &&
-                V3StatusFilters.isPending(status);
+                V3StatusPolicy.isPending(status);
           }).toList();
 
           if (pendingRows.isEmpty) continue;
@@ -160,7 +159,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           infos.add(_ZahtevInfo(
             grad: grad,
             vreme: trazeniVreme,
-            status: 'obrada',
+            status: V3StatusPolicy.normalizeStatus('pending'),
             pokupljen: false,
             koristiSekundarnu: pending['koristi_sekundarnu'] as bool? ?? false,
           ));
@@ -170,9 +169,16 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         Map<String, dynamic>? selected;
         int selectedRank = -1;
         for (final row in opRows) {
-          final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(row));
-          final rank = V3StatusPresentation.statusPriority(status) +
-              (V3StatusFilters.isPokupljenAt(row['pokupljen_at']) ? 10 : 0);
+          final status = V3StatusPolicy.normalizeStatus(
+            V3StatusPolicy.deriveOperativnaStatus(
+              otkazanoAt: row['otkazano_at'],
+              polazakAt: row['polazak_at'],
+            ),
+          );
+          final rank = V3StatusPolicy.displayPriority(
+            status: status,
+            pokupljen: V3StatusPolicy.isTimestampSet(row['pokupljen_at']),
+          );
           if (rank > selectedRank) {
             selected = row;
             selectedRank = rank;
@@ -181,7 +187,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
         if (selected == null) continue;
 
-        final status = V3StatusFilters.normalizeStatus(V3StatusFilters.deriveOperativnaStatus(selected));
+        final status = V3StatusPolicy.normalizeStatus(
+          V3StatusPolicy.deriveOperativnaStatus(
+            otkazanoAt: selected['otkazano_at'],
+            polazakAt: selected['polazak_at'],
+          ),
+        );
         final opPolazakAt = _normalizeValidTime(selected['polazak_at']?.toString());
         final displayVreme = opPolazakAt ?? '—';
 
@@ -189,7 +200,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           grad: grad,
           vreme: displayVreme,
           status: status,
-          pokupljen: V3StatusFilters.isPokupljenAt(selected['pokupljen_at']),
+          pokupljen: V3StatusPolicy.isTimestampSet(selected['pokupljen_at']),
           koristiSekundarnu: selected['koristi_sekundarnu'] as bool? ?? false,
         ));
       }
@@ -197,8 +208,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final bestByGrad = <String, _ZahtevInfo>{};
       for (final info in infos) {
         final current = bestByGrad[info.grad];
-        if (current == null ||
-            V3StatusPresentation.statusPriority(info.status) > V3StatusPresentation.statusPriority(current.status)) {
+        final infoPriority = V3StatusPolicy.displayPriority(
+          status: info.status,
+          pokupljen: info.pokupljen,
+        );
+        final currentPriority = current == null
+            ? -1
+            : V3StatusPolicy.displayPriority(
+                status: current.status,
+                pokupljen: current.pokupljen,
+              );
+        if (current == null || infoPriority > currentPriority) {
           bestByGrad[info.grad] = info;
         }
       }
@@ -225,7 +245,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
         final status = mapped['status']?.toString() ?? '';
-        if (!V3StatusFilters.isDodelaAktivna(status)) continue;
+        if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
 
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
         final vozacId = mapped['vozac_v3_auth_id']?.toString().trim() ?? '';
@@ -321,12 +341,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     }
 
     // Scenario 2: zahtev u obradi — blokirati sve akcije
-    if (V3StatusFilters.isPending(info?.status)) {
+    if (V3StatusPolicy.isPending(info?.status)) {
       if (mounted) V3AppSnackBar.info(ctx, V3PutnikProfilMessages.requestPendingDispatcher);
       return;
     }
     // Scenario 6: putnik je već pokupljen — ne može da otkazuje
-    if (V3StatusFilters.isActionLocked(status: info?.status, pokupljen: info?.pokupljen ?? false)) {
+    if (V3StatusPolicy.isActionLocked(status: info?.status, pokupljen: info?.pokupljen ?? false)) {
       if (mounted) V3AppSnackBar.info(ctx, V3PutnikProfilMessages.alreadyPickedUp);
       return;
     }
@@ -347,7 +367,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         .toList();
     final currentVreme = info?.vreme;
     final hasActive =
-        info != null && !V3StatusFilters.isCanceledOrRejected(info.status) && !V3StatusFilters.isOfferLike(info.status);
+        info != null && !V3StatusPolicy.isCanceledOrRejected(info.status) && !V3StatusPolicy.isOfferLike(info.status);
     // Provera da li putnik ima drugu adresu za ovaj grad
     final putnikId = _putnikData['id']?.toString();
     final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
@@ -651,9 +671,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final rm = V3MasterRealtimeManager.instance;
     final operativniTermini = rm.operativnaAssignedCache.values
         .where((r) => (r['created_by']?.toString() ?? '') == putnikId)
-        .where((r) => !V3StatusFilters.isOtkazanoAt(r['otkazano_at']))
+        .where((r) => !V3StatusPolicy.isTimestampSet(r['otkazano_at']))
         .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
-        .where((r) => V3StatusFilters.isApproved(V3StatusFilters.deriveOperativnaStatus(r)))
+        .where((r) => V3StatusPolicy.isApproved(V3StatusPolicy.deriveOperativnaStatus(
+              otkazanoAt: r['otkazano_at'],
+              polazakAt: r['polazak_at'],
+            )))
         .toList();
 
     final now = DateTime.now();
@@ -1554,19 +1577,20 @@ class _ZahtevCell extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: V3StyleHelper.whiteAlpha5),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: [
-              Icon(Icons.add, size: 12, color: Colors.black),
-              const SizedBox(width: 3),
-              Text(
-                'dodaj',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
+              Expanded(
+                child: Text(
+                  '➕ dodaj',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                  ),
                 ),
               ),
             ],
@@ -1574,14 +1598,14 @@ class _ZahtevCell extends StatelessWidget {
         ),
       );
     }
-    final badgeStyle = V3StatusPresentation.forCell(
+    final badgeStyle = V3StatusPolicy.badgeForCell(
       status: info!.status,
       pokupljen: info!.pokupljen,
     );
     final statusColor = badgeStyle.color;
     final statusIcon = badgeStyle.icon;
-    final isCanceledOrRejected = V3StatusFilters.isCanceledOrRejected(info!.status);
     final vreme = V3StringUtils.trimTimeToHhMm(info!.vreme);
+    final statusPrefix = '$statusIcon ';
     return GestureDetector(
       onTap: onTap,
       child: V3ContainerUtils.styledContainer(
@@ -1593,15 +1617,12 @@ class _ZahtevCell extends StatelessWidget {
           width: 1.2,
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
           children: [
-            if (isCanceledOrRejected) ...[
-              const Icon(Icons.cancel, size: 12, color: Colors.redAccent),
-              const SizedBox(width: 4),
-            ],
-            Flexible(
+            Expanded(
               child: Text(
-                '$statusIcon $vreme',
+                '$statusPrefix$vreme',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: V3StyleHelper.whiteAlpha9,
                   fontSize: 12,
@@ -1610,8 +1631,6 @@ class _ZahtevCell extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 4),
-            Icon(Icons.edit, size: 10, color: V3StyleHelper.whiteAlpha3),
           ],
         ),
       ),

@@ -10,7 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../globals.dart';
 import '../../models/v3_putnik.dart';
-import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_stream_utils.dart';
 import '../../utils/v3_time_utils.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -491,7 +491,7 @@ class V3ForegroundGpsService {
         final rowId = row['id']?.toString() ?? '';
         if (!assignedTerminIds.contains(rowId)) return false;
         if (row['created_by'] == null) return false;
-        if (V3StatusFilters.isOtkazanoAt(row['otkazano_at'])) return false;
+        if (V3StatusPolicy.isTimestampSet(row['otkazano_at'])) return false;
         final rowGrad = (row['grad']?.toString() ?? '').toUpperCase();
         if (rowGrad != grad) return false;
         final rt = rowTime(row);
@@ -500,7 +500,7 @@ class V3ForegroundGpsService {
 
       if (relevantRows.isEmpty) return;
 
-      final allPickedUp = relevantRows.every((row) => V3StatusFilters.isPokupljenAt(row['pokupljen_at']));
+      final allPickedUp = relevantRows.every((row) => V3StatusPolicy.isTimestampSet(row['pokupljen_at']));
       if (!allPickedUp) return;
 
       debugPrint('[V3ForegroundGpsService] Auto-stop: svi putnici su pokupljeni, gasim tracking');

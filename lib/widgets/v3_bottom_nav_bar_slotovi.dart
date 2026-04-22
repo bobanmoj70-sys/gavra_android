@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
+import '../utils/v3_card_color_policy.dart';
 
 class V3BottomNavBarSlotovi extends StatefulWidget {
   const V3BottomNavBarSlotovi({
@@ -258,12 +259,12 @@ class _PolazakRow extends StatelessWidget {
                         color: selected
                             ? selectedFillColor
                             : hasVozac
-                                ? vozacBorderColor.withOpacity(0.16)
+                                ? V3CardColorPolicy.slotNavBackgroundFromVozac(vozacBorderColor)
                                 : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: hasVozac
-                              ? vozacBorderColor.withOpacity(0.75)
+                              ? V3CardColorPolicy.slotNavBorderFromVozac(vozacBorderColor)
                               : selected
                                   ? selectedPrimaryColor.withOpacity(0.8)
                                   : Colors.grey[300]!,

@@ -4,7 +4,7 @@ import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
 import '../../models/v3_zahtev.dart';
-import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
@@ -123,7 +123,7 @@ class V3PutnikService {
 
     // 1. Pronađi sve zahteve za danas
     final danasnjiZahtevi = rm.zahteviCache.values
-        .where((z) => z['datum'] == nowIso && !V3StatusFilters.isCanceledOrRejected(z['status']?.toString()))
+        .where((z) => z['datum'] == nowIso && !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString()))
         .toList();
 
     // 2. Za svaki zahtev nađi putnika
@@ -158,7 +158,7 @@ class V3PutnikService {
 
     final filtriraniZahtevi = rm.zahteviCache.values.where((z) {
       final isDanas = z['datum'] == nowIso;
-      final statusAllowed = !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
+      final statusAllowed = !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString());
       final isGrad = z['grad'] == grad;
       final isVreme = z['trazeni_polazak_at'] == vreme;
       return isDanas && statusAllowed && isGrad && isVreme;
@@ -194,7 +194,7 @@ class V3PutnikService {
         final rm = V3MasterRealtimeManager.instance;
         final matchingZahtevi = rm.zahteviCache.values.where((z) {
           final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
-          return rDatum == datumIso && !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
+          return rDatum == datumIso && !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString());
         });
 
         final Set<String> uniquePutnikIds = matchingZahtevi.map((z) => z['created_by'] as String).toSet();
@@ -234,7 +234,7 @@ class V3PutnikService {
       return rDatum == datumIso &&
           z['grad'] == grad &&
           z['trazeni_polazak_at'] == vreme &&
-          !V3StatusFilters.isCanceledOrRejected(z['status']?.toString());
+          !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString());
     });
 
     for (final z in zahtevi) {

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/v3_dug.dart';
-import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_status_policy.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_finansije_service.dart';
 import 'v3_vozac_service.dart';
@@ -50,7 +50,7 @@ class V3DugService {
       final naplata = operativnaId.isEmpty ? null : latestNaplataByOperativna[operativnaId];
       final isPlaceno = naplata != null;
       if (isPlaceno) continue;
-      final isPokupljen = V3StatusFilters.isPokupljenAt(row['pokupljen_at']);
+      final isPokupljen = V3StatusPolicy.isTimestampSet(row['pokupljen_at']);
       if (!isPokupljen) continue;
       final putnikId = row['created_by'] as String? ?? '';
       final putnikData = rm.putniciCache[putnikId];

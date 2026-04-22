@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'v3_status_filters.dart';
+import 'v3_card_color_policy.dart';
+import 'v3_status_policy.dart';
 
 /// V3StyleHelper - centralizovane style konstante i dekoracije.
 class V3StyleHelper {
@@ -124,7 +125,7 @@ class V3StyleHelper {
     bool isPlacen = false,
     Color? vozacBoja,
   }) {
-    if (V3StatusFilters.isCanceled(status)) {
+    if (V3StatusPolicy.isCanceled(status)) {
       return BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -182,7 +183,7 @@ class V3StyleHelper {
 
     // Default - bijela kartica sa opcional vozac bojom
     if (vozacBoja != null) {
-      final blendedColor = Color.lerp(Colors.white, vozacBoja, 0.20)!;
+      final blendedColor = V3CardColorPolicy.tintedCardBackground(vozacBoja);
       return BoxDecoration(
         color: blendedColor,
         borderRadius: radius10,
@@ -268,8 +269,8 @@ class V3StyleHelper {
       backgroundColor = selectedColor;
       borderColor = selectedColor;
     } else {
-      backgroundColor = vozacBoja?.withValues(alpha: 0.1) ?? whiteAlpha15;
-      borderColor = vozacBoja?.withValues(alpha: 0.3) ?? whiteAlpha3;
+      backgroundColor = vozacBoja != null ? V3CardColorPolicy.slotButtonBackgroundFromVozac(vozacBoja) : whiteAlpha15;
+      borderColor = vozacBoja != null ? V3CardColorPolicy.slotButtonBorderFromVozac(vozacBoja) : whiteAlpha3;
     }
 
     return BoxDecoration(

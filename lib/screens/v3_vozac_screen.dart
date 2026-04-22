@@ -18,11 +18,12 @@ import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
-import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_telefon_helper.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
@@ -135,11 +136,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isGpsRowEligible(Map<String, dynamic> row) {
-    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
-  }
-
-  bool _isGpsRowActiveForCount(Map<String, dynamic> row) {
-    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
+    return V3StatusPolicy.canAssign(
+      status: row['status']?.toString(),
+      otkazanoAt: row['otkazano_at'],
+      pokupljenAt: row['pokupljen_at'],
+    );
   }
 
   Future<void> _reloadTrenutnaDodelaForVozac() async {
@@ -167,7 +168,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
         final status = mapped['status']?.toString() ?? '';
-        if (!V3StatusFilters.isDodelaAktivna(status)) continue;
+        if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
         if (terminId.isEmpty) continue;
         assigned.add(terminId);
@@ -267,17 +268,24 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   bool _isExcludedFromOptimization(_PutnikEntry entry) {
-    final isPokupljen = V3StatusFilters.isPokupljenAt(entry.entry?.pokupljenAt);
-    final isOtkazan = V3StatusFilters.isOtkazanoAt(entry.entry?.otkazanoAt);
-    return isPokupljen || isOtkazan;
+    return !V3StatusPolicy.canAssign(
+      status: entry.entry?.statusFinal,
+      otkazanoAt: entry.entry?.otkazanoAt,
+      pokupljenAt: entry.entry?.pokupljenAt,
+    );
   }
 
   List<_PutnikEntry> _sortPutniciForDisplay(List<_PutnikEntry> putnici) {
     final sorted = List<_PutnikEntry>.from(putnici);
     sorted.sort((a, b) {
       int sortRank(_PutnikEntry entry) {
-        if (V3StatusFilters.isOtkazanoAt(entry.entry?.otkazanoAt)) return 3;
-        if (V3StatusFilters.isPokupljenAt(entry.entry?.pokupljenAt)) return 2;
+        if (!V3StatusPolicy.countsAsOccupied(
+          status: entry.entry?.statusFinal,
+          otkazanoAt: entry.entry?.otkazanoAt,
+        )) {
+          return 3;
+        }
+        if (V3StatusPolicy.isTimestampSet(entry.entry?.pokupljenAt)) return 2;
         return 1;
       }
 
@@ -420,7 +428,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (matchedEntryData == null && putnikId != null && putnikId.isNotEmpty) {
         DateTime? bestUpdatedAt;
         for (final r in rm.operativnaNedeljaCache.values) {
-          if (V3StatusFilters.isOtkazanoAt(r['otkazano_at'])) continue;
+          if (!V3StatusPolicy.countsAsOccupied(
+            status: r['status']?.toString(),
+            otkazanoAt: r['otkazano_at'],
+          )) {
+            continue;
+          }
           if (r['created_by']?.toString() != putnikId) continue;
           if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
           if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
@@ -607,12 +620,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vremeNorm = _normV(vreme);
     final gradUp = grad.toUpperCase();
 
-    int parseBrojMesta(dynamic value) {
-      if (value is int) return value;
-      if (value is num) return value.toInt();
-      return int.tryParse(value?.toString() ?? '') ?? 1;
-    }
-
     bool hasActivePutnik(Map<String, dynamic> row) {
       final putnikId = row['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
@@ -621,13 +628,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
 
     // Broji sva mesta za assigned redove (izvor dodele: v3_trenutna_dodela)
-    return _assignedOperativnaRows(
+    final rows = _assignedOperativnaRows(
       datumIso: _selectedDatumIso,
       grad: gradUp,
       vreme: vremeNorm,
-    )
-        .where((r) => hasActivePutnik(r) && _isGpsRowActiveForCount(r))
-        .fold<int>(0, (sum, r) => sum + parseBrojMesta(r['broj_mesta']));
+    ).where((r) => hasActivePutnik(r));
+
+    return V3StatusPolicy.countOccupiedSeatsForSlot<Map<String, dynamic>>(
+      items: rows,
+      grad: gradUp,
+      vreme: vremeNorm,
+      gradOf: (row) => row['grad']?.toString(),
+      vremeOf: (row) => row['vreme']?.toString() ?? row['polazak_at']?.toString(),
+      seatsOf: (row) => V3StatusPolicy.parseSeats(row['broj_mesta']),
+      statusOf: (row) => row['status']?.toString(),
+      otkazanoAtOf: (row) => row['otkazano_at'],
+    );
   }
 
   Future<void> _toggleTracking() async {
@@ -1071,6 +1087,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Widget _buildBody() {
+    final vozacBoja = _getVozacBojaRaw(_efektivniVozac);
     final redniBrojevi = <int>[];
     var tekuciRedniBroj = 1;
     for (final putnikEntry in _mojiPutnici) {
@@ -1135,6 +1152,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 putnik: pz.putnik,
                                 entry: pz.entry,
                                 redniBroj: redniBrojevi[index],
+                                vozacBoja: vozacBoja,
                                 onChanged: _rebuild,
                                 isExcludedFromOptimization: _isExcludedFromOptimization(pz),
                               );
@@ -1267,15 +1285,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   // Puna boja vozača (bez alpha skaliranja) — za tekst/border
   Color _getVozacBojaRaw(dynamic v3Vozac) {
-    if (v3Vozac == null) return Colors.white;
-    final hex = v3Vozac.boja?.toString();
-    if (hex == null || hex.isEmpty) return Colors.white;
-    try {
-      final clean = hex.replaceFirst('#', '');
-      return Color(int.parse('FF$clean', radix: 16));
-    } catch (_) {
-      return Colors.white;
-    }
+    final hex = v3Vozac?.boja?.toString();
+    return V3CardColorPolicy.parseHexColor(hex, fallback: Colors.white);
   }
 
   // Timer funkcionalnost uklonjena - koriste se database trigger-i i CRON job-ovi

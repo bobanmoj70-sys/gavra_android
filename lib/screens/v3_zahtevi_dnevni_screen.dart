@@ -12,8 +12,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
-import '../utils/v3_status_filters.dart';
-import '../utils/v3_status_presentation.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
@@ -35,8 +34,8 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
     final windowEnd = todayOnly.add(const Duration(days: 14));
     return rm.zahteviCache.values.map((v) => V3Zahtev.fromJson(v)).where((z) {
       // Ako tražimo 'obrada', prikaži i one koji su u statusu 'alternativa' (jer ih dispečer i dalje vidi kao nešto na čemu radi)
-      if (V3StatusFilters.isPending(status)) {
-        if (!V3StatusFilters.isPending(z.status) && !V3StatusFilters.isOfferLike(z.status)) return false;
+      if (V3StatusPolicy.isPending(status)) {
+        if (!V3StatusPolicy.isPending(z.status) && !V3StatusPolicy.isOfferLike(z.status)) return false;
       } else {
         if (z.status != status) return false;
       }
@@ -75,11 +74,11 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
       await V3ZahtevService.updateStatus(id, status);
       if (mounted) {
         String label = '✅ Uspeh';
-        if (status == 'odobreno')
+        if (V3StatusPolicy.isApproved(status))
           label = '✅ Odobreno';
-        else if (V3StatusFilters.isCanceled(status))
+        else if (V3StatusPolicy.isCanceled(status))
           label = '🚫 Otkazano';
-        else if (status == 'odbijeno') label = '❌ Odbijeno';
+        else if (V3StatusPolicy.isRejected(status)) label = '❌ Odbijeno';
 
         V3AppSnackBar.success(context, label);
       }
@@ -336,7 +335,7 @@ class _ZahtevCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tip = putnik?.tipPutnika ?? '';
     final tipColor = V3TipPutnikaUtils.color(tip);
-    final statusColor = V3StatusPresentation.statusColor(zahtev.status);
+    final statusColor = V3StatusPolicy.statusColor(zahtev.status);
     final danLabel = V3DanHelper.label(zahtev.datum);
     final vreme = V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt);
 

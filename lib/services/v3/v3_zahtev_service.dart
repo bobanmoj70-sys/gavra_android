@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
-import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -40,7 +40,7 @@ class V3ZahtevService {
       return (row['created_by']?.toString() ?? '') == putnikId &&
           rowDatum == datumIso &&
           rowGrad == targetGrad &&
-          V3StatusFilters.isVisibleForDisplay(
+          V3StatusPolicy.isVisibleForDisplay(
             status: row['status']?.toString(),
           );
     }).toList();
@@ -84,7 +84,10 @@ class V3ZahtevService {
 
   static List<V3Zahtev> getPendingZahteviByGrad(String grad) {
     final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-    return cache.where((r) => r['grad'] == grad && r['status'] == 'obrada').map((r) => V3Zahtev.fromJson(r)).toList()
+    return cache
+        .where((r) => r['grad'] == grad && V3StatusPolicy.isPending(r['status']?.toString()))
+        .map((r) => V3Zahtev.fromJson(r))
+        .toList()
       ..sort((a, b) => a.datum.compareTo(b.datum));
   }
 
@@ -95,7 +98,7 @@ class V3ZahtevService {
         tables: ['v3_zahtevi'],
         build: () {
           final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-          return cache.where((r) => r['status'] == 'obrada').length;
+          return cache.where((r) => V3StatusPolicy.isPending(r['status']?.toString())).length;
         },
       );
 
@@ -139,7 +142,7 @@ class V3ZahtevService {
       final rowKey = (row['id']?.toString() ?? '').trim();
       if (rowKey.isNotEmpty) {
         final status = row['status']?.toString();
-        if (V3StatusFilters.isOfferLike(status)) {
+        if (V3StatusPolicy.isOfferLike(status)) {
           await updateStatus(rowKey, 'obrada', updatedBy: updatedBy);
         }
         await updateTrazeniPolazakAt(
@@ -245,7 +248,7 @@ class V3ZahtevService {
           final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
           return rDatum == datumIso &&
               r['grad'] == grad &&
-              !V3StatusFilters.isCanceledOrRejected(r['status']?.toString());
+              !V3StatusPolicy.isCanceledOrRejected(r['status']?.toString());
         })
         .map((r) => V3Zahtev.fromJson(r))
         .toList()
@@ -270,7 +273,10 @@ class V3ZahtevService {
         datum: DateTime.tryParse(datum) ?? DateTime.now(),
         trazeniPolazakAt: efektivniPolazakAt,
         polazakAt: efektivniPolazakAt,
-        status: V3StatusFilters.deriveOperativnaStatus(op),
+        status: V3StatusPolicy.deriveOperativnaStatus(
+          otkazanoAt: op['otkazano_at'],
+          polazakAt: op['polazak_at'],
+        ),
       );
     }).toList()
       ..sort((a, b) => (a.polazakAt ?? '').compareTo(b.polazakAt ?? ''));

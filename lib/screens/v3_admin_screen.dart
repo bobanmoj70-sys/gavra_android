@@ -12,7 +12,7 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
-import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_policy.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
@@ -952,8 +952,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       if (grad == 'BC') {
-        final status = V3StatusFilters.deriveOperativnaStatus(r);
-        if (status != 'odobreno') continue;
+        final status = V3StatusPolicy.deriveOperativnaStatus(
+          otkazanoAt: r['otkazano_at'],
+          polazakAt: r['polazak_at'],
+        );
+        if (!V3StatusPolicy.isApproved(status)) continue;
         final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
         if (polazakAt.isEmpty) continue;
         bcNames.add(ime);
@@ -1073,8 +1076,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       }
 
       if (grad == 'BC') {
-        final status = V3StatusFilters.deriveOperativnaStatus(r);
-        if (status != 'odobreno') continue;
+        final status = V3StatusPolicy.deriveOperativnaStatus(
+          otkazanoAt: r['otkazano_at'],
+          polazakAt: r['polazak_at'],
+        );
+        if (!V3StatusPolicy.isApproved(status)) continue;
         final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
         if (polazakAt.isEmpty) continue;
         bcNames.add(ime);
@@ -1155,7 +1161,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .toSet();
 
     return rm.zahteviCache.values.where((row) {
-      if ((row['status']?.toString() ?? '') != 'obrada') return false;
+      if (!V3StatusPolicy.isPending(row['status']?.toString())) return false;
 
       final putnikId = row['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
@@ -1174,7 +1180,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .toSet();
 
     return rm.zahteviCache.values.where((row) {
-      if ((row['status']?.toString() ?? '') != 'obrada') return false;
+      if (!V3StatusPolicy.isPending(row['status']?.toString())) return false;
 
       final putnikId = row['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
@@ -1188,7 +1194,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   int _getZahteviCount() {
     final rm = V3MasterRealtimeManager.instance;
     return rm.zahteviCache.values.where((row) {
-      if ((row['status']?.toString() ?? '') != 'obrada') return false;
+      if (!V3StatusPolicy.isPending(row['status']?.toString())) return false;
       final putnikId = row['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
 
@@ -1208,7 +1214,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .map((p) => p['id'] as String)
         .toSet();
     return rm.zahteviCache.values.where((r) {
-      if ((r['status']?.toString() ?? '') != 'obrada') return false;
+      if (!V3StatusPolicy.isPending(r['status']?.toString())) return false;
       final putnikId = r['created_by']?.toString();
       if (putnikId == null || putnikId.isEmpty) return false;
       if (!posiljkaPutnici.contains(putnikId)) return false;

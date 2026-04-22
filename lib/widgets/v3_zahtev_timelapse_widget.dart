@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/v3_zahtev.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 
 /// Zajednički widget za prikaz timelapse info reda na zahtev karticama.
@@ -36,14 +36,14 @@ class V3ZahtevTimelapseWidget extends StatelessWidget {
       final diffStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
 
       String odgovorLabel;
-      if (V3StatusFilters.isOfferLike(zahtev.status) && (zahtev.altVremePre != null || zahtev.altVremePosle != null)) {
+      if (V3StatusPolicy.isOfferLike(zahtev.status) && (zahtev.altVremePre != null || zahtev.altVremePosle != null)) {
         final alts = [
           if (zahtev.altVremePre != null) V3StringUtils.formatAlternativeTime(zahtev.altVremePre),
           if (zahtev.altVremePosle != null) V3StringUtils.formatAlternativeTime(zahtev.altVremePosle),
         ].join(' / ');
         odgovorLabel = '⚠️ alt: $alts';
       } else {
-        odgovorLabel = switch (V3StatusFilters.normalizeStatus(zahtev.status)) {
+        odgovorLabel = switch (V3StatusPolicy.normalizeStatus(zahtev.status)) {
           'odobreno' => '✅',
           'alternativa' => '⚠️',
           'odbijeno' => '❌',

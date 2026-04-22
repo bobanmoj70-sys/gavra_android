@@ -16,6 +16,7 @@ import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_date_utils.dart';
@@ -23,8 +24,7 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
-import '../utils/v3_status_filters.dart';
-import '../utils/v3_status_presentation.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_tip_putnika_utils.dart';
@@ -96,7 +96,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         duration: const Duration(milliseconds: 1500),
         onLongPress: () {
           if (_isLongPressActive && mounted) {
-            final isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+            final isPokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
             final isOtkazan = widget.entry?.otkazanoAt != null;
             if (!isOtkazan && !isPokupljen) {
               _handlePickup();
@@ -245,7 +245,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       return;
     }
 
-    if (isPoPokupljenjuModel && !V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt)) {
+    if (isPoPokupljenjuModel && !V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt)) {
       if (mounted) {
         V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon pokupljanja putnika.');
       }
@@ -377,8 +377,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   // ─── Boje kartice po statusu ───────────────────────────────────
 
   BoxDecoration _getCardDecoration() {
-    final status = V3StatusFilters.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
-    final bool isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+    final status = V3StatusPolicy.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
+    final bool isPokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
     final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
@@ -392,14 +392,14 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     );
   }
 
-  V3StatusTextStyle _getStatusTextStyle() {
+  V3StatusTextUi _getStatusTextStyle() {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status;
-    final pokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+    final pokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
     final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
     final placen = naplataInfo?.isPaid ?? false;
-    return V3StatusPresentation.forCardText(
+    return V3StatusPolicy.textForCard(
       status: status,
       pokupljen: pokupljen,
       placen: placen,
@@ -431,26 +431,12 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     return null;
   }
 
-  Color? _parseHexColor(String? hex) {
-    if (hex == null || hex.isEmpty) return null;
-    final clean = hex.replaceAll('#', '').trim();
-    if (clean.length == 6) {
-      final value = int.tryParse('FF$clean', radix: 16);
-      return value != null ? Color(value) : null;
-    }
-    if (clean.length == 8) {
-      final value = int.tryParse(clean, radix: 16);
-      return value != null ? Color(value) : null;
-    }
-    return null;
-  }
-
   // ─── Build ─────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final status = V3StatusFilters.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
-    final bool isPokupljen = V3StatusFilters.isPokupljenAt(widget.entry?.pokupljenAt);
+    final status = V3StatusPolicy.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
+    final bool isPokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final bool isOtkazan = widget.entry?.otkazanoAt != null;
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
@@ -652,9 +638,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                     Color _bojaZaVozacId(String? vozacId) {
                       if (vozacId != null) {
                         final v = V3VozacService.getVozacById(vozacId);
-                        if (v != null) return _parseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
+                        if (v != null) return V3CardColorPolicy.tryParseHexColor(v.boja) ?? const Color(0xFF9E9E9E);
                       }
-                      return _parseHexColor(_currentVozac?.boja) ?? const Color(0xFF9E9E9E);
+                      return V3CardColorPolicy.tryParseHexColor(_currentVozac?.boja) ?? const Color(0xFF9E9E9E);
                     }
 
                     final bojaPokupljen = _bojaZaVozacId(widget.entry?.pokupljenBy);

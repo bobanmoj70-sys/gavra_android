@@ -11,15 +11,15 @@ import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
+import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
-import '../utils/v3_status_filters.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_putnik_card.dart';
-import 'helpers/v3_boja_status_helper.dart';
 
 /// V3 ekran za upravljanje rasporedom vozača.
 /// Admin dodeljuje vozača kroz `v3_trenutna_dodela` (operativna ostaje izvor stanja vožnje).
@@ -78,7 +78,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       for (final row in (rows as List<dynamic>)) {
         final mapped = row as Map<String, dynamic>;
         final status = mapped['status']?.toString() ?? '';
-        if (!V3StatusFilters.isDodelaAktivna(status)) continue;
+        if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
         final terminId = mapped['termin_id']?.toString().trim() ?? '';
         final vozacId = mapped['vozac_v3_auth_id']?.toString().trim() ?? '';
         if (terminId.isEmpty || vozacId.isEmpty) continue;
@@ -199,8 +199,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     final uniqueSlots = <String, Map<String, String>>{};
     for (final row in rm.operativnaNedeljaCache.values) {
       final putnikId = row['created_by']?.toString() ?? '';
-      if (!_putnikPostoji(putnikId)) continue;
-      if (V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
+      if (!_putnikPostoji(putnikId) || V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
 
       final grad = (row['grad']?.toString() ?? '').toUpperCase();
       final vreme = V3TimeUtils.normalizeToHHmm(_effectiveTime(row));
@@ -252,7 +251,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   /// Vozač za termin iz trenutne dodele (bez fallback-a).
   V3Vozac? _getVozacZaTermin(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
-    final vozacId = V3BojaStatusHelper.sharedVozacIdForTermin(
+    final vozacId = V3StatusPolicy.sharedVozacIdForTermin(
       operativnaRows: rm.operativnaNedeljaCache.values,
       grad: grad,
       vreme: vreme,
@@ -260,7 +259,12 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       vozacIdForRow: _vozacIdForOperativnaRow,
       isVisibleRow: (row) {
         final putnikId = row['created_by']?.toString() ?? '';
-        return _putnikPostoji(putnikId) && !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
+        return _putnikPostoji(putnikId) &&
+            V3StatusPolicy.canAssign(
+              status: row['status']?.toString(),
+              otkazanoAt: row['otkazano_at'],
+              pokupljenAt: row['pokupljen_at'],
+            );
       },
       vremeKolona: 'polazak_at',
     );
@@ -272,14 +276,18 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   /// Vozač za putnika iz trenutne dodele (bez fallback-a).
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;
-    final vozacId = V3BojaStatusHelper.assignedVozacIdForPutnik(
+    final vozacId = V3StatusPolicy.assignedVozacIdForPutnik(
       operativnaRows: rm.operativnaNedeljaCache.values,
       putnikId: putnikId,
       grad: grad,
       vreme: vreme,
       datumIso: _selectedDatumIso,
       vozacIdForRow: _vozacIdForOperativnaRow,
-      isVisibleRow: (row) => !V3StatusFilters.isOtkazanoAt(row['otkazano_at']),
+      isVisibleRow: (row) => V3StatusPolicy.canAssign(
+        status: row['status']?.toString(),
+        otkazanoAt: row['otkazano_at'],
+        pokupljenAt: row['pokupljen_at'],
+      ),
       vremeKolona: 'polazak_at',
     );
     if ((vozacId ?? '').isNotEmpty) {
@@ -292,22 +300,21 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   int _getPutnikCount(String grad, String vreme) {
     final targetDatum = _selectedDatumIso;
     final entries = V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(targetDatum);
-    return V3BojaStatusHelper.countMestaForSlot(entries: entries, grad: grad, vreme: vreme);
+    return V3StatusPolicy.countOccupiedSeatsForSlot<V3OperativnaNedeljaEntry>(
+      items: entries,
+      grad: grad,
+      vreme: vreme,
+      gradOf: (entry) => entry.grad,
+      vremeOf: (entry) => entry.polazakAt,
+      seatsOf: (entry) => entry.brojMesta,
+      statusOf: (entry) => entry.statusFinal,
+      otkazanoAtOf: (entry) => entry.otkazanoAt,
+    );
   }
 
   Color? _getVozacBoja(String grad, String vreme) {
     final v = _getVozacZaTermin(grad, vreme);
-    return v != null ? _parseColor(v.boja) : null;
-  }
-
-  Color _parseColor(String? hex) {
-    if (hex == null || hex.isEmpty) return Colors.blueAccent;
-    final h = hex.replaceAll('#', '');
-    try {
-      return Color(int.parse('FF$h', radix: 16));
-    } catch (_) {
-      return Colors.blueAccent;
-    }
+    return v != null ? V3CardColorPolicy.vozacColorOr(v.boja) : null;
   }
 
   // ─── DB operacije ─────────────────────────────────────────────────────────
@@ -331,7 +338,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             r['grad'] == grad &&
             V3TimeUtils.normalizeToHHmm(rowVreme) == V3TimeUtils.normalizeToHHmm(vreme) &&
             _putnikPostoji(putnikId) &&
-            !V3StatusFilters.isOtkazanoAt(r['otkazano_at']);
+            V3StatusPolicy.canAssign(
+              status: r['status']?.toString(),
+              otkazanoAt: r['otkazano_at'],
+              pokupljenAt: r['pokupljen_at'],
+            );
       }).toList();
 
       final operativnaIds = putnici
@@ -382,7 +393,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                 r['grad'] == grad &&
                 V3TimeUtils.normalizeToHHmm(rowVreme) == normVreme &&
                 _putnikPostoji(putnikId) &&
-                !V3StatusFilters.isOtkazanoAt(r['otkazano_at']);
+                V3StatusPolicy.canAssign(
+                  status: r['status']?.toString(),
+                  otkazanoAt: r['otkazano_at'],
+                  pokupljenAt: r['pokupljen_at'],
+                );
           })
           .map((r) => r['id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
@@ -414,7 +429,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == datum &&
             r['grad'] == grad &&
             V3TimeUtils.normalizeToHHmm(_effectiveTime(r)) == normVreme &&
-            !V3StatusFilters.isOtkazanoAt(r['otkazano_at']),
+            V3StatusPolicy.canAssign(
+              status: r['status']?.toString(),
+              otkazanoAt: r['otkazano_at'],
+              pokupljenAt: r['pokupljen_at'],
+            ),
         orElse: () => <String, dynamic>{},
       );
 
@@ -450,7 +469,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') == _selectedDatumIso &&
             r['grad'] == grad &&
             V3TimeUtils.normalizeToHHmm(_effectiveTime(r)) == normVreme &&
-            !V3StatusFilters.isOtkazanoAt(r['otkazano_at']),
+            V3StatusPolicy.canAssign(
+              status: r['status']?.toString(),
+              otkazanoAt: r['otkazano_at'],
+              pokupljenAt: r['pokupljen_at'],
+            ),
         orElse: () => <String, dynamic>{},
       );
 
@@ -514,7 +537,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
                     isSelected: odabran?.id == v.id,
-                    color: _parseColor(v.boja),
+                    color: V3CardColorPolicy.vozacColorOr(v.boja),
                     onTap: () => setS(() => odabran = odabran?.id == v.id ? null : v),
                   )),
               const SizedBox(height: 8),
@@ -595,7 +618,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
                     isSelected: odabran?.id == v.id,
-                    color: _parseColor(v.boja),
+                    color: V3CardColorPolicy.vozacColorOr(v.boja),
                     onTap: () => setS(() => odabran = odabran?.id == v.id ? null : v),
                   )),
               const SizedBox(height: 8),
@@ -655,14 +678,21 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         // Zapisi za selektovani grad+vreme (datum je već filtriran stream-om)
         final zapisi = _selectedVreme.isNotEmpty
             ? (sviZapisi
-                .where(
-                    (z) => V3BojaStatusHelper.matchesSelectedSlot(entry: z, grad: _selectedGrad, vreme: _selectedVreme))
+                .where((z) => V3StatusPolicy.matchesSelectedSlot(
+                      entryGrad: z.grad,
+                      entryVreme: z.polazakAt,
+                      grad: _selectedGrad,
+                      vreme: _selectedVreme,
+                    ))
                 .toList()
               ..sort((a, b) {
-                return V3BojaStatusHelper.compareEntriesForDisplay(
+                return V3StatusPolicy.compareEntriesForDisplay<V3OperativnaNedeljaEntry>(
                   a: a,
                   b: b,
                   currentVozacId: currentVozacId,
+                  otkazanoAtOf: (entry) => entry.otkazanoAt,
+                  pokupljenAtOf: (entry) => entry.pokupljenAt,
+                  putnikIdOf: (entry) => entry.putnikId,
                   assignedVozacIdForEntry: (entry) {
                     final indiv = _getVozacZaPutnika(entry.putnikId, entry.grad ?? '', slotVreme(entry));
                     return indiv?.id;
@@ -798,8 +828,10 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                           final indivVozac =
                                               _getVozacZaPutnika(z.putnikId, _selectedGrad, slotVreme(z));
                                           final vozacBoja = indivVozac != null
-                                              ? _parseColor(indivVozac.boja)
-                                              : (terminDodeljen ? _parseColor(vozacTermin.boja) : null);
+                                              ? V3CardColorPolicy.vozacColorOr(indivVozac.boja)
+                                              : (terminDodeljen
+                                                  ? V3CardColorPolicy.vozacColorOr(vozacTermin.boja)
+                                                  : null);
 
                                           final putnik = V3PutnikService.getPutnikById(z.putnikId) ??
                                               V3Putnik(
@@ -814,7 +846,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                               entry: z,
                                               redniBroj: redniBroj,
                                               vozacBoja: vozacBoja,
-                                              onDodeliVozaca: V3StatusFilters.isOtkazanoAt(z.otkazanoAt)
+                                              onDodeliVozaca: !V3StatusPolicy.canAssign(
+                                                status: z.statusFinal,
+                                                otkazanoAt: z.otkazanoAt,
+                                                pokupljenAt: z.pokupljenAt,
+                                              )
                                                   ? null
                                                   : () => _showPutnikAssignDialog(z),
                                               onChanged: () => setState(() {}),
@@ -875,7 +911,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     required V3Vozac? vozac,
     required VoidCallback onTap,
   }) {
-    final color = vozac != null ? _parseColor(vozac.boja) : Colors.white24;
+    final color = vozac != null ? V3CardColorPolicy.vozacColorOr(vozac.boja) : Colors.white24;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(

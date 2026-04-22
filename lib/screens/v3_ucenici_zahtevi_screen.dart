@@ -5,8 +5,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_status_filters.dart';
-import '../utils/v3_status_presentation.dart';
+import '../utils/v3_status_policy.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
 
 /// V3 ekran — Monitoring Učenika
@@ -51,10 +50,10 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
       builder: (context, _) {
         final zahtevi = _getZahtevi();
 
-        final brObrada = zahtevi.where((z) => V3StatusFilters.isPending(z.status)).length;
-        final brOdobreno = zahtevi.where((z) => V3StatusFilters.isApproved(z.status)).length;
-        final brOdbijeno = zahtevi.where((z) => V3StatusFilters.isRejected(z.status)).length;
-        final brOtkazano = zahtevi.where((z) => V3StatusFilters.isCanceled(z.status)).length;
+        final brObrada = zahtevi.where((z) => V3StatusPolicy.isPending(z.status)).length;
+        final brOdobreno = zahtevi.where((z) => V3StatusPolicy.isApproved(z.status)).length;
+        final brOdbijeno = zahtevi.where((z) => V3StatusPolicy.isRejected(z.status)).length;
+        final brOtkazano = zahtevi.where((z) => V3StatusPolicy.isCanceled(z.status)).length;
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -167,7 +166,7 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = V3StatusPresentation.statusCardStyle(zahtev.status);
+    final style = V3StatusPolicy.statusCardStyle(zahtev.status);
     final borderColor = style.borderColor;
     final statusLabel = style.label;
 

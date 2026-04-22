@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_date_utils.dart';
-import '../../utils/v3_status_filters.dart';
+import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
@@ -56,7 +56,10 @@ class V3OperativnaNedeljaEntry {
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String?,
       polazakAt: json['polazak_at'] as String?,
-      statusFinal: V3StatusFilters.deriveOperativnaStatus(json),
+      statusFinal: V3StatusPolicy.deriveOperativnaStatus(
+        otkazanoAt: json['otkazano_at'],
+        polazakAt: json['polazak_at'],
+      ),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
@@ -95,7 +98,7 @@ class V3OperativnaNedeljaService {
   static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
 
   static bool _isOperativnaAktivna(Map<String, dynamic> row) {
-    return !V3StatusFilters.isOtkazanoAt(row['otkazano_at']);
+    return !V3StatusPolicy.isTimestampSet(row['otkazano_at']);
   }
 
   static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByFilter({
@@ -213,9 +216,17 @@ class V3OperativnaNedeljaService {
   /// Čita broj zauzetih mesta — suma broj_mesta aktivnih operativnih zapisa.
   /// Aktivni status je izveden iz operativnih kolona (`otkazano_at`, `polazak_at`).
   static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
-    const aktivniStatusi = {'obrada', 'odobreno'};
     final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
-    return zapisi.where((e) => aktivniStatusi.contains(e.statusFinal)).fold(0, (sum, e) => sum + e.brojMesta);
+    return V3StatusPolicy.countOccupiedSeatsForSlot<V3OperativnaNedeljaEntry>(
+      items: zapisi,
+      grad: grad,
+      vreme: vreme,
+      gradOf: (entry) => entry.grad,
+      vremeOf: (entry) => entry.polazakAt,
+      seatsOf: (entry) => entry.brojMesta,
+      statusOf: (entry) => entry.statusFinal,
+      otkazanoAtOf: (entry) => entry.otkazanoAt,
+    );
   }
 
   /// Čita broj slobodnih mesta za dati grad/vreme/datum.
@@ -253,9 +264,10 @@ class V3OperativnaNedeljaService {
       }).toList();
 
       if (postojeci.isNotEmpty) {
-        // UPDATE: prepiši polazak_at
+        // UPDATE: prepiši polazak_at i broj_mesta
         await _repo.updateById(postojeci.first['id'] as String, {
           'polazak_at': polazakAt,
+          'broj_mesta': brojMesta,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_override_id': adresaIdOverride, // null = briše override
