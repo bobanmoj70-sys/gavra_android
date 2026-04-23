@@ -82,6 +82,10 @@ class V3PushTokenProvider {
       await _ensureFirebaseInitialized();
 
       final messaging = FirebaseMessaging.instance;
+      try {
+        await messaging.setAutoInitEnabled(true);
+      } catch (_) {}
+
       final currentSettings = await messaging.getNotificationSettings().timeout(
             const Duration(seconds: 2),
           );
@@ -104,11 +108,11 @@ class V3PushTokenProvider {
       }
 
       String? apnsToken;
-      for (var attempt = 1; attempt <= 3; attempt++) {
-        apnsToken = await messaging.getAPNSToken().timeout(const Duration(seconds: 2), onTimeout: () => null);
+      for (var attempt = 1; attempt <= 2; attempt++) {
+        apnsToken = await messaging.getAPNSToken().timeout(const Duration(milliseconds: 700), onTimeout: () => null);
         if ((apnsToken ?? '').trim().isNotEmpty) break;
-        if (attempt < 3) {
-          await Future<void>.delayed(const Duration(milliseconds: 350));
+        if (attempt < 2) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
         }
       }
 
@@ -116,13 +120,13 @@ class V3PushTokenProvider {
 
       String? token;
       for (var attempt = 1; attempt <= 3; attempt++) {
-        token = await messaging.getToken().timeout(const Duration(seconds: 3), onTimeout: () => null);
+        token = await messaging.getToken().timeout(const Duration(seconds: 1), onTimeout: () => null);
         final safeToken = (token ?? '').trim();
         if (safeToken.isNotEmpty) {
           return safeToken;
         }
         if (attempt < 3) {
-          await Future<void>.delayed(const Duration(milliseconds: 350));
+          await Future<void>.delayed(const Duration(milliseconds: 250));
         }
       }
 

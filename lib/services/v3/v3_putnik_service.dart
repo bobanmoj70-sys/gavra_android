@@ -32,6 +32,16 @@ class V3PutnikService {
     return data != null ? V3Putnik.fromJson(data) : null;
   }
 
+  static int normalizeBrojMestaForPutnik({
+    required String putnikId,
+    required int brojMesta,
+  }) {
+    final putnik = V3MasterRealtimeManager.instance.putniciCache[putnikId];
+    final tipPutnika = (putnik?['tip_putnika']?.toString() ?? '').trim().toLowerCase();
+    if (tipPutnika == 'posiljka') return 0;
+    return brojMesta;
+  }
+
   static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
     final id = putnikId.trim();
     if (id.isEmpty) return null;

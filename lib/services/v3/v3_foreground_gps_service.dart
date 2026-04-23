@@ -8,12 +8,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_stream_utils.dart';
 import '../../utils/v3_time_utils.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
+import 'v3_trenutna_dodela_service.dart';
 import 'v3_vozac_lokacija_service.dart';
 
 /// V3 Foreground GPS Service sa Persistent Notification
@@ -462,16 +462,10 @@ class V3ForegroundGpsService {
       final toDate =
           DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
 
-      final dodelaRows = await supabase
-          .from('v3_trenutna_dodela')
-          .select('termin_id, status')
-          .eq('vozac_v3_auth_id', vozacId)
-          .eq('status', 'aktivan');
-
-      final assignedTerminIds = (dodelaRows as List<dynamic>)
-          .map((row) => (row as Map<String, dynamic>)['termin_id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toSet();
+      final activeVozacByTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId(
+        vozacId: vozacId,
+      );
+      final assignedTerminIds = activeVozacByTerminId.keys.toSet();
 
       if (assignedTerminIds.isEmpty) return;
 

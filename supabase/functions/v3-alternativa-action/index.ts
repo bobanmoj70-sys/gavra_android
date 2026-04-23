@@ -30,7 +30,7 @@ function normalizeToHHmm(input: unknown): string {
   return `${hour}:${minute}`;
 }
 
-async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: string) {
+async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: string, isPosiljka: boolean) {
   const putnikId = String(row.created_by ?? "").trim();
   const grad = String(row.grad ?? "").trim();
   const datum = String(row.datum ?? "").split("T")[0];
@@ -41,6 +41,7 @@ async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: st
     .from("v3_operativna_nedelja")
     .update({
       polazak_at: selectedHHmm,
+      ...(isPosiljka ? { broj_mesta: 0 } : {}),
       otkazano_at: null,
       otkazano_by: null,
       updated_by: putnikId,
@@ -120,6 +121,24 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "zahtev_not_in_alternativa", status: normalizedStatus });
     }
 
+    const putnikId = String(zahtev.created_by ?? "").trim();
+    let isPosiljka = false;
+
+    if (putnikId) {
+      const { data: authRow, error: authError } = await client
+        .from("v3_auth")
+        .select("tip")
+        .eq("id", putnikId)
+        .maybeSingle();
+
+      if (authError) {
+        return json(200, { ok: false, reason: "zahtev_lookup_error", warning: authError.message });
+      }
+
+      const tip = String(authRow?.tip ?? "").trim().toLowerCase();
+      isPosiljka = tip === "posiljka";
+    }
+
     if (action === "reject") {
       const { data: rejectRow, error: rejectError } = await client
         .from("v3_zahtevi")
@@ -156,54 +175,56 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "selected_alternativa_missing", action });
     }
 
-    const { data: slotRow, error: slotError } = await client
-      .from("v3_kapacitet_slots")
-      .select("max_mesta")
-      .eq("grad", grad)
-      .eq("datum", datumIso)
-      .eq("vreme", selectedHHmm)
-      .maybeSingle();
+    if (!isPosiljka) {
+      const { data: slotRow, error: slotError } = await client
+        .from("v3_kapacitet_slots")
+        .select("max_mesta")
+        .eq("grad", grad)
+        .eq("datum", datumIso)
+        .eq("vreme", selectedHHmm)
+        .maybeSingle();
 
-    if (slotError) {
-      return json(200, { ok: false, reason: "accept_update_error", warning: slotError.message });
-    }
+      if (slotError) {
+        return json(200, { ok: false, reason: "accept_update_error", warning: slotError.message });
+      }
 
-    const maxMesta = Number(slotRow?.max_mesta ?? 0);
-    if (!slotRow || !Number.isFinite(maxMesta) || maxMesta <= 0) {
-      return json(200, {
-        ok: false,
-        reason: "no_capacity_slot",
-        selected_time: selectedHHmm,
-      });
-    }
+      const maxMesta = Number(slotRow?.max_mesta ?? 0);
+      if (!slotRow || !Number.isFinite(maxMesta) || maxMesta <= 0) {
+        return json(200, {
+          ok: false,
+          reason: "no_capacity_slot",
+          selected_time: selectedHHmm,
+        });
+      }
 
-    const { data: occupiedRows, error: occupiedError } = await client
-      .from("v3_operativna_nedelja")
-      .select("broj_mesta")
-      .eq("datum", datumIso)
-      .eq("grad", grad)
-      .eq("polazak_at", selectedHHmm)
-      .is("otkazano_at", null);
+      const { data: occupiedRows, error: occupiedError } = await client
+        .from("v3_operativna_nedelja")
+        .select("broj_mesta")
+        .eq("datum", datumIso)
+        .eq("grad", grad)
+        .eq("polazak_at", selectedHHmm)
+        .is("otkazano_at", null);
 
-    if (occupiedError) {
-      return json(200, { ok: false, reason: "accept_update_error", warning: occupiedError.message });
-    }
+      if (occupiedError) {
+        return json(200, { ok: false, reason: "accept_update_error", warning: occupiedError.message });
+      }
 
-    const occupied = Array.isArray(occupiedRows)
-      ? occupiedRows.reduce((sum: number, row: any) => {
-          const seats = Number(row?.broj_mesta);
-          const normalizedSeats = Number.isFinite(seats) ? Math.max(0, seats) : 1;
-          return sum + normalizedSeats;
-        }, 0)
-      : 0;
-    if (occupied >= maxMesta) {
-      return json(200, {
-        ok: false,
-        reason: "selected_slot_full",
-        selected_time: selectedHHmm,
-        max_mesta: maxMesta,
-        occupied,
-      });
+      const occupied = Array.isArray(occupiedRows)
+        ? occupiedRows.reduce((sum: number, row: any) => {
+            const seats = Number(row?.broj_mesta);
+            const normalizedSeats = Number.isFinite(seats) ? Math.max(0, seats) : 1;
+            return sum + normalizedSeats;
+          }, 0)
+        : 0;
+      if (occupied >= maxMesta) {
+        return json(200, {
+          ok: false,
+          reason: "selected_slot_full",
+          selected_time: selectedHHmm,
+          max_mesta: maxMesta,
+          occupied,
+        });
+      }
     }
 
     const { data: acceptRow, error: acceptError } = await client
@@ -229,7 +250,7 @@ Deno.serve(async (req) => {
 
     const confirmedTime = normalizeToHHmm(acceptRow.polazak_at) || selectedHHmm;
 
-    await updateOperativnaForAccept(client, zahtev, confirmedTime);
+    await updateOperativnaForAccept(client, zahtev, confirmedTime, isPosiljka);
 
     return json(200, {
       ok: true,

@@ -264,7 +264,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
       for (var attempt = 1; attempt <= 4; attempt++) {
         final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
-          const Duration(seconds: 6),
+          const Duration(seconds: 10),
           onTimeout: () => null,
         );
         token = tokenResult?.token.trim() ?? '';
@@ -290,6 +290,15 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           pushToken: token,
           installationId: resolvedInstallationId,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
+        if (token.isEmpty) {
+          unawaited(
+            _retryPushTokenWriteAfterLogin(
+              v3AuthId: v3AuthId,
+              isVozac: isVozac,
+              installationId: resolvedInstallationId,
+            ),
+          );
+        }
         return;
       }
 
@@ -298,8 +307,60 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         pushToken: token,
         installationId: resolvedInstallationId,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
+      if (token.isEmpty) {
+        unawaited(
+          _retryPushTokenWriteAfterLogin(
+            v3AuthId: v3AuthId,
+            isVozac: isVozac,
+            installationId: resolvedInstallationId,
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('[V3WelcomeScreen] push token write error: $e');
+    }
+  }
+
+  Future<void> _retryPushTokenWriteAfterLogin({
+    required String v3AuthId,
+    required bool isVozac,
+    required String installationId,
+  }) async {
+    try {
+      await Future<void>.delayed(const Duration(seconds: 8));
+
+      String token = '';
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => null,
+        );
+        token = tokenResult?.token.trim() ?? '';
+        if (token.isNotEmpty) break;
+
+        if (attempt < 3) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+        }
+      }
+
+      if (token.isEmpty) return;
+
+      if (isVozac) {
+        await V3VozacService.writePushTokenOnLogin(
+          vozacId: v3AuthId,
+          pushToken: token,
+          installationId: installationId,
+        ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
+        return;
+      }
+
+      await V3PutnikService.writePushTokenOnLogin(
+        putnikId: v3AuthId,
+        pushToken: token,
+        installationId: installationId,
+      ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] delayed push token write error: $e');
     }
   }
 

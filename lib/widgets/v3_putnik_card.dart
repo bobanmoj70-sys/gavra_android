@@ -12,6 +12,7 @@ import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v3/v3_adresa_service.dart';
+import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
@@ -19,7 +20,6 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -32,20 +32,6 @@ import '../utils/v3_validation_utils.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
 /// Vizuelni stil i logika prepisani iz V2PutnikCard.
-class _V3NaplataInfo {
-  final bool isPaid;
-  final double iznos;
-  final DateTime? paidAt;
-  final String? paidBy;
-
-  const _V3NaplataInfo({
-    required this.isPaid,
-    required this.iznos,
-    this.paidAt,
-    this.paidBy,
-  });
-}
-
 class V3PutnikCard extends StatefulWidget {
   const V3PutnikCard({
     super.key,
@@ -110,65 +96,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     _isLongPressActive = false;
   }
 
-  _V3NaplataInfo? _getNaplataInfo({required bool isMesecniModel}) {
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
-    if (cache.isEmpty) return null;
-
-    if (!isMesecniModel) {
-      final operativnaId = widget.entry?.id;
-      if (operativnaId == null || operativnaId.isEmpty) return null;
-
-      final candidates = cache.where((row) {
-        if (row['tip'] != 'prihod') return false;
-        final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
-        if (kategorija != 'operativna_naplata') return false;
-        return (row['operativna_id']?.toString() ?? '') == operativnaId;
-      }).toList();
-
-      if (candidates.isEmpty) return null;
-      candidates.sort((a, b) {
-        final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bDt.compareTo(aDt);
-      });
-
-      final row = candidates.first;
-      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
-      final paidAt = V3DateUtils.parseTs(row['created_at']?.toString());
-      final paidBy = row['naplaceno_by']?.toString();
-      return _V3NaplataInfo(isPaid: iznos > 0, iznos: iznos, paidAt: paidAt, paidBy: paidBy);
-    }
-
+  V3NaplataInfo? _resolveNaplataInfo({required bool isMesecniModel}) {
     final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
-    final mesec = datumRef.month;
-    final godina = datumRef.year;
-    final putnikId = widget.putnik.id;
-
-    final candidates = cache.where((row) {
-      if (row['tip'] != 'prihod') return false;
-      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
-      if (kategorija != 'operativna_naplata') return false;
-      if ((row['putnik_v3_auth_id']?.toString() ?? '') != putnikId) return false;
-
-      final rMesec = (row['mesec'] as num?)?.toInt();
-      final rGodina = (row['godina'] as num?)?.toInt();
-      return rMesec == mesec && rGodina == godina;
-    }).toList();
-
-    if (candidates.isEmpty) return null;
-    candidates.sort((a, b) {
-      final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return bDt.compareTo(aDt);
-    });
-
-    final latest = candidates.first;
-    final ukupno = candidates.fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
-    return _V3NaplataInfo(
-      isPaid: ukupno > 0,
-      iznos: ukupno,
-      paidAt: V3DateUtils.parseTs(latest['created_at']?.toString()),
-      paidBy: latest['naplaceno_by']?.toString(),
+    return V3FinansijeService.resolveNaplataInfo(
+      putnikId: widget.putnik.id,
+      datumRef: datumRef,
+      isMesecniModel: isMesecniModel,
+      operativnaId: widget.entry?.id,
     );
   }
 
@@ -254,7 +188,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       return;
     }
 
-    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
     final alreadyPaid = !isMesecniModel && (naplataInfo?.isPaid ?? false);
 
     try {
@@ -381,7 +315,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool isPokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
-    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
     final bool isPlacen = naplataInfo?.isPaid ?? false;
 
     return V3StyleHelper.putnikCard(
@@ -397,7 +331,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final pokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
-    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
     final placen = naplataInfo?.isPaid ?? false;
     return V3StatusPolicy.textForCard(
       status: status,
@@ -440,7 +374,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool isOtkazan = widget.entry?.otkazanoAt != null;
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
-    final naplataInfo = _getNaplataInfo(isMesecniModel: isMesecniModel);
+    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
     final bool isPlacen = naplataInfo?.isPaid ?? false;
     final String? naplataById = naplataInfo?.paidBy;
     final DateTime? naplataAt = naplataInfo?.paidAt;

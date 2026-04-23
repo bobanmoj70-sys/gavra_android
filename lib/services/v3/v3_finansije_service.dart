@@ -1,8 +1,23 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/v3_finansije.dart';
+import '../../utils/v3_date_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_finansije_repository.dart';
+
+class V3NaplataInfo {
+  final bool isPaid;
+  final double iznos;
+  final DateTime? paidAt;
+  final String? paidBy;
+
+  const V3NaplataInfo({
+    required this.isPaid,
+    required this.iznos,
+    this.paidAt,
+    this.paidBy,
+  });
+}
 
 class V3FinansijeService {
   V3FinansijeService._();
@@ -40,6 +55,74 @@ class V3FinansijeService {
       debugPrint('[V3FinansijeService] deleteTrosak error: $e');
       rethrow;
     }
+  }
+
+  static V3NaplataInfo? resolveNaplataInfo({
+    required String putnikId,
+    required DateTime datumRef,
+    required bool isMesecniModel,
+    String? operativnaId,
+  }) {
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    if (cache.isEmpty) return null;
+
+    if (!isMesecniModel) {
+      final opId = (operativnaId ?? '').trim();
+      if (opId.isEmpty) return null;
+
+      final candidates = cache.where((row) {
+        if (row['tip'] != 'prihod') return false;
+        final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+        if (kategorija != 'operativna_naplata') return false;
+        return (row['operativna_id']?.toString() ?? '') == opId;
+      }).toList();
+
+      if (candidates.isEmpty) return null;
+      candidates.sort((a, b) {
+        final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDt.compareTo(aDt);
+      });
+
+      final row = candidates.first;
+      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
+      final paidAt = V3DateUtils.parseTs(row['created_at']?.toString());
+      final paidBy = row['naplaceno_by']?.toString();
+      return V3NaplataInfo(isPaid: iznos > 0, iznos: iznos, paidAt: paidAt, paidBy: paidBy);
+    }
+
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return null;
+
+    final mesec = datumRef.month;
+    final godina = datumRef.year;
+
+    final candidates = cache.where((row) {
+      if (row['tip'] != 'prihod') return false;
+      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
+      if (kategorija != 'operativna_naplata') return false;
+      if ((row['putnik_v3_auth_id']?.toString() ?? '') != putnik) return false;
+
+      final rMesec = (row['mesec'] as num?)?.toInt();
+      final rGodina = (row['godina'] as num?)?.toInt();
+      return rMesec == mesec && rGodina == godina;
+    }).toList();
+
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) {
+      final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDt.compareTo(aDt);
+    });
+
+    final latest = candidates.first;
+    final ukupno = candidates.fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
+    return V3NaplataInfo(
+      isPaid: ukupno > 0,
+      iznos: ukupno,
+      paidAt: V3DateUtils.parseTs(latest['created_at']?.toString()),
+      paidBy: latest['naplaceno_by']?.toString(),
+    );
   }
 
   static Future<void> sacuvajMesecnuOperativnuNaplatu({

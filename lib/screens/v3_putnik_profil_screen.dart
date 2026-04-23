@@ -9,6 +9,7 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
+import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
@@ -235,24 +236,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   Future<void> _reloadTrenutnaDodelaForPutnik(String putnikId) async {
     try {
-      final rows = await supabase
-          .from('v3_trenutna_dodela')
-          .select('termin_id, vozac_v3_auth_id, status')
-          .eq('putnik_v3_auth_id', putnikId)
-          .eq('status', 'aktivan');
-
-      final next = <String, String>{};
-      for (final row in (rows as List<dynamic>)) {
-        final mapped = row as Map<String, dynamic>;
-        final status = mapped['status']?.toString() ?? '';
-        if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
-
-        final terminId = mapped['termin_id']?.toString().trim() ?? '';
-        final vozacId = mapped['vozac_v3_auth_id']?.toString().trim() ?? '';
-        if (terminId.isEmpty || vozacId.isEmpty) continue;
-
-        next[terminId] = vozacId;
-      }
+      final next = await V3TrenutnaDodelaService.loadActiveVozacByTerminId(putnikId: putnikId);
 
       if (!mounted) return;
       V3StateUtils.safeSetState(this, () {

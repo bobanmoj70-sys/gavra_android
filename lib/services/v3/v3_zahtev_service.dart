@@ -7,6 +7,7 @@ import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
+import 'v3_putnik_service.dart';
 import 'v3_vozac_service.dart';
 import 'zahtevi/v3_zahtev_domain_service.dart';
 import 'zahtevi/v3_zahtev_repository.dart';
@@ -136,6 +137,10 @@ class V3ZahtevService {
     bool koristiSekundarnu = false,
     String? updatedBy,
   }) async {
+    final normalizedBrojMesta = V3PutnikService.normalizeBrojMestaForPutnik(
+      putnikId: putnikId,
+      brojMesta: brojMesta,
+    );
     final aktivni = _vidljiviRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
     if (aktivni.isNotEmpty) {
       final row = aktivni.first;
@@ -161,7 +166,7 @@ class V3ZahtevService {
       datum: datum,
       grad: grad,
       trazeniPolazakAt: novoVreme,
-      brojMesta: brojMesta,
+      brojMesta: normalizedBrojMesta,
       status: 'obrada',
       koristiSekundarnu: koristiSekundarnu,
     );

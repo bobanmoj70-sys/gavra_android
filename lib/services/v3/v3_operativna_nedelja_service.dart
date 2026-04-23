@@ -7,6 +7,7 @@ import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
+import 'v3_putnik_service.dart';
 
 class V3OperativnaNedeljaEntry {
   final String id;
@@ -258,6 +259,10 @@ class V3OperativnaNedeljaService {
   }) async {
     try {
       final actor = V3UuidUtils.normalizeUuid(createdBy);
+      final normalizedBrojMesta = V3PutnikService.normalizeBrojMestaForPutnik(
+        putnikId: putnikId,
+        brojMesta: brojMesta,
+      );
 
       // Provjeri postoji li već zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
@@ -271,7 +276,7 @@ class V3OperativnaNedeljaService {
         // UPDATE: prepiši polazak_at i broj_mesta
         await _repo.updateById(postojeci.first['id'] as String, {
           'polazak_at': polazakAt,
-          'broj_mesta': brojMesta,
+          'broj_mesta': normalizedBrojMesta,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_override_id': adresaIdOverride, // null = briše override
@@ -283,7 +288,7 @@ class V3OperativnaNedeljaService {
           'datum': datum,
           'grad': grad,
           'polazak_at': polazakAt,
-          'broj_mesta': brojMesta,
+          'broj_mesta': normalizedBrojMesta,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
