@@ -89,10 +89,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         ..._vsVremena.map((v) => '$v VS'),
       ];
 
-  String _normalizeVreme(String? v) {
-    return V3TimeUtils.normalizeToHHmm(v);
-  }
-
   int _timeToMinutes(String hhmm) {
     final parts = hhmm.split(':');
     if (parts.length < 2) return -1;
@@ -182,7 +178,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     for (final entry in entries) {
       final grad = (entry.grad ?? '').trim().toUpperCase();
-      final vreme = _normalizeVreme(entry.polazakAt);
+      final vreme = V3TimeUtils.normalizeToHHmm(entry.polazakAt);
       if (grad.isEmpty || vreme.isEmpty) continue;
       uniqueSlots.putIfAbsent('$grad|$vreme', () => {'grad': grad, 'vreme': vreme});
     }
@@ -195,7 +191,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       if (slotDatum != datumIso) continue;
 
       final slotGrad = parts[1].trim().toUpperCase();
-      final slotVreme = _normalizeVreme(parts[2]);
+      final slotVreme = V3TimeUtils.normalizeToHHmm(parts[2]);
       if (slotGrad.isEmpty || slotVreme.isEmpty) continue;
 
       uniqueSlots.putIfAbsent('$slotGrad|$slotVreme', () => {'grad': slotGrad, 'vreme': slotVreme});
@@ -203,7 +199,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     if (uniqueSlots.isEmpty) return;
 
-    final currentVremeNorm = _normalizeVreme(_selectedVreme);
+    final currentVremeNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
     final hasCurrentSelection = uniqueSlots.values.any(
       (slot) => (slot['grad'] ?? '') == _selectedGrad && (slot['vreme'] ?? '') == currentVremeNorm,
     );

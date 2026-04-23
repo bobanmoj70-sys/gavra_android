@@ -61,17 +61,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     return hour * 60 + minute;
   }
 
-  String _normVreme(String? v) {
-    if (v == null || v.isEmpty) return '';
-    final p = v.split(':');
-    if (p.length >= 2) {
-      final h = int.tryParse(p[0]) ?? 0;
-      final m = int.tryParse(p[1]) ?? 0;
-      return V3DanHelper.formatVreme(h, m);
-    }
-    return v;
-  }
-
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
       _activeVozacByTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId();
@@ -190,7 +179,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     for (final polazak in svi) {
       final parts = polazak.split(' ');
       if (parts.length < 2) continue;
-      final vreme = _normVreme(parts[0]);
+      final vreme = V3TimeUtils.normalizeToHHmm(parts[0]);
       final grad = parts.sublist(1).join(' ').toUpperCase();
       final mins = _timeToMinutes(vreme);
       if (mins < 0) continue;
@@ -253,8 +242,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     final nowMin = now.hour * 60 + now.minute;
     final slots = uniqueSlots.values.toList();
     slots.sort((a, b) {
-      final aVreme = _normVreme(a['vreme']);
-      final bVreme = _normVreme(b['vreme']);
+      final aVreme = V3TimeUtils.normalizeToHHmm(a['vreme']);
+      final bVreme = V3TimeUtils.normalizeToHHmm(b['vreme']);
       final aDiff = _timeToMinutes(aVreme) < 0 ? 99999 : (_timeToMinutes(aVreme) - nowMin).abs();
       final bDiff = _timeToMinutes(bVreme) < 0 ? 99999 : (_timeToMinutes(bVreme) - nowMin).abs();
       if (aDiff != bDiff) return aDiff.compareTo(bDiff);
@@ -265,7 +254,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
     final selected = slots.first;
     _selectedGrad = selected['grad'] ?? _selectedGrad;
-    _selectedVreme = _normVreme(selected['vreme']);
+    _selectedVreme = V3TimeUtils.normalizeToHHmm(selected['vreme']);
   }
 
   // ─── Cache helpers ────────────────────────────────────────────────────────
