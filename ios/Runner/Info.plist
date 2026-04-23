@@ -51,6 +51,8 @@
 	<string>Aplikacija pristupa kontaktima kako biste mogli izabrati broj telefona putnika iz imenika.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Aplikacija koristi lokaciju vozača tokom aktivne vožnje radi praćenja i prikaza putnicima.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Aplikacija koristi lokaciju vozača i kada aplikacija nije u prvom planu tokom aktivne vožnje, radi praćenja rute i prikaza putnicima.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Koristite Face ID za brzu prijavu u aplikaciju umesto unosa PIN-a.</string>
 	
