@@ -178,37 +178,57 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   void _syncSelectedSlotForDatum(String datumIso) {
     final entries = V3OperativnaNedeljaService.getOperativnaNedeljaByDatum(datumIso);
-    final validEntries = entries.where((e) {
-      final grad = (e.grad ?? '').trim();
-      final vreme = _normalizeVreme(e.polazakAt);
-      return grad.isNotEmpty && vreme.isNotEmpty;
-    }).toList();
+    final uniqueSlots = <String, Map<String, String>>{};
 
-    if (validEntries.isEmpty) return;
+    for (final entry in entries) {
+      final grad = (entry.grad ?? '').trim().toUpperCase();
+      final vreme = _normalizeVreme(entry.polazakAt);
+      if (grad.isEmpty || vreme.isEmpty) continue;
+      uniqueSlots.putIfAbsent('$grad|$vreme', () => {'grad': grad, 'vreme': vreme});
+    }
+
+    for (final slotKey in _activeVozacBySlotKey.keys) {
+      final parts = slotKey.split('|');
+      if (parts.length != 3) continue;
+
+      final slotDatum = parts[0].trim();
+      if (slotDatum != datumIso) continue;
+
+      final slotGrad = parts[1].trim().toUpperCase();
+      final slotVreme = _normalizeVreme(parts[2]);
+      if (slotGrad.isEmpty || slotVreme.isEmpty) continue;
+
+      uniqueSlots.putIfAbsent('$slotGrad|$slotVreme', () => {'grad': slotGrad, 'vreme': slotVreme});
+    }
+
+    if (uniqueSlots.isEmpty) return;
 
     final currentVremeNorm = _normalizeVreme(_selectedVreme);
-    final hasCurrentSelection = validEntries.any(
-      (e) => (e.grad ?? '') == _selectedGrad && _normalizeVreme(e.polazakAt) == currentVremeNorm,
+    final hasCurrentSelection = uniqueSlots.values.any(
+      (slot) => (slot['grad'] ?? '') == _selectedGrad && (slot['vreme'] ?? '') == currentVremeNorm,
     );
     if (hasCurrentSelection) return;
 
     final now = DateTime.now();
     final currentMinutes = now.hour * 60 + now.minute;
-    validEntries.sort((a, b) {
-      final aMinutes = _timeToMinutes(_normalizeVreme(a.polazakAt));
-      final bMinutes = _timeToMinutes(_normalizeVreme(b.polazakAt));
+    final validSlots = uniqueSlots.values.toList();
+    validSlots.sort((a, b) {
+      final aVreme = a['vreme'] ?? '';
+      final bVreme = b['vreme'] ?? '';
+      final aMinutes = _timeToMinutes(aVreme);
+      final bMinutes = _timeToMinutes(bVreme);
       final aDiff = aMinutes < 0 ? 99999 : (aMinutes - currentMinutes).abs();
       final bDiff = bMinutes < 0 ? 99999 : (bMinutes - currentMinutes).abs();
       if (aDiff != bDiff) return aDiff.compareTo(bDiff);
-      final ga = (a.grad ?? '').toUpperCase();
-      final gb = (b.grad ?? '').toUpperCase();
+      final ga = (a['grad'] ?? '').toUpperCase();
+      final gb = (b['grad'] ?? '').toUpperCase();
       if (ga != gb) return ga.compareTo(gb);
-      return _normalizeVreme(a.polazakAt).compareTo(_normalizeVreme(b.polazakAt));
+      return aVreme.compareTo(bVreme);
     });
 
-    final first = validEntries.first;
-    _selectedGrad = first.grad ?? _selectedGrad;
-    _selectedVreme = _normalizeVreme(first.polazakAt);
+    final first = validSlots.first;
+    _selectedGrad = first['grad'] ?? _selectedGrad;
+    _selectedVreme = first['vreme'] ?? _selectedVreme;
   }
 
   @override

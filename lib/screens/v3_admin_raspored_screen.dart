@@ -226,6 +226,20 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       uniqueSlots.putIfAbsent(key, () => {'grad': grad, 'vreme': vreme});
     }
 
+    for (final slotKey in _activeVozacBySlotKey.keys) {
+      final parts = slotKey.split('|');
+      if (parts.length != 3) continue;
+
+      final slotDatum = parts[0].trim();
+      if (slotDatum != datum) continue;
+
+      final slotGrad = parts[1].trim().toUpperCase();
+      final slotVreme = V3TimeUtils.normalizeToHHmm(parts[2]);
+      if (slotGrad.isEmpty || slotVreme.isEmpty) continue;
+
+      uniqueSlots.putIfAbsent('$slotGrad|$slotVreme', () => {'grad': slotGrad, 'vreme': slotVreme});
+    }
+
     if (uniqueSlots.isEmpty) {
       _autoSelectNajblizeVreme();
       return;
