@@ -9,12 +9,13 @@ import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
+import '../services/v3/v3_dodela_resolver_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_racun_service.dart';
-import '../services/v3/v3_slot_rezervacija_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
+import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
@@ -108,24 +109,23 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
-      _activeVozacByTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId();
+      final maps = await V3DodelaResolverService.loadActiveAssignments();
+      _activeVozacByTerminId = maps.byTerminId;
+      _activeVozacBySlotKey = maps.bySlotKey;
     } catch (e) {
       debugPrint('[V3HomeScreen] _reloadTrenutnaDodelaMap error: $e');
       _activeVozacByTerminId = const {};
-    }
-
-    try {
-      _activeVozacBySlotKey = await V3SlotRezervacijaService.loadActiveVozacBySlotKey();
-    } catch (e) {
-      debugPrint('[V3HomeScreen] _reloadSlotRezervacije error: $e');
       _activeVozacBySlotKey = const {};
     }
   }
 
   String _vozacIdForOperativnaRow(Map<String, dynamic> row) {
-    final terminId = row['id']?.toString().trim() ?? '';
-    if (terminId.isEmpty) return '';
-    return _activeVozacByTerminId[terminId] ?? '';
+    return V3DodelaResolverService.resolveVozacIdForOperativnaRow(
+      row: row,
+      activeVozacByTerminId: _activeVozacByTerminId,
+      activeVozacBySlotKey: _activeVozacBySlotKey,
+      vremeKolona: 'polazak_at',
+    );
   }
 
   void _startTrenutnaDodelaRealtime() {
@@ -139,7 +139,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     channel.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
-      table: 'v3_trenutna_dodela',
+      table: V3TrenutnaDodelaService.tableName,
       callback: (_) {
         _refreshDodelaFromRealtime();
       },
@@ -147,12 +147,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     channel.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
-      table: 'v3_slot_rezervacije',
+      table: V3TrenutnaDodelaSlotService.tableName,
       callback: (_) {
         _refreshDodelaFromRealtime();
       },
     );
-
     channel.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.channelError && error != null) {
         debugPrint('[V3HomeScreen] dodela realtime channelError: $error');
@@ -181,20 +180,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       final vreme = V3TimeUtils.normalizeToHHmm(entry.polazakAt);
       if (grad.isEmpty || vreme.isEmpty) continue;
       uniqueSlots.putIfAbsent('$grad|$vreme', () => {'grad': grad, 'vreme': vreme});
-    }
-
-    for (final slotKey in _activeVozacBySlotKey.keys) {
-      final parts = slotKey.split('|');
-      if (parts.length != 3) continue;
-
-      final slotDatum = parts[0].trim();
-      if (slotDatum != datumIso) continue;
-
-      final slotGrad = parts[1].trim().toUpperCase();
-      final slotVreme = V3TimeUtils.normalizeToHHmm(parts[2]);
-      if (slotGrad.isEmpty || slotVreme.isEmpty) continue;
-
-      uniqueSlots.putIfAbsent('$slotGrad|$slotVreme', () => {'grad': slotGrad, 'vreme': slotVreme});
     }
 
     if (uniqueSlots.isEmpty) return;
@@ -1088,18 +1073,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               isVisibleRow: _isVisibleOperativnaRow,
               vremeKolona: 'polazak_at',
             );
-            if ((vozacId ?? '').isNotEmpty) {
-              final vozac = V3VozacService.getVozacById(vozacId!);
-              if (vozac != null) return V3CardColorPolicy.vozacColorOr(vozac.boja);
-            }
-
-            final fallbackVozacId = _activeVozacBySlotKey[V3SlotRezervacijaService.slotKey(
-              datumIso: _selectedDatumIso,
-              grad: grad,
-              vreme: vreme,
-            )];
-            if ((fallbackVozacId ?? '').isNotEmpty) {
-              final vozac = V3VozacService.getVozacById(fallbackVozacId!);
+            final resolvedVozacId = (vozacId ?? '').trim().isNotEmpty
+                ? vozacId!.trim()
+                : V3DodelaResolverService.resolveVozacIdForSlot(
+                    datumIso: _selectedDatumIso,
+                    grad: grad,
+                    vreme: vreme,
+                    activeVozacBySlotKey: _activeVozacBySlotKey,
+                  );
+            if (resolvedVozacId.isNotEmpty) {
+              final vozac = V3VozacService.getVozacById(resolvedVozacId);
               if (vozac != null) return V3CardColorPolicy.vozacColorOr(vozac.boja);
             }
 

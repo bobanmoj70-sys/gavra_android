@@ -462,10 +462,9 @@ class V3ForegroundGpsService {
       final toDate =
           DateTime(now.year, now.month, now.day).add(const Duration(days: 1)).toIso8601String().split('T').first;
 
-      final activeVozacByTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId(
+      final assignedTerminIds = await V3TrenutnaDodelaService.loadActiveTerminIds(
         vozacId: vozacId,
       );
-      final assignedTerminIds = activeVozacByTerminId.keys.toSet();
 
       if (assignedTerminIds.isEmpty) return;
 

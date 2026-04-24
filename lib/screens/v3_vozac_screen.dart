@@ -11,9 +11,9 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
-import '../services/v3/v3_slot_rezervacija_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
+import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
@@ -96,7 +96,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   // Moji putnici (izvor: v3_operativna_nedelja)
   List<_PutnikEntry> _mojiPutnici = [];
   Set<String> _assignedOperativnaIds = <String>{};
-  Set<String> _assignedSlotKeys = <String>{};
+  List<Map<String, String>> _assignedSlotRows = <Map<String, String>>[];
 
   int _timeToMinutes(String hhmm) {
     final parts = hhmm.split(':');
@@ -136,76 +136,29 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
   }
 
-  String _slotKeyFor({
-    required String datumIso,
-    required String grad,
-    required String vreme,
-  }) {
-    return V3SlotRezervacijaService.slotKey(
-      datumIso: datumIso,
-      grad: grad,
-      vreme: vreme,
-    );
-  }
-
-  List<Map<String, dynamic>> _assignedSlotTerms({
-    required String datumIso,
-    String? grad,
-    String? vreme,
-  }) {
-    final trazeniDatum = datumIso.trim();
-    final trazeniGrad = grad?.trim().toUpperCase() ?? '';
-    final trazenoVreme = V3TimeUtils.normalizeToHHmm(vreme);
-
-    final result = <Map<String, dynamic>>[];
-    for (final key in _assignedSlotKeys) {
-      final parts = key.split('|');
-      if (parts.length != 3) continue;
-
-      final slotDatum = parts[0].trim();
-      final slotGrad = parts[1].trim().toUpperCase();
-      final slotVreme = V3TimeUtils.normalizeToHHmm(parts[2].trim());
-
-      if (slotDatum != trazeniDatum) continue;
-      if (trazeniGrad.isNotEmpty && slotGrad != trazeniGrad) continue;
-      if (trazenoVreme.isNotEmpty && slotVreme != trazenoVreme) continue;
-
-      result.add({
-        'datum': slotDatum,
-        'grad': slotGrad,
-        'vreme': slotVreme,
-      });
-    }
-
-    return result;
-  }
-
   Future<void> _reloadTrenutnaDodelaForVozac() async {
     final vozac = _efektivniVozac;
     if (vozac == null) {
       _assignedOperativnaIds = <String>{};
-      _assignedSlotKeys = <String>{};
+      _assignedSlotRows = <Map<String, String>>[];
       return;
     }
 
     final vozacAuthId = (vozac.id?.toString() ?? '').trim();
     if (vozacAuthId.isEmpty) {
       _assignedOperativnaIds = <String>{};
-      _assignedSlotKeys = <String>{};
+      _assignedSlotRows = <Map<String, String>>[];
       return;
     }
 
     _loadingDodela = true;
     try {
-      final activeVozacByTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId(vozacId: vozacAuthId);
-      _assignedOperativnaIds = activeVozacByTerminId.keys.toSet();
-      _assignedSlotKeys = await V3SlotRezervacijaService.loadActiveSlotKeysForVozac(
-        vozacId: vozacAuthId,
-      );
+      _assignedOperativnaIds = await V3TrenutnaDodelaService.loadActiveTerminIds(vozacId: vozacAuthId);
+      _assignedSlotRows = await V3TrenutnaDodelaSlotService.loadActiveSlotsForVozac(vozacId: vozacAuthId);
     } catch (e) {
       debugPrint('[V3VozacScreen] _reloadTrenutnaDodelaForVozac error: $e');
       _assignedOperativnaIds = <String>{};
-      _assignedSlotKeys = <String>{};
+      _assignedSlotRows = <Map<String, String>>[];
     } finally {
       _loadingDodela = false;
     }
@@ -226,10 +179,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     channel.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
-      table: 'v3_trenutna_dodela',
+      table: V3TrenutnaDodelaService.tableName,
       callback: (payload) {
-        final newVozacId = payload.newRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
-        final oldVozacId = payload.oldRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
+        final newVozacId = payload.newRecord[V3TrenutnaDodelaService.colVozacId]?.toString().trim() ?? '';
+        final oldVozacId = payload.oldRecord[V3TrenutnaDodelaService.colVozacId]?.toString().trim() ?? '';
         if (newVozacId != vozacAuthId && oldVozacId != vozacAuthId) return;
         _refreshDodelaFromRealtime();
       },
@@ -237,15 +190,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     channel.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
-      table: 'v3_slot_rezervacije',
+      table: V3TrenutnaDodelaSlotService.tableName,
       callback: (payload) {
-        final newVozacId = payload.newRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
-        final oldVozacId = payload.oldRecord['vozac_v3_auth_id']?.toString().trim() ?? '';
+        final newVozacId = payload.newRecord[V3TrenutnaDodelaSlotService.colVozacId]?.toString().trim() ?? '';
+        final oldVozacId = payload.oldRecord[V3TrenutnaDodelaSlotService.colVozacId]?.toString().trim() ?? '';
         if (newVozacId != vozacAuthId && oldVozacId != vozacAuthId) return;
         _refreshDodelaFromRealtime();
       },
     );
-
     channel.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.channelError && error != null) {
         debugPrint('[V3VozacScreen] dodela realtime channelError: $error');
@@ -301,6 +253,38 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
       if (onlyEligible && !_isGpsRowEligible(row)) continue;
       rows.add(row);
+    }
+
+    return rows;
+  }
+
+  List<Map<String, dynamic>> _assignedSlotTermRows({
+    String? datumIso,
+    String? grad,
+    String? vreme,
+  }) {
+    final trazeniDatum = (datumIso ?? '').trim();
+    final trazeniGrad = (grad ?? '').trim().toUpperCase();
+    final trazenoVreme = V3TimeUtils.normalizeToHHmm(vreme);
+
+    final rows = <Map<String, dynamic>>[];
+    for (final slot in _assignedSlotRows) {
+      final slotDatum = (slot[V3TrenutnaDodelaSlotService.colDatum] ?? '').trim();
+      final slotGrad = (slot[V3TrenutnaDodelaSlotService.colGrad] ?? '').trim().toUpperCase();
+      final slotVreme = V3TimeUtils.normalizeToHHmm(slot[V3TrenutnaDodelaSlotService.colVreme]);
+
+      if (slotDatum.isEmpty || slotGrad.isEmpty || slotVreme.isEmpty) continue;
+      if (trazeniDatum.isNotEmpty && slotDatum != trazeniDatum) continue;
+      if (trazeniGrad.isNotEmpty && slotGrad != trazeniGrad) continue;
+      if (trazenoVreme.isNotEmpty && slotVreme != trazenoVreme) continue;
+
+      rows.add(<String, dynamic>{
+        'id': 'slot|$slotDatum|$slotGrad|$slotVreme',
+        'datum': slotDatum,
+        'grad': slotGrad,
+        'vreme': slotVreme,
+        'polazak_at': slotVreme,
+      });
     }
 
     return rows;
@@ -403,31 +387,29 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     final selectedVNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
 
-    // 1. Moji termini za ovaj datum (izvor dodele: v3_trenutna_dodela + v3_slot_rezervacije)
+    // 1. Moji termini za ovaj datum (izvor dodele: v3_trenutna_dodela)
     final assignedRows = _assignedOperativnaRows(
       datumIso: _selectedDatumIso,
       onlyEligible: true,
     );
-    final slotTerms = _assignedSlotTerms(datumIso: _selectedDatumIso);
 
-    final termsByKey = <String, Map<String, dynamic>>{};
+    final assignedSlotRows = _assignedSlotTermRows(
+      datumIso: _selectedDatumIso,
+    );
+
+    final termsById = <String, Map<String, dynamic>>{};
     for (final row in assignedRows) {
-      final grad = row['grad']?.toString().toUpperCase() ?? '';
-      final vreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString() ?? row['polazak_at']?.toString());
-      if (grad.isEmpty || vreme.isEmpty) continue;
-      termsByKey[_slotKeyFor(datumIso: _selectedDatumIso, grad: grad, vreme: vreme)] = row;
+      final entryId = row['id']?.toString() ?? '';
+      if (entryId.isEmpty) continue;
+      termsById[entryId] = row;
     }
-    for (final slot in slotTerms) {
-      final grad = slot['grad']?.toString().toUpperCase() ?? '';
-      final vreme = V3TimeUtils.normalizeToHHmm(slot['vreme']?.toString());
-      if (grad.isEmpty || vreme.isEmpty) continue;
-      termsByKey.putIfAbsent(
-        _slotKeyFor(datumIso: _selectedDatumIso, grad: grad, vreme: vreme),
-        () => slot,
-      );
+    for (final row in assignedSlotRows) {
+      final entryId = row['id']?.toString() ?? '';
+      if (entryId.isEmpty) continue;
+      termsById.putIfAbsent(entryId, () => row);
     }
 
-    _mojiTermini = termsByKey.values.toList();
+    _mojiTermini = termsById.values.toList();
 
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
     final terminPostoji = _mojiTermini.any((t) =>
@@ -593,7 +575,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         datumIso: dayIso,
         onlyEligible: true,
       ),
-      ..._assignedSlotTerms(datumIso: dayIso),
+      ..._assignedSlotTermRows(
+        datumIso: dayIso,
+      ),
     ];
 
     final currentVremeNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
@@ -953,13 +937,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     for (final r in _assignedOperativnaRows(datumIso: _selectedDatumIso, onlyEligible: true)) {
       final g = r['grad']?.toString().toUpperCase() ?? '';
       final v = normV(r['vreme']?.toString());
-      if (v.isEmpty) continue;
-      if (g == 'BC') bcVremenaSet.add(v);
-      if (g == 'VS') vsVremenaSet.add(v);
-    }
-    for (final slot in _assignedSlotTerms(datumIso: _selectedDatumIso)) {
-      final g = slot['grad']?.toString().toUpperCase() ?? '';
-      final v = normV(slot['vreme']?.toString());
       if (v.isEmpty) continue;
       if (g == 'BC') bcVremenaSet.add(v);
       if (g == 'VS') vsVremenaSet.add(v);
