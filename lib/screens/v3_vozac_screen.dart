@@ -39,12 +39,7 @@ import 'v3_welcome_screen.dart';
 /// V3 Vozač Screen - prikazuje dodjeljene termine i putnike
 /// iz cache-a građenog iz v3_operativna_nedelja.
 ///
-/// 🎯 KLJUČNE OPTIMIZACIJE SA FIKSNIM ADRESAMA PUTNIKA:
-/// ✅ Primarno bez Geocoding API poziva (Photon fallback samo za adrese bez koordinata)
-/// ✅ ETA kalkulacija je trenutna (Haversine formula direktno)
-/// ✅ Pametni GPS filtering na osnovu blizine putnika
-/// ✅ OSRM optimizacija rute na ručni zahtev vozača
-/// ✅ Bolji UX - brže odzivi, manja potrošnja baterije
+/// Optimizacija rute koristi OSRM na ručni zahtev vozača.
 class V3VozacScreen extends StatefulWidget {
   const V3VozacScreen({super.key});
 
@@ -56,24 +51,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
 
-  // 🎯 SISTEM OPTIMIZOVAN ZA FIKSNE ADRESE PUTNIKA:
-  //
-  // 1. GPS OPTIMIZACIJA:
-  //    • GPS stream umesto Timer-a (real-time pozicije)
-  //    • Vozač ručno pokreće optimizaciju kada želi
-  //    • Dinamički distance filter na osnovu putnika
-  //
-  // 2. FIKSNE ADRESE = BRZINA I ŠTEDNJA:
-  //    • Primarno bez Geocoding API poziva (Photon fallback samo kada fale koordinate)
-  //    • ETA kalkulacija je trenutna (Haversine direktno)
-  //    • Optimizacija rute bez external API-ja
-  //    • Štedi API quota i novac
-  //
-  // 3. REZULTAT:
-  //    • 80% manje DB poziva (120 → 20/sat po vozaču)
-  //    • Brži odziv sistema, manja potrošnja baterije
-  //    • Enterprise-level performanse (kao Uber/Tesla)
-
   DateTime _selectedDate = V3DanHelper.dateOnly(DateTime.now());
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
@@ -82,8 +59,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isOptimizingRoute = false;
   bool _loadingDodela = false;
   RealtimeChannel? _trenutnaDodelaChannel;
-
-  Map<String, dynamic> _lastOptimizationMeta = const {};
+  final Map<String, Map<String, int>> _optimizedOrderBySlotKey = <String, Map<String, int>>{};
 
   int? _lastRealtimeTick;
 
@@ -105,27 +81,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final minute = int.tryParse(parts[1]) ?? -1;
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1;
     return hour * 60 + minute;
-  }
-
-  void _updateLastOptimizationMeta({
-    required String reason,
-    required String engine,
-    required int optimizedCount,
-    required int eligibleCount,
-    Map<String, double>? currentPosition,
-    int skippedCount = 0,
-  }) {
-    final now = DateTime.now();
-    _lastOptimizationMeta = {
-      'reason': reason,
-      'engine': engine,
-      'optimized_count': optimizedCount,
-      'eligible_count': eligibleCount,
-      'skipped_count': skippedCount,
-      'at': now.toIso8601String(),
-      if (currentPosition != null) 'position': currentPosition,
-    };
-    debugPrint('[V3VozacScreen] Route meta: $_lastOptimizationMeta');
   }
 
   bool _isGpsRowEligible(Map<String, dynamic> row) {
@@ -298,7 +253,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
   }
 
-  List<_PutnikEntry> _sortPutniciForDisplay(List<_PutnikEntry> putnici) {
+  String _currentRouteSlotKey() {
+    final vreme = V3TimeUtils.normalizeToHHmm(_selectedVreme);
+    return '${_selectedDatumIso}|${_selectedGrad.toUpperCase()}|$vreme';
+  }
+
+  List<_PutnikEntry> _sortPutniciForDisplay(
+    List<_PutnikEntry> putnici, {
+    Map<String, int> optimizedOrderByPutnikId = const {},
+  }) {
     final sorted = List<_PutnikEntry>.from(putnici);
     sorted.sort((a, b) {
       int sortRank(_PutnikEntry entry) {
@@ -317,6 +280,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
       if (aRank != bRank) {
         return aRank.compareTo(bRank);
+      }
+
+      if (aRank == 1 && optimizedOrderByPutnikId.isNotEmpty) {
+        final aOrder = optimizedOrderByPutnikId[a.putnik.id];
+        final bOrder = optimizedOrderByPutnikId[b.putnik.id];
+
+        if (aOrder != null && bOrder != null && aOrder != bOrder) {
+          return aOrder.compareTo(bOrder);
+        }
+        if (aOrder != null && bOrder == null) return -1;
+        if (aOrder == null && bOrder != null) return 1;
       }
 
       return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
@@ -507,7 +481,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       );
     }
 
-    V3StateUtils.safeSetState(this, () => _mojiPutnici = _sortPutniciForDisplay(putnici));
+    final effectiveOptimizedOrder = _optimizedOrderBySlotKey[_currentRouteSlotKey()] ?? const <String, int>{};
+    V3StateUtils.safeSetState(this, () {
+      _mojiPutnici = _sortPutniciForDisplay(
+        putnici,
+        optimizedOrderByPutnikId: effectiveOptimizedOrder,
+      );
+    });
   }
 
   void _selectClosestTermin() {
@@ -724,7 +704,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           );
 
           if (_mojiPutnici.isNotEmpty) {
-            await _optimizujRutu(reason: 'tracking_start');
+            await _optimizujRutu();
           }
 
           if (mounted) {
@@ -757,8 +737,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         datumIso: _selectedDatumIso,
       );
 
-      _lastOptimizationMeta = const {};
-
       if (mounted) {
         V3AppSnackBar.warning(context, '⚠️ GPS tracking zaustavljen - notification uklonjena');
       }
@@ -788,7 +766,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   Future<void> _optimizujRutu({
     bool silent = false,
-    String reason = 'manual',
   }) async {
     final putniciZaOptimizaciju = _optimizacijaPutnici();
     if (putniciZaOptimizaciju.isEmpty) return;
@@ -816,14 +793,34 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       );
 
       if (res.success && res.optimizedData != null) {
-        _updateLastOptimizationMeta(
-          reason: reason,
-          engine: (res.metadata?['engine']?.toString() ?? 'osrm'),
-          optimizedCount: putniciZaOptimizaciju.length,
-          eligibleCount: putniciZaOptimizaciju.length,
-          skippedCount: 0,
-          currentPosition: driverPosition,
-        );
+        final optimizedOrder = <String, int>{};
+        final optimizedData = res.optimizedData!;
+        for (var index = 0; index < optimizedData.length; index++) {
+          final item = optimizedData[index];
+          final putnikObj = item['putnik'];
+          String? putnikId;
+
+          if (putnikObj is V3Putnik) {
+            putnikId = putnikObj.id;
+          } else if (putnikObj is Map<String, dynamic>) {
+            putnikId = putnikObj['id']?.toString();
+          }
+
+          if (putnikId != null && putnikId.isNotEmpty) {
+            optimizedOrder[putnikId] = index + 1;
+          }
+        }
+
+        if (optimizedOrder.isNotEmpty) {
+          final routeSlotKey = _currentRouteSlotKey();
+          V3StateUtils.safeSetState(this, () {
+            _optimizedOrderBySlotKey[routeSlotKey] = optimizedOrder;
+            _mojiPutnici = _sortPutniciForDisplay(
+              _mojiPutnici,
+              optimizedOrderByPutnikId: optimizedOrder,
+            );
+          });
+        }
 
         if (!silent && mounted) {
           V3AppSnackBar.success(context, res.message);
@@ -1335,9 +1332,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final hex = v3Vozac?.boja?.toString();
     return V3CardColorPolicy.parseHexColor(hex, fallback: Colors.white);
   }
-
-  // Timer funkcionalnost uklonjena - koriste se database trigger-i i CRON job-ovi
-  // za automatsku optimizaciju na server strani
 }
 
 /// Helper klasa — putnik + njegov operativni entry

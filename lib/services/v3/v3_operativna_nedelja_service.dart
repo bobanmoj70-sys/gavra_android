@@ -300,12 +300,4 @@ class V3OperativnaNedeljaService {
     }
   }
 
-  static Future<void> updateRouteOrderById({
-    required String operativnaId,
-    int? routeOrder,
-  }) async {
-    debugPrint(
-      '[V3OperativnaNedeljaService] updateRouteOrderById skipped: column route_order ne postoji u v3_operativna_nedelja',
-    );
-  }
 }

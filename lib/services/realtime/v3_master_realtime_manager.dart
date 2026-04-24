@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
-import '../../utils/v3_time_utils.dart';
 import '../v3/v3_app_update_service.dart';
 import 'engine/v3_bootstrap_loader.dart';
 import 'engine/v3_cache_store.dart';
@@ -28,7 +27,6 @@ class V3MasterRealtimeManager {
   // --- REALTIME ---
   RealtimeChannel? _channel;
   int _reconnectAttempts = 0;
-  final bool _realtimeDisposed = false;
   bool _isSubscribing = false;
 
   // --- IN-MEMORY CACHE ---
@@ -38,35 +36,20 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> vozilaCache = {};
   final Map<String, Map<String, dynamic>> putniciCache = {};
   final Map<String, Map<String, dynamic>> zahteviCache = {};
-  final Map<String, Map<String, dynamic>> postavkeKapacitetaCache = {};
   final Map<String, Map<String, dynamic>> gorivoCache = {};
   final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> racuniCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
-  final Map<String, Map<String, dynamic>> gpsActivationScheduleCache = {};
-  final Map<String, Map<String, dynamic>> gpsTriggerStatsCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
   final Map<String, Map<String, dynamic>> operativnaAssignedCache = {};
-
-  String? _extractTimeToken(String? value) {
-    return V3TimeUtils.extractHHmmToken(value);
-  }
-
-  String _asString(dynamic value) {
-    return value?.toString() ?? '';
-  }
 
   void _rebuildGpsCacheFromOperativna() {
     operativnaAssignedCache.clear();
     for (final entry in operativnaNedeljaCache.values) {
       final id = entry['id']?.toString();
       if (id == null) continue;
-
-      final datumIso = V3DanHelper.parseIsoDatePart(_asString(entry['datum']));
-      final grad = (entry['grad']?.toString() ?? '').trim().toUpperCase();
-      final polazakTime = _extractTimeToken(entry['polazak_at']?.toString()) ?? '';
 
       final row = Map<String, dynamic>.from(entry);
       row['vreme'] = row['vreme'] ?? row['polazak_at'];
@@ -191,7 +174,6 @@ class V3MasterRealtimeManager {
     );
   }
 
-  Stream<void> get onChange => _eventBus.onChange;
   Stream<Map<String, int>> get onRevisions => _eventBus.onRevisions;
   Timer? _navTypeSwitchTimer;
 
@@ -216,8 +198,6 @@ class V3MasterRealtimeManager {
 
     _cacheStore.registerTable('v3_adrese', adreseCache);
     _cacheStore.registerTable('v3_auth', authCache);
-    _cacheStore.registerTable('v3_auth_vozaci', vozaciCache);
-    _cacheStore.registerTable('v3_auth_putnici', putniciCache);
     _cacheStore.registerTable('v3_vozila', vozilaCache);
     _cacheStore.registerTable('v3_zahtevi', zahteviCache);
     _cacheStore.registerTable('v3_gorivo', gorivoCache);
@@ -230,6 +210,55 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_operativna_assigned', operativnaAssignedCache);
 
     _cacheStoreRegistered = true;
+  }
+
+  void _rebuildRoleCachesFromAuth() {
+    vozaciCache
+      ..clear()
+      ..addAll(
+        {
+          for (final row in authCache.values)
+            if ((row['tip']?.toString().trim().toLowerCase() ?? '') == 'vozac')
+              (row['id']?.toString() ?? ''): <String, dynamic>{
+                'id': row['id'],
+                'ime_prezime': row['ime'],
+                'telefon_1': row['telefon'],
+                'telefon_2': row['telefon_2'],
+                'boja': row['boja'],
+                'push_token': row['push_token'],
+                'push_token_2': row['push_token_2'],
+                'created_at': row['created_at'],
+                'updated_at': row['updated_at'],
+              }
+        }..removeWhere((key, value) => key.isEmpty),
+      );
+
+    putniciCache
+      ..clear()
+      ..addAll(
+        {
+          for (final row in authCache.values)
+            if ((row['tip']?.toString().trim().toLowerCase() ?? '').isNotEmpty &&
+                (row['tip']?.toString().trim().toLowerCase() ?? '') != 'vozac')
+              (row['id']?.toString() ?? ''): <String, dynamic>{
+                'id': row['id'],
+                'ime_prezime': row['ime'],
+                'telefon_1': row['telefon'],
+                'telefon_2': row['telefon_2'],
+                'tip_putnika': row['tip'],
+                'adresa_bc_id': row['adresa_primary_bc_id'],
+                'adresa_vs_id': row['adresa_primary_vs_id'],
+                'adresa_bc_id_2': row['adresa_secondary_bc_id'],
+                'adresa_vs_id_2': row['adresa_secondary_vs_id'],
+                'cena_po_danu': row['cena_po_danu'],
+                'cena_po_pokupljenju': row['cena_po_pokupljenju'],
+                'push_token': row['push_token'],
+                'push_token_2': row['push_token_2'],
+                'created_at': row['created_at'],
+                'updated_at': row['updated_at'],
+              }
+        }..removeWhere((key, value) => key.isEmpty),
+      );
   }
 
   Future<void> initV3() async {
@@ -262,6 +291,8 @@ class V3MasterRealtimeManager {
         final normalizedRows = _normalizeRowsForTable(table.name, rawRows);
         _cacheStore.replaceAll(table.name, normalizedRows);
       }
+
+      _rebuildRoleCachesFromAuth();
 
       _rebuildGpsCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
@@ -298,17 +329,11 @@ class V3MasterRealtimeManager {
 
     final channel = supabase.channel('v3_realtime_all');
     for (final config in V3RealtimeTableRegistry.defaults) {
-      final sourceTable =
-          (config.name == 'v3_auth_vozaci' || config.name == 'v3_auth_putnici') ? 'v3_auth' : config.name;
       channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
-        table: sourceTable,
+        table: config.name,
         callback: (payload) {
-          if (config.name == 'v3_auth_vozaci' || config.name == 'v3_auth_putnici') {
-            _onAuthBackedPayload(config: config, payload: payload);
-            return;
-          }
           _onTablePayload(config: config, payload: payload);
         },
       );
@@ -341,13 +366,12 @@ class V3MasterRealtimeManager {
   }
 
   Future<void> _scheduleReconnect() async {
-    if (_realtimeDisposed || _isSubscribing) return;
+    if (_isSubscribing) return;
     _reconnectAttempts += 1;
     final cappedAttempt = _reconnectAttempts > 6 ? 6 : _reconnectAttempts;
     final baseMs = 500 * (1 << cappedAttempt);
     final jitter = Random().nextInt(250);
     await Future<void>.delayed(Duration(milliseconds: (baseMs + jitter).toInt()));
-    if (_realtimeDisposed) return;
     try {
       await _setupRealtime();
     } catch (e) {
@@ -389,98 +413,12 @@ class V3MasterRealtimeManager {
       }
     }
 
+    if (config.name == 'v3_auth') {
+      _rebuildRoleCachesFromAuth();
+    }
+
     final affected = <String>{config.name, ...config.dependsOn};
     _scheduleEmit(tables: affected);
-  }
-
-  void _onAuthBackedPayload({
-    required V3RealtimeTableConfig config,
-    required PostgresChangePayload payload,
-  }) {
-    _cacheStore.applyRealtimeMutation(
-      table: 'v3_auth',
-      newRecord: payload.newRecord,
-      oldRecord: payload.oldRecord,
-      isDelete: payload.eventType == PostgresChangeEvent.delete,
-      activeKey: 'is_active',
-      hasActiveKey: false,
-      keepInactive: false,
-    );
-
-    final mappedNew = _mapAuthToLegacyRow(payload.newRecord, config.name);
-    final mappedOld = _mapAuthToLegacyRow(payload.oldRecord, config.name);
-
-    final shouldDelete = payload.eventType == PostgresChangeEvent.delete || (mappedNew.isEmpty && mappedOld.isNotEmpty);
-
-    final changed = _cacheStore.applyRealtimeMutation(
-      table: config.name,
-      newRecord: mappedNew,
-      oldRecord: mappedOld,
-      isDelete: shouldDelete,
-      activeKey: config.activeKey,
-      hasActiveKey: config.hasActiveKey,
-      keepInactive: config.keepInactive,
-    );
-
-    if (!changed) return;
-    final affected = <String>{'v3_auth', config.name, ...config.dependsOn};
-    _scheduleEmit(tables: affected);
-  }
-
-  Map<String, dynamic> _mapAuthToLegacyRow(Map<String, dynamic> row, String logicalTable) {
-    if (logicalTable == 'v3_auth_vozaci') {
-      return _mapAuthToLegacyVozac(row);
-    }
-    if (logicalTable == 'v3_auth_putnici') {
-      return _mapAuthToLegacyPutnik(row);
-    }
-    return <String, dynamic>{};
-  }
-
-  Map<String, dynamic> _mapAuthToLegacyVozac(Map<String, dynamic> row) {
-    final tip = row['tip']?.toString().trim().toLowerCase();
-    if (tip != 'vozac') return <String, dynamic>{};
-
-    final id = row['id']?.toString();
-    if (id == null || id.isEmpty) return <String, dynamic>{};
-
-    return <String, dynamic>{
-      'id': id,
-      'ime_prezime': row['ime'],
-      'telefon_1': row['telefon'],
-      'telefon_2': row['telefon_2'],
-      'boja': row['boja'],
-      'push_token': row['push_token'],
-      'push_token_2': row['push_token_2'],
-      'created_at': row['created_at'],
-      'updated_at': row['updated_at'],
-    };
-  }
-
-  Map<String, dynamic> _mapAuthToLegacyPutnik(Map<String, dynamic> row) {
-    final tip = row['tip']?.toString().trim().toLowerCase();
-    if (tip == null || tip.isEmpty || tip == 'vozac') return <String, dynamic>{};
-
-    final id = row['id']?.toString();
-    if (id == null || id.isEmpty) return <String, dynamic>{};
-
-    return <String, dynamic>{
-      'id': id,
-      'ime_prezime': row['ime'],
-      'telefon_1': row['telefon'],
-      'telefon_2': row['telefon_2'],
-      'tip_putnika': row['tip'],
-      'adresa_bc_id': row['adresa_primary_bc_id'],
-      'adresa_vs_id': row['adresa_primary_vs_id'],
-      'adresa_bc_id_2': row['adresa_secondary_bc_id'],
-      'adresa_vs_id_2': row['adresa_secondary_vs_id'],
-      'cena_po_danu': row['cena_po_danu'],
-      'cena_po_pokupljenju': row['cena_po_pokupljenju'],
-      'push_token': row['push_token'],
-      'push_token_2': row['push_token_2'],
-      'created_at': row['created_at'],
-      'updated_at': row['updated_at'],
-    };
   }
 
   Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
@@ -502,8 +440,6 @@ class V3MasterRealtimeManager {
       isBroadcast: true,
     );
   }
-
-  int tableRevision(String table) => _cacheStore.revision(table);
 
   Stream<int> tableRevisionStream(String table) {
     final normalized = table.trim();
@@ -537,12 +473,9 @@ class V3MasterRealtimeManager {
       case 'v3_adrese':
         break;
       case 'v3_auth':
-        break;
-      case 'v3_auth_vozaci':
+        _rebuildRoleCachesFromAuth();
         break;
       case 'v3_vozila':
-        break;
-      case 'v3_auth_putnici':
         break;
       case 'v3_zahtevi':
         break;
@@ -602,22 +535,7 @@ class V3MasterRealtimeManager {
     }).toList(growable: false);
   }
 
-  /// Osvježi operativnaAssignedCache - gradi se lokalno iz v3_operativna_nedelja.
-  Future<void> refreshV3GpsRaspored() async {
-    try {
-      _rebuildGpsCacheFromOperativna();
-      _scheduleEmit(tables: {'v3_operativna_nedelja'});
-      debugPrint(
-          '[V3MasterRealtimeManager] operativnaAssignedCache rebuilt: ${operativnaAssignedCache.length} records from operativna_nedelja');
-    } catch (e) {
-      debugPrint('[V3MasterRealtimeManager] Error refreshing assigned operativna cache: $e');
-    }
-  }
-
-  Map<String, dynamic>? getVozac(String id) => vozaciCache[id];
   Map<String, dynamic>? getPutnik(String id) => putniciCache[id];
-  Map<String, dynamic>? getVozilo(String id) => vozilaCache[id];
-  Map<String, dynamic>? getAdresa(String id) => adreseCache[id];
 
   Map<String, Map<String, dynamic>> getCache(String table) {
     switch (table) {
@@ -625,12 +543,8 @@ class V3MasterRealtimeManager {
         return adreseCache;
       case 'v3_auth':
         return authCache;
-      case 'v3_auth_vozaci':
-        return vozaciCache;
       case 'v3_vozila':
         return vozilaCache;
-      case 'v3_auth_putnici':
-        return putniciCache;
       case 'v3_zahtevi':
         return zahteviCache;
       case 'v3_gorivo':

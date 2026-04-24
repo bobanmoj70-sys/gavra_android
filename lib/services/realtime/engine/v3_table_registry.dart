@@ -24,8 +24,7 @@ class V3RealtimeTableConfig {
 class V3RealtimeTableRegistry {
   static const List<V3RealtimeTableConfig> defaults = <V3RealtimeTableConfig>[
     V3RealtimeTableConfig(name: 'v3_adrese', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_auth_vozaci', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_auth_putnici', hasActiveKey: false),
+    V3RealtimeTableConfig(name: 'v3_auth', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_vozila', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_zahtevi', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_gorivo', hasActiveKey: false),
@@ -46,8 +45,7 @@ class V3RealtimeTableRegistry {
     ),
   ];
 
-  static final Map<String, V3RealtimeTableConfig> byName =
-      <String, V3RealtimeTableConfig>{
+  static final Map<String, V3RealtimeTableConfig> byName = <String, V3RealtimeTableConfig>{
     for (final table in defaults) table.name: table,
   };
 }

@@ -11,14 +11,17 @@ import '../utils/v3_style_helper.dart';
 class V3VozacStatusWidget extends StatefulWidget {
   final String vozacId;
 
-  /// Koordinate svih putnika pre ovog putnika na ruti, u redosledu route_order.
-  /// Poslednja tačka u nizu je adresa ovog putnika.
-  final List<({double lat, double lng})> putnikWaypoints;
+  /// Sve stanice aktivnog termina koje ulaze u optimizaciju.
+  final List<V3OsrmStop> termStops;
+
+  /// ID stopa (putnik id) za koji prikazujemo ETA.
+  final String targetStopId;
 
   const V3VozacStatusWidget({
     super.key,
     required this.vozacId,
-    required this.putnikWaypoints,
+    required this.termStops,
+    required this.targetStopId,
   });
 
   @override
@@ -43,7 +46,8 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   void didUpdateWidget(covariant V3VozacStatusWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.vozacId != widget.vozacId ||
-        !_sameWaypoints(oldWidget.putnikWaypoints, widget.putnikWaypoints)) {
+        oldWidget.targetStopId != widget.targetStopId ||
+        !_sameStops(oldWidget.termStops, widget.termStops)) {
       _refreshEta();
     }
   }
@@ -59,14 +63,16 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
     return double.tryParse(value?.toString() ?? '');
   }
 
-  bool _sameWaypoints(
-    List<({double lat, double lng})> a,
-    List<({double lat, double lng})> b,
+  bool _sameStops(
+    List<V3OsrmStop> a,
+    List<V3OsrmStop> b,
   ) {
     if (identical(a, b)) return true;
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
-      if (a[i].lat != b[i].lat || a[i].lng != b[i].lng) return false;
+      if (a[i].id != b[i].id || a[i].lat != b[i].lat || a[i].lng != b[i].lng) {
+        return false;
+      }
     }
     return true;
   }
@@ -74,42 +80,72 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   Future<void> _refreshEta() async {
     final requestId = ++_etaRequestId;
 
-    if (widget.putnikWaypoints.isEmpty) {
-      if (mounted && requestId == _etaRequestId)
-        setState(() => _etaVreme = null);
+    if (widget.termStops.isEmpty) {
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 
-    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(
-        widget.vozacId,
-        onlyActive: true);
+    final lokacijaVozaca = V3VozacLokacijaService.getVozacLokacijaSync(widget.vozacId, onlyActive: true);
     if (lokacijaVozaca == null) {
-      if (mounted && requestId == _etaRequestId)
-        setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 
     final vozacLat = _toDouble(lokacijaVozaca['lat']);
     final vozacLng = _toDouble(lokacijaVozaca['lng']);
     if (vozacLat == null || vozacLng == null) {
-      if (mounted && requestId == _etaRequestId)
-        setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 
-    final allWaypoints = [
-      (lat: vozacLat, lng: vozacLng),
-      ...widget.putnikWaypoints,
-    ];
+    V3OsrmStop? targetStop;
+    for (final stop in widget.termStops) {
+      if (stop.id == widget.targetStopId) {
+        targetStop = stop;
+        break;
+      }
+    }
+    if (targetStop == null) {
+      if (mounted && requestId == _etaRequestId) {
+        setState(() => _etaVreme = null);
+      }
+      return;
+    }
 
-    final durationMin =
-        await V3OsrmService.getEtaMinutes(waypoints: allWaypoints);
+    final optimizedIds = await V3OsrmService.optimizeStopOrderByDuration(
+      originLat: vozacLat,
+      originLng: vozacLng,
+      stops: widget.termStops,
+    );
+
+    if (requestId != _etaRequestId) return;
+
+    int? durationMin;
+    if (optimizedIds != null && optimizedIds.isNotEmpty) {
+      final stopById = {for (final stop in widget.termStops) stop.id: stop};
+      final optimizedStops = optimizedIds.map((id) => stopById[id]).whereType<V3OsrmStop>().toList(growable: false);
+
+      final etaByStopId = await V3OsrmService.getEtaMinutesForOrderedStops(
+        originLat: vozacLat,
+        originLng: vozacLng,
+        orderedStops: optimizedStops,
+      );
+      if (etaByStopId != null) {
+        durationMin = etaByStopId[widget.targetStopId];
+      }
+    }
+
+    durationMin ??= await V3OsrmService.getEtaMinutes(
+      waypoints: [
+        (lat: vozacLat, lng: vozacLng),
+        (lat: targetStop.lat, lng: targetStop.lng),
+      ],
+    );
 
     if (requestId != _etaRequestId) return;
 
     if (durationMin == null) {
-      if (mounted && requestId == _etaRequestId)
-        setState(() => _etaVreme = null);
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 

@@ -7,6 +7,7 @@ import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_osrm_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
@@ -750,10 +751,39 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
     final row = selected['row'] as Map<String, dynamic>;
     final grad = (row['grad'] as String? ?? '').toUpperCase();
+    final datumIso = (row['datum'] as String? ?? '').split('T').first;
+    final vreme = V3StringUtils.trimTimeToHhMm((row['polazak_at'] as String?) ?? '');
     final vozacId = selected['vozacId'] as String;
     final koristiSekundarnu = row['koristi_sekundarnu'] as bool? ?? false;
     final adresaOverride = row['adresa_override_id'] as String?;
-    final mojRouteOrder = (row['route_order'] as num?)?.toInt();
+
+    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    String? resolveAdresaId(Map<String, dynamic> opRow, Map<String, dynamic> putnikData) {
+      final opGrad = (opRow['grad'] as String? ?? '').toUpperCase();
+      final koristiSekundarnuOp = opRow['koristi_sekundarnu'] as bool? ?? false;
+      final adresaOverrideOp = opRow['adresa_override_id'] as String?;
+
+      if (adresaOverrideOp != null && adresaOverrideOp.isNotEmpty) {
+        return adresaOverrideOp;
+      }
+
+      if (opGrad == 'BC') {
+        final adresaBc1 = putnikData['adresa_bc_id'] as String?;
+        final adresaBc2 = putnikData['adresa_bc_id_2'] as String?;
+        return koristiSekundarnuOp ? (adresaBc2 ?? adresaBc1) : (adresaBc1 ?? adresaBc2);
+      }
+
+      if (opGrad == 'VS') {
+        final adresaVs1 = putnikData['adresa_vs_id'] as String?;
+        final adresaVs2 = putnikData['adresa_vs_id_2'] as String?;
+        return koristiSekundarnuOp ? (adresaVs2 ?? adresaVs1) : (adresaVs1 ?? adresaVs2);
+      }
+
+      return null;
+    }
 
     // Resolvi adresu ovog putnika
     String? mojAdresaId;
@@ -772,63 +802,51 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final mojaAdresa = V3AdresaService.getAdresaById(mojAdresaId);
     if (mojaAdresa == null || !mojaAdresa.hasValidCoordinates) return const SizedBox.shrink();
 
-    // Pronađi putnike koji su pre ovog na ruti (manji route_order) i resolvi njihove adrese
-    final putnikWaypoints = <({double lat, double lng})>[];
+    final terminRows = rm.operativnaAssignedCache.values
+        .where((candidate) =>
+            !V3StatusPolicy.isTimestampSet(candidate['otkazano_at']) &&
+            ((candidate['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking' &&
+            V3StatusPolicy.isApproved(V3StatusPolicy.deriveOperativnaStatus(
+              otkazanoAt: candidate['otkazano_at'],
+              polazakAt: candidate['polazak_at'],
+            )))
+        .where((candidate) => (candidate['datum'] as String? ?? '').startsWith(datumIso))
+        .where((candidate) => (candidate['grad']?.toString().toUpperCase() ?? '') == grad)
+        .where((candidate) => V3StringUtils.trimTimeToHhMm((candidate['polazak_at'] as String?) ?? '') == vreme)
+        .where((candidate) {
+      final candidateId = candidate['id']?.toString().trim() ?? '';
+      if (candidateId.isEmpty) return false;
+      return _activeVozacByTerminId[candidateId] == vozacId;
+    }).toList(growable: false);
 
-    if (mojRouteOrder != null && mojRouteOrder > 1) {
-      final prethodnici = rm.operativnaAssignedCache.values.where((r) {
-        final rowTerminId = r['id']?.toString().trim() ?? '';
-        if (rowTerminId.isEmpty) return false;
-        final rowVozacId = _activeVozacByTerminId[rowTerminId];
-        if (rowVozacId != vozacId) return false;
-        if (r['datum']?.toString() != row['datum']?.toString()) return false;
-        if ((r['grad'] as String? ?? '').toUpperCase() != grad) return false;
-        final order = (r['route_order'] as num?)?.toInt();
-        return order != null && order < mojRouteOrder;
-      }).toList()
-        ..sort((a, b) {
-          final oa = (a['route_order'] as num).toInt();
-          final ob = (b['route_order'] as num).toInt();
-          return oa.compareTo(ob);
-        });
+    final termStopsById = <String, V3OsrmStop>{};
 
-      for (final r in prethodnici) {
-        final pPutnikId = r['created_by']?.toString();
-        final pOverride = r['adresa_override_id'] as String?;
-        final pGrad = (r['grad'] as String? ?? '').toUpperCase();
-        final pKoristiSek = r['koristi_sekundarnu'] as bool? ?? false;
+    for (final terminRow in terminRows) {
+      final terminPutnikId = terminRow['created_by']?.toString().trim() ?? '';
+      if (terminPutnikId.isEmpty) continue;
+      final putnikData = terminPutnikId == putnikId ? _putnikData : rm.putniciCache[terminPutnikId];
+      if (putnikData == null) continue;
 
-        String? pAdresaId;
-        if (pOverride != null && pOverride.isNotEmpty) {
-          pAdresaId = pOverride;
-        } else if (pPutnikId != null) {
-          final pData = rm.putniciCache[pPutnikId];
-          if (pData != null) {
-            if (pGrad == 'BC') {
-              final a1 = pData['adresa_bc_id'] as String?;
-              final a2 = pData['adresa_bc_id_2'] as String?;
-              pAdresaId = pKoristiSek ? (a2 ?? a1) : (a1 ?? a2);
-            } else if (pGrad == 'VS') {
-              final a1 = pData['adresa_vs_id'] as String?;
-              final a2 = pData['adresa_vs_id_2'] as String?;
-              pAdresaId = pKoristiSek ? (a2 ?? a1) : (a1 ?? a2);
-            }
-          }
-        }
+      final adresaId = resolveAdresaId(terminRow, putnikData);
+      final adresa = V3AdresaService.getAdresaById(adresaId);
+      if (adresa == null || !adresa.hasValidCoordinates) continue;
 
-        final pAdresa = V3AdresaService.getAdresaById(pAdresaId);
-        if (pAdresa != null && pAdresa.hasValidCoordinates) {
-          putnikWaypoints.add((lat: pAdresa.gpsLat!, lng: pAdresa.gpsLng!));
-        }
-      }
+      termStopsById[terminPutnikId] = V3OsrmStop(
+        id: terminPutnikId,
+        lat: adresa.gpsLat!,
+        lng: adresa.gpsLng!,
+      );
     }
 
-    // Dodaj adresu ovog putnika kao poslednju tačku
-    putnikWaypoints.add((lat: mojaAdresa.gpsLat!, lng: mojaAdresa.gpsLng!));
+    final termStops = termStopsById.values.toList(growable: false);
+    if (termStops.isEmpty || !termStopsById.containsKey(putnikId)) {
+      return const SizedBox.shrink();
+    }
 
     return V3VozacStatusWidget(
       vozacId: vozacId,
-      putnikWaypoints: putnikWaypoints,
+      termStops: termStops,
+      targetStopId: putnikId,
     );
   }
 

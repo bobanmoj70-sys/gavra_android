@@ -48,11 +48,9 @@ class V3OsrmService {
         '$_baseUrl/trip/v1/driving/${allCoords.join(';')}?source=first${hasDestination ? '&destination=last' : ''}&roundtrip=false&overview=false&steps=false',
       );
 
-      final tripResponse =
-          await http.get(tripUri).timeout(const Duration(seconds: 8));
+      final tripResponse = await http.get(tripUri).timeout(const Duration(seconds: 8));
       if (tripResponse.statusCode != 200) {
-        debugPrint(
-            '[V3OsrmService] trip status=${tripResponse.statusCode} body=${tripResponse.body}');
+        debugPrint('[V3OsrmService] trip status=${tripResponse.statusCode} body=${tripResponse.body}');
         return null;
       }
 
@@ -123,14 +121,83 @@ class V3OsrmService {
       if (firstRoute is! Map<String, dynamic>) return null;
 
       final durationSeconds = (firstRoute['duration'] as num?)?.toDouble();
-      if (durationSeconds == null ||
-          !durationSeconds.isFinite ||
-          durationSeconds <= 0) return null;
+      if (durationSeconds == null || !durationSeconds.isFinite || durationSeconds <= 0) return null;
 
       final minutes = (durationSeconds / 60.0).ceil();
       return minutes < 1 ? 1 : minutes;
     } catch (e) {
       debugPrint('[V3OsrmService] getEtaMinutes error: $e');
+      return null;
+    }
+  }
+
+  /// Računa ETA (u minutima) za svaki stop iz već optimizovanog redosleda.
+  ///
+  /// `orderedStops` mora biti u redosledu obilaska.
+  /// Vraća mapu `stopId -> minute od vozača do tog stopa`.
+  static Future<Map<String, int>?> getEtaMinutesForOrderedStops({
+    required double originLat,
+    required double originLng,
+    required List<V3OsrmStop> orderedStops,
+  }) async {
+    if (orderedStops.isEmpty) return const <String, int>{};
+
+    try {
+      final allWaypoints = <({double lat, double lng})>[
+        (lat: originLat, lng: originLng),
+        ...orderedStops.map((stop) => (lat: stop.lat, lng: stop.lng)),
+      ];
+
+      final coords = allWaypoints.map((w) => '${w.lng},${w.lat}').join(';');
+      final uri = Uri.parse(
+        '$_baseUrl/route/v1/driving/$coords?overview=false&steps=false',
+      );
+
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) {
+        debugPrint('[V3OsrmService] per-stop eta status=${response.statusCode}');
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      if (decoded['code'] != 'Ok') {
+        debugPrint('[V3OsrmService] per-stop eta code=${decoded['code']}');
+        return null;
+      }
+
+      final routes = decoded['routes'];
+      if (routes is! List || routes.isEmpty) return null;
+
+      final firstRoute = routes.first;
+      if (firstRoute is! Map<String, dynamic>) return null;
+
+      final legs = firstRoute['legs'];
+      if (legs is! List || legs.length < orderedStops.length) {
+        debugPrint('[V3OsrmService] per-stop eta invalid legs');
+        return null;
+      }
+
+      final etaByStopId = <String, int>{};
+      var cumulativeSeconds = 0.0;
+
+      for (var index = 0; index < orderedStops.length; index++) {
+        final leg = legs[index];
+        if (leg is! Map<String, dynamic>) return null;
+
+        final legDurationSeconds = (leg['duration'] as num?)?.toDouble();
+        if (legDurationSeconds == null || !legDurationSeconds.isFinite || legDurationSeconds <= 0) {
+          return null;
+        }
+
+        cumulativeSeconds += legDurationSeconds;
+        var minutes = (cumulativeSeconds / 60.0).ceil();
+        if (minutes < 1) minutes = 1;
+        etaByStopId[orderedStops[index].id] = minutes;
+      }
+
+      return etaByStopId;
+    } catch (e) {
+      debugPrint('[V3OsrmService] getEtaMinutesForOrderedStops error: $e');
       return null;
     }
   }

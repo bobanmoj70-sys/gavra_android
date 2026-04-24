@@ -32,7 +32,6 @@ class V3ForegroundGpsService {
   static String? _currentPolazakVreme;
   static String? _currentPolazakTime;
   static List<V3Putnik> _currentPutnici = [];
-  static DateTime? _lastHeartbeatSentAt;
   static DateTime? _lastAutoStopCheckAt;
   static bool _autoStopInProgress = false;
   static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
@@ -301,11 +300,8 @@ class V3ForegroundGpsService {
       // Zaustavi postojeći stream
       await _stopGpsTracking();
 
-      _lastHeartbeatSentAt = null;
-
       const locationSettings = LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update svakih 10 metara
       );
 
       V3StreamUtils.subscribeToGPS<Position>(
@@ -315,8 +311,6 @@ class V3ForegroundGpsService {
         ),
         onPosition: (position) async {
           if (!_isRunning || _currentVozacId == null) return;
-
-          _lastHeartbeatSentAt = DateTime.now();
 
           // Pošalji GPS update
           await V3VozacLokacijaService.updateLokacija(
@@ -341,7 +335,6 @@ class V3ForegroundGpsService {
         key: 'foreground_gps_timer',
         period: const Duration(seconds: 30),
         callback: (_) {
-          unawaited(_sendHeartbeatGpsUpdate());
           unawaited(checkAutoStop());
         },
       );
@@ -352,34 +345,6 @@ class V3ForegroundGpsService {
     }
   }
 
-  static Future<void> _sendHeartbeatGpsUpdate() async {
-    if (!_isRunning || _currentVozacId == null) return;
-
-    final now = DateTime.now();
-    if (_lastHeartbeatSentAt != null && now.difference(_lastHeartbeatSentAt!) < const Duration(seconds: 20)) {
-      return;
-    }
-
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-
-      _lastHeartbeatSentAt = now;
-
-      await V3VozacLokacijaService.updateLokacija(
-        V3VozacLokacijaUpdate(
-          vozacId: _currentVozacId!,
-          lat: position.latitude,
-          lng: position.longitude,
-          brzina: position.speed * 3.6,
-        ),
-      );
-    } catch (e) {
-      debugPrint('[V3ForegroundGpsService] Heartbeat GPS update greška: $e');
-    }
-  }
-
   static Future<void> _seedInitialLocation() async {
     if (!_isRunning || _currentVozacId == null) return;
 
@@ -387,8 +352,6 @@ class V3ForegroundGpsService {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       ).timeout(const Duration(seconds: 12));
-
-      _lastHeartbeatSentAt = DateTime.now();
 
       await V3VozacLokacijaService.updateLokacija(
         V3VozacLokacijaUpdate(
@@ -407,7 +370,6 @@ class V3ForegroundGpsService {
   static Future<void> _stopGpsTracking() async {
     V3StreamUtils.cancelSubscription('foreground_gps_service_gps');
     V3StreamUtils.cancelTimer('foreground_gps_timer');
-    _lastHeartbeatSentAt = null;
   }
 
   /// Ažurira notification sa trenutnom brzinom

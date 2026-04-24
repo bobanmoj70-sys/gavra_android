@@ -11,7 +11,7 @@ class V3VozacRepository {
   }
 
   Future<void> updateById(String id, Map<String, dynamic> payload) {
-    final mapped = _mapLegacyPayloadToAuthUpdate(payload);
+    final mapped = _mapUpdatePayloadToAuth(payload);
     if (mapped.isEmpty) return Future.value();
 
     return supabase.from('v3_auth').update(mapped).eq('id', id).eq('tip', 'vozac');
@@ -37,7 +37,7 @@ class V3VozacRepository {
     final row = await supabase.from('v3_auth').select(_authVozacSelect).eq('id', id).eq('tip', 'vozac').maybeSingle();
 
     if (row == null) return null;
-    return _mapAuthRowToLegacyVozac(Map<String, dynamic>.from(row));
+    return _mapAuthRowToVozac(Map<String, dynamic>.from(row));
   }
 
   Future<void> insert(Map<String, dynamic> payload) {
@@ -59,7 +59,7 @@ class V3VozacRepository {
     return supabase.from('v3_auth').insert(mapped);
   }
 
-  Map<String, dynamic> _mapLegacyPayloadToAuthUpdate(Map<String, dynamic> payload) {
+  Map<String, dynamic> _mapUpdatePayloadToAuth(Map<String, dynamic> payload) {
     final out = <String, dynamic>{};
 
     if (payload.containsKey('ime_prezime')) out['ime'] = payload['ime_prezime'];
@@ -72,7 +72,7 @@ class V3VozacRepository {
     return out;
   }
 
-  Map<String, dynamic> _mapAuthRowToLegacyVozac(Map<String, dynamic> row) {
+  Map<String, dynamic> _mapAuthRowToVozac(Map<String, dynamic> row) {
     return <String, dynamic>{
       'id': row['id'],
       'ime_prezime': row['ime'],

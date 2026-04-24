@@ -8,14 +8,9 @@ class V3NavigationResult {
   final List<Map<String, dynamic>>? optimizedData;
   final Map<String, dynamic>? metadata;
 
-  V3NavigationResult(
-      {required this.success,
-      required this.message,
-      this.optimizedData,
-      this.metadata});
+  V3NavigationResult({required this.success, required this.message, this.optimizedData, this.metadata});
 
-  factory V3NavigationResult.error(String msg) =>
-      V3NavigationResult(success: false, message: msg);
+  factory V3NavigationResult.error(String msg) => V3NavigationResult(success: false, message: msg);
 }
 
 class V3SmartNavigationService {
@@ -77,21 +72,18 @@ class V3SmartNavigationService {
         );
 
         if (adresaId == null || adresaId.isEmpty) {
-          return V3NavigationResult.error(
-              'Putnik ${putnik.imePrezime} nema fiksnu adresu za grad $fromCity');
+          return V3NavigationResult.error('Putnik ${putnik.imePrezime} nema fiksnu adresu za grad $fromCity');
         }
 
         final adresa = V3AdresaService.getAdresaById(adresaId);
         if (adresa == null) {
-          return V3NavigationResult.error(
-              'Adresa $adresaId nije pronađena za putnika ${putnik.imePrezime}');
+          return V3NavigationResult.error('Adresa $adresaId nije pronađena za putnika ${putnik.imePrezime}');
         }
 
         final lat = adresa.gpsLat;
         final lng = adresa.gpsLng;
         if (lat == null || lng == null) {
-          return V3NavigationResult.error(
-              'Adresa ${adresa.naziv} nema fiksne GPS koordinate');
+          return V3NavigationResult.error('Adresa ${adresa.naziv} nema fiksne GPS koordinate');
         }
 
         candidates.add(
@@ -105,8 +97,7 @@ class V3SmartNavigationService {
       }
 
       if (candidates.isEmpty) {
-        return V3NavigationResult.error(
-            'Nema putnika sa validnim GPS koordinatama za optimizaciju');
+        return V3NavigationResult.error('Nema putnika sa validnim GPS koordinatama za optimizaciju');
       }
 
       final osrmOrder = await V3OsrmService.optimizeStopOrderByDuration(
@@ -124,18 +115,14 @@ class V3SmartNavigationService {
       );
 
       if (osrmOrder == null || osrmOrder.length != candidates.length) {
-        return V3NavigationResult.error(
-            'OSRM servis trenutno nije vratio validan redosled');
+        return V3NavigationResult.error('OSRM servis trenutno nije vratio validan redosled');
       }
 
       final byId = <String, _V3RouteCandidate>{
         for (final candidate in candidates) candidate.putnik.id: candidate,
       };
 
-      final orderedCandidates = osrmOrder
-          .map((id) => byId[id])
-          .whereType<_V3RouteCandidate>()
-          .toList();
+      final orderedCandidates = osrmOrder.map((id) => byId[id]).whereType<_V3RouteCandidate>().toList();
 
       if (orderedCandidates.length != candidates.length) {
         return V3NavigationResult.error('OSRM redosled nije kompletan');
@@ -143,17 +130,14 @@ class V3SmartNavigationService {
 
       final finalData = <Map<String, dynamic>>[];
 
-      for (var index = 0; index < orderedCandidates.length; index++) {
-        final candidate = orderedCandidates[index];
+      for (final candidate in orderedCandidates) {
         finalData.add({
           'putnik': candidate.item['putnik'],
           'entry': candidate.item['entry'],
-          'route_order': index + 1,
         });
       }
 
-      final message =
-          'OSRM optimizovana: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity';
+      final message = 'OSRM optimizovana: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity';
 
       return V3NavigationResult(
         success: true,
@@ -171,14 +155,6 @@ class V3SmartNavigationService {
     } catch (e) {
       return V3NavigationResult.error('Greška pri optimizaciji: $e');
     }
-  }
-
-  /// Vraća adresu putnika za određeni grad
-  static String getAdresaZaGrad(V3Putnik p, String grad) {
-    if (grad.toUpperCase() == 'BC') {
-      return V3AdresaService.getAdresaById(p.adresaBcId)?.naziv ?? '';
-    }
-    return V3AdresaService.getAdresaById(p.adresaVsId)?.naziv ?? '';
   }
 }
 
