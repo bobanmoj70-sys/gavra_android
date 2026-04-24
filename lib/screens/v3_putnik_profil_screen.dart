@@ -137,34 +137,44 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               (e['grad']?.toString().toUpperCase() ?? '') == grad;
         }).toList();
 
-        if (opRows.isEmpty) {
-          final pendingRows = rm.zahteviCache.values.where((z) {
-            final status = V3StatusPolicy.normalizeStatus(z['status']?.toString());
-            return (z['created_by']?.toString() ?? '') == putnikId &&
-                (z['datum'] as String? ?? '').startsWith(datumIso) &&
-                (z['grad']?.toString().toUpperCase() ?? '') == grad &&
-                V3StatusPolicy.isPending(status);
-          }).toList();
+        final zahtevRows = rm.zahteviCache.values.where((z) {
+          final status = V3StatusPolicy.normalizeStatus(z['status']?.toString());
+          return (z['created_by']?.toString() ?? '') == putnikId &&
+              (z['datum'] as String? ?? '').startsWith(datumIso) &&
+              (z['grad']?.toString().toUpperCase() ?? '') == grad &&
+              (V3StatusPolicy.isPending(status) || V3StatusPolicy.isOfferLike(status));
+        }).toList();
 
-          if (pendingRows.isEmpty) continue;
+        _ZahtevInfo? bestZahtevInfo;
+        int bestZahtevPriority = -1;
+        DateTime bestZahtevTs = DateTime.fromMillisecondsSinceEpoch(0);
 
-          pendingRows.sort((a, b) {
-            final aTs = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-            final bTs = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-            return bTs.compareTo(aTs);
-          });
+        for (final zahtev in zahtevRows) {
+          final status = V3StatusPolicy.normalizeStatus(zahtev['status']?.toString());
+          final priority = V3StatusPolicy.displayPriority(status: status, pokupljen: false);
+          final zahtevTs = DateTime.tryParse(zahtev['updated_at']?.toString() ?? '') ??
+              DateTime.tryParse(zahtev['created_at']?.toString() ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0);
 
-          final pending = pendingRows.first;
-          final trazeniVreme = _normalizeValidTime(pending['trazeni_polazak_at']?.toString()) ?? '—';
+          final trazeniVreme = _normalizeValidTime(zahtev['trazeni_polazak_at']?.toString()) ??
+              _normalizeValidTime(zahtev['polazak_at']?.toString()) ??
+              _normalizeValidTime(zahtev['alternativa_pre_at']?.toString()) ??
+              _normalizeValidTime(zahtev['alternativa_posle_at']?.toString()) ??
+              '—';
 
-          infos.add(_ZahtevInfo(
+          final info = _ZahtevInfo(
             grad: grad,
             vreme: trazeniVreme,
-            status: V3StatusPolicy.normalizeStatus('pending'),
+            status: status,
             pokupljen: false,
-            koristiSekundarnu: pending['koristi_sekundarnu'] as bool? ?? false,
-          ));
-          continue;
+            koristiSekundarnu: zahtev['koristi_sekundarnu'] as bool? ?? false,
+          );
+
+          if (priority > bestZahtevPriority || (priority == bestZahtevPriority && zahtevTs.isAfter(bestZahtevTs))) {
+            bestZahtevInfo = info;
+            bestZahtevPriority = priority;
+            bestZahtevTs = zahtevTs;
+          }
         }
 
         Map<String, dynamic>? selected;
@@ -186,24 +196,48 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           }
         }
 
-        if (selected == null) continue;
+        _ZahtevInfo? bestOperativnaInfo;
+        if (selected != null) {
+          final status = V3StatusPolicy.normalizeStatus(
+            V3StatusPolicy.deriveOperativnaStatus(
+              otkazanoAt: selected['otkazano_at'],
+              polazakAt: selected['polazak_at'],
+            ),
+          );
+          final opPolazakAt = _normalizeValidTime(selected['polazak_at']?.toString());
+          final displayVreme = opPolazakAt ?? '—';
 
-        final status = V3StatusPolicy.normalizeStatus(
-          V3StatusPolicy.deriveOperativnaStatus(
-            otkazanoAt: selected['otkazano_at'],
-            polazakAt: selected['polazak_at'],
-          ),
+          bestOperativnaInfo = _ZahtevInfo(
+            grad: grad,
+            vreme: displayVreme,
+            status: status,
+            pokupljen: V3StatusPolicy.isTimestampSet(selected['pokupljen_at']),
+            koristiSekundarnu: selected['koristi_sekundarnu'] as bool? ?? false,
+          );
+        }
+
+        if (bestOperativnaInfo == null && bestZahtevInfo == null) continue;
+
+        if (bestOperativnaInfo == null) {
+          infos.add(bestZahtevInfo!);
+          continue;
+        }
+
+        if (bestZahtevInfo == null) {
+          infos.add(bestOperativnaInfo);
+          continue;
+        }
+
+        final operativnaPriority = V3StatusPolicy.displayPriority(
+          status: bestOperativnaInfo.status,
+          pokupljen: bestOperativnaInfo.pokupljen,
         );
-        final opPolazakAt = _normalizeValidTime(selected['polazak_at']?.toString());
-        final displayVreme = opPolazakAt ?? '—';
+        final zahtevPriority = V3StatusPolicy.displayPriority(
+          status: bestZahtevInfo.status,
+          pokupljen: bestZahtevInfo.pokupljen,
+        );
 
-        infos.add(_ZahtevInfo(
-          grad: grad,
-          vreme: displayVreme,
-          status: status,
-          pokupljen: V3StatusPolicy.isTimestampSet(selected['pokupljen_at']),
-          koristiSekundarnu: selected['koristi_sekundarnu'] as bool? ?? false,
-        ));
+        infos.add(zahtevPriority > operativnaPriority ? bestZahtevInfo : bestOperativnaInfo);
       }
 
       final bestByGrad = <String, _ZahtevInfo>{};
