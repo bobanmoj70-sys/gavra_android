@@ -845,6 +845,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
     return V3VozacStatusWidget(
       vozacId: vozacId,
+      termKey: '$datumIso|$grad|$vreme',
       termStops: termStops,
       targetStopId: putnikId,
     );

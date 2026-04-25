@@ -1,5 +1,3 @@
-import '../../models/v3_putnik.dart';
-import 'v3_adresa_service.dart';
 import 'v3_osrm_service.dart';
 
 class V3NavigationResult {
@@ -21,83 +19,38 @@ class V3SmartNavigationService {
     'VS': (lat: 45.1190, lng: 21.3030),
   };
 
-  // Vraća adresaId za pickup — uvek u gradu polaska (fromCity), ne odredišta.
-  static String? _resolveAdresaIdForPickup({
-    required V3Putnik putnik,
-    required dynamic entry,
-    required String fromCity,
-  }) {
-    final String? override = entry?.adresaIdOverride as String?;
-    if (override != null && override.trim().isNotEmpty) {
-      return override;
-    }
-
-    if (fromCity.toUpperCase() == 'BC') {
-      return putnik.adresaBcId;
-    }
-
-    return putnik.adresaVsId;
-  }
-
   /// Optimizacija V3 rute preko OSRM-a.
   ///
-  /// Filtrira putnike bez validnih adresa/koordinata i vraća grešku ako
-  /// nema dostupne GPS pozicije vozača ili OSRM ne vrati validan redosled.
+  /// Očekuje da ulazni `data` već sadrži pripremljen `stop` (`V3OsrmStop`) po stavci.
   static Future<V3NavigationResult> optimizeV3Route({
-    required List<Map<String, dynamic>> data, // Sadrži 'putnik' i 'entry'
+    required List<Map<String, dynamic>> data, // Sadrži 'putnik', 'entry' i 'stop'
     required String fromCity, // BC ili VS
     required double driverLat,
     required double driverLng,
   }) async {
     try {
       if (data.isEmpty) {
-        return V3NavigationResult.error('Nema putnika za optimizaciju');
+        return V3NavigationResult.error('Nema putnika za ETA obradu');
       }
 
       // 1. Odredimo ciljni grad (suprotan od polaznog)
       final targetCity = fromCity.toUpperCase() == 'BC' ? 'VS' : 'BC';
 
-      // 2. Validiraj putnike sa fiksnim adresama i koordinatama
+      // 2. Uzimamo unapred pripremljene stopove (fiksne koordinate)
       final candidates = <_V3RouteCandidate>[];
-
       for (final item in data) {
-        final putnik = item['putnik'] as V3Putnik?;
-        if (putnik == null) continue;
-        final entry = item['entry'];
-
-        final adresaId = _resolveAdresaIdForPickup(
-          putnik: putnik,
-          entry: entry,
-          fromCity: fromCity,
-        );
-
-        if (adresaId == null || adresaId.isEmpty) {
-          return V3NavigationResult.error('Putnik ${putnik.imePrezime} nema fiksnu adresu za grad $fromCity');
-        }
-
-        final adresa = V3AdresaService.getAdresaById(adresaId);
-        if (adresa == null) {
-          return V3NavigationResult.error('Adresa $adresaId nije pronađena za putnika ${putnik.imePrezime}');
-        }
-
-        final lat = adresa.gpsLat;
-        final lng = adresa.gpsLng;
-        if (lat == null || lng == null) {
-          return V3NavigationResult.error('Adresa ${adresa.naziv} nema fiksne GPS koordinate');
-        }
-
+        final stop = item['stop'] as V3OsrmStop?;
+        if (stop == null) continue;
         candidates.add(
           _V3RouteCandidate(
             item: item,
-            putnik: putnik,
-            lat: lat,
-            lng: lng,
+            stop: stop,
           ),
         );
       }
 
       if (candidates.isEmpty) {
-        return V3NavigationResult.error('Nema putnika sa validnim GPS koordinatama za optimizaciju');
+        return V3NavigationResult.error('Nema putnika sa validnim fiksnim koordinatama za ETA obradu');
       }
 
       final osrmOrder = await V3OsrmService.optimizeStopOrderByDuration(
@@ -105,9 +58,9 @@ class V3SmartNavigationService {
         originLng: driverLng,
         stops: candidates
             .map((candidate) => V3OsrmStop(
-                  id: candidate.putnik.id,
-                  lat: candidate.lat,
-                  lng: candidate.lng,
+                  id: candidate.stop.id,
+                  lat: candidate.stop.lat,
+                  lng: candidate.stop.lng,
                 ))
             .toList(),
         destinationLat: _cityEndpoints[targetCity]?.lat,
@@ -119,7 +72,7 @@ class V3SmartNavigationService {
       }
 
       final byId = <String, _V3RouteCandidate>{
-        for (final candidate in candidates) candidate.putnik.id: candidate,
+        for (final candidate in candidates) candidate.stop.id: candidate,
       };
 
       final orderedCandidates = osrmOrder.map((id) => byId[id]).whereType<_V3RouteCandidate>().toList();
@@ -137,7 +90,7 @@ class V3SmartNavigationService {
         });
       }
 
-      final message = 'OSRM optimizovana: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity';
+      final message = 'OSRM redosled osvežen: $fromCity ➔ ${orderedCandidates.length} putnika ➔ $targetCity';
 
       return V3NavigationResult(
         success: true,
@@ -153,21 +106,17 @@ class V3SmartNavigationService {
         },
       );
     } catch (e) {
-      return V3NavigationResult.error('Greška pri optimizaciji: $e');
+      return V3NavigationResult.error('Greška pri ETA obradi: $e');
     }
   }
 }
 
 class _V3RouteCandidate {
   final Map<String, dynamic> item;
-  final V3Putnik putnik;
-  final double lat;
-  final double lng;
+  final V3OsrmStop stop;
 
   const _V3RouteCandidate({
     required this.item,
-    required this.putnik,
-    required this.lat,
-    required this.lng,
+    required this.stop,
   });
 }

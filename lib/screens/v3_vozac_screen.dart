@@ -8,9 +8,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
+import '../services/v3/v3_osrm_service.dart';
 import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
@@ -39,7 +41,7 @@ import 'v3_welcome_screen.dart';
 /// V3 Vozač Screen - prikazuje dodjeljene termine i putnike
 /// iz cache-a građenog iz v3_operativna_nedelja.
 ///
-/// Optimizacija rute koristi OSRM na ručni zahtev vozača.
+/// ETA i redosled vožnje koriste OSRM na zahtev vozača.
 class V3VozacScreen extends StatefulWidget {
   const V3VozacScreen({super.key});
 
@@ -833,8 +835,39 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
+  V3OsrmStop? _resolveStopForOptimization(_PutnikEntry item) {
+    final entry = item.entry;
+    final putnik = item.putnik;
+
+    final overrideId = entry?.adresaIdOverride?.trim();
+    final adresaId = (overrideId != null && overrideId.isNotEmpty)
+        ? overrideId
+        : (_selectedGrad.toUpperCase() == 'BC' ? putnik.adresaBcId : putnik.adresaVsId);
+
+    if (adresaId == null || adresaId.isEmpty) return null;
+
+    final adresa = V3AdresaService.getAdresaById(adresaId);
+    if (adresa == null || !adresa.hasValidCoordinates) return null;
+
+    return V3OsrmStop(
+      id: putnik.id,
+      lat: adresa.gpsLat!,
+      lng: adresa.gpsLng!,
+    );
+  }
+
   List<Map<String, dynamic>> _buildOptimizationData(List<_PutnikEntry> putnici) {
-    return putnici.map((entry) => {'putnik': entry.putnik, 'entry': entry.entry}).toList();
+    final data = <Map<String, dynamic>>[];
+    for (final item in putnici) {
+      final stop = _resolveStopForOptimization(item);
+      if (stop == null) continue;
+      data.add({
+        'putnik': item.putnik,
+        'entry': item.entry,
+        'stop': stop,
+      });
+    }
+    return data;
   }
 
   Future<Map<String, double>?> _resolveDriverPositionForOptimization({
@@ -847,7 +880,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     if (driverLat == null || driverLng == null) {
       if (!silent && mounted) {
-        V3AppSnackBar.warning(context, 'OSRM optimizacija zahteva aktivan GPS vozača.');
+        V3AppSnackBar.warning(context, 'OSRM ETA obračun zahteva aktivan GPS vozača.');
       }
       return null;
     }

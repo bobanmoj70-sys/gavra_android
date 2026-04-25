@@ -10,8 +10,9 @@ import '../utils/v3_style_helper.dart';
 
 class V3VozacStatusWidget extends StatefulWidget {
   final String vozacId;
+  final String termKey;
 
-  /// Sve stanice aktivnog termina koje ulaze u optimizaciju.
+  /// Sve stanice aktivnog termina (za pronalazak ciljnih fiksnih koordinata).
   final List<V3OsrmStop> termStops;
 
   /// ID stopa (putnik id) za koji prikazujemo ETA.
@@ -20,6 +21,7 @@ class V3VozacStatusWidget extends StatefulWidget {
   const V3VozacStatusWidget({
     super.key,
     required this.vozacId,
+    required this.termKey,
     required this.termStops,
     required this.targetStopId,
   });
@@ -29,6 +31,8 @@ class V3VozacStatusWidget extends StatefulWidget {
 }
 
 class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
+  static final Map<String, _TermOrderCacheEntry> _orderCacheByTermKey = <String, _TermOrderCacheEntry>{};
+
   Timer? _refreshTimer;
   String? _etaVreme;
   int _etaRequestId = 0;
@@ -45,9 +49,15 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
   @override
   void didUpdateWidget(covariant V3VozacStatusWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final stopsChanged = !_sameStops(oldWidget.termStops, widget.termStops);
+    if (oldWidget.termKey != widget.termKey || stopsChanged) {
+      _invalidateTermOrderCache(widget.termKey);
+    }
+
     if (oldWidget.vozacId != widget.vozacId ||
         oldWidget.targetStopId != widget.targetStopId ||
-        !_sameStops(oldWidget.termStops, widget.termStops)) {
+        oldWidget.termKey != widget.termKey ||
+        stopsChanged) {
       _refreshEta();
     }
   }
@@ -77,6 +87,48 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
     return true;
   }
 
+  String _buildStopsSignature(List<V3OsrmStop> stops) {
+    final parts = stops
+        .map((s) => '${s.id}:${s.lat.toStringAsFixed(6)},${s.lng.toStringAsFixed(6)}')
+        .toList(growable: false)
+      ..sort();
+    return parts.join('|');
+  }
+
+  void _invalidateTermOrderCache(String termKey) {
+    _orderCacheByTermKey.remove(termKey);
+  }
+
+  Future<List<V3OsrmStop>?> _resolveOrderedStopsForTerm({
+    required double vozacLat,
+    required double vozacLng,
+  }) async {
+    final signature = _buildStopsSignature(widget.termStops);
+    final cached = _orderCacheByTermKey[widget.termKey];
+    if (cached != null && cached.stopsSignature == signature && cached.orderedStops.isNotEmpty) {
+      return cached.orderedStops;
+    }
+
+    final optimizedIds = await V3OsrmService.optimizeStopOrderByDuration(
+      originLat: vozacLat,
+      originLng: vozacLng,
+      stops: widget.termStops,
+    );
+
+    if (optimizedIds == null || optimizedIds.isEmpty) return null;
+
+    final stopById = {for (final stop in widget.termStops) stop.id: stop};
+    final orderedStops = optimizedIds.map((id) => stopById[id]).whereType<V3OsrmStop>().toList(growable: false);
+    if (orderedStops.isEmpty) return null;
+
+    _orderCacheByTermKey[widget.termKey] = _TermOrderCacheEntry(
+      stopsSignature: signature,
+      orderedStops: orderedStops,
+    );
+
+    return orderedStops;
+  }
+
   Future<void> _refreshEta() async {
     final requestId = ++_etaRequestId;
 
@@ -98,49 +150,23 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
       return;
     }
 
-    V3OsrmStop? targetStop;
-    for (final stop in widget.termStops) {
-      if (stop.id == widget.targetStopId) {
-        targetStop = stop;
-        break;
-      }
-    }
-    if (targetStop == null) {
-      if (mounted && requestId == _etaRequestId) {
-        setState(() => _etaVreme = null);
-      }
+    final orderedStops = await _resolveOrderedStopsForTerm(
+      vozacLat: vozacLat,
+      vozacLng: vozacLng,
+    );
+    if (requestId != _etaRequestId) return;
+
+    if (orderedStops == null || orderedStops.isEmpty) {
+      if (mounted && requestId == _etaRequestId) setState(() => _etaVreme = null);
       return;
     }
 
-    final optimizedIds = await V3OsrmService.optimizeStopOrderByDuration(
+    final etaByStopId = await V3OsrmService.getEtaMinutesForOrderedStops(
       originLat: vozacLat,
       originLng: vozacLng,
-      stops: widget.termStops,
+      orderedStops: orderedStops,
     );
-
-    if (requestId != _etaRequestId) return;
-
-    int? durationMin;
-    if (optimizedIds != null && optimizedIds.isNotEmpty) {
-      final stopById = {for (final stop in widget.termStops) stop.id: stop};
-      final optimizedStops = optimizedIds.map((id) => stopById[id]).whereType<V3OsrmStop>().toList(growable: false);
-
-      final etaByStopId = await V3OsrmService.getEtaMinutesForOrderedStops(
-        originLat: vozacLat,
-        originLng: vozacLng,
-        orderedStops: optimizedStops,
-      );
-      if (etaByStopId != null) {
-        durationMin = etaByStopId[widget.targetStopId];
-      }
-    }
-
-    durationMin ??= await V3OsrmService.getEtaMinutes(
-      waypoints: [
-        (lat: vozacLat, lng: vozacLng),
-        (lat: targetStop.lat, lng: targetStop.lng),
-      ],
-    );
+    final durationMin = etaByStopId?[widget.targetStopId];
 
     if (requestId != _etaRequestId) return;
 
@@ -194,4 +220,14 @@ class _V3VozacStatusWidgetState extends State<V3VozacStatusWidget> {
       ),
     );
   }
+}
+
+class _TermOrderCacheEntry {
+  final String stopsSignature;
+  final List<V3OsrmStop> orderedStops;
+
+  const _TermOrderCacheEntry({
+    required this.stopsSignature,
+    required this.orderedStops,
+  });
 }
