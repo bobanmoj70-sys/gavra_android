@@ -7,12 +7,12 @@ import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_osrm_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_lokacija_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
@@ -32,7 +32,7 @@ import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_update_banner.dart';
-import '../widgets/v3_vozac_status_widget.dart';
+import '../widgets/v3_vreme_dolaska_widget.dart';
 import 'v3_help_screen.dart';
 import 'v3_putnik_statistika_screen.dart';
 import 'v3_welcome_screen.dart';
@@ -51,6 +51,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   late Map<String, dynamic> _putnikData;
   Map<String, String> _activeVozacByTerminId = const {};
   Map<String, String> _activeVozacBySlotKey = const {};
+  Map<String, int> _etaByTerminId = const {};
+  Map<String, int> _routeOrderByTerminId = const {};
   // Operativni termini po danu
   // key = dan kratica npr 'pon', value = lista termina (BC i VS)
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
@@ -284,18 +286,54 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final results = await Future.wait<dynamic>([
         V3TrenutnaDodelaService.loadActiveVozacByTerminId(putnikId: putnikId),
         V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(),
+        supabase
+            .from(V3TrenutnaDodelaService.tableName)
+            .select('termin_id, eta, route_order, status')
+            .eq('putnik_v3_auth_id', putnikId)
+            .eq('status', V3TrenutnaDodelaService.statusAktivan),
       ]);
       final nextByTermin = Map<String, String>.from(results[0] as Map<String, String>);
       final nextBySlot = Map<String, String>.from(results[1] as Map<String, String>);
+      final etaRouteRows = List<Map<String, dynamic>>.from(
+        (results[2] as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)),
+      );
+
+      final nextEtaByTermin = <String, int>{};
+      final nextRouteOrderByTermin = <String, int>{};
+
+      for (final row in etaRouteRows) {
+        final status = row['status']?.toString() ?? '';
+        if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
+
+        final terminId = row['termin_id']?.toString().trim() ?? '';
+        if (terminId.isEmpty) continue;
+
+        final eta = _toInt(row['eta']);
+        final routeOrder = _toInt(row['route_order']);
+        if (eta != null && eta > 0) {
+          nextEtaByTermin[terminId] = eta;
+        }
+        if (routeOrder != null && routeOrder > 0) {
+          nextRouteOrderByTermin[terminId] = routeOrder;
+        }
+      }
 
       if (!mounted) return;
       V3StateUtils.safeSetState(this, () {
         _activeVozacByTerminId = nextByTermin;
         _activeVozacBySlotKey = nextBySlot;
+        _etaByTerminId = nextEtaByTermin;
+        _routeOrderByTerminId = nextRouteOrderByTermin;
       });
     } catch (e) {
       debugPrint('[V3PutnikProfilScreen] _reloadTrenutnaDodelaForPutnik error: $e');
     }
+  }
+
+  int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 
   String _resolveAssignedVozacIdForRow(Map<String, dynamic> row) {
@@ -765,6 +803,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         'row': row,
         'terminId': terminId,
         'vozacId': vozacId,
+        'etaMin': _etaByTerminId[terminId],
+        'routeOrder': _routeOrderByTerminId[terminId],
         'vreme': vreme,
         'datum': datum,
         'polazak': polazak,
@@ -786,104 +826,21 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
     final selected = kandidati.first;
 
-    final row = selected['row'] as Map<String, dynamic>;
-    final grad = (row['grad'] as String? ?? '').toUpperCase();
-    final datumIso = (row['datum'] as String? ?? '').split('T').first;
-    final vreme = V3StringUtils.trimTimeToHhMm((row['polazak_at'] as String?) ?? '');
-    final vozacId = selected['vozacId'] as String;
-    final koristiSekundarnu = row['koristi_sekundarnu'] as bool? ?? false;
-    final adresaOverride = row['adresa_override_id'] as String?;
-
-    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
+    final etaMin = selected['etaMin'] as int?;
+    if (etaMin == null || etaMin <= 0) {
       return const SizedBox.shrink();
     }
 
-    String? resolveAdresaId(Map<String, dynamic> opRow, Map<String, dynamic> putnikData) {
-      final opGrad = (opRow['grad'] as String? ?? '').toUpperCase();
-      final koristiSekundarnuOp = opRow['koristi_sekundarnu'] as bool? ?? false;
-      final adresaOverrideOp = opRow['adresa_override_id'] as String?;
+    final routeOrder = selected['routeOrder'] as int?;
+    final vremePrikaz = selected['vreme'] as String? ?? '';
+    final vozacId = selected['vozacId'] as String? ?? '';
+    final vozacIme = V3VozacService.getVozacById(vozacId)?.imePrezime ?? '';
 
-      if (adresaOverrideOp != null && adresaOverrideOp.isNotEmpty) {
-        return adresaOverrideOp;
-      }
-
-      if (opGrad == 'BC') {
-        final adresaBc1 = putnikData['adresa_bc_id'] as String?;
-        final adresaBc2 = putnikData['adresa_bc_id_2'] as String?;
-        return koristiSekundarnuOp ? (adresaBc2 ?? adresaBc1) : (adresaBc1 ?? adresaBc2);
-      }
-
-      if (opGrad == 'VS') {
-        final adresaVs1 = putnikData['adresa_vs_id'] as String?;
-        final adresaVs2 = putnikData['adresa_vs_id_2'] as String?;
-        return koristiSekundarnuOp ? (adresaVs2 ?? adresaVs1) : (adresaVs1 ?? adresaVs2);
-      }
-
-      return null;
-    }
-
-    // Resolvi adresu ovog putnika
-    String? mojAdresaId;
-    if (adresaOverride != null && adresaOverride.isNotEmpty) {
-      mojAdresaId = adresaOverride;
-    } else if (grad == 'BC') {
-      final adresaBc1 = _putnikData['adresa_bc_id'] as String?;
-      final adresaBc2 = _putnikData['adresa_bc_id_2'] as String?;
-      mojAdresaId = koristiSekundarnu ? (adresaBc2 ?? adresaBc1) : (adresaBc1 ?? adresaBc2);
-    } else if (grad == 'VS') {
-      final adresaVs1 = _putnikData['adresa_vs_id'] as String?;
-      final adresaVs2 = _putnikData['adresa_vs_id_2'] as String?;
-      mojAdresaId = koristiSekundarnu ? (adresaVs2 ?? adresaVs1) : (adresaVs1 ?? adresaVs2);
-    }
-
-    final mojaAdresa = V3AdresaService.getAdresaById(mojAdresaId);
-    if (mojaAdresa == null || !mojaAdresa.hasValidCoordinates) return const SizedBox.shrink();
-
-    final terminRows = rm.operativnaAssignedCache.values
-        .where((candidate) =>
-            !V3StatusPolicy.isTimestampSet(candidate['otkazano_at']) &&
-            V3StatusPolicy.isApproved(V3StatusPolicy.deriveOperativnaStatus(
-              otkazanoAt: candidate['otkazano_at'],
-              polazakAt: candidate['polazak_at'],
-            )))
-        .where((candidate) => (candidate['datum'] as String? ?? '').startsWith(datumIso))
-        .where((candidate) => (candidate['grad']?.toString().toUpperCase() ?? '') == grad)
-        .where((candidate) => V3StringUtils.trimTimeToHhMm((candidate['polazak_at'] as String?) ?? '') == vreme)
-        .toList(growable: false);
-
-    final terminRowsWithAssignedVozac = terminRows.where((candidate) {
-      return _resolveAssignedVozacIdForRow(candidate) == vozacId;
-    }).toList(growable: false);
-
-    final termStopsById = <String, V3OsrmStop>{};
-
-    for (final terminRow in terminRowsWithAssignedVozac) {
-      final terminPutnikId = terminRow['created_by']?.toString().trim() ?? '';
-      if (terminPutnikId.isEmpty) continue;
-      final putnikData = terminPutnikId == putnikId ? _putnikData : rm.putniciCache[terminPutnikId];
-      if (putnikData == null) continue;
-
-      final adresaId = resolveAdresaId(terminRow, putnikData);
-      final adresa = V3AdresaService.getAdresaById(adresaId);
-      if (adresa == null || !adresa.hasValidCoordinates) continue;
-
-      termStopsById[terminPutnikId] = V3OsrmStop(
-        id: terminPutnikId,
-        lat: adresa.gpsLat!,
-        lng: adresa.gpsLng!,
-      );
-    }
-
-    final termStops = termStopsById.values.toList(growable: false);
-    if (termStops.isEmpty || !termStopsById.containsKey(putnikId)) {
-      return const SizedBox.shrink();
-    }
-
-    return V3VozacStatusWidget(
-      vozacId: vozacId,
-      termKey: '$datumIso|$grad|$vreme',
-      termStops: termStops,
-      targetStopId: putnikId,
+    return V3VremeDolaskaWidget(
+      etaMin: etaMin,
+      routeOrder: routeOrder,
+      terminVreme: vremePrikaz,
+      vozacIme: vozacIme,
     );
   }
 
