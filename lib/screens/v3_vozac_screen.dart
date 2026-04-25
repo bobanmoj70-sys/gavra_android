@@ -698,18 +698,34 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         );
 
         if (success) {
+          final locationReady = await _waitForActiveDriverLocation(
+            vozacId: vozac.id,
+            timeout: const Duration(seconds: 12),
+          );
+
+          if (!locationReady && mounted) {
+            V3AppSnackBar.warning(context, '⚠️ GPS lokacija još nije aktivna. Sačekajte par sekundi.');
+          }
+
           try {
-            await V3DriverPushNotificationService.notifyPassengersDriverStarted(
+            final pushResult = await V3DriverPushNotificationService.notifyPassengersDriverStarted(
               vozacId: vozac.id,
               datumIso: _selectedDatumIso,
               grad: _selectedGrad,
               vreme: _selectedVreme,
             );
+            final notified = (pushResult['notified'] as num?)?.toInt() ?? 0;
+            if (mounted && notified <= 0) {
+              V3AppSnackBar.warning(context, '⚠️ Push nije poslat: nema aktivnih putnika za ovaj termin.');
+            }
           } catch (e) {
             debugPrint('[V3VozacScreen] driver-start push notify error: $e');
+            if (mounted) {
+              V3AppSnackBar.warning(context, '⚠️ Push obaveštenje putnicima nije poslato.');
+            }
           }
 
-          if (_mojiPutnici.isNotEmpty) {
+          if (locationReady && _mojiPutnici.isNotEmpty) {
             await _optimizujRutu();
           }
 
@@ -759,6 +775,23 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         context,
         '⚠️ GPS dozvola nije odobrena. Uključite dozvolu u Settings.',
       );
+    }
+    return false;
+  }
+
+  Future<bool> _waitForActiveDriverLocation({
+    required String vozacId,
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final startedAt = DateTime.now();
+    while (DateTime.now().difference(startedAt) < timeout) {
+      final location = V3VozacLokacijaService.getVozacLokacijaSync(vozacId, onlyActive: true);
+      final lat = (location?['lat'] as num?)?.toDouble() ?? double.tryParse(location?['lat']?.toString() ?? '');
+      final lng = (location?['lng'] as num?)?.toDouble() ?? double.tryParse(location?['lng']?.toString() ?? '');
+      if (location != null && lat != null && lng != null) {
+        return true;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 350));
     }
     return false;
   }
@@ -837,14 +870,39 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final putnik = item.putnik;
 
     final overrideId = entry?.adresaIdOverride?.trim();
-    final adresaId = (overrideId != null && overrideId.isNotEmpty)
-        ? overrideId
-        : (_selectedGrad.toUpperCase() == 'BC' ? putnik.adresaBcId : putnik.adresaVsId);
+    String? primaryAdresaId;
+    String? secondaryAdresaId;
 
-    if (adresaId == null || adresaId.isEmpty) return null;
+    if (overrideId != null && overrideId.isNotEmpty) {
+      primaryAdresaId = overrideId;
+    } else {
+      final koristiSekundarnu = entry?.koristiSekundarnu ?? false;
+      if (_selectedGrad.toUpperCase() == 'BC') {
+        primaryAdresaId = koristiSekundarnu ? putnik.adresaBcId2 : putnik.adresaBcId;
+        secondaryAdresaId = koristiSekundarnu ? putnik.adresaBcId : putnik.adresaBcId2;
+      } else {
+        primaryAdresaId = koristiSekundarnu ? putnik.adresaVsId2 : putnik.adresaVsId;
+        secondaryAdresaId = koristiSekundarnu ? putnik.adresaVsId : putnik.adresaVsId2;
+      }
+    }
 
-    final adresa = V3AdresaService.getAdresaById(adresaId);
-    if (adresa == null || !adresa.hasValidCoordinates) return null;
+    final candidates = <String>{
+      if (primaryAdresaId != null && primaryAdresaId.isNotEmpty) primaryAdresaId,
+      if (secondaryAdresaId != null && secondaryAdresaId.isNotEmpty) secondaryAdresaId,
+    };
+
+    if (candidates.isEmpty) return null;
+
+    dynamic adresa;
+    for (final adresaId in candidates) {
+      final candidate = V3AdresaService.getAdresaById(adresaId);
+      if (candidate != null && candidate.hasValidCoordinates) {
+        adresa = candidate;
+        break;
+      }
+    }
+
+    if (adresa == null) return null;
 
     return V3OsrmStop(
       id: putnik.id,

@@ -849,11 +849,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         .where((candidate) => (candidate['datum'] as String? ?? '').startsWith(datumIso))
         .where((candidate) => (candidate['grad']?.toString().toUpperCase() ?? '') == grad)
         .where((candidate) => V3StringUtils.trimTimeToHhMm((candidate['polazak_at'] as String?) ?? '') == vreme)
-        .where((candidate) {
-      final candidateId = candidate['id']?.toString().trim() ?? '';
-      if (candidateId.isEmpty) return false;
-      return _activeVozacByTerminId[candidateId] == vozacId;
-    }).toList(growable: false);
+        .toList(growable: false);
 
     final terminRowsWithAssignedVozac = terminRows.where((candidate) {
       return _resolveAssignedVozacIdForRow(candidate) == vozacId;

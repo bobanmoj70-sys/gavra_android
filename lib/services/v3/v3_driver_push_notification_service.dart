@@ -4,7 +4,7 @@ import '../../utils/v3_time_utils.dart';
 class V3DriverPushNotificationService {
   V3DriverPushNotificationService._();
 
-  static Future<void> notifyPassengersDriverStarted({
+  static Future<Map<String, dynamic>> notifyPassengersDriverStarted({
     required String vozacId,
     required String datumIso,
     required String grad,
@@ -14,10 +14,6 @@ class V3DriverPushNotificationService {
     final safeDatumIso = datumIso.trim();
     final safeGrad = grad.trim().toUpperCase();
     final safeVreme = V3TimeUtils.normalizeToHHmm(vreme);
-
-    if (safeVozacId.isEmpty || safeDatumIso.isEmpty || safeGrad.isEmpty || safeVreme.isEmpty) {
-      return;
-    }
 
     try {
       final response = await supabase.rpc(
@@ -30,10 +26,18 @@ class V3DriverPushNotificationService {
         },
       );
 
-      if (response is Map<String, dynamic> && response['ok'] == false) {
-        final reason = (response['reason'] ?? 'unknown').toString();
+      if (response is! Map) {
+        throw Exception('Unexpected RPC response format: $response');
+      }
+
+      final map = Map<String, dynamic>.from(response);
+
+      if (map['ok'] == false) {
+        final reason = (map['reason'] ?? 'unknown').toString();
         throw Exception(reason);
       }
+
+      return map;
     } catch (e) {
       throw Exception('Driver start push failed: $e');
     }
