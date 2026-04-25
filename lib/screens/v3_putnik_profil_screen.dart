@@ -831,15 +831,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return const SizedBox.shrink();
     }
 
-    final routeOrder = selected['routeOrder'] as int?;
-    final vremePrikaz = selected['vreme'] as String? ?? '';
     final vozacId = selected['vozacId'] as String? ?? '';
     final vozacIme = V3VozacService.getVozacById(vozacId)?.imePrezime ?? '';
 
     return V3VremeDolaskaWidget(
       etaMin: etaMin,
-      routeOrder: routeOrder,
-      terminVreme: vremePrikaz,
       vozacIme: vozacIme,
     );
   }

@@ -5,15 +5,11 @@ import '../utils/v3_style_helper.dart';
 
 class V3VremeDolaskaWidget extends StatelessWidget {
   final int etaMin;
-  final int? routeOrder;
-  final String terminVreme;
   final String vozacIme;
 
   const V3VremeDolaskaWidget({
     super.key,
     required this.etaMin,
-    this.routeOrder,
-    required this.terminVreme,
     required this.vozacIme,
   });
 
@@ -57,18 +53,6 @@ class V3VremeDolaskaWidget extends StatelessWidget {
               color: V3StyleHelper.whiteAlpha75,
               fontSize: 13,
               fontWeight: FontWeight.w700,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            routeOrder != null
-                ? 'ETA ~ $etaMin min • Redosled #$routeOrder • Termin $terminVreme'
-                : 'ETA ~ $etaMin min • Termin $terminVreme',
-            style: TextStyle(
-              color: V3StyleHelper.whiteAlpha75,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
           ),

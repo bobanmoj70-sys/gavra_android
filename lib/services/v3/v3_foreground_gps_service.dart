@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../models/v3_putnik.dart';
 import '../../utils/v3_stream_utils.dart';
+import '../../utils/v3_time_utils.dart';
 import 'v3_trenutna_dodela_service.dart';
 import 'v3_vozac_lokacija_service.dart';
 
@@ -25,6 +26,7 @@ class V3ForegroundGpsService {
 
   static bool _isRunning = false;
   static String? _currentVozacId;
+  static String? _currentDatumIso;
   static String? _currentGrad;
   static String? _currentPolazakVreme;
   static String? _currentPolazakTime;
@@ -68,6 +70,7 @@ class V3ForegroundGpsService {
   static Future<bool> startTracking({
     required String vozacId,
     required String vozacIme,
+    required String datumIso,
     required String polazakVreme,
     required List<V3Putnik> putnici,
     required String grad,
@@ -89,6 +92,7 @@ class V3ForegroundGpsService {
 
       // 3. Postavi tracking parametre
       _currentVozacId = vozacId;
+      _currentDatumIso = datumIso;
       _currentGrad = grad;
       _currentPolazakVreme = polazakVreme;
       _currentPolazakTime = polazakVreme;
@@ -126,6 +130,7 @@ class V3ForegroundGpsService {
 
     _isRunning = false;
     _currentVozacId = null;
+    _currentDatumIso = null;
     _currentGrad = null;
     _currentPolazakVreme = null;
     _currentPolazakTime = null;
@@ -393,6 +398,11 @@ class V3ForegroundGpsService {
     final vozacId = _currentVozacId?.trim() ?? '';
     if (vozacId.isEmpty) return;
 
+    final datumIso = (_currentDatumIso ?? '').trim();
+    final grad = (_currentGrad ?? '').trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(_currentPolazakTime);
+    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
+
     final lokacija = V3VozacLokacijaService.getVozacLokacijaSync(vozacId);
     final lat = _toDouble(lokacija?['lat']);
     final lng = _toDouble(lokacija?['lng']);
@@ -404,6 +414,9 @@ class V3ForegroundGpsService {
         vozacId: vozacId,
         originLat: lat,
         originLng: lng,
+        datumIso: datumIso,
+        grad: grad,
+        vreme: vreme,
       );
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] _refreshRouteOrderEtaForActiveAssignments error: $e');

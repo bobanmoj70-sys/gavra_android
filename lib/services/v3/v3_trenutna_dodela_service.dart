@@ -1,5 +1,6 @@
 import '../../globals.dart';
 import '../../utils/v3_status_policy.dart';
+import '../../utils/v3_time_utils.dart';
 import 'v3_osrm_service.dart';
 
 class V3TrenutnaDodelaService {
@@ -162,9 +163,17 @@ class V3TrenutnaDodelaService {
     required String vozacId,
     required double originLat,
     required double originLng,
+    required String datumIso,
+    required String grad,
+    required String vreme,
   }) async {
     final vozac = vozacId.trim();
     if (vozac.isEmpty) return;
+
+    final slotDatum = datumIso.trim();
+    final slotGrad = grad.trim().toUpperCase();
+    final slotVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    if (slotDatum.isEmpty || slotGrad.isEmpty || slotVreme.isEmpty) return;
 
     final assignmentsRaw = await supabase
         .from(tableName)
@@ -197,7 +206,9 @@ class V3TrenutnaDodelaService {
 
     final putniciRaw = await supabase
         .from('v3_auth')
-        .select('id, adresa_bc_id, adresa_bc_id_2, adresa_vs_id, adresa_vs_id_2')
+        .select(
+          'id, adresa_bc_id:adresa_primary_bc_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_vs_id_2:adresa_secondary_vs_id',
+        )
         .inFilter('id', putnikIds);
 
     final operativnaById = <String, Map<String, dynamic>>{};
@@ -216,8 +227,26 @@ class V3TrenutnaDodelaService {
       putnikById[id] = mapped;
     }
 
-    final adresaIds = <String>{};
+    final scopedAssignments = <({String terminId, String putnikId})>[];
     for (final assignment in assignments) {
+      final operativna = operativnaById[assignment.terminId];
+      if (operativna == null) continue;
+
+      final rowDatum = V3DanHelper.parseIsoDatePart(operativna['datum']?.toString() ?? '');
+      final rowGrad = (operativna['grad']?.toString() ?? '').trim().toUpperCase();
+      final rowVreme = V3TimeUtils.normalizeToHHmm(operativna['polazak_at']?.toString());
+
+      if (rowDatum != slotDatum) continue;
+      if (rowGrad != slotGrad) continue;
+      if (rowVreme != slotVreme) continue;
+
+      scopedAssignments.add(assignment);
+    }
+
+    if (scopedAssignments.isEmpty) return;
+
+    final adresaIds = <String>{};
+    for (final assignment in scopedAssignments) {
       final operativna = operativnaById[assignment.terminId];
       final putnik = putnikById[assignment.putnikId];
       if (operativna == null || putnik == null) continue;
@@ -253,7 +282,7 @@ class V3TrenutnaDodelaService {
     final activeStops = <V3OsrmStop>[];
     final stopIdByTerminId = <String, String>{};
 
-    for (final assignment in assignments) {
+    for (final assignment in scopedAssignments) {
       final operativna = operativnaById[assignment.terminId];
       final putnik = putnikById[assignment.putnikId];
       if (operativna == null || putnik == null) continue;
@@ -314,7 +343,7 @@ class V3TrenutnaDodelaService {
       routeOrderByStopId[orderedStops[index].id] = index + 1;
     }
 
-    for (final assignment in assignments) {
+    for (final assignment in scopedAssignments) {
       final stopId = stopIdByTerminId[assignment.terminId];
       final routeOrder = stopId != null ? routeOrderByStopId[stopId] : null;
       final eta = stopId != null ? (etaByStopId == null ? null : etaByStopId[stopId]) : null;

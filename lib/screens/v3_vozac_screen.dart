@@ -611,7 +611,30 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<void> _openMapa() async {
-    await V3TelefonHelper.otvoriHereWeGoAppOnly(this, context);
+    final putniciZaRutu = _optimizacijaPutnici();
+    final waypoints = <(double, double)>[];
+
+    for (final item in putniciZaRutu) {
+      final stop = _resolveStopForOptimization(item);
+      if (stop == null) continue;
+      waypoints.add((stop.lat, stop.lng));
+    }
+
+    if (waypoints.isEmpty) {
+      if (mounted) {
+        V3AppSnackBar.warning(context, 'Nema validnih waypoint-a za navigaciju.');
+      }
+      return;
+    }
+
+    final targetCity = _selectedGrad.toUpperCase() == 'BC' ? 'VS' : 'BC';
+    if (targetCity == 'BC') {
+      waypoints.add((44.8973, 21.4177));
+    } else {
+      waypoints.add((45.1190, 21.3030));
+    }
+
+    await V3TelefonHelper.navigirajMultiStop(this, context, waypoints);
   }
 
   Future<void> _logout() async {
@@ -692,7 +715,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         final success = await V3ForegroundGpsService.startTracking(
           vozacId: vozac.id,
           vozacIme: vozac.imePrezime ?? 'Vozač',
-          polazakVreme: '$_selectedGrad $_selectedVreme',
+          datumIso: _selectedDatumIso,
+          polazakVreme: _selectedVreme,
           putnici: _optimizacijaPutnici().map((entry) => entry.putnik).toList(),
           grad: _selectedGrad,
         );
