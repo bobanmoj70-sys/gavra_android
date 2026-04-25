@@ -10,6 +10,7 @@ import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_driver_push_notification_service.dart';
 import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_osrm_service.dart';
@@ -697,13 +698,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         );
 
         if (success) {
-          await V3ForegroundGpsService.syncTrackingStatus(
-            vozacId: vozac.id,
-            grad: _selectedGrad,
-            polazakVreme: _selectedVreme,
-            gpsStatus: 'tracking',
-            datumIso: _selectedDatumIso,
-          );
+          try {
+            await V3DriverPushNotificationService.notifyPassengersDriverStarted(
+              vozacId: vozac.id,
+              datumIso: _selectedDatumIso,
+              grad: _selectedGrad,
+              vreme: _selectedVreme,
+            );
+          } catch (e) {
+            debugPrint('[V3VozacScreen] driver-start push notify error: $e');
+          }
 
           if (_mojiPutnici.isNotEmpty) {
             await _optimizujRutu();
@@ -731,13 +735,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
       // Zaustavi foreground service i notification
       await V3ForegroundGpsService.stopTracking();
-      await V3ForegroundGpsService.syncTrackingStatus(
-        vozacId: vozac.id,
-        grad: _selectedGrad,
-        polazakVreme: _selectedVreme,
-        gpsStatus: 'pending',
-        datumIso: _selectedDatumIso,
-      );
 
       if (mounted) {
         V3AppSnackBar.warning(context, '⚠️ GPS tracking zaustavljen - notification uklonjena');

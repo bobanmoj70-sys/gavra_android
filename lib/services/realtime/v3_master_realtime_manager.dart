@@ -55,8 +55,6 @@ class V3MasterRealtimeManager {
       row['vreme'] = row['vreme'] ?? row['polazak_at'];
       row['polazak_vreme'] = row['polazak_at'];
       row['nav_bar_type'] = row['nav_bar_type'] ?? 'zimski';
-      row['gps_status'] = row['gps_status'] ?? 'pending';
-      row['notification_sent'] = row['notification_sent'] ?? false;
       operativnaAssignedCache[id] = row;
     }
   }

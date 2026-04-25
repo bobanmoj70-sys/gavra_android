@@ -11,6 +11,8 @@ import '../services/v3/v3_osrm_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
+import '../services/v3/v3_trenutna_dodela_slot_service.dart';
+import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
@@ -48,6 +50,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   late Map<String, dynamic> _putnikData;
   Map<String, String> _activeVozacByTerminId = const {};
+  Map<String, String> _activeVozacBySlotKey = const {};
   // Operativni termini po danu
   // key = dan kratica npr 'pon', value = lista termina (BC i VS)
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
@@ -86,8 +89,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Pratimo promjene cache-a
     V3StreamUtils.subscribe<int>(
       key: 'putnik_profil_cache',
-      stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_auth', 'v3_zahtevi', 'v3_operativna_nedelja', 'v3_app_settings']),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+        'v3_auth',
+        'v3_zahtevi',
+        'v3_operativna_nedelja',
+        'v3_app_settings',
+        'v3_trenutna_dodela',
+        'v3_trenutna_dodela_slot',
+        'v3_vozac_lokacije',
+      ]),
       onData: (_) {
         if (mounted) _refresh();
       },
@@ -271,15 +281,41 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   Future<void> _reloadTrenutnaDodelaForPutnik(String putnikId) async {
     try {
-      final next = await V3TrenutnaDodelaService.loadActiveVozacByTerminId(putnikId: putnikId);
+      final results = await Future.wait<dynamic>([
+        V3TrenutnaDodelaService.loadActiveVozacByTerminId(putnikId: putnikId),
+        V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(),
+      ]);
+      final nextByTermin = Map<String, String>.from(results[0] as Map<String, String>);
+      final nextBySlot = Map<String, String>.from(results[1] as Map<String, String>);
 
       if (!mounted) return;
       V3StateUtils.safeSetState(this, () {
-        _activeVozacByTerminId = next;
+        _activeVozacByTerminId = nextByTermin;
+        _activeVozacBySlotKey = nextBySlot;
       });
     } catch (e) {
       debugPrint('[V3PutnikProfilScreen] _reloadTrenutnaDodelaForPutnik error: $e');
     }
+  }
+
+  String _resolveAssignedVozacIdForRow(Map<String, dynamic> row) {
+    final terminId = row['id']?.toString().trim() ?? '';
+    if (terminId.isNotEmpty) {
+      final byTermin = _activeVozacByTerminId[terminId] ?? '';
+      if (byTermin.isNotEmpty) return byTermin;
+    }
+
+    final datumIso = (row['datum']?.toString() ?? '').split('T').first;
+    final grad = (row['grad']?.toString() ?? '').toUpperCase();
+    final vreme = V3StringUtils.trimTimeToHhMm((row['polazak_at'] as String?) ?? row['vreme']?.toString() ?? '');
+    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return '';
+
+    final slotKey = V3TrenutnaDodelaSlotService.slotKey(
+      datumIso: datumIso,
+      grad: grad,
+      vreme: vreme,
+    );
+    return _activeVozacBySlotKey[slotKey] ?? '';
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -691,7 +727,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final operativniTermini = rm.operativnaAssignedCache.values
         .where((r) => (r['created_by']?.toString() ?? '') == putnikId)
         .where((r) => !V3StatusPolicy.isTimestampSet(r['otkazano_at']))
-        .where((r) => ((r['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking')
         .where((r) => V3StatusPolicy.isApproved(V3StatusPolicy.deriveOperativnaStatus(
               otkazanoAt: r['otkazano_at'],
               polazakAt: r['polazak_at'],
@@ -704,8 +739,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     for (final row in operativniTermini) {
       final terminId = row['id']?.toString().trim() ?? '';
       if (terminId.isEmpty) continue;
-      final vozacId = _activeVozacByTerminId[terminId];
-      if (vozacId == null || vozacId.isEmpty) continue;
+      final vozacId = _resolveAssignedVozacIdForRow(row);
+      if (vozacId.isEmpty) continue;
+      final aktivnaLokacija = V3VozacLokacijaService.getVozacLokacijaSync(vozacId, onlyActive: true);
+      if (aktivnaLokacija == null) continue;
 
       final vreme = V3StringUtils.trimTimeToHhMm((row['polazak_at'] as String?) ?? '');
       if (vreme.isEmpty) continue;
@@ -805,7 +842,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final terminRows = rm.operativnaAssignedCache.values
         .where((candidate) =>
             !V3StatusPolicy.isTimestampSet(candidate['otkazano_at']) &&
-            ((candidate['gps_status']?.toString() ?? '').trim().toLowerCase()) == 'tracking' &&
             V3StatusPolicy.isApproved(V3StatusPolicy.deriveOperativnaStatus(
               otkazanoAt: candidate['otkazano_at'],
               polazakAt: candidate['polazak_at'],
@@ -819,9 +855,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return _activeVozacByTerminId[candidateId] == vozacId;
     }).toList(growable: false);
 
+    final terminRowsWithAssignedVozac = terminRows.where((candidate) {
+      return _resolveAssignedVozacIdForRow(candidate) == vozacId;
+    }).toList(growable: false);
+
     final termStopsById = <String, V3OsrmStop>{};
 
-    for (final terminRow in terminRows) {
+    for (final terminRow in terminRowsWithAssignedVozac) {
       final terminPutnikId = terminRow['created_by']?.toString().trim() ?? '';
       if (terminPutnikId.isEmpty) continue;
       final putnikData = terminPutnikId == putnikId ? _putnikData : rm.putniciCache[terminPutnikId];
