@@ -18,12 +18,12 @@ class V3NavigationAppLauncherService {
       throw Exception('Nema waypoint-a za navigaciju.');
     }
 
-    await _launchInPackage(_herePackage, _buildHereWeGoRouteUrl(waypoints));
+    await _launchInPackage(_herePackage, _buildHereWeGoAppRouteUri(waypoints));
   }
 
-  static String _buildHereWeGoRouteUrl(List<V3RouteWaypoint> waypoints) {
+  static String _buildHereWeGoAppRouteUri(List<V3RouteWaypoint> waypoints) {
     final points = waypoints.map((w) => '${w.coordinate.latitude},${w.coordinate.longitude}').join('/');
-    return 'https://wego.here.com/directions/drive/$points';
+    return 'here-route://mylocation/$points/now';
   }
 
   static Future<void> _launchInPackage(String packageName, String url) async {

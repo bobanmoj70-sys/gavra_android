@@ -36,26 +36,45 @@ class V3OsrmRouteService {
     return 'https://router.project-osrm.org';
   }
 
-  Future<List<V3RouteWaypoint>> optimizeWaypoints(List<V3RouteWaypoint> input) async {
+  Future<List<V3RouteWaypoint>> optimizeWaypoints(
+    List<V3RouteWaypoint> input, {
+    V3RouteWaypoint? fixedDestination,
+  }) async {
     if (input.length <= 1) return List<V3RouteWaypoint>.from(input);
+    if (fixedDestination != null) {
+      final withDestination = <V3RouteWaypoint>[...input, fixedDestination];
+      final optimized = await _optimizeRoute(withDestination, lockLastAsDestination: true);
+      return optimized.where((item) => item.id != fixedDestination.id).toList(growable: false);
+    }
     return _optimizeRoute(input);
   }
 
-  Future<List<V3RouteWaypoint>> _optimizeRoute(List<V3RouteWaypoint> chunk) async {
+  Future<List<V3RouteWaypoint>> _optimizeRoute(
+    List<V3RouteWaypoint> chunk, {
+    bool lockLastAsDestination = false,
+    bool lockFirstAsSource = false,
+  }) async {
     if (chunk.length <= 2) return List<V3RouteWaypoint>.from(chunk);
 
     final coords = chunk.map((w) => '${w.coordinate.longitude},${w.coordinate.latitude}').join(';');
     final uri = Uri.parse('$_baseUrl/trip/v1/driving/$coords').replace(
       queryParameters: {
-        'source': 'first',
+        'source': lockFirstAsSource ? 'first' : 'any',
+        if (lockLastAsDestination) 'destination': 'last',
         'roundtrip': 'false',
         'steps': 'false',
         'overview': 'false',
       },
     );
+    // ignore: avoid_print
+    print('[OSRM] request URL: $uri');
 
     try {
       final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+      // ignore: avoid_print
+      print('[OSRM] statusCode=${response.statusCode} bodyLength=${response.body.length}');
+      // ignore: avoid_print
+      print('[OSRM] body=${response.body}');
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return List<V3RouteWaypoint>.from(chunk);
       }
@@ -64,44 +83,24 @@ class V3OsrmRouteService {
       if (decoded is! Map<String, dynamic>) return List<V3RouteWaypoint>.from(chunk);
       if ((decoded['code']?.toString() ?? '') != 'Ok') return List<V3RouteWaypoint>.from(chunk);
 
-      final trips = decoded['trips'];
-      if (trips is! List || trips.isEmpty || trips.first is! Map<String, dynamic>) {
+      final rawWaypoints = decoded['waypoints'];
+      if (rawWaypoints is! List || rawWaypoints.length != chunk.length) {
         return List<V3RouteWaypoint>.from(chunk);
       }
 
-      final rawOrder = (trips.first as Map<String, dynamic>)['waypoint_order'];
-      if (rawOrder is! List) return List<V3RouteWaypoint>.from(chunk);
+      // rawWaypoints[i].waypoint_index = optimized position of original input[i]
+      final indexed = List.generate(chunk.length, (i) {
+        final wp = rawWaypoints[i];
+        final pos = wp is Map ? (wp['waypoint_index'] as num?)?.toInt() : null;
+        return (originalIndex: i, optimizedPosition: pos ?? i);
+      });
+      indexed.sort((a, b) => a.optimizedPosition.compareTo(b.optimizedPosition));
 
-      final parsedOrder = rawOrder.map((e) => int.tryParse(e.toString())).whereType<int>().toList();
-      if (parsedOrder.isEmpty) return List<V3RouteWaypoint>.from(chunk);
-
-      final normalizedOrder = _normalizeOrder(parsedOrder, chunk.length);
-      if (normalizedOrder.length != chunk.length) return List<V3RouteWaypoint>.from(chunk);
-
-      return normalizedOrder.map((i) => chunk[i]).toList(growable: false);
-    } catch (_) {
+      return indexed.map((e) => chunk[e.originalIndex]).toList(growable: false);
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[OSRM] ERROR: $e\n$st');
       return List<V3RouteWaypoint>.from(chunk);
     }
-  }
-
-  List<int> _normalizeOrder(List<int> raw, int length) {
-    final unique = <int>[];
-    final seen = <int>{};
-
-    for (final value in raw) {
-      if (value < 0 || value >= length) continue;
-      if (seen.add(value)) unique.add(value);
-    }
-
-    if (unique.length == length - 1 && !seen.contains(0)) {
-      unique.insert(0, 0);
-      seen.add(0);
-    }
-
-    for (var index = 0; index < length; index++) {
-      if (seen.add(index)) unique.add(index);
-    }
-
-    return unique;
   }
 }
