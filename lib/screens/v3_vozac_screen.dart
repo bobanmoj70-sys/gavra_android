@@ -885,6 +885,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
+  void _handleStartStopTap() {
+    if (V3VozacLocationTrackingService.instance.isRunning) {
+      V3VozacLocationTrackingService.instance.stop();
+      if (mounted) {
+        V3AppSnackBar.info(context, 'Tracking zaustavljen.');
+        V3StateUtils.safeSetState(this, () {});
+      }
+      return;
+    }
+
+    _handleStartNavigation();
+  }
+
   @override
   Widget build(BuildContext context) {
     final vozac = V3VozacService.currentVozac;
@@ -1001,11 +1014,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
-                                  label: 'START',
-                                  color: Colors.green,
+                                  label: V3VozacLocationTrackingService.instance.isRunning ? 'STOP' : 'START',
+                                  color: V3VozacLocationTrackingService.instance.isRunning ? Colors.red : Colors.green,
                                   height: appBarButtonHeight,
                                   onTap: () {
-                                    _handleStartNavigation();
+                                    _handleStartStopTap();
                                   },
                                 ),
                               ),
