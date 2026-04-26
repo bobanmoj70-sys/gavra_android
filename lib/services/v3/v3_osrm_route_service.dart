@@ -25,6 +25,16 @@ class V3RouteWaypoint {
   });
 }
 
+class V3OsrmEtaResult {
+  final List<V3RouteWaypoint> orderedStops;
+  final Map<String, int> etaByWaypointId;
+
+  const V3OsrmEtaResult({
+    required this.orderedStops,
+    required this.etaByWaypointId,
+  });
+}
+
 class V3OsrmRouteService {
   V3OsrmRouteService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -47,6 +57,57 @@ class V3OsrmRouteService {
       return optimized.where((item) => item.id != fixedDestination.id).toList(growable: false);
     }
     return _optimizeRoute(input);
+  }
+
+  Future<V3OsrmEtaResult?> computeEtaForStopsFromSource({
+    required V3RouteCoordinate source,
+    required List<V3RouteWaypoint> stops,
+  }) async {
+    if (stops.isEmpty) {
+      return const V3OsrmEtaResult(
+        orderedStops: <V3RouteWaypoint>[],
+        etaByWaypointId: <String, int>{},
+      );
+    }
+
+    final sourceWaypoint = V3RouteWaypoint(
+      id: '__source__',
+      label: '__source__',
+      coordinate: source,
+    );
+
+    final chunk = <V3RouteWaypoint>[sourceWaypoint, ...stops];
+    final solution = await _fetchTripSolution(
+      chunk,
+      lockFirstAsSource: true,
+      lockLastAsDestination: false,
+    );
+    if (solution == null) return null;
+
+    final orderedAll = solution.orderedWaypoints;
+    if (orderedAll.isEmpty || orderedAll.first.id != sourceWaypoint.id) {
+      return null;
+    }
+
+    final legs = solution.legs;
+    if (legs.length < orderedAll.length - 1) return null;
+
+    final etaByWaypointId = <String, int>{};
+    var cumulative = 0;
+    for (var index = 1; index < orderedAll.length; index++) {
+      final leg = legs[index - 1];
+      final durationSeconds = (leg['duration'] as num?)?.toInt();
+      if (durationSeconds == null || durationSeconds < 0) return null;
+      cumulative += durationSeconds;
+      etaByWaypointId[orderedAll[index].id] = cumulative;
+    }
+
+    final orderedStops = orderedAll.where((item) => item.id != sourceWaypoint.id).toList(growable: false);
+
+    return V3OsrmEtaResult(
+      orderedStops: orderedStops,
+      etaByWaypointId: etaByWaypointId,
+    );
   }
 
   Future<List<V3RouteWaypoint>> _optimizeRoute(
@@ -101,6 +162,65 @@ class V3OsrmRouteService {
       // ignore: avoid_print
       print('[OSRM] ERROR: $e\n$st');
       return List<V3RouteWaypoint>.from(chunk);
+    }
+  }
+
+  Future<({List<V3RouteWaypoint> orderedWaypoints, List<Map<String, dynamic>> legs})?> _fetchTripSolution(
+    List<V3RouteWaypoint> chunk, {
+    bool lockLastAsDestination = false,
+    bool lockFirstAsSource = false,
+  }) async {
+    if (chunk.length <= 1) {
+      return (
+        orderedWaypoints: List<V3RouteWaypoint>.from(chunk),
+        legs: const <Map<String, dynamic>>[],
+      );
+    }
+
+    final coords = chunk.map((w) => '${w.coordinate.longitude},${w.coordinate.latitude}').join(';');
+    final uri = Uri.parse('$_baseUrl/trip/v1/driving/$coords').replace(
+      queryParameters: {
+        'source': lockFirstAsSource ? 'first' : 'any',
+        if (lockLastAsDestination) 'destination': 'last',
+        'roundtrip': 'false',
+        'steps': 'false',
+        'overview': 'false',
+      },
+    );
+
+    try {
+      final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+      if ((decoded['code']?.toString() ?? '') != 'Ok') return null;
+
+      final rawWaypoints = decoded['waypoints'];
+      if (rawWaypoints is! List || rawWaypoints.length != chunk.length) return null;
+
+      final rawTrips = decoded['trips'];
+      if (rawTrips is! List || rawTrips.isEmpty || rawTrips.first is! Map<String, dynamic>) return null;
+      final trip = rawTrips.first as Map<String, dynamic>;
+      final rawLegs = trip['legs'];
+      if (rawLegs is! List) return null;
+
+      final indexed = List.generate(chunk.length, (i) {
+        final wp = rawWaypoints[i];
+        final pos = wp is Map ? (wp['waypoint_index'] as num?)?.toInt() : null;
+        return (originalIndex: i, optimizedPosition: pos ?? i);
+      });
+      indexed.sort((a, b) => a.optimizedPosition.compareTo(b.optimizedPosition));
+
+      final ordered = indexed.map((e) => chunk[e.originalIndex]).toList(growable: false);
+      final legs = rawLegs.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList(growable: false);
+
+      return (
+        orderedWaypoints: ordered,
+        legs: legs,
+      );
+    } catch (_) {
+      return null;
     }
   }
 }

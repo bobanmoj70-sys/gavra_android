@@ -1,16 +1,15 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
 import '../services/v3/v3_adresa_service.dart';
+import '../services/v3/v3_osrm_route_service.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_status_policy.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_time_utils.dart';
 
@@ -32,6 +31,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   static const String _vozacLokacijeColUpdatedAt = 'updated_at';
 
   final V3AddressCoordinateService _addressCoordinateService = V3AddressCoordinateService();
+  final V3OsrmRouteService _osrmRouteService = V3OsrmRouteService();
 
   RealtimeChannel? _realtimeChannel;
   _V3DolazakData? _data;
@@ -178,61 +178,157 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       return null;
     }
 
+    final slotContext = _extractSlotContextFromOperativnaRow(selectedRow);
+    if (slotContext == null) return null;
+
     final vozacLok = await _getLatestVozacLokacija(selectedVozacId);
     if (vozacLok == null) return null;
 
     final vozacName = _resolveVozacName(selectedVozacId);
-    final grad = (selectedRow['grad'] ?? '').toString().toUpperCase();
-
-    // OSRM ETA od vozačeve lokacije do putnikove adrese
-    final rm = V3MasterRealtimeManager.instance;
-
-    // Prio 1: adresa_override_id iz operativne nedelje
-    final adresaIdOverride = (selectedRow['adresa_override_id'] ?? '').toString().trim();
-    final koristiSekundarnu = (selectedRow['koristi_sekundarnu'] as bool?) ?? false;
-
-    final String? adresaId;
-    if (adresaIdOverride.isNotEmpty) {
-      adresaId = adresaIdOverride;
-    } else {
-      // Prio 2: putnikova primarna/sekundarna adresa iz authCache
-      final authRow = rm.authCache[putnikId];
-      if (grad == 'BC') {
-        final bc1 = authRow?['adresa_primary_bc_id']?.toString();
-        final bc2 = authRow?['adresa_secondary_bc_id']?.toString();
-        adresaId = koristiSekundarnu ? (bc2?.isNotEmpty == true ? bc2 : bc1) : (bc1?.isNotEmpty == true ? bc1 : bc2);
-      } else {
-        final vs1 = authRow?['adresa_primary_vs_id']?.toString();
-        final vs2 = authRow?['adresa_secondary_vs_id']?.toString();
-        adresaId = koristiSekundarnu ? (vs2?.isNotEmpty == true ? vs2 : vs1) : (vs1?.isNotEmpty == true ? vs1 : vs2);
-      }
-    }
-
-    if (adresaId == null || adresaId.isEmpty) return null;
-
-    final adresaNaziv = V3AdresaService.getAdresaById(adresaId)?.naziv ?? '';
-    final gradLabel = grad == 'BC' ? 'Bela Crkva' : 'Vrsac';
-    final fallbackQuery = adresaNaziv.isNotEmpty ? '$adresaNaziv, $gradLabel, Srbija' : '';
-    if (fallbackQuery.isEmpty) return null;
-
-    final putnikCoord = await _addressCoordinateService.resolveCoordinate(
-      adresaId: adresaId,
-      fallbackQuery: fallbackQuery,
+    final routeStops = await _loadRouteStopsForActiveSlot(
+      vozacId: selectedVozacId,
+      slotContext: slotContext,
     );
-    if (putnikCoord == null) return null;
 
-    final etaSeconds = await _fetchOsrmDurationSeconds(
-      fromLat: vozacLok.lat,
-      fromLng: vozacLok.lng,
-      toLat: putnikCoord.latitude,
-      toLng: putnikCoord.longitude,
+    if (routeStops.isEmpty) return null;
+    final targetStop = routeStops.where((stop) => stop.putnikId == putnikId).firstOrNull;
+    if (targetStop == null) return null;
+
+    final etaResult = await _osrmRouteService.computeEtaForStopsFromSource(
+      source: V3RouteCoordinate(latitude: vozacLok.lat, longitude: vozacLok.lng),
+      stops: routeStops
+          .map((stop) => V3RouteWaypoint(
+                id: stop.putnikId,
+                label: stop.putnikId,
+                coordinate: stop.coordinate,
+              ))
+          .toList(growable: false),
     );
+    if (etaResult == null) return null;
+
+    final etaSeconds = etaResult.etaByWaypointId[putnikId];
     if (etaSeconds == null) return null;
 
     return _V3DolazakData(
       vozacIme: vozacName,
       etaSeconds: etaSeconds,
     );
+  }
+
+  Future<List<_RouteStop>> _loadRouteStopsForActiveSlot({
+    required String vozacId,
+    required _SlotContext slotContext,
+  }) async {
+    final dodelaRows = await supabase
+        .from('v3_trenutna_dodela')
+        .select('termin_id, putnik_v3_auth_id')
+        .eq('vozac_v3_auth_id', vozacId)
+        .eq('status', 'aktivan');
+
+    final putnikByTerminId = <String, String>{};
+    for (final raw in (dodelaRows as List<dynamic>)) {
+      if (raw is! Map<String, dynamic>) continue;
+      final terminId = (raw['termin_id'] ?? '').toString().trim();
+      final putnikId = (raw['putnik_v3_auth_id'] ?? '').toString().trim();
+      if (terminId.isEmpty || putnikId.isEmpty) continue;
+      putnikByTerminId[terminId] = putnikId;
+    }
+
+    if (putnikByTerminId.isEmpty) return const <_RouteStop>[];
+
+    final operativnaRows = await supabase
+        .from('v3_operativna_nedelja')
+        .select('id, datum, grad, polazak_at, vreme, adresa_override_id, koristi_sekundarnu, otkazano_at, pokupljen_at')
+        .inFilter('id', putnikByTerminId.keys.toList(growable: false));
+
+    final routeStops = <_RouteStop>[];
+    for (final raw in (operativnaRows as List<dynamic>)) {
+      if (raw is! Map<String, dynamic>) continue;
+      final row = raw;
+
+      final terminId = (row['id'] ?? '').toString().trim();
+      if (terminId.isEmpty) continue;
+      final putnikId = putnikByTerminId[terminId];
+      if (putnikId == null || putnikId.isEmpty) continue;
+
+      if (!_matchesSlotContext(row, slotContext)) continue;
+      if (!V3StatusPolicy.canAssign(status: null, otkazanoAt: row['otkazano_at'], pokupljenAt: row['pokupljen_at'])) {
+        continue;
+      }
+
+      final coordinate = await _resolvePutnikCoordinate(
+        putnikId: putnikId,
+        row: row,
+      );
+      if (coordinate == null) return const <_RouteStop>[];
+
+      routeStops.add(_RouteStop(
+        putnikId: putnikId,
+        coordinate: coordinate,
+      ));
+    }
+
+    routeStops.sort((a, b) => a.putnikId.compareTo(b.putnikId));
+    return routeStops;
+  }
+
+  Future<V3RouteCoordinate?> _resolvePutnikCoordinate({
+    required String putnikId,
+    required Map<String, dynamic> row,
+  }) async {
+    final grad = (row['grad'] ?? '').toString().trim().toUpperCase();
+    if (grad.isEmpty) return null;
+
+    final adresaIdOverride = (row['adresa_override_id'] ?? '').toString().trim();
+    final koristiSekundarnu = (row['koristi_sekundarnu'] as bool?) ?? false;
+
+    String? adresaId;
+    if (adresaIdOverride.isNotEmpty) {
+      adresaId = adresaIdOverride;
+    } else {
+      final authRow = V3MasterRealtimeManager.instance.authCache[putnikId];
+      if (grad == 'BC') {
+        final primary = authRow?['adresa_primary_bc_id']?.toString();
+        final secondary = authRow?['adresa_secondary_bc_id']?.toString();
+        adresaId = koristiSekundarnu
+            ? (secondary?.isNotEmpty == true ? secondary : primary)
+            : (primary?.isNotEmpty == true ? primary : secondary);
+      } else if (grad == 'VS') {
+        final primary = authRow?['adresa_primary_vs_id']?.toString();
+        final secondary = authRow?['adresa_secondary_vs_id']?.toString();
+        adresaId = koristiSekundarnu
+            ? (secondary?.isNotEmpty == true ? secondary : primary)
+            : (primary?.isNotEmpty == true ? primary : secondary);
+      }
+    }
+
+    if (adresaId == null || adresaId.isEmpty) return null;
+
+    final adresaNaziv = V3AdresaService.getAdresaById(adresaId)?.naziv.trim() ?? '';
+    if (adresaNaziv.isEmpty) return null;
+
+    final gradLabel = grad == 'BC' ? 'Bela Crkva' : 'Vrsac';
+    final fallbackQuery = '$adresaNaziv, $gradLabel, Srbija';
+
+    return _addressCoordinateService.resolveCoordinate(
+      adresaId: adresaId,
+      fallbackQuery: fallbackQuery,
+    );
+  }
+
+  _SlotContext? _extractSlotContextFromOperativnaRow(Map<String, dynamic> row) {
+    final datum = _parseIsoDatePart(row['datum']);
+    final grad = (row['grad'] ?? '').toString().trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString() ?? row['vreme']?.toString() ?? '');
+    if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) return null;
+    return _SlotContext(datum: datum, grad: grad, vreme: vreme);
+  }
+
+  bool _matchesSlotContext(Map<String, dynamic> row, _SlotContext context) {
+    final datum = _parseIsoDatePart(row['datum']);
+    final grad = (row['grad'] ?? '').toString().trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString() ?? row['vreme']?.toString() ?? '');
+    return datum == context.datum && grad == context.grad && vreme == context.vreme;
   }
 
   DateTime? _resolvePlannedDateTime(Map<String, dynamic> row, DateTime now) {
@@ -368,33 +464,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     }
   }
 
-  Future<int?> _fetchOsrmDurationSeconds({
-    required double fromLat,
-    required double fromLng,
-    required double toLat,
-    required double toLng,
-  }) async {
-    try {
-      final baseUrl = dotenv.maybeGet('OSRM_BASE_URL')?.trim() ?? 'https://router.project-osrm.org';
-      final coords = '$fromLng,$fromLat;$toLng,$toLat';
-      final uri = Uri.parse('$baseUrl/route/v1/driving/$coords').replace(
-        queryParameters: {'overview': 'false', 'steps': 'false'},
-      );
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
-      if (response.statusCode < 200 || response.statusCode >= 300) return null;
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) return null;
-      if ((decoded['code']?.toString() ?? '') != 'Ok') return null;
-      final routes = decoded['routes'];
-      if (routes is! List || routes.isEmpty) return null;
-      final duration = routes.first['duration'];
-      if (duration == null) return null;
-      return (duration as num).toInt();
-    } catch (_) {
-      return null;
-    }
-  }
-
   double? _parseDouble(dynamic value) {
     if (value == null) return null;
     if (value is num) return value.toDouble();
@@ -490,4 +559,26 @@ class _V3DolazakData {
 
   final String vozacIme;
   final int etaSeconds;
+}
+
+class _SlotContext {
+  const _SlotContext({
+    required this.datum,
+    required this.grad,
+    required this.vreme,
+  });
+
+  final String datum;
+  final String grad;
+  final String vreme;
+}
+
+class _RouteStop {
+  const _RouteStop({
+    required this.putnikId,
+    required this.coordinate,
+  });
+
+  final String putnikId;
+  final V3RouteCoordinate coordinate;
 }
