@@ -13,6 +13,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_driver_push_notification_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_osrm_route_service.dart';
@@ -865,6 +866,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (!gpsReady) return;
 
     await _startDriverLocationTracking();
+
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
+      try {
+        await V3DriverPushNotificationService.notifyPassengersDriverStarted(
+          vozacId: vozacId,
+          datumIso: _selectedDatumIso,
+          grad: _selectedGrad,
+          vreme: _selectedVreme,
+        );
+      } catch (e) {
+        debugPrint('[START] push notify failed: $e');
+      }
+    }
 
     final optimization = await _optimizeCurrentRouteAndApplyOrder();
     debugPrint('[START] optimization result: $optimization');
