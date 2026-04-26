@@ -1,3 +1,4 @@
+import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_time_utils.dart';
 import 'v3_trenutna_dodela_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
@@ -45,7 +46,7 @@ class V3DodelaResolverService {
       if (direct.isNotEmpty) return direct;
     }
 
-    final datumIso = _parseIsoDatePart(row['datum']?.toString());
+    final datumIso = V3DateUtils.parseIsoDatePart(row['datum']);
     final grad = row['grad']?.toString() ?? '';
     final rawVreme = row[vremeKolona]?.toString() ?? row['vreme']?.toString() ?? '';
     final normVreme = V3TimeUtils.normalizeToHHmm(rawVreme);
@@ -57,12 +58,5 @@ class V3DodelaResolverService {
       vreme: normVreme,
       activeVozacBySlotKey: activeVozacBySlotKey,
     );
-  }
-
-  static String _parseIsoDatePart(String? value) {
-    final raw = (value ?? '').trim();
-    if (raw.isEmpty) return '';
-    final match = RegExp(r'^(\d{4}-\d{2}-\d{2})').firstMatch(raw);
-    return match?.group(1) ?? '';
   }
 }

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../models/v3_finansije.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3/v3_dug_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -20,7 +19,7 @@ import '../utils/v3_state_utils.dart';
 
 /// FINANSIJE — V3
 /// Prihodi/Rashodi: v3_finansije cache (tip = prihod/rashod)
-/// Potraživanja: V3DugService.getDugovi()
+/// Potraživanja: V3FinansijeService.getDugovi()
 class V3FinansijeScreen extends StatefulWidget {
   const V3FinansijeScreen({super.key});
 
@@ -159,7 +158,7 @@ _V3IzvestajData _buildIzvestaj() {
     poKat[kat] = (poKat[kat] ?? 0) + t.iznos;
   }
   // Potraživanja
-  final dugovi = V3DugService.getDugovi();
+  final dugovi = V3FinansijeService.getDugovi();
   final potr = dugovi.fold(0.0, (s, d) => s + d.iznos);
 
   // Period stringovi
@@ -237,7 +236,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '📅',
                       naslov: 'Danas',
-                      podnaslov: iz.danasPeriod,
+                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month, fallback: ''),
                       prihod: iz.prihodDanas,
                       troskovi: iz.trosakDanas,
                       voznjiLabel: '${iz.voznjiDanas} uplata',
@@ -257,7 +256,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '🗓️',
                       naslov: 'Ovaj mesec',
-                      podnaslov: _mesecNaziv(DateTime.now().month),
+                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month, fallback: ''),
                       prihod: iz.prihodMesec,
                       troskovi: iz.trosakMesec,
                       voznjiLabel: '${iz.voznjiMesec} uplata',
@@ -482,25 +481,6 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 String _fmtIznos(double iznos) => '${V3FormatUtils.formatBroj(iznos.round())} din';
-
-String _mesecNaziv(int m) {
-  const names = [
-    '',
-    'Januar',
-    'Februar',
-    'Mart',
-    'April',
-    'Maj',
-    'Jun',
-    'Jul',
-    'Avgust',
-    'Septembar',
-    'Oktobar',
-    'Novembar',
-    'Decembar'
-  ];
-  return m >= 1 && m <= 12 ? names[m] : '';
-}
 
 // ─── _FinRow Widget ───────────────────────────────────────────────────────────
 

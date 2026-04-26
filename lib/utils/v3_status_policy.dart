@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'v3_date_utils.dart';
 import 'v3_time_utils.dart';
 
 class V3StatusPolicy {
@@ -277,7 +278,7 @@ class V3StatusPolicy {
     for (final row in operativnaRows) {
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3TimeUtils.normalizeToHHmm(row[vremeKolona]?.toString());
-      final rowDatum = _parseIsoDatePart(row['datum']?.toString() ?? '');
+      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum']);
       final rowPutnikId = row['created_by']?.toString() ?? '';
 
       if (rowPutnikId != putnikId) continue;
@@ -310,7 +311,7 @@ class V3StatusPolicy {
     for (final row in operativnaRows) {
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3TimeUtils.normalizeToHHmm(row[vremeKolona]?.toString());
-      final rowDatum = _parseIsoDatePart(row['datum']?.toString() ?? '');
+      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum']);
 
       if (rowGrad != grad) continue;
       if (rowVreme != normVreme) continue;
@@ -354,24 +355,6 @@ class V3StatusPolicy {
 
       return countsAsOccupied(status: statusOf(item), otkazanoAt: otkazanoAtOf(item));
     }).fold(0, (sum, item) => sum + seatsOf(item));
-  }
-
-  static String _parseIsoDatePart(String raw) {
-    final value = raw.trim();
-    if (value.isEmpty) return '';
-
-    final parsed = DateTime.tryParse(value);
-    if (parsed != null) {
-      final y = parsed.year.toString().padLeft(4, '0');
-      final m = parsed.month.toString().padLeft(2, '0');
-      final d = parsed.day.toString().padLeft(2, '0');
-      return '$y-$m-$d';
-    }
-
-    final match = RegExp(r'^(\d{4}-\d{2}-\d{2})').firstMatch(value);
-    if (match != null) return match.group(1) ?? '';
-
-    return value;
   }
 }
 

@@ -53,60 +53,6 @@ class V3AnimationUtils {
     _controllers.clear();
   }
 
-  // ─── СПЕЦИЈАЛИЗОВАНЕ АНИМАЦИЈЕ ───────────────────────────────────
-
-  /// Pulse анимација за forced update dialog
-  static AnimationController createPulseController({
-    required TickerProvider vsync,
-    Duration duration = const Duration(seconds: 2),
-  }) {
-    return getController(
-      key: 'pulse',
-      vsync: vsync,
-      duration: duration,
-      debugLabel: 'Pulse Animation',
-    );
-  }
-
-  /// Fade анимација за екране
-  static AnimationController createFadeController({
-    required TickerProvider vsync,
-    Duration duration = const Duration(milliseconds: 1000),
-  }) {
-    return getController(
-      key: 'fade',
-      vsync: vsync,
-      duration: duration,
-      debugLabel: 'Fade Animation',
-    );
-  }
-
-  /// Slide анимација за екране
-  static AnimationController createSlideController({
-    required TickerProvider vsync,
-    Duration duration = const Duration(milliseconds: 800),
-  }) {
-    return getController(
-      key: 'slide',
-      vsync: vsync,
-      duration: duration,
-      debugLabel: 'Slide Animation',
-    );
-  }
-
-  /// Permission screen анимација
-  static AnimationController createPermissionController({
-    required TickerProvider vsync,
-    Duration duration = const Duration(milliseconds: 600),
-  }) {
-    return getController(
-      key: 'permission',
-      vsync: vsync,
-      duration: duration,
-      debugLabel: 'Permission Animation',
-    );
-  }
-
   // ─── АНИМАЦИЈА ХЕЛПЕРИ ──────────────────────────────────────────
 
   /// Креира Tween анимацију
@@ -116,50 +62,6 @@ class V3AnimationUtils {
     double end = 1.0,
     Curve curve = Curves.linear,
   }) {
-    return Tween<double>(begin: begin, end: end)
-        .animate(CurvedAnimation(parent: controller, curve: curve));
-  }
-
-  /// Креира Color Tween анимацију
-  static Animation<Color?> createColorTween({
-    required AnimationController controller,
-    required Color begin,
-    required Color end,
-    Curve curve = Curves.linear,
-  }) {
-    return ColorTween(begin: begin, end: end)
-        .animate(CurvedAnimation(parent: controller, curve: curve));
-  }
-
-  /// Масовно покретање анимације
-  static void forwardAll(List<String> keys) {
-    for (final key in keys) {
-      _controllers[key]?.forward();
-    }
-  }
-
-  /// Масовно заустављање анимације
-  static void reverseAll(List<String> keys) {
-    for (final key in keys) {
-      _controllers[key]?.reverse();
-    }
-  }
-
-  /// Масовно ресетовање анимације
-  static void resetAll(List<String> keys) {
-    for (final key in keys) {
-      _controllers[key]?.reset();
-    }
-  }
-
-  /// Провери статус анимације
-  static AnimationStatus? getStatus(String key) {
-    return _controllers[key]?.status;
-  }
-
-  /// Провери да ли је анимација у току
-  static bool isAnimating(String key) {
-    final controller = _controllers[key];
-    return controller?.isAnimating ?? false;
+    return Tween<double>(begin: begin, end: end).animate(CurvedAnimation(parent: controller, curve: curve));
   }
 }

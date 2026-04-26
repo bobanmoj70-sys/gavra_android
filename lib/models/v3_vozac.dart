@@ -48,28 +48,4 @@ class V3Vozac {
       'push_token_2': pushToken2,
     };
   }
-
-  V3Vozac copyWith({
-    String? id,
-    String? imePrezime,
-    String? telefon1,
-    String? telefon2,
-    String? boja,
-    String? pushToken,
-    String? pushToken2,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return V3Vozac(
-      id: id ?? this.id,
-      imePrezime: imePrezime ?? this.imePrezime,
-      telefon1: telefon1 ?? this.telefon1,
-      telefon2: telefon2 ?? this.telefon2,
-      boja: boja ?? this.boja,
-      pushToken: pushToken ?? this.pushToken,
-      pushToken2: pushToken2 ?? this.pushToken2,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
 }

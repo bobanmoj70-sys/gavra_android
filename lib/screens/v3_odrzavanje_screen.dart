@@ -4,7 +4,7 @@ import '../models/v3_vozilo.dart';
 import '../services/v3/v3_vozilo_service.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_dan_helper.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -384,7 +384,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
     if (picked == null || !mounted) return;
     try {
       await V3VoziloService.updateKolskaKnjiga(
-          _selected!.id, {field: V3DanHelper.parseIsoDatePart(picked.toIso8601String())});
+          _selected!.id, {field: V3DateUtils.parseIsoDatePart(picked.toIso8601String())});
       V3UIUtils.showSaveSuccess(context);
     } catch (_) {
       V3UIUtils.showSaveError(context);
@@ -719,7 +719,7 @@ class _ServisSheetState extends State<_ServisSheet> {
                   onPressed: () async {
                     final kmValue = int.tryParse(_kmCtrl.text);
                     final data = <String, dynamic>{
-                      '${widget.prefix}_datum': V3DanHelper.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
+                      '${widget.prefix}_datum': V3DateUtils.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
                       '${widget.prefix}_km': kmValue,
                     };
                     try {
@@ -919,7 +919,7 @@ class _GumeSheetState extends State<_GumeSheet> {
                     final kmValue = int.tryParse(_kmCtrl.text);
                     final dbPrefix = 'gume_${widget.pozicija}';
                     final data = <String, dynamic>{
-                      '${dbPrefix}_datum': V3DanHelper.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
+                      '${dbPrefix}_datum': V3DateUtils.parseIsoDatePart(_datum?.toIso8601String() ?? ''),
                       '${dbPrefix}_opis': finalOpis.isEmpty ? null : finalOpis,
                       '${dbPrefix}_km': kmValue,
                     };

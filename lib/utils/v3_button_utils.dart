@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'v3_container_utils.dart';
-
 /// V3ButtonUtils - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ BUTTON-ИМА
 /// Елиминише све ElevatedButton/TextButton/OutlinedButton дупликате!
 class V3ButtonUtils {
@@ -94,44 +92,6 @@ class V3ButtonUtils {
     );
   }
 
-  /// Warning action button (наранџаст)
-  static Widget warningButton({
-    required VoidCallback? onPressed,
-    required String text,
-    IconData? icon,
-    bool isLoading = false,
-    double? width,
-  }) {
-    return elevatedButton(
-      onPressed: onPressed,
-      text: text,
-      icon: icon,
-      backgroundColor: Colors.orange,
-      foregroundColor: Colors.white,
-      isLoading: isLoading,
-      width: width,
-    );
-  }
-
-  /// Danger action button (црвен)
-  static Widget dangerButton({
-    required VoidCallback? onPressed,
-    required String text,
-    IconData? icon,
-    bool isLoading = false,
-    double? width,
-  }) {
-    return elevatedButton(
-      onPressed: onPressed,
-      text: text,
-      icon: icon,
-      backgroundColor: Colors.red,
-      foregroundColor: Colors.white,
-      isLoading: isLoading,
-      width: width,
-    );
-  }
-
   /// Amber action button (жут)
   static Widget amberButton({
     required VoidCallback? onPressed,
@@ -201,25 +161,6 @@ class V3ButtonUtils {
     return width != null ? SizedBox(width: width, child: button) : button;
   }
 
-  /// Cancel/Secondary outlined button (сив)
-  static Widget cancelButton({
-    required VoidCallback? onPressed,
-    required String text,
-    IconData? icon,
-    bool isLoading = false,
-    double? width,
-  }) {
-    return outlinedButton(
-      onPressed: onPressed,
-      text: text,
-      icon: icon,
-      borderColor: Colors.grey,
-      foregroundColor: Colors.grey,
-      isLoading: isLoading,
-      width: width,
-    );
-  }
-
   // ─── TEXT BUTTONS ─────────────────────────────────────────────────────────
 
   /// Стандардни TextButton са unified стилизовањем
@@ -268,80 +209,4 @@ class V3ButtonUtils {
     return width != null ? SizedBox(width: width, child: button) : button;
   }
 
-  // ─── SPECIALIZED BUTTONS ──────────────────────────────────────────────────
-
-  /// Компактни action button за листе
-  static Widget compactButton({
-    required VoidCallback? onPressed,
-    required String text,
-    required IconData icon,
-    required Color color,
-    double height = 32,
-  }) {
-    return SizedBox(
-      height: height,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              color.withValues(alpha: 0.18),
-              color.withValues(alpha: 0.08)
-            ],
-          ),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
-        ),
-        child: ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 13, color: color),
-          label: Text(
-            text,
-            style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: color),
-            overflow: TextOverflow.ellipsis,
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            elevation: 0,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Glass morphism button за навигацију
-  static Widget glassButton({
-    required VoidCallback? onPressed,
-    required Widget child,
-    Color? backgroundColor,
-    Color? borderColor,
-    double? width,
-    double? height,
-    EdgeInsets? padding,
-    BorderRadius? borderRadius,
-  }) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: borderRadius ?? BorderRadius.circular(12),
-        child: V3ContainerUtils.styledContainer(
-          padding: padding ?? const EdgeInsets.all(12),
-          backgroundColor:
-              backgroundColor ?? Colors.white.withValues(alpha: 0.15),
-          borderRadius: borderRadius ?? BorderRadius.circular(12),
-          border: Border.all(
-            color: borderColor ?? Colors.white.withValues(alpha: 0.6),
-            width: 1,
-          ),
-          child: Center(child: child),
-        ),
-      ),
-    );
-  }
 }

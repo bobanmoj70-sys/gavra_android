@@ -1,4 +1,3 @@
-import '../utils/v3_dan_helper.dart';
 import '../utils/v3_date_utils.dart';
 
 class V3Zahtev {
@@ -8,8 +7,7 @@ class V3Zahtev {
   final String grad;
   final String trazeniPolazakAt;
   final int brojMesta;
-  final String
-      status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
+  final String status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
   final String? polazakAt;
   final bool koristiSekundarnu;
   final String? adresaIdOverride;
@@ -43,9 +41,7 @@ class V3Zahtev {
     return V3Zahtev(
       id: json['id'] as String? ?? '',
       putnikId: putnikId,
-      datum: json['datum'] != null
-          ? DateTime.parse(json['datum'] as String)
-          : DateTime.now(),
+      datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String? ?? '',
       trazeniPolazakAt: json['trazeni_polazak_at'] as String? ?? '',
       brojMesta: json['broj_mesta'] as int? ?? 1,
@@ -62,13 +58,12 @@ class V3Zahtev {
   }
 
   Map<String, dynamic> toJson() {
-    final effectiveCreatedBy = (createdBy != null && createdBy!.isNotEmpty)
-        ? createdBy
-        : (putnikId.isNotEmpty ? putnikId : null);
+    final effectiveCreatedBy =
+        (createdBy != null && createdBy!.isNotEmpty) ? createdBy : (putnikId.isNotEmpty ? putnikId : null);
 
     return {
       if (id.isNotEmpty) 'id': id,
-      'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
+      'datum': V3DateUtils.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       'trazeni_polazak_at': trazeniPolazakAt.isEmpty ? null : trazeniPolazakAt,
       'broj_mesta': brojMesta,
@@ -80,39 +75,5 @@ class V3Zahtev {
       'alternativa_posle_at': altVremePosle,
       if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
     };
-  }
-
-  V3Zahtev copyWith({
-    String? id,
-    String? putnikId,
-    DateTime? datum,
-    String? grad,
-    String? trazeniPolazakAt,
-    int? brojMesta,
-    String? status,
-    String? polazakAt,
-    bool? koristiSekundarnu,
-    String? adresaIdOverride,
-    String? altVremePre,
-    String? altVremePosle,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return V3Zahtev(
-      id: id ?? this.id,
-      putnikId: putnikId ?? this.putnikId,
-      datum: datum ?? this.datum,
-      grad: grad ?? this.grad,
-      trazeniPolazakAt: trazeniPolazakAt ?? this.trazeniPolazakAt,
-      brojMesta: brojMesta ?? this.brojMesta,
-      status: status ?? this.status,
-      polazakAt: polazakAt ?? this.polazakAt,
-      koristiSekundarnu: koristiSekundarnu ?? this.koristiSekundarnu,
-      adresaIdOverride: adresaIdOverride ?? this.adresaIdOverride,
-      altVremePre: altVremePre ?? this.altVremePre,
-      altVremePosle: altVremePosle ?? this.altVremePosle,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
   }
 }

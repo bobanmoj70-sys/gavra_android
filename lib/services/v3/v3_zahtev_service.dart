@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
+import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
@@ -21,7 +22,7 @@ class V3ZahtevService {
   static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
   static final V3ZahtevDomainService _domain = V3ZahtevDomainService(_repository);
 
-  static String _datumKey(DateTime datum) => V3DanHelper.parseIsoDatePart(datum.toIso8601String());
+  static String _datumKey(DateTime datum) => V3DateUtils.parseIsoDatePart(datum.toIso8601String());
 
   static DateTime _parseTs(String? value) {
     if (value == null || value.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
@@ -36,7 +37,7 @@ class V3ZahtevService {
     final datumIso = _datumKey(datum);
     final targetGrad = grad.trim().toUpperCase();
     final rows = V3MasterRealtimeManager.instance.zahteviCache.values.where((row) {
-      final rowDatum = V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
+      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
       return (row['created_by']?.toString() ?? '') == putnikId &&
           rowDatum == datumIso &&
@@ -64,44 +65,6 @@ class V3ZahtevService {
       throw Exception('Zakazivanje je dozvoljeno samo u tekućoj sedmici.');
     }
   }
-
-  static List<V3Zahtev> getZahteviByTip(String tip) {
-    final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-    // Filtriramo putnike iz cachea da nađemo one koji su traženog tipa
-    final putnici = V3MasterRealtimeManager.instance.putniciCache.values
-        .where((p) => (p['tip_putnika'] ?? '').toLowerCase() == tip.toLowerCase())
-        .map((p) => p['id'] as String)
-        .toSet();
-
-    return cache.where((r) => putnici.contains(r['created_by'])).map((r) => V3Zahtev.fromJson(r)).toList()
-      ..sort((a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime(2000)) ?? 0);
-  }
-
-  static Stream<List<V3Zahtev>> streamZahteviByTip(String tip) =>
-      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_zahtevi', 'v3_auth'],
-        build: () => getZahteviByTip(tip),
-      );
-
-  static List<V3Zahtev> getPendingZahteviByGrad(String grad) {
-    final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-    return cache
-        .where((r) => r['grad'] == grad && V3StatusPolicy.isPending(r['status']?.toString()))
-        .map((r) => V3Zahtev.fromJson(r))
-        .toList()
-      ..sort((a, b) => a.datum.compareTo(b.datum));
-  }
-
-  static Stream<List<V3Zahtev>> streamPendingZahteviByGrad(String grad) => V3MasterRealtimeManager.instance
-      .v3StreamFromRevisions(tables: ['v3_zahtevi'], build: () => getPendingZahteviByGrad(grad));
-
-  static Stream<int> streamPendingZahteviCount() => V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_zahtevi'],
-        build: () {
-          final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-          return cache.where((r) => V3StatusPolicy.isPending(r['status']?.toString())).length;
-        },
-      );
 
   static V3Zahtev? getZahtevById(String id) {
     final data = V3MasterRealtimeManager.instance.zahteviCache[id];
@@ -247,70 +210,6 @@ class V3ZahtevService {
     }
   }
 
-  static List<V3Zahtev> getZahteviByDatumAndGrad(String datumIso, String grad) {
-    final cache = V3MasterRealtimeManager.instance.zahteviCache.values;
-
-    return cache
-        .where((r) {
-          final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
-          return rDatum == datumIso &&
-              r['grad'] == grad &&
-              !V3StatusPolicy.isCanceledOrRejected(r['status']?.toString());
-        })
-        .map((r) => V3Zahtev.fromJson(r))
-        .toList()
-      ..sort((a, b) => (a.trazeniPolazakAt).compareTo(b.trazeniPolazakAt));
-  }
-
-  /// Dohvata operativne zapise za određeni datum i grad.
-  static List<V3Zahtev> getOperativniZahteviByDatumAndGrad(String datum, String grad) {
-    final opCache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-
-    // Prvo nađemo sve operativne redove za taj dan i grad.
-    final opFiltered = opCache.where((r) => r['datum'] == datum && r['grad'] == grad).toList();
-
-    // Mapiramo operativne zapise direktno u V3Zahtev objekte.
-    // v3_zahtevi služi samo za obradu zahteva, ne za prikaz operativne liste.
-    return opFiltered.map((op) {
-      final efektivniPolazakAt = (op['polazak_at'] as String?) ?? '00:00';
-      return V3Zahtev(
-        id: op['id'] as String? ?? 'temp',
-        putnikId: op['created_by'] as String? ?? '',
-        grad: grad,
-        datum: DateTime.tryParse(datum) ?? DateTime.now(),
-        trazeniPolazakAt: efektivniPolazakAt,
-        polazakAt: efektivniPolazakAt,
-        status: V3StatusPolicy.deriveOperativnaStatus(
-          otkazanoAt: op['otkazano_at'],
-          polazakAt: op['polazak_at'],
-        ),
-      );
-    }).toList()
-      ..sort((a, b) => (a.polazakAt ?? '').compareTo(b.polazakAt ?? ''));
-  }
-
-  static Stream<List<V3Zahtev>> streamOperativniZahteviByDatumAndGrad(String datum, String grad) =>
-      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_operativna_nedelja'],
-        build: () => getOperativniZahteviByDatumAndGrad(datum, grad),
-      );
-
-  static Stream<List<V3Zahtev>> streamZahteviByDatumAndGrad(String datumIso, String grad) =>
-      V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_zahtevi'],
-        build: () => getZahteviByDatumAndGrad(datumIso, grad),
-      );
-
-  static Future<void> deleteZahtev(String id) async {
-    try {
-      await _repository.deleteById(id);
-      V3MasterRealtimeManager.instance.zahteviCache.remove(id);
-    } catch (e) {
-      debugPrint('[V3ZahtevService] Delete error: $e');
-      rethrow;
-    }
-  }
-
   static Future<void> otkaziZahtev(String id,
       {String? otkazaoVozacId, String? otkazaoPutnikId, String? operativnaId}) async {
     try {
@@ -369,21 +268,6 @@ class V3ZahtevService {
       }
     } catch (e) {
       debugPrint('[V3ZahtevService] Pokupljen error: $e');
-      rethrow;
-    }
-  }
-
-  static Future<void> updatePolazakAt(String id, String? vreme) async {
-    try {
-      final row = await _repository.updateRaw(
-        id,
-        {
-          'polazak_at': vreme,
-        },
-      );
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-    } catch (e) {
-      debugPrint('[V3ZahtevService] Vreme update error: $e');
       rethrow;
     }
   }

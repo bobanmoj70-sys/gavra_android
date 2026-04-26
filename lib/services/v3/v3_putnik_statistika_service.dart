@@ -1,6 +1,8 @@
 import '../../utils/v3_dan_helper.dart';
+import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_status_policy.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'v3_finansije_service.dart';
 
 class V3PutnikMesecnaStatistika {
   final int godina;
@@ -45,28 +47,6 @@ class V3PutnikStatistikaService {
     );
   }
 
-  static List<V3PutnikMesecnaStatistika> getPoslednjihMeseci(
-    String putnikId, {
-    int brojMeseci = 12,
-    DateTime? now,
-  }) {
-    final ref = now ?? DateTime.now();
-    final rezultat = <V3PutnikMesecnaStatistika>[];
-
-    for (int i = 0; i < brojMeseci; i++) {
-      final target = DateTime(ref.year, ref.month - i, 1);
-      rezultat.add(
-        getZaMesec(
-          putnikId: putnikId,
-          godina: target.year,
-          mesec: target.month,
-        ),
-      );
-    }
-
-    return rezultat;
-  }
-
   static V3PutnikMesecnaStatistika getTekuciMesec(
     String putnikId, {
     DateTime? now,
@@ -102,7 +82,7 @@ class V3PutnikStatistikaService {
     required int godina,
     required int mesec,
   }) {
-    final mesecNaziv = _mesecNaziv(mesec);
+    final mesecNaziv = V3DateUtils.mesecNaziv(mesec);
     if (putnikId.isEmpty) {
       return V3PutnikMesecnaStatistika(godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
     }
@@ -169,11 +149,10 @@ class V3PutnikStatistikaService {
 
     int pokupljeno = 0;
     int voznji = 0;
-    final ukupnoUplaceno = _sumUplateZaMesec(
+    final ukupnoUplaceno = V3FinansijeService.sumOperativnaUplateZaPutnikMesec(
       putnikId: putnikId,
       godina: godina,
       mesec: mesec,
-      isPoDanu: true,
     );
 
     for (final dayRows in byDate.values) {
@@ -221,7 +200,7 @@ class V3PutnikStatistikaService {
     required String mesecNaziv,
     required double cenaPoPokupljenju,
   }) {
-    final naplataByOperativna = _latestNaplataByOperativna(
+    final naplataByOperativna = V3FinansijeService.getLatestNaplataByOperativnaForPutnikMesec(
       putnikId: putnikId,
       godina: godina,
       mesec: mesec,
@@ -277,66 +256,11 @@ class V3PutnikStatistikaService {
     return fallback;
   }
 
-  static Map<String, Map<String, dynamic>> _latestNaplataByOperativna({
-    required String putnikId,
-    required int godina,
-    required int mesec,
-  }) {
-    final rows = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
-    final result = <String, Map<String, dynamic>>{};
-
-    for (final row in rows) {
-      if (row['tip']?.toString() != 'prihod') continue;
-      if ((row['kategorija']?.toString().toLowerCase() ?? '') != 'operativna_naplata') continue;
-      if (row['putnik_v3_auth_id']?.toString() != putnikId) continue;
-
-      final rowGodina = (row['godina'] as num?)?.toInt();
-      final rowMesec = (row['mesec'] as num?)?.toInt();
-      if (rowGodina != godina || rowMesec != mesec) continue;
-
-      final operativnaId = row['operativna_id']?.toString() ?? '';
-      if (operativnaId.isEmpty) continue;
-
-      final existing = result[operativnaId];
-      if (existing == null) {
-        result[operativnaId] = row;
-        continue;
-      }
-
-      final existingTs = DateTime.tryParse(existing['created_at']?.toString() ?? '') ?? DateTime(2000);
-      final currentTs = DateTime.tryParse(row['created_at']?.toString() ?? '') ?? DateTime(2000);
-      if (currentTs.isAfter(existingTs)) {
-        result[operativnaId] = row;
-      }
-    }
-
-    return result;
-  }
-
   static DateTime? _extractDatum(Map<String, dynamic> row) {
     final raw = row['datum']?.toString();
     if (raw == null || raw.isEmpty) return null;
-    final part = V3DanHelper.parseIsoDatePart(raw);
+    final part = V3DateUtils.parseIsoDatePart(raw);
     return DateTime.tryParse(part);
-  }
-
-  static String _mesecNaziv(int m) {
-    const names = [
-      '',
-      'Januar',
-      'Februar',
-      'Mart',
-      'April',
-      'Maj',
-      'Jun',
-      'Jul',
-      'Avgust',
-      'Septembar',
-      'Oktobar',
-      'Novembar',
-      'Decembar',
-    ];
-    return (m >= 1 && m <= 12) ? names[m] : 'Mesec';
   }
 
   static Set<(int, int)> _getMeseciSaPodacima(String putnikId) {
@@ -352,26 +276,5 @@ class V3PutnikStatistikaService {
     }
 
     return meseci;
-  }
-
-  static double _sumUplateZaMesec({
-    required String putnikId,
-    required int godina,
-    required int mesec,
-    required bool isPoDanu,
-  }) {
-    final arhiva = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
-
-    return arhiva.where((row) {
-      if (row['tip'] != 'prihod') return false;
-      if (row['putnik_v3_auth_id']?.toString() != putnikId) return false;
-      if ((row['godina'] as int?) != godina) return false;
-      if ((row['mesec'] as int?) != mesec) return false;
-      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
-      if (isPoDanu) {
-        return kategorija == 'operativna_naplata';
-      }
-      return kategorija == 'operativna_naplata';
-    }).fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
   }
 }

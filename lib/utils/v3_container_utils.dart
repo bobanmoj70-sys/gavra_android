@@ -70,8 +70,7 @@ class V3ContainerUtils {
       width: width,
       height: height,
       padding: padding ?? const EdgeInsets.all(16.0),
-      margin:
-          margin ?? const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       alignment: alignment,
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
@@ -115,9 +114,7 @@ class V3ContainerUtils {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null
-            ? Border.all(color: borderColor, width: borderWidth)
-            : null,
+        border: borderColor != null ? Border.all(color: borderColor, width: borderWidth) : null,
       ),
       child: child,
     );
@@ -192,17 +189,12 @@ class V3ContainerUtils {
     Clip clipBehavior = Clip.antiAlias, // Safe overflow protection
   }) {
     return Container(
-      padding: padding ??
-          const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      padding: padding ?? const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.blue,
-        borderRadius:
-            borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ??
-            (borderColor != null
-                ? Border.all(color: borderColor, width: borderWidth ?? 1.0)
-                : null),
+        borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
+        border: border ?? (borderColor != null ? Border.all(color: borderColor, width: borderWidth ?? 1.0) : null),
       ),
       child: child,
     );
@@ -236,131 +228,11 @@ class V3ContainerUtils {
       clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius:
-            borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
-        border: border ??
-            (borderColor != null
-                ? Border.all(color: borderColor, width: borderWidth ?? 1.0)
-                : null),
+        borderRadius: borderRadiusGeometry ?? BorderRadius.circular(borderRadius),
+        border: border ?? (borderColor != null ? Border.all(color: borderColor, width: borderWidth ?? 1.0) : null),
         boxShadow: boxShadow,
       ),
       child: child ?? icon,
     );
   }
-
-  /// Section container za organizaciju sadržaja
-  static Widget sectionContainer({
-    required Widget child,
-    String? title,
-    TextStyle? titleStyle,
-    EdgeInsetsGeometry? padding,
-    EdgeInsetsGeometry? margin,
-    Color? backgroundColor,
-    double borderRadius = 8.0,
-    Color? borderColor,
-  }) {
-    return Container(
-      margin: margin ?? const EdgeInsets.symmetric(vertical: 8.0),
-      padding: padding ?? const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.grey[50],
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: borderColor != null ? Border.all(color: borderColor) : null,
-      ),
-      child: title != null
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: titleStyle ??
-                      const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 12.0),
-                child,
-              ],
-            )
-          : child,
-    );
-  }
-
-  /// Dismissible background container
-  static Widget dismissibleBackground({
-    required IconData icon,
-    required Color backgroundColor,
-    AlignmentGeometry alignment = Alignment.centerLeft,
-    EdgeInsetsGeometry? padding,
-  }) {
-    return Container(
-      alignment: alignment,
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 20.0),
-      color: backgroundColor,
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: 32.0,
-      ),
-    );
-  }
-
-  /// Loading overlay container
-  static Widget loadingOverlay({
-    required Widget child,
-    bool isLoading = false,
-    Color? loadingColor,
-    String? loadingText,
-  }) {
-    return Stack(
-      children: [
-        child,
-        if (isLoading)
-          Container(
-            color: (loadingColor ?? Colors.black).withValues(alpha: 0.3),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(color: Colors.white),
-                  if (loadingText != null) ...[
-                    const SizedBox(height: 16.0),
-                    Text(
-                      loadingText,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  // Common gradient definitions
-  static const Gradient blueGradient = LinearGradient(
-    colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const Gradient greenGradient = LinearGradient(
-    colors: [Color(0xFF4CAF50), Color(0xFF388E3C)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const Gradient redGradient = LinearGradient(
-    colors: [Color(0xFFf44336), Color(0xFFd32f2f)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const Gradient orangeGradient = LinearGradient(
-    colors: [Color(0xFFFF9800), Color(0xFFF57C00)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 }

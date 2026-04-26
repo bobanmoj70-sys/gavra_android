@@ -17,6 +17,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_status_policy.dart';
@@ -194,7 +195,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     final uniqueSlots = <String, Map<String, String>>{};
     for (final row in rm.operativnaNedeljaCache.values) {
       final putnikId = row['created_by']?.toString() ?? '';
-      if (!_putnikPostoji(putnikId) || V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
+      if (!_putnikPostoji(putnikId) || V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
 
       final grad = (row['grad']?.toString() ?? '').toUpperCase();
       final vreme = V3TimeUtils.normalizeToHHmm(_effectiveTime(row));

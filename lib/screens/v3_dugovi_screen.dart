@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
-import 'package:gavra_android/services/v3/v3_dug_service.dart';
+import 'package:gavra_android/services/v3/v3_finansije_service.dart';
 import 'package:gavra_android/utils/v3_string_utils.dart';
 import 'package:intl/intl.dart';
 
 import '../helpers/v3_placanje_dialog_helper.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
-import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 
@@ -24,7 +23,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<V3Dug>>(
-      stream: V3DugService.streamDugovi(),
+      stream: V3FinansijeService.streamDugovi(),
       builder: (context, snapshot) {
         final isLoading = !snapshot.hasData && snapshot.connectionState == ConnectionState.waiting;
         final allDugovi = snapshot.data ?? [];
@@ -125,7 +124,24 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                 itemCount: dugovi.length,
                                 itemBuilder: (context, i) => _DugCard(
                                   dug: dugovi[i],
-                                  onNaplati: () => _markAsPaid(dugovi[i]),
+                                  onNaplati: () async {
+                                    final dug = dugovi[i];
+                                    final rezultat = await V3PlacanjeDialogHelper.naplati(
+                                      context: context,
+                                      putnikId: dug.putnikId,
+                                      imePrezime: dug.imePrezime,
+                                      defaultCena: dug.iznos,
+                                      operativnaId: dug.id,
+                                    );
+                                    if (rezultat == null) return;
+
+                                    if (context.mounted) {
+                                      V3AppSnackBar.success(
+                                        context,
+                                        '✅ Naplaćeno ${rezultat.iznos.toStringAsFixed(0)} RSD za ${dug.imePrezime}',
+                                      );
+                                    }
+                                  },
                                 ),
                               ),
                   ),
@@ -136,26 +152,6 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
         );
       },
     );
-  }
-
-  Future<void> _markAsPaid(V3Dug dug) async {
-    final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
-      context: context,
-      putnikId: dug.putnikId,
-      imePrezime: dug.imePrezime,
-      defaultCena: dug.iznos,
-      zakljucajIznos: false,
-    );
-    if (rezultat == null) return;
-
-    try {
-      await V3DugService.markAsPaid(dug.id, iznos: rezultat.iznos);
-      if (mounted) {
-        V3AppSnackBar.success(context, '✅ Naplaćeno ${rezultat.iznos.toStringAsFixed(0)} RSD za ${dug.imePrezime}');
-      }
-    } catch (e) {
-      V3ErrorUtils.asyncError(this, context, e);
-    }
   }
 }
 

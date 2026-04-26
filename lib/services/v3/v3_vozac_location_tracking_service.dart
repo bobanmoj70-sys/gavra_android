@@ -4,6 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+enum V3LocationPrereqStatus {
+  ok,
+  serviceDisabled,
+  denied,
+  deniedForever,
+}
+
 class V3VozacLocationTrackingService {
   V3VozacLocationTrackingService._();
 
@@ -48,9 +55,9 @@ class V3VozacLocationTrackingService {
     _inFlight = true;
 
     try {
-      final hasPermission = await _ensureLocationPermission();
-      if (!hasPermission) {
-        debugPrint('[V3VozacLocationTrackingService] location permission/service unavailable');
+      final locationStatus = await checkLocationPrerequisites();
+      if (locationStatus != V3LocationPrereqStatus.ok) {
+        debugPrint('[V3VozacLocationTrackingService] location unavailable: $locationStatus');
         return;
       }
 
@@ -73,20 +80,24 @@ class V3VozacLocationTrackingService {
     }
   }
 
-  Future<bool> _ensureLocationPermission() async {
+  Future<V3LocationPrereqStatus> checkLocationPrerequisites() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return false;
+    if (!serviceEnabled) return V3LocationPrereqStatus.serviceDisabled;
 
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
 
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      return false;
+    if (permission == LocationPermission.deniedForever) {
+      return V3LocationPrereqStatus.deniedForever;
     }
 
-    return true;
+    if (permission == LocationPermission.denied) {
+      return V3LocationPrereqStatus.denied;
+    }
+
+    return V3LocationPrereqStatus.ok;
   }
 
   Future<void> _insertLocation({

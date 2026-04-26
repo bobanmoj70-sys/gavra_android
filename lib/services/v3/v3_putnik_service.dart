@@ -103,38 +103,6 @@ class V3PutnikService {
     }
   }
 
-  /// Get all active v3 passengers + their requests for today
-  static List<Map<String, dynamic>> getKombinovaniPutniciDanas() {
-    final nowIso = V3DanHelper.todayIso();
-    final rm = V3MasterRealtimeManager.instance;
-
-    final rez = <Map<String, dynamic>>[];
-
-    // 1. Pronađi sve zahteve za danas
-    final danasnjiZahtevi = rm.zahteviCache.values
-        .where((z) => z['datum'] == nowIso && !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString()))
-        .toList();
-
-    // 2. Za svaki zahtev nađi putnika
-    for (final z in danasnjiZahtevi) {
-      final pid = z['created_by'];
-      final pData = rm.putniciCache[pid];
-      if (pData != null) {
-        rez.add({
-          'putnik': V3Putnik.fromJson(pData),
-          'zahtev': V3Zahtev.fromJson(z),
-        });
-      }
-    }
-
-    return rez;
-  }
-
-  static Stream<List<Map<String, dynamic>>> streamKombinovaniPutniciDanas() {
-    return V3MasterRealtimeManager.instance
-        .v3StreamFromRevisions(tables: ['v3_auth', 'v3_zahtevi'], build: () => getKombinovaniPutniciDanas());
-  }
-
   /// Get active v3 passengers + their requests for today, filtered by city and time
   static List<Map<String, dynamic>> getKombinovaniPutniciFiltrirano({
     required String grad,
@@ -173,75 +141,5 @@ class V3PutnikService {
   }) {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
         tables: ['v3_auth', 'v3_zahtevi'], build: () => getKombinovaniPutniciFiltrirano(grad: grad, vreme: vreme));
-  }
-
-  /// Streams V3 passengers who have an active request for a specific date.
-  static Stream<List<V3Putnik>> streamPutniciByDatum({required String datumIso}) {
-    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-      tables: ['v3_auth', 'v3_zahtevi'],
-      build: () {
-        final rm = V3MasterRealtimeManager.instance;
-        final matchingZahtevi = rm.zahteviCache.values.where((z) {
-          final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
-          return rDatum == datumIso && !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString());
-        });
-
-        final Set<String> uniquePutnikIds = matchingZahtevi.map((z) => z['created_by'] as String).toSet();
-
-        return uniquePutnikIds
-            .map((id) {
-              final pData = rm.putniciCache[id];
-              if (pData != null) {
-                return V3Putnik.fromJson(pData);
-              }
-              return null;
-            })
-            .whereType<V3Putnik>()
-            .toList()
-          ..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
-      },
-    );
-  }
-
-  static Future<List<V3Putnik>> getAllAktivniPutnici() async {
-    final cache = V3MasterRealtimeManager.instance.putniciCache.values;
-    return cache.map((p) => V3Putnik.fromJson(p)).toList()..sort((a, b) => a.imePrezime.compareTo(b.imePrezime));
-  }
-
-  /// Filtrira putnike po tačnom datumu, gradu i vremenu.
-  /// Korišćeno za štampanje spiska polaska i prikaz u home screenu.
-  static List<Map<String, dynamic>> getKombinovaniPutniciByDatumGradVreme({
-    required String datumIso,
-    required String grad,
-    required String vreme,
-  }) {
-    final rm = V3MasterRealtimeManager.instance;
-    final rez = <String, Map<String, dynamic>>{};
-
-    final zahtevi = rm.zahteviCache.values.where((z) {
-      final rDatum = V3DanHelper.parseIsoDatePart(z['datum'] as String? ?? '');
-      return rDatum == datumIso &&
-          z['grad'] == grad &&
-          z['trazeni_polazak_at'] == vreme &&
-          !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString());
-    });
-
-    for (final z in zahtevi) {
-      final pid = z['created_by']?.toString() ?? '';
-      if (rez.containsKey(pid)) continue;
-      final pData = rm.putniciCache[pid];
-      if (pData != null) {
-        rez[pid] = {
-          'id': pid,
-          'ime_prezime': pData['ime_prezime']?.toString() ?? '',
-          'putnik': V3Putnik.fromJson(pData),
-          'zahtev': V3Zahtev.fromJson(z),
-        };
-      }
-    }
-
-    final lista = rez.values.toList();
-    lista.sort((a, b) => (a['ime_prezime'] as String).compareTo(b['ime_prezime'] as String));
-    return lista;
   }
 }

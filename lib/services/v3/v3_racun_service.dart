@@ -142,51 +142,6 @@ class V3RacunService {
     }
   }
 
-  /// Štampa bilo koji račun iz tabele `v3_racuni` na osnovu ID-a.
-  static Future<void> stampajRacunIzBaze({
-    required String racunId,
-    required String opisUsluge,
-    required double iznos,
-    required DateTime datumPrometa,
-    required BuildContext context,
-  }) async {
-    try {
-      final racunData = await _repository.getRacunById(racunId);
-      if (racunData == null) {
-        throw Exception('Račun nije pronađen u bazi.');
-      }
-
-      final pdf = pw.Document();
-      final theme = pw.ThemeData.withFont(
-        base: _regular,
-        bold: _bold,
-        italic: _regular,
-        boldItalic: _bold,
-      );
-
-      final brojRacuna = '${racunData['redni_broj']}/${racunData['godina']}';
-
-      pdf.addPage(
-        _kreirajRacunZaFirmuStranicu(
-          theme: theme,
-          brojRacuna: brojRacuna,
-          imePutnika: racunData['firma_naziv']?.toString() ?? '---',
-          firma: racunData,
-          brojVoznji: 1.0,
-          cenaPoVoznji: iznos,
-          datumPrometa: datumPrometa,
-        ),
-      );
-
-      final pdfBytes = await pdf.save();
-      await _openPDF(pdfBytes, 'Racun_${brojRacuna.replaceAll('/', '_')}');
-    } catch (e) {
-      if (context.mounted) {
-        V3AppSnackBar.error(context, '❌ Greška pri štampanju iz baze: $e');
-      }
-    }
-  }
-
   // ─── PDF - Račun za fizičko lice ──────────────────────────────────
   static Future<List<int>> _kreirajRacunPDF({
     required String brojRacuna,

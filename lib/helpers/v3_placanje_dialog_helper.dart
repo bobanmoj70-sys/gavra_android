@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -21,41 +20,12 @@ class V3PlacanjeRezultat {
 class V3PlacanjeDialogHelper {
   V3PlacanjeDialogHelper._();
 
-  static Map<String, dynamic>? _getZadnjaNaplata(String putnikId) {
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
-    final placenoRows = cache.where((row) {
-      if (row['tip']?.toString() != 'prihod') return false;
-      if ((row['kategorija']?.toString().toLowerCase() ?? '') != 'operativna_naplata') return false;
-      if (row['putnik_v3_auth_id']?.toString() != putnikId) return false;
-      final vremePlacen = row['created_at']?.toString();
-      return vremePlacen != null && vremePlacen.isNotEmpty;
-    }).toList();
-
-    if (placenoRows.isEmpty) return null;
-
-    placenoRows.sort((a, b) {
-      final aDt = V3DateUtils.parseTs(a['created_at']?.toString()) ?? DateTime(2000);
-      final bDt = V3DateUtils.parseTs(b['created_at']?.toString()) ?? DateTime(2000);
-      return bDt.compareTo(aDt);
-    });
-
-    final last = placenoRows.first;
-    final vozacId = last['naplaceno_by']?.toString();
-    final vozacIme = vozacId == null ? null : V3VozacService.getVozacById(vozacId)?.imePrezime;
-
-    return {
-      'placeno_at': last['created_at'],
-      'placeno_iznos': (last['iznos'] as num?)?.toDouble() ?? 0.0,
-      'naplatio_ime': vozacIme ?? 'Nepoznato',
-    };
-  }
-
   static String _formatDatumVreme(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
-  static Future<V3PlacanjeRezultat?> prikaziDialog({
+  static Future<V3PlacanjeRezultat?> _prikaziDialog({
     required BuildContext context,
     required String putnikId,
     required String imePrezime,
@@ -68,10 +38,12 @@ class V3PlacanjeDialogHelper {
     int _selectedYear = DateTime.now().year;
     final currentYear = DateTime.now().year;
     final years = List.generate(6, (i) => currentYear - 1 + i);
-    final zadnjaNaplata = _getZadnjaNaplata(putnikId);
-    final vremePlacen = V3DateUtils.parseTs(zadnjaNaplata?['placeno_at']?.toString());
-    final zadnjiIznos = (zadnjaNaplata?['placeno_iznos'] as num?)?.toDouble() ?? 0.0;
-    final naplatioIme = (zadnjaNaplata?['naplatio_ime']?.toString() ?? 'Nepoznato').trim();
+    final zadnjaNaplata = V3FinansijeService.getLatestNaplataForPutnik(putnikId);
+    final vremePlacen = zadnjaNaplata?.paidAt;
+    final zadnjiIznos = zadnjaNaplata?.iznos ?? 0.0;
+    final naplatioIme = (zadnjaNaplata?.paidBy == null)
+        ? 'Nepoznato'
+        : (V3VozacService.getVozacById(zadnjaNaplata!.paidBy!)?.imePrezime ?? 'Nepoznato');
 
     return V3DialogHelper.showDialogBuilder<V3PlacanjeRezultat>(
       context: context,
@@ -167,7 +139,7 @@ class V3PlacanjeDialogHelper {
                         items: List.generate(12, (i) => i + 1).map((m) {
                           return DropdownMenuItem(
                             value: m,
-                            child: Text(_getMonthName(m)),
+                            child: Text(V3DateUtils.mesecNaziv(m)),
                           );
                         }).toList(),
                         onChanged: (v) => setState(() => _selectedMonth = v!),
@@ -231,31 +203,41 @@ class V3PlacanjeDialogHelper {
     );
   }
 
-  static String _getMonthName(int m) {
-    const names = [
-      'Januar',
-      'Februar',
-      'Mart',
-      'April',
-      'Maj',
-      'Jun',
-      'Jul',
-      'Avgust',
-      'Septembar',
-      'Oktobar',
-      'Novembar',
-      'Decembar'
-    ];
-    return names[m - 1];
-  }
-
-  static Future<bool> sacuvajPlacanje({
+  static Future<V3PlacanjeRezultat?> naplati({
     required BuildContext context,
     required String putnikId,
     required String imePrezime,
+    required double defaultCena,
+    bool zakljucajIznos = false,
+    String? operativnaId,
+    bool snimiMesecnuUplatu = false,
+  }) async {
+    final rezultat = await _prikaziDialog(
+      context: context,
+      putnikId: putnikId,
+      imePrezime: imePrezime,
+      defaultCena: defaultCena,
+      zakljucajIznos: zakljucajIznos,
+    );
+    if (rezultat == null) return null;
+
+    final ok = await _sacuvajPlacanje(
+      context: context,
+      putnikId: putnikId,
+      rezultat: rezultat,
+      operativnaId: operativnaId,
+      snimiMesecnuUplatu: snimiMesecnuUplatu,
+    );
+    if (!ok) return null;
+
+    return rezultat;
+  }
+
+  static Future<bool> _sacuvajPlacanje({
+    required BuildContext context,
+    required String putnikId,
     required V3PlacanjeRezultat rezultat,
     String? operativnaId,
-    String? zahtevId,
     bool snimiMesecnuUplatu = false,
   }) async {
     try {
@@ -280,7 +262,7 @@ class V3PlacanjeDialogHelper {
           putnikId: putnikId,
           naplacenoBy: vozac.id,
           iznos: rezultat.iznos,
-          datum: DateTime.now(),
+          datum: DateTime(rezultat.godina, rezultat.mesec, 1),
         );
       }
       return true;

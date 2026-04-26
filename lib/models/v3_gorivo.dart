@@ -26,8 +26,7 @@ class V3PumpaStanje {
       naziv: json['naziv'] as String? ?? 'Kucna Pumpa',
       kapacitetLitri: (json['kapacitet_litri'] as num?)?.toDouble() ?? 0,
       trenutnoStanje: (json['trenutno_stanje_litri'] as num?)?.toDouble() ?? 0,
-      stanjeBrojacPistolj:
-          (json['brojac_pistolj_litri'] as num?)?.toDouble() ?? 0,
+      stanjeBrojacPistolj: (json['brojac_pistolj_litri'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -75,103 +74,5 @@ class V3PumpaRezervoar {
 
   bool get ispodAlarma => trenutnoLitara <= alarmNivo;
 
-  double get procentPunjenosti => kapacitetMax > 0
-      ? (trenutnoLitara / kapacitetMax * 100).clamp(0, 100)
-      : 0;
-}
-
-/// Backward-compat alias (stari kod može koristiti V3GorivoStanje)
-
-@Deprecated('Koristi V3PumpaStanje umjesto V3GorivoStanje')
-class V3GorivoStanje {
-  final double kolicina;
-
-  V3GorivoStanje({required this.kolicina});
-
-  factory V3GorivoStanje.fromJson(Map<String, dynamic> json) {
-    return V3GorivoStanje(
-      kolicina: (json['trenutno_stanje_litri'] as num?)?.toDouble() ??
-          (json['kolicina'] as num?)?.toDouble() ??
-          0,
-    );
-  }
-}
-
-class V3PumpaPunjenje {
-  final String id;
-
-  final double kolicina;
-
-  final String? dobavljac;
-
-  final String? opis;
-
-  final DateTime datum;
-
-  V3PumpaPunjenje({
-    required this.id,
-    required this.kolicina,
-    this.dobavljac,
-    this.opis,
-    required this.datum,
-  });
-
-  factory V3PumpaPunjenje.fromJson(Map<String, dynamic> json) {
-    return V3PumpaPunjenje(
-      id: json['id']?.toString() ?? '',
-      kolicina: (json['kolicina'] as num).toDouble(),
-      dobavljac: json['dobavljac'] as String?,
-      opis: json['opis'] as String?,
-      datum: DateTime.parse(json['datum'] as String),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'kolicina': kolicina,
-        'dobavljac': dobavljac,
-        'opis': opis,
-        'datum': datum.toIso8601String(),
-      };
-}
-
-class V3PumpaTocenje {
-  final String id;
-
-  final String voziloId;
-
-  final double kolicina;
-
-  final int? kilometraza;
-
-  final String? vozacId;
-
-  final DateTime datum;
-
-  V3PumpaTocenje({
-    required this.id,
-    required this.voziloId,
-    required this.kolicina,
-    this.kilometraza,
-    this.vozacId,
-    required this.datum,
-  });
-
-  factory V3PumpaTocenje.fromJson(Map<String, dynamic> json) {
-    return V3PumpaTocenje(
-      id: json['id']?.toString() ?? '',
-      voziloId: json['vozilo_id']?.toString() ?? '',
-      kolicina: (json['kolicina'] as num).toDouble(),
-      kilometraza: json['kilometraza'] as int?,
-      vozacId: json['created_by']?.toString(),
-      datum: DateTime.parse(json['datum'] as String),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'vozilo_id': voziloId,
-        'kolicina': kolicina,
-        'kilometraza': kilometraza,
-        'created_by': vozacId,
-        'datum': datum.toIso8601String(),
-      };
+  double get procentPunjenosti => kapacitetMax > 0 ? (trenutnoLitara / kapacitetMax * 100).clamp(0, 100) : 0;
 }

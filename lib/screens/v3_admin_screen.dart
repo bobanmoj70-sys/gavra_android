@@ -4,7 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_app_settings_service.dart';
-import '../services/v3/v3_dug_service.dart';
+import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -810,87 +810,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     );
   }
 
-  // ignore: unused_element
-  void _showStatistikeMenu(BuildContext context) {
-    V3DialogHelper.showBottomSheet<void>(
-      context: context,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                V3ContainerUtils.styledContainer(
-                  width: 40,
-                  height: V3ContainerUtils.responsiveHeight(context, 4, intensity: 0.2),
-                  backgroundColor: Colors.grey.shade400,
-                  borderRadius: BorderRadius.circular(2),
-                  child: const SizedBox(),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  '📊 Statistike',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Text('💹', style: TextStyle(fontSize: 24)),
-                  title: const Text('Finansije'),
-                  subtitle: const Text('Prihodi, troškovi, neto zarada'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pop(context);
-                    V3NavigationUtils.pushScreen(context, const V3FinansijeScreen());
-                  },
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Text('🔧', style: TextStyle(fontSize: 24)),
-                  title: const Text('Kolska knjiga'),
-                  subtitle: const Text('Servisi, registracija, gume...'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pop(context);
-                    V3NavigationUtils.pushScreen(context, const V3OdrzavanjeScreen());
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   /// Računa pazar po vozaču iz v3_finansije — samo danas, akter = naplaceno_by
   Map<String, double> _getPazarPoVozacu() {
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
-    final danas = DateTime.now();
-    final result = <String, double>{};
-    for (final row in cache.values) {
-      if (row['tip'] != 'prihod') continue;
-      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
-      if (kategorija != 'operativna_naplata') continue;
-
-      final createdAtStr = row['created_at'] as String?;
-      if (createdAtStr == null || createdAtStr.isEmpty) continue;
-      final dt = DateTime.tryParse(createdAtStr);
-      if (dt == null) continue;
-      if (dt.year != danas.year || dt.month != danas.month || dt.day != danas.day) continue;
-      // Akter: ko je naplatio
-      final akterId = row['naplaceno_by']?.toString();
-      if (akterId == null || akterId.isEmpty) continue;
-      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
-      result[akterId] = (result[akterId] ?? 0.0) + iznos;
-    }
-    return result;
+    return V3FinansijeService.getPazarPoVozacuZaDan(DateTime.now());
   }
 
   Color _bojaVozaca(String vozacId) {
@@ -1709,7 +1631,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   Widget _buildPazarSection(BuildContext context) {
     final vozaci = V3VozacService.getAllVozaci();
     final pazarPoVozacu = _getPazarPoVozacu();
-    final sveDugovi = V3DugService.getDugovi();
+    final sveDugovi = V3FinansijeService.getDugovi();
     // Dužnici = dnevni + pošiljke (naplata po pokupljenju)
     final dugovi = sveDugovi.where((d) => d.tipPutnika == 'dnevni' || d.tipPutnika == 'posiljka').toList();
     final dugoviIznos = dugovi.fold(0.0, (s, d) => s + d.iznos);

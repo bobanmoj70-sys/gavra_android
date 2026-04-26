@@ -11,6 +11,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/v3_dnevna_predaja.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_dnevna_predaja_service.dart';
+import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -86,25 +87,17 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
   void _prikaziNaplate() {
     if (_selectedVozacId == null) return;
 
-    final target = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije');
+    final vozacId = _selectedVozacId!;
+    final naplateRows = V3FinansijeService.getOperativnaNaplateZaVozacaDan(
+      vozacId: vozacId,
+      dan: _selectedDate,
+    );
     final putniciCache = V3MasterRealtimeManager.instance.putniciCache;
 
     final rows = <_NaplataRow>[];
-    for (final row in cache.values) {
-      if (row['tip'] != 'prihod') continue;
-      final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
-      if (kategorija != 'operativna_naplata') continue;
-
-      final vozacId = row['naplaceno_by']?.toString() ?? '';
-      if (vozacId != _selectedVozacId) continue;
-
-      final vremePlaceno = row['created_at'] as String? ?? '';
-      final dt = V3DateUtils.parseTs(vremePlaceno);
+    for (final row in naplateRows) {
+      final dt = V3DateUtils.parseTs(row['created_at']?.toString());
       if (dt == null) continue;
-
-      final payDay = DateTime(dt.year, dt.month, dt.day);
-      if (payDay != target) continue;
 
       final putnikId = row['putnik_v3_auth_id']?.toString() ?? '';
       final putnikData = putniciCache[putnikId];
@@ -122,8 +115,6 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
         sortAt: dt,
       ));
     }
-
-    rows.sort((a, b) => a.sortAt.compareTo(b.sortAt));
 
     setState(() {
       _naplate = rows;

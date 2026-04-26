@@ -84,42 +84,6 @@ class V3Putnik {
     };
   }
 
-  V3Putnik copyWith({
-    String? id,
-    String? imePrezime,
-    String? telefon1,
-    String? telefon2,
-    String? tipPutnika,
-    String? adresaBcId,
-    String? adresaVsId,
-    String? adresaBcId2,
-    String? adresaVsId2,
-    double? cenaPoDanu,
-    double? cenaPoPokupljenju,
-    String? pushToken,
-    String? pushToken2,
-    String? pushDeviceId,
-    String? pushDeviceId2,
-  }) {
-    return V3Putnik(
-      id: id ?? this.id,
-      imePrezime: imePrezime ?? this.imePrezime,
-      telefon1: telefon1 ?? this.telefon1,
-      telefon2: telefon2 ?? this.telefon2,
-      tipPutnika: tipPutnika ?? this.tipPutnika,
-      adresaBcId: adresaBcId ?? this.adresaBcId,
-      adresaVsId: adresaVsId ?? this.adresaVsId,
-      adresaBcId2: adresaBcId2 ?? this.adresaBcId2,
-      adresaVsId2: adresaVsId2 ?? this.adresaVsId2,
-      cenaPoDanu: cenaPoDanu ?? this.cenaPoDanu,
-      cenaPoPokupljenju: cenaPoPokupljenju ?? this.cenaPoPokupljenju,
-      pushToken: pushToken ?? this.pushToken,
-      pushToken2: pushToken2 ?? this.pushToken2,
-      pushDeviceId: pushDeviceId ?? this.pushDeviceId,
-      pushDeviceId2: pushDeviceId2 ?? this.pushDeviceId2,
-    );
-  }
-
   @override
   String toString() => 'V3Putnik($imePrezime, $tipPutnika, cena: $cenaPoDanu)';
 }

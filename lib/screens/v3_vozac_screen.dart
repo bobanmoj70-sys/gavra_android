@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,12 +10,13 @@ import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
-import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_driver_push_notification_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_osrm_route_service.dart';
+import '../services/v3/v3_putnik_adresa_resolver_service.dart';
+import '../services/v3/v3_route_waypoint_resolver_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_location_tracking_service.dart';
@@ -27,7 +27,9 @@ import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
+import '../utils/v3_geo_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
@@ -61,6 +63,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   RealtimeChannel? _trenutnaDodelaChannel;
   final V3OsrmRouteService _osrmRouteService = V3OsrmRouteService();
   final V3AddressCoordinateService _addressCoordinateService = V3AddressCoordinateService();
+  final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   Map<String, int> _optimizedOrderByPutnikId = const <String, int>{};
   List<V3RouteWaypoint> _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
 
@@ -195,7 +198,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       row['vreme'] = row['vreme'] ?? row['polazak_at'];
 
       if (trazeniDatum.isNotEmpty) {
-        final rowDatum = V3DanHelper.parseIsoDatePart(row['datum'] as String? ?? '');
+        final rowDatum = V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '');
         if (rowDatum != trazeniDatum) continue;
       }
 
@@ -316,34 +319,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<bool> _ensureGpsPermissionForStart() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (mounted) {
+    final status = await V3VozacLocationTrackingService.instance.checkLocationPrerequisites();
+    if (status == V3LocationPrereqStatus.ok) return true;
+
+    if (!mounted) return false;
+
+    switch (status) {
+      case V3LocationPrereqStatus.serviceDisabled:
         V3AppSnackBar.warning(context, 'GPS je isključen. Uključi lokaciju na telefonu.');
-      }
-      return false;
-    }
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.denied) {
-      if (mounted) {
+        break;
+      case V3LocationPrereqStatus.denied:
         V3AppSnackBar.warning(context, 'Dozvola za lokaciju je odbijena.');
-      }
-      return false;
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      if (mounted) {
+        break;
+      case V3LocationPrereqStatus.deniedForever:
         V3AppSnackBar.warning(context, 'Dozvola za lokaciju je trajno odbijena. Uključi je u Settings.');
-      }
-      return false;
+        break;
+      case V3LocationPrereqStatus.ok:
+        break;
     }
 
-    return true;
+    return false;
   }
 
   Future<void> _startDriverLocationTracking() async {
@@ -453,7 +448,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
             continue;
           }
           if (r['created_by']?.toString() != putnikId) continue;
-          if (V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
+          if (V3DateUtils.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
           if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
           if (V3TimeUtils.normalizeToHHmm(operativnaVreme(r)) != selectedVNorm) continue;
 
@@ -672,17 +667,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
   }
 
-  String _gradLabelForGeocoding(String grad) {
-    switch (grad.trim().toUpperCase()) {
-      case 'BC':
-        return 'Bela Crkva';
-      case 'VS':
-        return 'Vrsac';
-      default:
-        return grad;
-    }
-  }
-
   String _oppositeGrad(String grad) {
     switch (grad.trim().toUpperCase()) {
       case 'BC':
@@ -698,7 +682,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final opposite = _oppositeGrad(_selectedGrad);
     if (opposite.isEmpty) return null;
 
-    final cityLabel = _gradLabelForGeocoding(opposite);
+    final cityLabel = V3GeoUtils.gradLabelForGeocoding(opposite);
     final coordinate = await _addressCoordinateService.resolveCoordinate(
       adresaId: null,
       fallbackQuery: '$cityLabel, Srbija',
@@ -714,45 +698,32 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   String? _resolveAdresaIdForEntry(_PutnikEntry item) {
     final entry = item.entry;
-    final override = (entry?.adresaIdOverride ?? '').trim();
-    if (override.isNotEmpty) return override;
-
     final grad = (entry?.grad ?? _selectedGrad).trim().toUpperCase();
     final koristiSekundarnu = entry?.koristiSekundarnu ?? false;
-    if (grad == 'BC') {
-      return koristiSekundarnu
-          ? (item.putnik.adresaBcId2 ?? item.putnik.adresaBcId)
-          : (item.putnik.adresaBcId ?? item.putnik.adresaBcId2);
-    }
-    if (grad == 'VS') {
-      return koristiSekundarnu
-          ? (item.putnik.adresaVsId2 ?? item.putnik.adresaVsId)
-          : (item.putnik.adresaVsId ?? item.putnik.adresaVsId2);
-    }
-    return null;
+    final override = (entry?.adresaIdOverride ?? '').trim();
+    return V3PutnikAdresaResolverService.resolveAdresaIdFromPutnikModel(
+      putnik: item.putnik,
+      grad: grad,
+      koristiSekundarnu: koristiSekundarnu,
+      adresaIdOverride: override,
+    );
   }
 
   Future<({List<V3RouteWaypoint> waypoints, int unresolvedCount})> _resolveWaypointsForCurrentOrder() async {
     debugPrint('[WAYPOINTS] resolving ${_mojiPutnici.length} putnika...');
     final waypointTasks = _mojiPutnici.map((item) async {
-      final adresaId = _resolveAdresaIdForEntry(item);
-      final adresaNaziv = V3AdresaService.getAdresaById(adresaId)?.naziv ?? item.putnik.imePrezime;
       final grad = (item.entry?.grad ?? _selectedGrad).trim().toUpperCase();
-      final fallbackQuery = '$adresaNaziv, ${_gradLabelForGeocoding(grad)}, Srbija';
-      debugPrint('[WAYPOINTS] ${item.putnik.imePrezime}: adresaId=$adresaId fallback="$fallbackQuery"');
-
-      final coordinate = await _addressCoordinateService.resolveCoordinate(
-        adresaId: adresaId,
-        fallbackQuery: fallbackQuery,
+      final waypoint = await _routeWaypointResolverService.resolveWaypointForPutnikModel(
+        putnik: item.putnik,
+        grad: grad,
+        koristiSekundarnu: item.entry?.koristiSekundarnu ?? false,
+        adresaIdOverride: (item.entry?.adresaIdOverride ?? '').trim(),
+        waypointId: item.putnik.id,
+        waypointLabel: item.putnik.imePrezime,
       );
-      debugPrint('[WAYPOINTS] ${item.putnik.imePrezime}: coordinate=$coordinate');
+      debugPrint('[WAYPOINTS] ${item.putnik.imePrezime}: waypoint=${waypoint != null}');
 
-      if (coordinate == null) return null;
-      return V3RouteWaypoint(
-        id: item.putnik.id,
-        label: item.putnik.imePrezime,
-        coordinate: coordinate,
-      );
+      return waypoint;
     }).toList(growable: false);
 
     final resolvedOrNull = await Future.wait(waypointTasks);
@@ -1195,7 +1166,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
               final weekRange = V3DanHelper.schedulingWeekRange();
               final today = V3DanHelper.dateOnly(DateTime.now());
               final hasNeradni = rules.any((rule) {
-                final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
+                final dateIso = V3DateUtils.parseIsoDatePart(rule['date'] ?? '');
                 final date = DateTime.tryParse(dateIso);
                 if (date == null) return false;
                 final onlyDate = V3DanHelper.dateOnly(date);

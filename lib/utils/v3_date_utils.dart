@@ -11,6 +11,22 @@ import 'package:timezone/timezone.dart' as tz;
 class V3DateUtils {
   V3DateUtils._();
 
+  static const List<String> _meseci = [
+    '',
+    'Januar',
+    'Februar',
+    'Mart',
+    'April',
+    'Maj',
+    'Jun',
+    'Jul',
+    'Avgust',
+    'Septembar',
+    'Oktobar',
+    'Novembar',
+    'Decembar',
+  ];
+
   static const String _belgradeTzName = 'Europe/Belgrade';
   static bool _tzInitialized = false;
   static tz.Location? _belgradeLocation;
@@ -51,5 +67,26 @@ class V3DateUtils {
   /// Parsira date string ili vraća fallback vrijednost.
   static DateTime parseDatumOr(String? s, DateTime fallback) {
     return parseDatum(s) ?? fallback;
+  }
+
+  static String parseIsoDatePart(Object? raw) {
+    final value = (raw ?? '').toString().trim();
+    if (value.isEmpty) return '';
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) {
+      final y = parsed.year.toString().padLeft(4, '0');
+      final m = parsed.month.toString().padLeft(2, '0');
+      final d = parsed.day.toString().padLeft(2, '0');
+      return '$y-$m-$d';
+    }
+
+    final match = RegExp(r'^(\d{4}-\d{2}-\d{2})').firstMatch(value);
+    return match?.group(1) ?? '';
+  }
+
+  static String mesecNaziv(int mesec, {String fallback = 'Mesec'}) {
+    if (mesec >= 1 && mesec <= 12) return _meseci[mesec];
+    return fallback;
   }
 }

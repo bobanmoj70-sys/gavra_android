@@ -1,18 +1,3 @@
-class V3AppMessages {
-  V3AppMessages._();
-}
-
-class V3WelcomeMessages {
-  V3WelcomeMessages._();
-
-  static const String securityConflict =
-      '⚠️ Sistem je evidentirao bezbednosni konflikt u podacima za ovaj broj telefona. '
-      'Pristup nalogu je privremeno blokiran radi zaštite korisnika i integriteta sistema. '
-      'Kontaktirajte administraciju radi verifikacije.';
-
-  static const String profileNotFoundForPhone = '❌ Profil nije pronađen za ovaj broj.';
-}
-
 class V3PutnikProfilMessages {
   V3PutnikProfilMessages._();
 

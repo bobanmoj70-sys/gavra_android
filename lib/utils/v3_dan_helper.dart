@@ -1,3 +1,5 @@
+import 'v3_string_utils.dart';
+
 /// Helper za konverziju DateTime u naziv/kraticu dana i naziva u datume.
 class V3DanHelper {
   V3DanHelper._();
@@ -8,27 +10,16 @@ class V3DanHelper {
   static const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
   static const _labels = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
 
-  static String _normalizeDayToken(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll('č', 'c')
-        .replaceAll('ć', 'c')
-        .replaceAll('š', 's')
-        .replaceAll('ž', 'z')
-        .replaceAll('đ', 'dj');
-  }
-
   static int _indexForFullDayName(String danPuni) {
-    final normalized = _normalizeDayToken(danPuni);
+    final normalized = V3StringUtils.forSearch(danPuni);
     for (var i = 0; i < _names.length; i++) {
-      if (_normalizeDayToken(_names[i]) == normalized) return i;
+      if (V3StringUtils.forSearch(_names[i]) == normalized) return i;
     }
     return -1;
   }
 
   static int _indexForDayAbbr(String danAbbr) {
-    final normalized = _normalizeDayToken(danAbbr);
+    final normalized = V3StringUtils.forSearch(danAbbr);
     if (normalized.startsWith('pon')) return 0;
     if (normalized.startsWith('uto')) return 1;
     if (normalized.startsWith('sre')) return 2;
@@ -188,14 +179,6 @@ class V3DanHelper {
   }
 
   // ─── parsiranje/formatiranje ───────────────────────────────────
-
-  /// Čisti ISO datum deo (yyyy-MM-dd) iz ISO string-a.
-  static String parseIsoDatePart(String isoString) {
-    final value = isoString.trim();
-    if (value.isEmpty) return '';
-    if (value.length < _isoDateLength) return value;
-    return value.substring(0, _isoDateLength);
-  }
 
   /// ISO datum string iz DateTime.
   static String toIsoDate(DateTime datum) {

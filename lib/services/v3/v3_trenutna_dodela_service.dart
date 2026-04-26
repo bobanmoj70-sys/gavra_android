@@ -58,48 +58,6 @@ class V3TrenutnaDodelaService {
     return activeVozacByTerminId.keys.toSet();
   }
 
-  static Future<bool> hasNepokupljeniPutnikForVozac({
-    required String vozacId,
-  }) async {
-    final vozac = vozacId.trim();
-    if (vozac.isEmpty) return false;
-
-    final assignmentsRaw = await supabase
-        .from(tableName)
-        .select('$_colTerminId, $_colStatus')
-        .eq(colVozacId, vozac)
-        .eq(_colStatus, statusAktivan);
-
-    final terminIds = <String>[];
-    for (final row in (assignmentsRaw as List<dynamic>)) {
-      final mapped = row as Map<String, dynamic>;
-      final status = mapped[_colStatus]?.toString() ?? '';
-      if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
-
-      final terminId = mapped[_colTerminId]?.toString().trim() ?? '';
-      if (terminId.isEmpty) continue;
-      terminIds.add(terminId);
-    }
-
-    if (terminIds.isEmpty) return false;
-
-    final operativnaRaw =
-        await supabase.from('v3_operativna_nedelja').select('id, otkazano_at, pokupljen_at').inFilter('id', terminIds);
-
-    for (final row in (operativnaRaw as List<dynamic>)) {
-      final mapped = row as Map<String, dynamic>;
-      if (V3StatusPolicy.canAssign(
-        status: null,
-        otkazanoAt: mapped['otkazano_at'],
-        pokupljenAt: mapped['pokupljen_at'],
-      )) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   static Future<void> upsertActiveTerminDodela({
     required String terminId,
     required String putnikId,

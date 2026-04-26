@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../utils/v3_date_utils.dart';
 import 'v3_shimmer_banner.dart';
 
 /// Inline baner koji prikazuje neradne dane iz aktivne nedelje.
@@ -23,7 +24,7 @@ class V3NeradniDaniBanner extends StatelessWidget {
 
         final lines = <String>[];
         for (final rule in rules) {
-          final dateIso = V3DanHelper.parseIsoDatePart(rule['date'] ?? '');
+          final dateIso = V3DateUtils.parseIsoDatePart(rule['date'] ?? '');
           final date = DateTime.tryParse(dateIso);
           if (date == null) continue;
 
@@ -58,8 +59,7 @@ class V3NeradniDaniBanner extends StatelessWidget {
               children: [
                 const Text(
                   '📢 Neradni dan(i) — aktivna nedelja',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(

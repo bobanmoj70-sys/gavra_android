@@ -201,27 +201,19 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         if (confirmOverwrite != true) return;
       }
 
-      final rezultat = await V3PlacanjeDialogHelper.prikaziDialog(
+      final rezultat = await V3PlacanjeDialogHelper.naplati(
         context: context,
         putnikId: widget.putnik.id,
         imePrezime: widget.putnik.imePrezime,
         defaultCena: defaultCena,
         zakljucajIznos: zakljucajIznos,
-      );
-      if (rezultat == null) return;
-
-      final ok = await V3PlacanjeDialogHelper.sacuvajPlacanje(
-        context: context,
-        putnikId: widget.putnik.id,
-        imePrezime: widget.putnik.imePrezime,
-        rezultat: rezultat,
         operativnaId: widget.entry?.id,
         snimiMesecnuUplatu: isMesecniModel,
       );
-      if (ok && mounted) {
+      if (rezultat != null && mounted) {
         V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za ${widget.putnik.imePrezime}');
+        widget.onChanged?.call();
       }
-      widget.onChanged?.call();
     } catch (e) {
       V3ErrorUtils.safeError(this, context, 'Greška pri plaćanju: $e');
     } finally {

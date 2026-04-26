@@ -83,7 +83,7 @@ class V3OperativnaNedeljaEntry {
     return {
       'id': id,
       if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
-      'datum': V3DanHelper.parseIsoDatePart(datum.toIso8601String()),
+      'datum': V3DateUtils.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       if (updatedBy != null) 'updated_by': updatedBy,
@@ -106,95 +106,22 @@ class V3OperativnaNedeljaService {
     return !V3StatusPolicy.isTimestampSet(row['otkazano_at']);
   }
 
-  static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByFilter({
-    required String grad,
-    required String vreme,
-    required DateTime datum,
-  }) {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-    final datumStr = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
-
-    return cache
-        .where((r) {
-          return r['grad'] == grad &&
-              r['polazak_at'] == vreme &&
-              r['datum'].toString() == datumStr &&
-              _isOperativnaAktivna(r);
-        })
-        .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
-        .toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
-  }
-
-  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByFilter({
-    required String grad,
-    required String vreme,
-    required DateTime datum,
-  }) {
-    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-      tables: ['v3_operativna_nedelja'],
-      build: () => getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum),
-    );
-  }
-
-  /// Vraća sve zapise za dati grad za celu nedelju (bez filtera po danu).
-  static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByGrad(String grad) {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-    return cache.where((r) => r['grad'] == grad).map((r) => V3OperativnaNedeljaEntry.fromJson(r)).toList();
-  }
-
-  /// Stream koji emituje sve zapise za dati grad za celu nedelju.
-  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByGrad(String grad) {
-    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-      tables: ['v3_operativna_nedelja'],
-      build: () => getOperativnaNedeljaByGrad(grad),
-    );
-  }
-
-  /// Vraća sve zapise za tačan datum i grad iz cache-a.
-  static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByDatumAndGrad(String datumIso, String grad) {
-    final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
-    return cache
-        .where((r) {
-          final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
-          return rDatum == datumIso && r['grad'] == grad;
-        })
-        .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
-        .toList();
-  }
-
-  /// Stream koji emituje zapise za tačan datum i grad.
-  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByDatumAndGrad(String datumIso, String grad) {
-    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-      tables: ['v3_operativna_nedelja'],
-      build: () => getOperativnaNedeljaByDatumAndGrad(datumIso, grad),
-    );
-  }
-
   /// Vraća sve zapise za tačan datum (svi gradovi).
   static List<V3OperativnaNedeljaEntry> getOperativnaNedeljaByDatum(String datumIso) {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     return cache
         .where((r) {
-          final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
+          final rDatum = V3DateUtils.parseIsoDatePart(r['datum'] as String? ?? '');
           return rDatum == datumIso;
         })
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
         .toList();
   }
 
-  /// Stream koji emituje sve zapise za tačan datum (svi gradovi).
-  static Stream<List<V3OperativnaNedeljaEntry>> streamOperativnaNedeljaByDatum(String datumIso) {
-    return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-      tables: ['v3_operativna_nedelja'],
-      build: () => getOperativnaNedeljaByDatum(datumIso),
-    );
-  }
-
   /// Čita max_mesta za dati grad/vreme/datum iz v3_kapacitet_slots cache-a.
   /// Vraća null ako slot nije pronađen.
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
-    final datumIso = V3DanHelper.parseIsoDatePart(datum.toIso8601String());
+    final datumIso = V3DateUtils.parseIsoDatePart(datum.toIso8601String());
     final trazeniGrad = grad.trim().toUpperCase();
     final trazenoVreme = V3StringUtils.trimTimeToHhMm(vreme);
 
@@ -216,32 +143,6 @@ class V3OperativnaNedeljaService {
       }
     }
     return null;
-  }
-
-  /// Čita broj zauzetih mesta — suma broj_mesta aktivnih operativnih zapisa.
-  /// Aktivni status je izveden iz operativnih kolona (`otkazano_at`, `polazak_at`).
-  static int getZauzetaMesta(String grad, String vreme, DateTime datum) {
-    final zapisi = getOperativnaNedeljaByFilter(grad: grad, vreme: vreme, datum: datum);
-    return V3StatusPolicy.countOccupiedSeatsForSlot<V3OperativnaNedeljaEntry>(
-      items: zapisi,
-      grad: grad,
-      vreme: vreme,
-      gradOf: (entry) => entry.grad,
-      vremeOf: (entry) => entry.polazakAt,
-      seatsOf: (entry) => entry.brojMesta,
-      statusOf: (entry) => entry.statusFinal,
-      otkazanoAtOf: (entry) => entry.otkazanoAt,
-    );
-  }
-
-  /// Čita broj slobodnih mesta za dati grad/vreme/datum.
-  /// slobodna = max_mesta - zauzetaMesta (min 0).
-  /// Vraća null ako max_mesta nije postavljeno.
-  static int? getSlobodnaMesta(String grad, String vreme, DateTime datum) {
-    final kapacitet = getKapacitetVozila(grad, vreme, datum);
-    if (kapacitet == null) return null;
-    final zauzeto = getZauzetaMesta(grad, vreme, datum);
-    return (kapacitet - zauzeto).clamp(0, kapacitet);
   }
 
   /// Direktan INSERT u v3_operativna_nedelja — za vozača koji dodaje putnika.
@@ -267,7 +168,7 @@ class V3OperativnaNedeljaService {
       // Provjeri postoji li već zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
-        final rDatum = V3DanHelper.parseIsoDatePart(r['datum'] as String? ?? '');
+        final rDatum = V3DateUtils.parseIsoDatePart(r['datum'] as String? ?? '');
         final rowPutnikId = r['created_by']?.toString();
         return rowPutnikId == putnikId && rDatum == datum && r['grad'] == grad && _isOperativnaAktivna(r);
       }).toList();
@@ -299,5 +200,4 @@ class V3OperativnaNedeljaService {
       rethrow;
     }
   }
-
 }

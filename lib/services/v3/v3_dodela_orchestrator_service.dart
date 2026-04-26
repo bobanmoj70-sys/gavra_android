@@ -1,3 +1,4 @@
+import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_time_utils.dart';
 import 'v3_trenutna_dodela_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
@@ -135,7 +136,7 @@ class V3DodelaOrchestratorService {
     final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
 
     return operativnaRows.where((row) {
-      final datum = _parseIsoDatePart(row['datum']?.toString());
+      final datum = V3DateUtils.parseIsoDatePart(row['datum']);
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString());
       if (datum != datumIso || rowGrad != grad || rowVreme != normVreme) return false;
@@ -154,7 +155,7 @@ class V3DodelaOrchestratorService {
     final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
 
     for (final row in operativnaRows) {
-      final datum = _parseIsoDatePart(row['datum']?.toString());
+      final datum = V3DateUtils.parseIsoDatePart(row['datum']);
       final rowPutnikId = row['created_by']?.toString() ?? '';
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString());
@@ -165,12 +166,5 @@ class V3DodelaOrchestratorService {
     }
 
     return null;
-  }
-
-  static String _parseIsoDatePart(String? value) {
-    final raw = (value ?? '').trim();
-    if (raw.isEmpty) return '';
-    final match = RegExp(r'^(\d{4}-\d{2}-\d{2})').firstMatch(raw);
-    return match?.group(1) ?? '';
   }
 }
