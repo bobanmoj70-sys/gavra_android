@@ -191,8 +191,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     );
 
     if (routeStops.isEmpty) return null;
-    final targetStop = routeStops.where((stop) => stop.putnikId == putnikId).firstOrNull;
-    if (targetStop == null) return null;
+    if (!routeStops.any((stop) => stop.putnikId == putnikId)) return null;
 
     final etaResult = await _osrmRouteService.computeEtaForStopsFromSource(
       source: V3RouteCoordinate(latitude: vozacLok.lat, longitude: vozacLok.lng),

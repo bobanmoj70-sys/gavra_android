@@ -117,52 +117,13 @@ class V3OsrmRouteService {
   }) async {
     if (chunk.length <= 2) return List<V3RouteWaypoint>.from(chunk);
 
-    final coords = chunk.map((w) => '${w.coordinate.longitude},${w.coordinate.latitude}').join(';');
-    final uri = Uri.parse('$_baseUrl/trip/v1/driving/$coords').replace(
-      queryParameters: {
-        'source': lockFirstAsSource ? 'first' : 'any',
-        if (lockLastAsDestination) 'destination': 'last',
-        'roundtrip': 'false',
-        'steps': 'false',
-        'overview': 'false',
-      },
+    final solution = await _fetchTripSolution(
+      chunk,
+      lockFirstAsSource: lockFirstAsSource,
+      lockLastAsDestination: lockLastAsDestination,
     );
-    // ignore: avoid_print
-    print('[OSRM] request URL: $uri');
-
-    try {
-      final response = await _client.get(uri).timeout(const Duration(seconds: 12));
-      // ignore: avoid_print
-      print('[OSRM] statusCode=${response.statusCode} bodyLength=${response.body.length}');
-      // ignore: avoid_print
-      print('[OSRM] body=${response.body}');
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return List<V3RouteWaypoint>.from(chunk);
-      }
-
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) return List<V3RouteWaypoint>.from(chunk);
-      if ((decoded['code']?.toString() ?? '') != 'Ok') return List<V3RouteWaypoint>.from(chunk);
-
-      final rawWaypoints = decoded['waypoints'];
-      if (rawWaypoints is! List || rawWaypoints.length != chunk.length) {
-        return List<V3RouteWaypoint>.from(chunk);
-      }
-
-      // rawWaypoints[i].waypoint_index = optimized position of original input[i]
-      final indexed = List.generate(chunk.length, (i) {
-        final wp = rawWaypoints[i];
-        final pos = wp is Map ? (wp['waypoint_index'] as num?)?.toInt() : null;
-        return (originalIndex: i, optimizedPosition: pos ?? i);
-      });
-      indexed.sort((a, b) => a.optimizedPosition.compareTo(b.optimizedPosition));
-
-      return indexed.map((e) => chunk[e.originalIndex]).toList(growable: false);
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('[OSRM] ERROR: $e\n$st');
-      return List<V3RouteWaypoint>.from(chunk);
-    }
+    if (solution == null) return List<V3RouteWaypoint>.from(chunk);
+    return solution.orderedWaypoints;
   }
 
   Future<({List<V3RouteWaypoint> orderedWaypoints, List<Map<String, dynamic>> legs})?> _fetchTripSolution(
