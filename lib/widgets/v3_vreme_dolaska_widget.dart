@@ -25,7 +25,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   RealtimeChannel? _realtimeChannel;
   V3EtaDolazakData? _data;
-  bool _loading = true;
+  bool _loading = false;
 
   @override
   void initState() {

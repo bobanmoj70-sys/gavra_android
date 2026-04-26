@@ -48,6 +48,7 @@ class V3TrenutnaDodelaSlotService {
 
   static Future<Map<String, String>> loadActiveVozacBySlotKey({
     String? vozacId,
+    String? datumIso,
   }) async {
     dynamic query = supabase
         .from(tableName)
@@ -57,6 +58,11 @@ class V3TrenutnaDodelaSlotService {
     final trimmedVozacId = (vozacId ?? '').trim();
     if (trimmedVozacId.isNotEmpty) {
       query = query.eq(colVozacId, trimmedVozacId);
+    }
+
+    final trimmedDatum = _normalizeDatumIso(datumIso);
+    if (trimmedDatum.isNotEmpty) {
+      query = query.eq(colDatum, trimmedDatum);
     }
 
     final rows = await query;

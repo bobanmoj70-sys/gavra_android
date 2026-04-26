@@ -51,7 +51,8 @@ class V3EtaOrchestratorService {
 
     if (assignments.isEmpty) return null;
 
-    final activeVozacBySlotKey = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey();
+    final todayIso = DateTime.now().toIso8601String().substring(0, 10);
+    final activeVozacBySlotKey = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(datumIso: todayIso);
 
     final terminIds = assignments.map((e) => e.terminId).toList(growable: false);
     final operativnaRows = await supabase
@@ -265,6 +266,9 @@ class V3EtaOrchestratorService {
       final rawAt = row[_vozacLokacijeColUpdatedAt];
       final parsedAt = DateTime.tryParse((rawAt ?? '').toString())?.toLocal();
       if (parsedAt == null) return null;
+
+      final starostSekundi = DateTime.now().difference(parsedAt).inSeconds;
+      if (starostSekundi > 90) return null;
 
       final lat = _parseDouble(row['lat']);
       final lng = _parseDouble(row['lng']);
