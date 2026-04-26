@@ -870,6 +870,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
+        await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
+          datumIso: _selectedDatumIso,
+          grad: _selectedGrad,
+          vreme: _selectedVreme,
+          vozacId: vozacId,
+          updatedBy: vozacId,
+        );
+
         await V3DriverPushNotificationService.notifyPassengersDriverStarted(
           vozacId: vozacId,
           datumIso: _selectedDatumIso,
