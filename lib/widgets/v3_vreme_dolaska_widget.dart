@@ -24,6 +24,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   final V3EtaOrchestratorService _etaOrchestratorService = V3EtaOrchestratorService();
 
   RealtimeChannel? _realtimeChannel;
+  Timer? _refreshTimer;
   V3EtaDolazakData? _data;
   bool _loading = false;
 
@@ -32,10 +33,15 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     super.initState();
     _reload();
     _bindRealtime();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (mounted) unawaited(_reload());
+    });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
     final channel = _realtimeChannel;
     _realtimeChannel = null;
     if (channel != null) {

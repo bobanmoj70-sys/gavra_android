@@ -51,8 +51,7 @@ class V3EtaOrchestratorService {
 
     if (assignments.isEmpty) return null;
 
-    final todayIso = DateTime.now().toIso8601String().substring(0, 10);
-    final activeVozacBySlotKey = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(datumIso: todayIso);
+    final activeVozacBySlotKey = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey();
 
     final terminIds = assignments.map((e) => e.terminId).toList(growable: false);
     final operativnaRows = await supabase
